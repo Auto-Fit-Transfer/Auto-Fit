@@ -1,6 +1,6 @@
 """Community feed: posts with up to five photos, likes, reposts, comments, reports and blocks.
 
-Every write is a SQL function (supabase/migrations/20261014120000_community_feed.sql), so
+Every write is a SQL function (supabase/migrations/20261014062855_community_feed.sql), so
 counters, ownership and block rules change atomically. Photos live in a private bucket and
 are re-encoded without EXIF metadata, so phone GPS locations never reach other users.
 """

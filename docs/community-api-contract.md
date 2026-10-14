@@ -1,12 +1,14 @@
 # Auto-Fit 커뮤니티 API 계약 (1단계: 피드)
 
-상태: 구현 완료, 공용 DB 미적용 (회원 탈퇴 연동 반영, 검토 대기)
+상태: 기본 DB 적용 완료. 커뮤니티 서버 병합·배포와 화면 연동은 아직 대기.
 
 기준일: 2026-10-14
 
 구현 상태: `community-backend` 브랜치에 API 16개, DB 함수, 시험(서버 39개·PostgreSQL 42개·탈퇴 흐름 36개)을 추가했다.
-`20261014120000_community_feed.sql`은 아직 Auto-Fit Supabase 프로젝트에 적용하지 않았다.
-적용 전에는 이 API가 502(`DATA_SOURCE_ERROR`)를 반환한다.
+`20261014062855_community_feed.sql`은 Auto-Fit Supabase 프로젝트에 적용했다.
+원래 파일명은 `20261014120000_community_feed.sql`이며 원격 적용 버전에 맞춰 이름만 정렬했다.
+추가 발견한 댓글 삭제 교착 문제의 보완 SQL은 아직 원격 미적용이다.
+[검증 결과 및 보완안](community-concurrency-followup.md)을 확인하고 서버 배포 전에 반영한다.
 회원 탈퇴 연동과 적용 절차는 [커뮤니티 DB·회원 탈퇴 연동](community-account-deletion-integration.md)을 따른다.
 
 ## 1. 범위와 결정 사항

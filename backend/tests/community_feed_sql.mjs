@@ -66,6 +66,14 @@ try {
   const bPost = await post(B, '샐러드 인증');
   const cPost = await post(C, '첫 글입니다');
 
+  // Control fixture time explicitly: fast RPCs may share a timestamp. Keep all
+  // posts within the rate-limit window used later in this test.
+  for (const [index, item] of [photoPost, photoOnly, bPost, cPost].entries()) {
+    await db.query(`update public.community_posts
+      set created_at = now() - ($2::int * interval '1 second') where post_id = $1`,
+    [item.post_id, 10 - index]);
+  }
+
   // Feed: newest first, keyset pagination, real name never exposed.
   let page = await feed(A);
   assert.deepEqual(page.map((i) => i.post_id), [cPost.post_id, bPost.post_id, photoOnly.post_id, photoPost.post_id]);
@@ -73,6 +81,14 @@ try {
   const first = await feed(A, null, 2);
   const second = await feed(A, first[1], 2);
   assert.deepEqual([...first, ...second].map((i) => i.post_id), page.map((i) => i.post_id)); checks++;
+
+  // A tied timestamp must use UUID descending and still page without omissions.
+  await db.query(`update public.community_posts set created_at = now() - interval '5 seconds'
+    where post_id = any($1::uuid[])`, [[photoPost.post_id, photoOnly.post_id, bPost.post_id, cPost.post_id]]);
+  const tiedPosts = [photoPost, photoOnly, bPost, cPost].map((p) => p.post_id).sort().reverse();
+  const tiedFirst = await feed(A, null, 2);
+  const tiedSecond = await feed(A, tiedFirst[1], 2);
+  assert.deepEqual([...tiedFirst, ...tiedSecond].map((p) => p.post_id), tiedPosts); checks++;
 
   // Likes are idempotent and counted once.
   assert.equal((await rpc('community_set_like', B, photoPost.post_id, true)).like_count, 1);
@@ -104,15 +120,22 @@ try {
   const c1 = await rpc('community_add_comment', B, photoPost.post_id, '멋져요');
   const c2 = await rpc('community_add_comment', C, photoPost.post_id, '저도 해볼게요');
   const c3 = await rpc('community_add_comment', B, photoPost.post_id, '화이팅');
+  // Exercise the equal-time boundary intentionally instead of relying on sleeps.
+  const commentTime = '2026-01-01T00:00:00.000Z';
+  await db.query(`update public.community_comments set created_at = $1::timestamptz
+    where comment_id = any($2::uuid[])`, [commentTime, [c1.comment_id, c2.comment_id, c3.comment_id]]);
+  const orderedComments = [c1, c2, c3].sort((a, b) => a.comment_id.localeCompare(b.comment_id));
   assert.equal(c1.can_delete, true);
   assert.equal(c1.is_mine, true);
   const comments = await rpc('community_comments', A, photoPost.post_id, null, null, 51);
-  assert.deepEqual(comments.map((c) => c.comment_id), [c1.comment_id, c2.comment_id, c3.comment_id]);
+  assert.deepEqual(comments.map((c) => c.comment_id), orderedComments.map((c) => c.comment_id));
   assert.ok(comments.every((c) => c.can_delete && !c.is_mine));
-  const later = await rpc('community_comments', C, photoPost.post_id, c1.created_at, c1.comment_id, 51);
-  assert.deepEqual(later.map((c) => c.comment_id), [c2.comment_id, c3.comment_id]);
-  assert.equal(later[0].can_delete, true);
-  assert.equal(later[1].can_delete, false); checks++;
+  const earliest = await rpc('community_comments', C, photoPost.post_id, null, null, 1);
+  const later = await rpc('community_comments', C, photoPost.post_id,
+    earliest[0].created_at, earliest[0].comment_id, 51);
+  assert.deepEqual([...earliest, ...later].map((c) => c.comment_id), orderedComments.map((c) => c.comment_id));
+  for (const item of [...earliest, ...later]) assert.equal(item.can_delete, item.comment_id === c2.comment_id);
+  checks++;
   assert.equal((await rpc('community_get_post', A, photoPost.post_id)).comment_count, 3);
   await rejected(() => rpc('community_delete_comment', C, c1.comment_id), 'COMMUNITY_COMMENT_NOT_FOUND');
   await rpc('community_delete_comment', A, c1.comment_id);

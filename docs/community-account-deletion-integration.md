@@ -1,9 +1,13 @@
 # 커뮤니티 DB · 회원 탈퇴 연동
 
-상태: 검토 대기, 공용 DB 미적용
+상태: 기본 SQL 적용 완료. 댓글 삭제 동시성 보완 SQL은 로컬 검증 완료, 공용 DB 미적용.
 
-기준일: 2026-10-14. 대상 파일: [`supabase/migrations/20261014120000_community_feed.sql`](../supabase/migrations/20261014120000_community_feed.sql)
-(이 파일 하나가 최종 SQL이다).
+기준일: 2026-10-14. 대상 파일: [`supabase/migrations/20261014062855_community_feed.sql`](../supabase/migrations/20261014062855_community_feed.sql)
+(기존 `20261014120000` 파일의 내용은 유지하고 실제 원격 버전에 맞춰 이름만 정렬했다).
+
+실제 원격 적용 이력: `20261014062855_community_feed`, 소스 커밋 `1a0ed31`.
+이 파일은 이미 적용되어 있으므로 다시 실행하지 않는다. 새 보완 SQL과 검증 결과는
+[적용 후 동시성 검증](community-concurrency-followup.md)을 참고한다.
 
 참고한 자료: DB 담당자가 공유한 `community-db-handoff-20261014`(README와 2026-09-17 무결성 SQL 5개).
 참고 SQL은 저장소에 복사하지 않았고 공용 DB에서 실행하지 않았다.
@@ -86,7 +90,8 @@ node backend/tests/community_feed_sql.mjs <@electric-sql/pglite 경로> <참고 
 
 적용 전:
 
-1. `list_migrations`로 `20261014120000`(또는 같은 이름)이 아직 없는지 확인한다.
+1. 새 환경에 적용할 때는 `list_migrations`로 `20261014062855` 또는 `community_feed`가 없는지 확인한다.
+   Auto-Fit 공용 DB에는 이미 적용했다. 과거 소스 버전 `20261014120000`이 없다는 이유로 재적용하지 않는다.
 2. 원격 탈퇴 함수가 참고 원본과 같은지 확인한다. 다르면 적용을 멈추고 이 파일의 교체 함수를 원격 정의에 맞춘다.
    ```sql
    select pg_get_functiondef('autofit_integrity.cascade_account_deletion()'::regprocedure);
@@ -108,5 +113,6 @@ select has_function_privilege('service_role', 'public.community_delete_user_data
 select has_function_privilege('service_role', 'public.community_feed(uuid,timestamptz,uuid,integer)', 'execute'); -- true
 ```
 
-적용 후 격리된 실연동 검증(합성 계정)으로 남은 두 가지를 확인한다.
-게시 사진·미사용 사진이 Storage API로 실제 삭제되는지, 탈퇴 API 전체 흐름이 끝까지 성공하는지다.
+2026-10-14 적용 후 Auto-Fit 공용 DB의 합성 계정 2개로 게시·미사용 사진의 Storage API 실삭제와
+기존 Render 탈퇴 API 204 응답을 확인했다. 다른 합성 계정의 글·사진 유지와 집계 보정도 확인했으며,
+검증 데이터는 모두 정리했다. 별도 Supabase 프로젝트에서 수행한 테스트는 아니다.
