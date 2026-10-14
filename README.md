@@ -7,6 +7,8 @@
 전체 화면 연동은 [프론트엔드 협업용 API 안내](docs/frontend-api-handoff.md),
 [입력 필드 참조](docs/api-input-reference.md), [OpenAPI](docs/openapi.json)를 확인하세요.
 
+커뮤니티(피드·사진·좋아요·공유·댓글·신고·차단) 연동은 [커뮤니티 API 계약](docs/community-api-contract.md)을 확인하세요.
+
 홈 화면 로딩 개선용 `GET /api/home` 연동은 [홈 API 전달사항](docs/frontend-home-api-handoff.md)을 확인하세요.
 
 종합 분석의 체성분 추가 지표·판정 기준·출처 팝업 설계와 계산식은

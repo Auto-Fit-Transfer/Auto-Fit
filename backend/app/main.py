@@ -60,6 +60,7 @@ from backend.app.health_documents import create_health_documents_router
 from backend.app.account_deletion import create_account_deletion_router
 from backend.app.analysis_popups import create_analysis_popups_router
 from backend.app.analysis_summary import create_analysis_summary_router
+from backend.app.community import create_community_router
 from backend.app.meal_photos import attach_photos, create_meal_photos_router
 from backend.app.security import (
     BlockedPathMiddleware,
@@ -3315,6 +3316,7 @@ app = FastAPI(
         {"name": "Exercise", "description": "운동 선호도, 추천, 세션, 목표 및 진행 현황"},
         {"name": "Diet", "description": "식재료, 식단 추천, 영양 요약 및 식사 기록"},
         {"name": "Chat", "description": "건강 상담 채팅 및 답변·점수 미리보기"},
+        {"name": "Community", "description": "커뮤니티 피드, 사진, 좋아요, 공유, 댓글, 신고·차단"},
         {"name": "System", "description": "서버 상태 및 개발용 연동 테스트"},
     ],
     lifespan=lifespan,
@@ -3364,7 +3366,7 @@ async def mobile_diet_generation_test_js() -> FileResponse:
 
 @app.exception_handler(HTTPException)
 async def chat_http_error(request, exc):
-    if request.url.path.startswith("/api/chats") and not isinstance(exc.detail, dict):
+    if request.url.path.startswith(("/api/chats", "/api/community")) and not isinstance(exc.detail, dict):
         code = "AUTH_REQUIRED" if exc.status_code == 401 else "DATA_SOURCE_ERROR"
         message = "로그인이 필요하거나 세션이 만료되었습니다." if exc.status_code == 401 else "요청을 처리하지 못했습니다."
         return JSONResponse(status_code=exc.status_code, content={"detail": {"code": code, "message": message, "fields": None}})
@@ -3382,7 +3384,7 @@ async def chat_http_error(request, exc):
 async def chat_validation_error(request, exc):
     # Never echo question text, tokens, health data, or arbitrary input.
     fields = [".".join(map(str, error["loc"])) for error in exc.errors()]
-    if request.url.path.startswith(("/api/chats", "/api/health-documents")):
+    if request.url.path.startswith(("/api/chats", "/api/health-documents", "/api/community")):
         return JSONResponse(status_code=422, content={"detail": {
             "code": "VALIDATION_ERROR", "message": "입력값을 확인해 주세요.",
             "fields": fields,
@@ -3421,6 +3423,7 @@ app.include_router(create_meal_photos_router(get_current_user, get_settings))
 app.include_router(create_account_deletion_router(get_current_user, get_settings))
 app.include_router(create_analysis_popups_router(get_current_user, get_settings))
 app.include_router(create_analysis_summary_router(get_current_user, get_settings))
+app.include_router(create_community_router(get_current_user, get_settings))
 app.include_router(
     create_health_documents_router(
         current_user_dependency=get_current_user,
