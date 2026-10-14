@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import CommunityIcon from '@/assets/icons/feature/navigator/Community.svg';
 import DietIcon from '@/assets/icons/feature/navigator/Diet.svg';
 import ExerciseIcon from '@/assets/icons/feature/navigator/Exercise.svg';
 import HomeIcon from '@/assets/icons/feature/navigator/Home.svg';
@@ -37,6 +38,7 @@ const tabMeta = {
   home: { label: '홈', Icon: HomeIcon },
   diet: { label: '식단', Icon: DietIcon },
   exercise: { label: '운동', Icon: ExerciseIcon },
+  community: { label: '커뮤니티', Icon: CommunityIcon },
   my: { label: '마이', Icon: MyIcon },
 } as const;
 
