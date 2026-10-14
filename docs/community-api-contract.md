@@ -1,12 +1,13 @@
 # Auto-Fit 커뮤니티 API 계약 (1단계: 피드)
 
-상태: 구현 완료, 공용 DB 미적용
+상태: 구현 완료, 공용 DB 미적용 (회원 탈퇴 연동 반영, 검토 대기)
 
 기준일: 2026-10-14
 
-구현 상태: `community-backend` 브랜치에 API 16개, DB 함수, 시험(서버 36개·PostgreSQL 42개)을 추가했다.
+구현 상태: `community-backend` 브랜치에 API 16개, DB 함수, 시험(서버 39개·PostgreSQL 42개·탈퇴 흐름 36개)을 추가했다.
 `20261014120000_community_feed.sql`은 아직 Auto-Fit Supabase 프로젝트에 적용하지 않았다.
 적용 전에는 이 API가 502(`DATA_SOURCE_ERROR`)를 반환한다.
+회원 탈퇴 연동과 적용 절차는 [커뮤니티 DB·회원 탈퇴 연동](community-account-deletion-integration.md)을 따른다.
 
 ## 1. 범위와 결정 사항
 
@@ -46,6 +47,7 @@ Authorization: Bearer <supabase_access_token>
 | 404 | `COMMUNITY_POST_NOT_FOUND`, `COMMUNITY_COMMENT_NOT_FOUND`, `COMMUNITY_USER_NOT_FOUND`, `COMMUNITY_TARGET_NOT_FOUND` | 삭제·차단된 글. 목록에서 빼기 |
 | 409 | `COMMUNITY_NICKNAME_REQUIRED` | 닉네임 설정 화면 열기 |
 | 409 | `COMMUNITY_UPLOAD_INVALID` | 사진을 다시 올린 뒤 재시도 |
+| 409 | `COMMUNITY_ACCOUNT_UNAVAILABLE` | 탈퇴가 진행 중인 계정. 안내 후 로그인 화면으로 |
 | 413 | `FILE_TOO_LARGE` | 5MB 이하로 줄여서 올리기 |
 | 415 | `UNSUPPORTED_IMAGE` | JPEG·PNG·WebP만 가능 |
 | 422 | `VALIDATION_ERROR`, `COMMUNITY_INVALID_INPUT`, `COMMUNITY_SELF_TARGET` | 입력 확인 |
@@ -148,13 +150,9 @@ POST /api/community/reports
 
 ## 5. 배포 전 확인 (백엔드 담당)
 
-1. `supabase/migrations/20261014120000_community_feed.sql`을 Auto-Fit Supabase에 적용한다.
-   테이블 6개, 함수 23개, 비공개 버킷 `community-photos`, `auth.users` 삭제 트리거 1개를 추가하며
-   기존 테이블은 바꾸지 않는다.
-2. 회원 탈퇴 API의 파일 정리 RPC(`account_deletion_storage`)가 `community-photos` 버킷의
-   `{user_id}/` 파일도 찾는지 확인한다. 이 RPC는 저장소에 SQL이 없어 확인하지 못했다.
-   `auth.users` 트리거 생성이 거부되면 트리거 두 줄을 빼고, 기존 탈퇴 정리 트리거에서
-   `public.community_delete_user_data(old.id)`를 호출한다.
-3. 시험: `python -m pytest backend/tests/test_community.py`,
-   `node backend/tests/community_feed_sql.mjs <@electric-sql/pglite 경로>`.
-4. 신고 내용(`community_reports`)을 검토하고 글을 숨기는 관리자 기능은 아직 없다. 지금은 DB에서 직접 확인한다.
+1. 적용 절차·검토 항목은 [커뮤니티 DB·회원 탈퇴 연동](community-account-deletion-integration.md)을 따른다.
+   이 파일은 기존 탈퇴 함수 `autofit_integrity.cascade_account_deletion()`도 교체하므로 단독 검토 후 한 번만 적용한다.
+2. 시험: `python -m pytest backend/tests/test_community.py`,
+   `node backend/tests/community_feed_sql.mjs <@electric-sql/pglite 경로> <20260917 무결성 SQL 폴더>`,
+   `node backend/tests/community_account_deletion_sql.mjs <@electric-sql/pglite 경로> <20260917 무결성 SQL 폴더>`.
+3. 신고 내용(`community_reports`)을 검토하고 글을 숨기는 관리자 기능은 아직 없다. 지금은 DB에서 직접 확인한다.

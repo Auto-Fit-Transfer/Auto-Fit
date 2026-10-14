@@ -1,14 +1,13 @@
-// Run with a path to an installed @electric-sql/pglite package (test-only).
-// Uses an isolated in-memory PostgreSQL instance, never the remote project.
-import { readFileSync } from 'node:fs';
+// Run: node community_feed_sql.mjs <@electric-sql/pglite path> <folder with the 20260917 integrity SQL>
+// Uses an isolated in-memory PostgreSQL with every migration, never the remote project.
 import { createRequire } from 'node:module';
 import assert from 'node:assert/strict';
+
+import { createUsers, loadAutofitSchema } from './support/autofit_schema.mjs';
 
 const require = createRequire(import.meta.url);
 const { PGlite } = require(process.argv[2]);
 const db = new PGlite();
-const base = readFileSync(new URL('../../supabase/migrations/20260901055003_remote_schema.sql', import.meta.url), 'utf8');
-const migration = readFileSync(new URL('../../supabase/migrations/20261014120000_community_feed.sql', import.meta.url), 'utf8');
 let checks = 0;
 
 const A = '00000000-0000-4000-8000-00000000000a';
@@ -31,17 +30,11 @@ const post = (user, content, uploads = []) => rpc('community_create_post', user,
 const count = async (sql, params = []) => (await db.query(sql, params)).rows[0].n;
 
 try {
-  await db.exec('create role anon; create role authenticated; create role service_role bypassrls;');
-  await db.exec('create schema auth; create table auth.users (id uuid primary key);');
-  await db.exec(`create schema storage; create table storage.buckets (id text primary key, name text,
-    public boolean, file_size_limit bigint, allowed_mime_types text[]);`);
-  const start = base.indexOf('CREATE TABLE "public"."profiles" (');
-  await db.exec(base.slice(start, base.indexOf('\n);', start) + 3));
-  await db.exec('grant select on public.profiles to service_role;');
-  await db.exec(migration);
-  await db.query(`insert into auth.users(id) values ($1),($2),($3),($4)`, [A, B, C, NO_NICK]);
-  await db.query(`insert into public.profiles(user_id,name,nickname) values
-    ($1,'실명A','운동왕'),($2,'실명B','식단러'),($3,'실명C','새싹'),($4,'실명D',null)`, [A, B, C, NO_NICK]);
+  await loadAutofitSchema(db, process.argv[3]);
+  await createUsers(db, [
+    { id: A, name: '실명A', nickname: '운동왕' }, { id: B, name: '실명B', nickname: '식단러' },
+    { id: C, name: '실명C', nickname: '새싹' }, { id: NO_NICK, name: '실명D' },
+  ]);
   assert.equal((await db.query("select public from storage.buckets where id='community-photos'")).rows[0].public, false); checks++;
 
   await db.exec('set role anon');
@@ -180,7 +173,8 @@ try {
   assert.deepEqual(await rpc('community_claim_stale_uploads', C), [`${C}/bulk-1.jpg`]);
   assert.deepEqual(await rpc('community_claim_stale_uploads', C), []); checks++;
 
-  // Account deletion through Auth removes the user's community data and fixes counters.
+  // Account deletion through Auth (the applied cascade trigger) removes the user's community
+  // data and fixes counters. The full deletion flow is in community_account_deletion_sql.mjs.
   const aPost = await post(A, '탈퇴 전 글');
   await rpc('community_set_like', B, aPost.post_id, true);
   await rpc('community_set_repost', B, aPost.post_id, true);

@@ -184,12 +184,25 @@ def test_create_post_trims_text_and_keeps_photo_order(client, supabase):
 @pytest.mark.parametrize("code,status", [
     ("COMMUNITY_NICKNAME_REQUIRED", 409), ("COMMUNITY_POST_NOT_FOUND", 404),
     ("COMMUNITY_RATE_LIMITED", 429), ("COMMUNITY_UPLOAD_INVALID", 409), ("COMMUNITY_SELF_TARGET", 422),
+    ("COMMUNITY_ACCOUNT_UNAVAILABLE", 409),
 ])
 def test_database_rules_become_coded_errors(client, supabase, code, status):
     supabase.rpc["community_create_post"] = rejection(code)
     response = client.post("/api/community/posts", json={"content": "안녕"})
     assert response.status_code == status
     assert response.json()["detail"] == {"code": code, "message": community.ERRORS[code][1], "fields": None}
+
+
+@pytest.mark.parametrize("status,sqlstate,message", [
+    (400, "23514", "Account deletion is in progress"),
+    (409, "23503", "Account is unavailable"),
+])
+def test_account_deletion_guard_becomes_coded_error(client, supabase, status, sqlstate, message):
+    # A write that reaches the autofit_integrity trigger during account deletion.
+    supabase.rpc["community_create_post"] = httpx.Response(status, json={"code": sqlstate, "message": message})
+    response = client.post("/api/community/posts", json={"content": "안녕"})
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "COMMUNITY_ACCOUNT_UNAVAILABLE"
 
 
 def test_unknown_database_failures_hide_details(client, supabase):

@@ -1,6 +1,10 @@
 -- Community feed: posts with up to five photos, likes, reposts, comments, reports and blocks.
--- Additive, no foreign keys. All access goes through FastAPI with the service role; every
--- write is a SQL function so counters, ownership and block rules change atomically.
+-- No foreign keys. All access goes through FastAPI with the service role; every write is a
+-- SQL function so counters, ownership and block rules change atomically.
+--
+-- Requires the applied 2026-09-17 integrity migrations (schema autofit_integrity). This file
+-- also replaces autofit_integrity.cascade_account_deletion() so account deletion cleans
+-- community rows before its generic per-table purge. Apply once, after checking history.
 
 create table public.community_posts (
   post_id uuid primary key default gen_random_uuid(),
@@ -188,6 +192,43 @@ begin
 end;
 $$;
 
+-- False while the account is being deleted (or is gone). Takes the same auth.users lock as
+-- the integrity triggers, so callers that check the post author first lock in the same
+-- order as account deletion (auth user, then rows) and wait instead of deadlocking.
+create function public.community_account_writable(p_user_id uuid)
+returns boolean language plpgsql security definer set search_path = '' as $$
+begin
+  perform autofit_integrity.assert_account_writable(p_user_id);
+  return true;
+exception when sqlstate '23503' or sqlstate '23514' then
+  return false;
+end;
+$$;
+
+-- Locks another user's post before a like, repost or comment changes its counters.
+-- A post whose author is mid-deletion is treated as already gone.
+create function public.community_lock_post(p_post public.community_posts)
+returns void language plpgsql security invoker set search_path = '' as $$
+begin
+  if not public.community_account_writable(p_post.user_id) then
+    raise exception using message = 'COMMUNITY_POST_NOT_FOUND', errcode = 'P0001';
+  end if;
+  perform 1 from public.community_posts where post_id = p_post.post_id for update;
+  if not found then
+    raise exception using message = 'COMMUNITY_POST_NOT_FOUND', errcode = 'P0001';
+  end if;
+end;
+$$;
+
+create function public.community_require_writable(p_user_id uuid)
+returns void language plpgsql security invoker set search_path = '' as $$
+begin
+  if not public.community_account_writable(p_user_id) then
+    raise exception using message = 'COMMUNITY_ACCOUNT_UNAVAILABLE', errcode = 'P0001';
+  end if;
+end;
+$$;
+
 create function public.community_require_nickname(p_user_id uuid)
 returns void language plpgsql stable security invoker set search_path = '' as $$
 begin
@@ -271,6 +312,7 @@ begin
      or p_height is null or p_height not between 1 and 20000 then
     raise exception using message = 'COMMUNITY_INVALID_INPUT', errcode = 'P0001';
   end if;
+  perform public.community_require_writable(p_user_id);
   perform pg_advisory_xact_lock(hashtextextended(p_user_id::text || ':community-upload', 0));
   if (select count(*) from public.community_uploads
       where user_id = p_user_id and post_id is null
@@ -310,6 +352,7 @@ begin
      or v_count <> (select count(distinct u) from unnest(p_upload_ids) u where u is not null) then
     raise exception using message = 'COMMUNITY_INVALID_INPUT', errcode = 'P0001';
   end if;
+  perform public.community_require_writable(p_user_id);
   perform public.community_require_nickname(p_user_id);
   perform pg_advisory_xact_lock(hashtextextended(p_user_id::text || ':community-post', 0));
   if (select count(*) from public.community_posts
@@ -371,7 +414,9 @@ begin
   if p_user_id is null or p_post_id is null or p_liked is null then
     raise exception using message = 'COMMUNITY_INVALID_INPUT', errcode = 'P0001';
   end if;
+  perform public.community_require_writable(p_user_id);
   v_post := public.community_visible_post(p_user_id, p_post_id);
+  perform public.community_lock_post(v_post);
   if p_liked then
     insert into public.community_post_likes(post_id, user_id) values (v_post.post_id, p_user_id)
       on conflict do nothing;
@@ -396,7 +441,9 @@ begin
   if p_user_id is null or p_post_id is null or p_reposted is null then
     raise exception using message = 'COMMUNITY_INVALID_INPUT', errcode = 'P0001';
   end if;
+  perform public.community_require_writable(p_user_id);
   v_post := public.community_visible_post(p_user_id, p_post_id);
+  perform public.community_lock_post(v_post);
   if p_reposted then
     perform public.community_require_nickname(p_user_id);
     insert into public.community_posts(user_id, repost_of_post_id) values (p_user_id, v_post.post_id)
@@ -456,8 +503,10 @@ begin
   if p_user_id is null or p_post_id is null or v_content is null or char_length(v_content) > 300 then
     raise exception using message = 'COMMUNITY_INVALID_INPUT', errcode = 'P0001';
   end if;
+  perform public.community_require_writable(p_user_id);
   perform public.community_require_nickname(p_user_id);
   v_post := public.community_visible_post(p_user_id, p_post_id);
+  perform public.community_lock_post(v_post);
   perform pg_advisory_xact_lock(hashtextextended(p_user_id::text || ':community-comment', 0));
   if (select count(*) from public.community_comments
       where user_id = p_user_id and created_at > clock_timestamp() - interval '1 hour') >= 60 then
@@ -486,7 +535,9 @@ begin
     raise exception using message = 'COMMUNITY_COMMENT_NOT_FOUND', errcode = 'P0001';
   end if;
   delete from public.community_comments where comment_id = v_comment.comment_id;
-  update public.community_posts set comment_count = comment_count - 1 where post_id = v_comment.post_id;
+  if public.community_account_writable(v_post_owner) then
+    update public.community_posts set comment_count = comment_count - 1 where post_id = v_comment.post_id;
+  end if;
   return jsonb_build_object('deleted', true, 'post_id', v_comment.post_id);
 end;
 $$;
@@ -521,6 +572,10 @@ begin
   if v_owner = p_reporter then
     raise exception using message = 'COMMUNITY_SELF_TARGET', errcode = 'P0001';
   end if;
+  perform public.community_require_writable(p_reporter);
+  if not public.community_account_writable(v_owner) then
+    raise exception using message = 'COMMUNITY_TARGET_NOT_FOUND', errcode = 'P0001';
+  end if;
   insert into public.community_reports(
     reporter_user_id, target_type, target_id, target_user_id, reason, detail, content_snapshot)
     values (p_reporter, p_target_type, p_target_id, v_owner, p_reason, v_detail, v_snapshot)
@@ -540,7 +595,9 @@ begin
     raise exception using message = 'COMMUNITY_SELF_TARGET', errcode = 'P0001';
   end if;
   if p_blocked then
-    if not exists (select 1 from public.profiles p where p.user_id = p_target_user_id) then
+    perform public.community_require_writable(p_user_id);
+    if not exists (select 1 from public.profiles p where p.user_id = p_target_user_id)
+       or not public.community_account_writable(p_target_user_id) then
       raise exception using message = 'COMMUNITY_USER_NOT_FOUND', errcode = 'P0001';
     end if;
     insert into public.community_blocks(blocker_user_id, blocked_user_id)
@@ -567,27 +624,36 @@ $$;
 -- ---------------------------------------------------------------------------
 
 -- Removes everything the user wrote and fixes counters on other users' posts.
--- Photo files are removed by the existing account-deletion Storage step.
+-- Called first by autofit_integrity.cascade_account_deletion() (replaced below), before its
+-- generic per-table purge deletes community rows without fixing counters. Photo files are
+-- removed earlier by the account-deletion Storage step (account_deletion_storage lists every
+-- bucket, including community-photos).
 create function public.community_delete_user_data(p_user_id uuid)
 returns void language plpgsql security invoker set search_path = '' as $$
 begin
   if p_user_id is null then
     raise exception using message = 'COMMUNITY_INVALID_INPUT', errcode = 'P0001';
   end if;
+  -- Posts whose authors are also mid-deletion disappear anyway; updating them would trip the
+  -- write guard and block this deletion until the other one finishes.
   update public.community_posts o set like_count = o.like_count - x.n
     from (select post_id, count(*)::integer as n from public.community_post_likes
           where user_id = p_user_id group by post_id) x
-    where o.post_id = x.post_id and o.user_id <> p_user_id;
+    where o.post_id = x.post_id and o.user_id <> p_user_id
+      and not exists (select 1 from autofit_integrity.account_deletions d where d.user_id = o.user_id);
   update public.community_posts o set comment_count = o.comment_count - x.n
     from (select post_id, count(*)::integer as n from public.community_comments
           where user_id = p_user_id group by post_id) x
-    where o.post_id = x.post_id and o.user_id <> p_user_id;
+    where o.post_id = x.post_id and o.user_id <> p_user_id
+      and not exists (select 1 from autofit_integrity.account_deletions d where d.user_id = o.user_id);
   update public.community_posts o set repost_count = o.repost_count - x.n
     from (select repost_of_post_id as post_id, count(*)::integer as n from public.community_posts
           where user_id = p_user_id and repost_of_post_id is not null group by repost_of_post_id) x
-    where o.post_id = x.post_id and o.user_id <> p_user_id;
+    where o.post_id = x.post_id and o.user_id <> p_user_id
+      and not exists (select 1 from autofit_integrity.account_deletions d where d.user_id = o.user_id);
   delete from public.community_post_likes where user_id = p_user_id;
   delete from public.community_comments where user_id = p_user_id;
+  -- Other users' reposts, likes and comments on this user's posts go with the posts.
   delete from public.community_posts r using public.community_posts o
     where r.repost_of_post_id = o.post_id and o.user_id = p_user_id;
   delete from public.community_post_likes l using public.community_posts o
@@ -601,17 +667,80 @@ begin
 end;
 $$;
 
--- Runs as the owner because Auth (not the service role) deletes auth.users rows.
-create function public.community_account_cleanup()
-returns trigger language plpgsql security definer set search_path = '' as $$
+-- ---------------------------------------------------------------------------
+-- Integration with the applied account-deletion integrity (2026-09-17 migrations)
+-- ---------------------------------------------------------------------------
+
+-- Every other user-owned table has these two guards, but the integrity migrations only
+-- created them for tables that existed then, so community tables get them explicitly.
+-- zzz_check_account_writable rejects writes once begin_account_deletion has run.
+do $$
+declare
+  t text;
 begin
-  perform public.community_delete_user_data(old.id);
-  return old;
+  foreach t in array array['community_posts', 'community_uploads', 'community_post_likes', 'community_comments'] loop
+    execute format('create trigger check_user_reference before insert or update on public.%I
+      for each row execute function autofit_integrity.check_user_reference()', t);
+    execute format('create trigger zzz_check_account_writable before insert or update on public.%I
+      for each row execute function autofit_integrity.check_account_writable()', t);
+  end loop;
 end;
 $$;
-create trigger community_account_cleanup
-  after delete on auth.users
-  for each row execute function public.community_account_cleanup();
+
+-- Reports and blocks name two users instead of user_id, so the stock guard cannot see them.
+create function autofit_integrity.check_community_pair_writable()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if tg_table_name = 'community_reports' then
+    perform autofit_integrity.assert_account_writable(new.reporter_user_id);
+    perform autofit_integrity.assert_account_writable(new.target_user_id);
+  else
+    perform autofit_integrity.assert_account_writable(new.blocker_user_id);
+    perform autofit_integrity.assert_account_writable(new.blocked_user_id);
+  end if;
+  return new;
+end;
+$$;
+revoke all on function autofit_integrity.check_community_pair_writable()
+  from public, anon, authenticated, service_role;
+create trigger zzz_check_account_writable before insert or update on public.community_reports
+  for each row execute function autofit_integrity.check_community_pair_writable();
+create trigger zzz_check_account_writable before insert or update on public.community_blocks
+  for each row execute function autofit_integrity.check_community_pair_writable();
+
+-- Same as 20260917021925_cascade_account_deletion.sql (remote 20260917022453) except for the
+-- marked [community] call. Diff against pg_get_functiondef before applying.
+create or replace function autofit_integrity.cascade_account_deletion()
+returns trigger language plpgsql security definer set search_path='' as $$
+declare dep record;
+begin
+  if current_setting('transaction_isolation') not in ('read committed','read uncommitted') then
+    raise exception 'Account deletion requires READ COMMITTED' using errcode='0A000';
+  end if;
+  if exists(select 1 from storage.objects where owner_id=old.id::text or split_part(name,'/',1)=old.id::text) then
+    raise exception 'Remove account files through the Storage API before deleting the account'
+      using errcode='23503';
+  end if;
+  -- [community] Community rows reference other users' rows (likes, comments, reposts and
+  -- their counters), so clean them before the generic purge below deletes them blindly.
+  perform public.community_delete_user_data(old.id);
+  for dep in select c.table_name from information_schema.columns c
+    join information_schema.tables t using(table_schema,table_name)
+    where c.table_schema='public' and c.column_name='user_id' and t.table_type='BASE TABLE'
+      and c.table_name not in ('profiles','notification_settings') order by c.table_name loop
+    perform autofit_integrity.purge_account_rows(dep.table_name,'user_id',old.id,old.id);
+  end loop;
+  delete from public.notification_settings where user_id=old.id;
+  delete from public.profiles where user_id=old.id;
+  delete from autofit_integrity.account_deletions where user_id=old.id;
+  return old;
+end $$;
+revoke all on function autofit_integrity.cascade_account_deletion()
+  from public, anon, authenticated, service_role;
+
+-- ---------------------------------------------------------------------------
+-- Privileges
+-- ---------------------------------------------------------------------------
 
 revoke all on function
   public.community_author(uuid),
@@ -619,31 +748,9 @@ revoke all on function
   public.community_post_view(uuid, public.community_posts),
   public.community_feed_item(uuid, public.community_posts),
   public.community_visible_post(uuid, uuid),
-  public.community_require_nickname(uuid),
-  public.community_comment_view(uuid, uuid, public.community_comments),
-  public.community_feed(uuid, timestamptz, uuid, integer),
-  public.community_get_post(uuid, uuid),
-  public.community_register_upload(uuid, text, integer, integer),
-  public.community_claim_stale_uploads(uuid),
-  public.community_create_post(uuid, text, uuid[]),
-  public.community_delete_post(uuid, uuid),
-  public.community_set_like(uuid, uuid, boolean),
-  public.community_set_repost(uuid, uuid, boolean),
-  public.community_comments(uuid, uuid, timestamptz, uuid, integer),
-  public.community_add_comment(uuid, uuid, text),
-  public.community_delete_comment(uuid, uuid),
-  public.community_report(uuid, text, uuid, text, text),
-  public.community_set_block(uuid, uuid, boolean),
-  public.community_blocked_users(uuid),
-  public.community_delete_user_data(uuid),
-  public.community_account_cleanup()
-  from public, anon, authenticated;
-grant execute on function
-  public.community_author(uuid),
-  public.community_blocked_between(uuid, uuid),
-  public.community_post_view(uuid, public.community_posts),
-  public.community_feed_item(uuid, public.community_posts),
-  public.community_visible_post(uuid, uuid),
+  public.community_account_writable(uuid),
+  public.community_lock_post(public.community_posts),
+  public.community_require_writable(uuid),
   public.community_require_nickname(uuid),
   public.community_comment_view(uuid, uuid, public.community_comments),
   public.community_feed(uuid, timestamptz, uuid, integer),
@@ -661,4 +768,41 @@ grant execute on function
   public.community_set_block(uuid, uuid, boolean),
   public.community_blocked_users(uuid),
   public.community_delete_user_data(uuid)
+  from public, anon, authenticated;
+grant execute on function
+  public.community_author(uuid),
+  public.community_blocked_between(uuid, uuid),
+  public.community_post_view(uuid, public.community_posts),
+  public.community_feed_item(uuid, public.community_posts),
+  public.community_visible_post(uuid, uuid),
+  public.community_account_writable(uuid),
+  public.community_lock_post(public.community_posts),
+  public.community_require_writable(uuid),
+  public.community_require_nickname(uuid),
+  public.community_comment_view(uuid, uuid, public.community_comments),
+  public.community_feed(uuid, timestamptz, uuid, integer),
+  public.community_get_post(uuid, uuid),
+  public.community_register_upload(uuid, text, integer, integer),
+  public.community_claim_stale_uploads(uuid),
+  public.community_create_post(uuid, text, uuid[]),
+  public.community_delete_post(uuid, uuid),
+  public.community_set_like(uuid, uuid, boolean),
+  public.community_set_repost(uuid, uuid, boolean),
+  public.community_comments(uuid, uuid, timestamptz, uuid, integer),
+  public.community_add_comment(uuid, uuid, text),
+  public.community_delete_comment(uuid, uuid),
+  public.community_report(uuid, text, uuid, text, text),
+  public.community_set_block(uuid, uuid, boolean),
+  public.community_blocked_users(uuid)
   to service_role;
+
+-- Only the account-deletion cascade may run the cleanup. The cascade is security definer, so
+-- it runs as its own owner; grant that owner explicitly in case it is not the applying role.
+revoke all on function public.community_delete_user_data(uuid) from service_role;
+do $$
+begin
+  execute format('grant execute on function public.community_delete_user_data(uuid) to %I',
+    (select pg_get_userbyid(p.proowner) from pg_proc p
+     where p.oid = 'autofit_integrity.cascade_account_deletion()'::regprocedure));
+end;
+$$;

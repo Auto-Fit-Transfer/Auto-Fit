@@ -40,11 +40,17 @@ ERRORS = {
     "COMMUNITY_SELF_TARGET": (422, "본인에게는 할 수 없는 작업입니다."),
     "COMMUNITY_UPLOAD_LIMIT": (429, "올린 사진이 너무 많습니다. 내일 다시 시도해 주세요."),
     "COMMUNITY_RATE_LIMITED": (429, "짧은 시간에 너무 많이 작성했습니다. 잠시 후 다시 시도해 주세요."),
+    "COMMUNITY_ACCOUNT_UNAVAILABLE": (409, "탈퇴가 진행 중인 계정이라 처리할 수 없습니다."),
     "VALIDATION_ERROR": (422, "입력값을 확인해 주세요."),
     "FILE_TOO_LARGE": (413, "사진은 한 장에 5MB 이하만 올릴 수 있습니다."),
     "UNSUPPORTED_IMAGE": (415, "JPEG, PNG, WebP 사진만 올릴 수 있습니다."),
     "DATA_SOURCE_ERROR": (502, "커뮤니티 데이터를 처리하지 못했습니다."),
 }
+
+
+# Raised by the account-deletion write guard (autofit_integrity) if a write slips past the
+# RPC checks, e.g. a direct table write during begin_account_deletion.
+ACCOUNT_GUARD_MESSAGES = {"Account deletion is in progress", "Account is unavailable"}
 
 
 class UpstreamRejected(HTTPException):
@@ -266,6 +272,8 @@ class CommunityStore:
             fail("DATA_SOURCE_ERROR")
         if response.is_error:
             code = payload.get("message") if isinstance(payload, dict) else None
+            if code in ACCOUNT_GUARD_MESSAGES:
+                code = "COMMUNITY_ACCOUNT_UNAVAILABLE"
             if isinstance(code, str) and code.startswith("COMMUNITY_") and code in ERRORS:
                 fail(code, rejected=True)
             logger.warning("[community] rpc=%s rejected upstream_status=%s", name, response.status_code)
