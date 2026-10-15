@@ -33,6 +33,7 @@ import {
   regenerateDietMeal,
   submitDietMealFeedback,
   updateDietMealFeedback,
+  uploadDietMealPhoto,
   type DietActualItem,
   type DietFeedbackInput,
 } from '@/src/api/diet';
@@ -665,7 +666,7 @@ function mapLogDraft(log: ApiRecord, mealId: MealType): MealRecordDraft | undefi
     mealId,
     mealTime: eatenAt?.slice(11, 16) ?? '12:00',
     note: '',
-    photoUri: null,
+    photoUri: readString(log, ['image_url']) ?? null,
     tags: [],
     usedIngredients: [],
   };
@@ -1338,11 +1339,8 @@ export default function DietScreen() {
     });
   }, []);
 
-  const openMealRecord = useCallback((_mealId: MealType) => {
-    Alert.alert(
-      '사진 분석 준비 중',
-      '이 테스트 버전에서는 추천 식사의 먹음·건너뜀 기록을 이용해 주세요. 다른 식사의 사진 분석은 아직 연결되지 않았어요.',
-    );
+  const openMealRecord = useCallback((mealId: MealType) => {
+    setRecordingMealId(mealId);
   }, []);
 
   const saveDietMealFeedback = useCallback(
@@ -1588,6 +1586,7 @@ export default function DietScreen() {
 
       const dateKey = selectedDateKey;
       const hasExistingFeedback = selectedStatuses[mealId] !== 'recommended';
+      let feedbackSaved = false;
       feedbackRequestMealIdsRef.current.add(mealId);
       setFeedbackMealIds((current) => new Set(current).add(mealId));
       try {
@@ -1602,7 +1601,7 @@ export default function DietScreen() {
               : 'current_status_is_recommended',
           });
         }
-        await saveDietMealFeedback(
+        const feedbackResponse = await saveDietMealFeedback(
           dietMealId,
           {
             actualItems,
@@ -1611,6 +1610,31 @@ export default function DietScreen() {
           },
           hasExistingFeedback,
         );
+        feedbackSaved = true;
+
+        if (draft.photoUri) {
+          const result = isApiRecord(feedbackResponse.result)
+            ? feedbackResponse.result
+            : undefined;
+          const mealLog = result && isApiRecord(result.meal_log) ? result.meal_log : undefined;
+          const mealLogId = mealLog ? readString(mealLog, ['meal_log_id', 'id']) : undefined;
+
+          if (!mealLogId) {
+            throw new Error('식사는 기록됐지만 사진을 연결할 식사 기록을 찾지 못했어요.');
+          }
+
+          try {
+            await uploadDietMealPhoto(mealLogId, {
+              fileName: draft.photoFileName,
+              mimeType: draft.photoMimeType,
+              uri: draft.photoUri,
+            });
+          } catch (error) {
+            // A lost success response can be retried and return 409 because the same meal log
+            // already owns the uploaded photo. In that case the desired state is complete.
+            if (!(error instanceof ApiError) || error.status !== 409) throw error;
+          }
+        }
         if (!isMountedRef.current) return false;
 
         setMealRecordsByDate((current) => ({
@@ -1626,10 +1650,17 @@ export default function DietScreen() {
         }));
         setRecordingMealId(null);
         collapseMeal(mealId);
+        void loadMealLogs(dateKey);
+        void loadNutritionSummary(dateKey);
         return true;
       } catch (error) {
         if (isMountedRef.current) {
-          Alert.alert('식사 기록을 저장하지 못했어요', getDietApiErrorMessage(error));
+          Alert.alert(
+            feedbackSaved ? '식사는 기록했지만 사진을 저장하지 못했어요' : '식사 기록을 저장하지 못했어요',
+            feedbackSaved
+              ? `${getDietApiErrorMessage(error)}\n사진 저장을 다시 시도해 주세요.`
+              : getDietApiErrorMessage(error),
+          );
         }
         return false;
       } finally {
@@ -1643,7 +1674,15 @@ export default function DietScreen() {
         }
       }
     },
-    [collapseMeal, recommendedMeals, saveDietMealFeedback, selectedDateKey, selectedStatuses],
+    [
+      collapseMeal,
+      loadMealLogs,
+      loadNutritionSummary,
+      recommendedMeals,
+      saveDietMealFeedback,
+      selectedDateKey,
+      selectedStatuses,
+    ],
   );
 
   const moveSelectedDate = (amount: number) => {

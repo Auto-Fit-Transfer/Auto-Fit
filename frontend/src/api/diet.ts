@@ -1,4 +1,5 @@
 import { ApiError, apiRequest, getApiErrorMessage } from '@/src/api/client';
+import { Platform } from 'react-native';
 
 type ApiObject = Record<string, unknown>;
 
@@ -41,6 +42,71 @@ export type DietMealLogsResponse = {
   logs?: unknown;
   period?: unknown;
 };
+
+export type DietMealPhotoResponse = {
+  meal_log_id: string;
+  image_storage_path: string;
+  image_url: string;
+  image_url_expires_in: number;
+};
+
+export type DietMealPhotoInput = {
+  uri: string;
+  fileName?: string | null;
+  mimeType?: string | null;
+};
+
+const supportedMealPhotoTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+function getMealPhotoUploadMetadata(photo: DietMealPhotoInput) {
+  const normalizedMimeType = photo.mimeType?.trim().toLowerCase();
+  const path = photo.uri.split(/[?#]/, 1)[0].toLowerCase();
+  const inferredMimeType = path.endsWith('.png')
+    ? 'image/png'
+    : path.endsWith('.webp')
+      ? 'image/webp'
+      : 'image/jpeg';
+  const mimeType = normalizedMimeType || inferredMimeType;
+
+  if (!supportedMealPhotoTypes.has(mimeType)) {
+    throw new Error('JPEG, PNG, WebP 형식의 사진만 등록할 수 있어요.');
+  }
+
+  const extension = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+  const fileName = photo.fileName?.trim() || `meal-photo-${Date.now()}.${extension}`;
+  return { extension, fileName, mimeType };
+}
+
+export async function uploadDietMealPhoto(
+  mealLogId: string,
+  photo: DietMealPhotoInput,
+) {
+  const { fileName, mimeType } = getMealPhotoUploadMetadata(photo);
+  const formData = new FormData();
+
+  if (Platform.OS === 'web') {
+    const response = await fetch(photo.uri);
+    if (!response.ok) throw new Error('선택한 사진을 불러오지 못했어요.');
+    formData.append('file', await response.blob(), fileName);
+  } else {
+    formData.append(
+      'file',
+      {
+        name: fileName,
+        type: mimeType,
+        uri: photo.uri,
+      } as unknown as Blob,
+    );
+  }
+
+  return apiRequest<DietMealPhotoResponse>(
+    `/api/diet/meal-logs/${encodeURIComponent(mealLogId)}/photo`,
+    {
+      body: formData,
+      method: 'POST',
+    },
+  );
+}
 
 export function getLatestDietRecommendations() {
   return apiRequest<DietRecommendationResponse>('/api/diet/recommendations/latest');

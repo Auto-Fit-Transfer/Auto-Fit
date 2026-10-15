@@ -65,6 +65,9 @@ export type RecordedMealData = {
   mealId: string;
   mealTime: string;
   photoUri: string | null;
+  photoFileName?: string | null;
+  photoFileSize?: number | null;
+  photoMimeType?: string | null;
   foods: RecordedFood[];
   kcal: number;
   tags: string[];
@@ -1358,7 +1361,31 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
           ? await ImagePicker.launchCameraAsync({ cameraType: ImagePicker.CameraType.back, mediaTypes: ['images'], quality: 0.9 })
           : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.9 });
       const selected = response.canceled ? undefined : response.assets[0];
-      if (selected) setDraft((current) => (current ? { ...current, photoUri: selected.uri } : current));
+      if (selected) {
+        const mimeType = selected.mimeType?.trim().toLowerCase() ?? null;
+        if (selected.fileSize && selected.fileSize > 5 * 1024 * 1024) {
+          Alert.alert('사진 용량이 너무 커요', '5MB 이하의 사진을 선택해 주세요.');
+          return;
+        }
+        if (mimeType && !['image/jpeg', 'image/png', 'image/webp'].includes(mimeType)) {
+          Alert.alert(
+            '지원하지 않는 사진 형식이에요',
+            'JPEG, PNG, WebP 형식의 사진을 선택해 주세요.',
+          );
+          return;
+        }
+        setDraft((current) =>
+          current
+            ? {
+                ...current,
+                photoFileName: selected.fileName ?? null,
+                photoFileSize: selected.fileSize ?? null,
+                photoMimeType: mimeType,
+                photoUri: selected.uri,
+              }
+            : current,
+        );
+      }
     } catch (error) {
       console.error('푸드샷 이미지 선택 실패:', error);
       Alert.alert('사진을 불러오지 못했어요', '잠시 후 다시 시도해 주세요.');
