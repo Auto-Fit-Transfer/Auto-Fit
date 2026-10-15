@@ -39,6 +39,7 @@ Expo Go의 소셜 OAuth는 독립 앱의 `autofit://auth/callback`과 리디렉�
 - 운동 추천의 세트 수를 서버 응답에서 읽는다.
 - 운동 분석은 `/api/exercise/sessions/{id}/analysis` 결과로 표시하며 고정 성공·불편감 없음 예시를 사용하지 않는다.
 - 식단 영양 합계는 선택 날짜의 `/api/diet/nutrition-summary` 응답을 사용하고 먹음/건너뜀 저장 후 다시 조회한다. 정보가 없으면 빈 값으로 표시한다.
+- 식단 화면은 사진과 냉장고 관리 UI를 표시하거나 `/api/diet/inventory`를 호출하지 않는다. 식단 카드에는 음식명과 레시피만 표시한다.
 - 미연결 사진 분석 진입은 준비 중 안내로 제한한다. 추천 식사의 먹음·건너뜀 기록은 사용할 수 있다.
 - 개발 모드에서도 건강 분석 404를 가짜 건강 결과로 대체하지 않는다.
 - 회귀 테스트 10개, TypeScript, 린트 오류 없음(기존 chatSessionCache 미사용 변수 경고 1개). Android/iOS/Web 릴리스 번들 생성 및 로컬 Expo Go iOS manifest·번들 응답을 검증했다.

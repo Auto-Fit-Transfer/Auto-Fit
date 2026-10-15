@@ -15,29 +15,18 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Right from '@/assets/icons/common/chevrons/Right.svg';
 import Bmr from '@/assets/icons/data/BMR.svg';
 import Fat from '@/assets/icons/data/Fat.svg';
-import LeafFill from '@/assets/icons/deco/Leaf_Fill.svg';
 import Plant from '@/assets/icons/deco/Plant.svg';
 import FishSimple from '@/assets/icons/food/FishSimple.svg';
-import Fridge from '@/assets/icons/feature/Fridge.svg';
 import ForkKnife from '@/assets/icons/feature/navigator/Diet.svg';
 import Pencil from '@/assets/icons/feature/Pencil_Line.svg';
 import Check from '@/assets/icons/system/Check_Fat.svg';
 import Prohibit from '@/assets/icons/system/Prohibit.svg';
 import { CustomScrollIndicator, useCustomScrollIndicator } from '@/src/components/common';
-import {
-  FridgeManagerSheets,
-  type DietSheet,
-  type FridgeIngredient,
-} from '@/src/components/diet/FridgeManagerSheets';
 import { MealRecordSheets, type MealRecordDraft } from '@/src/components/diet/MealRecordSheets';
 import {
-  createDietInventoryItem,
-  deleteDietInventoryItem,
   getDietApiErrorMessage,
-  getDietInventory,
   getDietMealLogs,
   getDietNutritionSummary,
   getDietRecommendationsByDate,
@@ -66,7 +55,6 @@ import { nutritionNumber, type NutritionSummary } from '@/src/features/nutrition
 
 const hero = require('@/assets/figma/main/9dc37.png');
 const breakfastImage = require('../../assets/images/illustrations/temp/Image_MealPicture_1.png');
-const emptyFoodImage = require('../../assets/images/illustrations/diet/EmptyFood.png');
 const lunchImage = breakfastImage;
 const dinnerImage = require('../../assets/images/illustrations/temp/Image_MealPicture_2.png');
 const snackImage = require('../../assets/images/illustrations/temp/Image_MealPicture_3.png');
@@ -621,40 +609,6 @@ function mapRecommendationNutritionTargets(result: unknown): RecommendationNutri
   };
 }
 
-function ingredientIcon(name: string): FridgeIngredient['icon'] {
-  const normalized = name.toLocaleLowerCase();
-  if (/(닭|고기|연어|소고기|돼지|meat|chicken|salmon)/.test(normalized)) return 'meat';
-  if (/(계란|달걀|egg)/.test(normalized)) return 'egg';
-  if (/(두부|콩|bean|tofu)/.test(normalized)) return 'bean';
-  if (/(사과|키위|딸기|블루베리|토마토|아보카도|fruit)/.test(normalized)) return 'fruit';
-  return 'vegetable';
-}
-
-function mapInventory(value: unknown): FridgeIngredient[] {
-  return readArray(value).flatMap((entry) => {
-    if (!isApiRecord(entry)) return [];
-    const id = readString(entry, [
-      'user_food_inventory_id',
-      'food_inventory_id',
-      'inventory_id',
-      'id',
-    ]);
-    const name = readString(entry, ['custom_name', 'name', 'food_name', 'ingredient_name']);
-    if (!id || !name) return [];
-    return [
-      {
-        expiresOn: readString(entry, ['expires_on']) ?? null,
-        icon: ingredientIcon(name),
-        id,
-        name,
-        purchasedOn: readString(entry, ['purchased_on']) ?? null,
-        quantity: readNumber(entry, ['quantity']) ?? null,
-        unit: readString(entry, ['unit']) ?? null,
-      },
-    ];
-  });
-}
-
 function feedbackTypeToStatus(value: unknown): MealStatus | undefined {
   if (value === 'eaten') return 'eaten';
   if (value === 'different_food') return 'modified';
@@ -840,7 +794,6 @@ const MealCard = memo(function MealCard({
   const [detailHeight, setDetailHeight] = useState(0);
   const [detailProgress] = useState(() => new Animated.Value(expanded ? 1 : 0));
   const [detailOpacity] = useState(() => new Animated.Value(expanded ? 1 : 0));
-  const [failedRemoteImageUrl, setFailedRemoteImageUrl] = useState<string | null>(null);
   const statusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previousExpanded = useRef(expanded);
   const displayedStatus = status;
@@ -850,18 +803,6 @@ const MealCard = memo(function MealCard({
     ? recordedMeal.foods.map((food) => food.name).join(', ')
     : meal.foods;
   const displayedKcal = showsRecordedMeal ? recordedMeal.kcal : meal.kcal;
-  const usesRemoteRecommendationImage =
-    !showsRecordedMeal && Boolean(meal.imageUrl) && meal.imageUrl !== failedRemoteImageUrl;
-  const displayedImage = showsRecordedMeal
-    ? recordedMeal.photoUri
-      ? { uri: recordedMeal.photoUri }
-      : emptyFoodImage
-    : usesRemoteRecommendationImage
-      ? { uri: meal.imageUrl }
-      : meal.image;
-  const displayedUsedIngredients = showsRecordedMeal
-    ? recordedMeal.usedIngredients
-    : meal.usedIngredients;
   const displayedIntake = showsRecordedMeal ? recordedMeal.intake : meal.intake;
 
   useEffect(
@@ -932,41 +873,12 @@ const MealCard = memo(function MealCard({
 
   const renderDetailContent = () => (
     <>
-      {expanded && (usesRemoteRecommendationImage || recordedMeal?.photoUri) && (
-        <Image
-          source={displayedImage}
-          onError={() => setFailedRemoteImageUrl(meal.imageUrl ?? null)}
-          style={{ width: '100%', height: 160, borderRadius: 10 }}
-          resizeMode="cover"
-        />
-      )}
       <View style={styles.mealDivider} />
-      <View style={styles.fridgeDetailCard}>
-        <View style={styles.fridgeDetailHeader}>
-          <View style={styles.detailTitleRow}>
-            <LeafFill color="#7866F4" fill="#7866F4" height={25} width={25} />
-            <Text style={[styles.detailTitle, styles.fridgeDetailTitle]}>냉장고 재료 활용</Text>
-          </View>
-
-          <View style={styles.detailBadge}>
-            <Text style={styles.detailBadgeText}>{displayedUsedIngredients.length}개 활용</Text>
-          </View>
-        </View>
-
-        <View style={styles.fridgeIngredientRow}>
-          <Text style={styles.fridgeIngredient}>
-            {displayedUsedIngredients.length > 0
-              ? displayedUsedIngredients.join(' · ')
-              : '분석된 재료가 없어요'}
-          </Text>
-        </View>
-      </View>
-
       <View style={styles.intakeCard}>
         <View style={styles.intakeTitleRow}>
           <View style={styles.detailTitleRow}>
             <ForkKnife color="#5C4D3C" height={25} width={25} />
-            <Text style={[styles.detailTitle, styles.intakeTitle]}>권장 섭취량</Text>
+            <Text style={[styles.detailTitle, styles.intakeTitle]}>레시피</Text>
           </View>
 
           <View style={styles.intakeBadge}>
@@ -1152,7 +1064,6 @@ export default function DietScreen() {
   const [statusesByDate, setStatusesByDate] = useState<Record<string, Partial<MealStatuses>>>({});
   const [showNutrition, setShowNutrition] = useState(false);
   const [showDates, setShowDates] = useState(false);
-  const [activeSheet, setActiveSheet] = useState<DietSheet>(null);
   const [recordingMealId, setRecordingMealId] = useState<MealType | null>(null);
   const [recommendedMeals, setRecommendedMeals] = useState<Meal[]>([]);
   const [recommendationNutritionTargets, setRecommendationNutritionTargets] =
@@ -1161,13 +1072,11 @@ export default function DietScreen() {
   const [nutritionSummary, setNutritionSummary] = useState<NutritionSummary | null>(null);
   const [nutritionError, setNutritionError] = useState<string | null>(null);
   const [recommendationLoading, setRecommendationLoading] = useState(true);
-  const [inventoryLoading, setInventoryLoading] = useState(true);
   const [feedbackMealIds, setFeedbackMealIds] = useState<Set<MealType>>(() => new Set());
   const [regeneratingMealIds, setRegeneratingMealIds] = useState<Set<MealType>>(() => new Set());
   const [mealRecordsByDate, setMealRecordsByDate] = useState<
     Record<string, Partial<Record<MealType, MealRecordDraft>>>
   >({});
-  const [fridgeIngredients, setFridgeIngredients] = useState<FridgeIngredient[]>([]);
   const [userName, setUserName] = useState<string | null>(null);
   const feedbackRequestMealIdsRef = useRef(new Set<MealType>());
   const isMountedRef = useRef(true);
@@ -1401,28 +1310,6 @@ export default function DietScreen() {
       setNutritionError(getDietApiErrorMessage(error));
     }
   }, []);
-
-  const loadInventory = useCallback(async () => {
-    if (isMountedRef.current) setInventoryLoading(true);
-    try {
-      const response = await getDietInventory();
-      if (!isMountedRef.current) return;
-      setFridgeIngredients(mapInventory(response.inventory));
-    } catch (error) {
-      if (!isMountedRef.current) return;
-      setFridgeIngredients([]);
-      Alert.alert('냉장고 재료를 불러오지 못했어요', getDietApiErrorMessage(error));
-    } finally {
-      if (isMountedRef.current) setInventoryLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      void loadInventory();
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [loadInventory]);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -1750,57 +1637,6 @@ export default function DietScreen() {
     [collapseMeal, recommendedMeals, saveDietMealFeedback, selectedDateKey, selectedStatuses],
   );
 
-  const addInventoryIngredient = useCallback(
-    async (name: string) => {
-      try {
-        const response = await createDietInventoryItem({
-          expiresOn: null,
-          name,
-          purchasedOn: null,
-          quantity: null,
-          unit: null,
-        });
-        const addedItem = mapInventory([response.item])[0];
-        if (!isMountedRef.current) return false;
-
-        if (addedItem) {
-          setFridgeIngredients((current) => [...current, addedItem]);
-        } else {
-          await loadInventory();
-        }
-        return true;
-      } catch (error) {
-        if (isMountedRef.current) {
-          Alert.alert('재료를 추가하지 못했어요', getDietApiErrorMessage(error));
-        }
-        return false;
-      }
-    },
-    [loadInventory],
-  );
-
-  const deleteInventoryIngredients = useCallback(
-    async (inventoryIds: string[]) => {
-      try {
-        for (const inventoryId of inventoryIds) {
-          await deleteDietInventoryItem(inventoryId);
-        }
-        if (!isMountedRef.current) return false;
-
-        const deletedIds = new Set(inventoryIds);
-        setFridgeIngredients((current) => current.filter((item) => !deletedIds.has(item.id)));
-        return true;
-      } catch (error) {
-        if (isMountedRef.current) {
-          Alert.alert('재료를 삭제하지 못했어요', getDietApiErrorMessage(error));
-          await loadInventory();
-        }
-        return false;
-      }
-    },
-    [loadInventory],
-  );
-
   const moveSelectedDate = (amount: number) => {
     const nextOffset = Math.max(
       dateWindowMin,
@@ -1981,33 +1817,6 @@ export default function DietScreen() {
               />
             ))}
           </View>
-          <Pressable
-            accessibilityLabel="냉장고 재료 관리 열기"
-            accessibilityRole="button"
-            disabled={inventoryLoading}
-            onPress={() => setActiveSheet('fridge')}
-            style={({ pressed }) => [
-              styles.fridgeCard,
-              inventoryLoading && styles.loadingContent,
-              pressed && !inventoryLoading && styles.pressed,
-            ]}
-          >
-            <View style={styles.fridgeIconCircle}>
-              <Fridge color="#7866F4" height={30} width={30} />
-            </View>
-            <View style={styles.fridgeCopy}>
-              <Text style={styles.fridgeTitle}>
-                <Text style={styles.fridgeTitleEmphasis}>
-                  냉장고 재료 {fridgeIngredients.length}개
-                </Text>{' '}
-                반영중
-              </Text>
-            </View>
-            <View style={styles.manageRow}>
-              <Text style={styles.manageText}>관리하기</Text>
-              <Right color="#767676" height={15} width={15} />
-            </View>
-          </Pressable>
         </View>
       </ScrollView>
       <CustomScrollIndicator {...indicator.indicatorProps} color="rgba(120, 102, 244, 0.56)" />
@@ -2051,13 +1860,6 @@ export default function DietScreen() {
           </View>
         </View>
       </Modal>
-      <FridgeManagerSheets
-        activeSheet={activeSheet}
-        ingredients={fridgeIngredients}
-        onActiveSheetChange={setActiveSheet}
-        onIngredientAdd={addInventoryIngredient}
-        onIngredientDelete={deleteInventoryIngredients}
-      />
       <MealRecordSheets
         initialDraft={
           recordingMealId ? mealRecordsByDate[selectedDateKey]?.[recordingMealId] : undefined
@@ -2129,29 +1931,6 @@ const styles = StyleSheet.create({
   },
   heroImage: { height: 100, position: 'absolute', right: 18, top: 6, width: 165 },
   sectionStack: { gap: 10, marginHorizontal: 21 },
-  fridgeCard: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E5EAE9',
-    borderRadius: 10,
-    borderWidth: 1,
-    flexDirection: 'row',
-    height: 70,
-    paddingHorizontal: 17,
-  },
-  fridgeIconCircle: {
-    alignItems: 'center',
-    backgroundColor: '#E8E8FF',
-    borderRadius: 22,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
-  },
-  fridgeCopy: { flex: 1, marginLeft: 11, justifyContent: 'center' },
-  fridgeTitle: { color: '#000000', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  fridgeTitleEmphasis: { color: '#7866F4', fontFamily: fontFamilies.pretendardSemiBold },
-  manageRow: { alignItems: 'center', flexDirection: 'row', gap: 3 },
-  manageText: { color: '#767676', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 11.5 },
   dateCard: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -2392,40 +2171,8 @@ const styles = StyleSheet.create({
     height: 1,
     width: '100%',
   },
-  fridgeDetailCard: {
-    backgroundColor: '#F4F3FF',
-    borderRadius: 10,
-    height: 65,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  fridgeDetailHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
   detailTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 5 },
   detailTitle: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  fridgeDetailTitle: { color: '#7866F4' },
-  detailBadge: {
-    alignItems: 'center',
-    backgroundColor: '#E8E8FF',
-    borderRadius: 10,
-    height: 20,
-    justifyContent: 'center',
-    width: 50,
-  },
-  detailBadgeText: { color: '#7866F4', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  fridgeIngredientRow: {
-    alignItems: 'center',
-    backgroundColor: '#F7FCFB',
-    borderRadius: 7,
-    flexDirection: 'row',
-    height: 25,
-    marginTop: 5,
-    paddingLeft: 20,
-  },
-  fridgeIngredient: { color: '#464646', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
   intakeCard: { backgroundColor: '#FBF7F1', borderRadius: 10, gap: 10, padding: 10 },
   intakeTitleRow: {
     alignItems: 'center',

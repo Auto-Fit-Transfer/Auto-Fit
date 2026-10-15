@@ -14,31 +14,10 @@ export type DietActualItem = {
   fat: number | string | null;
 };
 
-export type CreateInventoryItemInput = {
-  expiresOn: string | null;
-  name: string;
-  purchasedOn: string | null;
-  quantity: number | string | null;
-  unit: string | null;
-};
-
-export type UpdateInventoryItemInput = {
-  expiresOn: string | null;
-  name: string | null;
-  purchasedOn: string | null;
-  quantity: number | string | null;
-  unit: string | null;
-};
-
 export type DietFeedbackInput = {
   actualItems?: DietActualItem[];
   eatenAt?: string | null;
   feedbackType: DietFeedbackType;
-};
-
-export type DietInventoryResponse = {
-  count?: unknown;
-  inventory?: unknown;
 };
 
 export type DietRecommendationResponse = {
@@ -62,45 +41,6 @@ export type DietMealLogsResponse = {
   logs?: unknown;
   period?: unknown;
 };
-
-export function getDietInventory() {
-  return apiRequest<DietInventoryResponse>('/api/diet/inventory');
-}
-
-export function createDietInventoryItem(input: CreateInventoryItemInput) {
-  return apiRequest<{ item?: unknown; ok?: unknown }>('/api/diet/inventory', {
-    body: JSON.stringify({
-      expires_on: input.expiresOn,
-      name: input.name,
-      purchased_on: input.purchasedOn,
-      quantity: input.quantity,
-      unit: input.unit,
-    }),
-    method: 'POST',
-  });
-}
-
-export function updateDietInventoryItem(inventoryId: string, input: UpdateInventoryItemInput) {
-  return apiRequest<{ item?: unknown; ok?: unknown }>(
-    `/api/diet/inventory/${encodeURIComponent(inventoryId)}`,
-    {
-      body: JSON.stringify({
-        expires_on: input.expiresOn,
-        name: input.name,
-        purchased_on: input.purchasedOn,
-        quantity: input.quantity,
-        unit: input.unit,
-      }),
-      method: 'PATCH',
-    },
-  );
-}
-
-export function deleteDietInventoryItem(inventoryId: string) {
-  return apiRequest<void>(`/api/diet/inventory/${encodeURIComponent(inventoryId)}`, {
-    method: 'DELETE',
-  });
-}
 
 export function getLatestDietRecommendations() {
   return apiRequest<DietRecommendationResponse>('/api/diet/recommendations/latest');
