@@ -771,6 +771,7 @@ const MealCard = memo(function MealCard({
   onRecordOtherMeal,
   onRequestAlternativeMeal,
   onCollapse,
+  showRecordControls,
   feedbackEnabled,
   feedbackPending,
   recommendationPending,
@@ -787,6 +788,7 @@ const MealCard = memo(function MealCard({
   onRecordOtherMeal: (mealId: MealType) => void;
   onRequestAlternativeMeal: (mealId: MealType) => void;
   onCollapse: (mealId: MealType) => void;
+  showRecordControls: boolean;
   feedbackEnabled: boolean;
   feedbackPending: boolean;
   recommendationPending: boolean;
@@ -913,53 +915,55 @@ const MealCard = memo(function MealCard({
           </Text>
         </Pressable>
       )}
-      <View style={styles.actions}>
-        <Pressable
-          onPress={(event) => {
-            event.stopPropagation();
-            void chooseStatus('eaten');
-          }}
-          disabled={!feedbackEnabled || feedbackPending}
-          style={({ pressed }) => [
-            actionStyle('eaten', displayedStatus, pressed),
-            !feedbackEnabled && styles.actionDisabled,
-          ]}
-        >
-          <Check color="#7866F4" height={15} width={15} />
-          <Text style={[styles.actionText, styles.actionEatenText]}>먹었어요</Text>
-        </Pressable>
+      {showRecordControls ? (
+        <View style={styles.actions}>
+          <Pressable
+            onPress={(event) => {
+              event.stopPropagation();
+              void chooseStatus('eaten');
+            }}
+            disabled={!feedbackEnabled || feedbackPending}
+            style={({ pressed }) => [
+              actionStyle('eaten', displayedStatus, pressed),
+              !feedbackEnabled && styles.actionDisabled,
+            ]}
+          >
+            <Check color="#7866F4" height={15} width={15} />
+            <Text style={[styles.actionText, styles.actionEatenText]}>먹었어요</Text>
+          </Pressable>
 
-        <Pressable
-          disabled={!feedbackEnabled || feedbackPending || displayedStatus === 'modified'}
-          onPress={(event) => {
-            event.stopPropagation();
-            if (displayedStatus === 'modified') return;
-            onRecordOtherMeal(meal.id);
-          }}
-          style={({ pressed }) => [
-            actionStyle('modified', displayedStatus, pressed),
-            !feedbackEnabled && styles.actionDisabled,
-          ]}
-        >
-          <Pencil color="#0066FF" height={15} width={15} />
-          <Text style={[styles.actionText, styles.actionModifiedText]}>다른 음식 먹었어요</Text>
-        </Pressable>
+          <Pressable
+            disabled={!feedbackEnabled || feedbackPending || displayedStatus === 'modified'}
+            onPress={(event) => {
+              event.stopPropagation();
+              if (displayedStatus === 'modified') return;
+              onRecordOtherMeal(meal.id);
+            }}
+            style={({ pressed }) => [
+              actionStyle('modified', displayedStatus, pressed),
+              !feedbackEnabled && styles.actionDisabled,
+            ]}
+          >
+            <Pencil color="#0066FF" height={15} width={15} />
+            <Text style={[styles.actionText, styles.actionModifiedText]}>다른 음식 먹었어요</Text>
+          </Pressable>
 
-        <Pressable
-          onPress={(event) => {
-            event.stopPropagation();
-            void chooseStatus('skipped');
-          }}
-          disabled={!feedbackEnabled || feedbackPending}
-          style={({ pressed }) => [
-            actionStyle('skipped', displayedStatus, pressed),
-            !feedbackEnabled && styles.actionDisabled,
-          ]}
-        >
-          <Prohibit color="#727272" height={15} width={15} />
-          <Text style={[styles.actionText, styles.actionSkippedText]}>건너뛰었어요</Text>
-        </Pressable>
-      </View>
+          <Pressable
+            onPress={(event) => {
+              event.stopPropagation();
+              void chooseStatus('skipped');
+            }}
+            disabled={!feedbackEnabled || feedbackPending}
+            style={({ pressed }) => [
+              actionStyle('skipped', displayedStatus, pressed),
+              !feedbackEnabled && styles.actionDisabled,
+            ]}
+          >
+            <Prohibit color="#727272" height={15} width={15} />
+            <Text style={[styles.actionText, styles.actionSkippedText]}>건너뛰었어요</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </>
   );
 
@@ -994,20 +998,22 @@ const MealCard = memo(function MealCard({
         <Text numberOfLines={2} style={[main.foods, dimmed && styles.skippedContent]}>
           {displayedFoods}
         </Text>
-        <Pressable
-          accessibilityRole="button"
-          disabled={feedbackPending}
-          onPress={(event) => {
-            event.stopPropagation();
-            if (displayedStatus === 'recommended' && feedbackEnabled) void chooseStatus('eaten');
-            else onToggle(meal.id);
-          }}
-          style={main.record}
-        >
-          <Text style={main.recordText}>
-            {displayedStatus === 'recommended' && feedbackEnabled ? '✓ 섭취' : '기록 ⌄'}
-          </Text>
-        </Pressable>
+        {showRecordControls ? (
+          <Pressable
+            accessibilityRole="button"
+            disabled={feedbackPending}
+            onPress={(event) => {
+              event.stopPropagation();
+              if (displayedStatus === 'recommended' && feedbackEnabled) void chooseStatus('eaten');
+              else onToggle(meal.id);
+            }}
+            style={main.record}
+          >
+            <Text style={main.recordText}>
+              {displayedStatus === 'recommended' && feedbackEnabled ? '✓ 섭취' : '기록 ⌄'}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       <View
@@ -1134,7 +1140,9 @@ export default function DietScreen() {
   );
   const selectedDate = addDays(today, selectedDateOffset);
   const selectedDateCopy = getDateCopy(selectedDate, selectedDateOffset);
-  const feedbackEnabled = selectedDateKey === toDateKey(new Date());
+  const todayDateKey = toDateKey(new Date());
+  const feedbackEnabled = selectedDateKey === todayDateKey;
+  const showRecordControls = selectedDateKey <= todayDateKey;
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -1815,6 +1823,7 @@ export default function DietScreen() {
                 onStatusChange={submitFeedback}
                 onToggle={toggleMeal}
                 recommendationPending={regeneratingMealIds.has(meal.id)}
+                showRecordControls={showRecordControls && Boolean(meal.dietMealId)}
                 status={selectedStatuses[meal.id]}
               />
             ))}
