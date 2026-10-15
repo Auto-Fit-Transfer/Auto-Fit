@@ -74,7 +74,8 @@ export default function ExerciseAiReportScreen() {
       active = false;
     };
   }, [sessionId, requestKey]);
-  const responsiveHeight = Platform.OS === 'web' ? windowHeight : Dimensions.get('screen').height;
+  const responsiveHeight =
+    Platform.OS === 'android' ? Dimensions.get('screen').height : windowHeight;
   const homeHeaderHeightProgress = Math.max(
     0,
     Math.min(1, (responsiveHeight - compactHeight) / (referenceHeight - compactHeight)),

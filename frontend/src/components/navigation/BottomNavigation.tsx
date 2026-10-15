@@ -86,7 +86,11 @@ export function BottomNavigation({
       onLayout={measureNavigation}
       style={[
         styles.safeArea,
-        { paddingBottom: Math.max(insets.bottom, BOTTOM_NAVIGATION_MIN_BOTTOM_GAP) },
+        {
+          paddingBottom: Math.max(insets.bottom, BOTTOM_NAVIGATION_MIN_BOTTOM_GAP),
+          paddingLeft: 6 + insets.left,
+          paddingRight: 6 + insets.right,
+        },
       ]}
     >
       {isDiet ? (

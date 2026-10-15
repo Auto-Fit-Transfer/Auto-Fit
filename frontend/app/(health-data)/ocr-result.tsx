@@ -651,7 +651,7 @@ export default function OCRResultScreen() {
   const canvasLeft = insets.left + (availableWidth - scaledWidth) / 2;
   const safeTopAdjustment = Math.max(0, insets.top + 8 - referenceTitleTop * scale);
   const screenHeight = Dimensions.get('screen').height;
-  const responsiveHeight = Platform.OS === 'web' ? windowHeight : screenHeight;
+  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
   const heightProgress = Math.max(
     0,
     Math.min(

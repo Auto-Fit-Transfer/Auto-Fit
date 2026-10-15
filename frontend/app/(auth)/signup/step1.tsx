@@ -126,7 +126,7 @@ export default function SignUpStep1Screen() {
   const [keyboardContentOffset, setKeyboardContentOffset] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const screenHeight = Dimensions.get('screen').height;
-  const responsiveHeight = Platform.OS === 'web' ? windowHeight : screenHeight;
+  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
   const heightProgress = Math.max(
     0,
     Math.min(

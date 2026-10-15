@@ -129,7 +129,7 @@ export default function SignUpStep4Screen() {
   const [isCompleting, setIsCompleting] = useState(false);
   const isPostLoginOnboarding = flow === 'post-login';
   const screenHeight = Dimensions.get('screen').height;
-  const responsiveHeight = Platform.OS === 'web' ? windowHeight : screenHeight;
+  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
   const heightProgress = Math.max(
     0,
     Math.min(

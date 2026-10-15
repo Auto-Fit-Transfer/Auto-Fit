@@ -58,7 +58,8 @@ export default function ExerciseSummaryScreen() {
     });
     return () => cancelAnimationFrame(frame);
   }, [refreshHome, routine]);
-  const responsiveHeight = Platform.OS === 'web' ? windowHeight : Dimensions.get('screen').height;
+  const responsiveHeight =
+    Platform.OS === 'android' ? Dimensions.get('screen').height : windowHeight;
   const heightProgress = Math.max(
     0,
     Math.min(1, (responsiveHeight - minimumScreenHeight) / (referenceHeight - minimumScreenHeight)),

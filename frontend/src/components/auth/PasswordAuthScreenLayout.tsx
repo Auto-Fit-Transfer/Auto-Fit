@@ -67,7 +67,7 @@ export function PasswordAuthScreenLayout({
   const scaledWidth = referenceWidth * widthScale;
   const canvasLeft = insets.left + (availableWidth - scaledWidth) / 2;
   const screenHeight = Dimensions.get('screen').height;
-  const responsiveHeight = Platform.OS === 'web' ? windowHeight : screenHeight;
+  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
   const heightProgress = Math.max(
     0,
     Math.min(1, (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight)),

@@ -81,7 +81,7 @@ export default function ExerciseResultScreen() {
   const widthScale = Math.min(1, windowWidth / referenceWidth);
   const logicalHeight = windowHeight / Math.max(widthScale, 0.01);
   const homeResponsiveHeight =
-    Platform.OS === 'web' ? windowHeight : Dimensions.get('screen').height;
+    Platform.OS === 'android' ? Dimensions.get('screen').height : windowHeight;
   const homeHeaderHeightProgress = Math.max(
     0,
     Math.min(1, (homeResponsiveHeight - compactHeight) / (referenceHeight - compactHeight)),

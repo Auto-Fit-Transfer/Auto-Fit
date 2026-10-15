@@ -28,7 +28,7 @@ export default function ForgotPasswordScreen() {
   const { height: windowHeight } = useWindowDimensions();
   const [email, setEmail] = useState('');
   const screenHeight = Dimensions.get('screen').height;
-  const responsiveHeight = Platform.OS === 'web' ? windowHeight : screenHeight;
+  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
   const heightProgress = Math.max(
     0,
     Math.min(1, (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight)),

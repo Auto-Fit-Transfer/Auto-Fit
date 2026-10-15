@@ -30,7 +30,7 @@ export default function ResetPasswordScreen() {
   const [confirmationVisible, setConfirmationVisible] = useState(false);
   const passwordsMatch = confirmation.length === 0 || password === confirmation;
   const screenHeight = Dimensions.get('screen').height;
-  const responsiveHeight = Platform.OS === 'web' ? windowHeight : screenHeight;
+  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
   const heightProgress = Math.max(
     0,
     Math.min(1, (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight)),

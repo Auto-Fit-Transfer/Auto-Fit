@@ -105,7 +105,8 @@ export default function ExerciseConditionScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
   const [keyboardContentOffset, setKeyboardContentOffset] = useState(0);
-  const responsiveHeight = Platform.OS === 'web' ? windowHeight : Dimensions.get('screen').height;
+  const responsiveHeight =
+    Platform.OS === 'android' ? Dimensions.get('screen').height : windowHeight;
   const heightProgress = Math.max(
     0,
     Math.min(1, (responsiveHeight - minimumScreenHeight) / (referenceHeight - minimumScreenHeight)),

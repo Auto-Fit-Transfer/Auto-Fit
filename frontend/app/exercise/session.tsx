@@ -174,7 +174,8 @@ export default function ExerciseSessionScreen() {
   const [discomfortCloseAction, setDiscomfortCloseAction] =
     useState<DiscomfortCloseAction>('dismiss');
   const adjustmentDraftRef = useRef<DiscomfortFeedbackDraft | null>(null);
-  const responsiveHeight = Platform.OS === 'web' ? windowHeight : Dimensions.get('screen').height;
+  const responsiveHeight =
+    Platform.OS === 'android' ? Dimensions.get('screen').height : windowHeight;
   const heightProgress = Math.max(
     0,
     Math.min(1, (responsiveHeight - minimumScreenHeight) / (referenceHeight - minimumScreenHeight)),

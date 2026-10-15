@@ -58,7 +58,16 @@ export function MainHeader({
     <View style={[styles.header, { height: height + extra }, style]}>
       <StatusBar style="light" />
       <MainGradient top={topColor} />
-      <View style={[styles.titleRow, { top: 32 + extra }]}>
+      <View
+        style={[
+          styles.titleRow,
+          {
+            left: 22 + insets.left,
+            right: 22 + insets.right,
+            top: 32 + extra,
+          },
+        ]}
+      >
         {back ? (
           <Pressable
             accessibilityRole="button"
@@ -72,7 +81,18 @@ export function MainHeader({
         ) : null}
         <Text style={styles.title}>{title}</Text>
       </View>
-      <View style={[styles.headerContent, { top: 75 + extra }]}>{children}</View>
+      <View
+        style={[
+          styles.headerContent,
+          {
+            left: 30 + insets.left,
+            right: 30 + insets.right,
+            top: 75 + extra,
+          },
+        ]}
+      >
+        {children}
+      </View>
     </View>
   );
 }
@@ -81,6 +101,7 @@ export function MainScreen({ children, tabs = true }: { children: ReactNode; tab
   const insets = useSafeAreaInsets();
   return (
     <ScrollView
+      contentInsetAdjustmentBehavior="never"
       style={styles.root}
       contentContainerStyle={{ paddingBottom: (tabs ? 94 : 24) + insets.bottom }}
       showsVerticalScrollIndicator={false}

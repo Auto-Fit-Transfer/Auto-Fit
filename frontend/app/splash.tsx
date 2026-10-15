@@ -44,8 +44,7 @@ export default function SplashScreen() {
   const widthScale = Math.min(1, availableWidth / referenceWidth);
   const contentScale = Math.max(minimumContentScale, widthScale);
   const screenHeight = Dimensions.get('screen').height;
-  const responsiveHeight = 
-    Platform.OS === 'web' ? windowHeight : screenHeight;
+  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
   const scaledWidth = referenceWidth * contentScale;
   const scaledHeight = referenceHeight * contentScale;
 
