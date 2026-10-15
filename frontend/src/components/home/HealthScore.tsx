@@ -1,14 +1,18 @@
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import Svg, {
-  Circle,
-  Defs,
-  LinearGradient,
-  Stop,
-  Text as SvgText,
-} from 'react-native-svg';
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
+import Svg, { Circle, Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 
-import BloodPressureFillIcon from '@/assets/icons/data/BloodPressure_Fill.svg';
-import StarIcon from '@/assets/icons/deco/StarFour_Fill.svg';
+import BloodPressureFillIcon from '@/assets/figma/main/92e66.svg';
+import StarTopIcon from '@/assets/figma/main/06a58.svg';
+import StarBottomIcon from '@/assets/figma/main/9da88.svg';
+import TierArrow from '@/assets/figma/main/be565.svg';
 import { colors, fontFamilies, radius } from '@/src/theme';
 import { getScoreRatio } from './scoreRatio';
 
@@ -21,17 +25,29 @@ interface HealthScoreProps {
   score: number | null;
   totalScore: number | null;
   status: string | null;
+  onTierPress?: () => void;
+  onScorePress?: () => void;
   style?: StyleProp<ViewStyle>;
 }
 
-export function HealthScore({ score, totalScore, status, style }: HealthScoreProps) {
+export function HealthScore({
+  score,
+  totalScore,
+  status,
+  style,
+  onTierPress,
+  onScorePress,
+}: HealthScoreProps) {
   const scoreArcRatio = getScoreRatio(score, totalScore);
   const scoreText = score === null ? '-' : String(score);
   const totalScoreText = totalScore === null ? '-' : String(totalScore);
   const statusText = status ?? '-';
 
   return (
-    <View accessibilityLabel={`건강 점수 ${scoreText}점, ${statusText}`} style={[styles.container, style]}>
+    <View
+      accessibilityLabel={`건강 점수 ${scoreText}점, ${statusText}`}
+      style={[styles.container, style]}
+    >
       <Svg height={graphSize} style={styles.graph} viewBox="0 0 350 350" width={graphSize}>
         <Defs>
           <LinearGradient
@@ -42,9 +58,9 @@ export function HealthScore({ score, totalScore, status, style }: HealthScorePro
             y1="24.5"
             y2="317"
           >
-            <Stop offset="0.2" stopColor="#55C9B0" stopOpacity={1} />
-            <Stop offset="0.499892" stopColor="#BFE4DC" stopOpacity={1} />
-            <Stop offset="0.8" stopColor="#55C9B0" stopOpacity={1} />
+            <Stop offset="0.2" stopColor="#7866F4" stopOpacity={1} />
+            <Stop offset="0.499892" stopColor="#BAB1FF" stopOpacity={1} />
+            <Stop offset="0.8" stopColor="#7866F4" stopOpacity={1} />
           </LinearGradient>
         </Defs>
         <Circle
@@ -52,7 +68,7 @@ export function HealthScore({ score, totalScore, status, style }: HealthScorePro
           cy={graphCenter}
           fill="none"
           r={graphRadius}
-          stroke="#DFF4F0"
+          stroke="#E3E3FD"
           strokeWidth={23}
         />
         {score !== null ? (
@@ -71,7 +87,7 @@ export function HealthScore({ score, totalScore, status, style }: HealthScorePro
       </Svg>
 
       <View style={styles.healthIconCircle}>
-        <BloodPressureFillIcon color={colors.primary} height={35} width={35} />
+        <BloodPressureFillIcon />
       </View>
 
       <Text style={styles.title}>건강 점수</Text>
@@ -80,9 +96,9 @@ export function HealthScore({ score, totalScore, status, style }: HealthScorePro
         <Svg height={70} viewBox="0 0 94 70" width={94}>
           <Defs>
             <LinearGradient id="score-text-gradient" x1="74" x2="18" y1="5" y2="68">
-              <Stop offset="0.2" stopColor="#55C9B0" />
-              <Stop offset="0.5" stopColor="#7CD0BE" />
-              <Stop offset="0.8" stopColor="#55C9B0" />
+              <Stop offset="0.2" stopColor="#7866F4" />
+              <Stop offset="0.5" stopColor="#BAB1FF" />
+              <Stop offset="0.8" stopColor="#7866F4" />
             </LinearGradient>
           </Defs>
           <SvgText
@@ -98,21 +114,60 @@ export function HealthScore({ score, totalScore, status, style }: HealthScorePro
         <Text style={styles.totalScore}>/ {totalScoreText}</Text>
       </View>
 
-      <View style={styles.statusBadge}>
-        <Text style={styles.statusText}>{statusText}</Text>
-      </View>
+      <Image
+        source={require('@/assets/figma/main/e03a2.png')}
+        resizeMode="contain"
+        style={{ position: 'absolute', left: 115, top: 230, width: 120, height: 82 }}
+      />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="종합 건강 분석 보기"
+        onPress={onScorePress}
+        style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 310 }}
+      />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="건강 티어 안내"
+        onPress={(event) => {
+          event.stopPropagation();
+          onTierPress?.();
+        }}
+        style={styles.tierLink}
+      >
+        <Text style={styles.tierLinkText}>{status ?? '내 건강 티어 알아보기'}</Text>
+        <TierArrow />
+      </Pressable>
 
       <View style={styles.starTop}>
-        <StarIcon color={colors.primary} fill={colors.primary} height={24} width={24} />
+        <StarTopIcon />
       </View>
       <View style={styles.starBottom}>
-        <StarIcon color={colors.primary} fill={colors.primary} height={30} width={30} />
+        <StarBottomIcon />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  tierLink: {
+    position: 'absolute',
+    top: 317,
+    left: 45,
+    width: 260,
+    height: 35,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    boxShadow: '0px 0px 5px rgba(0,0,0,0.08)',
+  },
+  tierLinkText: {
+    color: colors.primary,
+    fontFamily: fontFamilies.pretendardSemiBold,
+    fontSize: 16,
+  },
   container: {
     height: graphSize,
     width: graphSize,
@@ -124,7 +179,7 @@ const styles = StyleSheet.create({
   },
   healthIconCircle: {
     alignItems: 'center',
-    backgroundColor: '#DFF4F0',
+    backgroundColor: '#E3E3FD',
     borderRadius: radius.round,
     height: 60,
     justifyContent: 'center',
@@ -156,7 +211,7 @@ const styles = StyleSheet.create({
     width: 178,
   },
   totalScore: {
-    color: '#AEAEAE',
+    color: '#BAB1FF',
     fontFamily: fontFamilies.pretendardRegular,
     fontSize: 25,
     includeFontPadding: false,
@@ -165,7 +220,7 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     alignItems: 'center',
-    backgroundColor: '#DFF4F0',
+    backgroundColor: '#E3E3FD',
     borderRadius: radius.round,
     height: 40,
     justifyContent: 'center',
@@ -183,13 +238,11 @@ const styles = StyleSheet.create({
   },
   starTop: {
     left: 7,
-    opacity: 0.5,
     position: 'absolute',
     top: 37,
   },
   starBottom: {
     left: 315,
-    opacity: 0.5,
     position: 'absolute',
     top: 311,
   },

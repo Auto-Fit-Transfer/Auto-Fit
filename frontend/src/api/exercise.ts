@@ -80,7 +80,7 @@ export function getActiveExerciseGoal() {
 }
 
 export function getExerciseProgress() {
-  return apiRequest<ExerciseApiResponse>('/api/exercise/progress');
+  return apiRequest<ExerciseApiResponse>('/api/exercise/progress?period=week');
 }
 
 export function getExercisePreferences() {
@@ -171,4 +171,28 @@ export function getExerciseApiErrorMessage(error: unknown) {
   }
 
   return getApiErrorMessage(error);
+}
+
+export type ExerciseGoalInput = {
+  goal_type: 'weight_loss' | 'muscle_gain' | 'endurance' | 'maintenance' | 'rehabilitation';
+  weekly_frequency: number;
+  weekly_duration_minutes: number;
+  goal_period_weeks: number;
+  starts_on?: string;
+};
+export function saveExerciseGoal(input: ExerciseGoalInput) {
+  return apiRequest<{ goal: ExerciseGoalInput }>('/api/exercise/goals/active', {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+}
+export function getExerciseHistory(from: string, to: string) {
+  return apiRequest<{
+    history: { session: Record<string, unknown>; logs: unknown[]; feedback: unknown }[];
+  }>(
+    '/api/exercise/history?from_date=' +
+      encodeURIComponent(from) +
+      '&to_date=' +
+      encodeURIComponent(to),
+  );
 }

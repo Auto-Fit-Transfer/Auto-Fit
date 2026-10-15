@@ -1,6 +1,7 @@
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import TrendUpIcon from '@/assets/icons/graph/TrendUp.svg';
+import TrendUpIcon from '@/assets/figma/main/97a4f.svg';
+import CaretRight from '@/assets/figma/main/4be55.svg';
 import { AppCard } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 
@@ -8,9 +9,10 @@ interface WeeklyProgressCardProps {
   change: number | null;
   message: string | null;
   style?: StyleProp<ViewStyle>;
+  onPress?: () => void;
 }
 
-export function WeeklyProgressCard({ change, message, style }: WeeklyProgressCardProps) {
+export function WeeklyProgressCard({ change, message, style, onPress }: WeeklyProgressCardProps) {
   const changeText = change === null ? '-' : `${change > 0 ? '+' : ''}${change}`;
   const comparisonResult =
     change === null
@@ -23,22 +25,31 @@ export function WeeklyProgressCard({ change, message, style }: WeeklyProgressCar
   const messageText = message ?? '-';
 
   return (
-    <AppCard
-      accessibilityLabel={`지난주보다 ${changeText}점 상승`}
-      padding="none"
-      shadow
-      style={[styles.card, style]}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="건강 점수 변화 확인"
+      onPress={onPress}
     >
-      <View style={styles.icon}>
-        <TrendUpIcon color={colors.primary} fill={colors.primary} height={50} width={50} />
-      </View>
-      <Text numberOfLines={1} style={styles.title}>
-        이전 평가 대비 <Text style={styles.change}>{changeText}</Text>점 {comparisonResult}
-      </Text>
-      <Text numberOfLines={1} style={styles.message}>
-        {messageText}
-      </Text>
-    </AppCard>
+      <AppCard
+        accessibilityLabel={`${changeText}점 ${comparisonResult}`}
+        padding="none"
+        shadow
+        style={[styles.card, style]}
+      >
+        <View style={styles.icon}>
+          <TrendUpIcon />
+        </View>
+        <Text numberOfLines={1} style={styles.title}>
+          이전 평가 대비 <Text style={styles.change}>{changeText}</Text>점 {comparisonResult}
+        </Text>
+        <Text numberOfLines={1} style={styles.message}>
+          {messageText}
+        </Text>
+        <View style={{ position: 'absolute', right: 7, top: 23 }}>
+          <CaretRight />
+        </View>
+      </AppCard>
+    </Pressable>
   );
 }
 
@@ -61,7 +72,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.26,
     lineHeight: 17,
     position: 'absolute',
-    right: 8,
+    right: 32,
     top: 14,
   },
   change: {
@@ -76,7 +87,7 @@ const styles = StyleSheet.create({
     left: 66,
     lineHeight: 17,
     position: 'absolute',
-    right: 8,
+    right: 32,
     top: 36,
   },
 });

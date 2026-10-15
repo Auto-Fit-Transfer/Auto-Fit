@@ -22,11 +22,21 @@ export type HomeResponse = {
   };
 };
 
-type ProfileResponse = {
-  profile?: {
-    name?: string | null;
-  } | null;
+export type Profile = {
+  name?: string | null;
+  nickname?: string | null;
+  birth_date?: string | null;
+  gender?: 'male' | 'female' | 'other' | null;
+  target_weight?: number | null;
+  activity_level?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active' | null;
 };
+export type ProfileResponse = { profile?: Profile | null };
+export function updateProfile(input: Partial<Profile>) {
+  return apiRequest<ProfileResponse>('/api/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(input),
+  });
+}
 
 export function getHome() {
   return apiRequest<HomeResponse>('/api/home', { method: 'GET' });

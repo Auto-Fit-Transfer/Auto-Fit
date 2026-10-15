@@ -11,10 +11,17 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import DietIcon from '@/assets/icons/feature/navigator/Diet.svg';
-import ExerciseIcon from '@/assets/icons/feature/navigator/Exercise.svg';
-import HomeIcon from '@/assets/icons/feature/navigator/Home.svg';
-import MyIcon from '@/assets/icons/feature/navigator/My.svg';
+import HomeIcon from '@/assets/figma/main/b6ef6.svg';
+import HomeActiveIcon from '@/assets/figma/main/18f80.svg';
+import DietIcon from '@/assets/figma/main/36b63.svg';
+import DietActiveIcon from '@/assets/figma/main/5c76f.svg';
+import ExerciseIcon from '@/assets/figma/main/bb536.svg';
+import ExerciseActiveIcon from '@/assets/figma/main/6a102.svg';
+import CommunityIcon from '@/assets/figma/main/73de7.svg';
+import CommunityActiveIcon from '@/assets/figma/main/3846e.svg';
+import MyIcon from '@/assets/figma/main/792cf.svg';
+import MyActiveIcon from '@/assets/figma/main/86e3d.svg';
+import { MainGradient } from '@/src/components/main/MainSurface';
 import { colors, fontFamilies, shadows, spacing } from '@/src/theme';
 
 export const BOTTOM_NAVIGATION_VISUAL_HEIGHT = 70;
@@ -34,10 +41,11 @@ export function getBottomNavigationVisualHeight(windowHeight: number) {
 const bottomNavigationShadow: ViewStyle = Platform.OS === 'android' ? {} : shadows.card;
 
 const tabMeta = {
-  home: { label: '홈', Icon: HomeIcon },
-  diet: { label: '식단', Icon: DietIcon },
-  exercise: { label: '운동', Icon: ExerciseIcon },
-  my: { label: '마이', Icon: MyIcon },
+  home: { label: '홈', Icon: HomeIcon, ActiveIcon: HomeActiveIcon },
+  diet: { label: '식단', Icon: DietIcon, ActiveIcon: DietActiveIcon },
+  exercise: { label: '운동', Icon: ExerciseIcon, ActiveIcon: ExerciseActiveIcon },
+  community: { label: '커뮤니티', Icon: CommunityIcon, ActiveIcon: CommunityActiveIcon },
+  my: { label: '마이', Icon: MyIcon, ActiveIcon: MyActiveIcon },
 } as const;
 
 type TabsProps = ComponentProps<typeof Tabs>;
@@ -95,12 +103,13 @@ export function BottomNavigation({
         <View pointerEvents="none" style={[styles.androidShadowLayer, { height: visualHeight }]} />
       ) : null}
       <View style={[styles.bar, bottomNavigationShadow, { height: visualHeight }]}>
+        <MainGradient radius={50} />
         {state.routes.map((route, index) => {
           const meta = tabMeta[route.name as keyof typeof tabMeta];
           if (!meta) return null;
           const isFocused = state.index === index;
-          const color = isFocused ? colors.primary : colors.textNavigator;
-          const { Icon } = meta;
+          const color = isFocused ? colors.primaryMedium : colors.textWhite;
+          const Icon = isFocused ? meta.ActiveIcon : meta.Icon;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -129,7 +138,7 @@ export function BottomNavigation({
                 pressed && styles.pressed,
               ]}
             >
-              <Icon color={color} height={27} width={27} />
+              <Icon />
               <Text style={[styles.label, { color }]}>{meta.label}</Text>
             </Pressable>
           );
@@ -151,14 +160,14 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   bar: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.dark,
     borderRadius: 30,
     flexDirection: 'row',
     padding: 5,
     zIndex: 1,
   },
   androidShadowLayer: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.dark,
     borderRadius: 30,
     boxShadow: '0px 0px 10px rgba(0, 0, 0, 0.10)',
     elevation: 0,
@@ -181,14 +190,14 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 5,
     justifyContent: 'center',
-    minWidth: 64,
+    minWidth: 0,
   },
-  itemActive: { backgroundColor: 'rgba(232, 248, 244, 0.5)' },
+  itemActive: { backgroundColor: 'rgba(120,102,244,0.3)' },
   label: {
     fontFamily: fontFamilies.pretendardMedium,
     fontSize: 12,
     includeFontPadding: false,
     lineHeight: 15,
   },
-  pressed: { backgroundColor: colors.primaryLight },
+  pressed: { opacity: 0.7 },
 });

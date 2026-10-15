@@ -25,19 +25,19 @@ const styles = StyleSheet.create({
     width: 370,
   },
   greeting: {
-    color: colors.textBody,
+    color: colors.textWhite,
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 30,
     includeFontPadding: false,
     lineHeight: 36,
   },
   userName: {
-    color: colors.primary,
+    color: colors.primaryMedium,
   },
   message: {
-    color: colors.textSecondary,
+    color: colors.textWhiteSecondary,
     fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
+    fontSize: 15,
     includeFontPadding: false,
     lineHeight: 18,
   },

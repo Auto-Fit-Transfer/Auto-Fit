@@ -14,29 +14,25 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import CameraIcon from '@/assets/icons/system/Camera.svg';
-import DocumentIcon from '@/assets/icons/system/Document.svg';
+import GuideCamera from '@/assets/figma/main/aea5c.svg';
+import GuideFile from '@/assets/figma/main/24ce4.svg';
+import CameraIcon from '@/assets/figma/main/62600.svg';
+import DocumentIcon from '@/assets/figma/main/e8bfe.svg';
 import FolderIcon from '@/assets/icons/system/Folder.svg';
 import TrashIcon from '@/assets/icons/common/Trash.svg';
-import {
-  getHealthDocumentErrorMessage,
-  uploadHealthDocument,
-} from '@/src/api/healthDocuments';
-import {
-  AppCard,
-  CustomScrollIndicator,
-  useCustomScrollIndicator,
-} from '@/src/components/common';
+import { getHealthDocumentErrorMessage, uploadHealthDocument } from '@/src/api/healthDocuments';
+import { AppCard, CustomScrollIndicator, useCustomScrollIndicator } from '@/src/components/common';
 import { HealthUploadOptionCard } from '@/src/features/health-data/HealthUploadOptionCard';
 import type { OCRUploadRouteItem } from '@/src/features/health-data/ocrResults';
 import {
   type SelectedHealthFile,
   useHealthFilePicker,
 } from '@/src/features/health-data/useHealthFilePicker';
+import { MainGradient } from '@/src/components/main/MainSurface';
+import { StatusBar } from 'expo-status-bar';
 import { colors, fontFamilies, radius } from '@/src/theme';
 
-const uploadBackground = require('../../assets/images/backgrounds/4_Upload.png');
-const uploadIllustration = require('../../assets/images/illustrations/data/Data.png');
+const uploadIllustration = require('@/assets/figma/main/e33e5.png');
 
 const referenceWidth = 412;
 const referenceHeight = 917;
@@ -69,7 +65,7 @@ function GuideItem({ description, Icon, title }: GuideItemProps) {
   return (
     <View style={styles.guideRow}>
       <View style={styles.guideIconBox}>
-        <Icon color={colors.primary} fill={colors.primary} height={25} width={25} />
+        <Icon />
       </View>
       <View style={styles.guideTextGroup}>
         <Text style={styles.guideItemTitle}>{title}</Text>
@@ -174,19 +170,19 @@ export default function HealthDataUploadScreen() {
   const responsiveHeight = Platform.OS === 'web' ? windowHeight : screenHeight;
   const heightProgress = Math.max(
     0,
-    Math.min(1, (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight)),
+    Math.min(
+      1,
+      (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight),
+    ),
   );
   const verticalValue = (expanded: number, compact: number) =>
     compact + (expanded - compact) * heightProgress;
-  const introTop = verticalValue(82, 70);
-  const uploadCardsTop = verticalValue(231, 200);
-  const guideTop = Math.max(
-    verticalValue(483, 410),
-    uploadCardsTop + 220 + 12,
-  );
+  const introTop = 100;
+  const uploadCardsTop = 205;
+  const guideTop = Math.max(450, uploadCardsTop + 220 + 12);
   const selectedFileTop = Math.max(
     verticalValue(referenceSelectedFileTop, 645),
-    guideTop + 187 + 20,
+    guideTop + 230 + 20,
   );
   const additionalFileListHeight =
     Math.max(0, selectedFiles.length - 1) * (selectedFileRowHeight + selectedFileRowGap);
@@ -194,13 +190,9 @@ export default function HealthDataUploadScreen() {
     verticalValue(referenceNextButtonTop, 760) + additionalFileListHeight,
     selectedFileTop + 100 + additionalFileListHeight + 15,
   );
-  const contentBottom = Math.max(
-    measuredContentBottom,
-    nextButtonTop + 45,
-  );
+  const contentBottom = Math.max(measuredContentBottom, nextButtonTop + 45);
   const bottomContentPadding = baseBottomContentPadding + insets.bottom;
-  const renderedContentHeight =
-    safeTopAdjustment + contentBottom * scale + bottomContentPadding;
+  const renderedContentHeight = safeTopAdjustment + contentBottom * scale + bottomContentPadding;
   const needsScroll = renderedContentHeight > windowHeight;
   const scrollIndicator = useCustomScrollIndicator({
     enabled: needsScroll,
@@ -255,12 +247,7 @@ export default function HealthDataUploadScreen() {
 
   return (
     <View style={styles.root}>
-      <Image
-        accessibilityIgnoresInvertColors
-        resizeMode="stretch"
-        source={uploadBackground}
-        style={styles.background}
-      />
+      <StatusBar style="light" />
       <ScrollView
         bounces={false}
         contentContainerStyle={[
@@ -293,14 +280,18 @@ export default function HealthDataUploadScreen() {
               },
             ]}
           >
-            <Text style={styles.screenTitle}>건강 데이터 업로드</Text>
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 190 }}>
+              <MainGradient />
+            </View>
+            <Text style={[styles.screenTitle, { color: colors.textWhite }]}>
+              건강 데이터 업로드
+            </Text>
 
             <View style={[styles.intro, { top: introTop }]}>
               <View style={styles.introTextGroup}>
-                <Text style={styles.introTitle}>건강 데이터를{`\n`}업로드 해주세요</Text>
-                <Text style={styles.introDescription}>
-                  정확한 분석과 <Text style={styles.emphasis}>맞춤 추천</Text>을 위해{`\n`}
-                  다양한 건강 데이터를 활용합니다.
+                <Text style={[styles.introTitle, { color: colors.textWhite }]}>
+                  건강 데이터를{`\n`}
+                  <Text style={{ color: colors.primaryMedium }}>업로드 해주세요</Text>
                 </Text>
               </View>
               <Image
@@ -314,11 +305,7 @@ export default function HealthDataUploadScreen() {
             <View style={[styles.uploadCards, { top: uploadCardsTop }]}>
               <HealthUploadOptionCard
                 buttonLabel="카메라 열기"
-                description={[
-                  '처방전, 검진 결과, 체성분',
-                  '리포트 등을 촬영하여',
-                  '업로드할 수 있어요.',
-                ]}
+                description={['건강 문서를 촬영해', '업로드하세요.']}
                 disabled={isSelecting || isUploading}
                 Icon={CameraIcon}
                 onPress={takePhoto}
@@ -326,11 +313,7 @@ export default function HealthDataUploadScreen() {
               />
               <HealthUploadOptionCard
                 buttonLabel="파일 선택"
-                description={[
-                  '이미지, PDF, CSV 파일을',
-                  '선택하여 여러 개의 파일을',
-                  '한 번에 업로드할 수 있어요.',
-                ]}
+                description={['저장된 건강 파일을', '업로드하세요.']}
                 disabled={isSelecting || isUploading}
                 Icon={DocumentIcon}
                 onPress={pickDocument}
@@ -340,27 +323,27 @@ export default function HealthDataUploadScreen() {
             </View>
 
             <View style={[styles.guideSection, { top: guideTop }]}>
-              <Text style={styles.guideTitle}>업로드 가이드</Text>
+              <Text style={styles.guideTitle}>업로드 안내</Text>
               <GuideItem
                 description={[
                   '체성분, 건강검진 결과를 업로드하면',
                   '더 정밀한 맞춤 추천을 받을 수 있어요.',
                 ]}
-                Icon={CameraIcon}
-                title="다양한 데이터가 더 정확한 분석을 도와줘요."
+                Icon={GuideCamera}
+                title="정확한 맞춤 분석"
               />
               <GuideItem
-                description={['이미지 (JPG, PNG), PDF, CSV 파일을 지원해요.']}
-                Icon={DocumentIcon}
-                title="지원 형식"
+                description={['JPG, PNG, HEIC, PDF 파일을 지원해요.']}
+                Icon={GuideFile}
+                title="지원 파일 형식"
               />
               <GuideItem
                 description={[
-                  '업로드된 모든 데이터는 암호화하여 안전하게 관리되며,',
-                  '외부에 공유되지 않아요.',
+                  '업로드한 건강 데이터로 분석을 진행해요.',
+                  '민감한 정보가 포함되어 있는지 확인해 주세요.',
                 ]}
-                Icon={DocumentIcon}
-                title="개인 정보는 안전하게 보호돼요."
+                Icon={GuideFile}
+                title="안전한 데이터 관리"
               />
             </View>
 
@@ -438,16 +421,16 @@ const styles = StyleSheet.create({
     top: 38,
   },
   intro: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     flexDirection: 'row',
-    gap: 67,
+    gap: 47,
     left: 23,
     position: 'absolute',
     top: 82,
   },
   introTextGroup: {
     gap: 14,
-    width: 180,
+    width: 220,
   },
   introTitle: {
     color: colors.textBody,
@@ -468,6 +451,9 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.pretendardSemiBold,
   },
   illustration: {
+    position: 'absolute',
+    left: 227,
+    top: -30,
     height: 120,
     width: 120,
   },
@@ -480,6 +466,9 @@ const styles = StyleSheet.create({
   },
   guideSection: {
     gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 15,
     left: 21,
     position: 'absolute',
     top: 483,

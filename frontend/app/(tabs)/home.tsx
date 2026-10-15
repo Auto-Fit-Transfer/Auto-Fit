@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getHome } from '@/src/api/home';
@@ -12,14 +12,15 @@ import {
 import { colors } from '@/src/theme';
 import { getSupabaseClient } from '@/src/lib/supabase';
 
-const homeBackground = require('../../assets/images/backgrounds/3_Home.png');
+import { MainGradient } from '@/src/components/main/MainSurface';
+import { StatusBar } from 'expo-status-bar';
 
 const referenceWidth = 412;
 const referenceScreenHeight = 917;
-const referenceGreetingTop = 76;
+const referenceGreetingTop = 38;
 const referenceHealthScoreTop = 268;
 const referenceHealthScoreSize = 350;
-const referenceGraphCardGap = 13;
+const referenceGraphCardGap = 22;
 const referenceWeeklyProgressHeight = 70;
 const referenceCardToNavigationGap = 129;
 const minimumVerticalPositionScale = 0.86;
@@ -122,17 +123,19 @@ export default function HomeScreen() {
     }
   }, []);
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    const frame = requestAnimationFrame(() => {
-      void loadHomeData();
-    });
+  useFocusEffect(
+    useCallback(() => {
+      isMountedRef.current = true;
+      const frame = requestAnimationFrame(() => {
+        void loadHomeData();
+      });
 
-    return () => {
-      isMountedRef.current = false;
-      cancelAnimationFrame(frame);
-    };
-  }, [loadHomeData]);
+      return () => {
+        isMountedRef.current = false;
+        cancelAnimationFrame(frame);
+      };
+    }, [loadHomeData]),
+  );
 
   const bottomNavigationVisualHeight = getBottomNavigationVisualHeight(windowHeight);
   const bottomClearance = Math.max(insets.bottom, BOTTOM_NAVIGATION_MIN_BOTTOM_GAP);
@@ -154,22 +157,21 @@ export default function HomeScreen() {
     insets.top - referenceGreetingTop * verticalPositionScale * widthScale,
   );
   const canvasLeft = insets.left + (availableWidth - scaledWidth) / 2;
-  const backgroundHeight = Math.max(
-    windowHeight,
-    referenceScreenHeight * (windowWidth / referenceWidth),
-  );
   const openTotalAnalysis = useCallback(() => {
     router.push({ pathname: '/total-analysis', params: { source: 'home' } });
   }, [router]);
 
   return (
     <View style={styles.root}>
-      <Image
-        accessibilityIgnoresInvertColors
-        resizeMode="cover"
-        source={homeBackground}
-        style={[styles.background, { height: backgroundHeight }]}
-      />
+      <StatusBar style="light" />
+      <View style={{ height: 140 + Math.max(0, insets.top - 28), backgroundColor: colors.dark }}>
+        <MainGradient />
+        <HomeGreeting
+          message={greetingMessage}
+          userName={userName}
+          style={{ marginTop: Math.max(38, insets.top + 10), marginHorizontal: 20, width: 'auto' }}
+        />
+      </View>
 
       <View
         style={[
@@ -181,32 +183,25 @@ export default function HomeScreen() {
           },
         ]}
       >
-        <HomeGreeting
-          message={greetingMessage}
-          style={[styles.greeting, { top: referenceGreetingTop * verticalPositionScale }]}
-          userName={userName}
-        />
         <View style={[styles.scoreSection, { top: graphSectionTop }]}>
           {loadState === 'loading' && !healthScore ? (
             <HomeDataPlaceholder style={styles.scorePlaceholder} />
           ) : (
-            <Pressable
-              accessibilityLabel="종합 건강 분석 보기"
-              accessibilityRole="button"
-              onPress={openTotalAnalysis}
-              style={styles.healthScorePressable}
-            >
+            <View style={styles.healthScorePressable}>
               <HealthScore
                 score={healthScore?.score ?? null}
                 status={null}
+                onTierPress={() => router.push('/tier')}
+                onScorePress={openTotalAnalysis}
                 totalScore={healthScore?.totalScore ?? null}
               />
-            </Pressable>
+            </View>
           )}
           {loadState === 'loading' && !weeklyProgress ? (
             <HomeDataPlaceholder compact style={styles.weeklyProgress} />
           ) : (
             <WeeklyProgressCard
+              onPress={openTotalAnalysis}
               change={weeklyProgress?.change ?? null}
               message={weeklyProgress?.message ?? null}
               style={styles.weeklyProgress}
@@ -218,13 +213,7 @@ export default function HomeScreen() {
   );
 }
 
-function HomeDataPlaceholder({
-  compact = false,
-  style,
-}: {
-  compact?: boolean;
-  style?: object;
-}) {
+function HomeDataPlaceholder({ compact = false, style }: { compact?: boolean; style?: object }) {
   return (
     <View style={[compact ? styles.weeklyPlaceholder : styles.scorePlaceholder, style]}>
       <Text style={styles.placeholderText}>건강 정보를 불러오는 중이에요.</Text>
@@ -234,7 +223,7 @@ function HomeDataPlaceholder({
 
 const styles = StyleSheet.create({
   root: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.backgroundPurple,
     flex: 1,
     overflow: 'hidden',
   },

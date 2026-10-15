@@ -1,3 +1,4 @@
+import { mapWeeklyMetrics, sessionMinutes, sessionLocalDate } from './weeklyMetrics';
 import {
   createContext,
   useCallback,
@@ -11,7 +12,6 @@ import {
 
 import {
   generateExerciseRecommendation,
-  getActiveExerciseGoal,
   getExerciseProgress,
   getExercisePreferences,
   getExerciseSummary,
@@ -49,6 +49,7 @@ export type ExerciseSessionSummary = {
 export type ExerciseHomeMetrics = {
   currentWorkoutStreakDays: number | null;
   currentWeekWorkoutCount: number | null;
+  targetWorkoutCount: number | null;
   goalAchievementRate: number | null;
   remainingGoalWorkoutCount: number | null;
 };
@@ -227,12 +228,19 @@ function mapExerciseSession(response: unknown): ExerciseSessionSummary | null {
   const completedAt = readString(session, ['completed_at']);
 
   return {
-    calories: readNumber(session, ['calories', 'total_calories', 'calories_burned']),
+    calories: readNumber(session, [
+      'total_calories_burned',
+      'calories',
+      'total_calories',
+      'calories_burned',
+    ]),
     completed: session.completed === true || status === 'completed' || completedAt !== null,
     date:
       completedAt ??
       readString(session, ['session_date', 'exercise_date', 'started_at', 'created_at']),
-    durationMinutes: readNumber(session, ['duration_minutes', 'total_duration_minutes']),
+    durationMinutes:
+      readNumber(session, ['duration_minutes', 'total_duration_minutes']) ??
+      sessionMinutes(session.total_duration_seconds),
     itemCount: readNumber(session, ['item_count', 'completed_item_count']),
     sessionId: readString(session, ['exercise_session_id', 'session_id', 'id']),
   };
@@ -251,92 +259,14 @@ function mapStartedExerciseSession(response: unknown): StartedExerciseSession | 
 }
 
 function toDateKey(value: string) {
-  const match = /^(\d{4}-\d{2}-\d{2})/.exec(value);
-  return match?.[1] ?? null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const local = sessionLocalDate(value);
+  return local === '날짜 미기록' ? null : local;
 }
 
 function getTodayDateKey() {
   const date = new Date();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-function addDaysToDateKey(value: string, amount: number) {
-  const date = new Date(`${value}T12:00:00`);
-  if (Number.isNaN(date.getTime())) return null;
-  date.setDate(date.getDate() + amount);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-function getGoalId(goal: ApiRecord) {
-  return readString(goal, ['exercise_goal_id', 'goal_id', 'id']);
-}
-
-function hasMatchingGoalPeriod(activeGoal: ApiRecord | null, progress: ApiRecord | null) {
-  if (!activeGoal || !progress) return false;
-  const progressGoal = readRecord(progress, 'goal');
-  const activeGoalId = getGoalId(activeGoal);
-  const progressGoalId = progressGoal ? getGoalId(progressGoal) : null;
-  if (!progressGoal || !activeGoalId || activeGoalId !== progressGoalId) return false;
-
-  const startsOn = toDateKey(readString(activeGoal, ['starts_on']) ?? '');
-  const periodWeeks = readNumber(activeGoal, ['goal_period_weeks']);
-  const progressPeriod = readRecord(progress, 'period');
-  const progressFrom = progressPeriod
-    ? toDateKey(readString(progressPeriod, ['from']) ?? '')
-    : null;
-  const progressTo = progressPeriod ? toDateKey(readString(progressPeriod, ['to']) ?? '') : null;
-  if (!startsOn || periodWeeks === null || !progressFrom || !progressTo) return false;
-
-  const expectedTo = addDaysToDateKey(startsOn, periodWeeks * 7 - 1);
-  return progressFrom === startsOn && progressTo === expectedTo;
-}
-
-function getCurrentWeekWorkoutCount(progress: ApiRecord | null) {
-  if (!progress || !Array.isArray(progress.weekly_trend)) return null;
-  const today = getTodayDateKey();
-  const currentWeek = progress.weekly_trend.find((item) => {
-    if (!isRecord(item)) return false;
-    const weekStart = toDateKey(readString(item, ['week_start']) ?? '');
-    const weekEnd = weekStart ? addDaysToDateKey(weekStart, 7) : null;
-    return Boolean(weekStart && weekEnd && weekStart <= today && today < weekEnd);
-  });
-  return isRecord(currentWeek) ? readNumber(currentWeek, ['workout_count']) : null;
-}
-
-function mapExerciseHomeMetrics(
-  activeGoalResponse: unknown,
-  progressResponse: unknown,
-): ExerciseHomeMetrics {
-  const activeGoal = isRecord(activeGoalResponse) ? readRecord(activeGoalResponse, 'goal') : null;
-  const progress = isRecord(progressResponse) ? readRecord(progressResponse, 'progress') : null;
-  const progressSummary = progress ? readRecord(progress, 'summary') : null;
-  const achievements = progress ? readRecord(progress, 'achievements') : null;
-  const hasAlignedGoalPeriod = hasMatchingGoalPeriod(activeGoal, progress);
-  const targetWorkoutCount = progressSummary
-    ? readNumber(progressSummary, ['target_workout_count'])
-    : null;
-  const completedWorkoutCount = progressSummary
-    ? readNumber(progressSummary, ['workout_count'])
-    : null;
-  const goalAchievementRate = progressSummary
-    ? readNumber(progressSummary, ['goal_achievement_rate'])
-    : null;
-
-  return {
-    currentWorkoutStreakDays: achievements
-      ? readNumber(achievements, ['longest_workout_streak_days'])
-      : null,
-    currentWeekWorkoutCount: getCurrentWeekWorkoutCount(progress),
-    goalAchievementRate: hasAlignedGoalPeriod ? goalAchievementRate : null,
-    remainingGoalWorkoutCount:
-      hasAlignedGoalPeriod && targetWorkoutCount !== null && completedWorkoutCount !== null
-        ? Math.max(targetWorkoutCount - completedWorkoutCount, 0)
-        : null,
-  };
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 function mapEquipment(equipment: ExerciseCondition['equipment']): ExerciseApiEquipment[] {
@@ -359,6 +289,7 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
   const [homeMetrics, setHomeMetrics] = useState<ExerciseHomeMetrics>({
     currentWorkoutStreakDays: null,
     currentWeekWorkoutCount: null,
+    targetWorkoutCount: null,
     goalAchievementRate: null,
     remainingGoalWorkoutCount: null,
   });
@@ -394,6 +325,7 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
       setHomeMetrics({
         currentWorkoutStreakDays: null,
         currentWeekWorkoutCount: null,
+        targetWorkoutCount: null,
         goalAchievementRate: null,
         remainingGoalWorkoutCount: null,
       });
@@ -423,14 +355,12 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
     setHomeError(null);
     setHomeLoadState('loading');
 
-    const [recommendationResult, sessionResult, , activeGoalResult, progressResult] =
-      await Promise.allSettled([
-        getLatestExerciseRecommendation(),
-        getLatestExerciseSession(),
-        getExerciseSummary(),
-        getActiveExerciseGoal(),
-        getExerciseProgress(),
-      ]);
+    const [recommendationResult, sessionResult, , progressResult] = await Promise.allSettled([
+      getLatestExerciseRecommendation(),
+      getLatestExerciseSession(),
+      getExerciseSummary(),
+      getExerciseProgress(),
+    ]);
 
     if (homeRequestId.current === requestId) homeRequestInFlight.current = false;
     if (!mountedRef.current || homeRequestId.current !== requestId) return;
@@ -470,8 +400,7 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
     const nextSession = mapExerciseSession(
       sessionResult.status === 'fulfilled' ? sessionResult.value : { result: null },
     );
-    const nextHomeMetrics = mapExerciseHomeMetrics(
-      activeGoalResult.status === 'fulfilled' ? activeGoalResult.value : null,
+    const nextHomeMetrics = mapWeeklyMetrics(
       progressResult.status === 'fulfilled' ? progressResult.value : null,
     );
 
@@ -516,9 +445,7 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
     }
 
     const recommendationDate =
-      nextRoutine && recommendationDateValue
-        ? toDateKey(recommendationDateValue)
-        : null;
+      nextRoutine && recommendationDateValue ? toDateKey(recommendationDateValue) : null;
     if (!nextRoutine || !recommendationDate) {
       setRoutine(null);
       setStatus('not-created');
@@ -586,6 +513,7 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const startRoutine = useCallback(async () => {
+    if (status !== 'ready' || !routine) throw new Error('오늘의 새 운동 추천을 먼저 받아주세요.');
     if (sessionRequestInFlight.current) {
       throw new Error('운동 세션을 시작하고 있어요.');
     }
@@ -606,7 +534,7 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
     } finally {
       sessionRequestInFlight.current = false;
     }
-  }, []);
+  }, [status, routine]);
 
   const markRoutineCompleted = useCallback(
     (summary: Omit<ExerciseSessionSummary, 'completed' | 'date'>) => {

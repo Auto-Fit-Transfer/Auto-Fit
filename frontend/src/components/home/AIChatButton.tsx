@@ -7,7 +7,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import RobotIcon from '@/assets/icons/feature/Robot_Fill.svg';
+import RobotIcon from '@/assets/figma/main/95215.svg';
 import { colors, fontFamilies, radius } from '@/src/theme';
 
 interface AIChatButtonProps {
@@ -32,7 +32,7 @@ export function AIChatButton({ contentOffsetX, onPress, snapSide, style }: AICha
       style={({ pressed }) => [styles.button, pressed && styles.pressed, style]}
     >
       <Animated.View style={[styles.robotIcon, { transform: [{ translateX: horizontalOffset }] }]}>
-        <RobotIcon color={colors.surface} fill={colors.surface} height={40} width={40} />
+        <RobotIcon />
       </Animated.View>
       <Animated.Text style={[styles.label, { transform: [{ translateX: horizontalOffset }] }]}>
         AI

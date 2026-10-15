@@ -1,0 +1,9 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="310" height="284.958" viewBox="0 0 310 284.958" fill="none" xmlns="http://www.w3.org/2000/svg">
+<ellipse id="Hero Shade Right" cx="155" cy="142.479" rx="155" ry="142.479" fill="url(#paint0_radial_0_32)" fill-opacity="0.28"/>
+<defs>
+<radialGradient id="paint0_radial_0_32" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(155 142.479) scale(310 284.958)">
+<stop stop-color="#6B62C8"/>
+<stop offset="1" stop-color="#353566" stop-opacity="0"/>
+</radialGradient>
+</defs>
+</svg>

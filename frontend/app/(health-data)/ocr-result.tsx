@@ -1,3 +1,5 @@
+import { MainGradient } from '@/src/components/main/MainSurface';
+import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -33,7 +35,6 @@ import HemoglobinIcon from '@/assets/icons/data/Hemoglobin.svg';
 import MuscleIcon from '@/assets/icons/data/Muscle.svg';
 import WeightIcon from '@/assets/icons/data/Weight.svg';
 import DocumentIcon from '@/assets/icons/system/Document.svg';
-import CheckIcon from '@/assets/icons/system/Check.svg';
 import ShieldCheckIcon from '@/assets/icons/system/ShieldCheck.svg';
 import {
   confirmHealthDocument,
@@ -58,12 +59,8 @@ import {
   type OCRUploadRouteItem,
   mapHealthDocumentToOCRResult,
 } from '@/src/features/health-data/ocrResults';
-import {
-  type SelectedHealthFile,
-} from '@/src/features/health-data/useHealthFilePicker';
+import { type SelectedHealthFile } from '@/src/features/health-data/useHealthFilePicker';
 import { colors, fontFamilies, radius } from '@/src/theme';
-
-const resultBackground = require('../../assets/images/backgrounds/4_Upload.png');
 
 const referenceWidth = 412;
 const referenceHeight = 917;
@@ -115,21 +112,19 @@ function parseUploadRouteItems(value?: string): OCRUploadRouteItem[] {
     const parsed: unknown = JSON.parse(value);
     if (!Array.isArray(parsed)) return [];
 
-    return parsed.filter(
-      (item): item is OCRUploadRouteItem => {
-        if (!item || typeof item !== 'object') return false;
-        const candidate = item as Partial<OCRUploadRouteItem>;
-        const file = candidate.file;
-        return (
-          typeof candidate.uploadedFileId === 'string' &&
-          typeof file === 'object' &&
-          file !== null &&
-          typeof file.name === 'string' &&
-          typeof file.uri === 'string' &&
-          (file.source === 'camera' || file.source === 'document')
-        );
-      },
-    );
+    return parsed.filter((item): item is OCRUploadRouteItem => {
+      if (!item || typeof item !== 'object') return false;
+      const candidate = item as Partial<OCRUploadRouteItem>;
+      const file = candidate.file;
+      return (
+        typeof candidate.uploadedFileId === 'string' &&
+        typeof file === 'object' &&
+        file !== null &&
+        typeof file.name === 'string' &&
+        typeof file.uri === 'string' &&
+        (file.source === 'camera' || file.source === 'document')
+      );
+    });
   } catch {
     return [];
   }
@@ -336,10 +331,7 @@ function formatCheckupDate(value: string) {
   return `${value.slice(0, 4)}.${value.slice(4, 6)}.${value.slice(6, 8)}`;
 }
 
-function updateResultData(
-  result: OCRResultItem,
-  values: Record<string, string>,
-): OCRResultItem {
+function updateResultData(result: OCRResultItem, values: Record<string, string>): OCRResultItem {
   if (result.type === 'health_checkup') {
     return {
       ...result,
@@ -459,15 +451,15 @@ function MetricRow({
 }) {
   const { Icon } = definition;
   const iconColorProps =
-    definition.iconKind === 'fill' 
-    ? { 
-        fill: colors.primary,
-        color: colors.primary
-      } 
-    : { 
-        stroke: colors.primary,
-        color: colors.primary
-      };
+    definition.iconKind === 'fill'
+      ? {
+          fill: colors.primary,
+          color: colors.primary,
+        }
+      : {
+          stroke: colors.primary,
+          color: colors.primary,
+        };
 
   return (
     <View ref={onRowRef} style={styles.metricRow}>
@@ -521,12 +513,7 @@ function MetricRow({
             ) : (
               <Text style={styles.metricValueText}>{value}</Text>
             )}
-            {definition.unit ? (
-              <Text style={styles.metricUnit}>
-                {' '}
-                {definition.unit}
-              </Text>
-            ) : null}
+            {definition.unit ? <Text style={styles.metricUnit}> {definition.unit}</Text> : null}
           </View>
           <Pressable
             accessibilityLabel={`${definition.label} ${isEditing ? '확인' : '수정'}`}
@@ -539,12 +526,7 @@ function MetricRow({
               pressed && styles.pressed,
             ]}
           >
-            <Text
-              style={[
-                styles.modifyButtonText,
-                isEditing && styles.confirmButtonText,
-              ]}
-            >
+            <Text style={[styles.modifyButtonText, isEditing && styles.confirmButtonText]}>
               {isEditing ? '확인' : '수정'}
             </Text>
           </Pressable>
@@ -572,9 +554,7 @@ export default function OCRResultScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isInnerScrollActive, setIsInnerScrollActive] = useState(false);
   const [isReuploadSheetOpen, setIsReuploadSheetOpen] = useState(false);
-  const [metricValues, setMetricValues] = useState<Record<string, string>>(
-    () => ({}),
-  );
+  const [metricValues, setMetricValues] = useState<Record<string, string>>(() => ({}));
   const [editingMetricKey, setEditingMetricKey] = useState<OCRMetricKey | null>(null);
   const [draftValue, setDraftValue] = useState('');
   const [systolicDraft, setSystolicDraft] = useState('');
@@ -607,10 +587,7 @@ export default function OCRResultScreen() {
       try {
         const nextResults = await Promise.all(
           uploadItems.map(async (item) =>
-            mapHealthDocumentToOCRResult(
-              await getHealthDocument(item.uploadedFileId),
-              item.file,
-            ),
+            mapHealthDocumentToOCRResult(await getHealthDocument(item.uploadedFileId), item.file),
           ),
         );
         if (!isActive) return;
@@ -677,35 +654,27 @@ export default function OCRResultScreen() {
   const responsiveHeight = Platform.OS === 'web' ? windowHeight : screenHeight;
   const heightProgress = Math.max(
     0,
-    Math.min(1, (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight)),
+    Math.min(
+      1,
+      (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight),
+    ),
   );
   const verticalValue = (expanded: number, compact: number) =>
     compact + (expanded - compact) * heightProgress;
   const currentResult = results[currentIndex] ?? loadingResult;
   const extractedCardHeight = referenceExtractedCardHeight;
-  const completionTop = verticalValue(114, 92);
-  const stepIndicatorTop = verticalValue(75, 65);
-  const uploadFileTop = Math.max(
-    verticalValue(204, 170),
-    completionTop + 50 + 20,
-  );
-  const extractedCardTop = Math.max(
-    verticalValue(359, 300),
-    uploadFileTop + 135 + 16,
-  );
+  const completionTop = 104;
+  const stepIndicatorTop = 70;
+  const uploadFileTop = Math.max(204, completionTop + 50 + 20);
+  const extractedCardTop = Math.max(verticalValue(359, 300), uploadFileTop + 135 + 16);
   const nextButtonTop = Math.max(
     verticalValue(830, 780),
     extractedCardTop + extractedCardHeight + 15,
   );
-  const contentBottom = Math.max(
-    measuredContentBottom,
-    nextButtonTop + 45,
-  );
+  const contentBottom = Math.max(measuredContentBottom, nextButtonTop + 45);
   const bottomContentPadding = baseBottomContentPadding + insets.bottom;
-  const contentViewportHeight =
-    safeTopAdjustment + contentBottom * scale;
-  const renderedContentHeight =
-    contentViewportHeight + bottomContentPadding;
+  const contentViewportHeight = safeTopAdjustment + contentBottom * scale;
+  const renderedContentHeight = contentViewportHeight + bottomContentPadding;
   const needsScroll = contentViewportHeight > windowHeight;
   const scrollIndicator = useCustomScrollIndicator({
     enabled: needsScroll,
@@ -726,57 +695,45 @@ export default function OCRResultScreen() {
   const canEditCurrentResult = canReviewCurrentResult && !isSaving && !isReuploading;
 
   const centerFocusedRow = useCallback(
-  (key: OCRMetricKey, activeKeyboardTop: number) => {
-    const row = metricRowRefs.current[key];
-    const viewport = screenViewportRef.current;
+    (key: OCRMetricKey, activeKeyboardTop: number) => {
+      const row = metricRowRefs.current[key];
+      const viewport = screenViewportRef.current;
 
-    if (
-      !row ||
-      !viewport ||
-      editingMetricKeyRef.current !== key
-    ) {
-      return;
-    }
+      if (!row || !viewport || editingMetricKeyRef.current !== key) {
+        return;
+      }
 
-    viewport.measureInWindow(
-      (_viewportX, viewportTop, _viewportWidth, viewportHeight) => {
+      viewport.measureInWindow((_viewportX, viewportTop, _viewportWidth, viewportHeight) => {
         if (editingMetricKeyRef.current !== key) return;
 
-        row.measureInWindow(
-          (_rowX, rowTop, _rowWidth, rowHeight) => {
-            if (editingMetricKeyRef.current !== key) return;
+        row.measureInWindow((_rowX, rowTop, _rowWidth, rowHeight) => {
+          if (editingMetricKeyRef.current !== key) return;
 
-            // 실제로 사용할 수 있는 화면의 위/아래
-            const visibleTop = Math.max(viewportTop, insets.top);
-            const visibleBottom = Math.min(
-              viewportTop + viewportHeight,
-              activeKeyboardTop - keyboardSafeGap,
-            );
+          // 실제로 사용할 수 있는 화면의 위/아래
+          const visibleTop = Math.max(viewportTop, insets.top);
+          const visibleBottom = Math.min(
+            viewportTop + viewportHeight,
+            activeKeyboardTop - keyboardSafeGap,
+          );
 
-            // 키보드를 제외한 화면의 정확한 세로 중앙
-            const visibleCenter =
-              visibleTop + (visibleBottom - visibleTop) / 2;
+          // 키보드를 제외한 화면의 정확한 세로 중앙
+          const visibleCenter = visibleTop + (visibleBottom - visibleTop) / 2;
 
-            // 현재 수정 중인 Row의 세로 중앙
-            const rowCenter = rowTop + rowHeight / 2;
+          // 현재 수정 중인 Row의 세로 중앙
+          const rowCenter = rowTop + rowHeight / 2;
 
-            // Row 중심을 화면 중심으로 옮기기 위해 필요한 거리
-            const deltaY = rowCenter - visibleCenter;
+          // Row 중심을 화면 중심으로 옮기기 위해 필요한 거리
+          const deltaY = rowCenter - visibleCenter;
 
-            const targetOffset = Math.max(
-              0,
-              keyboardCanvasOffsetRef.current + deltaY,
-            );
+          const targetOffset = Math.max(0, keyboardCanvasOffsetRef.current + deltaY);
 
-            keyboardCanvasOffsetRef.current = targetOffset;
-            setKeyboardCanvasOffset(targetOffset);
-          },
-        );
-      },
-    );
-  },
-  [insets.top],
-);
+          keyboardCanvasOffsetRef.current = targetOffset;
+          setKeyboardCanvasOffset(targetOffset);
+        });
+      });
+    },
+    [insets.top],
+  );
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', (event) => {
@@ -960,9 +917,7 @@ export default function OCRResultScreen() {
       }
 
       if (isLastResult) {
-        await Promise.all(
-          results.map((result) => confirmHealthDocument(result.uploadedFileId)),
-        );
+        await Promise.all(results.map((result) => confirmHealthDocument(result.uploadedFileId)));
         savedResult = { ...savedResult, status: 'confirmed' };
         setResults((current) => current.map((result) => ({ ...result, status: 'confirmed' })));
         setMetricValues({ ...savedResult.data });
@@ -1035,12 +990,7 @@ export default function OCRResultScreen() {
 
   return (
     <View ref={screenViewportRef} style={styles.root}>
-      <Image
-        accessibilityIgnoresInvertColors
-        resizeMode="stretch"
-        source={resultBackground}
-        style={styles.background}
-      />
+      <StatusBar style="light" />
       <ScrollView
         bounces={false}
         contentContainerStyle={[
@@ -1076,25 +1026,31 @@ export default function OCRResultScreen() {
               },
             ]}
           >
-            <BackButton onPress={handleBack} size={44} style={styles.backButton} />
-            <Text style={styles.screenTitle}>OCR 결과 확인</Text>
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 190 }}>
+              <MainGradient />
+            </View>
+            <BackButton
+              color={colors.textWhite}
+              onPress={handleBack}
+              size={44}
+              style={styles.backButton}
+            />
+            <Text style={[styles.screenTitle, { color: colors.textWhite }]}>OCR 결과 확인</Text>
             <View style={[styles.stepPosition, { top: stepIndicatorTop }]}>
               <ResultStepIndicator current={currentIndex + 1} total={results.length} />
             </View>
 
             <View style={[styles.completionSection, { top: completionTop }]}>
-              <View style={styles.completionIconCircle}>
-                <CheckIcon
-                  color={colors.primary}
-                  fill={colors.primary}
-                  height={32}
-                  width={32}
-                />
-              </View>
+              <Image
+                source={require('@/assets/figma/main/4aba6.png')}
+                style={{ width: 60, height: 60 }}
+                resizeMode="contain"
+              />
               <View style={styles.completionTexts}>
                 <Text
                   style={[
                     styles.completionTitle,
+                    { color: colors.textWhite },
                     currentResult.type === 'health_checkup' && styles.healthCompletionTitle,
                   ]}
                 >
@@ -1103,15 +1059,20 @@ export default function OCRResultScreen() {
                 <Text
                   style={[
                     styles.completionDescription,
+                    { color: colors.textWhiteSecondary },
                     currentResult.type === 'health_checkup' && styles.healthCompletionDescription,
                   ]}
                 >
-                  아래 내용을 확인하고,{`\n`}수정이 필요한 항목이 있다면 수정해주세요.
+                  내용을 확인하고, 필요한 항목은 수정해주세요.
                 </Text>
               </View>
             </View>
 
-            <AppCard bordered padding="none" style={[styles.uploadFileCard, { top: uploadFileTop }]}>
+            <AppCard
+              bordered
+              padding="none"
+              style={[styles.uploadFileCard, { top: uploadFileTop }]}
+            >
               <View style={styles.uploadFileContent}>
                 <Text style={styles.cardTitle}>업로드 파일</Text>
                 <View style={styles.uploadFileBottom}>
@@ -1181,10 +1142,7 @@ export default function OCRResultScreen() {
                   >
                     {metricRows}
                   </ScrollView>
-                  <CustomScrollIndicator
-                    {...innerScrollIndicator.indicatorProps}
-                    rightInset={-5}
-                  />
+                  <CustomScrollIndicator {...innerScrollIndicator.indicatorProps} rightInset={-5} />
                 </View>
                 <View style={styles.privacyBox}>
                   <ShieldCheckIcon
@@ -1228,11 +1186,14 @@ export default function OCRResultScreen() {
                 (isSaving ||
                   isReuploading ||
                   currentResult.ocrStatus !== 'completed' ||
-                  currentResult.status === 'failed') && styles.nextButtonDisabled,
+                  currentResult.status === 'failed') &&
+                  styles.nextButtonDisabled,
                 pressed && styles.pressed,
               ]}
             >
-              <Text style={styles.nextButtonText}>{isFromHealthDataManagement ? '완료' : '다음'}</Text>
+              <Text style={styles.nextButtonText}>
+                {isFromHealthDataManagement ? '완료' : '다음'}
+              </Text>
             </Pressable>
           </View>
         </View>

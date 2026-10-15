@@ -1,0 +1,9 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="260" height="205" viewBox="0 0 260 205" fill="none" xmlns="http://www.w3.org/2000/svg">
+<ellipse id="Badge Glow" cx="130" cy="102.5" rx="130" ry="102.5" fill="url(#paint0_radial_0_31)" fill-opacity="0.56"/>
+<defs>
+<radialGradient id="paint0_radial_0_31" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(130 102.5) scale(260 205)">
+<stop stop-color="#8A74FF"/>
+<stop offset="1" stop-color="#34345F" stop-opacity="0"/>
+</radialGradient>
+</defs>
+</svg>
