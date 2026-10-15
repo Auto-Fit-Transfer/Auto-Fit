@@ -16,6 +16,7 @@ import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 
 const REASONS: Record<CommunityMileageEntry['reason'], string> = {
+  challenge: '챌린지 보상',
   club_create: '클럽 개설',
   meal_log: '식단 기록',
   workout: '운동 완료',

@@ -87,7 +87,7 @@ export type CommunityMileage = {
 export type CommunityMileageEntry = {
   entry_id: string;
   amount: number;
-  reason: 'workout' | 'meal_log' | 'club_create';
+  reason: 'workout' | 'meal_log' | 'club_create' | 'challenge';
   created_at: string;
 };
 
@@ -125,6 +125,38 @@ export type CommunityClub = {
   is_member: boolean;
   is_owner: boolean;
   created_at: string;
+};
+
+export type CommunityChallenge = {
+  challenge_id: string;
+  title: string;
+  description: string | null;
+  metric: 'workout_days' | 'meal_log_days';
+  goal: number;
+  starts_on: string;
+  ends_on: string;
+  reward_mileage: number;
+  note: string | null;
+  phase: 'upcoming' | 'ongoing' | 'ended';
+  participant_count: number;
+  joined: boolean;
+  progress: number;
+  completed: boolean;
+  rewarded: boolean;
+  can_claim: boolean;
+};
+
+export type CommunityRankingMetric = 'workout' | 'mileage';
+export type CommunityRankingScope = 'all' | 'following' | 'club';
+
+export type CommunityRanking = {
+  metric: CommunityRankingMetric;
+  scope: CommunityRankingScope;
+  week_start: string;
+  week_end: string;
+  participating: boolean;
+  items: (CommunityAuthor & { rank: number; score: number; is_me: boolean })[];
+  me: { rank: number; score: number } | null;
 };
 
 export type CommunityNotification = {
@@ -371,6 +403,40 @@ export function createCommunityClubPost(clubId: string, content: string, uploadI
   return apiRequest<CommunityPost>(`${clubPath(clubId)}/posts`, {
     body: JSON.stringify({ content: content.trim() || null, upload_ids: uploadIds }),
     method: 'POST',
+  });
+}
+
+export function getCommunityChallenges() {
+  return apiRequest<CommunityChallenge[]>('/api/community/challenges');
+}
+
+export function setCommunityChallengeParticipation(challengeId: string, joined: boolean) {
+  return apiRequest<CommunityChallenge>(
+    `/api/community/challenges/${encodeURIComponent(challengeId)}/participation`,
+    { method: joined ? 'PUT' : 'DELETE' },
+  );
+}
+
+export function claimCommunityChallenge(challengeId: string) {
+  return apiRequest<CommunityChallenge>(
+    `/api/community/challenges/${encodeURIComponent(challengeId)}/claim`,
+    { method: 'POST' },
+  );
+}
+
+export function getCommunityRanking(
+  metric: CommunityRankingMetric,
+  scope: CommunityRankingScope,
+  clubId?: string,
+) {
+  const params = new URLSearchParams({ metric, scope });
+  if (clubId) params.set('club_id', clubId);
+  return apiRequest<CommunityRanking>(`/api/community/rankings?${params.toString()}`);
+}
+
+export function setCommunityRankingParticipation(participating: boolean) {
+  return apiRequest<{ participating: boolean }>('/api/community/rankings/participation', {
+    method: participating ? 'PUT' : 'DELETE',
   });
 }
 

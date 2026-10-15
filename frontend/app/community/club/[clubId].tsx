@@ -130,6 +130,17 @@ export default function CommunityClubScreen() {
         회원 {club.member_count.toLocaleString()}명 · 글 {club.post_count.toLocaleString()}개 ·
         클럽장 {club.owner.nickname}
       </Text>
+      <Pressable
+        accessibilityRole="link"
+        onPress={() =>
+          router.push({
+            params: { clubId: club.club_id, clubName: club.name, scope: 'club' },
+            pathname: '/community/ranking',
+          })
+        }
+      >
+        <Text style={styles.rankingLink}>이번 주 클럽 랭킹 보기 ›</Text>
+      </Pressable>
       {club.is_owner ? (
         <Text style={styles.ownerNote}>내가 만든 클럽이에요.</Text>
       ) : (
@@ -252,6 +263,12 @@ const styles = StyleSheet.create({
   name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
   description: { ...typography.body, color: colors.textBody },
   meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 13 },
+  rankingLink: {
+    color: colors.primaryDark,
+    fontFamily: fontFamilies.pretendardSemiBold,
+    fontSize: 14,
+    marginTop: 2,
+  },
   ownerNote: {
     color: colors.primaryDark,
     fontFamily: fontFamilies.pretendardMedium,

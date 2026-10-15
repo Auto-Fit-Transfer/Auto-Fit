@@ -34,18 +34,20 @@ import {
   applyCommunityEvent,
   subscribeCommunityEvents,
 } from '@/src/features/community/communityEvents';
+import { CommunityChallengesPane } from '@/src/features/community/CommunityChallengesPane';
 import { CommunityClubsPane } from '@/src/features/community/CommunityClubsPane';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, shadows, spacing, typography } from '@/src/theme';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
-type Tab = CommunityFeedScope | 'clubs';
+type Tab = CommunityFeedScope | 'clubs' | 'challenges';
 
 const TABS: { label: string; value: Tab }[] = [
   { label: '전체', value: 'all' },
   { label: '팔로잉', value: 'following' },
   { label: '클럽', value: 'clubs' },
+  { label: '챌린지', value: 'challenges' },
 ];
 
 export default function CommunityScreen() {
@@ -55,8 +57,9 @@ export default function CommunityScreen() {
   const actions = useCommunityActions();
   const { notify } = actions;
   const [scope, setScope] = useState<CommunityFeedScope>('all');
-  const [showClubs, setShowClubs] = useState(false);
-  const activeTab: Tab = showClubs ? 'clubs' : scope;
+  // Clubs and challenges replace the feed list; the feed keeps its scope underneath.
+  const [pane, setPane] = useState<'clubs' | 'challenges' | null>(null);
+  const activeTab: Tab = pane ?? scope;
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState<CommunityPost[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -138,8 +141,8 @@ export default function CommunityScreen() {
   );
 
   const switchTab = (next: Tab) => {
-    setShowClubs(next === 'clubs');
-    if (next === 'clubs' || next === scope) return;
+    setPane(next === 'clubs' || next === 'challenges' ? next : null);
+    if (next === 'clubs' || next === 'challenges' || next === scope) return;
     setItems([]);
     setCursor(null);
     setState('loading');
@@ -220,8 +223,10 @@ export default function CommunityScreen() {
         ))}
       </View>
 
-      {showClubs ? (
+      {pane === 'clubs' ? (
         <CommunityClubsPane bottomSpace={bottomSpace} />
+      ) : pane === 'challenges' ? (
+        <CommunityChallengesPane bottomSpace={bottomSpace} />
       ) : state === 'loading' ? (
         <ActivityIndicator color={colors.primary} style={styles.center} />
       ) : state === 'error' ? (
@@ -275,7 +280,7 @@ export default function CommunityScreen() {
         />
       )}
 
-      {showClubs ? null : (
+      {pane ? null : (
         <Pressable
           accessibilityLabel="글쓰기"
           accessibilityRole="button"
