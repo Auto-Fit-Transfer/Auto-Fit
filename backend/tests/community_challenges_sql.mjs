@@ -62,8 +62,11 @@ try {
 
   // Two provisional example challenges start today and run two weeks.
   const examples = await list(A);
-  assert.deepEqual(examples.map((c) => [c.metric, c.goal, c.reward_mileage, c.phase, c.joined]), [
-    ['workout_days', 5, 50, 'ongoing', false], ['meal_log_days', 7, 30, 'ongoing', false]]);
+  assert.deepEqual(
+    examples.map((c) => [c.metric, c.goal, c.reward_mileage, c.phase, c.joined])
+      .sort(([left], [right]) => left.localeCompare(right)),
+    [['meal_log_days', 7, 30, 'ongoing', false], ['workout_days', 5, 50, 'ongoing', false]],
+  );
   assert.ok(examples.every((c) => c.note.startsWith('임시값'))); checks++;
 
   // Progress counts distinct Korean days in the period; the reward is paid once.

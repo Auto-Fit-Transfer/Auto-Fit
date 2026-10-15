@@ -4,8 +4,8 @@ demo membership and clubs (stage 3), challenges and weekly rankings (stages 4-5)
 
 Every write is a SQL function (supabase/migrations/20261014062855_community_feed.sql,
 20261015014915_community_follows_notifications.sql,
-20261015130000_community_mileage_membership_clubs.sql and
-20261015170000_community_challenges_rankings.sql), so
+20261015062629_community_mileage_membership_clubs.sql and
+20261015064753_community_challenges_rankings.sql), so
 counters, ownership and block rules change atomically. Photos live in a private bucket and
 are re-encoded without EXIF metadata, so phone GPS locations never reach other users.
 """

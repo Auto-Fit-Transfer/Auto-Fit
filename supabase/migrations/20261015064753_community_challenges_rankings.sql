@@ -1,5 +1,5 @@
 -- Community stages 4-5: challenges and weekly rankings.
--- Requires 20261015130000_community_mileage_membership_clubs.sql. Applied files stay untouched;
+-- Requires 20261015062629_community_mileage_membership_clubs.sql. Applied files stay untouched;
 -- this file only adds tables and functions and widens one check constraint (mileage reasons).
 -- The team has not defined challenges or rankings yet:
 --   * challenges are rows in community_challenges (two provisional examples below), so new

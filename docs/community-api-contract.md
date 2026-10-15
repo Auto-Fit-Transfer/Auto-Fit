@@ -2,14 +2,14 @@
 
 상태: 1·2단계는 DB 적용, backend(`bd99b61`)·frontend(`4911fb5`) 병합, Render 배포 완료(2026-10-15).
 2단계 원격 버전은 `20261015014915_community_follows_notifications`이다(원래 파일 이름 `20261015090000_…`, 내용 동일).
-3단계 SQL(`20261015130000_community_mileage_membership_clubs.sql`)은 검토 대기, 공용 DB 미적용.
-4·5단계 SQL(`20261015170000_community_challenges_rankings.sql`)도 검토 대기, 공용 DB 미적용. 3단계 다음에 적용한다.
+3단계 SQL은 원격 `20261015062629_community_mileage_membership_clubs`로 적용했다(원래 파일 이름 `20261015130000_…`, 내용 동일).
+4·5단계 SQL은 원격 `20261015064753_community_challenges_rankings`로 적용했다(원래 파일 이름 `20261015170000_…`, 내용 동일).
 3단계 이후 서버·화면은 아직 병합·배포 전이다.
 
 기준일: 2026-10-15
 
-구현 상태: `community-backend` 브랜치에 API 25개(1단계 16 + 2단계 9), DB 함수, 시험(서버 43개·PostgreSQL 피드 43개·
-2단계 27개·탈퇴 흐름 44개)을 추가했다.
+구현 상태: `community-backend` 브랜치에 API 라우트 44개, DB 함수, 시험(서버 전체 680개·PostgreSQL 피드 43개·
+2단계 27개·3단계 25개·4·5단계 20개·탈퇴 흐름 51개)을 추가했다.
 2단계 SQL을 적용하기 전에는 2단계 API와 피드(`GET /feed`)가 502(`DATA_SOURCE_ERROR`)를 반환한다.
 피드가 2단계 함수(`community_timeline`)를 쓰기 때문이다.
 `20261014062855_community_feed.sql`은 Auto-Fit Supabase 프로젝트에 적용했다.
@@ -273,11 +273,11 @@ POST /api/community/reports
    새 표 2개(`community_follows`, `community_notifications`)와 함수를 추가하고, 기존 함수 2개
    (`autofit_integrity.check_community_pair_writable`, `public.community_delete_user_data`)를 같은 이름·인자로 교체한다.
    알림은 기존 RPC를 고치지 않고 트리거로 만든다. 이 파일 하나만 적용한다.
-4. 3단계 SQL `20261015130000_community_mileage_membership_clubs.sql`은 2단계 다음에 적용한다. 새 표 5개
+4. 3단계 SQL `20261015062629_community_mileage_membership_clubs.sql`은 2026-10-15 적용 완료다. 새 표 5개
    (`community_rules`, `community_mileage_ledger`, `community_memberships`, `community_clubs`, `community_club_members`)와
    `community_posts.club_id` 열을 추가하고, 함수 3개(`check_community_pair_writable`, `community_timeline`,
    `community_delete_user_data`)를 같은 이름·인자로 교체한다. 시험: `node backend/tests/community_clubs_sql.mjs …`.
-5. 4·5단계 SQL `20261015170000_community_challenges_rankings.sql`은 3단계 다음에 적용한다. 새 표 3개
+5. 4·5단계 SQL `20261015064753_community_challenges_rankings.sql`은 2026-10-15 적용 완료다. 새 표 3개
    (`community_challenges`, `community_challenge_participants`, `community_ranking_participants`)와 함수를 추가하고,
    마일리지 사유 제약(`community_mileage_ledger_reason_check`)에 `challenge`를 더한다. 기존 함수는 바꾸지 않는다.
    시험: `node backend/tests/community_challenges_sql.mjs …`.

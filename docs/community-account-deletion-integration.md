@@ -1,7 +1,7 @@
 # 커뮤니티 DB · 회원 탈퇴 연동
 
-상태: 기본 SQL·댓글 삭제 동시성 보완·2단계 SQL 적용 완료(원격 20261014062855, 20261015005534, 20261015014915).
-3단계(20261015130000)·4·5단계(20261015170000) SQL은 검토 대기.
+상태: 기본 SQL·댓글 삭제 동시성 보완·2~5단계 SQL 적용 완료
+(원격 20261014062855, 20261015005534, 20261015014915, 20261015062629, 20261015064753).
 
 기준일: 2026-10-14. 대상 파일: [`supabase/migrations/20261014062855_community_feed.sql`](../supabase/migrations/20261014062855_community_feed.sql)
 (기존 `20261014120000` 파일의 내용은 유지하고 실제 원격 버전에 맞춰 이름만 정렬했다).
@@ -98,7 +98,7 @@ node backend/tests/community_feed_sql.mjs <@electric-sql/pglite 경로> <참고 
   사용자(`auth.users`) 범위 안에서만 일어나므로 잠금 순서(사용자 → 글 → 하위 행)를 지킨다.
 - 시험: `community_social_sql.mjs` 27개, `community_account_deletion_sql.mjs` 44개(팔로우·알림 정리, 탈퇴 중 팔로우 거절 포함).
 
-### 3단계 SQL(20261015130000)의 탈퇴 연동
+### 3단계 SQL(20261015062629)의 탈퇴 연동
 
 - `user_id`가 있는 새 표 3개(`community_mileage_ledger`, `community_memberships`, `community_club_members`)는 기존
   `check_user_reference`·`zzz_check_account_writable`를 붙였고, 탈퇴 때 기존 일반 삭제(purge)가 지운다.
@@ -111,7 +111,7 @@ node backend/tests/community_feed_sql.mjs <@electric-sql/pglite 경로> <참고 
 - 시험: `community_clubs_sql.mjs` 25개(클럽장 넘김·빈 클럽 삭제 포함), `community_account_deletion_sql.mjs` 48개
   (탈퇴 중 클럽 개설·적립·시연 회원 거절, 함께 탈퇴 중인 회원을 건너뛰고 넘김).
 
-### 4·5단계 SQL(20261015170000)의 탈퇴 연동
+### 4·5단계 SQL(20261015064753)의 탈퇴 연동
 
 - 새 사용자 표 2개(`community_challenge_participants`, `community_ranking_participants`)는 `user_id`가 있어 기존
   `check_user_reference`·`zzz_check_account_writable`를 붙였고, 탈퇴 때 기존 일반 삭제(purge)가 지운다. 정리 함수 교체는 없다.
