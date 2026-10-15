@@ -1,4 +1,5 @@
 export * from './CommunityAvatar';
+export * from './CommunityClubCard';
 export * from './CommunityCommentRow';
 export * from './CommunityFollowButton';
 export * from './CommunityOptionsSheet';

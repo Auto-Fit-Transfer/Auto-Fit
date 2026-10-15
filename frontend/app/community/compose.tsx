@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
   Image,
@@ -19,6 +19,7 @@ import ImageIcon from '@/assets/icons/deco/Image.svg';
 import {
   COMMUNITY_MAX_IMAGES,
   COMMUNITY_MAX_POST_LENGTH,
+  createCommunityClubPost,
   createCommunityPost,
   getCommunityErrorCode,
   uploadCommunityPhoto,
@@ -33,6 +34,8 @@ const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 export default function CommunityComposeScreen() {
   const router = useRouter();
+  // Opened from a club: the post goes to that club only.
+  const { clubId, clubName } = useLocalSearchParams<{ clubId?: string; clubName?: string }>();
   const insets = useSafeAreaInsets();
   const actions = useCommunityActions();
   const [content, setContent] = useState('');
@@ -90,8 +93,13 @@ export default function CommunityComposeScreen() {
         uploadIds.push(uploadId);
       }
       setProgress('게시하는 중');
-      const post = await createCommunityPost(content, uploadIds);
-      emitCommunityEvent({ post, type: 'created' });
+      if (clubId) {
+        const post = await createCommunityClubPost(clubId, content, uploadIds);
+        emitCommunityEvent({ clubId, post, type: 'clubPostCreated' });
+      } else {
+        const post = await createCommunityPost(content, uploadIds);
+        emitCommunityEvent({ post, type: 'created' });
+      }
       router.back();
     } catch (error) {
       if (getCommunityErrorCode(error) === 'COMMUNITY_UPLOAD_INVALID') uploadedIds.current.clear();
@@ -113,8 +121,8 @@ export default function CommunityComposeScreen() {
         <Pressable accessibilityRole="button" hitSlop={8} onPress={close} style={styles.cancel}>
           <Text style={styles.cancelText}>취소</Text>
         </Pressable>
-        <Text accessibilityRole="header" style={styles.title}>
-          새 글
+        <Text accessibilityRole="header" numberOfLines={1} style={styles.title}>
+          {clubName ? `${clubName}에 글쓰기` : '새 글'}
         </Text>
         <Pressable
           accessibilityRole="button"
@@ -229,7 +237,12 @@ const styles = StyleSheet.create({
   },
   cancel: { minWidth: 56, paddingVertical: spacing.sm },
   cancelText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
-  title: { ...typography.sectionTitle, color: colors.textPrimary },
+  title: {
+    ...typography.sectionTitle,
+    color: colors.textPrimary,
+    flexShrink: 1,
+    marginHorizontal: spacing.sm,
+  },
   post: {
     alignItems: 'center',
     backgroundColor: colors.primary,

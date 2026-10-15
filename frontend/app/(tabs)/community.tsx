@@ -34,14 +34,18 @@ import {
   applyCommunityEvent,
   subscribeCommunityEvents,
 } from '@/src/features/community/communityEvents';
+import { CommunityClubsPane } from '@/src/features/community/CommunityClubsPane';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, shadows, spacing, typography } from '@/src/theme';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
-const SCOPES: { label: string; value: CommunityFeedScope }[] = [
+type Tab = CommunityFeedScope | 'clubs';
+
+const TABS: { label: string; value: Tab }[] = [
   { label: '전체', value: 'all' },
   { label: '팔로잉', value: 'following' },
+  { label: '클럽', value: 'clubs' },
 ];
 
 export default function CommunityScreen() {
@@ -51,6 +55,8 @@ export default function CommunityScreen() {
   const actions = useCommunityActions();
   const { notify } = actions;
   const [scope, setScope] = useState<CommunityFeedScope>('all');
+  const [showClubs, setShowClubs] = useState(false);
+  const activeTab: Tab = showClubs ? 'clubs' : scope;
   const [unread, setUnread] = useState(0);
   const [items, setItems] = useState<CommunityPost[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -131,8 +137,9 @@ export default function CommunityScreen() {
     }, []),
   );
 
-  const switchScope = (next: CommunityFeedScope) => {
-    if (next === scope) return;
+  const switchTab = (next: Tab) => {
+    setShowClubs(next === 'clubs');
+    if (next === 'clubs' || next === scope) return;
     setItems([]);
     setCursor(null);
     setState('loading');
@@ -198,22 +205,24 @@ export default function CommunityScreen() {
         </View>
       </View>
       <View accessibilityRole="tablist" style={styles.tabs}>
-        {SCOPES.map((item) => (
+        {TABS.map((item) => (
           <Pressable
             accessibilityRole="tab"
-            aria-selected={item.value === scope}
+            aria-selected={item.value === activeTab}
             key={item.value}
-            onPress={() => switchScope(item.value)}
-            style={[styles.tab, item.value === scope && styles.tabActive]}
+            onPress={() => switchTab(item.value)}
+            style={[styles.tab, item.value === activeTab && styles.tabActive]}
           >
-            <Text style={[styles.tabText, item.value === scope && styles.tabTextActive]}>
+            <Text style={[styles.tabText, item.value === activeTab && styles.tabTextActive]}>
               {item.label}
             </Text>
           </Pressable>
         ))}
       </View>
 
-      {state === 'loading' ? (
+      {showClubs ? (
+        <CommunityClubsPane bottomSpace={bottomSpace} />
+      ) : state === 'loading' ? (
         <ActivityIndicator color={colors.primary} style={styles.center} />
       ) : state === 'error' ? (
         <View style={[styles.center, styles.message]}>
@@ -266,19 +275,21 @@ export default function CommunityScreen() {
         />
       )}
 
-      <Pressable
-        accessibilityLabel="글쓰기"
-        accessibilityRole="button"
-        onPress={() => router.push('/community/compose')}
-        style={({ pressed }) => [
-          styles.compose,
-          shadows.floating,
-          { bottom: bottomSpace + spacing.lg },
-          pressed && styles.composePressed,
-        ]}
-      >
-        <PencilIcon color={colors.surface} height={26} width={26} />
-      </Pressable>
+      {showClubs ? null : (
+        <Pressable
+          accessibilityLabel="글쓰기"
+          accessibilityRole="button"
+          onPress={() => router.push('/community/compose')}
+          style={({ pressed }) => [
+            styles.compose,
+            shadows.floating,
+            { bottom: bottomSpace + spacing.lg },
+            pressed && styles.composePressed,
+          ]}
+        >
+          <PencilIcon color={colors.surface} height={26} width={26} />
+        </Pressable>
+      )}
       {actions.elements}
     </View>
   );

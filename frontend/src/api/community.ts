@@ -70,6 +70,63 @@ export type CommunityFollowUser = CommunityAuthor & {
   followed_by_me: boolean;
 };
 
+export type CommunityRule = {
+  rule_key: 'earn_workout' | 'earn_meal_log' | 'club_create_cost' | 'membership_demo_days';
+  amount: number;
+  daily_limit: number | null;
+  enabled: boolean;
+  note: string | null;
+};
+
+export type CommunityMileage = {
+  balance: number;
+  earned_today: number;
+  rules: CommunityRule[];
+};
+
+export type CommunityMileageEntry = {
+  entry_id: string;
+  amount: number;
+  reason: 'workout' | 'meal_log' | 'club_create';
+  created_at: string;
+};
+
+export type CommunityMembership = {
+  active: boolean;
+  plan: string | null;
+  source: 'demo' | null;
+  expires_at: string | null;
+  demo_available: boolean;
+  demo_days: number | null;
+};
+
+export type CommunityClubCategory =
+  'running' | 'strength' | 'diet' | 'yoga' | 'hiking' | 'cycling' | 'sports' | 'etc';
+
+export const COMMUNITY_CLUB_CATEGORIES: { label: string; value: CommunityClubCategory }[] = [
+  { label: '러닝', value: 'running' },
+  { label: '헬스·근력', value: 'strength' },
+  { label: '식단', value: 'diet' },
+  { label: '요가·필라테스', value: 'yoga' },
+  { label: '등산', value: 'hiking' },
+  { label: '자전거', value: 'cycling' },
+  { label: '구기·스포츠', value: 'sports' },
+  { label: '기타', value: 'etc' },
+];
+
+export type CommunityClub = {
+  club_id: string;
+  name: string;
+  description: string | null;
+  category: CommunityClubCategory;
+  owner: CommunityAuthor;
+  member_count: number;
+  post_count: number;
+  is_member: boolean;
+  is_owner: boolean;
+  created_at: string;
+};
+
 export type CommunityNotification = {
   notification_id: string;
   type: 'follow' | 'like' | 'comment' | 'repost';
@@ -247,6 +304,72 @@ export function getCommunityUnreadCount() {
 
 export function readCommunityNotifications() {
   return apiRequest<{ unread_count: number }>('/api/community/notifications/read', {
+    method: 'POST',
+  });
+}
+
+export function getCommunityMileage() {
+  return apiRequest<CommunityMileage>('/api/community/mileage');
+}
+
+export function getCommunityMileageHistory(cursor?: string | null) {
+  return apiRequest<CommunityPage<CommunityMileageEntry>>(
+    `/api/community/mileage/history${pageQuery(cursor, 30)}`,
+  );
+}
+
+export function getCommunityMembership() {
+  return apiRequest<CommunityMembership>('/api/community/membership');
+}
+
+export function startCommunityDemoMembership() {
+  return apiRequest<CommunityMembership>('/api/community/membership/demo', { method: 'POST' });
+}
+
+const clubPath = (clubId: string) => `/api/community/clubs/${encodeURIComponent(clubId)}`;
+
+export function getCommunityClubs(scope: 'all' | 'mine', cursor?: string | null) {
+  return apiRequest<CommunityPage<CommunityClub>>(
+    `/api/community/clubs${pageQuery(cursor, undefined, { scope })}`,
+  );
+}
+
+export function createCommunityClub(
+  name: string,
+  description: string,
+  category: CommunityClubCategory,
+) {
+  return apiRequest<CommunityClub & { paid_with: 'membership' | 'mileage'; mileage_spent: number }>(
+    '/api/community/clubs',
+    {
+      body: JSON.stringify({
+        category,
+        description: description.trim() || null,
+        name: name.trim(),
+      }),
+      method: 'POST',
+    },
+  );
+}
+
+export function getCommunityClub(clubId: string) {
+  return apiRequest<CommunityClub>(clubPath(clubId));
+}
+
+export function setCommunityClubMembership(clubId: string, joined: boolean) {
+  return apiRequest<{ club_id: string; joined: boolean; member_count: number }>(
+    `${clubPath(clubId)}/membership`,
+    { method: joined ? 'PUT' : 'DELETE' },
+  );
+}
+
+export function getCommunityClubPosts(clubId: string, cursor?: string | null) {
+  return apiRequest<CommunityPage<CommunityPost>>(`${clubPath(clubId)}/posts${pageQuery(cursor)}`);
+}
+
+export function createCommunityClubPost(clubId: string, content: string, uploadIds: string[]) {
+  return apiRequest<CommunityPost>(`${clubPath(clubId)}/posts`, {
+    body: JSON.stringify({ content: content.trim() || null, upload_ids: uploadIds }),
     method: 'POST',
   });
 }

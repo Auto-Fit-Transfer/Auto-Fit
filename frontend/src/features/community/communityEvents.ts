@@ -7,7 +7,8 @@ export type CommunityEvent =
   | { type: 'updated'; postId: string; patch: Partial<CommunityPost> }
   | { type: 'removed'; postId: string }
   | { type: 'blocked'; userId: string }
-  | { type: 'followed'; userId: string; following: boolean; followerCount?: number };
+  | { type: 'followed'; userId: string; following: boolean; followerCount?: number }
+  | { type: 'clubPostCreated'; clubId: string; post: CommunityPost };
 
 type Listener = (event: CommunityEvent) => void;
 
@@ -40,6 +41,7 @@ export function applyCommunityEvent(items: CommunityPost[], event: CommunityEven
           item.author.user_id !== event.userId && item.reposted_by?.user_id !== event.userId,
       );
     case 'followed':
+    case 'clubPostCreated':
       return items;
   }
 }

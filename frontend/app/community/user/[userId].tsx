@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MoreIcon from '@/assets/icons/system/DotsThreeVertical.svg';
 import {
   getCommunityErrorMessage,
+  getCommunityMembership,
+  getCommunityMileage,
   getCommunityProfile,
   getCommunityUserPosts,
   type CommunityAuthor,
@@ -49,6 +51,19 @@ export default function CommunityProfileScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingMoreRef = useRef(false);
   const focusedOnce = useRef(false);
+  // Own profile only: mileage balance and membership, for the two shortcut rows.
+  const [mine, setMine] = useState<{ balance?: number; member?: boolean }>({});
+
+  const loadMine = useCallback(async () => {
+    const [mileage, membership] = await Promise.allSettled([
+      getCommunityMileage(),
+      getCommunityMembership(),
+    ]);
+    setMine({
+      balance: mileage.status === 'fulfilled' ? mileage.value.balance : undefined,
+      member: membership.status === 'fulfilled' ? membership.value.active : undefined,
+    });
+  }, []);
 
   const load = useCallback(
     async (inlineError: boolean) => {
@@ -56,6 +71,7 @@ export default function CommunityProfileScreen() {
         const nextProfile = await getCommunityProfile(userId);
         const page = await getCommunityUserPosts(nextProfile.user_id);
         setProfile(nextProfile);
+        if (nextProfile.is_me) void loadMine();
         setPosts(page.items);
         setCursor(page.next_cursor);
         setErrorMessage(undefined);
@@ -66,7 +82,7 @@ export default function CommunityProfileScreen() {
         setRefreshing(false);
       }
     },
-    [notify, userId],
+    [loadMine, notify, userId],
   );
 
   useEffect(() => {
@@ -84,8 +100,14 @@ export default function CommunityProfileScreen() {
         focusedOnce.current = true;
         return;
       }
-      getCommunityProfile(userId).then(setProfile, () => undefined);
-    }, [userId]),
+      getCommunityProfile(userId).then(
+        (next) => {
+          setProfile(next);
+          if (next.is_me) void loadMine();
+        },
+        () => undefined,
+      );
+    }, [loadMine, userId]),
   );
 
   const profileId = profile?.user_id;
@@ -168,7 +190,20 @@ export default function CommunityProfileScreen() {
           <Text style={styles.badge}>나를 팔로우해요</Text>
         ) : null}
       </View>
-      {profile.is_me ? null : (
+      {profile.is_me ? (
+        <View style={styles.myRows}>
+          <MyRow
+            label="마일리지"
+            onPress={() => router.push('/community/mileage')}
+            value={mine.balance === undefined ? '' : `${mine.balance.toLocaleString()}점`}
+          />
+          <MyRow
+            label="유료 회원"
+            onPress={() => router.push('/community/membership')}
+            value={mine.member === undefined ? '' : mine.member ? '이용 중' : '미가입'}
+          />
+        </View>
+      ) : (
         <CommunityFollowButton
           following={profile.followed_by_me}
           followsMe={profile.follows_me}
@@ -253,6 +288,20 @@ export default function CommunityProfileScreen() {
   );
 }
 
+function MyRow({ label, onPress, value }: { label: string; onPress: () => void; value: string }) {
+  return (
+    <Pressable
+      accessibilityLabel={`${label} ${value}`}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.myRow, pressed && styles.myRowPressed]}
+    >
+      <Text style={styles.myRowLabel}>{label}</Text>
+      <Text style={styles.myRowValue}>{value} ›</Text>
+    </Pressable>
+  );
+}
+
 function Stat({ label, onPress, value }: { label: string; onPress?: () => void; value: number }) {
   return (
     <Pressable
@@ -314,4 +363,23 @@ const styles = StyleSheet.create({
   messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
   empty: { alignItems: 'center', padding: spacing.xxl },
   footer: { paddingVertical: spacing.lg },
+  myRows: { backgroundColor: colors.background, borderRadius: 12, overflow: 'hidden' },
+  myRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 48,
+    paddingHorizontal: spacing.lg,
+  },
+  myRowPressed: { backgroundColor: colors.border },
+  myRowLabel: {
+    color: colors.textPrimary,
+    fontFamily: fontFamilies.pretendardSemiBold,
+    fontSize: 15,
+  },
+  myRowValue: {
+    color: colors.textSecondary,
+    fontFamily: fontFamilies.pretendardMedium,
+    fontSize: 14,
+  },
 });
