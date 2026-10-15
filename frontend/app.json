@@ -1,18 +1,23 @@
 {
   "expo": {
-    "name": "Auto-Fit",
-    "slug": "auto-fit",
+    "name": "Auto-Fit Test",
+    "slug": "auto-fit-test",
+    "owner": "gogosi",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "autofit",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gogosi.autofit.test",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
-      "package": "com.gahya.autofit"
+      "package": "com.gogosi.autofit.test"
     },
     "web": {
       "bundler": "metro",
@@ -29,7 +34,8 @@
         }
       ],
       "expo-document-picker",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
@@ -37,7 +43,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "c61cabf1-6dc4-4364-8195-8c7f68675611"
+        "projectId": "cf91d1cc-3be2-495f-8a2a-60d65da21056"
       }
     }
   }

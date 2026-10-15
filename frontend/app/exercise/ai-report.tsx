@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   BackHandler,
   Dimensions,
@@ -23,7 +23,8 @@ import CheckCircleIcon from '@/assets/icons/system/CheckCircle.svg';
 import CheckCircleOutIcon from '@/assets/icons/system/CheckCircleOut.svg';
 import { BackButton } from '@/src/components/common/BackButton';
 import { ExerciseScreenFrame } from '@/src/components/exercise/ExerciseScreenFrame';
-import { createMockExerciseAiReport } from '@/src/features/exercise/exerciseResultMocks';
+import { getExerciseApiErrorMessage, getExerciseSessionAnalysis } from '@/src/api/exercise';
+import { mapExerciseAnalysis } from '@/src/features/exercise/exerciseAnalysis';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { colors, fontFamilies } from '@/src/theme';
 
@@ -42,9 +43,38 @@ export default function ExerciseAiReportScreen() {
   }>();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const { latestSession, resultRecordCompleted } = useExerciseRoutine();
-  const report = createMockExerciseAiReport(latestSession);
-  const responsiveHeight =
-    Platform.OS === 'web' ? windowHeight : Dimensions.get('screen').height;
+  const [result, setResult] = useState<{
+    key: string;
+    report: ReturnType<typeof mapExerciseAnalysis> | null;
+    error: string | null;
+  } | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const sessionId = latestSession?.sessionId;
+  const requestKey = `${sessionId}:${attempt}`;
+  const report = result?.key === requestKey ? result.report : null;
+  const error = !sessionId
+    ? '분석할 운동 기록이 없습니다. 운동을 완료한 뒤 다시 확인해 주세요.'
+    : result?.key === requestKey
+      ? result.error
+      : null;
+
+  useEffect(() => {
+    let active = true;
+    if (!sessionId) return;
+    void getExerciseSessionAnalysis(sessionId)
+      .then(({ analysis }) => {
+        if (active)
+          setResult({ key: requestKey, report: mapExerciseAnalysis(analysis), error: null });
+      })
+      .catch((reason: unknown) => {
+        if (active)
+          setResult({ key: requestKey, report: null, error: getExerciseApiErrorMessage(reason) });
+      });
+    return () => {
+      active = false;
+    };
+  }, [sessionId, requestKey]);
+  const responsiveHeight = Platform.OS === 'web' ? windowHeight : Dimensions.get('screen').height;
   const homeHeaderHeightProgress = Math.max(
     0,
     Math.min(1, (responsiveHeight - compactHeight) / (referenceHeight - compactHeight)),
@@ -131,11 +161,31 @@ export default function ExerciseAiReportScreen() {
 
   if (!resultRecordCompleted) return null;
 
+  if (!report) {
+    return (
+      <ExerciseScreenFrame contentHeight={layout.contentHeight}>
+        <BackButton onPress={handleBack} style={[styles.back, { top: layout.backTop }]} />
+        <View style={{ padding: 24, marginTop: layout.heroTop }}>
+          <Text accessibilityRole="alert">{error ?? '운동 기록을 분석하는 중이에요.'}</Text>
+          {error ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setAttempt((value) => value + 1)}
+              style={{ paddingVertical: 20 }}
+            >
+              <Text>다시 시도</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </ExerciseScreenFrame>
+    );
+  }
+
   return (
     <ExerciseScreenFrame contentHeight={layout.contentHeight}>
       <BackButton onPress={handleBack} style={[styles.back, { top: layout.backTop }]} />
       <Text pointerEvents="none" style={[styles.headerTitle, { top: layout.headerTop }]}>
-        AI 분석
+        운동 결과 분석
       </Text>
 
       <View style={[styles.hero, { height: layout.heroHeight, top: layout.heroTop }]}>
@@ -148,7 +198,7 @@ export default function ExerciseAiReportScreen() {
           />
           <Text style={styles.heroTitle}>오늘 운동 결과 분석</Text>
           <Text style={styles.heroDescription}>
-            AI가 당신의 운동을 분석하고{`\n`}더 나은 루틴을 제안해드려요.
+            저장된 운동과 피드백을 바탕으로{`\n`}다음 운동 방향을 확인해요.
           </Text>
         </View>
         <Image
@@ -222,10 +272,7 @@ export default function ExerciseAiReportScreen() {
           <Text style={styles.cardHeadingText}>다음 운동에 반영</Text>
         </View>
         <View
-          style={[
-            styles.nextList,
-            { gap: verticalValue(6, 2), marginTop: verticalValue(8, 4) },
-          ]}
+          style={[styles.nextList, { gap: verticalValue(6, 2), marginTop: verticalValue(8, 4) }]}
         >
           {report.nextWorkout.map(({ description, title }, index) => {
             const hasDetail = index === report.nextWorkout.length - 1 && Boolean(description);
@@ -247,7 +294,11 @@ export default function ExerciseAiReportScreen() {
         </View>
       </View>
 
-      <Pressable accessibilityRole="button" onPress={returnHome} style={[styles.saveCta, { top: layout.ctaTop }]}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={returnHome}
+        style={[styles.saveCta, { top: layout.ctaTop }]}
+      >
         <Text style={styles.saveCtaLabel}>저장</Text>
       </Pressable>
     </ExerciseScreenFrame>

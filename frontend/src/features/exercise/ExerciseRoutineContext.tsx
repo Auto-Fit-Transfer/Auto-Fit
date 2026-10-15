@@ -37,9 +37,6 @@ import {
 type ApiRecord = Record<string, unknown>;
 type ExerciseLoadState = 'empty' | 'error' | 'loading' | 'ready';
 
-// TODO: Remove this presentation-only test override when API-provided set counts should be used.
-const TEST_EXERCISE_SET_OVERRIDE = 2;
-
 export type ExerciseSessionSummary = {
   calories: number | null;
   completed: boolean;
@@ -179,8 +176,7 @@ function mapExerciseItems(result: ApiRecord): ExerciseItem[] {
         repetitions: readNumber(item, ['repetitions']),
         restSeconds: readNumber(item, ['rest_seconds']),
         sequenceOrder: readNumber(item, ['sequence_order']),
-        // Temporary UI/session test value. The API response itself remains unchanged.
-        sets: TEST_EXERCISE_SET_OVERRIDE,
+        sets: readNumber(item, ['sets']),
         targetDurationSeconds: readNumber(item, ['target_duration_seconds']),
         targetWeightKg: readNumber(item, ['target_weight_kg']),
         thumbnailUrl: readString(item, ['thumbnail_url']),

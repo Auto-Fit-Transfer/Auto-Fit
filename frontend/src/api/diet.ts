@@ -113,7 +113,9 @@ export function getDietRecommendationsByDate(date: string) {
 
 export function getDietNutritionSummary(date: string) {
   const params = new URLSearchParams({ date });
-  return apiRequest<ApiObject>(`/api/diet/nutrition-summary?${params.toString()}`);
+  return apiRequest<{ summary: import('@/src/features/nutritionSummary').NutritionSummary }>(
+    `/api/diet/nutrition-summary?${params.toString()}`,
+  );
 }
 
 export function generateDietRecommendations() {

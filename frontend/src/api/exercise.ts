@@ -1,4 +1,11 @@
 import { ApiError, apiRequest, getApiErrorMessage } from '@/src/api/client';
+import type { ExerciseAnalysis } from '@/src/features/exercise/exerciseAnalysis';
+
+export function getExerciseSessionAnalysis(sessionId: string) {
+  return apiRequest<{ analysis: ExerciseAnalysis }>(
+    `/api/exercise/sessions/${encodeURIComponent(sessionId)}/analysis`,
+  );
+}
 
 export type ExerciseApiLocation = 'gym' | 'home' | 'outdoor' | 'other';
 export type ExerciseApiEquipment = 'machine' | 'band' | 'dumbbell' | 'mat' | 'other';
@@ -46,7 +53,10 @@ export function getExerciseSessionFeedback(sessionId: string) {
   );
 }
 
-export function saveExerciseSessionFeedback(sessionId: string, input: ExerciseSessionFeedbackInput) {
+export function saveExerciseSessionFeedback(
+  sessionId: string,
+  input: ExerciseSessionFeedbackInput,
+) {
   return apiRequest<ExerciseApiResponse>(
     `/api/exercise/sessions/${encodeURIComponent(sessionId)}/feedback`,
     {

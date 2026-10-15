@@ -61,6 +61,7 @@ import {
   getBottomNavigationVisualHeight,
 } from '@/src/components/navigation';
 import { colors, fontFamilies } from '@/src/theme';
+import { nutritionNumber, type NutritionSummary } from '@/src/features/nutritionSummary';
 
 const hero = require('../../assets/images/illustrations/diet/Diet.png');
 const breakfastImage = require('../../assets/images/illustrations/temp/Image_MealPicture_1.png');
@@ -101,8 +102,8 @@ type Meal = {
 type NutritionGoal = {
   targetKey: NutritionTargetKey;
   label: string;
-  current: number;
-  target: number;
+  current: number | null;
+  target: number | null;
   unit: string;
   Icon: typeof Bmr;
   accentColor: string;
@@ -394,14 +395,13 @@ const mealRecommendations: Record<MealType, Meal[]> = {
   ],
 };
 
-// The nutrition-summary response is currently free-form in OpenAPI. Keep the existing fixture
-// until its confirmed fields can be mapped without inferring nutrition targets or totals.
+// Values remain empty until the selected date's backend summary is loaded.
 const nutritionGoals: NutritionGoal[] = [
   {
     targetKey: 'calories',
     label: '열량',
-    current: 1650,
-    target: 1700,
+    current: null,
+    target: null,
     unit: 'kcal',
     Icon: Bmr,
     accentColor: '#E57373',
@@ -410,8 +410,8 @@ const nutritionGoals: NutritionGoal[] = [
   {
     targetKey: 'carbohydrates',
     label: '탄수화물',
-    current: 210,
-    target: 230,
+    current: null,
+    target: null,
     unit: 'g',
     Icon: Plant,
     accentColor: '#2FAF96',
@@ -420,8 +420,8 @@ const nutritionGoals: NutritionGoal[] = [
   {
     targetKey: 'protein',
     label: '단백질',
-    current: 30,
-    target: 90,
+    current: null,
+    target: null,
     unit: 'g',
     Icon: FishSimple,
     accentColor: '#2FAF96',
@@ -430,8 +430,8 @@ const nutritionGoals: NutritionGoal[] = [
   {
     targetKey: 'fat',
     label: '지방',
-    current: 45,
-    target: 50,
+    current: null,
+    target: null,
     unit: 'g',
     Icon: Fat,
     accentColor: '#2FAF96',
@@ -539,9 +539,10 @@ function foodAmount(food: unknown) {
   const quantity = readNumber(food, ['quantity', 'amount', 'serving_size', 'serving']);
   const unit = readString(food, ['unit', 'quantity_unit', 'serving_unit']);
   if (quantity === undefined && !unit) return '';
-  const displayQuantity = unit === 'g' && quantity !== undefined && quantity >= 10
-    ? Math.round(quantity / 10) * 10
-    : quantity;
+  const displayQuantity =
+    unit === 'g' && quantity !== undefined && quantity >= 10
+      ? Math.round(quantity / 10) * 10
+      : quantity;
   return `${displayQuantity ?? ''}${unit ?? ''}`.trim();
 }
 
@@ -633,7 +634,12 @@ function ingredientIcon(name: string): FridgeIngredient['icon'] {
 function mapInventory(value: unknown): FridgeIngredient[] {
   return readArray(value).flatMap((entry) => {
     if (!isApiRecord(entry)) return [];
-    const id = readString(entry, ['user_food_inventory_id', 'food_inventory_id', 'inventory_id', 'id']);
+    const id = readString(entry, [
+      'user_food_inventory_id',
+      'food_inventory_id',
+      'inventory_id',
+      'id',
+    ]);
     const name = readString(entry, ['custom_name', 'name', 'food_name', 'ingredient_name']);
     if (!id || !name) return [];
     return [
@@ -726,7 +732,7 @@ const CalorieGoal = memo(function CalorieGoal({
   accentColor,
   softColor,
 }: NutritionGoal) {
-  const ratio = target > 0 ? current / target : 0;
+  const ratio = target !== null && current !== null && target > 0 ? current / target : 0;
   const barProgress = Math.max(0, Math.min(ratio, 1));
 
   return (
@@ -736,9 +742,9 @@ const CalorieGoal = memo(function CalorieGoal({
           <Icon color={accentColor} height={20} width={20} />
         </View>
         <Text style={styles.calorieValue}>
-          {current.toLocaleString()}{' '}
+          {current?.toLocaleString() ?? '—'}{' '}
           <Text style={styles.calorieTarget}>
-            / {target.toLocaleString()} {unit}
+            / {target?.toLocaleString() ?? '—'} {unit}
           </Text>
         </Text>
       </View>
@@ -771,9 +777,9 @@ const MacroGoal = memo(function MacroGoal({
       <View style={styles.macroCopy}>
         <Text style={styles.macroLabel}>{label}</Text>
         <Text style={styles.macroValue}>
-          {current.toLocaleString()}{' '}
+          {current?.toLocaleString() ?? '—'}{' '}
           <Text style={styles.macroTarget}>
-            / {target.toLocaleString()} {unit}
+            / {target?.toLocaleString() ?? '—'} {unit}
           </Text>
         </Text>
       </View>
@@ -1231,6 +1237,8 @@ export default function DietScreen() {
   const [recommendationNutritionTargets, setRecommendationNutritionTargets] =
     useState<RecommendationNutritionTargets>({});
   const [recommendationError, setRecommendationError] = useState<string | null>(null);
+  const [nutritionSummary, setNutritionSummary] = useState<NutritionSummary | null>(null);
+  const [nutritionError, setNutritionError] = useState<string | null>(null);
   const [recommendationLoading, setRecommendationLoading] = useState(true);
   const [inventoryLoading, setInventoryLoading] = useState(true);
   const [feedbackMealIds, setFeedbackMealIds] = useState<Set<MealType>>(() => new Set());
@@ -1280,9 +1288,16 @@ export default function DietScreen() {
     () =>
       nutritionGoals.map((goal) => ({
         ...goal,
-        target: recommendationNutritionTargets[goal.targetKey] ?? goal.target,
+        current:
+          nutritionSummary?.date === selectedDateKey
+            ? nutritionNumber(nutritionSummary[goal.targetKey]?.consumed)
+            : null,
+        target:
+          nutritionSummary?.date === selectedDateKey
+            ? nutritionNumber(nutritionSummary[goal.targetKey]?.target)
+            : (recommendationNutritionTargets[goal.targetKey] ?? null),
       })),
-    [recommendationNutritionTargets],
+    [recommendationNutritionTargets, nutritionSummary, selectedDateKey],
   );
   const recommendationStatuses = useMemo(
     () =>
@@ -1379,9 +1394,7 @@ export default function DietScreen() {
         sourceMeals.find(
           (meal) =>
             meal.id ===
-            readMealType(
-              readString(entry, ['meal_type', 'meal_category', 'type', 'time_of_day']),
-            ),
+            readMealType(readString(entry, ['meal_type', 'meal_category', 'type', 'time_of_day'])),
         );
       const nextStatus = feedbackTypeToStatus(readString(entry, ['feedback_type', 'type']));
       if (!targetMeal || !nextStatus) return;
@@ -1397,104 +1410,114 @@ export default function DietScreen() {
     setMealRecordsByDate((current) => ({ ...current, [dateKey]: nextRecords }));
   }, []);
 
-  const loadMealLogs = useCallback(async (dateKey: string) => {
-    const requestId = ++mealLogsRequestRef.current;
-    try {
-      const response = await getDietMealLogs(dateKey, dateKey);
-      if (!isMountedRef.current || requestId !== mealLogsRequestRef.current) return;
+  const loadMealLogs = useCallback(
+    async (dateKey: string) => {
+      const requestId = ++mealLogsRequestRef.current;
+      try {
+        const response = await getDietMealLogs(dateKey, dateKey);
+        if (!isMountedRef.current || requestId !== mealLogsRequestRef.current) return;
 
-      const entries = readArray(response.logs);
-      mealLogEntriesByDateRef.current.set(dateKey, entries);
+        const entries = readArray(response.logs);
+        mealLogEntriesByDateRef.current.set(dateKey, entries);
 
-      const recommendationSnapshot = recommendationMealsByDateRef.current;
-      if (recommendationSnapshot.dateKey === dateKey && recommendationSnapshot.meals.length > 0) {
-        applyMealLogs(dateKey, recommendationSnapshot.meals, entries);
+        const recommendationSnapshot = recommendationMealsByDateRef.current;
+        if (recommendationSnapshot.dateKey === dateKey && recommendationSnapshot.meals.length > 0) {
+          applyMealLogs(dateKey, recommendationSnapshot.meals, entries);
+        }
+      } catch (error) {
+        if (!isMountedRef.current || requestId !== mealLogsRequestRef.current) return;
+        Alert.alert('식사 기록을 불러오지 못했어요', getDietApiErrorMessage(error));
       }
-    } catch (error) {
-      if (!isMountedRef.current || requestId !== mealLogsRequestRef.current) return;
-      Alert.alert('식사 기록을 불러오지 못했어요', getDietApiErrorMessage(error));
-    }
-  }, [applyMealLogs]);
+    },
+    [applyMealLogs],
+  );
 
-  const loadRecommendations = useCallback(async (dateKey: string) => {
-    const requestId = ++recommendationRequestRef.current;
-    recommendationMealsByDateRef.current = { dateKey, meals: [] };
-    mealLogEntriesByDateRef.current.delete(dateKey);
-    if (isMountedRef.current) {
-      setRecommendationError(null);
-      setRecommendationLoading(true);
-      setRecommendedMeals([]);
-      setRecommendationNutritionTargets({});
-    }
-
-    try {
-      const response = await getDietRecommendationsByDate(dateKey);
-      if (__DEV__) {
-        const result = isApiRecord(response.result) ? response.result : undefined;
-        const recommendation = isApiRecord(result?.recommendation)
-          ? result.recommendation
-          : undefined;
-        const apiMeals = readArray(result?.meals ?? recommendation?.meals);
-        console.log(
-          '[Diet Recommendations GET] response',
-          apiMeals.map((meal) => {
-            const record = isApiRecord(meal) ? meal : undefined;
-            return {
-              diet_meal_id: record?.diet_meal_id,
-              foods: record?.foods,
-              meal_type: record?.meal_type,
-              recommendation_note: record?.recommendation_note,
-              source_type: record?.source_type,
-            };
-          }),
-          { dateKey },
-        );
-      }
-      const mappedMeals = mapRecommendationMeals(response.result);
-      const mappedNutritionTargets = mapRecommendationNutritionTargets(response.result);
-
-      if (__DEV__) {
-        console.log(
-          '[Diet Recommendations GET] mapped meals',
-          mappedMeals.map((meal) => ({
-            dietMealId: meal.dietMealId,
-            foods: meal.foods,
-            id: meal.id,
-            note: meal.note,
-            sourceType: meal.sourceType,
-          })),
-          { dateKey },
-        );
+  const loadRecommendations = useCallback(
+    async (dateKey: string) => {
+      const requestId = ++recommendationRequestRef.current;
+      recommendationMealsByDateRef.current = { dateKey, meals: [] };
+      mealLogEntriesByDateRef.current.delete(dateKey);
+      if (isMountedRef.current) {
+        setRecommendationError(null);
+        setRecommendationLoading(true);
+        setRecommendedMeals([]);
+        setRecommendationNutritionTargets({});
       }
 
-      if (!isMountedRef.current || requestId !== recommendationRequestRef.current) return false;
+      try {
+        const response = await getDietRecommendationsByDate(dateKey);
+        if (__DEV__) {
+          const result = isApiRecord(response.result) ? response.result : undefined;
+          const recommendation = isApiRecord(result?.recommendation)
+            ? result.recommendation
+            : undefined;
+          const apiMeals = readArray(result?.meals ?? recommendation?.meals);
+          console.log(
+            '[Diet Recommendations GET] response',
+            apiMeals.map((meal) => {
+              const record = isApiRecord(meal) ? meal : undefined;
+              return {
+                diet_meal_id: record?.diet_meal_id,
+                foods: record?.foods,
+                meal_type: record?.meal_type,
+                recommendation_note: record?.recommendation_note,
+                source_type: record?.source_type,
+              };
+            }),
+            { dateKey },
+          );
+        }
+        const mappedMeals = mapRecommendationMeals(response.result);
+        const mappedNutritionTargets = mapRecommendationNutritionTargets(response.result);
 
-      setRecommendedMeals(mappedMeals);
-      setRecommendationNutritionTargets(mappedNutritionTargets);
-      recommendationMealsByDateRef.current = { dateKey, meals: mappedMeals };
-      const mealLogEntries = mealLogEntriesByDateRef.current.get(dateKey);
-      if (mealLogEntries) applyMealLogs(dateKey, mappedMeals, mealLogEntries);
-      return true;
-    } catch (error) {
-      if (!isMountedRef.current || requestId !== recommendationRequestRef.current) return false;
-      const message = getDietApiErrorMessage(error);
-      setRecommendationError(message);
-      Alert.alert('식단 추천을 불러오지 못했어요', message);
-      return false;
-    } finally {
-      if (isMountedRef.current && requestId === recommendationRequestRef.current) {
-        setRecommendationLoading(false);
+        if (__DEV__) {
+          console.log(
+            '[Diet Recommendations GET] mapped meals',
+            mappedMeals.map((meal) => ({
+              dietMealId: meal.dietMealId,
+              foods: meal.foods,
+              id: meal.id,
+              note: meal.note,
+              sourceType: meal.sourceType,
+            })),
+            { dateKey },
+          );
+        }
+
+        if (!isMountedRef.current || requestId !== recommendationRequestRef.current) return false;
+
+        setRecommendedMeals(mappedMeals);
+        setRecommendationNutritionTargets(mappedNutritionTargets);
+        recommendationMealsByDateRef.current = { dateKey, meals: mappedMeals };
+        const mealLogEntries = mealLogEntriesByDateRef.current.get(dateKey);
+        if (mealLogEntries) applyMealLogs(dateKey, mappedMeals, mealLogEntries);
+        return true;
+      } catch (error) {
+        if (!isMountedRef.current || requestId !== recommendationRequestRef.current) return false;
+        const message = getDietApiErrorMessage(error);
+        setRecommendationError(message);
+        Alert.alert('식단 추천을 불러오지 못했어요', message);
+        return false;
+      } finally {
+        if (isMountedRef.current && requestId === recommendationRequestRef.current) {
+          setRecommendationLoading(false);
+        }
       }
-    }
-  }, [applyMealLogs]);
+    },
+    [applyMealLogs],
+  );
 
   const loadNutritionSummary = useCallback(async (dateKey: string) => {
     const requestId = ++nutritionSummaryRequestRef.current;
+    setNutritionError(null);
     try {
-      await getDietNutritionSummary(dateKey);
+      const response = await getDietNutritionSummary(dateKey);
+      if (!isMountedRef.current || requestId !== nutritionSummaryRequestRef.current) return;
+      setNutritionSummary(response.summary);
     } catch (error) {
       if (!isMountedRef.current || requestId !== nutritionSummaryRequestRef.current) return;
-      if (__DEV__) console.error('[Diet] nutrition summary request failed:', error);
+      setNutritionSummary(null);
+      setNutritionError(getDietApiErrorMessage(error));
     }
   }, []);
 
@@ -1538,8 +1561,11 @@ export default function DietScreen() {
     });
   }, []);
 
-  const openMealRecord = useCallback((mealId: MealType) => {
-    setRecordingMealId(mealId);
+  const openMealRecord = useCallback((_mealId: MealType) => {
+    Alert.alert(
+      '사진 분석 준비 중',
+      '이 테스트 버전에서는 추천 식사의 먹음·건너뜀 기록을 이용해 주세요. 다른 식사의 사진 분석은 아직 연결되지 않았어요.',
+    );
   }, []);
 
   const saveDietMealFeedback = useCallback(
@@ -1578,17 +1604,21 @@ export default function DietScreen() {
               : 'current_status_is_recommended',
           });
         }
-        await saveDietMealFeedback(dietMealId, {
-          ...(status === 'eaten'
-            ? {
-                ...(hasExistingFeedback ? { actualItems: [] } : {}),
-                eatenAt: new Date().toISOString(),
-              }
-            : hasExistingFeedback
-              ? { actualItems: [], eatenAt: null }
-              : {}),
-          feedbackType: status,
-        }, hasExistingFeedback);
+        await saveDietMealFeedback(
+          dietMealId,
+          {
+            ...(status === 'eaten'
+              ? {
+                  ...(hasExistingFeedback ? { actualItems: [] } : {}),
+                  eatenAt: new Date().toISOString(),
+                }
+              : hasExistingFeedback
+                ? { actualItems: [], eatenAt: null }
+                : {}),
+            feedbackType: status,
+          },
+          hasExistingFeedback,
+        );
         if (!isMountedRef.current) return false;
 
         setStatusesByDate((current) => ({
@@ -1603,6 +1633,7 @@ export default function DietScreen() {
           delete nextDateRecords[mealId];
           return { ...current, [dateKey]: nextDateRecords };
         });
+        void loadNutritionSummary(dateKey);
         return true;
       } catch (error) {
         if (isMountedRef.current) {
@@ -1620,7 +1651,7 @@ export default function DietScreen() {
         }
       }
     },
-    [recommendedMeals, saveDietMealFeedback, selectedDateKey, selectedStatuses],
+    [loadNutritionSummary, recommendedMeals, saveDietMealFeedback, selectedDateKey, selectedStatuses],
   );
 
   const regenerateMeal = useCallback(
@@ -1730,17 +1761,16 @@ export default function DietScreen() {
     [loadRecommendations, recommendedMeals, selectedDateKey],
   );
 
-  const requestAlternativeMeal = useCallback((mealId: MealType) => {
-    if (recommendationLoading) return;
-    Alert.alert(
-      '다른 식단을 추천받을까요?',
-      '선택한 끼니만 새로운 식단으로 바꿔드려요.',
-      [
+  const requestAlternativeMeal = useCallback(
+    (mealId: MealType) => {
+      if (recommendationLoading) return;
+      Alert.alert('다른 식단을 추천받을까요?', '선택한 끼니만 새로운 식단으로 바꿔드려요.', [
         { style: 'cancel', text: '취소' },
         { onPress: () => void regenerateMeal(mealId), text: '새로 추천받기' },
-      ],
-    );
-  }, [regenerateMeal, recommendationLoading]);
+      ]);
+    },
+    [regenerateMeal, recommendationLoading],
+  );
 
   const completeMealRecord = useCallback(
     async (draft: MealRecordDraft) => {
@@ -1789,11 +1819,15 @@ export default function DietScreen() {
               : 'current_status_is_recommended',
           });
         }
-        await saveDietMealFeedback(dietMealId, {
-          actualItems,
-          eatenAt: new Date().toISOString(),
-          feedbackType: 'different_food',
-        }, hasExistingFeedback);
+        await saveDietMealFeedback(
+          dietMealId,
+          {
+            actualItems,
+            eatenAt: new Date().toISOString(),
+            feedbackType: 'different_food',
+          },
+          hasExistingFeedback,
+        );
         if (!isMountedRef.current) return false;
 
         setMealRecordsByDate((current) => ({
@@ -1932,7 +1966,8 @@ export default function DietScreen() {
             <View style={styles.hero}>
               <View style={styles.heroCopy}>
                 <Text style={styles.heroTitle}>
-                  {userName ? `${userName}님을 위한` : '나를 위한'}{`\n`}
+                  {userName ? `${userName}님을 위한` : '나를 위한'}
+                  {`\n`}
                   <Text style={styles.primaryText}>맞춤 식단</Text>이에요!
                 </Text>
                 <Text style={styles.heroDescription}>근육은 지키고, 체지방은 천천히</Text>
@@ -2005,6 +2040,20 @@ export default function DietScreen() {
 
               <View style={styles.nutritionCard}>
                 <Text style={styles.nutritionTitle}>오늘의 영양 목표</Text>
+                {nutritionError ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => void loadNutritionSummary(selectedDateKey)}
+                  >
+                    <Text style={styles.mealErrorText}>{nutritionError} · 다시 시도</Text>
+                  </Pressable>
+                ) : null}
+                {nutritionSummary?.date === selectedDateKey &&
+                nutritionSummary.has_unknown_items ? (
+                  <Text style={styles.mealLoadMessage}>
+                    영양 정보가 없는 음식은 합계에서 제외되어 있어요.
+                  </Text>
+                ) : null}
                 <View style={styles.nutritionInner}>
                   <CalorieGoal {...displayedNutritionGoals[0]} />
                   <View style={styles.macroGoals}>
@@ -2030,9 +2079,7 @@ export default function DietScreen() {
                     <Text style={styles.mealRetryText}>다시 시도</Text>
                   </Pressable>
                 ) : null}
-                {!recommendationLoading &&
-                !recommendationError &&
-                visibleMeals.length === 0 ? (
+                {!recommendationLoading && !recommendationError && visibleMeals.length === 0 ? (
                   <Text style={styles.mealLoadMessage}>표시할 추천 식단이 없어요.</Text>
                 ) : null}
                 {visibleMeals.map((meal) => (

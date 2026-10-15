@@ -36,8 +36,6 @@ import {
   getLatestHealthAnalysis,
   isHealthAnalysisNotFound,
 } from '@/src/api/healthAnalysis';
-import { devHealthAnalysisFallback } from '@/src/api/healthAnalysis.dev';
-import { ApiError } from '@/src/api/client';
 import {
   TotalAnalysisBottomSheet,
   type AnalysisSheetState,
@@ -470,15 +468,10 @@ export default function TotalAnalysisScreen() {
     const loadAnalysis = async () => {
       setAnalysisLoadState('loading');
       setAnalysisError(null);
-      let request: 'latest' | 'popups' = 'latest';
 
       try {
         const analysis = await getLatestHealthAnalysis();
-        if (__DEV__) console.log('[Health Analysis] latest response:', analysis);
-
-        request = 'popups';
         const popups = await getHealthAssessmentPopups(analysis.assessment_id);
-        if (__DEV__) console.log('[Health Analysis] popups response:', popups);
         if (!active) return;
 
         setAnalysisData(createAnalysisDisplayData(analysis, popups));
@@ -486,27 +479,7 @@ export default function TotalAnalysisScreen() {
       } catch (error) {
         if (!active) return;
 
-        if (__DEV__) {
-          console.log('[Health Analysis] request failure:', {
-            request,
-            status: error instanceof ApiError ? error.status : undefined,
-            detail: error instanceof ApiError ? error.detail : undefined,
-            response_body: error instanceof ApiError ? error.responseBody : undefined,
-          });
-        }
-
         if (isHealthAnalysisNotFound(error)) {
-          if (__DEV__ && request === 'latest') {
-            setAnalysisData(
-              createAnalysisDisplayData(
-                devHealthAnalysisFallback.analysis,
-                devHealthAnalysisFallback.popups,
-              ),
-            );
-            setAnalysisLoadState('ready');
-            return;
-          }
-
           setAnalysisData(null);
           setAnalysisLoadState('empty');
           return;

@@ -10,12 +10,12 @@ import Svg, {
 import BloodPressureFillIcon from '@/assets/icons/data/BloodPressure_Fill.svg';
 import StarIcon from '@/assets/icons/deco/StarFour_Fill.svg';
 import { colors, fontFamilies, radius } from '@/src/theme';
+import { getScoreRatio } from './scoreRatio';
 
 const graphSize = 350;
 const graphCenter = graphSize / 2;
 const graphRadius = 163.5;
 const graphCircumference = 2 * Math.PI * graphRadius;
-const scoreArcRatio = 0.86;
 
 interface HealthScoreProps {
   score: number | null;
@@ -25,6 +25,7 @@ interface HealthScoreProps {
 }
 
 export function HealthScore({ score, totalScore, status, style }: HealthScoreProps) {
+  const scoreArcRatio = getScoreRatio(score, totalScore);
   const scoreText = score === null ? '-' : String(score);
   const totalScoreText = totalScore === null ? '-' : String(totalScore);
   const statusText = status ?? '-';
