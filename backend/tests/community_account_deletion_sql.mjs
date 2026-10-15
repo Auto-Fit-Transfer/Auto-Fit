@@ -127,6 +127,16 @@ try {
   await rejected(() => block(B, A), 'COMMUNITY_USER_NOT_FOUND');
   await like(D, pC1); await comment(D, pB1, '응원해요'); checks++;
 
+  // Comment deletion follows the same rule (20261014064332 lock order): the leaving account
+  // cannot delete, and comments tied to it are left for the cascade.
+  const commentOf = async (user, text) => (await db.query(
+    'select comment_id from public.community_comments where user_id = $1 and content = $2', [user, text])).rows[0].comment_id;
+  await rejected(async () => rpc('community_delete_comment', A, await commentOf(A, '하나')), unavailable, 'own comment');
+  await rejected(async () => rpc('community_delete_comment', C, await commentOf(C, '멋져요')),
+    'COMMUNITY_COMMENT_NOT_FOUND', 'comment on leaving post');
+  await rejected(async () => rpc('community_delete_comment', B, await commentOf(A, '둘')),
+    'COMMUNITY_COMMENT_NOT_FOUND', 'leaving comment author');
+
   // 2. File listing covers community-photos (posted and unused) and other buckets.
   const files = (await db.query('select bucket_id, name from public.account_deletion_storage($1)', [A])).rows
     .map((r) => `${r.bucket_id}/${r.name}`).sort();

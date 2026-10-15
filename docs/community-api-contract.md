@@ -4,7 +4,7 @@
 
 기준일: 2026-10-14
 
-구현 상태: `community-backend` 브랜치에 API 16개, DB 함수, 시험(서버 39개·PostgreSQL 42개·탈퇴 흐름 36개)을 추가했다.
+구현 상태: `community-backend` 브랜치에 API 16개, DB 함수, 시험(서버 39개·PostgreSQL 43개·탈퇴 흐름 39개)을 추가했다.
 `20261014062855_community_feed.sql`은 Auto-Fit Supabase 프로젝트에 적용했다.
 원래 파일명은 `20261014120000_community_feed.sql`이며 원격 적용 버전에 맞춰 이름만 정렬했다.
 추가 발견한 댓글 삭제 교착 문제의 보완 SQL은 아직 원격 미적용이다.

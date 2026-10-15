@@ -38,7 +38,7 @@ PostgreSQL이 한 트랜잭션을 취소하므로 이 재현에서 부분 삭제
 | 댓글 삭제 먼저, 글쓴이 탈퇴 나중 | 통과 |
 | 교차 좋아요·댓글·공유를 가진 두 계정 동시 탈퇴 | 통과 |
 | PGlite 피드 | 43개 통과 |
-| PGlite 기존 탈퇴 연동 | 36개 통과 |
+| PGlite 기존 탈퇴 연동 | 36개 통과 (검토 때 탈퇴 중 댓글 삭제 거절 3개 추가 → 39개) |
 | FastAPI 커뮤니티·계정 탈퇴 | 48개 통과 |
 
 동시성 테스트는 네트워크를 차단한 일회용 Docker PostgreSQL 17.6 컨테이너에서,
@@ -68,7 +68,7 @@ python -m pytest backend/tests/test_community.py backend/tests/test_account_dele
 
 ## 출시 순서
 
-1. 동생과 이력 이름 정렬 및 보완 SQL을 공유하고 기존 작업에 반영한다.
+1. 커뮤니티 담당자와 이력 이름 정렬 및 보완 SQL을 공유하고 기존 작업에 반영한다.
 2. 보완 SQL 하나를 Auto-Fit에 적용하고 원격 버전·함수·실행 권한을 확인한다.
-3. 동생이 완성한 커뮤니티 화면과 API를 함께 검증한다. 현재 `community-backend`와 `backend`의 차이는 서버·DB·문서·테스트이며 화면 변경이 없다.
+3. 커뮤니티 담당자가 완성한 커뮤니티 화면과 API를 함께 검증한다. 현재 `community-backend`와 `backend`의 차이는 서버·DB·문서·테스트이며 화면 변경이 없다.
 4. 검증된 커뮤니티 변경을 backend에 병합하고 Render에 배포한다.

@@ -79,7 +79,7 @@ PGlite(메모리 PostgreSQL)에 저장소 마이그레이션 전체와 참고 SQ
 | 여러 연결 동시 쓰기 | 미실시 (PGlite 단일 연결). 잠금 순서는 설계 검토만 함 |
 | Storage API 실삭제 | 미실시 (격리된 실연동 환경 필요) |
 
-시험 결과: 탈퇴 흐름 36개, 피드 기능 42개, FastAPI 커뮤니티 39개를 포함해 백엔드 전체 665개가 통과했다.
+시험 결과: 탈퇴 흐름 36개(보완 SQL 반영 후 39개), 피드 기능 42개(보완 후 43개), FastAPI 커뮤니티 39개를 포함해 백엔드 전체 665개가 통과했다.
 
 ```bash
 node backend/tests/community_account_deletion_sql.mjs <@electric-sql/pglite 경로> <참고 SQL 폴더>
