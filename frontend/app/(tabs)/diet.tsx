@@ -1823,7 +1823,7 @@ export default function DietScreen() {
                 onStatusChange={submitFeedback}
                 onToggle={toggleMeal}
                 recommendationPending={regeneratingMealIds.has(meal.id)}
-                showRecordControls={showRecordControls && Boolean(meal.dietMealId)}
+                showRecordControls={showRecordControls}
                 status={selectedStatuses[meal.id]}
               />
             ))}
