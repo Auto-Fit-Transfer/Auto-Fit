@@ -110,7 +110,7 @@ def jpeg(size=(40, 30), **save_options):
 def test_feed_signs_all_photos_in_one_call_and_pages(client, supabase):
     photos = [{"path": f"{OTHER}/a.jpg", "width": 1200, "height": 900},
               {"path": f"{OTHER}/b.jpg", "width": 900, "height": 1200}]
-    supabase.rpc["community_feed"] = [post_row(POST, T1, photos), post_row(POST_2, T2, photos[:1]),
+    supabase.rpc["community_timeline"] = [post_row(POST, T1, photos), post_row(POST_2, T2, photos[:1]),
                                       post_row(POST_3, T3)]
 
     page = client.get("/api/community/feed", params={"limit": 2})
@@ -124,16 +124,17 @@ def test_feed_signs_all_photos_in_one_call_and_pages(client, supabase):
         {"url": f"https://example.supabase.co/storage/v1/object/sign/community-photos/{OTHER}/b.jpg?token=t",
          "width": 900, "height": 1200}]
     assert supabase.count("/storage/v1/object/sign/") == 1
-    assert supabase.bodies("community_feed")[0] == {
-        "p_viewer": USER, "p_before_created_at": None, "p_before_item_id": None, "p_limit": 3}
+    assert supabase.bodies("community_timeline")[0] == {
+        "p_viewer": USER, "p_scope": "all", "p_user_id": None, "p_before_created_at": None,
+        "p_before_item_id": None, "p_limit": 3}
 
-    supabase.rpc["community_feed"] = [post_row(POST_3, T3)]
+    supabase.rpc["community_timeline"] = [post_row(POST_3, T3)]
     last = client.get("/api/community/feed", params={"limit": 2, "cursor": body["next_cursor"]})
 
     assert last.json()["next_cursor"] is None
-    assert supabase.bodies("community_feed")[1] == {
-        "p_viewer": USER, "p_before_created_at": "2026-10-14T02:00:00.500000+00:00",
-        "p_before_item_id": POST_2, "p_limit": 3}
+    assert supabase.bodies("community_timeline")[1] == {
+        "p_viewer": USER, "p_scope": "all", "p_user_id": None,
+        "p_before_created_at": "2026-10-14T02:00:00.500000+00:00", "p_before_item_id": POST_2, "p_limit": 3}
 
 
 @pytest.mark.parametrize("cursor", [
@@ -151,7 +152,7 @@ def test_feed_rejects_tampered_cursors(client, supabase, cursor):
 
 def test_feed_stays_readable_when_photo_signing_fails(client, supabase):
     supabase.sign_status = 500
-    supabase.rpc["community_feed"] = [post_row(images=[{"path": f"{OTHER}/a.jpg", "width": 10, "height": 10}])]
+    supabase.rpc["community_timeline"] = [post_row(images=[{"path": f"{OTHER}/a.jpg", "width": 10, "height": 10}])]
     response = client.get("/api/community/feed")
     assert response.status_code == 200
     assert response.json()["items"][0]["images"] == [{"url": None, "width": 10, "height": 10}]
@@ -216,13 +217,13 @@ def test_unknown_database_failures_hide_details(client, supabase):
     def unavailable(request, body):
         raise httpx.ConnectError("down", request=request)
 
-    supabase.rpc["community_feed"] = unavailable
+    supabase.rpc["community_timeline"] = unavailable
     assert client.get("/api/community/feed").status_code == 502
 
 
 @pytest.mark.parametrize("payload", [{"oops": 1}, [{"post_id": POST}], None])
 def test_malformed_database_responses_are_rejected(client, supabase, payload):
-    supabase.rpc["community_feed"] = httpx.Response(200, json=payload)
+    supabase.rpc["community_timeline"] = httpx.Response(200, json=payload)
     response = client.get("/api/community/feed")
     assert response.status_code == 502
     assert response.json()["detail"]["code"] == "DATA_SOURCE_ERROR"
@@ -387,3 +388,92 @@ def test_community_requires_login(monkeypatch):
         main.app.dependency_overrides.pop(main.get_settings, None)
     assert response.status_code == 401
     assert response.json()["detail"]["code"] == "AUTH_REQUIRED"
+
+
+def profile_row(user_id=OTHER, **extra):
+    return {**author(user_id), "post_count": 3, "follower_count": 2, "following_count": 1, "is_me": False,
+            "followed_by_me": True, "follows_me": False, **extra}
+
+
+def test_following_feed_and_user_posts_use_their_own_cursor(client, supabase):
+    supabase.rpc["community_timeline"] = [post_row(POST, T1), post_row(POST_2, T2)]
+    first = client.get("/api/community/feed", params={"scope": "following", "limit": 1}).json()
+    assert supabase.bodies("community_timeline")[0]["p_scope"] == "following"
+    client.get("/api/community/feed", params={"scope": "following", "cursor": first["next_cursor"]})
+    assert supabase.bodies("community_timeline")[1]["p_before_item_id"] == POST
+    # A following-feed cursor cannot page the full feed or a profile.
+    assert client.get("/api/community/feed", params={"cursor": first["next_cursor"]}).status_code == 422
+    assert client.get(f"/api/community/users/{OTHER}/posts",
+                      params={"cursor": first["next_cursor"]}).status_code == 422
+    assert client.get("/api/community/feed", params={"scope": "user"}).status_code == 422
+
+    posts = client.get(f"/api/community/users/{OTHER}/posts", params={"limit": 1})
+    assert posts.status_code == 200
+    assert supabase.bodies("community_timeline")[-1] == {
+        "p_viewer": USER, "p_scope": "user", "p_user_id": OTHER, "p_before_created_at": None,
+        "p_before_item_id": None, "p_limit": 2}
+
+
+def test_profiles_and_follows(client, supabase):
+    supabase.rpc["community_profile"] = lambda request, body: profile_row(
+        body["p_user_id"], is_me=body["p_user_id"] == USER)
+    assert client.get(f"/api/community/users/{OTHER}").json() == profile_row()
+    me = client.get("/api/community/users/me").json()
+    assert me["is_me"] is True and me["user_id"] == USER
+    assert supabase.bodies("community_profile")[-1] == {"p_viewer": USER, "p_user_id": USER}
+    assert client.get("/api/community/users/not-a-user").status_code == 422
+
+    supabase.rpc["community_set_follow"] = lambda request, body: {
+        "user_id": body["p_target_user_id"], "following": body["p_following"], "follower_count": 3}
+    assert client.put(f"/api/community/follows/{OTHER}").json() == {
+        "user_id": OTHER, "following": True, "follower_count": 3}
+    assert client.delete(f"/api/community/follows/{OTHER}").json()["following"] is False
+    assert supabase.bodies("community_set_follow")[0] == {
+        "p_user_id": USER, "p_target_user_id": OTHER, "p_following": True}
+
+    supabase.rpc["community_set_follow"] = rejection("COMMUNITY_NICKNAME_REQUIRED")
+    blocked = client.put(f"/api/community/follows/{OTHER}")
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"]["code"] == "COMMUNITY_NICKNAME_REQUIRED"
+    supabase.rpc["community_profile"] = rejection("COMMUNITY_USER_NOT_FOUND")
+    assert client.get(f"/api/community/users/{OTHER}").status_code == 404
+
+
+def test_follow_lists_page_by_follow_time(client, supabase):
+    rows = [{**author(USER, "나"), "followed_at": T1, "is_me": True, "followed_by_me": False},
+            {**author(), "followed_at": T2, "is_me": False, "followed_by_me": True}]
+    supabase.rpc["community_follow_list"] = rows
+    first = client.get(f"/api/community/users/{OTHER}/followers", params={"limit": 1}).json()
+    assert [item["user_id"] for item in first["items"]] == [USER]
+    client.get(f"/api/community/users/{OTHER}/followers", params={"cursor": first["next_cursor"]})
+    assert supabase.bodies("community_follow_list")[1] == {
+        "p_viewer": USER, "p_user_id": OTHER, "p_kind": "followers",
+        "p_before_created_at": "2026-10-14T03:00:00.123456+00:00", "p_before_user_id": USER, "p_limit": 21}
+    wrong_list = client.get(f"/api/community/users/{OTHER}/following", params={"cursor": first["next_cursor"]})
+    assert wrong_list.status_code == 422
+    assert client.get(f"/api/community/users/{OTHER}/following").json()["next_cursor"] is None
+
+
+def test_notifications_page_count_and_read(client, supabase):
+    rows = [{"notification_id": COMMENT, "type": "comment", "actor": author(), "post_id": POST,
+             "comment_id": COMMENT_2, "post_preview": "오운완", "comment_preview": "멋져요",
+             "created_at": T1, "is_read": False},
+            {"notification_id": COMMENT_2, "type": "follow", "actor": author(), "post_id": None,
+             "comment_id": None, "post_preview": None, "comment_preview": None,
+             "created_at": T2, "is_read": True}]
+    supabase.rpc["community_notification_list"] = rows
+    first = client.get("/api/community/notifications", params={"limit": 1}).json()
+    assert first["items"][0]["type"] == "comment"
+    client.get("/api/community/notifications", params={"cursor": first["next_cursor"]})
+    assert supabase.bodies("community_notification_list")[1] == {
+        "p_user_id": USER, "p_before_created_at": "2026-10-14T03:00:00.123456+00:00",
+        "p_before_id": COMMENT, "p_limit": 21}
+
+    supabase.rpc["community_unread_notification_count"] = {"unread_count": 4}
+    assert client.get("/api/community/notifications/unread-count").json() == {"unread_count": 4}
+    supabase.rpc["community_read_notifications"] = {"unread_count": 0}
+    assert client.post("/api/community/notifications/read").json() == {"unread_count": 0}
+    assert supabase.bodies("community_read_notifications") == [{"p_user_id": USER}]
+
+    supabase.rpc["community_notification_list"] = [{**rows[0], "type": "mention"}]
+    assert client.get("/api/community/notifications").status_code == 502

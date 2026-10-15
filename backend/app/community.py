@@ -1,6 +1,8 @@
-"""Community feed: posts with up to five photos, likes, reposts, comments, reports and blocks.
+"""Community feed: posts with up to five photos, likes, reposts, comments, reports and blocks,
+plus follows, profiles, following/user timelines and notifications.
 
-Every write is a SQL function (supabase/migrations/20261014062855_community_feed.sql), so
+Every write is a SQL function (supabase/migrations/20261014062855_community_feed.sql and
+20261015090000_community_follows_notifications.sql), so
 counters, ownership and block rules change atomically. Photos live in a private bucket and
 are re-encoded without EXIF metadata, so phone GPS locations never reach other users.
 """
@@ -185,6 +187,53 @@ class CommunityBlockedUser(CommunityAuthor):
     blocked_at: datetime
 
 
+class CommunityProfile(CommunityAuthor):
+    post_count: int = Field(description="공유를 뺀 글 수")
+    follower_count: int
+    following_count: int
+    is_me: bool
+    followed_by_me: bool
+    follows_me: bool
+
+
+class CommunityFollowState(BaseModel):
+    user_id: UUID
+    following: bool
+    follower_count: int
+
+
+class CommunityFollowUser(CommunityAuthor):
+    followed_at: datetime
+    is_me: bool
+    followed_by_me: bool = Field(description="내가 이 사용자를 팔로우하고 있으면 true")
+
+
+class CommunityFollowPage(BaseModel):
+    items: list[CommunityFollowUser]
+    next_cursor: str | None
+
+
+class CommunityNotification(BaseModel):
+    notification_id: UUID
+    type: Literal["follow", "like", "comment", "repost"]
+    actor: CommunityAuthor = Field(description="알림을 만든 사람")
+    post_id: UUID | None = Field(description="좋아요·댓글·공유한 내 글. 팔로우면 null")
+    comment_id: UUID | None
+    post_preview: str | None = Field(description="글 앞부분 80자")
+    comment_preview: str | None = Field(description="댓글 앞부분 80자")
+    created_at: datetime
+    is_read: bool
+
+
+class CommunityNotificationPage(BaseModel):
+    items: list[CommunityNotification]
+    next_cursor: str | None
+
+
+class CommunityUnreadCount(BaseModel):
+    unread_count: int
+
+
 class CommunityUpload(BaseModel):
     upload_id: UUID
     width: int
@@ -367,21 +416,28 @@ def page_cursor(rows: list[Any], limit: int, scope: str, time_key: str, id_key: 
 def create_community_router(current_user_dependency: Any, settings_dependency: Any) -> APIRouter:
     router = APIRouter(prefix="/api/community", tags=["Community"])
 
+    async def timeline(store: CommunityStore, scope: str, target: UUID | None, cursor: str | None,
+                       limit: int, cursor_scope: str) -> dict[str, Any]:
+        before_at, before_id = decode_cursor(cursor, cursor_scope)
+        rows = await store.rpc("community_timeline", viewer=store.user_id, scope=scope,
+                               user_id=str(target) if target else None, before_created_at=before_at,
+                               before_item_id=before_id, limit=limit + 1)
+        if not isinstance(rows, list):
+            fail("DATA_SOURCE_ERROR")
+        return {"items": await store.posts(rows[:limit]),
+                "next_cursor": page_cursor(rows, limit, cursor_scope, "feed_created_at", "feed_item_id")}
+
     @router.get("/feed", response_model=CommunityFeedPage,
-                summary="전체 피드를 최신순으로 조회 (공유 포함, 차단·신고한 글 제외)")
+                summary="피드를 최신순으로 조회 (공유 포함, 차단·신고한 글 제외)")
     async def get_feed(
+        scope: Literal["all", "following"] = Query(
+            default="all", description="all = 전체, following = 내가 팔로우한 사람과 내 글"),
         cursor: str | None = Query(default=None, max_length=300),
         limit: int = Query(default=PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
         user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
     ) -> dict[str, Any]:
         store = CommunityStore(settings, user.id)
-        before_at, before_id = decode_cursor(cursor, "feed")
-        rows = await store.rpc("community_feed", viewer=user.id, before_created_at=before_at,
-                               before_item_id=before_id, limit=limit + 1)
-        if not isinstance(rows, list):
-            fail("DATA_SOURCE_ERROR")
-        return {"items": await store.posts(rows[:limit]),
-                "next_cursor": page_cursor(rows, limit, "feed", "feed_created_at", "feed_item_id")}
+        return await timeline(store, scope, None, cursor, limit, "feed" if scope == "all" else f"feed:{scope}")
 
     @router.post("/images", status_code=201, response_model=CommunityUpload,
                  responses={413: {"description": "Photo exceeds 5 MiB"},
@@ -559,5 +615,118 @@ def create_community_router(current_user_dependency: Any, settings_dependency: A
         user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
     ) -> Any:
         return await set_block(user_id, False, user, settings)
+
+    async def profile(viewer: str, target: str, settings: Any) -> Any:
+        store = CommunityStore(settings, viewer)
+        return parse(CommunityProfile, await store.rpc("community_profile", viewer=viewer, user_id=target))
+
+    @router.get("/users/me", response_model=CommunityProfile, summary="내 커뮤니티 프로필")
+    async def get_my_profile(
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        return await profile(user.id, user.id, settings)
+
+    @router.get("/users/{user_id}", response_model=CommunityProfile,
+                summary="프로필 (닉네임·사진·글 수·팔로워·팔로잉 수, 차단 관계면 404)")
+    async def get_profile(
+        user_id: UUID,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        return await profile(user.id, str(user_id), settings)
+
+    @router.get("/users/{user_id}/posts", response_model=CommunityFeedPage,
+                summary="이 사용자가 쓴 글과 공유한 글 (최신순)")
+    async def get_user_posts(
+        user_id: UUID,
+        cursor: str | None = Query(default=None, max_length=300),
+        limit: int = Query(default=PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> dict[str, Any]:
+        store = CommunityStore(settings, user.id)
+        return await timeline(store, "user", user_id, cursor, limit, f"user:{user_id}")
+
+    async def follow_list(target: UUID, kind: str, cursor: str | None, limit: int,
+                          user: Any, settings: Any) -> dict[str, Any]:
+        scope = f"{kind}:{target}"
+        before_at, before_id = decode_cursor(cursor, scope)
+        store = CommunityStore(settings, user.id)
+        rows = await store.rpc("community_follow_list", viewer=user.id, user_id=str(target), kind=kind,
+                               before_created_at=before_at, before_user_id=before_id, limit=limit + 1)
+        if not isinstance(rows, list):
+            fail("DATA_SOURCE_ERROR")
+        return {"items": parse_rows(CommunityFollowUser, rows[:limit]),
+                "next_cursor": page_cursor(rows, limit, scope, "followed_at", "user_id")}
+
+    @router.get("/users/{user_id}/followers", response_model=CommunityFollowPage,
+                summary="이 사용자를 팔로우하는 사람 (최근순)")
+    async def get_followers(
+        user_id: UUID,
+        cursor: str | None = Query(default=None, max_length=300),
+        limit: int = Query(default=PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> dict[str, Any]:
+        return await follow_list(user_id, "followers", cursor, limit, user, settings)
+
+    @router.get("/users/{user_id}/following", response_model=CommunityFollowPage,
+                summary="이 사용자가 팔로우하는 사람 (최근순)")
+    async def get_following(
+        user_id: UUID,
+        cursor: str | None = Query(default=None, max_length=300),
+        limit: int = Query(default=PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> dict[str, Any]:
+        return await follow_list(user_id, "following", cursor, limit, user, settings)
+
+    async def set_follow(target: UUID, following: bool, user: Any, settings: Any) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityFollowState, await store.rpc(
+            "community_set_follow", user_id=user.id, target_user_id=str(target), following=following))
+
+    @router.put("/follows/{user_id}", response_model=CommunityFollowState,
+                responses={409: {"description": "Nickname required"}, 429: {"description": "Following too fast"}},
+                summary="팔로우 (상대에게 알림)")
+    async def follow_user(
+        user_id: UUID,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        return await set_follow(user_id, True, user, settings)
+
+    @router.delete("/follows/{user_id}", response_model=CommunityFollowState, summary="팔로우 취소")
+    async def unfollow_user(
+        user_id: UUID,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        return await set_follow(user_id, False, user, settings)
+
+    @router.get("/notifications", response_model=CommunityNotificationPage,
+                summary="내 알림 (팔로우·좋아요·댓글·공유, 최신순)")
+    async def get_notifications(
+        cursor: str | None = Query(default=None, max_length=300),
+        limit: int = Query(default=PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> dict[str, Any]:
+        before_at, before_id = decode_cursor(cursor, "notifications")
+        store = CommunityStore(settings, user.id)
+        rows = await store.rpc("community_notification_list", user_id=user.id, before_created_at=before_at,
+                               before_id=before_id, limit=limit + 1)
+        if not isinstance(rows, list):
+            fail("DATA_SOURCE_ERROR")
+        return {"items": parse_rows(CommunityNotification, rows[:limit]),
+                "next_cursor": page_cursor(rows, limit, "notifications", "created_at", "notification_id")}
+
+    @router.get("/notifications/unread-count", response_model=CommunityUnreadCount,
+                summary="읽지 않은 알림 수 (배지용)")
+    async def get_unread_count(
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityUnreadCount, await store.rpc("community_unread_notification_count", user_id=user.id))
+
+    @router.post("/notifications/read", response_model=CommunityUnreadCount, summary="알림 모두 읽음으로 표시")
+    async def read_notifications(
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityUnreadCount, await store.rpc("community_read_notifications", user_id=user.id))
 
     return router

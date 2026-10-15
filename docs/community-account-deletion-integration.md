@@ -1,6 +1,6 @@
 # 커뮤니티 DB · 회원 탈퇴 연동
 
-상태: 기본 SQL 적용 완료. 댓글 삭제 동시성 보완 SQL은 로컬 검증 완료, 공용 DB 미적용.
+상태: 기본 SQL·댓글 삭제 동시성 보완 SQL 적용 완료(원격 20261014062855, 20261015005534). 2단계 SQL(20261015090000)은 검토 대기.
 
 기준일: 2026-10-14. 대상 파일: [`supabase/migrations/20261014062855_community_feed.sql`](../supabase/migrations/20261014062855_community_feed.sql)
 (기존 `20261014120000` 파일의 내용은 유지하고 실제 원격 버전에 맞춰 이름만 정렬했다).
@@ -85,6 +85,17 @@ PGlite(메모리 PostgreSQL)에 저장소 마이그레이션 전체와 참고 SQ
 node backend/tests/community_account_deletion_sql.mjs <@electric-sql/pglite 경로> <참고 SQL 폴더>
 node backend/tests/community_feed_sql.mjs <@electric-sql/pglite 경로> <참고 SQL 폴더>
 ```
+
+### 2단계 SQL(20261015090000)의 탈퇴 연동
+
+- 새 표 `community_follows`(사용자 열 2개)는 `check_community_pair_writable` 트리거로 두 사용자를 모두 검사한다.
+- 새 표 `community_notifications`는 `user_id`(받는 사람)에 기존 `check_user_reference`·`zzz_check_account_writable`를 붙이고,
+  `actor_user_id`(만든 사람)는 추가 트리거 `zzz_check_actor_writable`(INSERT만)로 검사한다. 읽음 표시(UPDATE)는 상대가 탈퇴 중이어도 된다.
+- `community_delete_user_data`가 두 표에서 탈퇴자 쪽 행(양방향)을 지운다. 동시 탈퇴는 advisory lock으로 한 번에 하나씩 정리한다
+  ([후속 보완](community-concurrency-followup.md)).
+- 알림 생성·삭제와 차단 시 팔로우 해제는 트리거라서, 이미 적용한 RPC는 그대로다. 트리거 안의 쓰기는 RPC가 먼저 잠근
+  사용자(`auth.users`) 범위 안에서만 일어나므로 잠금 순서(사용자 → 글 → 하위 행)를 지킨다.
+- 시험: `community_social_sql.mjs` 27개, `community_account_deletion_sql.mjs` 44개(팔로우·알림 정리, 탈퇴 중 팔로우 거절 포함).
 
 ## 5. 적용 담당자 체크리스트
 

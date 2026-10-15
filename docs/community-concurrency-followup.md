@@ -2,7 +2,7 @@
 
 2026-10-14. 기본 SQL `1a0ed31`은 원격 `20261014062855_community_feed`로 적용되어 있다.
 기존 파일은 내용 변경 없이 실제 버전에 맞춰 이름을 바꿨다. 새 보완 마이그레이션
-`20261014064332_community_comment_delete_lock_order.sql`은 **로컬 검증 완료, 공용 DB 미적용**이다.
+`20261014064332_community_comment_delete_lock_order.sql`은 2026-10-15 공용 DB에 원격 버전 **`20261015005534_community_comment_delete_lock_order`**로 적용됐고, 저장소 파일 이름도 이 버전으로 바꿨다(내용 동일).
 
 ## 발견한 문제
 
@@ -65,6 +65,19 @@ python -m pytest backend/tests/test_community.py backend/tests/test_account_dele
 원본 교착을 다시 보려면 새 보완 마이그레이션을 제외한 빈 격리 DB에서 동시성 테스트를 실행한다.
 이미 적용한 파일명과 원격 이력의 대응은 기본 마이그레이션 내용 SHA-256
 `9f9e5459ec78fe64d1d6922df71e062895efdbb2e18eb7a775218a3c502f1252`로도 확인할 수 있다.
+
+## 후속 보완 (2026-10-15, 2단계 SQL에 포함)
+
+검토 중 남은 위험을 하나 더 찾았다. 서로 좋아요·댓글을 남긴 두 계정이 같은 순간에 탈퇴하면
+`community_delete_user_data`가 "내 좋아요 → 내 글에 달린 좋아요" 순서로 지우다가 서로의 행을 엇갈려 기다릴 수 있다.
+두 탈퇴자가 같은 제3자 글들의 숫자를 서로 다른 순서로 고칠 때도 마찬가지다(정적 분석, 재현은 하지 않음).
+시나리오 6은 통과했지만 이 실행 순서를 강제하지는 않는다.
+
+`20261015090000_community_follows_notifications.sql`에서 `community_delete_user_data`를 교체하면서,
+시작할 때 트랜잭션 advisory lock 하나(`community:account-deletion`)를 잡아 커뮤니티 정리를 한 번에 하나씩 하도록 했다.
+각 탈퇴는 이미 자기 `auth.users` 행만 잡고 있고, 정리 함수는 다른 탈퇴자의 글 숫자를 고치지 않으므로
+(탈퇴 앱 흐름은 `begin_account_deletion`을 먼저 실행) 이 잠금 때문에 순환 대기가 생기지 않는다.
+Docker 동시성 시험에서 두 계정 교차 탈퇴의 실행 순서를 강제해 확인해 주면 좋다.
 
 ## 출시 순서
 

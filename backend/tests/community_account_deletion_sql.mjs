@@ -38,6 +38,7 @@ const repost = (user, p) => rpc('community_set_repost', user, p.post_id, true);
 const comment = (user, p, text) => rpc('community_add_comment', user, p.post_id, text);
 const report = (user, type, id) => rpc('community_report', user, type, id, 'spam', null);
 const block = (user, target) => rpc('community_set_block', user, target, true);
+const follow = (user, target, on = true) => rpc('community_set_follow', user, target, on);
 const counters = async (p) => (await db.query(
   'select like_count, comment_count, repost_count from public.community_posts where post_id=$1', [p.post_id])).rows[0];
 const deleteAuthUser = (uid) => asSuperuser(() => db.query('delete from auth.users where id=$1', [uid]));
@@ -56,6 +57,8 @@ const leftoversOf = (uid) => asSuperuser(() => count(`select (
   + (select count(*) from public.community_uploads where user_id = $1)
   + (select count(*) from public.community_reports where reporter_user_id = $1 or target_user_id = $1)
   + (select count(*) from public.community_blocks where blocker_user_id = $1 or blocked_user_id = $1)
+  + (select count(*) from public.community_follows where follower_user_id = $1 or following_user_id = $1)
+  + (select count(*) from public.community_notifications where user_id = $1 or actor_user_id = $1)
   + (select count(*) from public.profiles where user_id = $1)
   + (select count(*) from autofit_integrity.account_deletions where user_id = $1)
   + (select count(*) from auth.users where id = $1))::int as n`, [uid]));
@@ -75,7 +78,12 @@ try {
     assert.ok(guards.includes(`${t}:check_user_reference`) && guards.includes(`${t}:zzz_check_account_writable`), t);
   }
   assert.ok(guards.includes('community_reports:zzz_check_account_writable'));
-  assert.ok(guards.includes('community_blocks:zzz_check_account_writable')); checks++;
+  assert.ok(guards.includes('community_blocks:zzz_check_account_writable'));
+  assert.ok(guards.includes('community_follows:zzz_check_account_writable'));
+  for (const g of ['check_user_reference', 'zzz_check_account_writable', 'zzz_check_actor_writable']) {
+    assert.ok(guards.includes(`community_notifications:${g}`), g);
+  }
+  checks++;
   assert.equal(await count(`select count(*)::int as n from pg_trigger t join pg_proc p on p.oid = t.tgfoid
     where t.tgrelid = 'auth.users'::regclass and p.proname = 'community_account_cleanup'`), 0,
   'no separate auth.users trigger'); checks++;
@@ -92,6 +100,7 @@ try {
   await repost(A, pB1); await comment(B, pB1, '내 댓글'); await like(C, pB1); await like(A, pE1);
   await report(B, 'post', pA2.post_id); await report(A, 'post', pC1.post_id); await report(D, 'user', A);
   await block(A, D); await block(C, A);
+  await follow(A, B); await follow(B, A); await follow(D, B);
   await asSuperuser(() => db.query(`insert into storage.objects(bucket_id, name) values
     ('community-photos', $1), ('community-photos', $2), ('community-photos', $3),
     ('community-photos', $4), ('meal-photos', $5)`,
@@ -108,12 +117,17 @@ try {
   await rejected(() => repost(A, pC1), unavailable, 'repost');
   await rejected(() => report(A, 'user', B), unavailable, 'report');
   await rejected(() => block(A, B), unavailable, 'block');
+  await rejected(() => follow(A, D), unavailable, 'follow');
   await rejected(() => db.query('insert into public.community_posts(user_id, content) values ($1, $2)', [A, '우회']),
     'Account deletion is in progress', 'direct insert');
   await rejected(() => db.query(`insert into public.community_reports(reporter_user_id, target_type, target_id,
     target_user_id, reason) values ($1, 'user', $2, $2, 'spam')`, [B, A]), 'Account deletion is in progress', 'direct report');
   await rejected(() => db.query('insert into public.community_blocks(blocker_user_id, blocked_user_id) values ($1, $2)', [B, A]),
     'Account deletion is in progress', 'direct block');
+  await rejected(() => db.query('insert into public.community_follows(follower_user_id, following_user_id) values ($1, $2)', [D, A]),
+    'Account deletion is in progress', 'direct follow');
+  await rejected(() => db.query(`insert into public.community_notifications(user_id, actor_user_id, type)
+    values ($1, $2, 'follow')`, [D, A]), 'Account deletion is in progress', 'direct notification');
   await rejected(() => asSuperuser(() => db.query(
     "insert into storage.objects(bucket_id, name) values ('community-photos', $1)", [`${A}/late.jpg`])),
   'Account deletion is in progress', 'storage upload');
@@ -127,7 +141,15 @@ try {
   await rejected(() => block(B, A), 'COMMUNITY_USER_NOT_FOUND');
   await like(D, pC1); await comment(D, pB1, '응원해요'); checks++;
 
-  // Comment deletion follows the same rule (20261014064332 lock order): the leaving account
+  // Follows: others can unfollow the leaving account but not follow it again, and can still
+  // mark notifications from it as read.
+  await follow(B, A, false);
+  await rejected(() => follow(B, A), 'COMMUNITY_USER_NOT_FOUND', 'follow leaving account');
+  assert.ok(await count(`select count(*)::int as n from public.community_notifications
+    where user_id = $1 and actor_user_id = $2 and read_at is null`, [B, A]) > 0);
+  assert.deepEqual(await rpc('community_read_notifications', B), { unread_count: 0 }); checks++;
+
+  // Comment deletion follows the same rule (20261015005534 lock order): the leaving account
   // cannot delete, and comments tied to it are left for the cascade.
   const commentOf = async (user, text) => (await db.query(
     'select comment_id from public.community_comments where user_id = $1 and content = $2', [user, text])).rows[0].comment_id;
