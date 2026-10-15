@@ -1,8 +1,10 @@
 """Community feed: posts with up to five photos, likes, reposts, comments, reports and blocks,
-plus follows, profiles, following/user timelines and notifications.
+plus follows, profiles, following/user timelines and notifications (stage 2) and mileage,
+demo membership and clubs (stage 3).
 
-Every write is a SQL function (supabase/migrations/20261014062855_community_feed.sql and
-20261015090000_community_follows_notifications.sql), so
+Every write is a SQL function (supabase/migrations/20261014062855_community_feed.sql,
+20261015090000_community_follows_notifications.sql and
+20261015130000_community_mileage_membership_clubs.sql), so
 counters, ownership and block rules change atomically. Photos live in a private bucket and
 are re-encoded without EXIF metadata, so phone GPS locations never reach other users.
 """
@@ -43,6 +45,14 @@ ERRORS = {
     "COMMUNITY_UPLOAD_LIMIT": (429, "올린 사진이 너무 많습니다. 내일 다시 시도해 주세요."),
     "COMMUNITY_RATE_LIMITED": (429, "짧은 시간에 너무 많이 작성했습니다. 잠시 후 다시 시도해 주세요."),
     "COMMUNITY_ACCOUNT_UNAVAILABLE": (409, "탈퇴가 진행 중인 계정이라 처리할 수 없습니다."),
+    "COMMUNITY_CLUB_NOT_FOUND": (404, "클럽을 찾을 수 없습니다."),
+    "COMMUNITY_CLUB_NAME_TAKEN": (409, "이미 같은 이름의 클럽이 있습니다."),
+    "COMMUNITY_CLUB_LIMIT": (409, "클럽은 한 사람이 5개까지 만들 수 있습니다."),
+    "COMMUNITY_CLUB_OWNER": (409, "클럽장은 클럽을 나갈 수 없습니다."),
+    "COMMUNITY_CLUB_MEMBERS_ONLY": (403, "클럽에 가입한 사람만 글을 쓸 수 있습니다."),
+    "COMMUNITY_MILEAGE_NOT_ENOUGH": (409, "마일리지가 부족합니다."),
+    "COMMUNITY_MEMBERSHIP_REQUIRED": (403, "유료 회원만 클럽을 만들 수 있습니다."),
+    "COMMUNITY_DEMO_UNAVAILABLE": (409, "지금은 시연용 유료 회원을 시작할 수 없습니다."),
     "VALIDATION_ERROR": (422, "입력값을 확인해 주세요."),
     "FILE_TOO_LARGE": (413, "사진은 한 장에 5MB 이하만 올릴 수 있습니다."),
     "UNSUPPORTED_IMAGE": (415, "JPEG, PNG, WebP 사진만 올릴 수 있습니다."),
@@ -234,6 +244,86 @@ class CommunityUnreadCount(BaseModel):
     unread_count: int
 
 
+ClubCategory = Literal["running", "strength", "diet", "yoga", "hiking", "cycling", "sports", "etc"]
+
+
+class CreateClubRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=2, max_length=30)
+    description: str | None = Field(default=None, max_length=300)
+    category: ClubCategory
+
+    @field_validator("name", "description", mode="before")
+    @classmethod
+    def trim_text(cls, value: Any) -> Any:
+        return trimmed(value)
+
+
+class CommunityRule(BaseModel):
+    rule_key: str
+    amount: int
+    daily_limit: int | None
+    enabled: bool
+    note: str | None = Field(description="팀이 정하기 전 임시값이면 '임시값'으로 시작")
+
+
+class CommunityMileage(BaseModel):
+    balance: int
+    earned_today: int
+    rules: list[CommunityRule]
+
+
+class CommunityMileageEntry(BaseModel):
+    entry_id: UUID
+    amount: int = Field(description="적립은 +, 사용은 -")
+    reason: Literal["workout", "meal_log", "club_create"]
+    created_at: datetime
+
+
+class CommunityMileagePage(BaseModel):
+    items: list[CommunityMileageEntry]
+    next_cursor: str | None
+
+
+class CommunityMembership(BaseModel):
+    active: bool
+    plan: str | None
+    source: Literal["demo"] | None = Field(description="demo = 결제 없는 시연용")
+    expires_at: datetime | None
+    demo_available: bool
+    demo_days: int | None
+
+
+class CommunityClub(BaseModel):
+    club_id: UUID
+    name: str
+    description: str | None
+    category: ClubCategory
+    owner: CommunityAuthor
+    member_count: int
+    post_count: int
+    is_member: bool
+    is_owner: bool
+    created_at: datetime
+
+
+class CommunityCreatedClub(CommunityClub):
+    paid_with: Literal["membership", "mileage"]
+    mileage_spent: int
+
+
+class CommunityClubPage(BaseModel):
+    items: list[CommunityClub]
+    next_cursor: str | None
+
+
+class CommunityClubMembershipState(BaseModel):
+    club_id: UUID
+    joined: bool
+    member_count: int
+
+
 class CommunityUpload(BaseModel):
     upload_id: UUID
     width: int
@@ -311,7 +401,7 @@ class CommunityStore:
         if not key.startswith("sb_secret_"):
             self.headers["Authorization"] = f"Bearer {key}"
 
-    async def rpc(self, name: str, **params: Any) -> Any:
+    async def rpc(self, name: str, /, **params: Any) -> Any:
         body = {f"p_{key}": value for key, value in params.items()}
         try:
             async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
@@ -728,5 +818,133 @@ def create_community_router(current_user_dependency: Any, settings_dependency: A
     ) -> Any:
         store = CommunityStore(settings, user.id)
         return parse(CommunityUnreadCount, await store.rpc("community_read_notifications", user_id=user.id))
+
+    @router.get("/mileage", response_model=CommunityMileage,
+                summary="마일리지 잔액 (열 때마다 운동 완료·식단 기록을 확인해 적립, 규칙은 임시값)")
+    async def get_mileage(
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityMileage, await store.rpc("community_sync_mileage", user_id=user.id))
+
+    @router.get("/mileage/history", response_model=CommunityMileagePage, summary="마일리지 적립·사용 내역")
+    async def get_mileage_history(
+        cursor: str | None = Query(default=None, max_length=300),
+        limit: int = Query(default=PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> dict[str, Any]:
+        before_at, before_id = decode_cursor(cursor, "mileage")
+        store = CommunityStore(settings, user.id)
+        rows = await store.rpc("community_mileage_history", user_id=user.id, before_created_at=before_at,
+                               before_id=before_id, limit=limit + 1)
+        if not isinstance(rows, list):
+            fail("DATA_SOURCE_ERROR")
+        return {"items": parse_rows(CommunityMileageEntry, rows[:limit]),
+                "next_cursor": page_cursor(rows, limit, "mileage", "created_at", "entry_id")}
+
+    @router.get("/membership", response_model=CommunityMembership, summary="유료 회원 상태")
+    async def get_membership(
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityMembership, await store.rpc("community_membership", user_id=user.id))
+
+    @router.post("/membership/demo", response_model=CommunityMembership,
+                 responses={409: {"description": "Demo membership is switched off"}},
+                 summary="시연용 유료 회원 시작 (실제 결제 없음)")
+    async def start_demo_membership(
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityMembership, await store.rpc("community_start_demo_membership", user_id=user.id))
+
+    @router.get("/clubs", response_model=CommunityClubPage, summary="클럽 목록 (최신순)")
+    async def get_clubs(
+        scope: Literal["all", "mine"] = Query(default="all", description="all = 전체, mine = 내가 가입한 클럽"),
+        category: ClubCategory | None = Query(default=None),
+        cursor: str | None = Query(default=None, max_length=300),
+        limit: int = Query(default=PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> dict[str, Any]:
+        cursor_scope = f"clubs:{scope}:{category or ''}"
+        before_at, before_id = decode_cursor(cursor, cursor_scope)
+        store = CommunityStore(settings, user.id)
+        rows = await store.rpc("community_club_list", viewer=user.id, scope=scope, category=category,
+                               before_created_at=before_at, before_club_id=before_id, limit=limit + 1)
+        if not isinstance(rows, list):
+            fail("DATA_SOURCE_ERROR")
+        return {"items": parse_rows(CommunityClub, rows[:limit]),
+                "next_cursor": page_cursor(rows, limit, cursor_scope, "created_at", "club_id")}
+
+    @router.post("/clubs", status_code=201, response_model=CommunityCreatedClub,
+                 responses={403: {"description": "Membership required"},
+                            409: {"description": "Name taken, club limit or not enough mileage"}},
+                 summary="클럽 만들기 (유료 회원은 무료, 아니면 마일리지 사용)")
+    async def create_club(
+        body: CreateClubRequest,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityCreatedClub, await store.rpc(
+            "community_create_club", user_id=user.id, name=body.name, description=body.description,
+            category=body.category))
+
+    @router.get("/clubs/{club_id}", response_model=CommunityClub, summary="클럽 정보")
+    async def get_club(
+        club_id: UUID,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityClub, await store.rpc("community_get_club", viewer=user.id, club_id=str(club_id)))
+
+    async def set_club_membership(club_id: UUID, joined: bool, user: Any, settings: Any) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityClubMembershipState, await store.rpc(
+            "community_set_club_membership", user_id=user.id, club_id=str(club_id), joined=joined))
+
+    @router.put("/clubs/{club_id}/membership", response_model=CommunityClubMembershipState, summary="클럽 가입")
+    async def join_club(
+        club_id: UUID,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        return await set_club_membership(club_id, True, user, settings)
+
+    @router.delete("/clubs/{club_id}/membership", response_model=CommunityClubMembershipState,
+                   summary="클럽 나가기 (클럽장은 불가)")
+    async def leave_club(
+        club_id: UUID,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        return await set_club_membership(club_id, False, user, settings)
+
+    @router.get("/clubs/{club_id}/posts", response_model=CommunityFeedPage, summary="클럽 글 (최신순)")
+    async def get_club_posts(
+        club_id: UUID,
+        cursor: str | None = Query(default=None, max_length=300),
+        limit: int = Query(default=PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> dict[str, Any]:
+        scope = f"club:{club_id}"
+        before_at, before_id = decode_cursor(cursor, scope)
+        store = CommunityStore(settings, user.id)
+        rows = await store.rpc("community_club_feed", viewer=user.id, club_id=str(club_id),
+                               before_created_at=before_at, before_item_id=before_id, limit=limit + 1)
+        if not isinstance(rows, list):
+            fail("DATA_SOURCE_ERROR")
+        return {"items": await store.posts(rows[:limit]),
+                "next_cursor": page_cursor(rows, limit, scope, "feed_created_at", "feed_item_id")}
+
+    @router.post("/clubs/{club_id}/posts", status_code=201, response_model=CommunityPost,
+                 responses={403: {"description": "Members only"}},
+                 summary="클럽에 글 쓰기 (가입한 사람만, 전체 피드에는 안 보임)")
+    async def create_club_post(
+        club_id: UUID, body: CreatePostRequest,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        row = await store.rpc("community_create_club_post", user_id=user.id, club_id=str(club_id),
+                              content=body.content,
+                              upload_ids=[str(upload_id) for upload_id in body.upload_ids])
+        return await store.post(row)
 
     return router

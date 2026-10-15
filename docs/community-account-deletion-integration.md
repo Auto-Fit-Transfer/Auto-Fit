@@ -97,6 +97,19 @@ node backend/tests/community_feed_sql.mjs <@electric-sql/pglite 경로> <참고 
   사용자(`auth.users`) 범위 안에서만 일어나므로 잠금 순서(사용자 → 글 → 하위 행)를 지킨다.
 - 시험: `community_social_sql.mjs` 27개, `community_account_deletion_sql.mjs` 44개(팔로우·알림 정리, 탈퇴 중 팔로우 거절 포함).
 
+### 3단계 SQL(20261015130000)의 탈퇴 연동
+
+- `user_id`가 있는 새 표 3개(`community_mileage_ledger`, `community_memberships`, `community_club_members`)는 기존
+  `check_user_reference`·`zzz_check_account_writable`를 붙였고, 탈퇴 때 기존 일반 삭제(purge)가 지운다.
+- `community_clubs`는 소유자 열이 `owner_user_id`라 `check_community_pair_writable`로 검사한다. UPDATE는 새 소유자만 검사해서
+  탈퇴하는 클럽장의 클럽을 넘길 수 있다.
+- `community_delete_user_data`가 클럽장 탈퇴 시 가장 먼저 가입한(탈퇴 중이 아닌) 회원에게 클럽을 넘기고, 넘길 사람이 없으면 클럽과
+  회원 행을 지운다. 그 클럽에 남은 다른 사람의 글은 `club_id`를 유지하고 작성자 프로필에서만 보인다(다른 사람 행을 고치지 않으므로
+  다른 탈퇴자의 쓰기 차단에 걸리지 않는다).
+- 가입은 클럽 행을 `for share`로 잡아, 클럽장 탈퇴로 클럽이 지워지는 것과 순서를 맞춘다(사용자 → 클럽 행).
+- 시험: `community_clubs_sql.mjs` 25개(클럽장 넘김·빈 클럽 삭제 포함), `community_account_deletion_sql.mjs` 48개
+  (탈퇴 중 클럽 개설·적립·시연 회원 거절, 함께 탈퇴 중인 회원을 건너뛰고 넘김).
+
 ## 5. 적용 담당자 체크리스트
 
 적용 전:

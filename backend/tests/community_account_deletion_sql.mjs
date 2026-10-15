@@ -59,6 +59,10 @@ const leftoversOf = (uid) => asSuperuser(() => count(`select (
   + (select count(*) from public.community_blocks where blocker_user_id = $1 or blocked_user_id = $1)
   + (select count(*) from public.community_follows where follower_user_id = $1 or following_user_id = $1)
   + (select count(*) from public.community_notifications where user_id = $1 or actor_user_id = $1)
+  + (select count(*) from public.community_mileage_ledger where user_id = $1)
+  + (select count(*) from public.community_memberships where user_id = $1)
+  + (select count(*) from public.community_club_members where user_id = $1)
+  + (select count(*) from public.community_clubs where owner_user_id = $1)
   + (select count(*) from public.profiles where user_id = $1)
   + (select count(*) from autofit_integrity.account_deletions where user_id = $1)
   + (select count(*) from auth.users where id = $1))::int as n`, [uid]));
@@ -101,6 +105,11 @@ try {
   await report(B, 'post', pA2.post_id); await report(A, 'post', pC1.post_id); await report(D, 'user', A);
   await block(A, D); await block(C, A);
   await follow(A, B); await follow(B, A); await follow(D, B);
+  // A owns a club (demo membership); E joins first but will be leaving too, so B takes over.
+  await rpc('community_start_demo_membership', A);
+  const clubA = await rpc('community_create_club', A, 'A 클럽', null, 'running');
+  await rpc('community_set_club_membership', E, clubA.club_id, true);
+  await rpc('community_set_club_membership', B, clubA.club_id, true);
   await asSuperuser(() => db.query(`insert into storage.objects(bucket_id, name) values
     ('community-photos', $1), ('community-photos', $2), ('community-photos', $3),
     ('community-photos', $4), ('meal-photos', $5)`,
@@ -118,6 +127,9 @@ try {
   await rejected(() => report(A, 'user', B), unavailable, 'report');
   await rejected(() => block(A, B), unavailable, 'block');
   await rejected(() => follow(A, D), unavailable, 'follow');
+  await rejected(() => rpc('community_sync_mileage', A), unavailable, 'mileage');
+  await rejected(() => rpc('community_start_demo_membership', A), unavailable, 'membership');
+  await rejected(() => rpc('community_create_club', A, 'A 둘째 클럽', null, 'yoga'), unavailable, 'club');
   await rejected(() => db.query('insert into public.community_posts(user_id, content) values ($1, $2)', [A, '우회']),
     'Account deletion is in progress', 'direct insert');
   await rejected(() => db.query(`insert into public.community_reports(reporter_user_id, target_type, target_id,
@@ -197,6 +209,10 @@ try {
   }
   assert.equal(await asSuperuser(() => count("select count(*)::int as n from storage.objects where split_part(name, '/', 1) = $1", [A])), 0);
   assert.equal(await counterDrift(), 0, 'counter drift'); checks++;
+  const handedOver = await rpc('community_get_club', B, clubA.club_id);
+  assert.deepEqual([handedOver.owner.user_id, handedOver.is_owner], [B, true], 'club skips leaving E');
+  assert.equal(await count(`select count(*)::int as n from public.community_club_members
+    where club_id = $1 and user_id = $2 and role = 'owner'`, [clubA.club_id, B]), 1); checks++;
 
   // Unrelated rows stay: B's post, photo and comment, C's like, D's new rows.
   assert.deepEqual(await counters(pB1), { like_count: 1, comment_count: 2, repost_count: 0 });
@@ -212,6 +228,7 @@ try {
   assert.equal((await counters(pE1)).like_count, 1);
   await deleteAuthUser(E);
   assert.equal(await leftoversOf(E), 0);
+  assert.equal((await rpc('community_get_club', B, clubA.club_id)).member_count, 1);
   assert.equal(await count('select count(*)::int as n from public.community_posts where post_id=$1', [pE1.post_id]), 0); checks++;
 
   // 6. Browser roles have no access; the service role uses the API but not the cleanup.

@@ -477,3 +477,105 @@ def test_notifications_page_count_and_read(client, supabase):
 
     supabase.rpc["community_notification_list"] = [{**rows[0], "type": "mention"}]
     assert client.get("/api/community/notifications").status_code == 502
+
+
+CLUB = "20261015-0000-4000-8000-000000000031"
+CLUB_2 = "20261015-0000-4000-8000-000000000032"
+
+
+def club_row(club_id=CLUB, created_at=T1, **extra):
+    return {"club_id": club_id, "name": "아침 러닝", "description": None, "category": "running",
+            "owner": author(), "member_count": 3, "post_count": 1, "is_member": False, "is_owner": False,
+            "created_at": created_at, **extra}
+
+
+def test_mileage_syncs_and_pages_history(client, supabase):
+    rule = {"rule_key": "earn_workout", "amount": 10, "daily_limit": 1, "enabled": True,
+            "note": "임시값(팀 결정 전)"}
+    supabase.rpc["community_sync_mileage"] = {"balance": 35, "earned_today": 25, "rules": [rule]}
+    assert client.get("/api/community/mileage").json()["balance"] == 35
+    assert supabase.bodies("community_sync_mileage") == [{"p_user_id": USER}]
+
+    entries = [{"entry_id": COMMENT, "amount": -30, "reason": "club_create", "created_at": T1},
+               {"entry_id": COMMENT_2, "amount": 10, "reason": "workout", "created_at": T2}]
+    supabase.rpc["community_mileage_history"] = entries
+    first = client.get("/api/community/mileage/history", params={"limit": 1}).json()
+    assert first["items"][0]["amount"] == -30
+    client.get("/api/community/mileage/history", params={"cursor": first["next_cursor"]})
+    assert supabase.bodies("community_mileage_history")[1]["p_before_id"] == COMMENT
+    feed_cursor = client.get("/api/community/mileage/history", params={
+        "cursor": community.encode_cursor("feed", T1, POST)})
+    assert feed_cursor.status_code == 422
+
+
+def test_demo_membership(client, supabase):
+    state = {"active": True, "plan": "premium", "source": "demo", "expires_at": T1,
+             "demo_available": True, "demo_days": 30}
+    supabase.rpc["community_membership"] = {**state, "active": False, "plan": None, "source": None,
+                                            "expires_at": None}
+    assert client.get("/api/community/membership").json()["active"] is False
+    supabase.rpc["community_start_demo_membership"] = state
+    assert client.post("/api/community/membership/demo").json()["source"] == "demo"
+    supabase.rpc["community_start_demo_membership"] = rejection("COMMUNITY_DEMO_UNAVAILABLE")
+    off = client.post("/api/community/membership/demo")
+    assert off.status_code == 409 and off.json()["detail"]["code"] == "COMMUNITY_DEMO_UNAVAILABLE"
+
+
+@pytest.mark.parametrize("payload", [
+    {"name": "아", "category": "running"},
+    {"name": "아침 러닝", "category": "swimming"},
+    {"name": "아침 러닝", "category": "running", "description": "x" * 301},
+    {"name": "아침 러닝", "category": "running", "owner": USER},
+])
+def test_create_club_validates_before_database(client, supabase, payload):
+    assert client.post("/api/community/clubs", json=payload).status_code == 422
+    assert supabase.calls == []
+
+
+def test_create_club_and_coded_errors(client, supabase):
+    supabase.rpc["community_create_club"] = {**club_row(is_member=True, is_owner=True),
+                                             "paid_with": "mileage", "mileage_spent": 500}
+    created = client.post("/api/community/clubs", json={
+        "name": "  아침 러닝  ", "description": "   ", "category": "running"})
+    assert created.status_code == 201
+    assert created.json()["paid_with"] == "mileage"
+    assert supabase.bodies("community_create_club") == [{
+        "p_user_id": USER, "p_name": "아침 러닝", "p_description": None, "p_category": "running"}]
+    for code, status in [("COMMUNITY_MILEAGE_NOT_ENOUGH", 409), ("COMMUNITY_MEMBERSHIP_REQUIRED", 403),
+                         ("COMMUNITY_CLUB_NAME_TAKEN", 409), ("COMMUNITY_CLUB_LIMIT", 409)]:
+        supabase.rpc["community_create_club"] = rejection(code)
+        response = client.post("/api/community/clubs", json={"name": "아침 러닝", "category": "running"})
+        assert (response.status_code, response.json()["detail"]["code"]) == (status, code)
+
+
+def test_club_list_join_and_posts(client, supabase):
+    supabase.rpc["community_club_list"] = [club_row(CLUB, T1), club_row(CLUB_2, T2)]
+    first = client.get("/api/community/clubs", params={"scope": "mine", "category": "running",
+                                                       "limit": 1}).json()
+    assert [club["club_id"] for club in first["items"]] == [CLUB]
+    client.get("/api/community/clubs", params={"scope": "mine", "category": "running",
+                                               "cursor": first["next_cursor"]})
+    assert supabase.bodies("community_club_list")[1] == {
+        "p_viewer": USER, "p_scope": "mine", "p_category": "running",
+        "p_before_created_at": "2026-10-14T03:00:00.123456+00:00", "p_before_club_id": CLUB, "p_limit": 21}
+    assert client.get("/api/community/clubs", params={"cursor": first["next_cursor"]}).status_code == 422
+
+    supabase.rpc["community_get_club"] = club_row()
+    assert client.get(f"/api/community/clubs/{CLUB}").json()["name"] == "아침 러닝"
+    supabase.rpc["community_set_club_membership"] = lambda request, body: {
+        "club_id": body["p_club_id"], "joined": body["p_joined"], "member_count": 4}
+    assert client.put(f"/api/community/clubs/{CLUB}/membership").json()["joined"] is True
+    supabase.rpc["community_set_club_membership"] = rejection("COMMUNITY_CLUB_OWNER")
+    assert client.delete(f"/api/community/clubs/{CLUB}/membership").status_code == 409
+
+    supabase.rpc["community_club_feed"] = [post_row(POST, T1), post_row(POST_2, T2)]
+    page = client.get(f"/api/community/clubs/{CLUB}/posts", params={"limit": 1}).json()
+    other_club = client.get(f"/api/community/clubs/{CLUB_2}/posts", params={"cursor": page["next_cursor"]})
+    assert other_club.status_code == 422
+    supabase.rpc["community_create_club_post"] = post_row()
+    created = client.post(f"/api/community/clubs/{CLUB}/posts", json={"content": " 같이 뛰어요 "})
+    assert created.status_code == 201
+    assert supabase.bodies("community_create_club_post") == [{
+        "p_user_id": USER, "p_club_id": CLUB, "p_content": "같이 뛰어요", "p_upload_ids": []}]
+    supabase.rpc["community_create_club_post"] = rejection("COMMUNITY_CLUB_MEMBERS_ONLY")
+    assert client.post(f"/api/community/clubs/{CLUB}/posts", json={"content": "글"}).status_code == 403

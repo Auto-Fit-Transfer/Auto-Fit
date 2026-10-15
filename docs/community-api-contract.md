@@ -1,6 +1,7 @@
-# Auto-Fit 커뮤니티 API 계약 (1단계: 피드, 2단계: 팔로우·프로필·알림)
+# Auto-Fit 커뮤니티 API 계약 (1단계 피드, 2단계 팔로우·프로필·알림, 3단계 마일리지·유료 회원·클럽)
 
 상태: 1단계 DB 적용 완료. 2단계 SQL(`20261015090000_community_follows_notifications.sql`)은 검토 대기, 공용 DB 미적용.
+3단계 SQL(`20261015130000_community_mileage_membership_clubs.sql`)도 검토 대기, 공용 DB 미적용. 2단계 다음에 적용한다.
 커뮤니티 서버 병합·배포와 화면 연동은 아직 대기.
 
 기준일: 2026-10-15
@@ -169,6 +170,39 @@ POST /api/community/reports
 - 차단하면 두 사람 사이의 팔로우가 양쪽 모두 자동으로 풀린다. 차단 관계에서는 팔로우할 수 없다.
 - 수(팔로워·팔로잉)는 전체 수이고, 목록에서는 나와 차단 관계인 사람이 빠진다.
 
+### 마일리지·유료 회원 (3단계, 규칙은 팀 결정 전 임시값)
+
+| 요청 | 설명 |
+| --- | --- |
+| `GET /api/community/mileage` | 열 때마다 운동 완료(`exercise_sessions` completed)·식단 기록(`meal_logs` recorded)을 확인해 적립한 뒤 `{ balance, earned_today, rules[] }` |
+| `GET /api/community/mileage/history?cursor=` | 적립(+)·사용(−) 내역 최신순 `{ entry_id, amount, reason(workout·meal_log·club_create), created_at }` |
+| `GET /api/community/membership` | `{ active, plan, source("demo"), expires_at, demo_available, demo_days }` |
+| `POST /api/community/membership/demo` | **시연용** 유료 회원 시작·연장(결제 없음). 규칙이 꺼져 있으면 409 `COMMUNITY_DEMO_UNAVAILABLE` |
+
+- 숫자는 모두 `community_rules` 표에 있다(`earn_workout` 10/하루 1, `earn_meal_log` 5/하루 3, `club_create_cost` 500, `membership_demo_days` 30).
+  팀이 정하면 SQL로 표의 `amount`·`daily_limit`·`enabled`만 바꾼다. 서버·앱 코드는 바꿀 필요가 없다.
+- 규칙의 `starts_at` 이전 활동은 적립하지 않는다. 규칙을 껐다 다시 켜면 꺼져 있던 동안의 활동도 적립되므로, 원하지 않으면 `starts_at`을 함께 옮긴다.
+- 같은 운동·식단 기록은 한 번만 적립된다(하루 한도는 한국 날짜 기준).
+
+### 클럽 (3단계)
+
+| 요청 | 설명 |
+| --- | --- |
+| `GET /api/community/clubs?scope=all\|mine&category=&cursor=` | 클럽 목록 최신순 |
+| `POST /api/community/clubs` | `{ name(2~30자), description(선택, 300자), category }` → 201. 유료 회원은 무료, 아니면 마일리지 차감. 응답에 `paid_with`(membership·mileage), `mileage_spent` |
+| `GET /api/community/clubs/{club_id}` | `{ club_id, name, description, category, owner, member_count, post_count, is_member, is_owner, created_at }` |
+| `PUT` / `DELETE /api/community/clubs/{club_id}/membership` | 가입 / 나가기 `{ club_id, joined, member_count }`. 클럽장은 나갈 수 없음(409) |
+| `GET /api/community/clubs/{club_id}/posts?cursor=` | 클럽 글(피드와 같은 형식) |
+| `POST /api/community/clubs/{club_id}/posts` | 클럽에 글쓰기(가입자만, 403). 글쓰기와 같은 본문·규칙 |
+
+- `category`: `running`, `strength`, `diet`, `yoga`, `hiking`, `cycling`, `sports`, `etc` (관심사 기준, 위치 정보 없음).
+- 클럽 글은 전체·팔로잉 피드에 나오지 않고 클럽과 작성자 프로필에만 나온다. 좋아요·댓글·공유는 일반 글과 같다.
+- 한 사람이 클럽을 5개까지 만든다. 클럽 이름은 대소문자 구분 없이 하나뿐이다.
+- 클럽장이 탈퇴하면 가장 먼저 가입한(탈퇴 중이 아닌) 회원이 클럽장이 된다. 남은 회원이 없으면 클럽을 지운다.
+- 오류: 404 `COMMUNITY_CLUB_NOT_FOUND`, 409 `COMMUNITY_CLUB_NAME_TAKEN`·`COMMUNITY_CLUB_LIMIT`·`COMMUNITY_CLUB_OWNER`·`COMMUNITY_MILEAGE_NOT_ENOUGH`,
+  403 `COMMUNITY_MEMBERSHIP_REQUIRED`(개설 비용 규칙이 꺼진 상태에서 비회원)·`COMMUNITY_CLUB_MEMBERS_ONLY`.
+- 아직 없는 것: 클럽 삭제·수정, 회원 목록, 클럽장 넘기기(탈퇴 때만 자동).
+
 ### 알림 (2단계)
 
 | 요청 | 설명 |
@@ -199,4 +233,8 @@ POST /api/community/reports
    새 표 2개(`community_follows`, `community_notifications`)와 함수를 추가하고, 기존 함수 2개
    (`autofit_integrity.check_community_pair_writable`, `public.community_delete_user_data`)를 같은 이름·인자로 교체한다.
    알림은 기존 RPC를 고치지 않고 트리거로 만든다. 이 파일 하나만 적용한다.
-4. 신고 내용(`community_reports`)을 검토하고 글을 숨기는 관리자 기능은 아직 없다. 지금은 DB에서 직접 확인한다.
+4. 3단계 SQL `20261015130000_community_mileage_membership_clubs.sql`은 2단계 다음에 적용한다. 새 표 5개
+   (`community_rules`, `community_mileage_ledger`, `community_memberships`, `community_clubs`, `community_club_members`)와
+   `community_posts.club_id` 열을 추가하고, 함수 3개(`check_community_pair_writable`, `community_timeline`,
+   `community_delete_user_data`)를 같은 이름·인자로 교체한다. 시험: `node backend/tests/community_clubs_sql.mjs …`.
+5. 신고 내용(`community_reports`)을 검토하고 글을 숨기는 관리자 기능은 아직 없다. 지금은 DB에서 직접 확인한다.
