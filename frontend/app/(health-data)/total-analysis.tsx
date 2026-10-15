@@ -152,7 +152,7 @@ export default function TotalAnalysisScreen() {
                 <View style={s.icon}>
                   <GoalIcon />
                 </View>
-                <View style={{ flex: 1, gap: 5 }}>
+                <View style={s.goalCopy}>
                   <Text style={s.goalLabel}>내 건강 목표</Text>
                   <Text style={s.heading}>{data.goal || '건강 목표를 설정해 주세요.'}</Text>
                 </View>
@@ -165,7 +165,7 @@ export default function TotalAnalysisScreen() {
                 {data.strategy.tags.length > 0 ? (
                   <Text style={s.strategyMessage}>{data.strategy.tags.join(' · ')}</Text>
                 ) : null}
-                <View style={s.managementRow}>
+                <View style={[s.managementRow, compact && s.managementRowCompact]}>
                   {(
                     [
                       {
@@ -186,7 +186,7 @@ export default function TotalAnalysisScreen() {
                       accessibilityRole="button"
                       key={item.path}
                       onPress={() => router.push(item.path)}
-                      style={s.management}
+                      style={[s.management, compact && s.managementCompact]}
                     >
                       <View style={s.managementHeading}>
                         <item.Icon />
@@ -317,7 +317,7 @@ export default function TotalAnalysisScreen() {
   );
 }
 const s = StyleSheet.create({
-  content: { marginHorizontal: 16, marginTop: 25, gap: 25 },
+  content: { alignSelf: 'stretch', marginHorizontal: 16, marginTop: 25, gap: 25 },
   scoreRow: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   score: { fontFamily: fontFamilies.pretendardBold, fontSize: 38, color: colors.textWhite },
   delta: { fontSize: 16, color: colors.primaryMedium },
@@ -332,6 +332,7 @@ const s = StyleSheet.create({
   total: { color: colors.textWhite, fontSize: 14 },
   medal: { width: 135, height: 130 },
   goal: { borderRadius: 50, flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 74 },
+  goalCopy: { flex: 1, flexShrink: 1, gap: 5, minWidth: 0 },
   icon: {
     width: 40,
     height: 40,
@@ -341,28 +342,48 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   goalLabel: { fontFamily: fontFamilies.pretendardBold, fontSize: 18, color: colors.primary },
-  heading: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 18, color: colors.textBody },
-  strategy: { borderRadius: 20, overflow: 'hidden', padding: 16, gap: 12 },
+  heading: {
+    color: colors.textBody,
+    flexShrink: 1,
+    fontFamily: fontFamilies.pretendardSemiBold,
+    fontSize: 18,
+  },
+  strategy: {
+    alignSelf: 'stretch',
+    backgroundColor: colors.dark,
+    borderRadius: 20,
+    gap: 12,
+    minWidth: 0,
+    overflow: 'hidden',
+    padding: 16,
+  },
   strategyLabel: {
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 16,
     color: colors.primaryMedium,
   },
   strategyTitle: {
+    alignSelf: 'stretch',
+    flexShrink: 1,
     fontFamily: fontFamilies.pretendardBold,
     fontSize: 22,
     lineHeight: 29,
     color: colors.textWhite,
   },
   strategyMessage: {
+    alignSelf: 'stretch',
+    flexShrink: 1,
     fontFamily: fontFamilies.pretendardMedium,
     fontSize: 14,
     lineHeight: 20,
     color: colors.primaryLight,
   },
-  managementRow: { flexDirection: 'row', gap: 10 },
+  managementRow: { alignSelf: 'stretch', flexDirection: 'row', gap: 10, minWidth: 0 },
+  managementRowCompact: { flexDirection: 'column' },
   management: {
     flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
     padding: 10,
     gap: 10,
     borderRadius: 16,
@@ -370,13 +391,16 @@ const s = StyleSheet.create({
     borderColor: colors.primaryMedium,
     backgroundColor: 'rgba(186,177,255,0.25)',
   },
+  managementCompact: { flexBasis: 'auto', width: '100%' },
   managementHeading: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 5,
+    minWidth: 0,
   },
   tag: {
+    flexShrink: 1,
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 12,
     color: colors.primary,
