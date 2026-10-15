@@ -63,6 +63,8 @@ const leftoversOf = (uid) => asSuperuser(() => count(`select (
   + (select count(*) from public.community_memberships where user_id = $1)
   + (select count(*) from public.community_club_members where user_id = $1)
   + (select count(*) from public.community_clubs where owner_user_id = $1)
+  + (select count(*) from public.community_challenge_participants where user_id = $1)
+  + (select count(*) from public.community_ranking_participants where user_id = $1)
   + (select count(*) from public.profiles where user_id = $1)
   + (select count(*) from autofit_integrity.account_deletions where user_id = $1)
   + (select count(*) from auth.users where id = $1))::int as n`, [uid]));
@@ -110,6 +112,9 @@ try {
   const clubA = await rpc('community_create_club', A, 'A 클럽', null, 'running');
   await rpc('community_set_club_membership', E, clubA.club_id, true);
   await rpc('community_set_club_membership', B, clubA.club_id, true);
+  const challenge = (await rpc('community_challenge_list', A))[0];
+  await rpc('community_set_challenge_participation', A, challenge.challenge_id, true);
+  await rpc('community_set_ranking_participation', A, true);
   await asSuperuser(() => db.query(`insert into storage.objects(bucket_id, name) values
     ('community-photos', $1), ('community-photos', $2), ('community-photos', $3),
     ('community-photos', $4), ('meal-photos', $5)`,
@@ -130,6 +135,10 @@ try {
   await rejected(() => rpc('community_sync_mileage', A), unavailable, 'mileage');
   await rejected(() => rpc('community_start_demo_membership', A), unavailable, 'membership');
   await rejected(() => rpc('community_create_club', A, 'A 둘째 클럽', null, 'yoga'), unavailable, 'club');
+  await rejected(() => rpc('community_set_challenge_participation', A, challenge.challenge_id, true),
+    unavailable, 'challenge');
+  await rejected(() => rpc('community_claim_challenge', A, challenge.challenge_id), unavailable, 'claim');
+  await rejected(() => rpc('community_set_ranking_participation', A, true), unavailable, 'ranking');
   await rejected(() => db.query('insert into public.community_posts(user_id, content) values ($1, $2)', [A, '우회']),
     'Account deletion is in progress', 'direct insert');
   await rejected(() => db.query(`insert into public.community_reports(reporter_user_id, target_type, target_id,

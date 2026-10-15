@@ -110,6 +110,13 @@ node backend/tests/community_feed_sql.mjs <@electric-sql/pglite 경로> <참고 
 - 시험: `community_clubs_sql.mjs` 25개(클럽장 넘김·빈 클럽 삭제 포함), `community_account_deletion_sql.mjs` 48개
   (탈퇴 중 클럽 개설·적립·시연 회원 거절, 함께 탈퇴 중인 회원을 건너뛰고 넘김).
 
+### 4·5단계 SQL(20261015170000)의 탈퇴 연동
+
+- 새 사용자 표 2개(`community_challenge_participants`, `community_ranking_participants`)는 `user_id`가 있어 기존
+  `check_user_reference`·`zzz_check_account_writable`를 붙였고, 탈퇴 때 기존 일반 삭제(purge)가 지운다. 정리 함수 교체는 없다.
+- 챌린지 참여·보상, 랭킹 참여 RPC는 사용자 확인(`community_require_writable`) 뒤에만 쓴다.
+- 시험: `community_challenges_sql.mjs` 20개, `community_account_deletion_sql.mjs` 51개(탈퇴 중 챌린지 참여·보상·랭킹 참여 거절 포함).
+
 ## 5. 적용 담당자 체크리스트
 
 적용 전:

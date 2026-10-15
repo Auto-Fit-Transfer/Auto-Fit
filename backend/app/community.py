@@ -1,16 +1,17 @@
 """Community feed: posts with up to five photos, likes, reposts, comments, reports and blocks,
 plus follows, profiles, following/user timelines and notifications (stage 2) and mileage,
-demo membership and clubs (stage 3).
+demo membership and clubs (stage 3), challenges and weekly rankings (stages 4-5).
 
 Every write is a SQL function (supabase/migrations/20261014062855_community_feed.sql,
-20261015090000_community_follows_notifications.sql and
-20261015130000_community_mileage_membership_clubs.sql), so
+20261015090000_community_follows_notifications.sql,
+20261015130000_community_mileage_membership_clubs.sql and
+20261015170000_community_challenges_rankings.sql), so
 counters, ownership and block rules change atomically. Photos live in a private bucket and
 are re-encoded without EXIF metadata, so phone GPS locations never reach other users.
 """
 import base64
 import json
-from datetime import datetime
+from datetime import date, datetime
 from io import BytesIO
 from typing import Any, Literal, NoReturn
 from uuid import UUID, uuid4
@@ -53,6 +54,11 @@ ERRORS = {
     "COMMUNITY_MILEAGE_NOT_ENOUGH": (409, "마일리지가 부족합니다."),
     "COMMUNITY_MEMBERSHIP_REQUIRED": (403, "유료 회원만 클럽을 만들 수 있습니다."),
     "COMMUNITY_DEMO_UNAVAILABLE": (409, "지금은 시연용 유료 회원을 시작할 수 없습니다."),
+    "COMMUNITY_CHALLENGE_NOT_FOUND": (404, "챌린지를 찾을 수 없습니다."),
+    "COMMUNITY_CHALLENGE_ENDED": (409, "이미 끝난 챌린지입니다."),
+    "COMMUNITY_CHALLENGE_NOT_JOINED": (409, "챌린지에 먼저 참여해 주세요."),
+    "COMMUNITY_CHALLENGE_NOT_COMPLETED": (409, "아직 목표를 달성하지 못했습니다."),
+    "COMMUNITY_CHALLENGE_ALREADY_CLAIMED": (409, "이미 보상을 받았습니다."),
     "VALIDATION_ERROR": (422, "입력값을 확인해 주세요."),
     "FILE_TOO_LARGE": (413, "사진은 한 장에 5MB 이하만 올릴 수 있습니다."),
     "UNSUPPORTED_IMAGE": (415, "JPEG, PNG, WebP 사진만 올릴 수 있습니다."),
@@ -277,7 +283,7 @@ class CommunityMileage(BaseModel):
 class CommunityMileageEntry(BaseModel):
     entry_id: UUID
     amount: int = Field(description="적립은 +, 사용은 -")
-    reason: Literal["workout", "meal_log", "club_create"]
+    reason: Literal["workout", "meal_log", "club_create", "challenge"]
     created_at: datetime
 
 
@@ -322,6 +328,51 @@ class CommunityClubMembershipState(BaseModel):
     club_id: UUID
     joined: bool
     member_count: int
+
+
+class CommunityChallenge(BaseModel):
+    challenge_id: UUID
+    title: str
+    description: str | None
+    metric: Literal["workout_days", "meal_log_days"] = Field(
+        description="workout_days = 운동 완료한 날 수, meal_log_days = 식단 기록한 날 수 (한국 날짜)")
+    goal: int
+    starts_on: date
+    ends_on: date
+    reward_mileage: int
+    note: str | None = Field(description="팀이 정하기 전 임시값이면 '임시값'으로 시작")
+    phase: Literal["upcoming", "ongoing", "ended"]
+    participant_count: int
+    joined: bool
+    progress: int = Field(description="기간 안에 달성한 날 수 (목표를 넘으면 목표 값)")
+    completed: bool
+    rewarded: bool
+    can_claim: bool
+
+
+class CommunityRankingEntry(CommunityAuthor):
+    rank: int
+    score: int
+    is_me: bool
+
+
+class CommunityRankingMe(BaseModel):
+    rank: int
+    score: int
+
+
+class CommunityRanking(BaseModel):
+    metric: Literal["workout", "mileage"]
+    scope: Literal["all", "following", "club"]
+    week_start: date
+    week_end: date
+    participating: bool = Field(description="내가 랭킹 공개에 참여 중인지. 참여한 사람만 순위에 보인다")
+    items: list[CommunityRankingEntry]
+    me: CommunityRankingMe | None = Field(description="내 순위. 참여하지 않았거나 이번 주 기록이 없으면 null")
+
+
+class CommunityRankingParticipation(BaseModel):
+    participating: bool
 
 
 class CommunityUpload(BaseModel):
@@ -946,5 +997,81 @@ def create_community_router(current_user_dependency: Any, settings_dependency: A
                               content=body.content,
                               upload_ids=[str(upload_id) for upload_id in body.upload_ids])
         return await store.post(row)
+
+    @router.get("/challenges", response_model=list[CommunityChallenge],
+                summary="챌린지 목록 (진행 중·예정, 끝난 지 1주 이내) — 예시는 임시값")
+    async def get_challenges(
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse_rows(CommunityChallenge, await store.rpc("community_challenge_list", viewer=user.id))
+
+    async def set_challenge(challenge_id: UUID, joined: bool, user: Any, settings: Any) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityChallenge, await store.rpc(
+            "community_set_challenge_participation", user_id=user.id, challenge_id=str(challenge_id),
+            joined=joined))
+
+    @router.put("/challenges/{challenge_id}/participation", response_model=CommunityChallenge,
+                summary="챌린지 참여 (마지막 날까지)")
+    async def join_challenge(
+        challenge_id: UUID,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        return await set_challenge(challenge_id, True, user, settings)
+
+    @router.delete("/challenges/{challenge_id}/participation", response_model=CommunityChallenge,
+                   summary="챌린지 참여 취소 (보상 받기 전까지)")
+    async def leave_challenge(
+        challenge_id: UUID,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        return await set_challenge(challenge_id, False, user, settings)
+
+    @router.post("/challenges/{challenge_id}/claim", response_model=CommunityChallenge,
+                 summary="챌린지 보상(마일리지) 받기 — 목표 달성 후 한 번")
+    async def claim_challenge(
+        challenge_id: UUID,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityChallenge, await store.rpc(
+            "community_claim_challenge", user_id=user.id, challenge_id=str(challenge_id)))
+
+    @router.get("/rankings", response_model=CommunityRanking,
+                summary="이번 주 랭킹 (월~일, 참여를 켠 사람만)")
+    async def get_ranking(
+        metric: Literal["workout", "mileage"] = Query(
+            default="workout", description="workout = 운동 완료 횟수, mileage = 적립한 마일리지"),
+        scope: Literal["all", "following", "club"] = Query(default="all"),
+        club_id: UUID | None = Query(default=None, description="scope=club 일 때만"),
+        limit: int = Query(default=50, ge=1, le=100),
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        if (scope == "club") != (club_id is not None):
+            fail("VALIDATION_ERROR")
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityRanking, await store.rpc(
+            "community_ranking", viewer=user.id, metric=metric, scope=scope,
+            club_id=str(club_id) if club_id else None, limit=limit))
+
+    async def set_ranking(participating: bool, user: Any, settings: Any) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityRankingParticipation, await store.rpc(
+            "community_set_ranking_participation", user_id=user.id, participating=participating))
+
+    @router.put("/rankings/participation", response_model=CommunityRankingParticipation,
+                summary="랭킹 공개 참여 (기본은 비공개)")
+    async def join_ranking(
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        return await set_ranking(True, user, settings)
+
+    @router.delete("/rankings/participation", response_model=CommunityRankingParticipation,
+                   summary="랭킹 공개 그만하기")
+    async def leave_ranking(
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        return await set_ranking(False, user, settings)
 
     return router

@@ -1,7 +1,8 @@
-# Auto-Fit 커뮤니티 API 계약 (1단계 피드, 2단계 팔로우·프로필·알림, 3단계 마일리지·유료 회원·클럽)
+# Auto-Fit 커뮤니티 API 계약 (1 피드, 2 팔로우·프로필·알림, 3 마일리지·유료 회원·클럽, 4·5 챌린지·랭킹)
 
 상태: 1단계 DB 적용 완료. 2단계 SQL(`20261015090000_community_follows_notifications.sql`)은 검토 대기, 공용 DB 미적용.
 3단계 SQL(`20261015130000_community_mileage_membership_clubs.sql`)도 검토 대기, 공용 DB 미적용. 2단계 다음에 적용한다.
+4·5단계 SQL(`20261015170000_community_challenges_rankings.sql`)도 검토 대기, 공용 DB 미적용. 3단계 다음에 적용한다.
 커뮤니티 서버 병합·배포와 화면 연동은 아직 대기.
 
 기준일: 2026-10-15
@@ -203,6 +204,43 @@ POST /api/community/reports
   403 `COMMUNITY_MEMBERSHIP_REQUIRED`(개설 비용 규칙이 꺼진 상태에서 비회원)·`COMMUNITY_CLUB_MEMBERS_ONLY`.
 - 아직 없는 것: 클럽 삭제·수정, 회원 목록, 클럽장 넘기기(탈퇴 때만 자동).
 
+### 챌린지 (4단계, 예시 챌린지는 팀 결정 전 임시값)
+
+| 요청 | 설명 |
+| --- | --- |
+| `GET /api/community/challenges` | 진행 중·예정, 끝난 지 1주 이내 챌린지 목록 |
+| `PUT` / `DELETE /api/community/challenges/{challenge_id}/participation` | 참여(마지막 날까지) / 참여 취소(보상 받기 전까지) |
+| `POST /api/community/challenges/{challenge_id}/claim` | 목표를 채우면 보상 마일리지를 한 번 받는다 |
+
+```json
+{ "challenge_id": "…", "title": "2주 운동 습관", "description": "…", "metric": "workout_days", "goal": 5,
+  "starts_on": "2026-10-15", "ends_on": "2026-10-28", "reward_mileage": 50, "note": "임시값(팀 결정 전): …",
+  "phase": "ongoing", "participant_count": 3, "joined": true, "progress": 2, "completed": false,
+  "rewarded": false, "can_claim": false }
+```
+
+- `metric`: `workout_days`(운동 완료한 날 수), `meal_log_days`(식단 기록한 날 수). 한국 날짜, 기간 안의 기록만 센다. 인증 사진은 없다.
+- 챌린지는 `community_challenges` 표의 행이다(예시 2개: 2주 운동 5일 +50, 2주 식단 7일 +30). 새 챌린지·목표·보상은 SQL로 행을 넣거나 바꾼다.
+- 오류: 404 `COMMUNITY_CHALLENGE_NOT_FOUND`, 409 `COMMUNITY_CHALLENGE_ENDED`·`_NOT_JOINED`·`_NOT_COMPLETED`·`_ALREADY_CLAIMED`.
+- 보상은 마일리지 내역에 `reason: "challenge"`로 남는다.
+
+### 랭킹 (5단계)
+
+| 요청 | 설명 |
+| --- | --- |
+| `GET /api/community/rankings?metric=workout\|mileage&scope=all\|following\|club&club_id=` | 이번 주(한국 날짜 월~일) 순위. `scope=club`이면 `club_id` 필수 |
+| `PUT` / `DELETE /api/community/rankings/participation` | 랭킹 공개 참여 / 그만하기 (참여는 닉네임 필요) |
+
+```json
+{ "metric": "workout", "scope": "all", "week_start": "2026-10-12", "week_end": "2026-10-18", "participating": true,
+  "items": [{ "user_id": "…", "nickname": "헬린이탈출", "profile_image_url": null, "rank": 1, "score": 3, "is_me": false }],
+  "me": { "rank": 2, "score": 2 } }
+```
+
+- **참여를 켠 사람만** 순위에 나온다(기본은 비공개). 운동 기록을 자동으로 공개하지 않는다는 커뮤니티 원칙 때문이다.
+- `workout`: 이번 주 완료한 운동 횟수. `mileage`: 이번 주 적립한 마일리지(각자 마일리지 화면을 열어 적립된 만큼).
+- `following`: 내가 팔로우한 사람 + 나. `club`: 그 클럽 회원. 차단 관계인 사람은 빠진다. 같은 점수는 같은 순위.
+
 ### 알림 (2단계)
 
 | 요청 | 설명 |
@@ -237,4 +275,8 @@ POST /api/community/reports
    (`community_rules`, `community_mileage_ledger`, `community_memberships`, `community_clubs`, `community_club_members`)와
    `community_posts.club_id` 열을 추가하고, 함수 3개(`check_community_pair_writable`, `community_timeline`,
    `community_delete_user_data`)를 같은 이름·인자로 교체한다. 시험: `node backend/tests/community_clubs_sql.mjs …`.
-5. 신고 내용(`community_reports`)을 검토하고 글을 숨기는 관리자 기능은 아직 없다. 지금은 DB에서 직접 확인한다.
+5. 4·5단계 SQL `20261015170000_community_challenges_rankings.sql`은 3단계 다음에 적용한다. 새 표 3개
+   (`community_challenges`, `community_challenge_participants`, `community_ranking_participants`)와 함수를 추가하고,
+   마일리지 사유 제약(`community_mileage_ledger_reason_check`)에 `challenge`를 더한다. 기존 함수는 바꾸지 않는다.
+   시험: `node backend/tests/community_challenges_sql.mjs …`.
+6. 신고 내용(`community_reports`)을 검토하고 글을 숨기는 관리자 기능은 아직 없다. 지금은 DB에서 직접 확인한다.

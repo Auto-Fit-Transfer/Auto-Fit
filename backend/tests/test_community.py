@@ -579,3 +579,54 @@ def test_club_list_join_and_posts(client, supabase):
         "p_user_id": USER, "p_club_id": CLUB, "p_content": "같이 뛰어요", "p_upload_ids": []}]
     supabase.rpc["community_create_club_post"] = rejection("COMMUNITY_CLUB_MEMBERS_ONLY")
     assert client.post(f"/api/community/clubs/{CLUB}/posts", json={"content": "글"}).status_code == 403
+
+
+CHALLENGE = "20261015-0000-4000-8000-000000000041"
+
+
+def challenge_row(**extra):
+    return {"challenge_id": CHALLENGE, "title": "2주 운동 습관", "description": None, "metric": "workout_days",
+            "goal": 5, "starts_on": "2026-10-15", "ends_on": "2026-10-28", "reward_mileage": 50,
+            "note": "임시값(팀 결정 전)", "phase": "ongoing", "participant_count": 3, "joined": False,
+            "progress": 2, "completed": False, "rewarded": False, "can_claim": False, **extra}
+
+
+def test_challenges_join_claim_and_errors(client, supabase):
+    supabase.rpc["community_challenge_list"] = [challenge_row()]
+    assert client.get("/api/community/challenges").json()[0]["goal"] == 5
+    supabase.rpc["community_set_challenge_participation"] = lambda request, body: challenge_row(
+        joined=body["p_joined"])
+    assert client.put(f"/api/community/challenges/{CHALLENGE}/participation").json()["joined"] is True
+    assert client.delete(f"/api/community/challenges/{CHALLENGE}/participation").json()["joined"] is False
+    assert supabase.bodies("community_set_challenge_participation")[0] == {
+        "p_user_id": USER, "p_challenge_id": CHALLENGE, "p_joined": True}
+    supabase.rpc["community_claim_challenge"] = challenge_row(joined=True, rewarded=True, completed=True)
+    assert client.post(f"/api/community/challenges/{CHALLENGE}/claim").json()["rewarded"] is True
+    for code, status in [("COMMUNITY_CHALLENGE_NOT_COMPLETED", 409), ("COMMUNITY_CHALLENGE_NOT_FOUND", 404),
+                         ("COMMUNITY_CHALLENGE_ALREADY_CLAIMED", 409)]:
+        supabase.rpc["community_claim_challenge"] = rejection(code)
+        response = client.post(f"/api/community/challenges/{CHALLENGE}/claim")
+        assert (response.status_code, response.json()["detail"]["code"]) == (status, code)
+    supabase.rpc["community_mileage_history"] = [
+        {"entry_id": COMMENT, "amount": 50, "reason": "challenge", "created_at": T1}]
+    assert client.get("/api/community/mileage/history").json()["items"][0]["reason"] == "challenge"
+
+
+def test_rankings_scope_rules_and_participation(client, supabase):
+    ranking = {"metric": "workout", "scope": "club", "week_start": "2026-10-12", "week_end": "2026-10-18",
+               "participating": True, "items": [{**author(), "rank": 1, "score": 4, "is_me": False}],
+               "me": None}
+    supabase.rpc["community_ranking"] = ranking
+    response = client.get("/api/community/rankings", params={"scope": "club", "club_id": CLUB})
+    assert response.json()["items"][0]["rank"] == 1
+    assert supabase.bodies("community_ranking") == [{
+        "p_viewer": USER, "p_metric": "workout", "p_scope": "club", "p_club_id": CLUB, "p_limit": 50}]
+    assert client.get("/api/community/rankings", params={"scope": "club"}).status_code == 422
+    assert client.get("/api/community/rankings", params={"club_id": CLUB}).status_code == 422
+    assert client.get("/api/community/rankings", params={"metric": "steps"}).status_code == 422
+    assert len(supabase.bodies("community_ranking")) == 1
+
+    supabase.rpc["community_set_ranking_participation"] = lambda request, body: {
+        "participating": body["p_participating"]}
+    assert client.put("/api/community/rankings/participation").json() == {"participating": True}
+    assert client.delete("/api/community/rankings/participation").json() == {"participating": False}
