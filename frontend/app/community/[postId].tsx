@@ -20,6 +20,7 @@ import {
   getCommunityErrorCode,
   getCommunityErrorMessage,
   getCommunityPost,
+  type CommunityAuthor,
   type CommunityComment,
   type CommunityPost,
 } from '@/src/api/community';
@@ -46,6 +47,8 @@ function mergeComments(current: CommunityComment[], incoming: CommunityComment[]
 export default function CommunityPostScreen() {
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const router = useRouter();
+  const openProfile = (author: CommunityAuthor) =>
+    router.push({ params: { userId: author.user_id }, pathname: '/community/user/[userId]' });
   const insets = useSafeAreaInsets();
   const actions = useCommunityActions();
   const [post, setPost] = useState<CommunityPost | null>(null);
@@ -189,6 +192,7 @@ export default function CommunityPostScreen() {
               <>
                 <CommunityPostCard
                   expanded
+                  onAuthorPress={openProfile}
                   onLike={() => void actions.toggleLike(post)}
                   onMore={() => actions.openPostMenu(post)}
                   onRepost={() => void actions.toggleRepost(post)}
@@ -202,6 +206,7 @@ export default function CommunityPostScreen() {
             renderItem={({ item }) => (
               <CommunityCommentRow
                 comment={item}
+                onAuthorPress={openProfile}
                 onMore={() =>
                   actions.openCommentMenu(item, {
                     onDeleted: () => {

@@ -11,6 +11,7 @@ import {
   isNicknameRequired,
   reportCommunityContent,
   setCommunityBlock,
+  setCommunityFollow,
   setCommunityLike,
   setCommunityRepost,
   type CommunityAuthor,
@@ -117,6 +118,33 @@ export function useCommunityActions() {
       }
     });
 
+  // Follow state lives on the screens; they apply the 'followed' event, optimistic first.
+  const toggleFollow = (
+    user: CommunityAuthor & { followed_by_me: boolean },
+    followerCount?: number,
+  ): Promise<void> =>
+    once(`follow:${user.user_id}`, async () => {
+      const following = !user.followed_by_me;
+      const emit = (state: boolean, count?: number) =>
+        emitCommunityEvent({
+          followerCount: count,
+          following: state,
+          type: 'followed',
+          userId: user.user_id,
+        });
+      emit(
+        following,
+        followerCount === undefined ? undefined : followerCount + (following ? 1 : -1),
+      );
+      try {
+        const result = await setCommunityFollow(user.user_id, following);
+        emit(result.following, result.follower_count);
+      } catch (error) {
+        emit(user.followed_by_me, followerCount);
+        handleError(error, undefined, () => void toggleFollow(user, followerCount));
+      }
+    });
+
   const openReport = (type: CommunityReportTarget, id: string, onDone: () => void) =>
     setSheet({
       options: COMMUNITY_REPORT_REASONS.map((reason) => ({
@@ -181,6 +209,18 @@ export function useCommunityActions() {
               onPress: () => confirmBlock(post.author),
             },
           ],
+    });
+
+  const openUserMenu = (author: CommunityAuthor) =>
+    setSheet({
+      options: [
+        { label: '신고하기', onPress: () => openReport('user', author.user_id, () => undefined) },
+        {
+          destructive: true,
+          label: `${author.nickname}님 차단하기`,
+          onPress: () => confirmBlock(author),
+        },
+      ],
     });
 
   const openCommentMenu = (
@@ -266,7 +306,17 @@ export function useCommunityActions() {
     </>
   );
 
-  return { elements, handleError, notify, openCommentMenu, openPostMenu, toggleLike, toggleRepost };
+  return {
+    elements,
+    handleError,
+    notify,
+    openCommentMenu,
+    openPostMenu,
+    openUserMenu,
+    toggleFollow,
+    toggleLike,
+    toggleRepost,
+  };
 }
 
 const styles = StyleSheet.create({

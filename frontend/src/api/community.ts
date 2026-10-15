@@ -51,6 +51,37 @@ export type CommunityPage<T> = {
 
 export type CommunityBlockedUser = CommunityAuthor & { blocked_at: string };
 
+export type CommunityFeedScope = 'all' | 'following';
+
+export type CommunityProfile = CommunityAuthor & {
+  post_count: number;
+  follower_count: number;
+  following_count: number;
+  is_me: boolean;
+  followed_by_me: boolean;
+  follows_me: boolean;
+};
+
+export type CommunityFollowKind = 'followers' | 'following';
+
+export type CommunityFollowUser = CommunityAuthor & {
+  followed_at: string;
+  is_me: boolean;
+  followed_by_me: boolean;
+};
+
+export type CommunityNotification = {
+  notification_id: string;
+  type: 'follow' | 'like' | 'comment' | 'repost';
+  actor: CommunityAuthor;
+  post_id: string | null;
+  comment_id: string | null;
+  post_preview: string | null;
+  comment_preview: string | null;
+  created_at: string;
+  is_read: boolean;
+};
+
 export type CommunityReportTarget = 'post' | 'comment' | 'user';
 
 export type CommunityReportReason =
@@ -76,8 +107,8 @@ export type CommunityPhoto = {
   webFile?: Blob;
 };
 
-function pageQuery(cursor?: string | null, limit?: number) {
-  const params = new URLSearchParams();
+function pageQuery(cursor?: string | null, limit?: number, extra: Record<string, string> = {}) {
+  const params = new URLSearchParams(extra);
   if (cursor) params.set('cursor', cursor);
   if (limit !== undefined) params.set('limit', String(limit));
   const query = params.toString();
@@ -86,8 +117,12 @@ function pageQuery(cursor?: string | null, limit?: number) {
 
 const postPath = (postId: string) => `/api/community/posts/${encodeURIComponent(postId)}`;
 
-export function getCommunityFeed(cursor?: string | null) {
-  return apiRequest<CommunityPage<CommunityPost>>(`/api/community/feed${pageQuery(cursor)}`);
+const userPath = (userId: string) => `/api/community/users/${encodeURIComponent(userId)}`;
+
+export function getCommunityFeed(cursor?: string | null, scope: CommunityFeedScope = 'all') {
+  return apiRequest<CommunityPage<CommunityPost>>(
+    `/api/community/feed${pageQuery(cursor, undefined, scope === 'all' ? {} : { scope })}`,
+  );
 }
 
 export function getCommunityPost(postId: string) {
@@ -172,6 +207,48 @@ export function setCommunityBlock(userId: string, blocked: boolean) {
 
 export function getCommunityBlocks() {
   return apiRequest<CommunityBlockedUser[]>('/api/community/blocks');
+}
+
+// 'me' resolves to the signed-in user.
+export function getCommunityProfile(userId: string) {
+  return apiRequest<CommunityProfile>(userPath(userId));
+}
+
+export function getCommunityUserPosts(userId: string, cursor?: string | null) {
+  return apiRequest<CommunityPage<CommunityPost>>(`${userPath(userId)}/posts${pageQuery(cursor)}`);
+}
+
+export function getCommunityFollowList(
+  userId: string,
+  kind: CommunityFollowKind,
+  cursor?: string | null,
+) {
+  return apiRequest<CommunityPage<CommunityFollowUser>>(
+    `${userPath(userId)}/${kind}${pageQuery(cursor, 30)}`,
+  );
+}
+
+export function setCommunityFollow(userId: string, following: boolean) {
+  return apiRequest<{ user_id: string; following: boolean; follower_count: number }>(
+    `/api/community/follows/${encodeURIComponent(userId)}`,
+    { method: following ? 'PUT' : 'DELETE' },
+  );
+}
+
+export function getCommunityNotifications(cursor?: string | null) {
+  return apiRequest<CommunityPage<CommunityNotification>>(
+    `/api/community/notifications${pageQuery(cursor, 30)}`,
+  );
+}
+
+export function getCommunityUnreadCount() {
+  return apiRequest<{ unread_count: number }>('/api/community/notifications/unread-count');
+}
+
+export function readCommunityNotifications() {
+  return apiRequest<{ unread_count: number }>('/api/community/notifications/read', {
+    method: 'POST',
+  });
 }
 
 export function saveCommunityNickname(nickname: string) {

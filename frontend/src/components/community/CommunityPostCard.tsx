@@ -6,7 +6,7 @@ import HeartFillIcon from '@/assets/icons/deco/Heart_Fill.svg';
 import ChatIcon from '@/assets/icons/feature/ChatCircle.svg';
 import RepeatIcon from '@/assets/icons/feature/Repeat.svg';
 import MoreIcon from '@/assets/icons/system/DotsThreeVertical.svg';
-import type { CommunityPost } from '@/src/api/community';
+import type { CommunityAuthor, CommunityPost } from '@/src/api/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { colors, fontFamilies, spacing } from '@/src/theme';
 
@@ -20,6 +20,7 @@ export interface CommunityPostCardProps {
   onLike: () => void;
   onRepost: () => void;
   onMore: () => void;
+  onAuthorPress?: (author: CommunityAuthor) => void;
   expanded?: boolean;
 }
 
@@ -30,8 +31,10 @@ export function CommunityPostCard({
   onLike,
   onRepost,
   onMore,
+  onAuthorPress,
   expanded = false,
 }: CommunityPostCardProps) {
+  const openAuthor = onAuthorPress ? () => onAuthorPress(post.author) : undefined;
   return (
     // No button role on the card: it contains action buttons, and web forbids nested
     // <button>s. Screen-reader users open the post through the comment button instead.
@@ -41,20 +44,34 @@ export function CommunityPostCard({
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       {post.reposted_by ? (
-        <View style={styles.repostHeader}>
+        <Pressable
+          disabled={!onAuthorPress}
+          hitSlop={4}
+          onPress={() => post.reposted_by && onAuthorPress?.(post.reposted_by)}
+          style={styles.repostHeader}
+        >
           <RepeatIcon color={colors.textSecondary} height={14} width={14} />
           <Text numberOfLines={1} style={styles.repostText}>
             {post.reposted_by.nickname}님이 공유함
           </Text>
-        </View>
+        </Pressable>
       ) : null}
       <View style={styles.row}>
-        <CommunityAvatar author={post.author} />
+        <Pressable
+          accessibilityLabel={`${post.author.nickname}님 프로필`}
+          accessibilityRole={openAuthor ? 'link' : undefined}
+          disabled={!openAuthor}
+          onPress={openAuthor}
+        >
+          <CommunityAvatar author={post.author} />
+        </Pressable>
         <View style={styles.body}>
           <View style={styles.meta}>
-            <Text numberOfLines={1} style={styles.nickname}>
-              {post.author.nickname}
-            </Text>
+            <Pressable disabled={!openAuthor} onPress={openAuthor} style={styles.nicknameButton}>
+              <Text numberOfLines={1} style={styles.nickname}>
+                {post.author.nickname}
+              </Text>
+            </Pressable>
             <Text style={styles.time}>· {formatCommunityTime(post.created_at)}</Text>
             <Pressable
               accessibilityLabel="더보기"
@@ -170,6 +187,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   body: { flex: 1, minWidth: 0 },
   meta: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs },
+  nicknameButton: { flexShrink: 1 },
   nickname: {
     color: colors.textPrimary,
     flexShrink: 1,
