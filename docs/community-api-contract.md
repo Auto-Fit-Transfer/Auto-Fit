@@ -1,9 +1,10 @@
 # Auto-Fit 커뮤니티 API 계약 (1 피드, 2 팔로우·프로필·알림, 3 마일리지·유료 회원·클럽, 4·5 챌린지·랭킹)
 
-상태: 1단계 DB 적용 완료. 2단계 SQL(`20261015090000_community_follows_notifications.sql`)은 검토 대기, 공용 DB 미적용.
-3단계 SQL(`20261015130000_community_mileage_membership_clubs.sql`)도 검토 대기, 공용 DB 미적용. 2단계 다음에 적용한다.
+상태: 1·2단계는 DB 적용, backend(`bd99b61`)·frontend(`4911fb5`) 병합, Render 배포 완료(2026-10-15).
+2단계 원격 버전은 `20261015014915_community_follows_notifications`이다(원래 파일 이름 `20261015090000_…`, 내용 동일).
+3단계 SQL(`20261015130000_community_mileage_membership_clubs.sql`)은 검토 대기, 공용 DB 미적용.
 4·5단계 SQL(`20261015170000_community_challenges_rankings.sql`)도 검토 대기, 공용 DB 미적용. 3단계 다음에 적용한다.
-커뮤니티 서버 병합·배포와 화면 연동은 아직 대기.
+3단계 이후 서버·화면은 아직 병합·배포 전이다.
 
 기준일: 2026-10-15
 
@@ -267,7 +268,8 @@ POST /api/community/reports
    `node backend/tests/community_feed_sql.mjs <@electric-sql/pglite 경로> <20260917 무결성 SQL 폴더>`,
    `node backend/tests/community_social_sql.mjs <@electric-sql/pglite 경로> <20260917 무결성 SQL 폴더>`,
    `node backend/tests/community_account_deletion_sql.mjs <@electric-sql/pglite 경로> <20260917 무결성 SQL 폴더>`.
-3. 2단계 SQL `20261015090000_community_follows_notifications.sql`은 이미 적용한 두 파일을 바꾸지 않는다.
+3. 2단계 SQL `20261015014915_community_follows_notifications.sql`(2026-10-15 적용 완료, 원래 이름 `20261015090000_…`)은
+   이미 적용한 두 파일을 바꾸지 않는다.
    새 표 2개(`community_follows`, `community_notifications`)와 함수를 추가하고, 기존 함수 2개
    (`autofit_integrity.check_community_pair_writable`, `public.community_delete_user_data`)를 같은 이름·인자로 교체한다.
    알림은 기존 RPC를 고치지 않고 트리거로 만든다. 이 파일 하나만 적용한다.

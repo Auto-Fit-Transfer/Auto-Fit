@@ -1,6 +1,7 @@
 # 커뮤니티 DB · 회원 탈퇴 연동
 
-상태: 기본 SQL·댓글 삭제 동시성 보완 SQL 적용 완료(원격 20261014062855, 20261015005534). 2단계 SQL(20261015090000)은 검토 대기.
+상태: 기본 SQL·댓글 삭제 동시성 보완·2단계 SQL 적용 완료(원격 20261014062855, 20261015005534, 20261015014915).
+3단계(20261015130000)·4·5단계(20261015170000) SQL은 검토 대기.
 
 기준일: 2026-10-14. 대상 파일: [`supabase/migrations/20261014062855_community_feed.sql`](../supabase/migrations/20261014062855_community_feed.sql)
 (기존 `20261014120000` 파일의 내용은 유지하고 실제 원격 버전에 맞춰 이름만 정렬했다).
@@ -86,7 +87,7 @@ node backend/tests/community_account_deletion_sql.mjs <@electric-sql/pglite 경�
 node backend/tests/community_feed_sql.mjs <@electric-sql/pglite 경로> <참고 SQL 폴더>
 ```
 
-### 2단계 SQL(20261015090000)의 탈퇴 연동
+### 2단계 SQL(원격 20261015014915, 적용 완료)의 탈퇴 연동
 
 - 새 표 `community_follows`(사용자 열 2개)는 `check_community_pair_writable` 트리거로 두 사용자를 모두 검사한다.
 - 새 표 `community_notifications`는 `user_id`(받는 사람)에 기존 `check_user_reference`·`zzz_check_account_writable`를 붙이고,

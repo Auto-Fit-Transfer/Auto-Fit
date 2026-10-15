@@ -73,11 +73,13 @@ python -m pytest backend/tests/test_community.py backend/tests/test_account_dele
 두 탈퇴자가 같은 제3자 글들의 숫자를 서로 다른 순서로 고칠 때도 마찬가지다(정적 분석, 재현은 하지 않음).
 시나리오 6은 통과했지만 이 실행 순서를 강제하지는 않는다.
 
-`20261015090000_community_follows_notifications.sql`에서 `community_delete_user_data`를 교체하면서,
+2단계 SQL(원격 `20261015014915_community_follows_notifications`, 원래 이름 `20261015090000_…`)에서
+`community_delete_user_data`를 교체하면서,
 시작할 때 트랜잭션 advisory lock 하나(`community:account-deletion`)를 잡아 커뮤니티 정리를 한 번에 하나씩 하도록 했다.
 각 탈퇴는 이미 자기 `auth.users` 행만 잡고 있고, 정리 함수는 다른 탈퇴자의 글 숫자를 고치지 않으므로
 (탈퇴 앱 흐름은 `begin_account_deletion`을 먼저 실행) 이 잠금 때문에 순환 대기가 생기지 않는다.
-Docker 동시성 시험에서 두 계정 교차 탈퇴의 실행 순서를 강제해 확인해 주면 좋다.
+2026-10-15 DB 담당자가 두 계정 교차 탈퇴의 실행 순서를 강제한 PostgreSQL 동시성 시험을 통과시켰고,
+2단계 SQL을 적용했다.
 
 ## 출시 순서
 

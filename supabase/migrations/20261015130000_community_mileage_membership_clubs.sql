@@ -1,5 +1,5 @@
 -- Community stage 3: mileage, demo membership and clubs.
--- Requires 20261015090000_community_follows_notifications.sql. Applied files stay untouched.
+-- Requires 20261015014915_community_follows_notifications.sql (applied). Applied files stay untouched.
 -- Adds tables and functions, adds community_posts.club_id, and replaces three functions in place:
 --   autofit_integrity.check_community_pair_writable()  also guards club owners;
 --   public.community_timeline(...)                     keeps club posts out of all/following;
@@ -103,7 +103,7 @@ grant select, insert, update, delete on public.community_mileage_ledger, public.
 -- Account-deletion write guards
 -- ---------------------------------------------------------------------------
 
--- Same as in 20261015090000, plus club owners. A club update checks only the new owner, so
+-- Same as in 20261015014915, plus club owners. A club update checks only the new owner, so
 -- the deletion cleanup can hand a club over from a leaving owner.
 create or replace function autofit_integrity.check_community_pair_writable()
 returns trigger language plpgsql security definer set search_path = '' as $$
@@ -500,7 +500,7 @@ begin
 end;
 $$;
 
--- Same as in 20261015090000, except that club posts stay out of the 'all' and 'following'
+-- Same as in 20261015014915, except that club posts stay out of the 'all' and 'following'
 -- feeds (they show in their club and on the author's profile).
 create or replace function public.community_timeline(
   p_viewer uuid, p_scope text, p_user_id uuid,
@@ -548,7 +548,7 @@ $$;
 -- Account deletion
 -- ---------------------------------------------------------------------------
 
--- Same as in 20261015090000, plus owned clubs. Mileage, membership and club-member rows have
+-- Same as in 20261015014915, plus owned clubs. Mileage, membership and club-member rows have
 -- user_id, so the generic purge in cascade_account_deletion() removes them afterwards.
 create or replace function public.community_delete_user_data(p_user_id uuid)
 returns void language plpgsql security invoker set search_path = '' as $$
