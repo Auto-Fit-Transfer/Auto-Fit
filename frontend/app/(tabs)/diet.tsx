@@ -898,7 +898,7 @@ const MealCard = memo(function MealCard({
         </View>
       </View>
 
-      {displayedStatus === 'recommended' && (
+      {displayedStatus === 'recommended' && meal.dietMealId && (
         <Pressable
           accessibilityRole="button"
           disabled={recommendationPending}
@@ -1096,7 +1096,8 @@ export default function DietScreen() {
     16;
 
   const indicator = useCustomScrollIndicator({ showInitially: true });
-  const visibleMeals = recommendedMeals;
+  const usingTemporaryMeals = recommendedMeals.length === 0;
+  const visibleMeals = usingTemporaryMeals ? meals : recommendedMeals;
 
   const displayedNutritionGoals = useMemo(
     () =>
@@ -1783,8 +1784,12 @@ export default function DietScreen() {
           </View>
           <Text style={styles.mealSectionTitle}>오늘의 추천 식단</Text>
           <View style={styles.mealList}>
-            {recommendationLoading ? (
-              <Text style={styles.mealLoadMessage}>식단 추천을 불러오는 중이에요.</Text>
+            {usingTemporaryMeals ? (
+              <Text style={styles.mealLoadMessage}>
+                {recommendationLoading
+                  ? '서버 식단을 확인하는 동안 임시 식단을 보여드려요.'
+                  : '아직 추천 식단이 없어 임시 식단을 보여드려요.'}
+              </Text>
             ) : null}
             {recommendationError ? (
               <Pressable
@@ -1796,13 +1801,10 @@ export default function DietScreen() {
                 <Text style={styles.mealRetryText}>다시 시도</Text>
               </Pressable>
             ) : null}
-            {!recommendationLoading && !recommendationError && visibleMeals.length === 0 ? (
-              <Text style={styles.mealLoadMessage}>표시할 추천 식단이 없어요.</Text>
-            ) : null}
             {visibleMeals.map((meal) => (
               <MealCard
                 expanded={expandedMeals.has(meal.id)}
-                feedbackEnabled={feedbackEnabled}
+                feedbackEnabled={feedbackEnabled && Boolean(meal.dietMealId)}
                 feedbackPending={feedbackMealIds.has(meal.id)}
                 key={meal.id}
                 meal={meal}
