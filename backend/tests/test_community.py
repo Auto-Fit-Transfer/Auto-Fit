@@ -630,3 +630,107 @@ def test_rankings_scope_rules_and_participation(client, supabase):
         "participating": body["p_participating"]}
     assert client.put("/api/community/rankings/participation").json() == {"participating": True}
     assert client.delete("/api/community/rankings/participation").json() == {"participating": False}
+
+
+CONVERSATION = "20261019-0000-4000-8000-000000000051"
+MESSAGE = "20261019-0000-4000-8000-000000000052"
+
+
+def test_club_edit_delete_and_members(client, supabase):
+    supabase.rpc["community_update_club"] = club_row(is_owner=True, is_member=True)
+    edited = client.patch(f"/api/community/clubs/{CLUB}", json={"name": " 새 이름 ", "category": "yoga"})
+    assert edited.status_code == 200
+    assert supabase.bodies("community_update_club") == [{
+        "p_user_id": USER, "p_club_id": CLUB, "p_name": "새 이름", "p_description": None, "p_category": "yoga"}]
+    supabase.rpc["community_update_club"] = rejection("COMMUNITY_CLUB_OWNER_ONLY")
+    assert client.patch(f"/api/community/clubs/{CLUB}", json={"name": "새 이름", "category": "yoga"}).status_code == 403
+
+    supabase.rpc["community_delete_club"] = {"deleted": True, "image_paths": [f"{OTHER}/club.jpg"]}
+    assert client.delete(f"/api/community/clubs/{CLUB}").status_code == 204
+    assert supabase.deleted == [f"{OTHER}/club.jpg"]
+
+    rows = [{**author(USER, "클럽장"), "role": "owner", "joined_at": T3, "is_me": True, "followed_by_me": False},
+            {**author(), "role": "member", "joined_at": T2, "is_me": False, "followed_by_me": True}]
+    supabase.rpc["community_club_member_list"] = rows
+    first = client.get(f"/api/community/clubs/{CLUB}/members", params={"limit": 1}).json()
+    assert first["items"][0]["role"] == "owner"
+    client.get(f"/api/community/clubs/{CLUB}/members", params={"cursor": first["next_cursor"]})
+    assert supabase.bodies("community_club_member_list")[1] == {
+        "p_viewer": USER, "p_club_id": CLUB, "p_after_joined_at": "2026-10-14T01:00:00+00:00",
+        "p_after_user_id": USER, "p_limit": 21}
+    assert client.get(f"/api/community/clubs/{CLUB_2}/members",
+                      params={"cursor": first["next_cursor"]}).status_code == 422
+
+    supabase.rpc["community_remove_club_member"] = {"club_id": CLUB, "member_count": 2}
+    assert client.delete(f"/api/community/clubs/{CLUB}/members/{OTHER}").json()["member_count"] == 2
+    assert supabase.bodies("community_remove_club_member") == [{
+        "p_user_id": USER, "p_club_id": CLUB, "p_member_user_id": OTHER}]
+    supabase.rpc["community_set_club_membership"] = rejection("COMMUNITY_CLUB_BANNED")
+    banned = client.put(f"/api/community/clubs/{CLUB}/membership")
+    assert (banned.status_code, banned.json()["detail"]["code"]) == (403, "COMMUNITY_CLUB_BANNED")
+
+
+def test_moderation_queue_and_actions(client, supabase):
+    supabase.rpc["community_moderator_status"] = {"is_moderator": True}
+    assert client.get("/api/community/moderation/status").json() == {"is_moderator": True}
+    item = {"target_type": "post", "target_id": POST, "target_user": author(), "report_count": 2,
+            "reasons": ["spam", "abuse"], "details": [{"reason": "spam", "detail": "도배"}],
+            "content_snapshot": "광고", "latest_reported_at": T1, "post_id": POST, "exists": True,
+            "hidden": False, "last_action": None, "last_action_at": None}
+    supabase.rpc["community_report_queue"] = [item]
+    assert client.get("/api/community/moderation/reports").json()[0]["report_count"] == 2
+    assert supabase.bodies("community_report_queue") == [{"p_moderator": USER, "p_status": "open", "p_limit": 100}]
+    assert client.get("/api/community/moderation/reports", params={"status": "all"}).status_code == 422
+
+    supabase.rpc["community_moderate"] = lambda request, body: {
+        "target_type": body["p_target_type"], "target_id": body["p_target_id"], "action": body["p_action"]}
+    done = client.post("/api/community/moderation/actions", json={
+        "target_type": "post", "target_id": POST, "action": "hide"})
+    assert done.json()["action"] == "hide"
+    assert client.post("/api/community/moderation/actions", json={
+        "target_type": "post", "target_id": POST, "action": "delete"}).status_code == 422
+    supabase.rpc["community_report_queue"] = rejection("COMMUNITY_FORBIDDEN")
+    assert client.get("/api/community/moderation/reports").status_code == 403
+
+
+def conversation_row(**extra):
+    return {"conversation_id": CONVERSATION, "other": author(), "last_message": {
+        "content": "안녕", "created_at": T1, "is_mine": False}, "last_message_at": T1, "unread_count": 1,
+        "can_send": True, **extra}
+
+
+def test_conversations_and_messages(client, supabase):
+    supabase.rpc["community_open_conversation"] = conversation_row(last_message=None, last_message_at=None,
+                                                                   unread_count=0)
+    opened = client.post("/api/community/conversations", json={"user_id": OTHER})
+    assert opened.json()["conversation_id"] == CONVERSATION
+    assert supabase.bodies("community_open_conversation") == [{"p_user_id": USER, "p_target_user_id": OTHER}]
+    supabase.rpc["community_open_conversation"] = rejection("COMMUNITY_DM_NOT_ALLOWED")
+    refused = client.post("/api/community/conversations", json={"user_id": OTHER})
+    assert (refused.status_code, refused.json()["detail"]["code"]) == (403, "COMMUNITY_DM_NOT_ALLOWED")
+
+    supabase.rpc["community_conversation_list"] = [conversation_row()]
+    assert client.get("/api/community/conversations").json()["items"][0]["unread_count"] == 1
+    supabase.rpc["community_unread_message_count"] = {"unread_count": 3}
+    assert client.get("/api/community/conversations/unread-count").json() == {"unread_count": 3}
+
+    message = {"message_id": MESSAGE, "conversation_id": CONVERSATION, "content": "안녕", "created_at": T1,
+               "is_mine": True}
+    supabase.rpc["community_message_list"] = [message, {**message, "message_id": COMMENT, "created_at": T2}]
+    page = client.get(f"/api/community/conversations/{CONVERSATION}/messages", params={"limit": 1}).json()
+    client.get(f"/api/community/conversations/{CONVERSATION}/messages", params={"cursor": page["next_cursor"]})
+    assert supabase.bodies("community_message_list")[1]["p_before_id"] == MESSAGE
+    assert client.post(f"/api/community/conversations/{CONVERSATION}/messages", json={"content": "  "}).status_code == 422
+    assert client.post(f"/api/community/conversations/{CONVERSATION}/messages",
+                       json={"content": "x" * 1001}).status_code == 422
+    supabase.rpc["community_send_message"] = message
+    sent = client.post(f"/api/community/conversations/{CONVERSATION}/messages", json={"content": " 안녕 "})
+    assert sent.status_code == 201
+    assert supabase.bodies("community_send_message") == [{
+        "p_user_id": USER, "p_conversation_id": CONVERSATION, "p_content": "안녕"}]
+    supabase.rpc["community_read_conversation"] = {"conversation_id": CONVERSATION, "unread_count": 0}
+    assert client.post(f"/api/community/conversations/{CONVERSATION}/read").json()["unread_count"] == 0
+    supabase.rpc["community_delete_message"] = {"deleted": True, "message_id": MESSAGE}
+    assert client.delete(f"/api/community/messages/{MESSAGE}").status_code == 204
+    supabase.rpc["community_message_list"] = rejection("COMMUNITY_CONVERSATION_NOT_FOUND")
+    assert client.get(f"/api/community/conversations/{CONVERSATION}/messages").status_code == 404

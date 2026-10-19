@@ -1,11 +1,13 @@
 """Community feed: posts with up to five photos, likes, reposts, comments, reports and blocks,
 plus follows, profiles, following/user timelines and notifications (stage 2) and mileage,
-demo membership and clubs (stage 3), challenges and weekly rankings (stages 4-5).
+demo membership and clubs (stage 3), challenges and weekly rankings (stages 4-5), club
+management, report moderation and 1:1 messages.
 
 Every write is a SQL function (supabase/migrations/20261014062855_community_feed.sql,
 20261015014915_community_follows_notifications.sql,
 20261015062629_community_mileage_membership_clubs.sql and
-20261015064753_community_challenges_rankings.sql), so
+20261015064753_community_challenges_rankings.sql and the 20261019 club management,
+moderation and direct message migrations), so
 counters, ownership and block rules change atomically. Photos live in a private bucket and
 are re-encoded without EXIF metadata, so phone GPS locations never reach other users.
 """
@@ -55,6 +57,12 @@ ERRORS = {
     "COMMUNITY_MEMBERSHIP_REQUIRED": (403, "유료 회원만 클럽을 만들 수 있습니다."),
     "COMMUNITY_DEMO_UNAVAILABLE": (409, "지금은 시연용 유료 회원을 시작할 수 없습니다."),
     "COMMUNITY_CHALLENGE_NOT_FOUND": (404, "챌린지를 찾을 수 없습니다."),
+    "COMMUNITY_CLUB_OWNER_ONLY": (403, "클럽장만 할 수 있는 작업입니다."),
+    "COMMUNITY_CLUB_BANNED": (403, "이 클럽에서 내보내져 다시 가입할 수 없습니다."),
+    "COMMUNITY_FORBIDDEN": (403, "권한이 없습니다."),
+    "COMMUNITY_DM_NOT_ALLOWED": (403, "서로 팔로우한 사이에서만 대화를 시작할 수 있습니다."),
+    "COMMUNITY_CONVERSATION_NOT_FOUND": (404, "대화를 찾을 수 없습니다."),
+    "COMMUNITY_MESSAGE_NOT_FOUND": (404, "메시지를 찾을 수 없습니다."),
     "COMMUNITY_CHALLENGE_ENDED": (409, "이미 끝난 챌린지입니다."),
     "COMMUNITY_CHALLENGE_NOT_JOINED": (409, "챌린지에 먼저 참여해 주세요."),
     "COMMUNITY_CHALLENGE_NOT_COMPLETED": (409, "아직 목표를 달성하지 못했습니다."),
@@ -373,6 +381,117 @@ class CommunityRanking(BaseModel):
 
 class CommunityRankingParticipation(BaseModel):
     participating: bool
+
+
+class CommunityClubMember(CommunityAuthor):
+    role: Literal["owner", "member"]
+    joined_at: datetime
+    is_me: bool
+    followed_by_me: bool
+
+
+class CommunityClubMemberPage(BaseModel):
+    items: list[CommunityClubMember]
+    next_cursor: str | None
+
+
+class CommunityClubMemberCount(BaseModel):
+    club_id: UUID
+    member_count: int
+
+
+class ModerationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    target_type: Literal["post", "comment", "user"]
+    target_id: UUID
+    action: Literal["hide", "unhide", "dismiss"] = Field(description="사용자 신고는 dismiss 만 가능")
+
+
+class CommunityModeratorStatus(BaseModel):
+    is_moderator: bool
+
+
+class CommunityReportDetail(BaseModel):
+    reason: str
+    detail: str
+
+
+class CommunityReportItem(BaseModel):
+    target_type: Literal["post", "comment", "user"]
+    target_id: UUID
+    target_user: CommunityAuthor = Field(description="신고된 글·댓글의 작성자 또는 신고된 사용자")
+    report_count: int
+    reasons: list[str]
+    details: list[CommunityReportDetail]
+    content_snapshot: str | None = Field(description="신고 당시 글·댓글 내용")
+    latest_reported_at: datetime
+    post_id: UUID | None = Field(description="글이면 그 글, 댓글이면 댓글이 달린 글")
+    exists: bool
+    hidden: bool
+    last_action: Literal["hide", "unhide", "dismiss"] | None
+    last_action_at: datetime | None
+
+
+class CommunityModerationResult(BaseModel):
+    target_type: Literal["post", "comment", "user"]
+    target_id: UUID
+    action: Literal["hide", "unhide", "dismiss"]
+
+
+class OpenConversationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: UUID
+
+
+class SendMessageRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    content: str = Field(min_length=1, max_length=1000)
+
+    @field_validator("content", mode="before")
+    @classmethod
+    def trim_content(cls, value: Any) -> Any:
+        return trimmed(value)
+
+
+class CommunityLastMessage(BaseModel):
+    content: str
+    created_at: datetime
+    is_mine: bool
+
+
+class CommunityConversation(BaseModel):
+    conversation_id: UUID
+    other: CommunityAuthor
+    last_message: CommunityLastMessage | None
+    last_message_at: datetime | None
+    unread_count: int
+    can_send: bool
+
+
+class CommunityConversationPage(BaseModel):
+    items: list[CommunityConversation]
+    next_cursor: str | None
+
+
+class CommunityMessage(BaseModel):
+    message_id: UUID
+    conversation_id: UUID
+    content: str
+    created_at: datetime
+    is_mine: bool
+
+
+class CommunityMessagePage(BaseModel):
+    items: list[CommunityMessage] = Field(description="최신순. 화면에서는 아래부터 쌓아 보여 준다")
+    next_cursor: str | None = Field(description="더 오래된 메시지")
+
+
+class CommunityConversationRead(BaseModel):
+    conversation_id: UUID
+    unread_count: int
 
 
 class CommunityUpload(BaseModel):
@@ -1073,5 +1192,176 @@ def create_community_router(current_user_dependency: Any, settings_dependency: A
         user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
     ) -> Any:
         return await set_ranking(False, user, settings)
+
+    @router.patch("/clubs/{club_id}", response_model=CommunityClub,
+                  responses={403: {"description": "Owner only"}, 409: {"description": "Name taken"}},
+                  summary="클럽 수정 (클럽장만: 이름·소개·관심사)")
+    async def update_club(
+        club_id: UUID, body: CreateClubRequest,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityClub, await store.rpc(
+            "community_update_club", user_id=user.id, club_id=str(club_id), name=body.name,
+            description=body.description, category=body.category))
+
+    @router.delete("/clubs/{club_id}", status_code=204,
+                   responses={403: {"description": "Owner only"}},
+                   summary="클럽 삭제 (클럽장만, 클럽 글·사진·좋아요·댓글도 함께 삭제)")
+    async def delete_club(
+        club_id: UUID,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Response:
+        store = CommunityStore(settings, user.id)
+        result = await store.rpc("community_delete_club", user_id=user.id, club_id=str(club_id))
+        paths = result.get("image_paths") if isinstance(result, dict) else None
+        if isinstance(paths, list):
+            await store.remove_objects(paths)
+        return Response(status_code=204)
+
+    @router.get("/clubs/{club_id}/members", response_model=CommunityClubMemberPage,
+                summary="클럽 회원 목록 (가입한 순서)")
+    async def get_club_members(
+        club_id: UUID,
+        cursor: str | None = Query(default=None, max_length=300),
+        limit: int = Query(default=PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> dict[str, Any]:
+        scope = f"members:{club_id}"
+        after_at, after_id = decode_cursor(cursor, scope)
+        store = CommunityStore(settings, user.id)
+        rows = await store.rpc("community_club_member_list", viewer=user.id, club_id=str(club_id),
+                               after_joined_at=after_at, after_user_id=after_id, limit=limit + 1)
+        if not isinstance(rows, list):
+            fail("DATA_SOURCE_ERROR")
+        return {"items": parse_rows(CommunityClubMember, rows[:limit]),
+                "next_cursor": page_cursor(rows, limit, scope, "joined_at", "user_id")}
+
+    @router.delete("/clubs/{club_id}/members/{member_user_id}", response_model=CommunityClubMemberCount,
+                   responses={403: {"description": "Owner only"}},
+                   summary="회원 내보내기 (클럽장만, 다시 가입할 수 없음)")
+    async def remove_club_member(
+        club_id: UUID, member_user_id: UUID,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityClubMemberCount, await store.rpc(
+            "community_remove_club_member", user_id=user.id, club_id=str(club_id),
+            member_user_id=str(member_user_id)))
+
+    @router.get("/moderation/status", response_model=CommunityModeratorStatus,
+                summary="내가 신고 검토 관리자인지")
+    async def get_moderator_status(
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityModeratorStatus, await store.rpc("community_moderator_status", user_id=user.id))
+
+    @router.get("/moderation/reports", response_model=list[CommunityReportItem],
+                responses={403: {"description": "Moderators only"}},
+                summary="신고 검토 목록 (관리자만, 신고자는 보이지 않음)")
+    async def get_report_queue(
+        status: Literal["open", "resolved"] = Query(default="open"),
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse_rows(CommunityReportItem, await store.rpc(
+            "community_report_queue", moderator=user.id, status=status, limit=100))
+
+    @router.post("/moderation/actions", response_model=CommunityModerationResult,
+                 responses={403: {"description": "Moderators only"}},
+                 summary="신고 처리 (글·댓글 숨기기·되돌리기, 신고 넘기기)")
+    async def moderate(
+        body: ModerationRequest,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityModerationResult, await store.rpc(
+            "community_moderate", moderator=user.id, target_type=body.target_type,
+            target_id=str(body.target_id), action=body.action))
+
+    @router.get("/conversations", response_model=CommunityConversationPage,
+                summary="1:1 대화 목록 (최근 메시지 순)")
+    async def get_conversations(
+        cursor: str | None = Query(default=None, max_length=300),
+        limit: int = Query(default=PAGE_SIZE, ge=1, le=MAX_PAGE_SIZE),
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> dict[str, Any]:
+        before_at, before_id = decode_cursor(cursor, "conversations")
+        store = CommunityStore(settings, user.id)
+        rows = await store.rpc("community_conversation_list", user_id=user.id, before_at=before_at,
+                               before_id=before_id, limit=limit + 1)
+        if not isinstance(rows, list):
+            fail("DATA_SOURCE_ERROR")
+        return {"items": parse_rows(CommunityConversation, rows[:limit]),
+                "next_cursor": page_cursor(rows, limit, "conversations", "last_message_at", "conversation_id")}
+
+    @router.post("/conversations", response_model=CommunityConversation,
+                 responses={403: {"description": "Not following each other"}},
+                 summary="대화 열기 (기존 대화, 또는 서로 팔로우한 사이면 새 대화)")
+    async def open_conversation(
+        body: OpenConversationRequest,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityConversation, await store.rpc(
+            "community_open_conversation", user_id=user.id, target_user_id=str(body.user_id)))
+
+    @router.get("/conversations/unread-count", response_model=CommunityUnreadCount,
+                summary="읽지 않은 메시지 수 (배지용)")
+    async def get_unread_messages(
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityUnreadCount, await store.rpc("community_unread_message_count", user_id=user.id))
+
+    @router.get("/conversations/{conversation_id}/messages", response_model=CommunityMessagePage,
+                summary="대화 메시지 (최신순, 화면을 연 동안 몇 초마다 다시 불러오기)")
+    async def get_messages(
+        conversation_id: UUID,
+        cursor: str | None = Query(default=None, max_length=300),
+        limit: int = Query(default=30, ge=1, le=MAX_PAGE_SIZE),
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> dict[str, Any]:
+        scope = f"messages:{conversation_id}"
+        before_at, before_id = decode_cursor(cursor, scope)
+        store = CommunityStore(settings, user.id)
+        rows = await store.rpc("community_message_list", user_id=user.id, conversation_id=str(conversation_id),
+                               before_created_at=before_at, before_id=before_id, limit=limit + 1)
+        if not isinstance(rows, list):
+            fail("DATA_SOURCE_ERROR")
+        return {"items": parse_rows(CommunityMessage, rows[:limit]),
+                "next_cursor": page_cursor(rows, limit, scope, "created_at", "message_id")}
+
+    @router.post("/conversations/{conversation_id}/messages", status_code=201, response_model=CommunityMessage,
+                 responses={429: {"description": "Sending too fast"}},
+                 summary="메시지 보내기 (1,000자 이하, 10분에 60개)")
+    async def send_message(
+        conversation_id: UUID, body: SendMessageRequest,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityMessage, await store.rpc(
+            "community_send_message", user_id=user.id, conversation_id=str(conversation_id),
+            content=body.content))
+
+    @router.post("/conversations/{conversation_id}/read", response_model=CommunityConversationRead,
+                 summary="대화 읽음 표시")
+    async def read_conversation(
+        conversation_id: UUID,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityConversationRead, await store.rpc(
+            "community_read_conversation", user_id=user.id, conversation_id=str(conversation_id)))
+
+    @router.delete("/messages/{message_id}", status_code=204, summary="내가 보낸 메시지 삭제 (양쪽 모두에서)")
+    async def delete_message(
+        message_id: UUID,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Response:
+        store = CommunityStore(settings, user.id)
+        await store.rpc("community_delete_message", user_id=user.id, message_id=str(message_id))
+        return Response(status_code=204)
 
     return router

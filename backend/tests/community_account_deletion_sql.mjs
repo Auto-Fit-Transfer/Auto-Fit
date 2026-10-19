@@ -65,6 +65,9 @@ const leftoversOf = (uid) => asSuperuser(() => count(`select (
   + (select count(*) from public.community_clubs where owner_user_id = $1)
   + (select count(*) from public.community_challenge_participants where user_id = $1)
   + (select count(*) from public.community_ranking_participants where user_id = $1)
+  + (select count(*) from public.community_conversations where $1 in (user_low, user_high))
+  + (select count(*) from public.community_messages where user_id = $1)
+  + (select count(*) from public.community_conversation_reads where user_id = $1)
   + (select count(*) from public.profiles where user_id = $1)
   + (select count(*) from autofit_integrity.account_deletions where user_id = $1)
   + (select count(*) from auth.users where id = $1))::int as n`, [uid]));
@@ -115,6 +118,10 @@ try {
   const challenge = (await rpc('community_challenge_list', A))[0];
   await rpc('community_set_challenge_participation', A, challenge.challenge_id, true);
   await rpc('community_set_ranking_participation', A, true);
+  // A and B follow each other, so they can talk; both sides wrote something.
+  const chat = (await rpc('community_open_conversation', A, B)).conversation_id;
+  await rpc('community_send_message', A, chat, 'A의 메시지');
+  await rpc('community_send_message', B, chat, 'B의 메시지');
   await asSuperuser(() => db.query(`insert into storage.objects(bucket_id, name) values
     ('community-photos', $1), ('community-photos', $2), ('community-photos', $3),
     ('community-photos', $4), ('meal-photos', $5)`,
@@ -139,6 +146,9 @@ try {
     unavailable, 'challenge');
   await rejected(() => rpc('community_claim_challenge', A, challenge.challenge_id), unavailable, 'claim');
   await rejected(() => rpc('community_set_ranking_participation', A, true), unavailable, 'ranking');
+  await rejected(() => rpc('community_send_message', A, chat, '탈퇴 중'), unavailable, 'message');
+  await rejected(() => rpc('community_send_message', B, chat, '탈퇴 중인 상대에게'),
+    'COMMUNITY_CONVERSATION_NOT_FOUND', 'message to leaving user');
   await rejected(() => db.query('insert into public.community_posts(user_id, content) values ($1, $2)', [A, '우회']),
     'Account deletion is in progress', 'direct insert');
   await rejected(() => db.query(`insert into public.community_reports(reporter_user_id, target_type, target_id,
@@ -218,6 +228,8 @@ try {
   }
   assert.equal(await asSuperuser(() => count("select count(*)::int as n from storage.objects where split_part(name, '/', 1) = $1", [A])), 0);
   assert.equal(await counterDrift(), 0, 'counter drift'); checks++;
+  assert.equal(await count('select count(*)::int as n from public.community_messages where conversation_id = $1', [chat]),
+    0, 'conversation removed for both sides');
   const handedOver = await rpc('community_get_club', B, clubA.club_id);
   assert.deepEqual([handedOver.owner.user_id, handedOver.is_owner], [B, true], 'club skips leaving E');
   assert.equal(await count(`select count(*)::int as n from public.community_club_members
