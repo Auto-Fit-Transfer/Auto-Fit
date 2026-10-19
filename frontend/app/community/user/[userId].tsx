@@ -15,9 +15,11 @@ import MoreIcon from '@/assets/icons/system/DotsThreeVertical.svg';
 import {
   getCommunityErrorMessage,
   getCommunityMembership,
+  getCommunityModeratorStatus,
   getCommunityMileage,
   getCommunityProfile,
   getCommunityUserPosts,
+  openCommunityConversation,
   type CommunityAuthor,
   type CommunityFollowKind,
   type CommunityPost,
@@ -51,19 +53,43 @@ export default function CommunityProfileScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingMoreRef = useRef(false);
   const focusedOnce = useRef(false);
-  // Own profile only: mileage balance and membership, for the two shortcut rows.
-  const [mine, setMine] = useState<{ balance?: number; member?: boolean }>({});
+  // Own profile only: mileage, membership and (for moderators) the report review shortcut.
+  const [mine, setMine] = useState<{ balance?: number; member?: boolean; moderator?: boolean }>({});
+  const [opening, setOpening] = useState(false);
 
   const loadMine = useCallback(async () => {
-    const [mileage, membership] = await Promise.allSettled([
+    const [mileage, membership, moderator] = await Promise.allSettled([
       getCommunityMileage(),
       getCommunityMembership(),
+      getCommunityModeratorStatus(),
     ]);
     setMine({
       balance: mileage.status === 'fulfilled' ? mileage.value.balance : undefined,
       member: membership.status === 'fulfilled' ? membership.value.active : undefined,
+      moderator: moderator.status === 'fulfilled' ? moderator.value.is_moderator : undefined,
     });
   }, []);
+
+  // Opens the existing chat, or starts one when both follow each other (the server decides).
+  const openChat = async () => {
+    if (!profile || opening) return;
+    setOpening(true);
+    try {
+      const conversation = await openCommunityConversation(profile.user_id);
+      router.push({
+        params: {
+          conversationId: conversation.conversation_id,
+          nickname: profile.nickname,
+          otherId: profile.user_id,
+        },
+        pathname: '/community/chat/[conversationId]',
+      });
+    } catch (error) {
+      actions.handleError(error);
+    } finally {
+      setOpening(false);
+    }
+  };
 
   const load = useCallback(
     async (inlineError: boolean) => {
@@ -202,15 +228,38 @@ export default function CommunityProfileScreen() {
             onPress={() => router.push('/community/membership')}
             value={mine.member === undefined ? '' : mine.member ? '이용 중' : '미가입'}
           />
+          <MyRow label="메시지" onPress={() => router.push('/community/messages')} value="" />
+          {mine.moderator ? (
+            <MyRow
+              label="신고 검토 (관리자)"
+              onPress={() => router.push('/community/moderation')}
+              value=""
+            />
+          ) : null}
         </View>
       ) : (
-        <CommunityFollowButton
-          following={profile.followed_by_me}
-          followsMe={profile.follows_me}
-          nickname={profile.nickname}
-          onPress={() => void actions.toggleFollow(profile, profile.follower_count)}
-          wide
-        />
+        <View style={styles.otherActions}>
+          <View style={styles.otherAction}>
+            <CommunityFollowButton
+              following={profile.followed_by_me}
+              followsMe={profile.follows_me}
+              nickname={profile.nickname}
+              onPress={() => void actions.toggleFollow(profile, profile.follower_count)}
+              wide
+            />
+          </View>
+          {profile.followed_by_me && profile.follows_me ? (
+            <Pressable
+              accessibilityLabel={`${profile.nickname}님에게 메시지`}
+              accessibilityRole="button"
+              disabled={opening}
+              onPress={() => void openChat()}
+              style={({ pressed }) => [styles.messageButton, pressed && styles.myRowPressed]}
+            >
+              <Text style={styles.messageButtonText}>메시지</Text>
+            </Pressable>
+          ) : null}
+        </View>
       )}
     </View>
   ) : null;
@@ -364,6 +413,22 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', padding: spacing.xxl },
   footer: { paddingVertical: spacing.lg },
   myRows: { backgroundColor: colors.background, borderRadius: 12, overflow: 'hidden' },
+  otherActions: { flexDirection: 'row', gap: spacing.sm },
+  otherAction: { flex: 1 },
+  messageButton: {
+    alignItems: 'center',
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 42,
+    paddingHorizontal: spacing.xl,
+  },
+  messageButtonText: {
+    color: colors.textPrimary,
+    fontFamily: fontFamilies.pretendardSemiBold,
+    fontSize: 14,
+  },
   myRow: {
     alignItems: 'center',
     flexDirection: 'row',

@@ -306,11 +306,17 @@ export function useCommunityActions() {
     </>
   );
 
+  // Screen-specific menus and confirmations (club owner tools, messages) share the same sheet.
+  const openSheet = (options: CommunityOption[], title?: string) => setSheet({ options, title });
+  const askConfirm = (next: Confirm) => setConfirm(next);
+
   return {
+    askConfirm,
     elements,
     handleError,
     notify,
     openCommentMenu,
+    openSheet,
     openPostMenu,
     openUserMenu,
     toggleFollow,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
@@ -12,7 +12,9 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import PencilIcon from '@/assets/icons/feature/Pencil_Fill.svg';
+import MoreIcon from '@/assets/icons/system/DotsThreeVertical.svg';
 import {
+  deleteCommunityClub,
   getCommunityClub,
   getCommunityClubPosts,
   getCommunityErrorMessage,
@@ -21,7 +23,7 @@ import {
   type CommunityClub,
   type CommunityPost,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton, AppHeader, IconButton } from '@/src/components/common';
 import { CommunityPostCard, communityClubCategoryLabel } from '@/src/components/community';
 import {
   applyCommunityEvent,
@@ -118,6 +120,51 @@ export default function CommunityClubScreen() {
     }
   };
 
+  // After editing on another screen, show the new name and intro.
+  const focusedOnce = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (!focusedOnce.current) {
+        focusedOnce.current = true;
+        return;
+      }
+      getCommunityClub(clubId).then(setClub, () => undefined);
+    }, [clubId]),
+  );
+
+  const openOwnerMenu = () => {
+    if (!club) return;
+    actions.openSheet([
+      {
+        label: '클럽 수정',
+        onPress: () =>
+          router.push({ params: { clubId: club.club_id }, pathname: '/community/club/new' }),
+      },
+      {
+        destructive: true,
+        label: '클럽 삭제',
+        onPress: () =>
+          actions.askConfirm({
+            confirmText: '삭제',
+            description: `클럽 글 ${club.post_count.toLocaleString()}개와 사진·댓글·좋아요가 모두 지워지고 되돌릴 수 없어요.`,
+            run: async () => {
+              await deleteCommunityClub(club.club_id);
+              notify('클럽을 삭제했어요.');
+              router.back();
+            },
+            title: `${club.name} 클럽을 삭제할까요?`,
+          }),
+      },
+    ]);
+  };
+
+  const openMembers = () =>
+    club &&
+    router.push({
+      params: { clubId: club.club_id, clubName: club.name, owner: club.is_owner ? '1' : '0' },
+      pathname: '/community/club/members',
+    });
+
   const openProfile = (author: CommunityAuthor) =>
     router.push({ params: { userId: author.user_id }, pathname: '/community/user/[userId]' });
 
@@ -126,10 +173,14 @@ export default function CommunityClubScreen() {
       <Text style={styles.category}>{communityClubCategoryLabel(club.category)}</Text>
       <Text style={styles.name}>{club.name}</Text>
       {club.description ? <Text style={styles.description}>{club.description}</Text> : null}
-      <Text style={styles.meta}>
-        회원 {club.member_count.toLocaleString()}명 · 글 {club.post_count.toLocaleString()}개 ·
-        클럽장 {club.owner.nickname}
-      </Text>
+      <View style={styles.metaRow}>
+        <Pressable accessibilityRole="link" hitSlop={6} onPress={openMembers}>
+          <Text style={styles.memberLink}>회원 {club.member_count.toLocaleString()}명 ›</Text>
+        </Pressable>
+        <Text style={styles.meta}>
+          · 글 {club.post_count.toLocaleString()}개 · 클럽장 {club.owner.nickname}
+        </Text>
+      </View>
       <Pressable
         accessibilityRole="link"
         onPress={() =>
@@ -164,7 +215,20 @@ export default function CommunityClubScreen() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <AppHeader onBackPress={() => router.back()} title={club?.name ?? '클럽'} />
+      <AppHeader
+        onBackPress={() => router.back()}
+        rightAction={
+          club?.is_owner ? (
+            <IconButton
+              accessibilityLabel="클럽 관리"
+              icon={<MoreIcon color={colors.textBody} height={22} width={22} />}
+              onPress={openOwnerMenu}
+              size={44}
+            />
+          ) : null
+        }
+        title={club?.name ?? '클럽'}
+      />
       {errorMessage ? (
         <View style={styles.message}>
           <Text style={styles.messageText}>{errorMessage}</Text>
@@ -263,6 +327,12 @@ const styles = StyleSheet.create({
   name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
   description: { ...typography.body, color: colors.textBody },
   meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 13 },
+  metaRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  memberLink: {
+    color: colors.primaryDark,
+    fontFamily: fontFamilies.pretendardSemiBold,
+    fontSize: 13,
+  },
   rankingLink: {
     color: colors.primaryDark,
     fontFamily: fontFamilies.pretendardSemiBold,

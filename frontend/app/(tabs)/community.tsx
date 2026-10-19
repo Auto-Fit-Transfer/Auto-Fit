@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import ChatIcon from '@/assets/icons/feature/ChatTeardropDots_Fill.svg';
 import PencilIcon from '@/assets/icons/feature/Pencil_Fill.svg';
 import UserIcon from '@/assets/icons/input/User.svg';
 import BellIcon from '@/assets/icons/system/Bell.svg';
@@ -20,6 +21,7 @@ import {
   getCommunityErrorMessage,
   getCommunityFeed,
   getCommunityUnreadCount,
+  getCommunityUnreadMessages,
   type CommunityAuthor,
   type CommunityFeedScope,
   type CommunityPost,
@@ -61,6 +63,7 @@ export default function CommunityScreen() {
   const [pane, setPane] = useState<'clubs' | 'challenges' | null>(null);
   const activeTab: Tab = pane ?? scope;
   const [unread, setUnread] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [items, setItems] = useState<CommunityPost[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [state, setState] = useState<LoadState>('loading');
@@ -137,6 +140,10 @@ export default function CommunityScreen() {
         (result) => setUnread(result.unread_count),
         () => undefined,
       );
+      getCommunityUnreadMessages().then(
+        (result) => setUnreadMessages(result.unread_count),
+        () => undefined,
+      );
     }, []),
   );
 
@@ -188,6 +195,21 @@ export default function CommunityScreen() {
             {unread > 0 ? (
               <View pointerEvents="none" style={styles.badge}>
                 <Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text>
+              </View>
+            ) : null}
+          </View>
+          <View>
+            <IconButton
+              accessibilityLabel={
+                unreadMessages > 0 ? `메시지, 안 읽은 메시지 ${unreadMessages}개` : '메시지'
+              }
+              icon={<ChatIcon color={colors.textBody} height={24} width={24} />}
+              onPress={() => router.push('/community/messages')}
+              size={44}
+            />
+            {unreadMessages > 0 ? (
+              <View pointerEvents="none" style={styles.badge}>
+                <Text style={styles.badgeText}>{unreadMessages > 99 ? '99+' : unreadMessages}</Text>
               </View>
             ) : null}
           </View>

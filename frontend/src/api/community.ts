@@ -159,6 +159,50 @@ export type CommunityRanking = {
   me: { rank: number; score: number } | null;
 };
 
+export type CommunityClubMember = CommunityAuthor & {
+  role: 'owner' | 'member';
+  joined_at: string;
+  is_me: boolean;
+  followed_by_me: boolean;
+};
+
+export type CommunityReportItem = {
+  target_type: CommunityReportTarget;
+  target_id: string;
+  target_user: CommunityAuthor;
+  report_count: number;
+  reasons: CommunityReportReason[];
+  details: { reason: CommunityReportReason; detail: string }[];
+  content_snapshot: string | null;
+  latest_reported_at: string;
+  post_id: string | null;
+  exists: boolean;
+  hidden: boolean;
+  last_action: 'hide' | 'unhide' | 'dismiss' | null;
+  last_action_at: string | null;
+};
+
+export type CommunityModerationAction = 'hide' | 'unhide' | 'dismiss';
+
+export type CommunityConversation = {
+  conversation_id: string;
+  other: CommunityAuthor;
+  last_message: { content: string; created_at: string; is_mine: boolean } | null;
+  last_message_at: string | null;
+  unread_count: number;
+  can_send: boolean;
+};
+
+export type CommunityMessage = {
+  message_id: string;
+  conversation_id: string;
+  content: string;
+  created_at: string;
+  is_mine: boolean;
+};
+
+export const COMMUNITY_MAX_MESSAGE_LENGTH = 1000;
+
 export type CommunityNotification = {
   notification_id: string;
   type: 'follow' | 'like' | 'comment' | 'repost';
@@ -437,6 +481,103 @@ export function getCommunityRanking(
 export function setCommunityRankingParticipation(participating: boolean) {
   return apiRequest<{ participating: boolean }>('/api/community/rankings/participation', {
     method: participating ? 'PUT' : 'DELETE',
+  });
+}
+
+export function updateCommunityClub(
+  clubId: string,
+  name: string,
+  description: string,
+  category: CommunityClubCategory,
+) {
+  return apiRequest<CommunityClub>(clubPath(clubId), {
+    body: JSON.stringify({ category, description: description.trim() || null, name: name.trim() }),
+    method: 'PATCH',
+  });
+}
+
+export function deleteCommunityClub(clubId: string) {
+  return apiRequest<void>(clubPath(clubId), { method: 'DELETE' });
+}
+
+export function getCommunityClubMembers(clubId: string, cursor?: string | null) {
+  return apiRequest<CommunityPage<CommunityClubMember>>(
+    `${clubPath(clubId)}/members${pageQuery(cursor, 30)}`,
+  );
+}
+
+export function removeCommunityClubMember(clubId: string, userId: string) {
+  return apiRequest<{ club_id: string; member_count: number }>(
+    `${clubPath(clubId)}/members/${encodeURIComponent(userId)}`,
+    { method: 'DELETE' },
+  );
+}
+
+export function getCommunityModeratorStatus() {
+  return apiRequest<{ is_moderator: boolean }>('/api/community/moderation/status');
+}
+
+export function getCommunityReportQueue(status: 'open' | 'resolved') {
+  return apiRequest<CommunityReportItem[]>(`/api/community/moderation/reports?status=${status}`);
+}
+
+export function moderateCommunityTarget(
+  targetType: CommunityReportTarget,
+  targetId: string,
+  action: CommunityModerationAction,
+) {
+  return apiRequest<{ target_type: string; target_id: string; action: CommunityModerationAction }>(
+    '/api/community/moderation/actions',
+    {
+      body: JSON.stringify({ action, target_id: targetId, target_type: targetType }),
+      method: 'POST',
+    },
+  );
+}
+
+const conversationPath = (conversationId: string) =>
+  `/api/community/conversations/${encodeURIComponent(conversationId)}`;
+
+export function getCommunityConversations(cursor?: string | null) {
+  return apiRequest<CommunityPage<CommunityConversation>>(
+    `/api/community/conversations${pageQuery(cursor)}`,
+  );
+}
+
+export function openCommunityConversation(userId: string) {
+  return apiRequest<CommunityConversation>('/api/community/conversations', {
+    body: JSON.stringify({ user_id: userId }),
+    method: 'POST',
+  });
+}
+
+export function getCommunityUnreadMessages() {
+  return apiRequest<{ unread_count: number }>('/api/community/conversations/unread-count');
+}
+
+export function getCommunityMessages(conversationId: string, cursor?: string | null) {
+  return apiRequest<CommunityPage<CommunityMessage>>(
+    `${conversationPath(conversationId)}/messages${pageQuery(cursor, 30)}`,
+  );
+}
+
+export function sendCommunityMessage(conversationId: string, content: string) {
+  return apiRequest<CommunityMessage>(`${conversationPath(conversationId)}/messages`, {
+    body: JSON.stringify({ content: content.trim() }),
+    method: 'POST',
+  });
+}
+
+export function readCommunityConversation(conversationId: string) {
+  return apiRequest<{ conversation_id: string; unread_count: number }>(
+    `${conversationPath(conversationId)}/read`,
+    { method: 'POST' },
+  );
+}
+
+export function deleteCommunityMessage(messageId: string) {
+  return apiRequest<void>(`/api/community/messages/${encodeURIComponent(messageId)}`, {
+    method: 'DELETE',
   });
 }
 

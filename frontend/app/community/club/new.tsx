@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -15,20 +15,27 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   COMMUNITY_CLUB_CATEGORIES,
   createCommunityClub,
+  getCommunityClub,
+  getCommunityErrorMessage,
   getCommunityMembership,
   getCommunityMileage,
   type CommunityClubCategory,
   type CommunityMembership,
   type CommunityMileage,
+  updateCommunityClub,
 } from '@/src/api/community';
 import { AppButton, AppHeader } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 
+// Also the edit screen: with ?clubId= the owner changes name, interest and intro (no cost).
 export default function CommunityNewClubScreen() {
+  const { clubId } = useLocalSearchParams<{ clubId?: string }>();
+  const editing = Boolean(clubId);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const actions = useCommunityActions();
+  const { notify } = actions;
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<CommunityClubCategory | null>(null);
@@ -40,19 +47,34 @@ export default function CommunityNewClubScreen() {
   const ready = trimmedName.length >= 2 && category !== null && !submitting;
 
   const loadCost = useCallback(async () => {
+    if (clubId) {
+      try {
+        const club = await getCommunityClub(clubId);
+        setName(club.name);
+        setDescription(club.description ?? '');
+        setCategory(club.category);
+      } catch (error) {
+        notify(getCommunityErrorMessage(error));
+      }
+      return;
+    }
     const [nextMembership, nextMileage] = await Promise.allSettled([
       getCommunityMembership(),
       getCommunityMileage(),
     ]);
     if (nextMembership.status === 'fulfilled') setMembership(nextMembership.value);
     if (nextMileage.status === 'fulfilled') setMileage(nextMileage.value);
-  }, []);
+  }, [clubId, notify]);
 
-  // Also on return from the membership screen, so a new membership shows right away.
+  // Also on return from the membership screen, so a new membership shows right away. When
+  // editing, load the club once (a refocus must not undo the owner's typing).
+  const loaded = useRef(false);
   useFocusEffect(
     useCallback(() => {
+      if (editing && loaded.current) return;
+      loaded.current = true;
       void loadCost();
-    }, [loadCost]),
+    }, [editing, loadCost]),
   );
 
   const costRule = mileage?.rules.find((rule) => rule.rule_key === 'club_create_cost');
@@ -72,6 +94,11 @@ export default function CommunityNewClubScreen() {
     submittingRef.current = true;
     setSubmitting(true);
     try {
+      if (clubId) {
+        await updateCommunityClub(clubId, trimmedName, description, category);
+        router.back();
+        return;
+      }
       const club = await createCommunityClub(trimmedName, description, category);
       router.replace({ params: { clubId: club.club_id }, pathname: '/community/club/[clubId]' });
     } catch (error) {
@@ -87,28 +114,30 @@ export default function CommunityNewClubScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.root, { paddingTop: insets.top }]}
     >
-      <AppHeader onBackPress={() => router.back()} title="클럽 만들기" />
+      <AppHeader onBackPress={() => router.back()} title={editing ? '클럽 수정' : '클럽 만들기'} />
       <ScrollView
         contentContainerStyle={[styles.form, { paddingBottom: insets.bottom + spacing.xxl }]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={[styles.cost, short && styles.costShort]}>
-          <Text style={styles.costText}>{costText}</Text>
-          {short ? (
-            <Text style={styles.costHint}>
-              마일리지가 부족해요. 운동을 완료하거나 식단을 기록하면 쌓여요.
-            </Text>
-          ) : null}
-          <Text style={styles.costNote}>개설 규칙은 팀에서 정하기 전 임시값이에요.</Text>
-          {membership?.active ? null : (
-            <Pressable
-              accessibilityRole="link"
-              onPress={() => router.push('/community/membership')}
-            >
-              <Text style={styles.link}>유료 회원 알아보기</Text>
-            </Pressable>
-          )}
-        </View>
+        {editing ? null : (
+          <View style={[styles.cost, short && styles.costShort]}>
+            <Text style={styles.costText}>{costText}</Text>
+            {short ? (
+              <Text style={styles.costHint}>
+                마일리지가 부족해요. 운동을 완료하거나 식단을 기록하면 쌓여요.
+              </Text>
+            ) : null}
+            <Text style={styles.costNote}>개설 규칙은 팀에서 정하기 전 임시값이에요.</Text>
+            {membership?.active ? null : (
+              <Pressable
+                accessibilityRole="link"
+                onPress={() => router.push('/community/membership')}
+              >
+                <Text style={styles.link}>유료 회원 알아보기</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
 
         <Text style={styles.label}>클럽 이름</Text>
         <TextInput
@@ -154,7 +183,7 @@ export default function CommunityNewClubScreen() {
         <AppButton
           disabled={!ready}
           onPress={() => void submit()}
-          title={submitting ? '만드는 중' : '클럽 만들기'}
+          title={submitting ? '저장하는 중' : editing ? '저장하기' : '클럽 만들기'}
         />
       </ScrollView>
       {actions.elements}
