@@ -277,8 +277,15 @@ begin
   if p_user_id is null or p_conversation_id is null then
     raise exception using message = 'COMMUNITY_INVALID_INPUT', errcode = 'P0001';
   end if;
-  perform public.community_my_conversation(p_user_id, p_conversation_id);
   perform public.community_require_writable(p_user_id);
+  -- Hold the conversation until the read mark is written. Account deletion may otherwise
+  -- remove it between the visibility check and INSERT, leaving an orphan read row.
+  perform 1 from public.community_conversations
+    where conversation_id = p_conversation_id and p_user_id in (user_low, user_high) for update;
+  if not found then
+    raise exception using message = 'COMMUNITY_CONVERSATION_NOT_FOUND', errcode = 'P0001';
+  end if;
+  perform public.community_my_conversation(p_user_id, p_conversation_id);
   insert into public.community_conversation_reads(conversation_id, user_id, last_read_at)
     values (p_conversation_id, p_user_id, clock_timestamp())
     on conflict (conversation_id, user_id) do update set last_read_at = excluded.last_read_at;
@@ -301,14 +308,38 @@ $$;
 -- Senders delete their own messages for both sides.
 create function public.community_delete_message(p_user_id uuid, p_message_id uuid)
 returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare
+  v_conversation_id uuid;
+  v_conversation public.community_conversations;
 begin
   if p_user_id is null or p_message_id is null then
     raise exception using message = 'COMMUNITY_INVALID_INPUT', errcode = 'P0001';
+  end if;
+  perform public.community_require_writable(p_user_id);
+  select m.conversation_id into v_conversation_id from public.community_messages m
+    where m.message_id = p_message_id and m.user_id = p_user_id;
+  if not found then
+    raise exception using message = 'COMMUNITY_MESSAGE_NOT_FOUND', errcode = 'P0001';
+  end if;
+  select * into v_conversation from public.community_conversations
+    where conversation_id = v_conversation_id and p_user_id in (user_low, user_high);
+  if not found or not public.community_account_writable(
+       public.community_conversation_other(v_conversation, p_user_id)) then
+    raise exception using message = 'COMMUNITY_MESSAGE_NOT_FOUND', errcode = 'P0001';
+  end if;
+  -- Serialize with sends and recalculate the inbox ordering after deleting the message.
+  perform 1 from public.community_conversations where conversation_id = v_conversation_id for update;
+  if not found then
+    raise exception using message = 'COMMUNITY_MESSAGE_NOT_FOUND', errcode = 'P0001';
   end if;
   delete from public.community_messages where message_id = p_message_id and user_id = p_user_id;
   if not found then
     raise exception using message = 'COMMUNITY_MESSAGE_NOT_FOUND', errcode = 'P0001';
   end if;
+  update public.community_conversations set last_message_at = (
+    select max(m.created_at) from public.community_messages m
+    where m.conversation_id = v_conversation_id)
+    where conversation_id = v_conversation_id;
   return jsonb_build_object('deleted', true, 'message_id', p_message_id);
 end;
 $$;

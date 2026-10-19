@@ -129,6 +129,7 @@ node backend/tests/community_feed_sql.mjs <@electric-sql/pglite 경로> <참고 
 - 1:1 메시지(`20261019110000`): `community_messages`(user_id = 보낸 사람), `community_conversation_reads`는 기존 두 트리거,
   `community_conversations`(두 사용자)는 `check_community_pair_writable`. `community_delete_user_data`가 탈퇴자와의 대화를 양쪽
   메시지·읽음 기록까지 지우고, 남는 사람이 없어 지워지는 클럽의 `community_club_bans`도 지운다. 보내기는 두 사용자 확인 → 대화 행 잠금 순서.
+  읽음 표시는 본인 확인 뒤 대화 행을 잠그고 기록해 탈퇴 중 대화 삭제와 엇갈린 고아 기록을 막는다. 마지막 메시지 삭제 시 최근 메시지 시각을 다시 계산한다.
 - 시험: `community_account_deletion_sql.mjs` 53개(탈퇴 중 메시지 거절, 대화 양쪽 삭제 포함).
 
 ## 5. 적용 담당자 체크리스트

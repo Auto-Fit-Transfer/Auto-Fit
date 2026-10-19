@@ -7,8 +7,8 @@
 
 기준일: 2026-10-19
 
-구현 상태: `community-backend` 브랜치에 API 라우트 58개(2026-10-19 추가 14개 포함), DB 함수, 시험(서버 전체 682개·
-PostgreSQL 피드 43개·2단계 27개·3단계 25개·4·5단계 20개·클럽 관리 17개·신고 검토 18개·메시지 21개·탈퇴 흐름 53개)을 추가했다.
+구현 상태: `community-backend` 브랜치에 API 라우트 58개(2026-10-19 추가 14개 포함), DB 함수, 시험(서버 전체 683개·
+PostgreSQL 피드 43개·2단계 27개·3단계 25개·4·5단계 20개·클럽 관리 17개·신고 검토 18개·메시지 22개·탈퇴 흐름 53개)을 추가했다.
 2단계 SQL을 적용하기 전에는 2단계 API와 피드(`GET /feed`)가 502(`DATA_SOURCE_ERROR`)를 반환한다.
 피드가 2단계 함수(`community_timeline`)를 쓰기 때문이다.
 `20261014062855_community_feed.sql`은 Auto-Fit Supabase 프로젝트에 적용했다.
@@ -327,7 +327,7 @@ POST /api/community/reports
    마일리지 사유 제약(`community_mileage_ledger_reason_check`)에 `challenge`를 더한다. 기존 함수는 바꾸지 않는다.
    시험: `node backend/tests/community_challenges_sql.mjs …`.
 6. 2026-10-19 추가 SQL 3개는 위 순서로 하나씩 적용한다. 시험: `community_club_management_sql.mjs`(17),
-   `community_moderation_sql.mjs`(18), `community_messages_sql.mjs`(21), `community_account_deletion_sql.mjs`(53).
+   `community_moderation_sql.mjs`(18), `community_messages_sql.mjs`(22), `community_account_deletion_sql.mjs`(53).
    교체하는 기존 함수: 클럽 관리 = `community_set_club_membership`, `community_create_club_post` /
    신고 검토 = `community_visible_post`, `community_comments`, `community_timeline`, `community_club_feed` /
    메시지 = `check_community_pair_writable`, `community_delete_user_data`. 모두 같은 이름·인자다.
