@@ -1,14 +1,14 @@
 # Auto-Fit 커뮤니티 API 계약 (1 피드, 2 팔로우·프로필·알림, 3 마일리지·유료 회원·클럽, 4·5 챌린지·랭킹)
 
-상태: 1~5단계 DB 적용, backend·frontend 병합, Render 배포 완료(2026-10-15).
-2단계 원격 버전은 `20261015014915_community_follows_notifications`이다(원래 파일 이름 `20261015090000_…`, 내용 동일).
-3단계 SQL은 원격 `20261015062629_community_mileage_membership_clubs`로 적용했다(원래 파일 이름 `20261015130000_…`, 내용 동일).
-4·5단계 SQL은 원격 `20261015064753_community_challenges_rankings`로 적용했다(원래 파일 이름 `20261015170000_…`, 내용 동일).
+상태: 1~5단계는 DB 적용, backend·frontend 병합, Render 배포 완료(2026-10-15).
+2026-10-19 추가분 3개(클럽 관리·신고 검토·1:1 메시지)는 검토 대기, 공용 DB 미적용. 아래 순서로 적용한다.
+`20261019090000_community_club_management.sql` → `20261019100000_community_moderation.sql` →
+`20261019110000_community_direct_messages.sql`
 
-기준일: 2026-10-15
+기준일: 2026-10-19
 
-구현 상태: `community-backend` 브랜치에 API 라우트 44개, DB 함수, 시험(서버 전체 680개·PostgreSQL 피드 43개·
-2단계 27개·3단계 25개·4·5단계 20개·탈퇴 흐름 51개)을 추가했다.
+구현 상태: `community-backend` 브랜치에 API 라우트 58개(2026-10-19 추가 14개 포함), DB 함수, 시험(서버 전체 682개·
+PostgreSQL 피드 43개·2단계 27개·3단계 25개·4·5단계 20개·클럽 관리 17개·신고 검토 18개·메시지 21개·탈퇴 흐름 53개)을 추가했다.
 2단계 SQL을 적용하기 전에는 2단계 API와 피드(`GET /feed`)가 502(`DATA_SOURCE_ERROR`)를 반환한다.
 피드가 2단계 함수(`community_timeline`)를 쓰기 때문이다.
 `20261014062855_community_feed.sql`은 Auto-Fit Supabase 프로젝트에 적용했다.
@@ -241,6 +241,52 @@ POST /api/community/reports
 - `workout`: 이번 주 완료한 운동 횟수. `mileage`: 이번 주 적립한 마일리지(각자 마일리지 화면을 열어 적립된 만큼).
 - `following`: 내가 팔로우한 사람 + 나. `club`: 그 클럽 회원. 차단 관계인 사람은 빠진다. 같은 점수는 같은 순위.
 
+### 클럽 관리 (2026-10-19)
+
+| 요청 | 설명 |
+| --- | --- |
+| `PATCH /api/community/clubs/{club_id}` | 클럽장만. `{ name, description, category }` (만들 때와 같은 규칙) → 클럽 |
+| `DELETE /api/community/clubs/{club_id}` | 클럽장만(204). 클럽 글과 그 사진·좋아요·댓글·공유가 함께 지워진다. 사진은 서버가 Storage에서 지운다 |
+| `GET /api/community/clubs/{club_id}/members?cursor=` | 가입한 순서 `{ items: [CommunityAuthor + role(owner·member), joined_at, is_me, followed_by_me], next_cursor }` |
+| `DELETE /api/community/clubs/{club_id}/members/{user_id}` | 클럽장만, 회원 내보내기 `{ club_id, member_count }`. 내보낸 회원은 다시 가입할 수 없다(403 `COMMUNITY_CLUB_BANNED`). 이미 쓴 글은 남는다 |
+
+- 오류: 403 `COMMUNITY_CLUB_OWNER_ONLY`. 클럽장이 탈퇴하면 기존처럼 다음 회원에게 넘어간다.
+
+### 신고 검토 (관리자, 2026-10-19)
+
+| 요청 | 설명 |
+| --- | --- |
+| `GET /api/community/moderation/status` | `{ "is_moderator": true }` (화면에 메뉴를 보일지 판단) |
+| `GET /api/community/moderation/reports?status=open\|resolved` | 신고된 대상별 목록(최근 신고순, 최대 100) |
+| `POST /api/community/moderation/actions` | `{ target_type, target_id, action: hide\|unhide\|dismiss }`. 사용자 신고는 dismiss만 |
+
+```json
+{ "target_type": "post", "target_id": "…", "target_user": { "user_id": "…", "nickname": "…", "profile_image_url": null },
+  "report_count": 2, "reasons": ["spam", "abuse"], "details": [{ "reason": "spam", "detail": "…" }],
+  "content_snapshot": "신고 당시 내용", "latest_reported_at": "…", "post_id": "…", "exists": true, "hidden": false,
+  "last_action": null, "last_action_at": null }
+```
+
+- 관리자는 DB 담당자가 SQL로 정한다: `insert into public.community_moderators(user_id, note) values ('<user_id>', '메모');`
+- 신고한 사람은 관리자에게도 보이지 않는다. `open` = 마지막 처리 뒤에 새 신고가 있는 대상.
+- 숨긴 글·댓글은 모든 사람의 피드·상세·클럽·댓글 목록에서 빠진다(지우지 않으므로 `unhide`로 되돌릴 수 있다). 댓글을 숨겨도 글의 댓글 수는 그대로다.
+- 오류: 403 `COMMUNITY_FORBIDDEN`(관리자가 아님), 404 `COMMUNITY_TARGET_NOT_FOUND`(없거나 작성자가 탈퇴 중).
+
+### 1:1 메시지 (2026-10-19)
+
+| 요청 | 설명 |
+| --- | --- |
+| `POST /api/community/conversations` | `{ user_id }` 대화 열기. 있으면 그 대화, 없으면 **서로 팔로우한 사이일 때만** 새로 만든다(아니면 403 `COMMUNITY_DM_NOT_ALLOWED`) |
+| `GET /api/community/conversations?cursor=` | 메시지가 있는 대화 최근순 `{ conversation_id, other, last_message{content, created_at, is_mine}, last_message_at, unread_count, can_send }` |
+| `GET /api/community/conversations/unread-count` | `{ unread_count }` 안 읽은 메시지 수(배지용) |
+| `GET /api/community/conversations/{id}/messages?cursor=&limit=30` | 최신순 메시지 `{ message_id, conversation_id, content, created_at, is_mine }`. 화면은 열려 있는 동안 5초마다 첫 페이지를 다시 불러온다 |
+| `POST /api/community/conversations/{id}/messages` | `{ content }` 1,000자 이하, 보낸 사람당 10분에 60개(429) |
+| `POST /api/community/conversations/{id}/read` | 읽음 표시 |
+| `DELETE /api/community/messages/{message_id}` | 내가 보낸 메시지 삭제(양쪽 모두에서, 204) |
+
+- 실시간 서버는 없다(폴링). 이미 시작한 대화는 팔로우를 끊어도 이어지고, **차단하면** 양쪽 모두 대화가 보이지 않고 보낼 수 없다(404 `COMMUNITY_CONVERSATION_NOT_FOUND`).
+- 신고는 기존 사용자 신고(`target_type: "user"`)를 쓴다. 한쪽이 탈퇴하면 대화가 양쪽 모두에서 지워진다.
+
 ### 알림 (2단계)
 
 | 요청 | 설명 |
@@ -280,4 +326,9 @@ POST /api/community/reports
    (`community_challenges`, `community_challenge_participants`, `community_ranking_participants`)와 함수를 추가하고,
    마일리지 사유 제약(`community_mileage_ledger_reason_check`)에 `challenge`를 더한다. 기존 함수는 바꾸지 않는다.
    시험: `node backend/tests/community_challenges_sql.mjs …`.
-6. 신고 내용(`community_reports`)을 검토하고 글을 숨기는 관리자 기능은 아직 없다. 지금은 DB에서 직접 확인한다.
+6. 2026-10-19 추가 SQL 3개는 위 순서로 하나씩 적용한다. 시험: `community_club_management_sql.mjs`(17),
+   `community_moderation_sql.mjs`(18), `community_messages_sql.mjs`(21), `community_account_deletion_sql.mjs`(53).
+   교체하는 기존 함수: 클럽 관리 = `community_set_club_membership`, `community_create_club_post` /
+   신고 검토 = `community_visible_post`, `community_comments`, `community_timeline`, `community_club_feed` /
+   메시지 = `check_community_pair_writable`, `community_delete_user_data`. 모두 같은 이름·인자다.
+7. 관리자 지정: `insert into public.community_moderators(user_id, note) values (…)` (DB 담당자만).
