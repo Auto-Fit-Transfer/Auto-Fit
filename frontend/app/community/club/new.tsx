@@ -19,6 +19,7 @@ import {
   getCommunityErrorMessage,
   getCommunityMembership,
   getCommunityMileage,
+  isProvisionalNote,
   type CommunityClubCategory,
   type CommunityMembership,
   type CommunityMileage,
@@ -127,7 +128,9 @@ export default function CommunityNewClubScreen() {
                 마일리지가 부족해요. 운동을 완료하거나 식단을 기록하면 쌓여요.
               </Text>
             ) : null}
-            <Text style={styles.costNote}>개설 규칙은 팀에서 정하기 전 임시값이에요.</Text>
+            {isProvisionalNote(costRule?.note) ? (
+              <Text style={styles.costNote}>개설 규칙은 팀에서 정하기 전 임시값이에요.</Text>
+            ) : null}
             {membership?.active ? null : (
               <Pressable
                 accessibilityRole="link"

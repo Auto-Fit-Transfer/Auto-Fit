@@ -14,6 +14,7 @@ import {
   claimCommunityChallenge,
   getCommunityChallenges,
   getCommunityErrorMessage,
+  isProvisionalNote,
   setCommunityChallengeParticipation,
   type CommunityChallenge,
 } from '@/src/api/community';
@@ -150,8 +151,10 @@ export function CommunityChallengesPane({ bottomSpace }: { bottomSpace: number }
         <Text style={styles.chevron}>›</Text>
       </Pressable>
       <Text style={styles.note}>
-        챌린지는 운동 완료·식단 기록으로 자동으로 쌓여요. 예시 챌린지의 기간·목표·보상은 팀에서
-        정하기 전 임시값이에요.
+        챌린지는 운동 완료·식단 기록으로 자동으로 쌓여요.
+        {challenges?.some((item) => isProvisionalNote(item.note))
+          ? ' 예시 챌린지의 기간·목표·보상은 팀에서 정하기 전 임시값이에요.'
+          : ''}
       </Text>
     </View>
   );

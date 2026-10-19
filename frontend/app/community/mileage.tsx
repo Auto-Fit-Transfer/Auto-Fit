@@ -7,6 +7,7 @@ import {
   getCommunityErrorMessage,
   getCommunityMileage,
   getCommunityMileageHistory,
+  isProvisionalNote,
   type CommunityMileage,
   type CommunityMileageEntry,
   type CommunityRule,
@@ -136,8 +137,10 @@ export default function CommunityMileageScreen() {
                   </Text>
                 ))}
                 <Text style={styles.rulesNote}>
-                  숫자는 팀에서 정하기 전 임시값이라 바뀔 수 있어요. 마일리지 화면을 열 때 운동
-                  완료와 식단 기록을 확인해 적립해요.
+                  {earnRules.some((rule) => isProvisionalNote(rule.note))
+                    ? '숫자는 팀에서 정하기 전 임시값이라 바뀔 수 있어요. '
+                    : ''}
+                  마일리지 화면을 열 때 운동 완료와 식단 기록을 확인해 적립해요.
                 </Text>
               </View>
               <Text style={styles.historyTitle}>내역</Text>

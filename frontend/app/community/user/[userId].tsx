@@ -230,11 +230,7 @@ export default function CommunityProfileScreen() {
           />
           <MyRow label="메시지" onPress={() => router.push('/community/messages')} value="" />
           {mine.moderator ? (
-            <MyRow
-              label="신고 검토 (관리자)"
-              onPress={() => router.push('/community/moderation')}
-              value=""
-            />
+            <MyRow label="운영자 도구" onPress={() => router.push('/community/admin')} value="" />
           ) : null}
         </View>
       ) : (

@@ -203,6 +203,47 @@ export type CommunityMessage = {
 
 export const COMMUNITY_MAX_MESSAGE_LENGTH = 1000;
 
+export type CommunityAdminChallenge = {
+  challenge_id: string;
+  title: string;
+  description: string | null;
+  metric: CommunityChallenge['metric'];
+  goal: number;
+  starts_on: string;
+  ends_on: string;
+  reward_mileage: number;
+  enabled: boolean;
+  note: string | null;
+  participant_count: number;
+  rewarded_count: number;
+  locked: boolean;
+};
+
+export type CommunityChallengeInput = {
+  title: string;
+  description: string | null;
+  metric: CommunityChallenge['metric'];
+  goal: number;
+  starts_on: string;
+  ends_on: string;
+  reward_mileage: number;
+  enabled: boolean;
+};
+
+export type CommunityAdminRule = {
+  rule_key: CommunityRule['rule_key'];
+  amount: number;
+  daily_limit: number | null;
+  enabled: boolean;
+  note: string | null;
+  starts_at: string;
+  updated_at: string;
+};
+
+// Rules and challenges whose note starts with this are still waiting for the team's decision.
+export const isProvisionalNote = (note: string | null | undefined) =>
+  Boolean(note?.startsWith('임시값'));
+
 export type CommunityNotification = {
   notification_id: string;
   type: 'follow' | 'like' | 'comment' | 'repost';
@@ -578,6 +619,42 @@ export function readCommunityConversation(conversationId: string) {
 export function deleteCommunityMessage(messageId: string) {
   return apiRequest<void>(`/api/community/messages/${encodeURIComponent(messageId)}`, {
     method: 'DELETE',
+  });
+}
+
+export function getCommunityAdminChallenges() {
+  return apiRequest<CommunityAdminChallenge[]>('/api/community/admin/challenges');
+}
+
+export function saveCommunityAdminChallenge(
+  challengeId: string | null,
+  input: CommunityChallengeInput,
+) {
+  return apiRequest<CommunityAdminChallenge>(
+    challengeId
+      ? `/api/community/admin/challenges/${encodeURIComponent(challengeId)}`
+      : '/api/community/admin/challenges',
+    { body: JSON.stringify(input), method: challengeId ? 'PUT' : 'POST' },
+  );
+}
+
+export function getCommunityAdminRules() {
+  return apiRequest<CommunityAdminRule[]>('/api/community/admin/rules');
+}
+
+export function updateCommunityAdminRule(
+  ruleKey: CommunityRule['rule_key'],
+  input: {
+    amount: number;
+    daily_limit: number | null;
+    enabled: boolean;
+    restart: boolean;
+    note: string | null;
+  },
+) {
+  return apiRequest<CommunityAdminRule>(`/api/community/admin/rules/${ruleKey}`, {
+    body: JSON.stringify(input),
+    method: 'PATCH',
   });
 }
 
