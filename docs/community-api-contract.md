@@ -4,6 +4,7 @@
 2026-10-19 추가분 3개(클럽 관리·신고 검토·1:1 메시지)는 공용 DB 적용 완료(원격 `20261019022924_community_club_management`,
 `20261019022935_community_moderation`, `20261019023132_community_direct_messages`, 원래 이름 `20261019090000`·`…100000`·`…110000`).
 DB 담당자가 적용 전에 고친 수정본(`c8e9866`: 빈 대화 정리, 읽음 표시 잠금)은 아직 저장소에 반영 전이다. 서버·화면은 병합·배포 전.
+운영자 도구 SQL(`20261019130000_community_admin_tools.sql`)은 검토 대기, 공용 DB 미적용.
 
 기준일: 2026-10-19
 
@@ -287,6 +288,19 @@ POST /api/community/reports
 - 실시간 서버는 없다(폴링). 이미 시작한 대화는 팔로우를 끊어도 이어지고, **차단하면** 양쪽 모두 대화가 보이지 않고 보낼 수 없다(404 `COMMUNITY_CONVERSATION_NOT_FOUND`).
 - 신고는 기존 사용자 신고(`target_type: "user"`)를 쓴다. 한쪽이 탈퇴하면 대화가 양쪽 모두에서 지워진다.
 
+### 운영자 도구 (2026-10-19, 관리자만)
+
+| 요청 | 설명 |
+| --- | --- |
+| `GET /api/community/admin/challenges` | 챌린지 전체(꺼진 것·끝난 것 포함) + `participant_count`, `rewarded_count`, `locked` |
+| `POST /api/community/admin/challenges` | 만들기 `{ title(2~40), description?, metric, goal, starts_on, ends_on, reward_mileage(0~100000), enabled }` → 201 |
+| `PUT /api/community/admin/challenges/{challenge_id}` | 고치기·끄기(같은 본문). 참여자가 있으면 metric·goal·starts_on·reward는 그대로, ends_on은 늦추기만(409 `COMMUNITY_CHALLENGE_LOCKED`) |
+| `GET /api/community/admin/rules` | 마일리지 규칙 4개 + `starts_at`, `updated_at` |
+| `PATCH /api/community/admin/rules/{rule_key}` | `{ amount, daily_limit?(운동·식단만), enabled, restart, note? }`. `restart: true`면 지금 이후 활동만 적립 |
+
+- 저장하면 `note`가 `임시값…`에서 `운영자가 정함`(또는 입력한 메모)으로 바뀌고, 앱의 "임시값" 안내도 사라진다.
+- 이 SQL부터 service_role이 `community_challenges`(insert·update)·`community_rules`(update)를 쓸 수 있다. 서버는 관리자 확인 함수로만 쓴다.
+
 ### 알림 (2단계)
 
 | 요청 | 설명 |
@@ -332,3 +346,5 @@ POST /api/community/reports
    신고 검토 = `community_visible_post`, `community_comments`, `community_timeline`, `community_club_feed` /
    메시지 = `check_community_pair_writable`, `community_delete_user_data`. 모두 같은 이름·인자다.
 7. 관리자 지정: `insert into public.community_moderators(user_id, note) values (…)` (DB 담당자만).
+8. 운영자 도구 SQL `20261019130000_community_admin_tools.sql`: 새 함수 6개와 권한 2줄뿐(기존 함수 교체 없음).
+   시험: `community_admin_tools_sql.mjs`(20).
