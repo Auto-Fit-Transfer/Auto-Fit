@@ -1,9 +1,11 @@
 # Auto-Fit 커뮤니티 API 계약 (1 피드, 2 팔로우·프로필·알림, 3 마일리지·유료 회원·클럽, 4·5 챌린지·랭킹)
 
 상태: 1~5단계는 DB 적용, backend·frontend 병합, Render 배포 완료(2026-10-15).
-2026-10-19 추가분 3개(클럽 관리·신고 검토·1:1 메시지)는 검토 대기, 공용 DB 미적용. 아래 순서로 적용한다.
+2026-10-19 추가분 3개(클럽 관리·신고 검토·1:1 메시지)는 Auto-Fit 공용 DB에 아래 순서로 적용했다.
 `20261019090000_community_club_management.sql` → `20261019100000_community_moderation.sql` →
 `20261019110000_community_direct_messages.sql`
+원격 버전: `20261019022924_community_club_management` → `20261019022935_community_moderation` →
+`20261019023132_community_direct_messages`. 마지막 SQL에는 빈 대화의 최근 메시지 시각 재계산과 읽음 기록 잠금 보완이 포함됐다.
 
 기준일: 2026-10-19
 
@@ -326,9 +328,10 @@ POST /api/community/reports
    (`community_challenges`, `community_challenge_participants`, `community_ranking_participants`)와 함수를 추가하고,
    마일리지 사유 제약(`community_mileage_ledger_reason_check`)에 `challenge`를 더한다. 기존 함수는 바꾸지 않는다.
    시험: `node backend/tests/community_challenges_sql.mjs …`.
-6. 2026-10-19 추가 SQL 3개는 위 순서로 하나씩 적용한다. 시험: `community_club_management_sql.mjs`(17),
+6. 2026-10-19 추가 SQL 3개는 위 순서로 적용 완료했다. 시험: `community_club_management_sql.mjs`(17),
    `community_moderation_sql.mjs`(18), `community_messages_sql.mjs`(22), `community_account_deletion_sql.mjs`(53).
    교체하는 기존 함수: 클럽 관리 = `community_set_club_membership`, `community_create_club_post` /
    신고 검토 = `community_visible_post`, `community_comments`, `community_timeline`, `community_club_feed` /
    메시지 = `check_community_pair_writable`, `community_delete_user_data`. 모두 같은 이름·인자다.
+   여러 연결의 동시성 시험은 로컬 Docker/PostgreSQL 서버가 없어 미실행이며, 단일 연결 PGlite 시험과 잠금 순서 검토를 완료했다.
 7. 관리자 지정: `insert into public.community_moderators(user_id, note) values (…)` (DB 담당자만).
