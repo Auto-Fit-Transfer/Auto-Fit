@@ -1,0 +1,133 @@
+{
+  "description": "합성 데이터. 각 requests 항목의 body만 해당 AI endpoint에 전송한다. Recipe는 입력 builder만 구현되어 있다.",
+  "headers": {
+    "Authorization": "Bearer <AI_SERVER_API_KEY>",
+    "Content-Type": "application/json"
+  },
+  "backend_generate": {
+    "method": "POST",
+    "path": "/api/diet/weekly-recommendations/generate",
+    "body": {
+      "week_start_date": "2026-10-19",
+      "disliked_foods": [
+        "가지"
+      ],
+      "additional_input": "간이 강하지 않은 식단",
+      "meal_target": {
+        "calories_kcal": 550,
+        "protein_g": 30,
+        "fat_g": 18,
+        "carbohydrate_g": 70
+      }
+    }
+  },
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/recommend/diet",
+      "status": "implemented",
+      "body": {
+        "metric_statuses": {},
+        "food_allergens": [
+          "땅콩"
+        ],
+        "disliked_foods": [
+          "가지"
+        ],
+        "goal_type": "weight_loss",
+        "additional_input": "간이 강하지 않은 식단",
+        "sido": null,
+        "sigungu": null,
+        "nearby_regions": [],
+        "meal_target": {
+          "calories_kcal": 550.0,
+          "protein_g": 30.0,
+          "fat_g": 18.0,
+          "carbohydrate_g": 70.0
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/recommend/diet/replace-meal",
+      "status": "implemented",
+      "body": {
+        "metric_statuses": {},
+        "food_allergens": [
+          "땅콩"
+        ],
+        "disliked_foods": [
+          "가지"
+        ],
+        "goal_type": "weight_loss",
+        "additional_input": "간이 강하지 않은 식단",
+        "sido": null,
+        "sigungu": null,
+        "nearby_regions": [],
+        "meal_target": {
+          "calories_kcal": 550.0,
+          "protein_g": 30.0,
+          "fat_g": 18.0,
+          "carbohydrate_g": 70.0
+        },
+        "target_day": "monday",
+        "target_meal": "lunch",
+        "current_menu_name": "monday lunch",
+        "excluded_menu_names": [
+          "monday breakfast",
+          "monday lunch",
+          "monday dinner",
+          "monday snack",
+          "tuesday breakfast",
+          "tuesday lunch",
+          "tuesday dinner",
+          "tuesday snack",
+          "wednesday breakfast",
+          "wednesday lunch",
+          "wednesday dinner",
+          "wednesday snack",
+          "thursday breakfast",
+          "thursday lunch",
+          "thursday dinner",
+          "thursday snack",
+          "friday breakfast",
+          "friday lunch",
+          "friday dinner",
+          "friday snack",
+          "saturday breakfast",
+          "saturday lunch",
+          "saturday dinner",
+          "saturday snack",
+          "sunday breakfast",
+          "sunday lunch",
+          "sunday dinner",
+          "sunday snack"
+        ],
+        "current_ingredients": []
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/recommend/diet/recipe",
+      "status": "input_builder_only",
+      "body": {
+        "items": [
+          {
+            "food_name": "현미밥",
+            "portion_g": 100.25,
+            "calories_kcal": 165.5,
+            "carbohydrate_g": 35.25,
+            "protein_g": 3.5,
+            "fat_g": 1.25
+          }
+        ],
+        "food_allergens": [
+          "땅콩"
+        ],
+        "disliked_foods": [
+          "가지"
+        ]
+      }
+    }
+  ]
+}
