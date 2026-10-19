@@ -120,13 +120,13 @@ node backend/tests/community_feed_sql.mjs <@electric-sql/pglite 경로> <참고 
 
 ### 2026-10-19 SQL 3개의 탈퇴 연동
 
-- 클럽 관리(`20261019090000`): 새 표 `community_club_bans`(user_id = 내보낸 회원)는 기존 두 트리거를 붙였고 일반 삭제가 지운다.
+- 클럽 관리(원격 `20261019022924`): 새 표 `community_club_bans`(user_id = 내보낸 회원)는 기존 두 트리거를 붙였고 일반 삭제가 지운다.
   클럽 삭제는 탈퇴 정리와 같은 advisory lock(`community:account-deletion`)을 잡고, 클럽 글을 post_id 순서로 먼저 잠근 뒤
   하위 행을 지운다. 가입과 클럽 글쓰기는 클럽 행을 `for share`로 잡아 삭제와 순서를 맞춘다(사용자 → 클럽 행).
-- 신고 검토(`20261019100000`): `community_moderators`, `community_report_resolutions`(user_id = 관리자)는 기존 두 트리거와
+- 신고 검토(원격 `20261019022935`): `community_moderators`, `community_report_resolutions`(user_id = 관리자)는 기존 두 트리거와
   일반 삭제를 쓴다. 숨기기는 관리자·작성자 계정을 먼저 확인한 뒤 글·댓글 행을 고친다. 작성자가 탈퇴 중이면 숨기지 않는다.
   신고 원본은 고치지 않아서 신고자가 탈퇴 중이어도 처리가 막히지 않는다.
-- 1:1 메시지(`20261019110000`): `community_messages`(user_id = 보낸 사람), `community_conversation_reads`는 기존 두 트리거,
+- 1:1 메시지(원격 `20261019023132`): `community_messages`(user_id = 보낸 사람), `community_conversation_reads`는 기존 두 트리거,
   `community_conversations`(두 사용자)는 `check_community_pair_writable`. `community_delete_user_data`가 탈퇴자와의 대화를 양쪽
   메시지·읽음 기록까지 지우고, 남는 사람이 없어 지워지는 클럽의 `community_club_bans`도 지운다. 보내기는 두 사용자 확인 → 대화 행 잠금 순서.
 - 시험: `community_account_deletion_sql.mjs` 53개(탈퇴 중 메시지 거절, 대화 양쪽 삭제 포함).

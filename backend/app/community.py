@@ -1,7 +1,7 @@
 """Community feed: posts with up to five photos, likes, reposts, comments, reports and blocks,
 plus follows, profiles, following/user timelines and notifications (stage 2) and mileage,
 demo membership and clubs (stage 3), challenges and weekly rankings (stages 4-5), club
-management, report moderation and 1:1 messages.
+management, report moderation, 1:1 messages and moderator tools for challenges and mileage rules.
 
 Every write is a SQL function (supabase/migrations/20261014062855_community_feed.sql,
 20261015014915_community_follows_notifications.sql,
@@ -58,6 +58,7 @@ ERRORS = {
     "COMMUNITY_DEMO_UNAVAILABLE": (409, "지금은 시연용 유료 회원을 시작할 수 없습니다."),
     "COMMUNITY_CHALLENGE_NOT_FOUND": (404, "챌린지를 찾을 수 없습니다."),
     "COMMUNITY_CLUB_OWNER_ONLY": (403, "클럽장만 할 수 있는 작업입니다."),
+    "COMMUNITY_CHALLENGE_LOCKED": (409, "참여한 사람이 있어 목표·시작일·보상·더 이른 종료일로는 바꿀 수 없습니다."),
     "COMMUNITY_CLUB_BANNED": (403, "이 클럽에서 내보내져 다시 가입할 수 없습니다."),
     "COMMUNITY_FORBIDDEN": (403, "권한이 없습니다."),
     "COMMUNITY_DM_NOT_ALLOWED": (403, "서로 팔로우한 사이에서만 대화를 시작할 수 있습니다."),
@@ -492,6 +493,76 @@ class CommunityMessagePage(BaseModel):
 class CommunityConversationRead(BaseModel):
     conversation_id: UUID
     unread_count: int
+
+
+RuleKey = Literal["earn_workout", "earn_meal_log", "club_create_cost", "membership_demo_days"]
+
+
+class SaveChallengeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    title: str = Field(min_length=2, max_length=40)
+    description: str | None = Field(default=None, max_length=300)
+    metric: Literal["workout_days", "meal_log_days"]
+    goal: int = Field(ge=1, le=366, description="기간 안에 채울 날 수")
+    starts_on: date
+    ends_on: date
+    reward_mileage: int = Field(ge=0, le=100000)
+    enabled: bool = True
+
+    @field_validator("title", "description", mode="before")
+    @classmethod
+    def trim_text(cls, value: Any) -> Any:
+        return trimmed(value)
+
+    @model_validator(mode="after")
+    def check_period(self) -> "SaveChallengeRequest":
+        if self.ends_on < self.starts_on:
+            raise ValueError("ends_on must not be before starts_on")
+        if self.goal > (self.ends_on - self.starts_on).days + 1:
+            raise ValueError("goal must fit in the period")
+        return self
+
+
+class CommunityAdminChallenge(BaseModel):
+    challenge_id: UUID
+    title: str
+    description: str | None
+    metric: Literal["workout_days", "meal_log_days"]
+    goal: int
+    starts_on: date
+    ends_on: date
+    reward_mileage: int
+    enabled: bool
+    note: str | None
+    participant_count: int
+    rewarded_count: int
+    locked: bool = Field(description="참여한 사람이 있으면 true: 목표·시작일·보상은 고정, 종료일은 늦추기만 가능")
+
+
+class UpdateRuleRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    amount: int = Field(ge=0, le=100000)
+    daily_limit: int | None = Field(default=None, ge=0, le=100, description="운동·식단 적립 규칙만")
+    enabled: bool
+    restart: bool = Field(default=False, description="true 면 지금 이후 활동만 적립 (이전 활동 소급 안 함)")
+    note: str | None = Field(default=None, max_length=100, description="비우면 '임시값' 안내가 '운영자가 정함'으로 바뀜")
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def trim_note(cls, value: Any) -> Any:
+        return trimmed(value)
+
+
+class CommunityAdminRule(BaseModel):
+    rule_key: RuleKey
+    amount: int
+    daily_limit: int | None
+    enabled: bool
+    note: str | None
+    starts_at: datetime
+    updated_at: datetime
 
 
 class CommunityUpload(BaseModel):
@@ -1363,5 +1434,62 @@ def create_community_router(current_user_dependency: Any, settings_dependency: A
         store = CommunityStore(settings, user.id)
         await store.rpc("community_delete_message", user_id=user.id, message_id=str(message_id))
         return Response(status_code=204)
+
+    async def save_challenge(challenge_id: UUID | None, body: SaveChallengeRequest, user: Any,
+                             settings: Any) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityAdminChallenge, await store.rpc(
+            "community_admin_save_challenge", moderator=user.id,
+            challenge_id=str(challenge_id) if challenge_id else None, title=body.title,
+            description=body.description, metric=body.metric, goal=body.goal,
+            starts_on=body.starts_on.isoformat(), ends_on=body.ends_on.isoformat(),
+            reward_mileage=body.reward_mileage, enabled=body.enabled))
+
+    @router.get("/admin/challenges", response_model=list[CommunityAdminChallenge],
+                responses={403: {"description": "Moderators only"}},
+                summary="운영자: 챌린지 전체 목록 (꺼진 것·끝난 것 포함)")
+    async def get_admin_challenges(
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse_rows(CommunityAdminChallenge, await store.rpc(
+            "community_admin_challenge_list", moderator=user.id))
+
+    @router.post("/admin/challenges", status_code=201, response_model=CommunityAdminChallenge,
+                 responses={403: {"description": "Moderators only"}}, summary="운영자: 챌린지 만들기")
+    async def create_admin_challenge(
+        body: SaveChallengeRequest,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        return await save_challenge(None, body, user, settings)
+
+    @router.put("/admin/challenges/{challenge_id}", response_model=CommunityAdminChallenge,
+                responses={403: {"description": "Moderators only"}, 409: {"description": "Locked fields"}},
+                summary="운영자: 챌린지 수정·끄기 (참여자가 있으면 목표·시작일·보상은 고정)")
+    async def update_admin_challenge(
+        challenge_id: UUID, body: SaveChallengeRequest,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        return await save_challenge(challenge_id, body, user, settings)
+
+    @router.get("/admin/rules", response_model=list[CommunityAdminRule],
+                responses={403: {"description": "Moderators only"}}, summary="운영자: 마일리지 규칙 목록")
+    async def get_admin_rules(
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse_rows(CommunityAdminRule, await store.rpc("community_admin_rule_list", moderator=user.id))
+
+    @router.patch("/admin/rules/{rule_key}", response_model=CommunityAdminRule,
+                  responses={403: {"description": "Moderators only"}},
+                  summary="운영자: 마일리지 규칙 바꾸기 (점수·하루 한도·켜기/끄기)")
+    async def update_admin_rule(
+        rule_key: RuleKey, body: UpdateRuleRequest,
+        user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency),
+    ) -> Any:
+        store = CommunityStore(settings, user.id)
+        return parse(CommunityAdminRule, await store.rpc(
+            "community_admin_update_rule", moderator=user.id, rule_key=rule_key, amount=body.amount,
+            daily_limit=body.daily_limit, enabled=body.enabled, restart=body.restart, note=body.note))
 
     return router

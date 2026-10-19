@@ -1,5 +1,5 @@
 -- Community moderation: moderators review reports and hide (or restore) posts and comments.
--- Requires 20261019090000_community_club_management.sql. Applied files stay untouched; this file
+-- Requires 20261019022924_community_club_management.sql. Applied files stay untouched; this file
 -- adds two tables and hidden_at columns, and replaces four read functions in place so hidden
 -- content disappears everywhere:
 --   public.community_visible_post(...)  hidden posts are not found (detail, likes, comments);

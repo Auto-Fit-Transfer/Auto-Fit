@@ -57,8 +57,10 @@ try {
   await db.exec('set role anon');
   await rejected(() => list(A), 'permission denied');
   await rejected(() => db.query('select * from public.community_ranking_participants'), 'permission denied');
-  await db.exec('set role service_role');
+  await db.exec('set role authenticated');
+  // Since 20261019130000 the service role may change challenges, only through the moderator tools.
   await rejected(() => db.query("update public.community_challenges set goal = 1"), 'permission denied');
+  await db.exec('set role service_role');
 
   // Two provisional example challenges start today and run two weeks.
   const examples = await list(A);

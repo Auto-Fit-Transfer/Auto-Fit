@@ -1,5 +1,5 @@
 -- Community 1:1 messages (no real-time server; the app polls while a chat is open).
--- Requires 20261019100000_community_moderation.sql. Applied files stay untouched; this file adds
+-- Requires 20261019022935_community_moderation.sql. Applied files stay untouched; this file adds
 -- three tables and new functions and replaces two functions in place:
 --   autofit_integrity.check_community_pair_writable()  also guards conversations;
 --   public.community_delete_user_data(uuid)            also removes the leaving user's

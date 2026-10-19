@@ -734,3 +734,56 @@ def test_conversations_and_messages(client, supabase):
     assert client.delete(f"/api/community/messages/{MESSAGE}").status_code == 204
     supabase.rpc["community_message_list"] = rejection("COMMUNITY_CONVERSATION_NOT_FOUND")
     assert client.get(f"/api/community/conversations/{CONVERSATION}/messages").status_code == 404
+
+
+def admin_challenge_row(**extra):
+    return {**challenge_row(), "enabled": True, "rewarded_count": 0, "locked": False, **extra}
+
+
+@pytest.mark.parametrize("payload", [
+    {"title": "짧", "metric": "workout_days", "goal": 3, "starts_on": "2026-10-19", "ends_on": "2026-10-25",
+     "reward_mileage": 30},
+    {"title": "기간보다 긴 목표", "metric": "workout_days", "goal": 8, "starts_on": "2026-10-19",
+     "ends_on": "2026-10-25", "reward_mileage": 30},
+    {"title": "거꾸로 된 기간", "metric": "workout_days", "goal": 1, "starts_on": "2026-10-25",
+     "ends_on": "2026-10-19", "reward_mileage": 30},
+    {"title": "걸음 수", "metric": "steps", "goal": 1, "starts_on": "2026-10-19", "ends_on": "2026-10-25",
+     "reward_mileage": 30},
+])
+def test_admin_challenge_validation_happens_before_database(client, supabase, payload):
+    assert client.post("/api/community/admin/challenges", json=payload).status_code == 422
+    assert supabase.calls == []
+
+
+def test_admin_challenges_and_rules(client, supabase):
+    supabase.rpc["community_admin_challenge_list"] = [admin_challenge_row(locked=True)]
+    assert client.get("/api/community/admin/challenges").json()[0]["locked"] is True
+    supabase.rpc["community_admin_save_challenge"] = admin_challenge_row()
+    payload = {"title": " 일주일 3일 운동 ", "metric": "workout_days", "goal": 3, "starts_on": "2026-10-19",
+               "ends_on": "2026-10-25", "reward_mileage": 30}
+    assert client.post("/api/community/admin/challenges", json=payload).status_code == 201
+    assert client.put(f"/api/community/admin/challenges/{CHALLENGE}", json={**payload, "enabled": False}).status_code == 200
+    bodies = supabase.bodies("community_admin_save_challenge")
+    assert bodies[0] == {"p_moderator": USER, "p_challenge_id": None, "p_title": "일주일 3일 운동",
+                         "p_description": None, "p_metric": "workout_days", "p_goal": 3,
+                         "p_starts_on": "2026-10-19", "p_ends_on": "2026-10-25", "p_reward_mileage": 30,
+                         "p_enabled": True}
+    assert (bodies[1]["p_challenge_id"], bodies[1]["p_enabled"]) == (CHALLENGE, False)
+    supabase.rpc["community_admin_save_challenge"] = rejection("COMMUNITY_CHALLENGE_LOCKED")
+    locked = client.put(f"/api/community/admin/challenges/{CHALLENGE}", json=payload)
+    assert (locked.status_code, locked.json()["detail"]["code"]) == (409, "COMMUNITY_CHALLENGE_LOCKED")
+
+    rule = {"rule_key": "earn_workout", "amount": 20, "daily_limit": 2, "enabled": True, "note": "운영자가 정함",
+            "starts_at": T1, "updated_at": T1}
+    supabase.rpc["community_admin_rule_list"] = [rule]
+    assert client.get("/api/community/admin/rules").json()[0]["amount"] == 20
+    supabase.rpc["community_admin_update_rule"] = rule
+    updated = client.patch("/api/community/admin/rules/earn_workout",
+                           json={"amount": 20, "daily_limit": 2, "enabled": True, "note": "  "})
+    assert updated.status_code == 200
+    assert supabase.bodies("community_admin_update_rule") == [{
+        "p_moderator": USER, "p_rule_key": "earn_workout", "p_amount": 20, "p_daily_limit": 2,
+        "p_enabled": True, "p_restart": False, "p_note": None}]
+    assert client.patch("/api/community/admin/rules/free_money", json={"amount": 1, "enabled": True}).status_code == 422
+    supabase.rpc["community_admin_rule_list"] = rejection("COMMUNITY_FORBIDDEN")
+    assert client.get("/api/community/admin/rules").status_code == 403
