@@ -1,3 +1,5 @@
+import re
+
 from app.schemas.chat import (
     ChatHistoryItem,
     ChatIntentResult,
@@ -60,17 +62,64 @@ DIET_KEYWORDS = {
 }
 
 
-REPLACE_KEYWORDS = {
+REPLACE_REQUEST_PHRASES = {
+    "바꿔줘",
+    "바꾸어줘",
+    "바꿔 주세요",
+    "바꿔주세요",
+    "바꿔 줘",
     "바꿔",
-    "변경",
-    "다른",
-    "새로운",
-    "대체",
-    "교체",
+    "바꿀래",
+    "바꾸고 싶어",
+    "변경해줘",
+    "변경해 주세요",
+    "변경해주세요",
+    "변경해",
+    "교체해줘",
+    "교체해 주세요",
+    "교체해주세요",
+    "교체해",
+    "다시 추천해줘",
+    "다시 추천해 주세요",
+    "다시 추천해주세요",
     "다시 추천",
-    "다른 걸",
-    "다른거",
-    "다른 거",
+    "다른 메뉴로 추천해줘",
+    "다른 메뉴 추천해줘",
+    "새 메뉴로 추천해줘",
+    "다른 걸로",
+    "다른거로",
+    "다른 것으로",
+    "새로운 걸로",
+}
+
+
+REPLACE_NEGATION_PHRASES = {
+    "바꾸지 마",
+    "바꾸지마",
+    "변경하지 마",
+    "변경하지마",
+    "교체하지 마",
+    "교체하지마",
+    "추천하지 마",
+    "추천하지마",
+}
+
+
+REPLACE_QUESTION_PHRASES = {
+    "바꿔도 돼",
+    "바꿔도 괜찮",
+    "바꾸면 어때",
+    "바꾸는 게 좋",
+    "바꿀 수 있어",
+    "바꿔야 해",
+    "바꿔야 하나",
+    "왜 바꿔",
+    "어떻게 바꿔",
+    "변경할 수 있어",
+    "변경해야 해",
+    "어떻게 변경",
+    "교체할 수 있어",
+    "변경 방법",
 }
 
 
@@ -163,6 +212,29 @@ def _contains_any(
     )
 
 
+def _is_replace_request(
+    message: str,
+) -> bool:
+    """실행 의도가 명확한 변경 표현만 허용한다."""
+
+    if _contains_any(
+        message,
+        REPLACE_NEGATION_PHRASES,
+    ):
+        return False
+
+    if _contains_any(
+        message,
+        REPLACE_QUESTION_PHRASES,
+    ):
+        return False
+
+    return _contains_any(
+        message,
+        REPLACE_REQUEST_PHRASES,
+    )
+
+
 def _extract_day(
     message: str,
 ) -> str | None:
@@ -178,7 +250,11 @@ def _extract_day(
     )
 
     sorted_days = sorted(
-        DAY_MAP.items(),
+        (
+            item
+            for item in DAY_MAP.items()
+            if len(item[0]) > 1
+        ),
         key=lambda item: len(item[0]),
         reverse=True,
     )
@@ -186,6 +262,17 @@ def _extract_day(
     for korean_day, day_code in sorted_days:
         if korean_day in lowered:
             return day_code
+
+    # 한 글자 요일은 일반 단어 내부의 글자와 혼동하지 않도록
+    # 독립 토큰일 때만 인식한다. 예: "월 점심"은 허용하지만
+    # "일반 건강식"의 "일"은 일요일로 해석하지 않는다.
+    short_day_match = re.search(
+        r"(?<![가-힣A-Za-z0-9])([월화수목금토일])"
+        r"(?![가-힣A-Za-z0-9])",
+        lowered,
+    )
+    if short_day_match is not None:
+        return DAY_MAP[short_day_match.group(1)]
 
     return None
 
@@ -349,9 +436,8 @@ async def classify_chat_intent(
     # 3. Keyword 검사
     # =====================================================
 
-    has_replace = _contains_any(
+    has_replace_request = _is_replace_request(
         cleaned_message,
-        REPLACE_KEYWORDS,
     )
 
     has_diet = _contains_any(
@@ -369,6 +455,20 @@ async def classify_chat_intent(
         HEALTH_KEYWORDS,
     )
 
+    # 현재 메시지에서 운동 변경이 명시되면 이전 식단 history보다
+    # 현재 의도를 우선한다.
+    if (
+        has_exercise
+        and has_replace_request
+        and not has_diet
+    ):
+        return ChatIntentResult(
+            intent="exercise_replace_request",
+            confidence=0.95,
+            target_day=None,
+            target_meal=None,
+        )
+
     # =====================================================
     # 4. Diet Replace
     #
@@ -380,7 +480,7 @@ async def classify_chat_intent(
     # "다른 걸로 해줘"
     # =====================================================
 
-    if has_replace and (
+    if has_replace_request and (
         has_diet
         or target_meal is not None
         or history_meal is not None

@@ -63,6 +63,30 @@ pip install -r requirements.txt
 ```env
 OPENAI_API_KEY=sk-xxxxxxxx
 OPENAI_MODEL=gpt-5
+OPENAI_DIET_MODEL=gpt-5
+OPENAI_REPLACE_MEAL_MODEL=gpt-5-mini
+DIET_OPENAI_TIMEOUT_SECONDS=45
+REPLACE_MEAL_OPENAI_TIMEOUT_SECONDS=30
+CHAT_OPENAI_TIMEOUT_SECONDS=30
+DIET_LLM_CACHE_TTL_SECONDS=900
+DIET_LLM_CACHE_MAX_ENTRIES=256
+LOCAL_SPECIALTY_CACHE_TTL_SECONDS=21600
+DIET_RAG_CACHE_TTL_SECONDS=600
+DIET_RAG_CACHE_MAX_ENTRIES=128
+DIET_CANDIDATE_CACHE_TTL_SECONDS=600
+DIET_CANDIDATE_CACHE_MAX_ENTRIES=128
+AI_SERVER_API_KEY=replace-with-a-random-secret
+FOOD_SAFETY_RECIPE_API_KEY=replace-with-your-key
+
+# Recipe Pipeline 운영값(선택, 아래는 기본값)
+RECIPE_API_TIMEOUT_SECONDS=30
+RECIPE_API_MAX_ATTEMPTS=3
+RECIPE_API_RETRY_BACKOFF_SECONDS=0.25
+RECIPE_API_CIRCUIT_FAILURE_THRESHOLD=3
+RECIPE_API_CIRCUIT_RECOVERY_SECONDS=30
+RECIPE_OPENAI_TIMEOUT_SECONDS=60
+RECIPE_CACHE_TTL_SECONDS=1800
+RECIPE_CACHE_MAX_ENTRIES=512
 ```
 
 `.env`는 GitHub에 업로드하지 마세요.
@@ -85,13 +109,26 @@ http://127.0.0.1:8001/docs
 
 `GET /health`
 
+Recipe Pipeline의 cache, retry, circuit 상태 확인:
+
+`GET /health/recipe`
+
+Diet LLM cache/singleflight 및 timeout/error fallback 상태 확인:
+
+`GET /health/diet`
+
+Chat 답변 timeout/error fallback 상태 확인:
+
+`GET /health/chat`
+
 ### OpenAI 챗봇
+
+기존 Backend 호환 API:
 
 `POST /chat`
 
 ```json
 {
-  "user_id": "user-1",
   "question": "내 체성분을 바탕으로 운동 방향을 알려줘",
   "user_info": {
     "age": 25,
@@ -102,6 +139,38 @@ http://127.0.0.1:8001/docs
   "chat_history": []
 }
 ```
+
+- 기존 Backend의 `question / user_info / chat_history` 계약을 유지합니다.
+- 현재는 일반 답변 호환 경로이며 식단 변경 action을 실행하지 않습니다.
+- OpenAI 오류·빈 응답·timeout 시 HTTP 500 대신 안전한 fallback 답변을 반환합니다.
+
+확장형 개인화·action API:
+
+`POST /chat/orchestrate`
+
+```json
+{
+  "content": "월요일 점심 메뉴를 바꿔줘",
+  "history": [],
+  "context": {
+    "metric_statuses": {},
+    "food_allergens": [],
+    "disliked_foods": [],
+    "diet_summary": {
+      "weekly_plan": []
+    }
+  },
+  "pending_action": null
+}
+```
+
+- 건강 RAG, 저장된 운동·식단 조회, 식단 변경 확인 절차에 사용합니다.
+- 식단 변경은 `awaiting_confirmation` 이후 Backend가 `pending_action`을 다시 전달해야 실행됩니다.
+- 결과가 `ready_for_backend_apply`여도 AI Server는 DB를 직접 변경하지 않습니다.
+- 운동 계획 변경은 운동 API가 연결되기 전까지 `exercise_replace_unavailable`로 반환됩니다.
+- 건강 답변의 `sources`에는 실제 RAG 결과에 존재하는 출처만 포함됩니다.
+- 전체 Backend 입력·출력과 저장 책임은 [Backend AI Server Integration Specification](docs/backend_ai_integration_spec.md)을 참고하세요.
+- Backend 연동 상세 계약과 상태 전이는 [Chat API Backend Contract](docs/chat_api_contract.md)를 참고하세요.
 
 ### 체성분 분석
 

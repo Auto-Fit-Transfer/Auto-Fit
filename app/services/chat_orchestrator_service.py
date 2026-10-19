@@ -1,4 +1,8 @@
+import re
+
 from app.schemas.chat import (
+    ChatIntentResult,
+    ChatPendingAction,
     ChatRequest,
     ChatResponse,
 )
@@ -15,7 +19,7 @@ from app.services.chat_answer_service import (
     answer_diet_question,
     answer_exercise_question,
     answer_general_chat,
-    answer_health_question,
+    answer_health_question_with_sources,
 )
 
 from app.services.diet_recommendation_service import (
@@ -26,6 +30,78 @@ from app.services.diet_recommendation_service import (
 # =========================================================
 # Utility
 # =========================================================
+
+
+CONFIRM_ACTION_MESSAGES = {
+    "네",
+    "예",
+    "응",
+    "좋아",
+    "확인",
+    "진행해",
+    "진행해줘",
+    "바꿔줘",
+    "변경해줘",
+    "그렇게해줘",
+}
+
+CANCEL_ACTION_MESSAGES = {
+    "아니",
+    "아니요",
+    "취소",
+    "취소해줘",
+    "그만",
+    "바꾸지마",
+    "변경하지마",
+}
+
+
+def _normalize_action_reply(message: str) -> str:
+    return "".join(
+        character
+        for character in message.strip().lower()
+        if character.isalnum()
+    )
+
+
+def _matches_action_reply(
+    message: str,
+    candidates: set[str],
+) -> bool:
+    normalized = _normalize_action_reply(message)
+    tokens = {
+        token
+        for token in re.sub(
+            r"[^0-9A-Za-z가-힣]+",
+            " ",
+            message.strip().lower(),
+        ).split()
+        if token
+    }
+
+    for candidate in candidates:
+        candidate_normalized = _normalize_action_reply(candidate)
+        if len(candidate_normalized) == 1:
+            if candidate_normalized in tokens:
+                return True
+        elif candidate_normalized in normalized:
+            return True
+
+    return False
+
+
+def _is_action_confirmation(message: str) -> bool:
+    return _matches_action_reply(
+        message,
+        CONFIRM_ACTION_MESSAGES,
+    )
+
+
+def _is_action_cancellation(message: str) -> bool:
+    return _matches_action_reply(
+        message,
+        CANCEL_ACTION_MESSAGES,
+    )
 
 
 def _extract_current_meal(
@@ -90,23 +166,126 @@ def _extract_current_meal(
             "menu_name"
         )
 
-        ingredients = meal.get(
-            "ingredients",
-            [],
-        )
+        current_food_names: list[str] = []
+        seen_food_names: set[str] = set()
 
-        if not isinstance(
-            ingredients,
-            list,
-        ):
-            ingredients = []
+        items = meal.get("items", [])
+        if isinstance(items, list):
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                food_name = str(
+                    item.get("food_name") or ""
+                ).strip()
+                normalized = food_name.lower().replace(" ", "")
+                if not normalized or normalized in seen_food_names:
+                    continue
+                seen_food_names.add(normalized)
+                current_food_names.append(food_name)
+
+        # 이전 식단 응답과의 호환성을 위한 fallback이다.
+        if not current_food_names:
+            ingredients = meal.get("ingredients", [])
+            if isinstance(ingredients, list):
+                for ingredient in ingredients:
+                    if isinstance(ingredient, dict):
+                        name = str(
+                            ingredient.get("name") or ""
+                        ).strip()
+                    else:
+                        name = str(ingredient or "").strip()
+
+                    normalized = name.lower().replace(" ", "")
+                    if not normalized or normalized in seen_food_names:
+                        continue
+                    seen_food_names.add(normalized)
+                    current_food_names.append(name)
 
         return (
             menu_name,
-            ingredients,
+            current_food_names,
         )
 
     return None, []
+
+
+def _extract_weekly_menu_names(
+    diet_summary: dict | None,
+) -> list[str]:
+    """
+    재추천 메뉴가 현재 주간 식단의 다른 슬롯과도 겹치지 않도록
+    기존 menu_name 목록을 추출한다.
+    """
+
+    if not diet_summary:
+        return []
+
+    weekly_plan = diet_summary.get(
+        "weekly_plan",
+        [],
+    )
+
+    if not isinstance(
+        weekly_plan,
+        list,
+    ):
+        return []
+
+    result: list[str] = []
+    seen: set[str] = set()
+
+    for day_item in weekly_plan:
+        if not isinstance(
+            day_item,
+            dict,
+        ):
+            continue
+
+        meals = day_item.get(
+            "meals",
+            {},
+        )
+
+        if not isinstance(
+            meals,
+            dict,
+        ):
+            continue
+
+        for meal in meals.values():
+            if not isinstance(
+                meal,
+                dict,
+            ):
+                continue
+
+            menu_name = str(
+                meal.get(
+                    "menu_name"
+                )
+                or ""
+            ).strip()
+
+            normalized = (
+                menu_name
+                .lower()
+                .replace(" ", "")
+            )
+
+            if (
+                not normalized
+                or normalized in seen
+            ):
+                continue
+
+            seen.add(
+                normalized
+            )
+            result.append(
+                menu_name
+            )
+
+    return result
 
 
 # =========================================================
@@ -134,10 +313,49 @@ async def process_chat(
     # 현재 메시지뿐 아니라 최근 history도 함께 사용한다.
     # =====================================================
 
-    intent_result = await classify_chat_intent(
-        message=request.content,
-        history=request.history,
-    )
+    pending_action = request.pending_action
+    confirmed_pending_action = False
+
+    if (
+        pending_action is not None
+        and _is_action_cancellation(request.content)
+    ):
+        return ChatResponse(
+            intent="diet_replace_request",
+            message="식단 변경 요청을 취소했어요.",
+            action="diet_replace_cancelled",
+            action_status="completed",
+            target_day=pending_action.target_day,
+            target_meal=pending_action.target_meal,
+        )
+
+    if pending_action is not None:
+        if not _is_action_confirmation(request.content):
+            return ChatResponse(
+                intent="diet_replace_request",
+                message=(
+                    "식단 변경을 진행하려면 '네'라고 답하고, "
+                    "원하지 않으면 '취소'라고 답해주세요."
+                ),
+                action="confirm_diet_replace",
+                action_status="awaiting_confirmation",
+                target_day=pending_action.target_day,
+                target_meal=pending_action.target_meal,
+                pending_action=pending_action,
+            )
+
+        intent_result = ChatIntentResult(
+            intent="diet_replace_request",
+            confidence=1.0,
+            target_day=pending_action.target_day,
+            target_meal=pending_action.target_meal,
+        )
+        confirmed_pending_action = True
+    else:
+        intent_result = await classify_chat_intent(
+            message=request.content,
+            history=request.history,
+        )
 
     intent = intent_result.intent
 
@@ -159,19 +377,37 @@ async def process_chat(
 
     if intent == "health_question":
 
-        answer = await answer_health_question(
+        answer, sources = await answer_health_question_with_sources(
             message=request.content,
             metric_statuses=metric_statuses,
+            history=request.history,
         )
 
         return ChatResponse(
             intent=intent,
             message=answer,
             action="health_rag",
+            sources=sources,
         )
 
     # =====================================================
-    # 4. Exercise Question
+    # 4. Exercise Replace (운동 API 연결 전 미지원)
+    # =====================================================
+
+    if intent == "exercise_replace_request":
+        return ChatResponse(
+            intent=intent,
+            message=(
+                "현재는 운동 계획 변경 기능을 지원하지 않습니다. "
+                "저장된 운동 계획에 대한 설명과 안전 안내는 도와드릴 수 있어요."
+            ),
+            action="exercise_replace_unavailable",
+            action_status="unable_to_apply",
+            requires_backend_apply=False,
+        )
+
+    # =====================================================
+    # 5. Exercise Question
     # =====================================================
 
     if intent == "exercise_question":
@@ -186,6 +422,7 @@ async def process_chat(
             message=request.content,
             metric_statuses=metric_statuses,
             exercise_summary=exercise_summary,
+            history=request.history,
         )
 
         return ChatResponse(
@@ -195,7 +432,7 @@ async def process_chat(
         )
 
     # =====================================================
-    # 5. Diet Question
+    # 6. Diet Question
     # =====================================================
 
     if intent == "diet_question":
@@ -210,6 +447,7 @@ async def process_chat(
             message=request.content,
             metric_statuses=metric_statuses,
             diet_summary=diet_summary,
+            history=request.history,
         )
 
         return ChatResponse(
@@ -225,7 +463,7 @@ async def process_chat(
         )
 
     # =====================================================
-    # 6. Diet Replace
+    # 7. Diet Replace
     # =====================================================
 
     if intent == "diet_replace_request":
@@ -249,6 +487,7 @@ async def process_chat(
                     "어느 요일의 식사를 변경할지 알려주세요."
                 ),
                 action="need_target_day",
+                action_status="needs_input",
                 target_day=None,
                 target_meal=target_meal,
             )
@@ -265,6 +504,7 @@ async def process_chat(
                     "어떤 식사를 변경할지 알려주세요."
                 ),
                 action="need_target_meal",
+                action_status="needs_input",
                 target_day=target_day,
                 target_meal=None,
             )
@@ -273,15 +513,20 @@ async def process_chat(
         # Backend context 없음
         # -------------------------------------------------
 
-        if context is None:
+        if (
+            context is None
+            or not context.diet_summary
+        ):
             return ChatResponse(
                 intent=intent,
                 message=(
                     "현재 저장된 식단 정보가 필요합니다."
                 ),
                 action="need_diet_context",
+                action_status="needs_input",
                 target_day=target_day,
                 target_meal=target_meal,
+                pending_action=pending_action,
             )
 
         # -------------------------------------------------
@@ -303,8 +548,33 @@ async def process_chat(
                     "변경하려는 기존 식단을 찾지 못했습니다."
                 ),
                 action="meal_not_found",
+                action_status="unable_to_apply",
                 target_day=target_day,
                 target_meal=target_meal,
+            )
+
+        # -------------------------------------------------
+        # 최초 요청에서는 실행하지 않고 명시적 확인을 받는다.
+        # Backend는 pending_action을 다음 ChatRequest에 그대로 전달한다.
+        # -------------------------------------------------
+
+        if not confirmed_pending_action:
+            pending = ChatPendingAction(
+                action="diet_replace",
+                target_day=target_day,
+                target_meal=target_meal,
+            )
+            return ChatResponse(
+                intent=intent,
+                message=(
+                    f"{target_day} {target_meal}의 "
+                    f"'{current_menu_name}' 메뉴를 변경할까요?"
+                ),
+                action="confirm_diet_replace",
+                action_status="awaiting_confirmation",
+                target_day=target_day,
+                target_meal=target_meal,
+                pending_action=pending,
             )
 
         # -------------------------------------------------
@@ -324,12 +594,24 @@ async def process_chat(
                 current_menu_name
             ),
 
+            excluded_menu_names=(
+                _extract_weekly_menu_names(
+                    context.diet_summary
+                )
+            ),
+
             current_ingredients=(
                 current_ingredients
             ),
 
             food_allergens=(
                 context.food_allergens
+                or []
+            ),
+
+            disliked_foods=(
+                context.disliked_foods
+                or []
             ),
 
             goal_type=(
@@ -340,8 +622,21 @@ async def process_chat(
                 context.additional_input
             ),
 
-            refrigerator_ingredients=(
-                context.refrigerator_ingredients
+            sido=(
+                context.sido
+            ),
+
+            sigungu=(
+                context.sigungu
+            ),
+
+            nearby_regions=(
+                context.nearby_regions
+                or []
+            ),
+
+            meal_target=(
+                context.meal_target
             ),
         )
 
@@ -360,10 +655,14 @@ async def process_chat(
 
             message=(
                 f"{target_day} {target_meal} 메뉴를 "
-                f"'{new_menu_name}'으로 새롭게 추천했어요."
+                f"'{new_menu_name}'으로 변경할 준비가 됐어요."
             ),
 
             action="diet_replace",
+
+            action_status="ready_for_backend_apply",
+
+            requires_backend_apply=True,
 
             target_day=target_day,
 
@@ -374,11 +673,12 @@ async def process_chat(
         )
 
     # =====================================================
-    # 7. General Chat
+    # 8. General Chat
     # =====================================================
 
     answer = await answer_general_chat(
-        request.content
+        request.content,
+        history=request.history,
     )
 
     return ChatResponse(

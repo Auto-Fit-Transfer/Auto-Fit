@@ -1,5 +1,4 @@
 import logging
-
 from fastapi import (
     APIRouter,
     Depends,
@@ -18,6 +17,8 @@ from app.core.security import (
 from app.schemas.recommendation import (
     DietGenerateResponse,
     DietMealRegenerateResponse,
+    DietRecipeRequest,
+    DietRecipeResponse,
     DietRecommendationRequest,
     ExerciseGenerateResponse,
     ExerciseRecommendationRequest,
@@ -31,6 +32,10 @@ from app.services.diet_recommendation_service import (
 
 from app.services.exercise_recommendation_service import (
     generate_exercise_recommendation,
+)
+
+from app.services.meal_recipe_service import (
+    MealRecipeService,
 )
 
 
@@ -63,7 +68,10 @@ GENERATOR_NAME = (
 )
 async def recommend_exercise(
     request: ExerciseRecommendationRequest,
-    credentials: HTTPAuthorizationCredentials | None = Depends(
+    credentials: (
+        HTTPAuthorizationCredentials
+        | None
+    ) = Depends(
         security
     ),
 ) -> ExerciseGenerateResponse:
@@ -77,6 +85,7 @@ async def recommend_exercise(
     )
 
     try:
+
         result = (
             await generate_exercise_recommendation(
                 request
@@ -92,6 +101,7 @@ async def recommend_exercise(
         )
 
     except RuntimeError:
+
         logger.exception(
             "Exercise recommendation "
             "service unavailable."
@@ -106,6 +116,7 @@ async def recommend_exercise(
         )
 
     except Exception:
+
         logger.exception(
             "Exercise recommendation failed."
         )
@@ -129,13 +140,19 @@ async def recommend_exercise(
 )
 async def recommend_diet(
     request: DietRecommendationRequest,
-    credentials: HTTPAuthorizationCredentials | None = Depends(
+    credentials: (
+        HTTPAuthorizationCredentials
+        | None
+    ) = Depends(
         security
     ),
 ) -> DietGenerateResponse:
     """
     건강 상태, 사용자 목표, 알레르기,
-    냉장고 재료를 기반으로 7일 식단을 생성한다.
+    기피 음식, 지역 정보 등을 기반으로
+    7일 개인 맞춤 식단을 생성한다.
+
+    냉장고 재료 기능은 사용하지 않는다.
     """
 
     verify_api_key(
@@ -143,6 +160,7 @@ async def recommend_diet(
     )
 
     try:
+
         result = (
             await generate_diet_recommendation(
                 request
@@ -158,6 +176,7 @@ async def recommend_diet(
         )
 
     except RuntimeError:
+
         logger.exception(
             "Diet recommendation "
             "service unavailable."
@@ -172,6 +191,7 @@ async def recommend_diet(
         )
 
     except Exception:
+
         logger.exception(
             "Diet recommendation failed."
         )
@@ -180,6 +200,133 @@ async def recommend_diet(
             status_code=500,
             detail=(
                 "Diet recommendation failed."
+            ),
+        )
+
+
+# =========================================================
+# Diet Recipe
+#
+# 사용자가 특정 한 끼의
+# "레시피 보기"를 눌렀을 때 호출한다.
+#
+# 처리 순서:
+#
+# 1. 공식 식품안전나라 레시피 exact
+# 2. 공식 유사 레시피
+# 3. Auto-Fit AI 레시피 fallback
+#
+# 각 음식은 MealRecipeService에서
+# 알레르기/기피 음식 검증까지 수행한다.
+# =========================================================
+
+
+@router.post(
+    "/diet/recipe",
+    response_model=DietRecipeResponse,
+)
+async def recommend_diet_recipe(
+    request: DietRecipeRequest,
+    credentials: (
+        HTTPAuthorizationCredentials
+        | None
+    ) = Depends(
+        security
+    ),
+) -> DietRecipeResponse:
+    """
+    특정 한 끼를 구성하는 음식들의
+    조리법을 조회한다.
+
+    식단 생성과 레시피 생성을 분리하여
+    초기 식단 생성 속도와 LLM 비용을 줄인다.
+    """
+
+    verify_api_key(
+        credentials
+    )
+
+    try:
+
+        # =================================================
+        # 기존 MealRecipeService 재사용
+        # =================================================
+
+        async with MealRecipeService() as recipe_service:
+
+            # =============================================
+            # Pydantic Request
+            # → 기존 MealRecipeService 입력 dict 구조
+            # =============================================
+
+            meal_payload = {
+                "items": [
+                    item.model_dump()
+                    for item
+                    in request.items
+                ]
+            }
+
+            # =============================================
+            # 한 끼 구성 음식의 레시피를 병렬 조회
+            #
+            # MealRecipeService 내부:
+            #
+            # official_exact
+            # → official_similar
+            # → llm_generated
+            #
+            # 순으로 처리된다.
+            # =============================================
+
+            enriched_meal = (
+                await recipe_service.enrich_meal(
+                    meal=(
+                        meal_payload
+                    ),
+                    allergies=(
+                        request.food_allergens
+                    ),
+                    disliked_foods=(
+                        request.disliked_foods
+                    ),
+                )
+            )
+
+        return DietRecipeResponse(
+            ok=True,
+            generator=(
+                GENERATOR_NAME
+            ),
+            meal=(
+                enriched_meal
+            ),
+        )
+
+    except RuntimeError:
+
+        logger.exception(
+            "Diet recipe service unavailable."
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Diet recipe service "
+                "is temporarily unavailable."
+            ),
+        )
+
+    except Exception:
+
+        logger.exception(
+            "Diet recipe generation failed."
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Diet recipe generation failed."
             ),
         )
 
@@ -197,7 +344,10 @@ async def recommend_diet(
 )
 async def replace_diet_meal(
     request: ReplaceMealRequest,
-    credentials: HTTPAuthorizationCredentials | None = Depends(
+    credentials: (
+        HTTPAuthorizationCredentials
+        | None
+    ) = Depends(
         security
     ),
 ) -> DietMealRegenerateResponse:
@@ -211,6 +361,7 @@ async def replace_diet_meal(
     )
 
     try:
+
         result = (
             await generate_replacement_meal(
                 request
@@ -228,6 +379,7 @@ async def replace_diet_meal(
         )
 
     except RuntimeError:
+
         logger.exception(
             "Diet meal replacement "
             "service unavailable."
@@ -242,6 +394,7 @@ async def replace_diet_meal(
         )
 
     except Exception:
+
         logger.exception(
             "Diet meal replacement failed."
         )

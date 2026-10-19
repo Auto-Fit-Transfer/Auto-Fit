@@ -124,21 +124,25 @@ class PrivacyService:
 
         # 이메일
         safe_text = re.sub(
-            r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b",
+            (
+                r"(?<![A-Za-z0-9._%+-])"
+                r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}"
+                r"(?![A-Za-z0-9.-])"
+            ),
             "[EMAIL_REMOVED]",
             safe_text,
         )
 
         # 대한민국 휴대전화 번호
         safe_text = re.sub(
-            r"\b01[016789][-\s]?\d{3,4}[-\s]?\d{4}\b",
+            r"(?<!\d)01[016789][-\s]?\d{3,4}[-\s]?\d{4}(?!\d)",
             "[PHONE_REMOVED]",
             safe_text,
         )
 
         # 주민등록번호 형태
         safe_text = re.sub(
-            r"\b\d{6}[-\s]?[1-4]\d{6}\b",
+            r"(?<!\d)\d{6}[-\s]?[1-4]\d{6}(?!\d)",
             "[RESIDENT_NUMBER_REMOVED]",
             safe_text,
         )
@@ -153,7 +157,7 @@ class PrivacyService:
 
         # OpenAI 스타일 API Key
         safe_text = re.sub(
-            r"\bsk-[A-Za-z0-9_\-]{10,}\b",
+            r"(?<![A-Za-z0-9_\-])sk-[A-Za-z0-9_\-]{10,}(?![A-Za-z0-9_\-])",
             "[API_KEY_REMOVED]",
             safe_text,
         )

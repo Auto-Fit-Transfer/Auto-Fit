@@ -1,0 +1,220 @@
+{
+  "contract_version": "1.0",
+  "legacy_chat": {
+    "request": {
+      "question": "운동 방향을 알려줘",
+      "user_info": {},
+      "chat_history": [
+        {
+          "role": "user",
+          "content": "무리하지 않는 운동을 원해"
+        }
+      ]
+    },
+    "response": {
+      "answer": "저장된 정보 범위에서 운동 방향을 안내합니다.",
+      "model": "configured-openai-model"
+    }
+  },
+  "health_question": {
+    "request": {
+      "content": "혈압 관리는 어떻게 해?",
+      "history": [],
+      "context": {
+        "metric_statuses": {
+          "blood_pressure": "high"
+        }
+      },
+      "pending_action": null
+    },
+    "response": {
+      "intent": "health_question",
+      "message": "검증된 건강 관리 자료를 바탕으로 안내합니다.",
+      "action": "health_rag",
+      "action_status": "completed",
+      "requires_backend_apply": false,
+      "pending_action": null,
+      "target_day": null,
+      "target_meal": null,
+      "data": null,
+      "sources": [
+        {
+          "source_org": "대한고혈압학회",
+          "title": "고혈압 진료지침"
+        }
+      ]
+    }
+  },
+  "exercise_replace_unavailable": {
+    "request": {
+      "content": "운동 계획을 다른 것으로 바꿔줘",
+      "history": [],
+      "context": null,
+      "pending_action": null
+    },
+    "response": {
+      "intent": "exercise_replace_request",
+      "message": "현재는 운동 계획 변경 기능을 지원하지 않습니다. 저장된 운동 계획에 대한 설명과 안전 안내는 도와드릴 수 있어요.",
+      "action": "exercise_replace_unavailable",
+      "action_status": "unable_to_apply",
+      "requires_backend_apply": false,
+      "pending_action": null,
+      "target_day": null,
+      "target_meal": null,
+      "data": null,
+      "sources": []
+    }
+  },
+  "diet_replace_proposal": {
+    "request": {
+      "content": "월요일 점심을 바꿔줘",
+      "history": [],
+      "context": {
+        "metric_statuses": {},
+        "food_allergens": [],
+        "disliked_foods": [],
+        "diet_summary": {
+          "weekly_plan": [
+            {
+              "day": "monday",
+              "meals": {
+                "lunch": {
+                  "menu_name": "기존 점심",
+                  "items": [
+                    {
+                      "food_name": "현미밥",
+                      "portion_g": 100.0
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "pending_action": null
+    },
+    "response": {
+      "intent": "diet_replace_request",
+      "message": "monday lunch의 '기존 점심' 메뉴를 변경할까요?",
+      "action": "confirm_diet_replace",
+      "action_status": "awaiting_confirmation",
+      "requires_backend_apply": false,
+      "pending_action": {
+        "action": "diet_replace",
+        "target_day": "monday",
+        "target_meal": "lunch"
+      },
+      "target_day": "monday",
+      "target_meal": "lunch",
+      "data": null,
+      "sources": []
+    }
+  },
+  "diet_replace_confirmation": {
+    "request": {
+      "content": "네, 진행해줘",
+      "history": [],
+      "context": {
+        "metric_statuses": {},
+        "food_allergens": [],
+        "disliked_foods": [],
+        "diet_summary": {
+          "weekly_plan": [
+            {
+              "day": "monday",
+              "meals": {
+                "lunch": {
+                  "menu_name": "기존 점심",
+                  "items": [
+                    {
+                      "food_name": "현미밥",
+                      "portion_g": 100.0
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "pending_action": {
+        "action": "diet_replace",
+        "target_day": "monday",
+        "target_meal": "lunch"
+      }
+    },
+    "response": {
+      "intent": "diet_replace_request",
+      "message": "monday lunch 메뉴를 '새 점심'으로 변경할 준비가 됐어요.",
+      "action": "diet_replace",
+      "action_status": "ready_for_backend_apply",
+      "requires_backend_apply": true,
+      "pending_action": null,
+      "target_day": "monday",
+      "target_meal": "lunch",
+      "data": {
+        "day": "monday",
+        "meal_type": "lunch",
+        "meal": {
+          "menu_name": "새 점심",
+          "menu_description": "공식 Food DB 후보로 구성한 대체 식사입니다.",
+          "image_prompt": null,
+          "estimated_calories_kcal": 450.0,
+          "nutrition": {
+            "carbohydrate_g": 50.0,
+            "protein_g": 30.0,
+            "fat_g": 14.0
+          },
+          "items": [
+            {
+              "food_name": "현미밥",
+              "portion_g": 100.0,
+              "calories_kcal": 240.0,
+              "carbohydrate_g": 50.0,
+              "protein_g": 5.0,
+              "fat_g": 2.0
+            },
+            {
+              "food_name": "닭가슴살구이",
+              "portion_g": 120.0,
+              "calories_kcal": 210.0,
+              "carbohydrate_g": 0.0,
+              "protein_g": 25.0,
+              "fat_g": 12.0
+            }
+          ],
+          "ingredients": null,
+          "guidance": "목표 섭취량에 맞춰 드세요."
+        },
+        "cautions": [],
+        "sources": []
+      },
+      "sources": []
+    }
+  },
+  "diet_replace_cancellation": {
+    "request": {
+      "content": "취소해줘",
+      "history": [],
+      "context": null,
+      "pending_action": {
+        "action": "diet_replace",
+        "target_day": "monday",
+        "target_meal": "lunch"
+      }
+    },
+    "response": {
+      "intent": "diet_replace_request",
+      "message": "식단 변경 요청을 취소했어요.",
+      "action": "diet_replace_cancelled",
+      "action_status": "completed",
+      "requires_backend_apply": false,
+      "pending_action": null,
+      "target_day": "monday",
+      "target_meal": "lunch",
+      "data": null,
+      "sources": []
+    }
+  }
+}
