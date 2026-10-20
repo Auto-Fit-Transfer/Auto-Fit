@@ -61,6 +61,7 @@ from backend.app.account_deletion import create_account_deletion_router
 from backend.app.analysis_popups import create_analysis_popups_router
 from backend.app.analysis_summary import create_analysis_summary_router
 from backend.app.community import create_community_router
+from backend.app.running import create_running_router
 from backend.app.meal_photos import attach_photos, create_meal_photos_router
 from backend.app.security import (
     BlockedPathMiddleware,
@@ -3314,6 +3315,7 @@ app = FastAPI(
         {"name": "Health Analysis", "description": "종합 건강 분석 결과, 지표, 판정 기준 및 출처"},
         {"name": "health-documents", "description": "건강검진·인바디 파일 업로드, 동기 OCR, 결과 수정 및 확정 저장"},
         {"name": "Exercise", "description": "운동 선호도, 추천, 세션, 목표 및 진행 현황"},
+        {"name": "Running", "description": "러닝 코스 검색, 경로 생성, 저장 및 페이스"},
         {"name": "Diet", "description": "식재료, 식단 추천, 영양 요약 및 식사 기록"},
         {"name": "Chat", "description": "건강 상담 채팅 및 답변·점수 미리보기"},
         {"name": "Community", "description": "커뮤니티 피드, 사진, 좋아요, 공유, 댓글, 신고·차단"},
@@ -3424,6 +3426,7 @@ app.include_router(create_account_deletion_router(get_current_user, get_settings
 app.include_router(create_analysis_popups_router(get_current_user, get_settings))
 app.include_router(create_analysis_summary_router(get_current_user, get_settings))
 app.include_router(create_community_router(get_current_user, get_settings))
+app.include_router(create_running_router(get_current_user, get_settings))
 app.include_router(
     create_health_documents_router(
         current_user_dependency=get_current_user,
