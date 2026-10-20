@@ -31,7 +31,10 @@ SYSTEM_INSTRUCTIONS = """
 - 무조건적인 고강도 운동을 권장하지 않는다.
 - 사용자가 선택한 preferred_training_types를 우선적으로 반영한다.
 - preferred_training_types에 없는 운동 방식을 주 운동 방식으로 임의 선택하지 않는다.
-- 장비 정보는 제공되지 않으므로 특정 장비가 반드시 있다고 가정하지 않는다.
+- exercise_mode와 모드별 설정이 있으면 해당 설정을 우선 반영한다.
+- daily_condition이 tired이면 회복 가능한 낮은 강도를 우선한다.
+- has_discomfort가 true이면 불편 부위에 직접 부담되는 동작을 피하고 주의사항을 제공한다.
+- 제공된 장비만 사용할 수 있는 것으로 간주하고 없는 장비를 가정하지 않는다.
 - 특정 전문 장비가 필요한 운동만으로 운동 계획을 구성하지 않는다.
 - 운동 장소 조건이 제공되면 해당 장소에서 현실적으로 수행 가능한 운동을 우선한다.
 - 검증된 RAG 근거가 없는 의학적 내용을 임의로 생성하지 않는다.
@@ -116,6 +119,18 @@ async def generate_exercise_recommendation(
         metric_statuses
     )
 
+    if request.daily_condition == "tired":
+        safety_tags.append(
+            "recovery_priority"
+        )
+
+    if request.has_discomfort:
+        safety_tags.append(
+            "discomfort_reported"
+        )
+
+    safety_tags = sorted(set(safety_tags))
+
     # -----------------------------------------------------
     # 3. 기존 RAG 파이프라인 재사용
     #
@@ -160,6 +175,9 @@ async def generate_exercise_recommendation(
             safety_tags
         ),
         "exercise_preferences": {
+            "exercise_mode": (
+                request.exercise_mode
+            ),
             "goal_type": (
                 request.goal_type
             ),
@@ -174,6 +192,25 @@ async def generate_exercise_recommendation(
             ),
             "preferred_training_types": (
                 request.preferred_training_types
+            ),
+            "daily_condition": (
+                request.daily_condition
+            ),
+            "has_discomfort": (
+                request.has_discomfort
+            ),
+            "discomfort_areas": (
+                request.discomfort_areas
+            ),
+            "gym_preferences": (
+                request.gym_preferences.model_dump()
+                if request.gym_preferences is not None
+                else None
+            ),
+            "home_training_preferences": (
+                request.home_training_preferences.model_dump()
+                if request.home_training_preferences is not None
+                else None
             ),
         },
         "rag_context": (
@@ -200,6 +237,9 @@ exercise_safety_tags는 사용자의 건강 상태에서 파생된
 preferred_training_types는 사용자가 프론트엔드에서 직접 선택한
 선호 운동 방식입니다.
 
+exercise_mode, daily_condition, 모드별 설정은 사용자가
+"오늘의 운동 설정" 화면에서 직접 선택한 값입니다.
+
 반드시 다음 규칙을 따르세요.
 
 운동 방식:
@@ -214,8 +254,9 @@ preferred_training_types는 사용자가 프론트엔드에서 직접 선택한
 - functional_training이 선택되면 일상 동작과 연결되는 전신 운동을 중심으로 구성하세요.
 
 장비:
-- 별도의 장비 정보는 제공되지 않습니다.
-- 특정 장비가 반드시 있다고 가정하지 마세요.
+- gym_preferences 또는 home_training_preferences에 장비/운동 방식이
+  제공되면 그 선택을 정확히 반영하세요.
+- 장비 선택이 제공되지 않은 기존 요청에서만 특정 장비를 가정하지 마세요.
 - 전문적인 특정 기구가 필요한 운동만으로 구성하지 마세요.
 - weight_training이 선택되더라도 일반적인 저항운동이나
   기본적인 헬스장 운동 수준에서 제안하세요.
@@ -235,6 +276,14 @@ preferred_training_types는 사용자가 프론트엔드에서 직접 선택한
 - experience_level에 맞는 난이도로 구성하세요.
 - location이 제공되면 해당 장소에서 수행 가능한 운동을 우선하세요.
 - goal_type이 제공되면 운동 구성에 반영하세요.
+- exercise_mode가 gym이면 gym_preferences의 training_style과
+  focus_area를 우선 반영하세요.
+- exercise_mode가 home_training이면 home_training_preferences의
+  equipment와 workout_style을 우선 반영하세요.
+- workout_style이 quiet이면 점프처럼 충격과 소음이 큰 동작을 피하세요.
+- daily_condition이 tired이면 강도와 운동량을 낮추고 회복을 우선하세요.
+- has_discomfort가 true이면 discomfort_areas에 직접 부담을 주는 운동을
+  제외하고 cautions에 중단 기준을 포함하세요.
 
 출력:
 - weekly_frequency는 일반적으로 2~5회 범위에서 결정하세요.

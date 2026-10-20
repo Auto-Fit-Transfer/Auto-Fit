@@ -45,6 +45,8 @@ Content-Type: application/json
 | `200` | 정상 응답 또는 endpoint가 정의한 안전한 fallback | 응답 Schema와 상태 필드 검증 후 사용 |
 | `401` | 인증 누락 또는 API Key 불일치 | 자동 재시도하지 않고 서버 설정 확인 |
 | `422` | 요청 Schema 또는 서비스 입력 검증 실패 | 필드 매핑과 값 범위를 수정 |
+| `404` | 요청한 공식 러닝 코스를 찾을 수 없음 | 코스 목록을 새로 조회하고 선택 상태 갱신 |
+| `502` | Kakao 또는 공공데이터 제공기관 응답 실패 | 짧은 backoff 후 제한적으로 재시도 |
 | `500` | AI Server 내부 오류 | 제한적으로 재시도하고 로그 확인 |
 | `503` | OpenAI 또는 관련 서비스 일시 장애 | 짧은 backoff 후 제한적으로 재시도하거나 사용자에게 지연 안내 |
 
@@ -61,6 +63,11 @@ Content-Type: application/json
 | 2 | `POST /health-analysis` | 건강검진, 체성분, 목표, 냉장고 context | 종합 분석과 냉장고 맞춤 제안 | Backend |
 | 2 | `POST /health-analysis/diet-refresh` | 기존 건강 입력과 최신 냉장고 context | 식단 제안 영역만 갱신 | Backend |
 | 2 | `POST /recommend/exercise` | 건강 상태와 운동 선호 | AI 기반 운동 추천 | Backend |
+| 2 | `GET /running/places/search` | 주소·장소명, 선택적 중심 좌표·반경 | 출발지 후보와 WGS84 좌표 | 저장하지 않음 |
+| 2 | `GET /running/courses/recommend` | 지역 또는 GPS, 거리 옵션, 사용자 페이스 | 공식 코스 후보와 거리·근접도·검증 상태 | Backend 선택 저장 |
+| 2 | `GET /running/courses/{course_id}` | 공식 코스 ID, 사용자 페이스 | 코스 상세와 출발·도착 위치 | Backend 선택 저장 |
+| 2 | `POST /running/routes/preview` | 출발·도착·경유지 좌표, 사용자 페이스 | Kakao 실경로 거리·시간·Polyline | 저장 선택 |
+| 2 | `POST /running/routes/generate-loop` | 출발 좌표, 거리 옵션, 페이스, 후보 수, seed | Kakao 기반 순환 코스 후보와 실제 거리·오차·Polyline | Backend 선택 저장 |
 | 호환 | `POST /chat` | 기존 `question`, `user_info`, `chat_history` | 일반 답변과 model 이름 | Backend 선택 |
 
 `POST /chat/intent-test`, `POST /analysis/debug-inputs`, RAG debug endpoint는 개발용이며 Backend 운영 기능에서 호출하지 않는다.
@@ -379,12 +386,177 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
 
 확정 전에는 기존 endpoint를 삭제하거나 이름을 변경하지 않는다.
 
+## 오늘의 운동 설정
+
+Frontend의 헬스·홈트 선택값은 기존 `POST /recommend/exercise`에 전달한다. 기존 요청 필드는 그대로 유효하며, `exercise_mode`를 보내는 신규 요청만 해당 모드의 상세 설정을 함께 보내야 한다.
+
+### 헬스 요청
+
+```json
+{
+  "metric_statuses": {},
+  "goal_type": "weight_loss",
+  "experience_level": "beginner",
+  "available_minutes": 30,
+  "location": "gym",
+  "preferred_training_types": ["weight_training"],
+  "exercise_mode": "gym",
+  "daily_condition": "good",
+  "has_discomfort": false,
+  "discomfort_areas": [],
+  "gym_preferences": {
+    "training_style": "machine",
+    "focus_area": "upper_body"
+  }
+}
+```
+
+### 홈트 요청
+
+```json
+{
+  "metric_statuses": {},
+  "goal_type": "general_fitness",
+  "experience_level": "beginner",
+  "available_minutes": 15,
+  "location": "home",
+  "preferred_training_types": ["home_training", "bodyweight"],
+  "exercise_mode": "home_training",
+  "daily_condition": "normal",
+  "has_discomfort": true,
+  "discomfort_areas": ["knee"],
+  "home_training_preferences": {
+    "equipment": "none",
+    "workout_style": "quiet"
+  }
+}
+```
+
+Frontend 표시값과 API enum은 다음처럼 매핑한다.
+
+| 화면 | 표시값 | API 값 |
+|---|---|---|
+| 공통 컨디션 | 좋음 / 보통 / 피곤 | `good` / `normal` / `tired` |
+| 헬스 운동 방식 | 머신 / 프리웨이트 / 상관없음 / 기타 | `machine` / `free_weight` / `any` / `other` |
+| 헬스 집중 부위 | 상체 / 하체 / 전신 / 기타 | `upper_body` / `lower_body` / `full_body` / `other` |
+| 홈트 도구 | 장비 없이 / 밴드 / 덤벨 / 기타 | `none` / `band` / `dumbbell` / `other` |
+| 홈트 성향 | 조용한 운동 / 땀 나는 운동 / 기타 | `quiet` / `sweaty` / `other` |
+
+`has_discomfort=false`이면 `discomfort_areas`는 빈 배열이어야 한다. `true`인데 상세 부위를 받지 않은 화면이라면 빈 배열도 허용한다. AI Server는 피곤함 또는 불편 부위가 있으면 강도·동작 선택에 안전 조건을 우선한다.
+
+운동 방식·집중 부위·도구·운동 성향에서 `other`를 선택하면 각각 `other_training_style`, `other_focus_area`, `other_equipment`, `other_workout_style`에 사용자가 지정한 값을 함께 전달한다. 헬스·홈트 시간의 `기타`는 별도 enum이 아니라 실제 분 단위 숫자를 `available_minutes`에 전달한다.
+
+## 러닝 코스 추천
+
+Backend 운영 계약은 거리 선택을 코스 검색의 기준으로 사용한다.
+
+- `3km`, `5km`, `10km`, 직접 입력 거리를 `distance_option`과 `custom_distance_km`로 전달한다.
+- 기존 목표 시간은 AI Server 요청 조건이 아니라 코스의 `estimated_duration_minutes`와 비교하는 보조 목표로 유지한다.
+- 사용자 저장 페이스가 있으면 `pace_minutes_per_km`로 전달한다.
+- 강도 선택을 코스에 반영하려면 `light → easy`, `moderate → moderate`, `hard → hard`로 매핑해 `desired_difficulty`를 전달한다.
+- `desired_difficulty`는 거리 허용 범위를 변경하거나 다른 거리 코스를 포함하지 않고, 같은 거리 후보의 보조 정렬에만 사용한다.
+
+러닝 기능의 전체 상태 전이, Backend 저장 필드와 E2E 수용 시나리오는 [Running Backend E2E Contract](running_backend_e2e_contract.md)를 따른다. 검증 가능한 전체 요청·응답 fixture는 [Running API examples](running_api_contract_examples.json)를 사용한다.
+
+### 공식 코스 목록
+
+Backend는 다음과 같이 지역 또는 현재 위치와 거리 옵션을 전달한다.
+
+```http
+GET /running/courses/recommend?region=성남시&distance_option=5km&latitude=37.3948&longitude=127.1112&pace_minutes_per_km=6.5&desired_difficulty=easy&limit=10
+```
+
+- `distance_option`: `3km`, `5km`, `10km`, `custom`
+- `custom`이면 `custom_distance_km`가 필수다.
+- `region` 또는 `latitude`와 `longitude` 쌍 중 하나는 필수다.
+- GPS만 제공하면 AI Server가 Kakao 행정구역 API로 지역을 결정한다.
+- GPS가 있으면 공식 코스 출발지까지의 직선거리로 가까운 순서를 우선한다.
+- 거리 필터는 초기 정책으로 목표 거리의 ±10%를 사용한다.
+- `desired_difficulty`는 `easy`, `moderate`, `hard` 중 하나이며 선택 필드다.
+- 사용자 페이스가 없으면 기본 페이스를 사용하고 `pace_assumed=true`로 표시한다.
+
+기본 공식 데이터는 전국길관광정보표준데이터를 사용한다. 두루누비 정보 서비스가 활성화된 환경에서는 GPX 실제 경로가 검증된 코스를 같은 응답에 합친다. Backend는 응답의 다음 필드를 반드시 확인한다.
+
+| Field | 의미 |
+|---|---|
+| `source.source_type=official_metadata` | 지자체 공식 코스 메타데이터 기반 후보 |
+| `source.source_type=official_gpx` | 한국관광공사 두루누비 GPX 실제 경로가 검증된 후보 |
+| `geometry_status=metadata_only` | 좌표가 아직 없는 상태 |
+| `geometry_status=start_geocoded` | 출발지만 Kakao로 좌표화됨 |
+| `geometry_status=endpoints_geocoded` | 출발·도착 좌표가 확보됨 |
+| `geometry_status=verified_polyline` | 상세 endpoint에서 지도용 전체 경로를 받을 수 있음 |
+| `geometry_distance_km` | GPX 좌표로 다시 계산한 실제 경로 길이 |
+| `requires_route_validation=true` | 실제 보행 경로 Polyline 검증이 아직 필요함 |
+| `requires_route_validation=false` | 공급자 GPX 경로 검증이 완료됨 |
+
+`data_sources`에는 `official_metadata`와 `official_gpx`의 상태가 각각 `available`, `disabled`, `unavailable` 중 하나로 반환된다. 두루누비가 비활성 또는 일시 장애여도 전국길 메타데이터 추천은 계속 제공된다.
+
+두루누비를 활성화하려면 다음 조건이 모두 필요하다.
+
+- 공공데이터포털에서 `한국관광공사 두루누비 정보 서비스` 활용신청 승인
+- 기존 `PUBLIC_DATA_SERVICE_KEY`에 해당 서비스 권한 반영
+- AI Server 환경변수 `RUNNING_DURUNUBI_ENABLED=true`
+
+권한 승인 전에는 활성화하지 않는다. GPX는 추천 후보 전체가 아니라 거리·지역 필터를 먼저 통과한 제한된 수의 코스에 대해서만 조회한다.
+
+조건에 맞는 공식 코스가 없으면 HTTP 오류가 아니라 다음 상태를 반환한다.
+
+```json
+{
+  "ok": true,
+  "status": "generation_required",
+  "courses": [],
+  "generation_recommended": true
+}
+```
+
+Backend는 이 상태를 `POST /running/routes/generate-loop` 자동 순환 코스 생성 화면으로 연결한다.
+
+### 순환 코스 자동 생성
+
+```http
+POST /running/routes/generate-loop
+```
+
+```json
+{
+  "start": {
+    "latitude": 37.3948,
+    "longitude": 127.1112
+  },
+  "distance_option": "5km",
+  "pace_minutes_per_km": 6.5,
+  "candidate_count": 3,
+  "seed": 0
+}
+```
+
+- `candidate_count`는 1~3이다.
+- `seed`를 바꾸면 경유점 방향이 달라져 다른 후보를 요청할 수 있다.
+- AI Server는 방향이 다른 사각형 경유점 후보를 만들고 Kakao 도보 경로 API가 반환한 실제 도로 형상만 사용한다.
+- 후보별 기본 2회까지만 호출한다. 첫 실제 거리의 비율로 경유점 반경을 한 번 보정하므로 후보 3개 기준 최대 6회다.
+- 출발지와 도착지는 동일하며 경유점은 3개다.
+- 경로가 목표 거리 ±10%이면 `status=matched`다.
+- 도보 경로는 생성됐지만 모든 후보가 범위 밖이면 `status=best_effort`다. Backend는 `distance_error_percent`와 `within_tolerance=false`를 반드시 표시하고 정상 매칭으로 취급하지 않는다.
+- 모든 제한된 시도가 실패하면 `status=unavailable`, 빈 `candidates`와 오류 안내 문구가 반환된다.
+- 반환되는 `course_id`는 자동 생성 결과 식별자일 뿐 AI Server의 영구 저장 ID가 아니다.
+- 실제 사용자 선택·즐겨찾기·저장은 기존 정책대로 Backend가 담당한다.
+
+### 코스 상세와 실제 경로
+
+- `GET /running/courses/{course_id}`: 공식 설명, 거리, 출발·도착, 경유지, 난이도 근거를 반환한다. `durunubi-` ID는 지도 표시용 `path`도 반환한다.
+- `POST /running/routes/preview`: 좌표가 확정된 출발·도착·경유지를 Kakao 도보 경로로 검증하고 실제 Polyline을 반환한다.
+- `POST /running/routes/generate-loop`: 출발지로 복귀하는 1~3개의 자동 생성 후보와 실제 거리 오차·Polyline을 반환한다.
+- `GET /running/places/search`: 출발지 검색용이며 공식 추천 코스 DB로 사용하지 않는다.
+- 즐겨찾기, 선택한 코스, 사용자별 페이스의 영구 저장은 Backend가 담당한다.
+- AI Server의 코스 카탈로그·좌표 캐시는 외부 API 호출 최적화용이며 사용자 선택 저장소가 아니다.
+
 ## 아직 Backend 운영 연동에서 제외할 기능
 
 | Endpoint | 현재 상태 | 연동 보류 이유 |
 |---|---|---|
 | `POST /ai/body-analysis` | 모델 파일이 없으면 fallback 반환 | 학습 모델과 인증 경계 미확정 |
-| `POST /ai/food-analysis` | 파일 크기만 확인하는 TODO fallback | 음식 이미지 모델 미연결, 인증 경계 미확정 |
+| `POST /running/session/recommend` | 목표 시간 기반 세션 추천 구현 존재 | Backend는 거리 우선 5개 경로 계약을 사용 |
 | Chat 운동 변경 action | `exercise_replace_unavailable` 반환 | 운동 변경 API와 저장 계약 미정 |
 
 `POST /recommend/exercise`의 AI 운동 추천 자체는 존재하지만, 챗봇을 통한 기존 운동 계획 변경과 Backend 저장 흐름은 아직 연결되지 않았다.
@@ -400,6 +572,8 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
 | Recipe 공식 원문 | 외부 공식 API | 정규화·matching·scaling | 필요 시 Backend cache |
 | 대화 이력·pending action | Backend | 현재 요청에서만 판단 | Backend |
 | RAG 출처 | AI Server | 검색된 실제 출처만 반환 | Backend 선택 |
+| 공식 러닝 코스 원문 | 공공데이터포털·지자체·한국관광공사 | 정규화·거리 필터·Kakao 좌표 보강·두루누비 GPX 검증 | AI Server cache |
+| 사용자 러닝 페이스·즐겨찾기·선택 코스 | Backend | 요청 범위에서 시간 계산·추천 | Backend |
 
 ## Backend 구현 체크리스트
 

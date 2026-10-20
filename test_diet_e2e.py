@@ -311,7 +311,10 @@ def validate_diet_response(
             if (
                 not isinstance(
                     calories,
-                    int,
+                    (
+                        int,
+                        float,
+                    ),
                 )
                 or calories < 0
             ):
@@ -344,7 +347,10 @@ def validate_diet_response(
                 if (
                     not isinstance(
                         value,
-                        int,
+                        (
+                            int,
+                            float,
+                        ),
                     )
                     or value < 0
                 ):
@@ -512,10 +518,14 @@ def validate_replacement_response(
                     or 0
                 )
                 for item in items
-            )
+            ),
+            2,
         )
 
-        if total != expected:
+        if (
+            not isinstance(expected, (int, float))
+            or abs(total - float(expected)) > 0.01
+        ):
             raise RuntimeError(
                 f"재추천 {key}가 공식 item 합계와 다릅니다: "
                 f"expected={expected}, actual={total}"

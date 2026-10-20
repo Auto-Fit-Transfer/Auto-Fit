@@ -12,7 +12,7 @@ class BodyData(BaseModel):
     """
     체성분 분석 입력.
 
-    OCR에서 읽지 못한 값은 null이 올 수 있으므로
+    Backend에서 일부 값만 전달할 수 있으므로
     모든 항목을 Optional로 처리한다.
     """
 
@@ -28,10 +28,8 @@ class HealthData(BaseModel):
     """
     건강검진 분석 입력.
 
-    OCR 계약에 맞춰 혈압은
+    분석 계약에 맞춰 혈압은
     systolic / diastolic 두 값으로 분리한다.
-
-    OCR에서 인식하지 못한 값은 null이 올 수 있다.
     """
 
     systolic_bp: float | None = None
@@ -153,21 +151,3 @@ class AnalysisResponse(BaseModel):
     )
 
     analysis_version: str = "langgraph-v1"
-
-
-class OCRAnalysisRequest(BaseModel):
-    document_type: Literal[
-        "health_checkup",
-        "body_composition",
-    ]
-
-    extracted_data: dict[str, Any] | None = None
-
-
-class OCRAnalysisInput(BaseModel):
-    body_data: BodyData | None = None
-    health_data: HealthData | None = None
-
-    warnings: list[str] = Field(
-        default_factory=list
-    )

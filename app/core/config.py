@@ -133,6 +133,65 @@ class Settings(BaseSettings):
     # 농촌진흥청 지역특산물 API
     nongsaro_api_key: str | None = None
 
+    # Kakao Maps REST API / Running Route
+    kakao_rest_api_key: str | None = None
+    kakao_api_timeout_seconds: float = Field(
+        default=20.0,
+        gt=0,
+        le=120,
+    )
+    running_default_pace_minutes_per_km: float = Field(
+        default=7.0,
+        ge=2.0,
+        le=20.0,
+    )
+    running_public_data_timeout_seconds: float = Field(
+        default=30.0,
+        gt=0,
+        le=120,
+    )
+    running_course_catalog_cache_ttl_seconds: float = Field(
+        default=21600.0,
+        gt=0,
+        le=604800,
+    )
+    running_course_geocode_limit: int = Field(
+        default=20,
+        ge=1,
+        le=50,
+    )
+    running_durunubi_enabled: bool = False
+    running_durunubi_cache_ttl_seconds: float = Field(
+        default=21600.0,
+        gt=0,
+        le=604800,
+    )
+    running_durunubi_geometry_limit: int = Field(
+        default=10,
+        ge=1,
+        le=30,
+    )
+    running_gpx_max_bytes: int = Field(
+        default=5_000_000,
+        ge=100_000,
+        le=20_000_000,
+    )
+    running_gpx_max_points: int = Field(
+        default=2000,
+        ge=100,
+        le=10000,
+    )
+    running_loop_tolerance_ratio: float = Field(
+        default=0.10,
+        gt=0,
+        le=0.25,
+    )
+    running_loop_attempts_per_candidate: int = Field(
+        default=2,
+        ge=1,
+        le=3,
+    )
+
     # Backend -> AI Server 인증
     ai_server_api_key: str | None = None
 

@@ -55,6 +55,194 @@ ExerciseTrainingType = Literal[
 ]
 
 
+ExerciseMode = Literal[
+
+    "gym",
+
+    "home_training",
+
+]
+
+
+ExerciseDailyCondition = Literal[
+
+    "good",
+
+    "normal",
+
+    "tired",
+
+]
+
+
+GymTrainingStyle = Literal[
+
+    "machine",
+
+    "free_weight",
+
+    "any",
+
+    "other",
+
+]
+
+
+ExerciseFocusArea = Literal[
+
+    "upper_body",
+
+    "lower_body",
+
+    "full_body",
+
+    "other",
+
+]
+
+
+HomeTrainingEquipment = Literal[
+
+    "none",
+
+    "band",
+
+    "dumbbell",
+
+    "other",
+
+]
+
+
+HomeTrainingStyle = Literal[
+
+    "quiet",
+
+    "sweaty",
+
+    "other",
+
+]
+
+
+class GymExercisePreferences(BaseModel):
+
+    training_style: GymTrainingStyle
+
+    other_training_style: str | None = Field(
+
+        default=None,
+
+        min_length=1,
+
+        max_length=100,
+
+    )
+
+    focus_area: ExerciseFocusArea
+
+    other_focus_area: str | None = Field(
+
+        default=None,
+
+        min_length=1,
+
+        max_length=100,
+
+    )
+
+    @model_validator(mode="after")
+
+    def validate_other_values(self):
+
+        if (self.training_style == "other") != (
+
+            self.other_training_style is not None
+
+        ):
+
+            raise ValueError(
+
+                "other_training_style is required only when "
+
+                "training_style is other"
+
+            )
+
+        if (self.focus_area == "other") != (
+
+            self.other_focus_area is not None
+
+        ):
+
+            raise ValueError(
+
+                "other_focus_area is required only when focus_area is other"
+
+            )
+
+        return self
+
+
+class HomeTrainingPreferences(BaseModel):
+
+    equipment: HomeTrainingEquipment
+
+    other_equipment: str | None = Field(
+
+        default=None,
+
+        min_length=1,
+
+        max_length=100,
+
+    )
+
+    workout_style: HomeTrainingStyle
+
+    other_workout_style: str | None = Field(
+
+        default=None,
+
+        min_length=1,
+
+        max_length=100,
+
+    )
+
+    @model_validator(mode="after")
+
+    def validate_other_values(self):
+
+        if (self.equipment == "other") != (
+
+            self.other_equipment is not None
+
+        ):
+
+            raise ValueError(
+
+                "other_equipment is required only when equipment is other"
+
+            )
+
+        if (self.workout_style == "other") != (
+
+            self.other_workout_style is not None
+
+        ):
+
+            raise ValueError(
+
+                "other_workout_style is required only when "
+
+                "workout_style is other"
+
+            )
+
+        return self
+
+
 
 
 
@@ -99,6 +287,142 @@ class ExerciseRecommendationRequest(BaseModel):
         default_factory=list
 
     )
+
+
+
+    # Frontend의 "오늘의 운동 설정" 화면에서 전달하는 값이다.
+    # 기존 호출자는 이 필드들을 생략할 수 있어 하위 호환성을 유지한다.
+    exercise_mode: ExerciseMode | None = None
+
+
+
+    daily_condition: ExerciseDailyCondition | None = None
+
+
+
+    has_discomfort: bool = False
+
+
+
+    discomfort_areas: list[str] = Field(
+
+        default_factory=list,
+
+        max_length=10,
+
+    )
+
+
+
+    gym_preferences: GymExercisePreferences | None = None
+
+
+
+    home_training_preferences: (
+
+        HomeTrainingPreferences
+
+        | None
+
+    ) = None
+
+
+
+    @model_validator(mode="after")
+
+    def validate_frontend_preferences(self):
+
+        if self.exercise_mode is not None:
+
+            if self.daily_condition is None:
+
+                raise ValueError(
+
+                    "daily_condition is required when exercise_mode is set"
+
+                )
+
+            if self.available_minutes is None:
+
+                raise ValueError(
+
+                    "available_minutes is required when exercise_mode is set"
+
+                )
+
+
+
+        if not self.has_discomfort and self.discomfort_areas:
+
+            raise ValueError(
+
+                "discomfort_areas requires has_discomfort=true"
+
+            )
+
+
+
+        if self.exercise_mode == "gym":
+
+            if self.gym_preferences is None:
+
+                raise ValueError(
+
+                    "gym_preferences is required for gym mode"
+
+                )
+
+            if self.home_training_preferences is not None:
+
+                raise ValueError(
+
+                    "home_training_preferences is not allowed for gym mode"
+
+                )
+
+
+
+        if self.exercise_mode == "home_training":
+
+            if self.home_training_preferences is None:
+
+                raise ValueError(
+
+                    "home_training_preferences is required for "
+
+                    "home_training mode"
+
+                )
+
+            if self.gym_preferences is not None:
+
+                raise ValueError(
+
+                    "gym_preferences is not allowed for "
+
+                    "home_training mode"
+
+                )
+
+
+
+        if self.exercise_mode is None and (
+
+            self.gym_preferences is not None
+
+            or self.home_training_preferences is not None
+
+        ):
+
+            raise ValueError(
+
+                "exercise_mode is required when mode preferences are provided"
+
+            )
+
+
+
+        return self
 
 
 
