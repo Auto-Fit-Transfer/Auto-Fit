@@ -2,22 +2,27 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.core.config import get_settings
-from app.schemas.chat import ChatRequest
+from app.schemas.chat import BackendChatRequest
 from app.services import llm_service as module
 
 
 @pytest.fixture(autouse=True)
-def clear_settings_cache():
-    get_settings.cache_clear()
+def reset_resilience_metrics():
+    module._reset_backend_chat_resilience_for_tests()
     yield
-    get_settings.cache_clear()
+    module._reset_backend_chat_resilience_for_tests()
+
+
+def _settings(*, api_key: str | None = "test-key") -> SimpleNamespace:
+    return SimpleNamespace(
+        openai_api_key=api_key,
+        openai_model="test-model",
+        chat_openai_timeout_seconds=1.0,
+    )
 
 
 @pytest.mark.asyncio
 async def test_generate_uses_router_contract(monkeypatch):
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setenv("OPENAI_MODEL", "test-model")
     captured = {}
 
     class Responses:
@@ -30,26 +35,45 @@ async def test_generate_uses_router_contract(monkeypatch):
         "AsyncOpenAI",
         lambda **kwargs: SimpleNamespace(responses=Responses()),
     )
+    monkeypatch.setattr(
+        module,
+        "get_settings",
+        lambda: _settings(),
+    )
 
-    answer = await module.generate_chat_response(ChatRequest(question="질문"))
+    answer = await module.generate_backend_chat_response(
+        BackendChatRequest(question="질문")
+    )
 
     assert answer == "테스트 답변"
     assert captured["model"] == "test-model"
-    assert captured["input"] == "질문"
-    assert "일반 상식" in captured["instructions"]
+    assert "질문" in captured["input"]
+    assert "recent_conversation" in captured["input"]
+    assert "일반적인 교육 정보" in captured["instructions"]
 
 
 @pytest.mark.asyncio
-async def test_generate_rejects_missing_openai_key(monkeypatch):
-    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+async def test_generate_uses_fallback_without_openai_key(monkeypatch):
+    monkeypatch.setattr(
+        module,
+        "get_settings",
+        lambda: _settings(api_key=None),
+    )
 
-    with pytest.raises(RuntimeError, match="OPENAI_API_KEY"):
-        await module.generate_chat_response(ChatRequest(question="질문"))
+    answer = await module.generate_backend_chat_response(
+        BackendChatRequest(question="질문")
+    )
+
+    assert "잠시 후" in answer
+    assert module.get_backend_chat_resilience_stats() == {
+        "fallbacks": 1,
+        "timeouts": 0,
+        "errors": 1,
+    }
 
 
 @pytest.mark.asyncio
-async def test_generate_rejects_empty_answer(monkeypatch):
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+async def test_generate_uses_fallback_for_empty_answer(monkeypatch):
 
     class Responses:
         async def create(self, **kwargs):
@@ -60,6 +84,19 @@ async def test_generate_rejects_empty_answer(monkeypatch):
         "AsyncOpenAI",
         lambda **kwargs: SimpleNamespace(responses=Responses()),
     )
+    monkeypatch.setattr(
+        module,
+        "get_settings",
+        lambda: _settings(),
+    )
 
-    with pytest.raises(RuntimeError, match="empty answer"):
-        await module.generate_chat_response(ChatRequest(question="질문"))
+    answer = await module.generate_backend_chat_response(
+        BackendChatRequest(question="질문")
+    )
+
+    assert "잠시 후" in answer
+    assert module.get_backend_chat_resilience_stats() == {
+        "fallbacks": 1,
+        "timeouts": 0,
+        "errors": 1,
+    }
