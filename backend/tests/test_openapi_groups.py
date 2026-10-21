@@ -4,10 +4,11 @@ from backend.app.main import app
 def test_every_operation_has_one_documented_feature_group():
     schema = app.openapi()
     groups = {tag["name"] for tag in schema["tags"]}
-    assert groups == {"Profile", "health-documents", "Health Analysis", "Exercise", "Diet", "Chat", "Community", "System"}
+    assert groups == {"Profile", "health-documents", "Health Analysis", "Exercise", "Running", "Diet", "Chat", "Community", "System"}
     for path, methods in schema["paths"].items():
         expected = (
             "Exercise" if path.startswith("/api/exercise/") else
+            "Running" if path.startswith("/api/running/") else
             "Diet" if path.startswith("/api/diet/") else
             "Chat" if path.startswith("/api/chats") else
             "Community" if path.startswith("/api/community/") else
