@@ -365,9 +365,10 @@ export function reportCommunityContent(
   targetType: CommunityReportTarget,
   targetId: string,
   reason: CommunityReportReason,
+  detail: string | null = null,
 ) {
   return apiRequest<{ reported: boolean }>('/api/community/reports', {
-    body: JSON.stringify({ reason, target_id: targetId, target_type: targetType }),
+    body: JSON.stringify({ detail, reason, target_id: targetId, target_type: targetType }),
     method: 'POST',
   });
 }

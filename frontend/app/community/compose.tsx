@@ -55,12 +55,23 @@ export default function CommunityComposeScreen() {
         allowsMultipleSelection: true,
         mediaTypes: ['images'],
         orderedSelection: true,
+        // iPhone photos are often HEIC; ask iOS for the most compatible copy (JPEG), because
+        // the server accepts only JPEG, PNG and WebP.
+        preferredAssetRepresentationMode:
+          ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
         quality: 0.7,
         selectionLimit: remaining,
       });
       if (result.canceled) return;
-      const fitting = result.assets.filter((asset) => (asset.fileSize ?? 0) <= MAX_PHOTO_BYTES);
-      if (fitting.length < result.assets.length) actions.notify('5MB가 넘는 사진은 빼고 담았어요.');
+      // Android hands over the original file, which can still be HEIC; leave those out up front
+      // instead of failing the whole post at upload time. Only the type counts: an iOS copy
+      // converted to JPEG may keep its .HEIC file name.
+      const supported = result.assets.filter((asset) => !/hei[cf]/i.test(asset.mimeType ?? ''));
+      if (supported.length < result.assets.length) {
+        actions.notify('HEIC 형식 사진은 올릴 수 없어서 빼고 담았어요. JPEG로 저장해 주세요.');
+      }
+      const fitting = supported.filter((asset) => (asset.fileSize ?? 0) <= MAX_PHOTO_BYTES);
+      if (fitting.length < supported.length) actions.notify('5MB가 넘는 사진은 빼고 담았어요.');
       setPhotos((current) => {
         const seen = new Set(current.map((photo) => photo.uri));
         const added = fitting

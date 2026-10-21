@@ -17,6 +17,7 @@ import {
   type CommunityAuthor,
   type CommunityComment,
   type CommunityPost,
+  type CommunityReportReason,
   type CommunityReportTarget,
 } from '@/src/api/community';
 import { AppDialog } from '@/src/components/common';
@@ -25,6 +26,7 @@ import {
   type CommunityOption,
 } from '@/src/components/community/CommunityOptionsSheet';
 import { NicknameDialog } from '@/src/components/community/NicknameDialog';
+import { ReportDetailDialog } from '@/src/components/community/ReportDetailDialog';
 import { colors, fontFamilies, radius, shadows, spacing } from '@/src/theme';
 
 import { emitCommunityEvent } from './communityEvents';
@@ -46,6 +48,12 @@ export function useCommunityActions() {
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [nicknameRetry, setNicknameRetry] = useState<(() => void) | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [reportDraft, setReportDraft] = useState<{
+    type: CommunityReportTarget;
+    id: string;
+    reason: (typeof COMMUNITY_REPORT_REASONS)[number];
+    onDone: () => void;
+  } | null>(null);
 
   const notify = useCallback((message: string) => {
     setToast(message);
@@ -145,22 +153,33 @@ export function useCommunityActions() {
       }
     });
 
+  // Reason first (sheet), then an optional detail (dialog), then the report.
   const openReport = (type: CommunityReportTarget, id: string, onDone: () => void) =>
     setSheet({
       options: COMMUNITY_REPORT_REASONS.map((reason) => ({
         label: reason.label,
-        onPress: () =>
-          void once(`report:${id}`, async () => {
-            try {
-              await reportCommunityContent(type, id, reason.value);
-              onDone();
-              notify('신고가 접수됐어요. 이제 내 화면에서는 보이지 않아요.');
-            } catch (error) {
-              handleError(error);
-            }
-          }),
+        onPress: () => setReportDraft({ id, onDone, reason, type }),
       })),
       title: '신고 사유를 골라 주세요',
+    });
+
+  const submitReport = (
+    draft: { type: CommunityReportTarget; id: string; onDone: () => void },
+    reason: CommunityReportReason,
+    detail: string | null,
+  ) =>
+    once(`report:${draft.id}`, async () => {
+      try {
+        await reportCommunityContent(draft.type, draft.id, reason, detail);
+        draft.onDone();
+        notify(
+          draft.type === 'user'
+            ? '신고가 접수됐어요. 운영자가 확인할게요.'
+            : '신고가 접수됐어요. 이제 내 화면에서는 보이지 않아요.',
+        );
+      } catch (error) {
+        handleError(error);
+      }
     });
 
   const confirmBlock = (author: CommunityAuthor) =>
@@ -284,6 +303,16 @@ export function useCommunityActions() {
         }}
         title={confirm?.title ?? ''}
         visible={confirm !== null}
+      />
+      <ReportDetailDialog
+        onCancel={() => setReportDraft(null)}
+        onSubmit={(detail) => {
+          const draft = reportDraft;
+          setReportDraft(null);
+          if (draft) void submitReport(draft, draft.reason.value, detail);
+        }}
+        reasonLabel={reportDraft?.reason.label ?? ''}
+        visible={reportDraft !== null}
       />
       <NicknameDialog
         onCancel={() => setNicknameRetry(null)}

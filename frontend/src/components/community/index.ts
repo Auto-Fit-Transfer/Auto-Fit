@@ -6,3 +6,4 @@ export * from './CommunityOptionsSheet';
 export * from './CommunityPostCard';
 export * from './CommunityPostImages';
 export * from './NicknameDialog';
+export * from './ReportDetailDialog';
