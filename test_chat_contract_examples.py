@@ -10,6 +10,10 @@ from app.schemas.chat import (
     ChatResponse,
 )
 from app.schemas.recommendation import ReplaceMealResponse
+from app.schemas.running import (
+    RunningCourseRecommendationResponse,
+    RunningLoopGenerationResponse,
+)
 
 
 EXAMPLES_PATH = (
@@ -24,6 +28,8 @@ async def _validate_runtime_behavior(examples: dict) -> None:
     confirmation = examples["diet_replace_confirmation"]
     cancellation = examples["diet_replace_cancellation"]
     exercise = examples["exercise_replace_unavailable"]
+    running_recommendation = examples["running_gps_recommendation"]
+    running_generation = examples["running_gps_loop_generation"]
 
     proposal_result = await orchestrator.process_chat(
         ChatRequest.model_validate(
@@ -53,21 +59,66 @@ async def _validate_runtime_behavior(examples: dict) -> None:
     ) == exercise["response"]
 
     original_replacement = orchestrator.generate_replacement_meal
+    original_running_recommendation = (
+        orchestrator.recommend_running_courses
+    )
+    original_running_generation = (
+        orchestrator.generate_running_loop_routes
+    )
 
     async def fake_replacement(request):
         return ReplaceMealResponse.model_validate(
             confirmation["response"]["data"]
         )
 
+    async def fake_running_recommendation(request):
+        assert request.latitude == 37.3948
+        assert request.longitude == 127.1112
+        assert request.distance_option == "5km"
+        return RunningCourseRecommendationResponse.model_validate(
+            running_recommendation["response"]["data"]
+        )
+
+    async def fake_running_generation(request):
+        assert request.start.latitude == 37.3948
+        assert request.start.longitude == 127.1112
+        assert request.distance_option == "5km"
+        return RunningLoopGenerationResponse.model_validate(
+            running_generation["response"]["data"]
+        )
+
     orchestrator.generate_replacement_meal = fake_replacement
+    orchestrator.recommend_running_courses = (
+        fake_running_recommendation
+    )
+    orchestrator.generate_running_loop_routes = (
+        fake_running_generation
+    )
     try:
         confirmation_result = await orchestrator.process_chat(
             ChatRequest.model_validate(
                 confirmation["request"]
             )
         )
+
+        running_recommendation_result = await orchestrator.process_chat(
+            ChatRequest.model_validate(
+                running_recommendation["request"]
+            )
+        )
+        running_generation_result = await orchestrator.process_chat(
+            ChatRequest.model_validate(
+                running_generation["request"]
+            )
+        )
     finally:
         orchestrator.generate_replacement_meal = original_replacement
+        orchestrator.recommend_running_courses = (
+            original_running_recommendation
+        )
+        orchestrator.generate_running_loop_routes = (
+            original_running_generation
+        )
 
     actual_confirmation = confirmation_result.model_dump(
         mode="json"
@@ -83,6 +134,13 @@ async def _validate_runtime_behavior(examples: dict) -> None:
         )
     )
 
+    assert running_recommendation_result.model_dump(
+        mode="json"
+    ) == running_recommendation["response"]
+    assert running_generation_result.model_dump(
+        mode="json"
+    ) == running_generation["response"]
+
 
 async def _run_all() -> None:
     examples = json.loads(
@@ -91,7 +149,7 @@ async def _run_all() -> None:
         )
     )
 
-    assert examples["contract_version"] == "1.0"
+    assert examples["contract_version"] == "1.1"
 
     legacy = examples["legacy_chat"]
     BackendChatRequest.model_validate(
@@ -107,6 +165,8 @@ async def _run_all() -> None:
         "diet_replace_proposal",
         "diet_replace_confirmation",
         "diet_replace_cancellation",
+        "running_gps_recommendation",
+        "running_gps_loop_generation",
     ]
 
     for case_name in orchestrated_case_names:
@@ -171,6 +231,26 @@ async def _run_all() -> None:
     )
     assert cancellation_response.pending_action is None
     assert cancellation_response.requires_backend_apply is False
+
+    running_recommendation = ChatResponse.model_validate(
+        examples["running_gps_recommendation"]["response"]
+    )
+    assert running_recommendation.action == (
+        "running_courses_recommended"
+    )
+    assert running_recommendation.requires_backend_apply is False
+    RunningCourseRecommendationResponse.model_validate(
+        running_recommendation.data
+    )
+
+    running_generation = ChatResponse.model_validate(
+        examples["running_gps_loop_generation"]["response"]
+    )
+    assert running_generation.action == "running_loops_generated"
+    assert running_generation.requires_backend_apply is False
+    RunningLoopGenerationResponse.model_validate(
+        running_generation.data
+    )
 
     await _validate_runtime_behavior(examples)
 

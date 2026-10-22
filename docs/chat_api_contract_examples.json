@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.0",
+  "contract_version": "1.1",
   "legacy_chat": {
     "request": {
       "question": "운동 방향을 알려줘",
@@ -214,6 +214,218 @@
       "target_day": "monday",
       "target_meal": "lunch",
       "data": null,
+      "sources": []
+    }
+  },
+  "running_gps_recommendation": {
+    "request": {
+      "content": "현재 위치에서 쉬운 5km 러닝 코스를 추천해줘",
+      "history": [],
+      "context": {
+        "running": {
+          "latitude": 37.3948,
+          "longitude": 127.1112,
+          "pace_minutes_per_km": 6.5,
+          "desired_difficulty": "easy"
+        }
+      },
+      "pending_action": null
+    },
+    "response": {
+      "intent": "running_recommend_request",
+      "message": "성남시에서 약 5km인 러닝 코스 1개를 찾았어요.",
+      "action": "running_courses_recommended",
+      "action_status": "completed",
+      "requires_backend_apply": false,
+      "pending_action": null,
+      "target_day": null,
+      "target_meal": null,
+      "data": {
+        "ok": true,
+        "generator": "auto-fit-ai",
+        "status": "matched",
+        "resolved_region": "성남시",
+        "target_distance_km": 5.0,
+        "distance_min_km": 4.5,
+        "distance_max_km": 5.5,
+        "courses": [
+          {
+            "course_id": "metadata-example",
+            "name": "성남 건강길",
+            "description": "지자체 공식 코스",
+            "region": "경기도 성남시",
+            "distance_km": 5.1,
+            "distance_to_user_km": 0.8,
+            "estimated_duration_minutes": 33.2,
+            "pace_minutes_per_km": 6.5,
+            "pace_source": "user",
+            "pace_assumed": false,
+            "difficulty": "easy",
+            "difficulty_basis": "heuristic",
+            "is_loop": true,
+            "start": {
+              "name": "중앙공원",
+              "address": "경기도 성남시 분당구",
+              "coordinate": {
+                "latitude": 37.3948,
+                "longitude": 127.1112
+              }
+            },
+            "end": {
+              "name": "중앙공원",
+              "address": "경기도 성남시 분당구",
+              "coordinate": {
+                "latitude": 37.3948,
+                "longitude": 127.1112
+              }
+            },
+            "waypoints": [
+              "중앙공원",
+              "탄천",
+              "중앙공원"
+            ],
+            "geometry_status": "endpoints_geocoded",
+            "geometry_distance_km": null,
+            "requires_route_validation": true,
+            "source": {
+              "provider": "성남시",
+              "dataset_name": "전국길관광정보표준데이터",
+              "source_type": "official_metadata",
+              "source_course_id": null,
+              "reference_date": "2026-10-01",
+              "license_name": null
+            }
+          }
+        ],
+        "data_sources": [
+          {
+            "source_type": "official_metadata",
+            "state": "available",
+            "message": "1 matching course from the official metadata catalog."
+          },
+          {
+            "source_type": "official_gpx",
+            "state": "disabled",
+            "message": "Durunubi GPX enrichment is disabled."
+          }
+        ],
+        "generation_recommended": false,
+        "message": null
+      },
+      "sources": []
+    }
+  },
+  "running_gps_loop_generation": {
+    "request": {
+      "content": "현재 위치에서 5km 순환 코스를 만들어줘",
+      "history": [],
+      "context": {
+        "running": {
+          "latitude": 37.3948,
+          "longitude": 127.1112,
+          "pace_minutes_per_km": 6.5,
+          "candidate_count": 1,
+          "seed": 0
+        }
+      },
+      "pending_action": null
+    },
+    "response": {
+      "intent": "running_generate_request",
+      "message": "약 5km인 순환 코스 1개를 만들었어요.",
+      "action": "running_loops_generated",
+      "action_status": "completed",
+      "requires_backend_apply": false,
+      "pending_action": null,
+      "target_day": null,
+      "target_meal": null,
+      "data": {
+        "ok": true,
+        "generator": "auto-fit-ai",
+        "status": "matched",
+        "resolved_region": "성남시",
+        "target_distance_km": 5.0,
+        "distance_min_km": 4.5,
+        "distance_max_km": 5.5,
+        "tolerance_percent": 10.0,
+        "attempts_used": 2,
+        "candidates": [
+          {
+            "course_id": "generated-example-matched",
+            "name": "Auto-Fit 5km 순환 코스 1",
+            "target_distance_km": 5.0,
+            "distance_km": 5.19,
+            "distance_error_km": 0.19,
+            "distance_error_percent": 3.8,
+            "within_tolerance": true,
+            "estimated_duration_minutes": 33.7,
+            "pace_minutes_per_km": 6.5,
+            "pace_source": "user",
+            "pace_assumed": false,
+            "difficulty": "easy",
+            "is_loop": true,
+            "start": {
+              "name": "출발점",
+              "address": null,
+              "coordinate": {
+                "latitude": 37.3948,
+                "longitude": 127.1112
+              }
+            },
+            "end": {
+              "name": "도착점",
+              "address": null,
+              "coordinate": {
+                "latitude": 37.3948,
+                "longitude": 127.1112
+              }
+            },
+            "waypoints": [
+              {
+                "latitude": 37.3948,
+                "longitude": 127.1253
+              },
+              {
+                "latitude": 37.406,
+                "longitude": 127.1253
+              },
+              {
+                "latitude": 37.406,
+                "longitude": 127.1112
+              }
+            ],
+            "path": [
+              {
+                "latitude": 37.3948,
+                "longitude": 127.1112
+              },
+              {
+                "latitude": 37.4,
+                "longitude": 127.125
+              },
+              {
+                "latitude": 37.406,
+                "longitude": 127.1112
+              },
+              {
+                "latitude": 37.3948,
+                "longitude": 127.1112
+              }
+            ],
+            "provider_duration_seconds": 4200,
+            "generation_seed": 0,
+            "source": {
+              "provider": "Kakao Maps",
+              "dataset_name": "Kakao walking route",
+              "source_type": "auto_generated",
+              "source_course_id": null,
+              "reference_date": null,
+              "license_name": null
+            }
+          }
+        ],
+        "message": null
+      },
       "sources": []
     }
   }

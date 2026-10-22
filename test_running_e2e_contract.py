@@ -198,5 +198,9 @@ def main() -> None:
     print("Running HTTP E2E contract: OK")
 
 
+def test_running_http_e2e_contract() -> None:
+    main()
+
+
 if __name__ == "__main__":
     main()

@@ -162,5 +162,9 @@ def main() -> None:
     print("running loop generation tests: OK")
 
 
+def test_running_loop_generation() -> None:
+    main()
+
+
 if __name__ == "__main__":
     main()

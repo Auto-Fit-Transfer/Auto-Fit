@@ -422,3 +422,9 @@ Backend 저장 API 이름과 DB Schema는 Backend 구현에 맞추되 다음 정
 - `test_running_openapi.py`
 - `test_backend_ai_integration_contract.py`
 - 러닝 관련 기존 단위·실연동 테스트
+
+기본 `pytest` 실행에서는 외부 Kakao·공공데이터 제공기관을 호출하는
+`live` 테스트를 건너뛴다. 승인된 개발 또는 배포 환경에서 실제 secret을
+설정한 뒤 `RUN_LIVE_RUNNING_TESTS=1`을 명시한 경우에만 라이브 테스트를
+실행한다. API Key 값은 명령 출력, 테스트 로그 또는 저장소에 기록하지
+않는다.

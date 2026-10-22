@@ -90,5 +90,9 @@ def main() -> None:
     print("running foundation tests: OK")
 
 
+def test_running_foundation() -> None:
+    main()
+
+
 if __name__ == "__main__":
     main()

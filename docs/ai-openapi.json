@@ -226,6 +226,100 @@
         ]
       }
     },
+    "/food-analysis/analyze": {
+      "post": {
+        "tags": [
+          "food-analysis"
+        ],
+        "summary": "Analyze Food Image",
+        "description": "이미지를 저장하지 않고 음식 후보와 공식 DB 영양정보를 반환한다.",
+        "operationId": "analyze_food_image_food_analysis_analyze_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_analyze_food_image_food_analysis_analyze_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/food-analysis/recalculate": {
+      "post": {
+        "tags": [
+          "food-analysis"
+        ],
+        "summary": "Recalculate Food Nutrition",
+        "description": "사용자가 확정한 음식명과 중량으로 공식 DB 영양값을 재계산한다.",
+        "operationId": "recalculate_food_nutrition_food_analysis_recalculate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FoodAnalysisRecalculateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FoodAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/ai/body-analysis": {
       "post": {
         "tags": [
@@ -1879,6 +1973,21 @@
         "title": "BodyData",
         "description": "체성분 분석 입력.\n\nBackend에서 일부 값만 전달할 수 있으므로\n모든 항목을 Optional로 처리한다."
       },
+      "Body_analyze_food_image_food_analysis_analyze_post": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Image",
+            "description": "스마트폰으로 촬영한 JPEG, PNG 또는 WEBP 음식 이미지"
+          }
+        },
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "title": "Body_analyze_food_image_food_analysis_analyze_post"
+      },
       "ChatContext": {
         "properties": {
           "metric_statuses": {
@@ -2015,6 +2124,16 @@
               }
             ],
             "title": "Diet Summary"
+          },
+          "running": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ChatRunningContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -2052,6 +2171,9 @@
               "health_question",
               "exercise_question",
               "exercise_replace_request",
+              "running_question",
+              "running_recommend_request",
+              "running_generate_request",
               "diet_question",
               "diet_replace_request",
               "general_chat"
@@ -2100,6 +2222,65 @@
               }
             ],
             "title": "Target Meal"
+          },
+          "running_distance_option": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "3km",
+                  "5km",
+                  "10km",
+                  "custom"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Running Distance Option"
+          },
+          "running_custom_distance_km": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 50.0,
+                "minimum": 0.5
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Running Custom Distance Km"
+          },
+          "running_difficulty": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "easy",
+                  "moderate",
+                  "hard"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Running Difficulty"
+          },
+          "running_region": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Running Region"
           }
         },
         "type": "object",
@@ -2201,6 +2382,9 @@
               "health_question",
               "exercise_question",
               "exercise_replace_request",
+              "running_question",
+              "running_recommend_request",
+              "running_generate_request",
               "diet_question",
               "diet_replace_request",
               "general_chat"
@@ -2219,6 +2403,13 @@
                   "health_rag",
                   "exercise_context",
                   "exercise_replace_unavailable",
+                  "running_context",
+                  "need_running_location",
+                  "need_running_distance",
+                  "running_courses_recommended",
+                  "running_generation_required",
+                  "running_loops_generated",
+                  "running_unavailable",
                   "diet_context",
                   "need_target_day",
                   "need_target_meal",
@@ -2327,6 +2518,144 @@
         ],
         "title": "ChatResponse"
       },
+      "ChatRunningContext": {
+        "properties": {
+          "region": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "latitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 90.0,
+                "minimum": -90.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latitude"
+          },
+          "longitude": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 180.0,
+                "minimum": -180.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Longitude"
+          },
+          "distance_option": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "3km",
+                  "5km",
+                  "10km",
+                  "custom"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Distance Option"
+          },
+          "custom_distance_km": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 50.0,
+                "minimum": 0.5
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Distance Km"
+          },
+          "pace_minutes_per_km": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 20.0,
+                "minimum": 2.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pace Minutes Per Km"
+          },
+          "desired_difficulty": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "easy",
+                  "moderate",
+                  "hard"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Desired Difficulty"
+          },
+          "candidate_count": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Candidate Count",
+            "default": 3
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2147483647.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "selected_course": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected Course"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ChatRunningContext",
+        "description": "Backend가 보유한 러닝 조건과 현재 위치의 요청 범위 snapshot."
+      },
       "DailyMeals": {
         "properties": {
           "breakfast": {
@@ -2350,6 +2679,33 @@
           "snack"
         ],
         "title": "DailyMeals"
+      },
+      "DietAdherenceDayInput": {
+        "properties": {
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "target": {
+            "$ref": "#/components/schemas/NutritionTargetInput"
+          },
+          "actual": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NutritionActualInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "date",
+          "target"
+        ],
+        "title": "DietAdherenceDayInput"
       },
       "DietContextInput": {
         "properties": {
@@ -3764,6 +4120,319 @@
         ],
         "title": "FinalDirection"
       },
+      "FoodAnalysisItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "amount_g": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 5000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount G"
+          },
+          "amount_estimated": {
+            "type": "boolean",
+            "title": "Amount Estimated"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "alternative_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Alternative Names"
+          },
+          "catalog_matched": {
+            "type": "boolean",
+            "title": "Catalog Matched"
+          },
+          "matched_food_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Food Code"
+          },
+          "matched_food_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Food Name"
+          },
+          "match_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Score"
+          },
+          "calories_kcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calories Kcal"
+          },
+          "carbohydrate_g": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carbohydrate G"
+          },
+          "protein_g": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protein G"
+          },
+          "fat_g": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fat G"
+          },
+          "nutrition_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nutrition Source"
+          },
+          "requires_user_confirmation": {
+            "type": "boolean",
+            "title": "Requires User Confirmation",
+            "default": true
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "amount_estimated",
+          "catalog_matched"
+        ],
+        "title": "FoodAnalysisItem",
+        "description": "화면에서 사용자가 확인하거나 수정할 음식 한 항목이다."
+      },
+      "FoodAnalysisNutrition": {
+        "properties": {
+          "calories_kcal": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Calories Kcal"
+          },
+          "carbohydrate_g": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Carbohydrate G"
+          },
+          "protein_g": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Protein G"
+          },
+          "fat_g": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Fat G"
+          }
+        },
+        "type": "object",
+        "required": [
+          "calories_kcal",
+          "carbohydrate_g",
+          "protein_g",
+          "fat_g"
+        ],
+        "title": "FoodAnalysisNutrition"
+      },
+      "FoodAnalysisRecalculateItem": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "amount_g": {
+            "type": "number",
+            "maximum": 5000.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Amount G"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "amount_g"
+        ],
+        "title": "FoodAnalysisRecalculateItem",
+        "description": "사용자가 확인하거나 수정한 음식과 중량이다."
+      },
+      "FoodAnalysisRecalculateRequest": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FoodAnalysisRecalculateItem"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "minItems": 1,
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "title": "FoodAnalysisRecalculateRequest"
+      },
+      "FoodAnalysisResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "default": true
+          },
+          "generator": {
+            "type": "string",
+            "title": "Generator",
+            "default": "auto-fit-ai"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "partial",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "recognition_source": {
+            "type": "string",
+            "enum": [
+              "openai_vision",
+              "user_input"
+            ],
+            "title": "Recognition Source"
+          },
+          "nutrition_source": {
+            "type": "string",
+            "title": "Nutrition Source",
+            "default": "official_food_catalog"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FoodAnalysisItem"
+            },
+            "type": "array",
+            "maxItems": 12,
+            "title": "Items"
+          },
+          "total_nutrition": {
+            "$ref": "#/components/schemas/FoodAnalysisNutrition"
+          },
+          "nutrition_complete": {
+            "type": "boolean",
+            "title": "Nutrition Complete"
+          },
+          "requires_user_confirmation": {
+            "type": "boolean",
+            "title": "Requires User Confirmation",
+            "default": true
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "recognition_source",
+          "items",
+          "total_nutrition",
+          "nutrition_complete",
+          "message"
+        ],
+        "title": "FoodAnalysisResponse",
+        "description": "이미지 분석과 사용자 수정 재계산이 공유하는 응답이다."
+      },
       "GeneratedRunningLoop": {
         "properties": {
           "course_id": {
@@ -4053,6 +4722,9 @@
       },
       "HealthAnalysisOutput": {
         "properties": {
+          "health_score": {
+            "$ref": "#/components/schemas/HealthScoreOutput"
+          },
           "headline": {
             "$ref": "#/components/schemas/AnalysisHeadline"
           },
@@ -4091,6 +4763,7 @@
         },
         "type": "object",
         "required": [
+          "health_score",
           "headline",
           "summary",
           "goal",
@@ -4127,6 +4800,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/DietContextInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score_context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HealthScoreContextInput"
               },
               {
                 "type": "null"
@@ -4588,6 +5271,51 @@
         "title": "HealthData",
         "description": "건강검진 분석 입력.\n\n분석 계약에 맞춰 혈압은\nsystolic / diastolic 두 값으로 분리한다."
       },
+      "HealthMetricAdjustmentOutput": {
+        "properties": {
+          "metric_key": {
+            "type": "string",
+            "title": "Metric Key"
+          },
+          "baseline_value": {
+            "type": "number",
+            "title": "Baseline Value"
+          },
+          "current_value": {
+            "type": "number",
+            "title": "Current Value"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "trend": {
+            "type": "string",
+            "enum": [
+              "improved",
+              "unchanged",
+              "declined"
+            ],
+            "title": "Trend"
+          },
+          "normalized_change": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": -1.0,
+            "title": "Normalized Change"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metric_key",
+          "baseline_value",
+          "current_value",
+          "unit",
+          "trend",
+          "normalized_change"
+        ],
+        "title": "HealthMetricAdjustmentOutput"
+      },
       "HealthRiskItem": {
         "properties": {
           "name": {
@@ -4615,6 +5343,190 @@
           "severity"
         ],
         "title": "HealthRiskItem"
+      },
+      "HealthScoreContextInput": {
+        "properties": {
+          "baseline_health_checkup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HealthCheckupInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "baseline_body_composition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BodyCompositionInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weekly_diet": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeeklyDietScoreInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weekly_exercise": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WeeklyExerciseScoreInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "HealthScoreContextInput",
+        "description": "건강점수 계산에 필요한 기준 데이터와 주간 이행 정보.\n\nbaseline_*은 사용자가 최초로 등록한 건강검진 및\n인바디 데이터이며 Backend가 보존해서 매 요청에 전달한다."
+      },
+      "HealthScoreOutput": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "total_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Score"
+          },
+          "maximum": {
+            "type": "integer",
+            "title": "Maximum",
+            "default": 100
+          },
+          "scoring_version": {
+            "type": "string",
+            "title": "Scoring Version",
+            "default": "health-score-v1"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "CORE",
+                  "BALANCE",
+                  "ACTIVE",
+                  "FIT",
+                  "PEAK"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
+          },
+          "tier_level": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier Level"
+          },
+          "diet": {
+            "$ref": "#/components/schemas/HealthScoreSectionOutput"
+          },
+          "exercise": {
+            "$ref": "#/components/schemas/HealthScoreSectionOutput"
+          },
+          "health_data": {
+            "$ref": "#/components/schemas/HealthScoreSectionOutput"
+          },
+          "health_metric_adjustments": {
+            "items": {
+              "$ref": "#/components/schemas/HealthMetricAdjustmentOutput"
+            },
+            "type": "array",
+            "title": "Health Metric Adjustments"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "diet",
+          "exercise",
+          "health_data"
+        ],
+        "title": "HealthScoreOutput"
+      },
+      "HealthScoreSectionOutput": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "unavailable"
+            ],
+            "title": "Status"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "maximum": {
+            "type": "integer",
+            "title": "Maximum",
+            "default": 100
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "breakdown": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "type": "object",
+            "title": "Breakdown"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "message"
+        ],
+        "title": "HealthScoreSectionOutput"
       },
       "HomeTrainingPreferences": {
         "properties": {
@@ -4835,6 +5747,38 @@
         "title": "MetricResult",
         "description": "개별 지표 분석 결과."
       },
+      "NutritionActualInput": {
+        "properties": {
+          "calories_kcal": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Calories Kcal"
+          },
+          "carbohydrate_g": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Carbohydrate G"
+          },
+          "protein_g": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Protein G"
+          },
+          "fat_g": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Fat G"
+          }
+        },
+        "type": "object",
+        "required": [
+          "calories_kcal",
+          "carbohydrate_g",
+          "protein_g",
+          "fat_g"
+        ],
+        "title": "NutritionActualInput"
+      },
       "NutritionBalance": {
         "properties": {
           "energy_strategy": {
@@ -4860,6 +5804,38 @@
         },
         "type": "object",
         "title": "NutritionBalance"
+      },
+      "NutritionTargetInput": {
+        "properties": {
+          "calories_kcal": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Calories Kcal"
+          },
+          "carbohydrate_g": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Carbohydrate G"
+          },
+          "protein_g": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Protein G"
+          },
+          "fat_g": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Fat G"
+          }
+        },
+        "type": "object",
+        "required": [
+          "calories_kcal",
+          "carbohydrate_g",
+          "protein_g",
+          "fat_g"
+        ],
+        "title": "NutritionTargetInput"
       },
       "RAGDebugItem": {
         "properties": {
@@ -6584,6 +7560,81 @@
           "end"
         ],
         "title": "WalkingRouteRequest"
+      },
+      "WeeklyDietScoreInput": {
+        "properties": {
+          "expected_days": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Expected Days",
+            "default": 7
+          },
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/DietAdherenceDayInput"
+            },
+            "type": "array",
+            "maxItems": 7,
+            "title": "Days"
+          }
+        },
+        "type": "object",
+        "title": "WeeklyDietScoreInput",
+        "description": "추천 메뉴 이름이 아니라 하루 전체 목표 영양량과\n실제 섭취 영양량의 준수 정도를 계산하기 위한 입력이다.\n\n기록되지 않은 날은 0점으로 계산한다."
+      },
+      "WeeklyExerciseScoreInput": {
+        "properties": {
+          "goal_type": {
+            "type": "string",
+            "enum": [
+              "muscle_gain",
+              "body_fat_loss",
+              "weight_management",
+              "regular_exercise"
+            ],
+            "title": "Goal Type"
+          },
+          "target_minutes": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "Target Minutes"
+          },
+          "completed_minutes": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Completed Minutes",
+            "default": 0
+          },
+          "target_days": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Target Days"
+          },
+          "completed_days": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 0.0,
+            "title": "Completed Days",
+            "default": 0
+          },
+          "goal_aligned_completed_days": {
+            "type": "integer",
+            "maximum": 7.0,
+            "minimum": 0.0,
+            "title": "Goal Aligned Completed Days",
+            "default": 0
+          }
+        },
+        "type": "object",
+        "required": [
+          "goal_type",
+          "target_minutes",
+          "target_days"
+        ],
+        "title": "WeeklyExerciseScoreInput",
+        "description": "운동 목표 설정과 실제 수행 기록을 비교하기 위한 입력이다.\n\n- 시간 달성도: 50%\n- 주간 횟수 달성도: 30%\n- 선택한 운동 목적에 맞는 추천 운동 수행도: 20%"
       }
     },
     "securitySchemes": {

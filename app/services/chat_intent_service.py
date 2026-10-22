@@ -45,6 +45,71 @@ EXERCISE_KEYWORDS = {
 }
 
 
+RUNNING_KEYWORDS = {
+    "러닝",
+    "런닝",
+    "달리기",
+    "조깅",
+    "러닝코스",
+    "러닝 코스",
+    "런닝코스",
+    "런닝 코스",
+}
+
+
+RUNNING_RECOMMEND_PHRASES = {
+    "추천",
+    "찾아줘",
+    "찾아 줘",
+    "찾아주세요",
+    "찾아 주세요",
+    "골라줘",
+    "골라 줘",
+    "코스 알려줘",
+    "코스 알려 줘",
+}
+
+
+RUNNING_GENERATE_PHRASES = {
+    "순환 코스",
+    "순환코스",
+    "코스 만들어",
+    "코스 생성",
+    "경로 만들어",
+    "경로 생성",
+    "출발지로 돌아",
+}
+
+
+RUNNING_EASY_PHRASES = {
+    "쉬운",
+    "쉽게",
+    "가벼운",
+    "가볍게",
+    "초보",
+    "easy",
+}
+
+
+RUNNING_MODERATE_PHRASES = {
+    "보통",
+    "적당한",
+    "적당하게",
+    "중간 강도",
+    "moderate",
+}
+
+
+RUNNING_HARD_PHRASES = {
+    "어려운",
+    "강한",
+    "강하게",
+    "고강도",
+    "도전적인",
+    "hard",
+}
+
+
 DIET_KEYWORDS = {
     "식단",
     "음식",
@@ -210,6 +275,56 @@ def _contains_any(
         keyword.lower() in lowered
         for keyword in keywords
     )
+
+
+def _extract_running_distance(
+    message: str,
+) -> tuple[str | None, float | None]:
+    """러닝 거리 표현을 표준 distance option으로 변환한다."""
+
+    match = re.search(
+        r"(?<![\d.])(\d+(?:\.\d+)?)\s*"
+        r"(?:km|킬로미터|킬로|키로)",
+        _normalize_message(message),
+    )
+    if match is None:
+        return None, None
+
+    value = float(match.group(1))
+    if not 0.5 <= value <= 50:
+        return None, None
+
+    if value in {3.0, 5.0, 10.0}:
+        return f"{int(value)}km", None
+
+    return "custom", round(value, 3)
+
+
+def _extract_running_difficulty(
+    message: str,
+) -> str | None:
+    if _contains_any(message, RUNNING_EASY_PHRASES):
+        return "easy"
+    if _contains_any(message, RUNNING_HARD_PHRASES):
+        return "hard"
+    if _contains_any(message, RUNNING_MODERATE_PHRASES):
+        return "moderate"
+    return None
+
+
+def _extract_running_region(
+    message: str,
+) -> str | None:
+    """명시적으로 적힌 시·군·구만 추출하고 장소명은 추측하지 않는다."""
+
+    match = re.search(
+        r"((?:[가-힣]{2,12}(?:특별시|광역시|특별자치시|도)\s+)?"
+        r"[가-힣]{1,12}(?:시|군|구))",
+        message.strip(),
+    )
+    if match is None:
+        return None
+    return match.group(1).strip()
 
 
 def _is_replace_request(
@@ -415,6 +530,17 @@ async def classify_chat_intent(
         cleaned_message
     )
 
+    (
+        running_distance_option,
+        running_custom_distance_km,
+    ) = _extract_running_distance(cleaned_message)
+    running_difficulty = _extract_running_difficulty(
+        cleaned_message
+    )
+    running_region = _extract_running_region(
+        cleaned_message
+    )
+
     # =====================================================
     # 2. 이전 대화 Context 추출
     # =====================================================
@@ -450,10 +576,58 @@ async def classify_chat_intent(
         EXERCISE_KEYWORDS,
     )
 
+    has_running = _contains_any(
+        cleaned_message,
+        RUNNING_KEYWORDS,
+    ) or (
+        running_distance_option is not None
+        and "코스" in cleaned_message
+    )
+
+    has_running_generate = _contains_any(
+        cleaned_message,
+        RUNNING_GENERATE_PHRASES,
+    )
+
+    has_running_recommend = _contains_any(
+        cleaned_message,
+        RUNNING_RECOMMEND_PHRASES,
+    ) or "코스" in cleaned_message
+
     has_health = _contains_any(
         cleaned_message,
         HEALTH_KEYWORDS,
     )
+
+    # 러닝 코스 생성·추천은 일반 운동 변경보다 먼저 분리한다.
+    # 다만 식단 표현이 함께 있으면 식단 질문을 우선하여
+    # "러닝 전에 무엇을 먹어?"를 코스 요청으로 오해하지 않는다.
+    if has_running and has_running_generate and not has_diet:
+        return ChatIntentResult(
+            intent="running_generate_request",
+            confidence=0.98,
+            running_distance_option=running_distance_option,
+            running_custom_distance_km=running_custom_distance_km,
+            running_difficulty=running_difficulty,
+            running_region=running_region,
+        )
+
+    if (
+        has_running
+        and not has_diet
+        and (
+            has_running_recommend
+            or has_replace_request
+        )
+    ):
+        return ChatIntentResult(
+            intent="running_recommend_request",
+            confidence=0.97,
+            running_distance_option=running_distance_option,
+            running_custom_distance_km=running_custom_distance_km,
+            running_difficulty=running_difficulty,
+            running_region=running_region,
+        )
 
     # 현재 메시지에서 운동 변경이 명시되면 이전 식단 history보다
     # 현재 의도를 우선한다.
@@ -511,7 +685,21 @@ async def classify_chat_intent(
         )
 
     # =====================================================
-    # 6. Exercise Question
+    # 6. Running Question
+    # =====================================================
+
+    if has_running:
+        return ChatIntentResult(
+            intent="running_question",
+            confidence=0.92,
+            running_distance_option=running_distance_option,
+            running_custom_distance_km=running_custom_distance_km,
+            running_difficulty=running_difficulty,
+            running_region=running_region,
+        )
+
+    # =====================================================
+    # 7. Exercise Question
     # =====================================================
 
     if has_exercise:
@@ -523,7 +711,7 @@ async def classify_chat_intent(
         )
 
     # =====================================================
-    # 7. Health Question
+    # 8. Health Question
     # =====================================================
 
     if has_health:
@@ -535,7 +723,7 @@ async def classify_chat_intent(
         )
 
     # =====================================================
-    # 8. History 기반 후속 식단 요청
+    # 9. History 기반 후속 식단 요청
     #
     # 예:
     #
@@ -551,7 +739,7 @@ async def classify_chat_intent(
     # =====================================================
 
     # =====================================================
-    # 9. General Chat
+    # 10. General Chat
     # =====================================================
 
     return ChatIntentResult(

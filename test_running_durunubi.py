@@ -290,5 +290,9 @@ def main() -> None:
     print("running Durunubi tests: OK")
 
 
+def test_running_durunubi() -> None:
+    main()
+
+
 if __name__ == "__main__":
     main()

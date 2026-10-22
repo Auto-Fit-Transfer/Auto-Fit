@@ -117,5 +117,9 @@ def main() -> None:
     print("running session recommendation tests: OK")
 
 
+def test_running_session_recommendation() -> None:
+    main()
+
+
 if __name__ == "__main__":
     main()

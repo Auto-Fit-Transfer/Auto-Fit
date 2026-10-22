@@ -276,5 +276,9 @@ def main() -> None:
     print("running course recommendation tests: OK")
 
 
+def test_running_course_recommendation() -> None:
+    main()
+
+
 if __name__ == "__main__":
     main()

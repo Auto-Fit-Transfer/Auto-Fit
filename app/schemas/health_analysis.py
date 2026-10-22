@@ -9,6 +9,26 @@ FreshnessStatus = Literal[
     "unknown",
 ]
 
+HealthScoreStatus = Literal[
+    "available",
+    "unavailable",
+]
+
+HealthTierName = Literal[
+    "CORE",
+    "BALANCE",
+    "ACTIVE",
+    "FIT",
+    "PEAK",
+]
+
+ExerciseGoalType = Literal[
+    "muscle_gain",
+    "body_fat_loss",
+    "weight_management",
+    "regular_exercise",
+]
+
 
 class HealthCheckupInput(BaseModel):
     health_checkup_id: str | None = None
@@ -92,10 +112,95 @@ class GoalInput(BaseModel):
     short_term: bool | None = None
 
 
+# =========================================================
+# Weekly Health Score Input
+# =========================================================
+
+
+class NutritionTargetInput(BaseModel):
+    calories_kcal: float = Field(gt=0)
+    carbohydrate_g: float = Field(gt=0)
+    protein_g: float = Field(gt=0)
+    fat_g: float = Field(gt=0)
+
+
+class NutritionActualInput(BaseModel):
+    calories_kcal: float = Field(ge=0)
+    carbohydrate_g: float = Field(ge=0)
+    protein_g: float = Field(ge=0)
+    fat_g: float = Field(ge=0)
+
+
+class DietAdherenceDayInput(BaseModel):
+    date: str
+    target: NutritionTargetInput
+    actual: NutritionActualInput | None = None
+
+
+class WeeklyDietScoreInput(BaseModel):
+    """
+    추천 메뉴 이름이 아니라 하루 전체 목표 영양량과
+    실제 섭취 영양량의 준수 정도를 계산하기 위한 입력이다.
+
+    기록되지 않은 날은 0점으로 계산한다.
+    """
+
+    expected_days: int = Field(
+        default=7,
+        ge=1,
+        le=7,
+    )
+
+    days: list[DietAdherenceDayInput] = Field(
+        default_factory=list,
+        max_length=7,
+    )
+
+
+class WeeklyExerciseScoreInput(BaseModel):
+    """
+    운동 목표 설정과 실제 수행 기록을 비교하기 위한 입력이다.
+
+    - 시간 달성도: 50%
+    - 주간 횟수 달성도: 30%
+    - 선택한 운동 목적에 맞는 추천 운동 수행도: 20%
+    """
+
+    goal_type: ExerciseGoalType
+
+    target_minutes: int = Field(gt=0)
+    completed_minutes: int = Field(default=0, ge=0)
+
+    target_days: int = Field(ge=1, le=7)
+    completed_days: int = Field(default=0, ge=0, le=7)
+
+    goal_aligned_completed_days: int = Field(
+        default=0,
+        ge=0,
+        le=7,
+    )
+
+
+class HealthScoreContextInput(BaseModel):
+    """
+    건강점수 계산에 필요한 기준 데이터와 주간 이행 정보.
+
+    baseline_*은 사용자가 최초로 등록한 건강검진 및
+    인바디 데이터이며 Backend가 보존해서 매 요청에 전달한다.
+    """
+
+    baseline_health_checkup: HealthCheckupInput | None = None
+    baseline_body_composition: BodyCompositionInput | None = None
+
+    weekly_diet: WeeklyDietScoreInput | None = None
+    weekly_exercise: WeeklyExerciseScoreInput | None = None
+
+
 class HealthAnalysisPayload(BaseModel):
     health_checkup: HealthCheckupInput | None = None
     body_composition: BodyCompositionInput | None = None
     diet_context: DietContextInput | None = None
+    score_context: HealthScoreContextInput | None = None
 
 
 class HealthAnalysisRequest(BaseModel):
@@ -183,7 +288,66 @@ class RefrigeratorContextOutput(BaseModel):
     )
 
 
+# =========================================================
+# Weekly Health Score Output
+# =========================================================
+
+
+class HealthScoreSectionOutput(BaseModel):
+    status: HealthScoreStatus
+    score: float | None = Field(default=None, ge=0, le=100)
+    maximum: int = 100
+    message: str
+
+    breakdown: dict[str, float] = Field(
+        default_factory=dict
+    )
+
+
+class HealthMetricAdjustmentOutput(BaseModel):
+    metric_key: str
+    baseline_value: float
+    current_value: float
+    unit: str
+    trend: Literal[
+        "improved",
+        "unchanged",
+        "declined",
+    ]
+    normalized_change: float = Field(ge=-1, le=1)
+
+
+class HealthScoreOutput(BaseModel):
+    status: HealthScoreStatus
+
+    total_score: float | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+    )
+
+    maximum: int = 100
+    scoring_version: str = "health-score-v1"
+
+    tier: HealthTierName | None = None
+    tier_level: int | None = Field(
+        default=None,
+        ge=1,
+        le=2,
+    )
+
+    diet: HealthScoreSectionOutput
+    exercise: HealthScoreSectionOutput
+    health_data: HealthScoreSectionOutput
+
+    health_metric_adjustments: list[
+        HealthMetricAdjustmentOutput
+    ] = Field(default_factory=list)
+
+
 class HealthAnalysisOutput(BaseModel):
+    health_score: HealthScoreOutput
+
     headline: AnalysisHeadline
     summary: AnalysisSummary
     goal: AnalysisGoal

@@ -50,6 +50,14 @@ EXPECTED_OPERATIONS = {
         "RunningLoopGenerationRequest",
         "RunningLoopGenerationResponse",
     ),
+    "/food-analysis/recalculate": (
+        "FoodAnalysisRecalculateRequest",
+        "FoodAnalysisResponse",
+    ),
+}
+
+EXPECTED_MULTIPART_OPERATIONS = {
+    "/food-analysis/analyze": "FoodAnalysisResponse",
 }
 
 EXPECTED_GET_RESPONSES = {
@@ -93,6 +101,17 @@ def test_documented_operations_match_openapi() -> None:
         assert _schema_name(response_schema) == response_name
         assert operation["security"] == [{"HTTPBearer": []}]
 
+    for path, response_name in EXPECTED_MULTIPART_OPERATIONS.items():
+        operation = openapi["paths"][path]["post"]
+        request_content = operation["requestBody"]["content"]
+        response_schema = operation[
+            "responses"
+        ]["200"]["content"]["application/json"]["schema"]
+
+        assert "multipart/form-data" in request_content
+        assert _schema_name(response_schema) == response_name
+        assert operation["security"] == [{"HTTPBearer": []}]
+
 
 def test_spec_references_every_operation() -> None:
     spec = SPEC_PATH.read_text(encoding="utf-8")
@@ -103,10 +122,14 @@ def test_spec_references_every_operation() -> None:
     for path in EXPECTED_GET_RESPONSES:
         assert path in spec
 
+    for path in EXPECTED_MULTIPART_OPERATIONS:
+        assert path in spec
+
     assert "chat_api_contract.md" in spec
     assert "chat_api_contract_examples.json" in spec
     assert "running_backend_e2e_contract.md" in spec
     assert "running_api_contract_examples.json" in spec
+    assert "food_image_backend_contract.md" in spec
 
 
 def test_openapi_snapshot_matches_runtime_schema() -> None:

@@ -1,17 +1,26 @@
 import asyncio
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import httpx
 
 import app.core.security as security_module
 import app.routers.chat_router as chat_router
+import app.services.chat_orchestrator_service as orchestrator
 from app.main import app
+from app.schemas.running import RunningCourseRecommendationResponse
 
 
 API_KEY = "integration-test-key"
 AUTH_HEADERS = {
     "Authorization": f"Bearer {API_KEY}",
 }
+RUNNING_EXAMPLES_PATH = (
+    Path(__file__).resolve().parent
+    / "docs"
+    / "running_api_contract_examples.json"
+)
 
 
 def _diet_summary() -> dict:
@@ -45,6 +54,9 @@ async def _run_all() -> None:
     original_backend_answer = (
         chat_router.generate_backend_chat_response
     )
+    original_running_recommendation = (
+        orchestrator.recommend_running_courses
+    )
 
     settings = SimpleNamespace(
         ai_server_api_key=API_KEY,
@@ -55,9 +67,23 @@ async def _run_all() -> None:
         assert request.question == "안녕하세요"
         return "정상 호환 응답"
 
+    async def fake_running_recommendation(request):
+        assert request.latitude == 37.3948
+        assert request.longitude == 127.1112
+        assert request.distance_option == "5km"
+        examples = json.loads(
+            RUNNING_EXAMPLES_PATH.read_text(encoding="utf-8")
+        )
+        return RunningCourseRecommendationResponse.model_validate(
+            examples["official_metadata_recommendation"]["response"]
+        )
+
     security_module.get_settings = lambda: settings
     chat_router.get_settings = lambda: settings
     chat_router.generate_backend_chat_response = fake_backend_answer
+    orchestrator.recommend_running_courses = (
+        fake_running_recommendation
+    )
 
     transport = httpx.ASGITransport(
         app=app,
@@ -122,6 +148,39 @@ async def _run_all() -> None:
             assert exercise_body["requires_backend_apply"] is False
             assert exercise_body["sources"] == []
 
+            running_recommendation = await client.post(
+                "/chat/orchestrate",
+                headers=AUTH_HEADERS,
+                json={
+                    "content": (
+                        "현재 위치에서 쉬운 5km 러닝 코스를 "
+                        "추천해줘"
+                    ),
+                    "history": [],
+                    "context": {
+                        "running": {
+                            "latitude": 37.3948,
+                            "longitude": 127.1112,
+                            "pace_minutes_per_km": 6.5,
+                        }
+                    },
+                },
+            )
+            assert running_recommendation.status_code == 200
+            running_body = running_recommendation.json()
+            assert running_body["intent"] == (
+                "running_recommend_request"
+            )
+            assert running_body["action"] == (
+                "running_courses_recommended"
+            )
+            assert running_body["action_status"] == "completed"
+            assert running_body["requires_backend_apply"] is False
+            assert running_body["data"]["resolved_region"] == "성남시"
+            assert running_body["data"]["courses"][0][
+                "distance_to_user_km"
+            ] == 0.8
+
             diet_context = {
                 "diet_summary": _diet_summary(),
             }
@@ -168,6 +227,9 @@ async def _run_all() -> None:
         chat_router.get_settings = original_router_settings
         chat_router.generate_backend_chat_response = (
             original_backend_answer
+        )
+        orchestrator.recommend_running_courses = (
+            original_running_recommendation
         )
 
 

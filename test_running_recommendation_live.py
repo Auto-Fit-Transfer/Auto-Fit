@@ -1,4 +1,7 @@
 import asyncio
+import os
+
+import pytest
 
 from app.schemas.running import RunningCourseRecommendationRequest
 from app.services.running_route_service import (
@@ -11,7 +14,6 @@ async def main() -> None:
     response = await recommend_running_courses(
         RunningCourseRecommendationRequest(
             distance_option="5km",
-            region="담양군",
             latitude=35.321,
             longitude=126.988,
             pace_minutes_per_km=6.5,
@@ -21,6 +23,7 @@ async def main() -> None:
     )
 
     assert response.status == "matched"
+    assert "담양" in response.resolved_region
     courses = response.courses
     assert courses
     assert all(
@@ -49,6 +52,14 @@ async def main() -> None:
         f"(courses={len(courses)}, "
         f"geometry={courses[0].geometry_status})"
     )
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_running_recommendation_live() -> None:
+    if os.getenv("RUN_LIVE_RUNNING_TESTS") != "1":
+        pytest.skip("Set RUN_LIVE_RUNNING_TESTS=1 to run live API tests.")
+    await main()
 
 
 if __name__ == "__main__":

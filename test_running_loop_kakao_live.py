@@ -1,4 +1,7 @@
 import asyncio
+import os
+
+import pytest
 
 from app.schemas.running import (
     GeoCoordinate,
@@ -52,6 +55,14 @@ async def main() -> None:
         f"generated_status={generated.status}, "
         f"generated_km={generated.candidates[0].distance_km:.3f})"
     )
+
+
+@pytest.mark.live
+@pytest.mark.asyncio
+async def test_running_loop_kakao_live() -> None:
+    if os.getenv("RUN_LIVE_RUNNING_TESTS") != "1":
+        pytest.skip("Set RUN_LIVE_RUNNING_TESTS=1 to run live API tests.")
+    await main()
 
 
 if __name__ == "__main__":

@@ -151,5 +151,9 @@ def main() -> None:
     print("Running API contract examples: OK")
 
 
+def test_running_api_contract_examples() -> None:
+    main()
+
+
 if __name__ == "__main__":
     main()

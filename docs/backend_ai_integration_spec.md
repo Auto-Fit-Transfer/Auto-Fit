@@ -29,6 +29,8 @@ Authorization: Bearer <AI_SERVER_API_KEY>
 Content-Type: application/json
 ```
 
+`POST /food-analysis/analyze`만 이미지 파일 전송을 위해 `multipart/form-data`를 사용한다. 나머지 현재 운영 후보 endpoint는 JSON을 사용한다.
+
 `AI_SERVER_API_KEY`는 Frontend에 전달하지 않고 Backend와 AI Server 환경변수에만 보관한다. Frontend가 AI Server를 직접 호출하지 않는다.
 
 ### 사용자와 요청 식별
@@ -46,7 +48,7 @@ Content-Type: application/json
 | `401` | 인증 누락 또는 API Key 불일치 | 자동 재시도하지 않고 서버 설정 확인 |
 | `422` | 요청 Schema 또는 서비스 입력 검증 실패 | 필드 매핑과 값 범위를 수정 |
 | `404` | 요청한 공식 러닝 코스를 찾을 수 없음 | 코스 목록을 새로 조회하고 선택 상태 갱신 |
-| `502` | Kakao 또는 공공데이터 제공기관 응답 실패 | 짧은 backoff 후 제한적으로 재시도 |
+| `502` | Kakao, 공공데이터 또는 이미지 분석 제공자 응답 실패 | 짧은 backoff 후 제한적으로 재시도 |
 | `500` | AI Server 내부 오류 | 제한적으로 재시도하고 로그 확인 |
 | `503` | OpenAI 또는 관련 서비스 일시 장애 | 짧은 backoff 후 제한적으로 재시도하거나 사용자에게 지연 안내 |
 
@@ -59,6 +61,8 @@ Content-Type: application/json
 | 1 | `POST /recommend/diet` | 건강 상태, 알레르기, 기피 음식, 목표, 지역, 한 끼 영양 목표 | 7일 식단과 Food DB 기반 음식 item | Backend |
 | 1 | `POST /recommend/diet/replace-meal` | 현재 식단 슬롯, 제외 메뉴, 사용자 조건 | 교체할 Meal 하나 | Backend |
 | 1 | `POST /recommend/diet/recipe` | 선택한 Meal의 `items`, 알레르기, 기피 음식 | 음식별 공식 또는 LLM 레시피 | 필요 시 Backend cache |
+| 1 | `POST /food-analysis/analyze` | 스마트폰 음식 이미지 파일 | 음식 후보·예상 중량·공식 DB 영양정보 | 확인 전 임시 결과 |
+| 1 | `POST /food-analysis/recalculate` | 사용자가 확인·수정한 음식명과 중량 | 공식 DB로 재계산한 영양정보 | Backend 최종 저장 |
 | 1 | `POST /chat/orchestrate` | 메시지, 대화 이력, 최신 사용자 context, pending action | 답변, action 상태, 저장 후보 데이터 | Backend |
 | 2 | `POST /health-analysis` | 건강검진, 체성분, 목표, 냉장고 context | 종합 분석과 냉장고 맞춤 제안 | Backend |
 | 2 | `POST /health-analysis/diet-refresh` | 기존 건강 입력과 최신 냉장고 context | 식단 제안 영역만 갱신 | Backend |
@@ -71,6 +75,8 @@ Content-Type: application/json
 | 호환 | `POST /chat` | 기존 `question`, `user_info`, `chat_history` | 일반 답변과 model 이름 | Backend 선택 |
 
 `POST /chat/intent-test`, `POST /analysis/debug-inputs`, RAG debug endpoint는 개발용이며 Backend 운영 기능에서 호출하지 않는다.
+
+음식 사진 분석의 multipart 요청, 사용자 확인 흐름과 Backend 협의 대기 항목은 `food_image_backend_contract.md`를 따른다. OCR은 Backend 범위이며 AI Server는 업로드 이미지를 영구 저장하지 않는다.
 
 ## Backend가 AI Server에 제공할 데이터
 
@@ -368,10 +374,43 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
       "captured_at": "2026-10-14T10:00:00+09:00",
       "inventory": [],
       "allergies": []
+    },
+    "score_context": {
+      "baseline_health_checkup": {},
+      "baseline_body_composition": {},
+      "weekly_diet": {
+        "expected_days": 7,
+        "days": []
+      },
+      "weekly_exercise": {
+        "goal_type": "body_fat_loss",
+        "target_minutes": 90,
+        "completed_minutes": 0,
+        "target_days": 3,
+        "completed_days": 0,
+        "goal_aligned_completed_days": 0
+      }
     }
   }
 }
 ```
+
+`score_context`는 기존 호출과의 호환성을 위해 선택값이다. 생략하면
+`analysis.health_score.status`는 `unavailable`이며 임의 점수를 만들지 않는다.
+
+건강점수 정책 `health-score-v1`은 다음과 같다.
+
+- 식단과 운동 영역은 각각 0점에서 시작한다.
+- 식단은 메뉴 종류가 아니라 7일간 칼로리 30%, 단백질 30%, 탄수화물 20%, 지방 20%의 목표 준수율로 계산한다.
+- 실제 섭취량이 목표의 ±10%이면 해당 항목을 100점으로 인정하고, 50% 이상 벗어나면 0점으로 계산한다.
+- 기록되지 않은 식단 일자는 0점이다.
+- 운동은 목표 시간 50%, 주간 횟수 30%, 선택한 운동 목적과 일치하는 추천 운동 수행도 20%로 계산한다.
+- 건강데이터는 최초 인바디와 건강검진을 기준 80점으로 시작한다.
+- 건강데이터는 현재와 최초 기준의 인바디·건강검진 데이터가 모두 있어야 계산한다.
+- 건강데이터 개선은 최대 +20점, 악화는 최대 -80점으로 반영한다.
+- 종합점수는 식단 30%, 운동 30%, 건강데이터 40%를 반영한다.
+- 점수와 등급은 결정론적 코드로 계산하며 LLM이 생성하거나 수정하지 않는다.
+- 최초 기준 데이터는 AI Server가 저장하지 않으며 Backend가 사용자별로 보존해 매 요청에 전달한다.
 
 현재 날짜 필드는 Schema상 문자열이므로 Backend와 ISO 8601 사용 여부를 최종 합의해야 한다. 응답은 같은 `request_id`와 `schema_version`, `analysis`, `model`을 반환한다.
 

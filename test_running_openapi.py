@@ -50,5 +50,9 @@ def main() -> None:
     print("running OpenAPI contract: OK")
 
 
+def test_running_openapi_contract() -> None:
+    main()
+
+
 if __name__ == "__main__":
     main()

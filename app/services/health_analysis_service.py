@@ -25,6 +25,7 @@ from app.schemas.health_analysis import (
     HealthAnalysisOutput,
     HealthAnalysisRequest,
     HealthAnalysisResponse,
+    HealthScoreOutput,
     RecommendationReason,
     RefrigeratorContextOutput,
 )
@@ -46,6 +47,10 @@ from app.services.health_analysis_output_validator import (
 
 from app.services.health_analysis_validation_service import (
     validate_health_analysis_request,
+)
+
+from app.services.health_score_service import (
+    health_score_service,
 )
 
 
@@ -338,6 +343,7 @@ def _build_empty_inventory_fallback(
     request: HealthAnalysisRequest,
     metric_statuses: dict[str, str],
     prepared: PreparedDietContext,
+    health_score: HealthScoreOutput,
 ) -> HealthAnalysisResponse:
     """
     사용 가능한 냉장고 재료가 없는 경우.
@@ -363,6 +369,8 @@ def _build_empty_inventory_fallback(
     )
 
     analysis = HealthAnalysisOutput(
+        health_score=health_score,
+
         headline=AnalysisHeadline(
             title=(
                 "현재 건강 상태를 "
@@ -636,7 +644,20 @@ async def generate_health_analysis(
     )
 
     # -----------------------------------------------------
-    # 2. Backend 데이터를 기존 내부 Schema로 변환
+    # 2. 주간 건강점수 계산
+    #
+    # 점수와 등급은 LLM이 아니라 결정론적 규칙으로 계산한다.
+    # 기존 요청에 score_context가 없으면 unavailable로 반환한다.
+    # -----------------------------------------------------
+
+    health_score = (
+        health_score_service.calculate(
+            request
+        )
+    )
+
+    # -----------------------------------------------------
+    # 3. Backend 데이터를 기존 내부 Schema로 변환
     # -----------------------------------------------------
 
     (
@@ -659,7 +680,7 @@ async def generate_health_analysis(
     )
 
     # -----------------------------------------------------
-    # 3. Rule Engine -> Merge -> RAG
+    # 4. Rule Engine -> Merge -> RAG
     # -----------------------------------------------------
 
     graph_result = (
@@ -733,7 +754,7 @@ async def generate_health_analysis(
     )
 
     # -----------------------------------------------------
-    # 4. 냉장고 / 알레르기 안전 전처리
+    # 5. 냉장고 / 알레르기 안전 전처리
     # -----------------------------------------------------
 
     prepared = (
@@ -743,7 +764,7 @@ async def generate_health_analysis(
     )
 
     # -----------------------------------------------------
-    # 5. 사용 가능한 냉장고 재료 없음
+    # 6. 사용 가능한 냉장고 재료 없음
     # -----------------------------------------------------
 
     if not prepared.available_items:
@@ -754,11 +775,12 @@ async def generate_health_analysis(
                     metric_statuses
                 ),
                 prepared=prepared,
+                health_score=health_score,
             )
         )
 
     # -----------------------------------------------------
-    # 6. Backend 전용 LLM Structured Output
+    # 7. Backend 전용 LLM Structured Output
     # -----------------------------------------------------
 
     draft = (
@@ -775,7 +797,7 @@ async def generate_health_analysis(
     )
 
     # -----------------------------------------------------
-    # 7. Metric Key 검증
+    # 8. Metric Key 검증
     # -----------------------------------------------------
 
     key_metric_keys = (
@@ -814,7 +836,7 @@ async def generate_health_analysis(
     )
 
     # -----------------------------------------------------
-    # 8. LLM 재료 사용 결과 검증
+    # 9. LLM 재료 사용 결과 검증
     # -----------------------------------------------------
 
     validated_usage = (
@@ -838,7 +860,7 @@ async def generate_health_analysis(
     )
 
     # -----------------------------------------------------
-    # 9. expiring_soon 정보 검증
+    # 10. expiring_soon 정보 검증
     # -----------------------------------------------------
 
     expiring_soon_items = (
@@ -848,7 +870,7 @@ async def generate_health_analysis(
     )
 
     # -----------------------------------------------------
-    # 10. Goal
+    # 11. Goal
     # -----------------------------------------------------
 
     goal_text = "건강 관리"
@@ -862,10 +884,12 @@ async def generate_health_analysis(
         )
 
     # -----------------------------------------------------
-    # 11. Backend Response 생성
+    # 12. Backend Response 생성
     # -----------------------------------------------------
 
     analysis = HealthAnalysisOutput(
+        health_score=health_score,
+
         headline=AnalysisHeadline(
             title=(
                 draft.headline_title
@@ -976,7 +1000,7 @@ async def generate_health_analysis(
     )
 
     # -----------------------------------------------------
-    # 12. Model Metadata
+    # 13. Model Metadata
     # -----------------------------------------------------
 
     settings = get_settings()
