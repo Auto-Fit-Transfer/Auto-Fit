@@ -24,12 +24,22 @@ EXAMPLES_PATH = (
 
 
 async def _validate_runtime_behavior(examples: dict) -> None:
+    health_score = examples["health_score_comparison"]
     proposal = examples["diet_replace_proposal"]
     confirmation = examples["diet_replace_confirmation"]
     cancellation = examples["diet_replace_cancellation"]
     exercise = examples["exercise_replace_unavailable"]
     running_recommendation = examples["running_gps_recommendation"]
     running_generation = examples["running_gps_loop_generation"]
+
+    health_score_result = await orchestrator.process_chat(
+        ChatRequest.model_validate(
+            health_score["request"]
+        )
+    )
+    assert health_score_result.model_dump(
+        mode="json"
+    ) == health_score["response"]
 
     proposal_result = await orchestrator.process_chat(
         ChatRequest.model_validate(
@@ -149,7 +159,7 @@ async def _run_all() -> None:
         )
     )
 
-    assert examples["contract_version"] == "1.1"
+    assert examples["contract_version"] == "1.2"
 
     legacy = examples["legacy_chat"]
     BackendChatRequest.model_validate(
@@ -161,6 +171,7 @@ async def _run_all() -> None:
 
     orchestrated_case_names = [
         "health_question",
+        "health_score_comparison",
         "exercise_replace_unavailable",
         "diet_replace_proposal",
         "diet_replace_confirmation",
@@ -231,6 +242,16 @@ async def _run_all() -> None:
     )
     assert cancellation_response.pending_action is None
     assert cancellation_response.requires_backend_apply is False
+
+    health_score_response = ChatResponse.model_validate(
+        examples["health_score_comparison"]["response"]
+    )
+    assert health_score_response.action == "health_score_context"
+    assert health_score_response.requires_backend_apply is False
+    assert health_score_response.data is not None
+    assert "health_metric_adjustments" not in (
+        health_score_response.data
+    )
 
     running_recommendation = ChatResponse.model_validate(
         examples["running_gps_recommendation"]["response"]

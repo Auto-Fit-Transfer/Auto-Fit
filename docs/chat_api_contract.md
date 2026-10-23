@@ -9,7 +9,7 @@
 | Endpoint | 용도 | Action 지원 | Backend DB 변경 |
 |---|---|---|---|
 | `POST /chat` | 기존 Backend 호환 일반 답변 | 없음 | 없음 |
-| `POST /chat/orchestrate` | 건강 RAG, 저장된 운동·식단 조회, 식단 변경, GPS 기반 러닝 추천·순환 코스 생성 | 식단 변경 및 러닝 조회·생성 지원 | AI Server는 직접 변경하지 않음 |
+| `POST /chat/orchestrate` | 건강 RAG, 건강 리포트 설명, 저장된 운동·식단 조회, 식단 변경, GPS 기반 러닝 추천·순환 코스 생성 | 건강 점수 설명, 식단 변경 및 러닝 조회·생성 지원 | AI Server는 직접 변경하지 않음 |
 | `POST /chat/intent-test` | 개발 중 의도 분류 확인 | 실행하지 않음 | 없음 |
 
 모든 endpoint에는 다음 인증 헤더가 필요하다.
@@ -53,6 +53,87 @@ Content-Type: application/json
 
 `history`는 문맥 참고용이며 변경 승인으로 사용되지 않는다. 식단 변경 승인은 현재 요청의 `pending_action`과 명시적인 확인 문구가 모두 있을 때만 처리한다.
 
+### Health score context
+
+건강 리포트 질문에는 Backend가 가장 최근 `/health-analysis` 응답의 `analysis.health_score`를 `context.health_score`로 전달한다. AI Server는 이 snapshot을 다시 계산하지 않고 설명만 제공한다.
+
+```json
+{
+  "content": "지난주보다 좋아졌어?",
+  "history": [],
+  "context": {
+    "health_score": {
+      "status": "available",
+      "total_score": 77.2,
+      "maximum": 100,
+      "scoring_version": "health-score-v1",
+      "tier": "FIT",
+      "tier_level": 1,
+      "comparison_status": "available",
+      "previous_total_score": 70.5,
+      "score_delta": 6.7,
+      "trend": "improved",
+      "section_trends": {
+        "diet": {
+          "previous_score": 65.0,
+          "current_score": 80.0,
+          "score_delta": 15.0,
+          "trend": "improved"
+        },
+        "exercise": {
+          "previous_score": 70.0,
+          "current_score": 72.0,
+          "score_delta": 2.0,
+          "trend": "improved"
+        },
+        "health_data": {
+          "previous_score": 75.0,
+          "current_score": 79.0,
+          "score_delta": 4.0,
+          "trend": "improved"
+        }
+      },
+      "change_reasons": [],
+      "priority_actions": [],
+      "diet": {
+        "status": "available",
+        "score": 80.0,
+        "maximum": 100,
+        "message": "식단 점수 계산 완료",
+        "breakdown": {}
+      },
+      "exercise": {
+        "status": "available",
+        "score": 72.0,
+        "maximum": 100,
+        "message": "운동 점수 계산 완료",
+        "breakdown": {}
+      },
+      "health_data": {
+        "status": "available",
+        "score": 79.0,
+        "maximum": 100,
+        "message": "건강데이터 점수 계산 완료",
+        "breakdown": {}
+      },
+      "health_metric_adjustments": []
+    }
+  },
+  "pending_action": null
+}
+```
+
+지원 질문 유형은 다음과 같다.
+
+| 질문 유형 | 예시 | `data.query_type` |
+|---|---|---|
+| 현재 요약 | “내 건강 점수를 알려줘” | `summary` |
+| 이전 주 비교 | “지난주보다 좋아졌어?” | `comparison` |
+| 변화 이유 | “운동 점수가 낮은 이유가 뭐야?” | `reason` |
+| 우선 행동 | “무엇부터 개선해야 해?” | `priority` |
+
+응답 `data`에는 점수·등급·영역별 추세·변화 사유·우선 행동만 포함한다. 첫 번째 우선 행동에 따라 `recommended_next_feature`는 `diet_recommendation`, `exercise_recommendation`, `health_analysis` 중 하나를 제공하며, Frontend가 해당 기능으로 이동할 때 사용할 수 있다. 러닝이 적합한지는 건강 점수만으로 추측하지 않으며 사용자가 러닝을 선택한 뒤 기존 러닝 추천 흐름을 사용한다. 인바디나 건강검진의 원본 수치가 포함된 `health_metric_adjustments`는 챗봇 응답으로 다시 노출하지 않는다. `context.health_score`가 없거나 점수 상태가 `unavailable`이면 `need_health_score_context / needs_input`을 반환한다.
+
 ### Running context
 
 러닝 코스 추천 또는 순환 코스 생성 시 Backend는 `context.running`에 현재 요청 시점의 위치와 사용자 설정을 전달한다. 사용자가 메시지로 지역을 직접 말하지 않아도 `latitude`와 `longitude`가 있으면 GPS 기반 추천이 가능하다.
@@ -91,6 +172,8 @@ Backend 로직은 사용자 표시용 `message` 문구를 비교하지 않고 `i
 
 | Action | Status | Backend 처리 |
 |---|---|---|
+| `health_score_context` | `completed` | `data`의 확정 점수·추세·우선 행동과 설명 표시. DB 변경 없음 |
+| `need_health_score_context` | `needs_input` | 최신 `/health-analysis` 결과를 조회하거나 생성한 뒤 재요청 |
 | `health_rag` | `completed` | 답변과 `sources` 표시 |
 | `exercise_context` | `completed` | 저장된 운동 설명 표시 |
 | `exercise_replace_unavailable` | `unable_to_apply` | 변경 버튼을 완료 처리하지 않고 안내 표시 |

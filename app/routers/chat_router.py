@@ -172,6 +172,10 @@ async def test_chat_intent(
         return await classify_chat_intent(
             message=request.content,
             history=request.history,
+            health_score_available=(
+                request.context is not None
+                and request.context.health_score is not None
+            ),
         )
 
     except Exception:

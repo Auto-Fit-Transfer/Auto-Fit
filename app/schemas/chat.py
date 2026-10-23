@@ -14,12 +14,16 @@ from app.schemas.recommendation import (
     DietNearbyRegion,
     RecommendationSource,
 )
+from app.schemas.health_analysis import (
+    HealthScoreOutput,
+)
 from app.schemas.running import (
     RunningDistanceOption,
 )
 
 
 ChatIntent = Literal[
+    "health_score_question",
     "health_question",
     "exercise_question",
     "exercise_replace_request",
@@ -33,6 +37,8 @@ ChatIntent = Literal[
 
 
 ChatAction = Literal[
+    "health_score_context",
+    "need_health_score_context",
     "health_rag",
     "exercise_context",
     "exercise_replace_unavailable",
@@ -67,6 +73,22 @@ ChatActionStatus = Literal[
 ChatRole = Literal[
     "user",
     "assistant",
+]
+
+
+ChatHealthScoreQueryType = Literal[
+    "summary",
+    "comparison",
+    "reason",
+    "priority",
+]
+
+
+ChatHealthScoreSection = Literal[
+    "overall",
+    "diet",
+    "exercise",
+    "health_data",
 ]
 
 
@@ -205,6 +227,8 @@ class ChatContext(BaseModel):
 
     running: ChatRunningContext | None = None
 
+    health_score: HealthScoreOutput | None = None
+
 
 class ChatPendingAction(BaseModel):
     """Backend가 다음 대화 요청에 그대로 전달할 확인 대기 action."""
@@ -265,6 +289,14 @@ class ChatIntentResult(BaseModel):
         min_length=1,
         max_length=100,
     )
+
+    health_score_query_type: (
+        ChatHealthScoreQueryType | None
+    ) = None
+
+    health_score_section: (
+        ChatHealthScoreSection | None
+    ) = None
 
 
 class ChatResponse(BaseModel):

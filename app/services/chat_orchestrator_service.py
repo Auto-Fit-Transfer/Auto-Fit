@@ -23,6 +23,7 @@ from app.services.chat_answer_service import (
     answer_diet_question,
     answer_exercise_question,
     answer_general_chat,
+    answer_health_score_question,
     answer_health_question_with_sources,
 )
 
@@ -474,6 +475,10 @@ async def process_chat(
         intent_result = await classify_chat_intent(
             message=request.content,
             history=request.history,
+            health_score_available=(
+                request.context is not None
+                and request.context.health_score is not None
+            ),
         )
 
     intent = intent_result.intent
@@ -491,7 +496,66 @@ async def process_chat(
     )
 
     # =====================================================
-    # 3. Health Question
+    # 3. Health Score Question
+    # =====================================================
+
+    if intent == "health_score_question":
+        health_score = (
+            context.health_score
+            if context is not None
+            else None
+        )
+
+        if health_score is None:
+            return ChatResponse(
+                intent=intent,
+                message=(
+                    "현재 건강 리포트 점수 정보가 필요합니다. "
+                    "최신 건강 분석을 생성한 뒤 다시 질문해 주세요."
+                ),
+                action="need_health_score_context",
+                action_status="needs_input",
+            )
+
+        query_type = (
+            intent_result.health_score_query_type
+            or "summary"
+        )
+        section = (
+            intent_result.health_score_section
+            or "overall"
+        )
+        answer, score_data = answer_health_score_question(
+            health_score=health_score,
+            query_type=query_type,
+            section=section,
+        )
+        score_data.update(
+            {
+                "query_type": query_type,
+                "section": section,
+            }
+        )
+
+        if health_score.status != "available":
+            return ChatResponse(
+                intent=intent,
+                message=answer,
+                action="need_health_score_context",
+                action_status="needs_input",
+                data=score_data,
+            )
+
+        return ChatResponse(
+            intent=intent,
+            message=answer,
+            action="health_score_context",
+            action_status="completed",
+            data=score_data,
+        )
+
+    # =====================================================
+    # 4. General Health Question
     # =====================================================
 
     if intent == "health_question":
@@ -510,7 +574,7 @@ async def process_chat(
         )
 
     # =====================================================
-    # 4. Running Course Recommendation
+    # 5. Running Course Recommendation
     # =====================================================
 
     if intent == "running_recommend_request":

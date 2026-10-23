@@ -334,6 +334,7 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
     "nearby_regions": [],
     "meal_target": null,
     "exercise_summary": null,
+    "health_score": null,
     "diet_summary": {
       "weekly_plan": []
     }
@@ -341,6 +342,8 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
   "pending_action": null
 }
 ```
+
+건강 리포트 질문에는 최신 `/health-analysis` 응답의 `analysis.health_score`를 `context.health_score`로 전달한다. 챗봇은 확정된 점수를 다시 계산하지 않으며 `health_score_context` 응답으로 요약·이전 주 비교·변화 사유·우선 행동을 제공한다. 최신 점수가 없으면 `need_health_score_context`를 반환한다.
 
 식단 변경은 다음 조건이 모두 충족될 때만 저장한다.
 

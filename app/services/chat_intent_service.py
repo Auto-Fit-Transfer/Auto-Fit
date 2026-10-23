@@ -29,6 +29,80 @@ HEALTH_KEYWORDS = {
 }
 
 
+HEALTH_SCORE_EXPLICIT_PHRASES = {
+    "건강 점수",
+    "건강점수",
+    "건강 리포트",
+    "건강리포트",
+    "리포트 점수",
+    "식단 점수",
+    "식단점수",
+    "운동 점수",
+    "운동점수",
+    "건강데이터 점수",
+    "건강 데이터 점수",
+}
+
+
+HEALTH_SCORE_COMPARISON_PHRASES = {
+    "지난주",
+    "지난 주",
+    "이전주",
+    "이전 주",
+    "전주",
+    "비교",
+    "올랐",
+    "상승",
+    "내렸",
+    "하락",
+    "변화",
+    "좋아졌",
+    "나빠졌",
+}
+
+
+HEALTH_SCORE_REASON_PHRASES = {
+    "왜",
+    "이유",
+    "원인",
+    "낮은",
+    "낮아",
+    "높은",
+    "높아",
+    "떨어졌",
+}
+
+
+HEALTH_SCORE_PRIORITY_PHRASES = {
+    "무엇부터",
+    "뭐부터",
+    "뭘 먼저",
+    "뭐 먼저",
+    "어떤 것부터",
+    "먼저 해야",
+    "우선 해야",
+    "우선순위",
+    "개선해야",
+    "개선할까",
+    "어떻게 개선",
+}
+
+
+HEALTH_DATA_SCORE_PHRASES = {
+    "건강데이터",
+    "건강 데이터",
+    "인바디",
+    "건강검진",
+    "체지방",
+    "근육량",
+    "골격근량",
+    "bmi",
+    "혈압",
+    "혈당",
+    "콜레스테롤",
+}
+
+
 EXERCISE_KEYWORDS = {
     "운동",
     "웨이트",
@@ -327,6 +401,124 @@ def _extract_running_region(
     return match.group(1).strip()
 
 
+def _is_health_score_question(
+    message: str,
+    *,
+    health_score_available: bool,
+) -> bool:
+    normalized = _normalize_message(message)
+
+    if any(
+        phrase in normalized
+        for phrase in HEALTH_SCORE_EXPLICIT_PHRASES
+    ):
+        return True
+
+    if "점수" in normalized and (
+        _contains_any(
+            normalized,
+            HEALTH_SCORE_COMPARISON_PHRASES,
+        )
+        or _contains_any(
+            normalized,
+            HEALTH_SCORE_REASON_PHRASES,
+        )
+        or _contains_any(
+            normalized,
+            HEALTH_SCORE_PRIORITY_PHRASES,
+        )
+    ):
+        return True
+
+    if not health_score_available:
+        return False
+
+    if "점수" in normalized or "몇 점" in normalized:
+        return True
+
+    return (
+        _contains_any(
+            normalized,
+            HEALTH_SCORE_COMPARISON_PHRASES,
+        )
+        and any(
+            phrase in normalized
+            for phrase in {
+                "좋아졌",
+                "나빠졌",
+                "올랐",
+                "내렸",
+                "상승",
+                "하락",
+                "변화",
+            }
+        )
+    ) or _contains_any(
+        normalized,
+        HEALTH_SCORE_PRIORITY_PHRASES,
+    )
+
+
+def _extract_health_score_query_type(
+    message: str,
+) -> str:
+    if _contains_any(
+        message,
+        HEALTH_SCORE_PRIORITY_PHRASES,
+    ):
+        return "priority"
+    if _contains_any(
+        message,
+        HEALTH_SCORE_REASON_PHRASES,
+    ):
+        return "reason"
+    if _contains_any(
+        message,
+        HEALTH_SCORE_COMPARISON_PHRASES,
+    ):
+        return "comparison"
+    return "summary"
+
+
+def _extract_health_score_section(
+    message: str,
+) -> str:
+    normalized = _normalize_message(message)
+
+    if any(
+        keyword in normalized
+        for keyword in {
+            "식단",
+            "영양",
+            "칼로리",
+            "단백질",
+            "탄수화물",
+            "지방",
+        }
+    ):
+        return "diet"
+
+    if any(
+        keyword in normalized
+        for keyword in {
+            "운동",
+            "헬스",
+            "홈트",
+            "러닝",
+            "달리기",
+        }
+    ):
+        return "exercise"
+
+    if _contains_any(
+        normalized,
+        HEALTH_DATA_SCORE_PHRASES,
+    ):
+        return "health_data"
+
+    return "overall"
+
+
 def _is_replace_request(
     message: str,
 ) -> bool:
@@ -505,6 +697,7 @@ def _find_context_from_history(
 async def classify_chat_intent(
     message: str,
     history: list[ChatHistoryItem] | None = None,
+    health_score_available: bool = False,
 ) -> ChatIntentResult:
     """
     사용자 메시지를 외부 LLM으로 보내지 않고
@@ -598,6 +791,29 @@ async def classify_chat_intent(
         cleaned_message,
         HEALTH_KEYWORDS,
     )
+
+    has_health_score = _is_health_score_question(
+        cleaned_message,
+        health_score_available=health_score_available,
+    )
+
+    # 건강 리포트 점수 질문은 식단·운동 단어를 포함하더라도
+    # 새 추천 생성이 아니라 기존 점수 설명 요청으로 처리한다.
+    if has_health_score:
+        return ChatIntentResult(
+            intent="health_score_question",
+            confidence=0.98,
+            health_score_query_type=(
+                _extract_health_score_query_type(
+                    cleaned_message
+                )
+            ),
+            health_score_section=(
+                _extract_health_score_section(
+                    cleaned_message
+                )
+            ),
+        )
 
     # 러닝 코스 생성·추천은 일반 운동 변경보다 먼저 분리한다.
     # 다만 식단 표현이 함께 있으면 식단 질문을 우선하여

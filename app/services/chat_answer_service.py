@@ -8,7 +8,16 @@ from openai import AsyncOpenAI
 
 from app.core.config import get_settings
 
-from app.schemas.chat import ChatHistoryItem
+from app.schemas.chat import (
+    ChatHealthScoreQueryType,
+    ChatHealthScoreSection,
+    ChatHistoryItem,
+)
+from app.schemas.health_analysis import (
+    HealthScoreChangeReasonOutput,
+    HealthScoreOutput,
+    HealthScorePriorityActionOutput,
+)
 from app.schemas.recommendation import RecommendationSource
 
 from app.graphs.nodes.rag_node import (
@@ -342,6 +351,285 @@ def _build_chat_sources_from_rag(
 # =========================================================
 # Health
 # =========================================================
+
+
+def _format_health_score(value: float | None) -> str:
+    if value is None:
+        return "확인 불가"
+    return f"{value:.1f}".rstrip("0").rstrip(".")
+
+
+def _health_score_section_label(
+    section: ChatHealthScoreSection,
+) -> str:
+    return {
+        "overall": "종합",
+        "diet": "식단 관리",
+        "exercise": "운동 관리",
+        "health_data": "건강데이터",
+    }[section]
+
+
+def _build_health_score_chat_data(
+    health_score: HealthScoreOutput,
+) -> dict[str, Any]:
+    """원본 건강 수치 없이 챗봇 화면에 필요한 점수만 반환한다."""
+
+    section_trends = (
+        health_score.section_trends.model_dump(
+            mode="json"
+        )
+        if health_score.section_trends is not None
+        else None
+    )
+    first_priority = (
+        health_score.priority_actions[0]
+        if health_score.priority_actions
+        else None
+    )
+    recommended_next_feature = (
+        {
+            "diet": "diet_recommendation",
+            "exercise": "exercise_recommendation",
+            "health_data": "health_analysis",
+        }[first_priority.section]
+        if first_priority is not None
+        else None
+    )
+
+    return {
+        "status": health_score.status,
+        "scoring_version": health_score.scoring_version,
+        "total_score": health_score.total_score,
+        "tier": health_score.tier,
+        "tier_level": health_score.tier_level,
+        "comparison_status": (
+            health_score.comparison_status
+        ),
+        "previous_total_score": (
+            health_score.previous_total_score
+        ),
+        "score_delta": health_score.score_delta,
+        "trend": health_score.trend,
+        "sections": {
+            "diet": {
+                "status": health_score.diet.status,
+                "score": health_score.diet.score,
+            },
+            "exercise": {
+                "status": health_score.exercise.status,
+                "score": health_score.exercise.score,
+            },
+            "health_data": {
+                "status": health_score.health_data.status,
+                "score": health_score.health_data.score,
+            },
+        },
+        "section_trends": section_trends,
+        "change_reasons": [
+            reason.model_dump(mode="json")
+            for reason in health_score.change_reasons
+        ],
+        "priority_actions": [
+            action.model_dump(mode="json")
+            for action in health_score.priority_actions
+        ],
+        "recommended_next_feature": (
+            recommended_next_feature
+        ),
+    }
+
+
+def _select_health_score_reasons(
+    health_score: HealthScoreOutput,
+    section: ChatHealthScoreSection,
+) -> list[HealthScoreChangeReasonOutput]:
+    reasons = health_score.change_reasons
+
+    if section != "overall":
+        return [
+            reason
+            for reason in reasons
+            if reason.section == section
+        ]
+
+    if health_score.trend is not None:
+        matching = [
+            reason
+            for reason in reasons
+            if reason.trend == health_score.trend
+        ]
+        if matching:
+            return matching
+
+    changed = [
+        reason
+        for reason in reasons
+        if reason.trend != "unchanged"
+    ]
+    return changed or reasons
+
+
+def _select_health_score_actions(
+    health_score: HealthScoreOutput,
+    section: ChatHealthScoreSection,
+) -> list[HealthScorePriorityActionOutput]:
+    actions = health_score.priority_actions
+
+    if section == "overall":
+        return actions
+
+    return [
+        action
+        for action in actions
+        if action.section == section
+    ]
+
+
+def answer_health_score_question(
+    *,
+    health_score: HealthScoreOutput,
+    query_type: ChatHealthScoreQueryType,
+    section: ChatHealthScoreSection,
+) -> tuple[str, dict[str, Any]]:
+    """
+    HealthScoreService가 확정한 결과만 설명한다.
+
+    점수를 다시 계산하거나 원본 건강 수치를 외부 LLM으로 보내지 않는다.
+    """
+
+    data = _build_health_score_chat_data(
+        health_score
+    )
+
+    if (
+        health_score.status != "available"
+        or health_score.total_score is None
+    ):
+        return (
+            "건강 점수를 계산하려면 1주 식단·운동 기록과 "
+            "현재 및 최초 기준의 인바디·건강검진 데이터가 "
+            "모두 필요합니다.",
+            data,
+        )
+
+    total_text = _format_health_score(
+        health_score.total_score
+    )
+    tier_text = (
+        f"{health_score.tier} {health_score.tier_level}"
+        if health_score.tier is not None
+        and health_score.tier_level is not None
+        else "등급 확인 전"
+    )
+
+    if query_type == "summary":
+        message = (
+            f"현재 건강 점수는 {total_text}점, "
+            f"{tier_text} 단계입니다. "
+            "식단 관리 "
+            f"{_format_health_score(health_score.diet.score)}점, "
+            "운동 관리 "
+            f"{_format_health_score(health_score.exercise.score)}점, "
+            "건강데이터 "
+            f"{_format_health_score(health_score.health_data.score)}점입니다."
+        )
+        if health_score.comparison_status == "available":
+            delta_text = _format_health_score(
+                abs(health_score.score_delta or 0.0)
+            )
+            trend_text = {
+                "improved": "상승",
+                "unchanged": "유지",
+                "declined": "하락",
+            }.get(health_score.trend, "변화")
+            message += (
+                f" 지난주보다 {delta_text}점 {trend_text}했습니다."
+            )
+        return message, data
+
+    if query_type == "comparison":
+        if health_score.comparison_status == "available":
+            trend_text = {
+                "improved": "상승",
+                "unchanged": "유지",
+                "declined": "하락",
+            }.get(health_score.trend, "변화")
+            message = (
+                "지난주 "
+                f"{_format_health_score(health_score.previous_total_score)}점에서 "
+                f"현재 {total_text}점으로 "
+                f"{_format_health_score(abs(health_score.score_delta or 0.0))}점 "
+                f"{trend_text}했습니다."
+            )
+            reasons = _select_health_score_reasons(
+                health_score,
+                section,
+            )
+            if reasons:
+                message += f" {reasons[0].message}"
+            return message, data
+
+        if health_score.comparison_status == "version_mismatch":
+            return (
+                f"현재 건강 점수는 {total_text}점입니다. "
+                "지난주 점수와 계산 버전이 달라 직접 비교하지 않았습니다.",
+                data,
+            )
+
+        return (
+            f"현재 건강 점수는 {total_text}점입니다. "
+            "지난주 확정 점수가 없어 증감은 비교할 수 없습니다.",
+            data,
+        )
+
+    if query_type == "reason":
+        reasons = _select_health_score_reasons(
+            health_score,
+            section,
+        )
+        actions = _select_health_score_actions(
+            health_score,
+            section,
+        )
+
+        if reasons:
+            message = " ".join(
+                reason.message
+                for reason in reasons[:2]
+            )
+        else:
+            message = (
+                "지난주 확정 점수가 없어 점수 변화 원인은 "
+                "비교할 수 없습니다."
+            )
+
+        if actions:
+            message += (
+                f" 현재 우선 확인할 항목은 '{actions[0].title}'입니다. "
+                f"{actions[0].message}"
+            )
+        return message, data
+
+    actions = _select_health_score_actions(
+        health_score,
+        section,
+    )
+    if not actions:
+        section_label = _health_score_section_label(
+            section
+        )
+        return (
+            f"현재 {section_label} 영역에는 별도의 우선 개선 항목이 "
+            "없습니다. 현재 루틴과 정기 기록을 유지하세요.",
+            data,
+        )
+
+    action_messages = [
+        f"{action.priority}순위 {action.title}: {action.message}"
+        for action in actions[:3]
+    ]
+    return " ".join(action_messages), data
 
 
 async def answer_health_question_with_sources(

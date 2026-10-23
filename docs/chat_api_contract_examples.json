@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.1",
+  "contract_version": "1.2",
   "legacy_chat": {
     "request": {
       "question": "운동 방향을 알려줘",
@@ -43,6 +43,197 @@
           "title": "고혈압 진료지침"
         }
       ]
+    }
+  },
+  "health_score_comparison": {
+    "request": {
+      "content": "지난주보다 좋아졌어?",
+      "history": [],
+      "context": {
+        "health_score": {
+          "status": "available",
+          "total_score": 77.2,
+          "tier": "FIT",
+          "tier_level": 1,
+          "comparison_status": "available",
+          "previous_total_score": 70.5,
+          "score_delta": 6.7,
+          "trend": "improved",
+          "section_trends": {
+            "diet": {
+              "previous_score": 65.0,
+              "current_score": 80.0,
+              "score_delta": 15.0,
+              "trend": "improved"
+            },
+            "exercise": {
+              "previous_score": 70.0,
+              "current_score": 72.0,
+              "score_delta": 2.0,
+              "trend": "improved"
+            },
+            "health_data": {
+              "previous_score": 75.0,
+              "current_score": 79.0,
+              "score_delta": 4.0,
+              "trend": "improved"
+            }
+          },
+          "change_reasons": [
+            {
+              "section": "diet",
+              "trend": "improved",
+              "title": "식단 관리 점수 상승",
+              "message": "식단 관리 점수가 15점 상승했습니다."
+            },
+            {
+              "section": "exercise",
+              "trend": "improved",
+              "title": "운동 관리 점수 상승",
+              "message": "운동 관리 점수가 2점 상승했습니다."
+            },
+            {
+              "section": "health_data",
+              "trend": "improved",
+              "title": "건강데이터 점수 상승",
+              "message": "건강데이터 점수가 4점 상승했습니다."
+            }
+          ],
+          "priority_actions": [
+            {
+              "section": "exercise",
+              "priority": 1,
+              "title": "주간 운동 시간 확보",
+              "message": "남은 목표 시간을 운동일에 나누어 수행하세요."
+            },
+            {
+              "section": "diet",
+              "priority": 2,
+              "title": "단백질 목표 준수 점검",
+              "message": "단백질 섭취량을 목표 범위에 맞추세요."
+            }
+          ],
+          "diet": {
+            "status": "available",
+            "score": 80.0,
+            "message": "식단 점수 계산 완료"
+          },
+          "exercise": {
+            "status": "available",
+            "score": 72.0,
+            "message": "운동 점수 계산 완료"
+          },
+          "health_data": {
+            "status": "available",
+            "score": 79.0,
+            "message": "건강데이터 점수 계산 완료"
+          },
+          "health_metric_adjustments": [
+            {
+              "metric_key": "fasting_glucose",
+              "baseline_value": 110.0,
+              "current_value": 100.0,
+              "unit": "mg/dL",
+              "trend": "improved",
+              "normalized_change": 0.5
+            }
+          ]
+        }
+      },
+      "pending_action": null
+    },
+    "response": {
+      "intent": "health_score_question",
+      "message": "지난주 70.5점에서 현재 77.2점으로 6.7점 상승했습니다. 식단 관리 점수가 15점 상승했습니다.",
+      "action": "health_score_context",
+      "action_status": "completed",
+      "requires_backend_apply": false,
+      "pending_action": null,
+      "target_day": null,
+      "target_meal": null,
+      "data": {
+        "status": "available",
+        "scoring_version": "health-score-v1",
+        "total_score": 77.2,
+        "tier": "FIT",
+        "tier_level": 1,
+        "comparison_status": "available",
+        "previous_total_score": 70.5,
+        "score_delta": 6.7,
+        "trend": "improved",
+        "sections": {
+          "diet": {
+            "status": "available",
+            "score": 80.0
+          },
+          "exercise": {
+            "status": "available",
+            "score": 72.0
+          },
+          "health_data": {
+            "status": "available",
+            "score": 79.0
+          }
+        },
+        "section_trends": {
+          "diet": {
+            "previous_score": 65.0,
+            "current_score": 80.0,
+            "score_delta": 15.0,
+            "trend": "improved"
+          },
+          "exercise": {
+            "previous_score": 70.0,
+            "current_score": 72.0,
+            "score_delta": 2.0,
+            "trend": "improved"
+          },
+          "health_data": {
+            "previous_score": 75.0,
+            "current_score": 79.0,
+            "score_delta": 4.0,
+            "trend": "improved"
+          }
+        },
+        "change_reasons": [
+          {
+            "section": "diet",
+            "trend": "improved",
+            "title": "식단 관리 점수 상승",
+            "message": "식단 관리 점수가 15점 상승했습니다."
+          },
+          {
+            "section": "exercise",
+            "trend": "improved",
+            "title": "운동 관리 점수 상승",
+            "message": "운동 관리 점수가 2점 상승했습니다."
+          },
+          {
+            "section": "health_data",
+            "trend": "improved",
+            "title": "건강데이터 점수 상승",
+            "message": "건강데이터 점수가 4점 상승했습니다."
+          }
+        ],
+        "priority_actions": [
+          {
+            "section": "exercise",
+            "priority": 1,
+            "title": "주간 운동 시간 확보",
+            "message": "남은 목표 시간을 운동일에 나누어 수행하세요."
+          },
+          {
+            "section": "diet",
+            "priority": 2,
+            "title": "단백질 목표 준수 점검",
+            "message": "단백질 섭취량을 목표 범위에 맞추세요."
+          }
+        ],
+        "recommended_next_feature": "exercise_recommendation",
+        "query_type": "comparison",
+        "section": "overall"
+      },
+      "sources": []
     }
   },
   "exercise_replace_unavailable": {

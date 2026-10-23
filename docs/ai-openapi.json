@@ -2134,6 +2134,16 @@
                 "type": "null"
               }
             ]
+          },
+          "health_score": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HealthScoreOutput"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -2168,6 +2178,7 @@
           "intent": {
             "type": "string",
             "enum": [
+              "health_score_question",
               "health_question",
               "exercise_question",
               "exercise_replace_request",
@@ -2281,6 +2292,40 @@
               }
             ],
             "title": "Running Region"
+          },
+          "health_score_query_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "summary",
+                  "comparison",
+                  "reason",
+                  "priority"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Score Query Type"
+          },
+          "health_score_section": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "overall",
+                  "diet",
+                  "exercise",
+                  "health_data"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Score Section"
           }
         },
         "type": "object",
@@ -2379,6 +2424,7 @@
           "intent": {
             "type": "string",
             "enum": [
+              "health_score_question",
               "health_question",
               "exercise_question",
               "exercise_replace_request",
@@ -2400,6 +2446,8 @@
               {
                 "type": "string",
                 "enum": [
+                  "health_score_context",
+                  "need_health_score_context",
                   "health_rag",
                   "exercise_context",
                   "exercise_replace_unavailable",
