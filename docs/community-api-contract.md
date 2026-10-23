@@ -346,5 +346,6 @@ POST /api/community/reports
    신고 검토 = `community_visible_post`, `community_comments`, `community_timeline`, `community_club_feed` /
    메시지 = `check_community_pair_writable`, `community_delete_user_data`. 모두 같은 이름·인자다.
 7. 관리자 지정: `insert into public.community_moderators(user_id, note) values (…)` (DB 담당자만).
-8. 운영자 도구 SQL `20261019130000_community_admin_tools.sql`: 새 함수 6개와 권한 2줄뿐(기존 함수 교체 없음).
-   시험: `community_admin_tools_sql.mjs`(20).
+8. 운영자 도구 SQL `20261019130000_community_admin_tools.sql`: 운영자 함수 6개, 챌린지 참여 잠금 트리거 함수 1개와 권한 2줄을 추가한다(기존 함수 교체 없음).
+   참여와 운영자 수정이 겹쳐도 목표·보상 고정 규칙이 유지되도록 참여 시 챌린지 행을 잠근다.
+   시험: `community_admin_tools_sql.mjs`(21). 여러 연결의 동시성 시험은 별도로 필요하다.

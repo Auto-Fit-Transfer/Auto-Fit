@@ -74,6 +74,10 @@ try {
   assert.deepEqual([extended.title, extended.ends_on, extended.participant_count], ['2주 4일 운동', d13, 1]);
   await save(M, id, { title: '2주 4일 운동', goal: 4, starts: d0, ends: d13, reward: 40, enabled: false });
   assert.equal((await rpc('community_challenge_list', U)).some((c) => c.challenge_id === id), false);
+  await db.query('delete from public.community_challenge_participants where challenge_id = $1', [id]);
+  await rejected(() => db.query(
+    'insert into public.community_challenge_participants(challenge_id, user_id) values ($1, $2)',
+    [id, U]), 'COMMUNITY_CHALLENGE_NOT_FOUND');
   await rejected(() => save(M, '00000000-0000-4000-8000-000000000999',
     { title: '없는 챌린지', goal: 1, starts: d0, ends: d6 }), 'COMMUNITY_CHALLENGE_NOT_FOUND');
   // A provisional example stops being labelled provisional once a moderator saves it.
