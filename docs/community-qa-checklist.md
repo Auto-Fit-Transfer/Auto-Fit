@@ -17,7 +17,7 @@
 `20261015014915_community_follows_notifications`, `20261015062629_community_mileage_membership_clubs`,
 `20261015064753_community_challenges_rankings`, `20261019022924_community_club_management`,
 `20261019022935_community_moderation`, `20261019023132_community_direct_messages`,
-운영자 도구(`20261019130000_community_admin_tools`, 적용 시 원격 버전으로 바뀜).
+운영자 도구(`20261023002812_community_admin_tools`, 저장소 파일 `20261019130000_community_admin_tools.sql`).
 
 시험 데이터는 다른 팀원에게도 보인다. 글·댓글 내용 앞에 `[시험]`을 붙이고, 끝나면 7절대로 지운다.
 
