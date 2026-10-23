@@ -20,7 +20,7 @@ const laterMigration = readFileSync(
   'utf8',
 );
 const rulesMigration = readFileSync(
-  new URL('../../supabase/migrations/20261023030117_accept_rules_based_diet_meals.sql', import.meta.url),
+  new URL('../../supabase/migrations/20261023030557_accept_rules_based_diet_meals.sql', import.meta.url),
   'utf8',
 );
 
