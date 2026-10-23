@@ -389,6 +389,13 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
         "target_days": 3,
         "completed_days": 0,
         "goal_aligned_completed_days": 0
+      },
+      "previous_health_score": {
+        "scoring_version": "health-score-v1",
+        "total_score": 70.5,
+        "diet_score": 65.0,
+        "exercise_score": 70.0,
+        "health_data_score": 75.0
       }
     }
   }
@@ -411,6 +418,82 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
 - 종합점수는 식단 30%, 운동 30%, 건강데이터 40%를 반영한다.
 - 점수와 등급은 결정론적 코드로 계산하며 LLM이 생성하거나 수정하지 않는다.
 - 최초 기준 데이터는 AI Server가 저장하지 않으며 Backend가 사용자별로 보존해 매 요청에 전달한다.
+- `previous_health_score`는 선택값이며 Backend가 직전 주의 확정 점수 snapshot을 보존해 전달한다.
+- 이전 점수와 현재 점수의 `scoring_version`이 다르면 서로 비교하지 않는다.
+- 점수 변화 사유와 우선 행동은 기존 breakdown을 기반으로 결정론적으로 생성하며 추가 LLM 호출을 만들지 않는다.
+
+점수 비교가 가능한 경우 `analysis.health_score`에는 다음 필드가 함께 반환된다.
+
+```json
+{
+  "status": "available",
+  "total_score": 77.2,
+  "scoring_version": "health-score-v1",
+  "comparison_status": "available",
+  "previous_total_score": 70.5,
+  "score_delta": 6.7,
+  "trend": "improved",
+  "section_trends": {
+    "diet": {
+      "previous_score": 65.0,
+      "current_score": 80.0,
+      "score_delta": 15.0,
+      "trend": "improved"
+    },
+    "exercise": {
+      "previous_score": 70.0,
+      "current_score": 72.0,
+      "score_delta": 2.0,
+      "trend": "improved"
+    },
+    "health_data": {
+      "previous_score": 75.0,
+      "current_score": 79.0,
+      "score_delta": 4.0,
+      "trend": "improved"
+    }
+  },
+  "change_reasons": [
+    {
+      "section": "diet",
+      "trend": "improved",
+      "title": "식단 관리 점수 상승",
+      "message": "식단 관리 점수가 이전 주 65.0점에서 80.0점으로 15.0점 상승했습니다."
+    },
+    {
+      "section": "exercise",
+      "trend": "improved",
+      "title": "운동 관리 점수 상승",
+      "message": "운동 관리 점수가 이전 주 70.0점에서 72.0점으로 2.0점 상승했습니다."
+    },
+    {
+      "section": "health_data",
+      "trend": "improved",
+      "title": "건강데이터 점수 상승",
+      "message": "건강데이터 점수가 이전 주 75.0점에서 79.0점으로 4.0점 상승했습니다."
+    }
+  ],
+  "priority_actions": [
+    {
+      "section": "exercise",
+      "priority": 1,
+      "title": "주간 운동 시간 확보",
+      "message": "남은 주간 목표 시간을 가능한 운동일에 나누어 수행하세요."
+    }
+  ]
+}
+```
+
+`comparison_status`는 다음 상태를 사용한다.
+
+| 상태 | 의미 |
+|---|---|
+| `available` | 동일한 점수 버전의 직전 주 snapshot과 비교 완료 |
+| `not_provided` | Backend가 이전 점수를 제공하지 않음 |
+| `current_score_unavailable` | 현재 식단·운동·건강데이터 점수가 모두 계산되지 않음 |
+| `version_mismatch` | 이전 점수와 현재 점수 계산 버전이 달라 비교하지 않음 |
+
+`change_reasons`는 식단·운동·건강데이터의 상승·유지·하락 사유를 제공한다. `priority_actions`는 식단 기록 누락, 영양 목표 준수율, 운동 시간·횟수·목적 일치도와 실제 하락한 건강지표를 기준으로 최대 3개를 우선순위 순서로 반환한다. 건강데이터가 최초 기준점인 80점이라는 이유만으로 개선 과제를 만들지는 않는다.
 
 현재 날짜 필드는 Schema상 문자열이므로 Backend와 ISO 8601 사용 여부를 최종 합의해야 한다. 응답은 같은 `request_id`와 `schema_version`, `analysis`, `model`을 반환한다.
 

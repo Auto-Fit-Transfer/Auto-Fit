@@ -14,6 +14,25 @@ HealthScoreStatus = Literal[
     "unavailable",
 ]
 
+HealthScoreTrend = Literal[
+    "improved",
+    "unchanged",
+    "declined",
+]
+
+HealthScoreComparisonStatus = Literal[
+    "available",
+    "not_provided",
+    "current_score_unavailable",
+    "version_mismatch",
+]
+
+HealthScoreSectionName = Literal[
+    "diet",
+    "exercise",
+    "health_data",
+]
+
 HealthTierName = Literal[
     "CORE",
     "BALANCE",
@@ -181,6 +200,21 @@ class WeeklyExerciseScoreInput(BaseModel):
     )
 
 
+class PreviousHealthScoreInput(BaseModel):
+    """
+    Backend가 보존한 직전 주 건강점수 snapshot.
+
+    현재 점수와 동일한 scoring_version일 때만 증감 비교에 사용한다.
+    """
+
+    scoring_version: str = "health-score-v1"
+
+    total_score: float = Field(ge=0, le=100)
+    diet_score: float = Field(ge=0, le=100)
+    exercise_score: float = Field(ge=0, le=100)
+    health_data_score: float = Field(ge=0, le=100)
+
+
 class HealthScoreContextInput(BaseModel):
     """
     건강점수 계산에 필요한 기준 데이터와 주간 이행 정보.
@@ -194,6 +228,8 @@ class HealthScoreContextInput(BaseModel):
 
     weekly_diet: WeeklyDietScoreInput | None = None
     weekly_exercise: WeeklyExerciseScoreInput | None = None
+
+    previous_health_score: PreviousHealthScoreInput | None = None
 
 
 class HealthAnalysisPayload(BaseModel):
@@ -317,6 +353,33 @@ class HealthMetricAdjustmentOutput(BaseModel):
     normalized_change: float = Field(ge=-1, le=1)
 
 
+class HealthScoreTrendOutput(BaseModel):
+    previous_score: float = Field(ge=0, le=100)
+    current_score: float = Field(ge=0, le=100)
+    score_delta: float = Field(ge=-100, le=100)
+    trend: HealthScoreTrend
+
+
+class HealthScoreSectionTrendsOutput(BaseModel):
+    diet: HealthScoreTrendOutput
+    exercise: HealthScoreTrendOutput
+    health_data: HealthScoreTrendOutput
+
+
+class HealthScoreChangeReasonOutput(BaseModel):
+    section: HealthScoreSectionName
+    trend: HealthScoreTrend
+    title: str
+    message: str
+
+
+class HealthScorePriorityActionOutput(BaseModel):
+    section: HealthScoreSectionName
+    priority: int = Field(ge=1, le=3)
+    title: str
+    message: str
+
+
 class HealthScoreOutput(BaseModel):
     status: HealthScoreStatus
 
@@ -335,6 +398,29 @@ class HealthScoreOutput(BaseModel):
         ge=1,
         le=2,
     )
+
+    comparison_status: HealthScoreComparisonStatus = "not_provided"
+    previous_total_score: float | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+    )
+    score_delta: float | None = Field(
+        default=None,
+        ge=-100,
+        le=100,
+    )
+    trend: HealthScoreTrend | None = None
+
+    section_trends: HealthScoreSectionTrendsOutput | None = None
+
+    change_reasons: list[
+        HealthScoreChangeReasonOutput
+    ] = Field(default_factory=list)
+
+    priority_actions: list[
+        HealthScorePriorityActionOutput
+    ] = Field(default_factory=list)
 
     diet: HealthScoreSectionOutput
     exercise: HealthScoreSectionOutput

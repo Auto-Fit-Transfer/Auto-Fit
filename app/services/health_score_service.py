@@ -6,9 +6,17 @@ from app.schemas.health_analysis import (
     HealthAnalysisRequest,
     HealthCheckupInput,
     HealthMetricAdjustmentOutput,
+    HealthScoreChangeReasonOutput,
+    HealthScoreComparisonStatus,
     HealthScoreOutput,
+    HealthScorePriorityActionOutput,
+    HealthScoreSectionName,
     HealthScoreSectionOutput,
+    HealthScoreSectionTrendsOutput,
+    HealthScoreTrend,
+    HealthScoreTrendOutput,
     HealthTierName,
+    PreviousHealthScoreInput,
     WeeklyDietScoreInput,
     WeeklyExerciseScoreInput,
 )
@@ -161,6 +169,34 @@ HEALTH_METRIC_RULES = (
 )
 
 
+HEALTH_METRIC_LABELS = {
+    "skeletal_muscle_mass_kg": "골격근량",
+    "body_fat_percentage": "체지방률",
+    "visceral_fat_level": "내장지방 레벨",
+    "bmi": "BMI",
+    "systolic_bp": "수축기 혈압",
+    "diastolic_bp": "이완기 혈압",
+    "fasting_glucose": "공복혈당",
+    "total_cholesterol": "총콜레스테롤",
+    "ldl_cholesterol": "LDL 콜레스테롤",
+    "hdl_cholesterol": "HDL 콜레스테롤",
+    "triglycerides": "중성지방",
+}
+
+
+@dataclass(frozen=True)
+class ScoreComparisonResult:
+    status: HealthScoreComparisonStatus
+    previous_total_score: float | None = None
+    score_delta: float | None = None
+    trend: HealthScoreTrend | None = None
+    section_trends: HealthScoreSectionTrendsOutput | None = None
+    change_reasons: tuple[
+        HealthScoreChangeReasonOutput,
+        ...,
+    ] = ()
+
+
 class HealthScoreService:
     """
     사용자 주간 건강점수를 결정론적으로 계산한다.
@@ -218,6 +254,9 @@ class HealthScoreService:
                 scoring_version=SCORING_VERSION,
                 tier=None,
                 tier_level=None,
+                comparison_status=(
+                    "current_score_unavailable"
+                ),
                 diet=diet,
                 exercise=exercise,
                 health_data=health_data,
@@ -234,17 +273,399 @@ class HealthScoreService:
             total_score
         )
 
+        comparison = self._build_score_comparison(
+            previous=(
+                score_context.previous_health_score
+                if score_context is not None
+                else None
+            ),
+            current_total=total_score,
+            diet=diet,
+            exercise=exercise,
+            health_data=health_data,
+        )
+        priority_actions = self._build_priority_actions(
+            diet=diet,
+            exercise=exercise,
+            health_data=health_data,
+            adjustments=adjustments,
+        )
+
         return HealthScoreOutput(
             status="available",
             total_score=total_score,
             scoring_version=SCORING_VERSION,
             tier=tier,
             tier_level=tier_level,
+            comparison_status=comparison.status,
+            previous_total_score=(
+                comparison.previous_total_score
+            ),
+            score_delta=comparison.score_delta,
+            trend=comparison.trend,
+            section_trends=comparison.section_trends,
+            change_reasons=list(
+                comparison.change_reasons
+            ),
+            priority_actions=priority_actions,
             diet=diet,
             exercise=exercise,
             health_data=health_data,
             health_metric_adjustments=adjustments,
         )
+
+    def _build_score_comparison(
+        self,
+        *,
+        previous: PreviousHealthScoreInput | None,
+        current_total: float,
+        diet: HealthScoreSectionOutput,
+        exercise: HealthScoreSectionOutput,
+        health_data: HealthScoreSectionOutput,
+    ) -> ScoreComparisonResult:
+        if previous is None:
+            return ScoreComparisonResult(
+                status="not_provided"
+            )
+
+        if previous.scoring_version != SCORING_VERSION:
+            return ScoreComparisonResult(
+                status="version_mismatch"
+            )
+
+        current_section_scores = {
+            "diet": float(diet.score or 0.0),
+            "exercise": float(exercise.score or 0.0),
+            "health_data": float(
+                health_data.score or 0.0
+            ),
+        }
+        previous_section_scores = {
+            "diet": previous.diet_score,
+            "exercise": previous.exercise_score,
+            "health_data": previous.health_data_score,
+        }
+
+        section_trend_values = {
+            section: self._score_trend_output(
+                previous_score=(
+                    previous_section_scores[section]
+                ),
+                current_score=(
+                    current_section_scores[section]
+                ),
+            )
+            for section in (
+                "diet",
+                "exercise",
+                "health_data",
+            )
+        }
+        section_trends = HealthScoreSectionTrendsOutput(
+            diet=section_trend_values["diet"],
+            exercise=section_trend_values["exercise"],
+            health_data=(
+                section_trend_values["health_data"]
+            ),
+        )
+        total_trend = self._score_trend_output(
+            previous_score=previous.total_score,
+            current_score=current_total,
+        )
+
+        return ScoreComparisonResult(
+            status="available",
+            previous_total_score=previous.total_score,
+            score_delta=total_trend.score_delta,
+            trend=total_trend.trend,
+            section_trends=section_trends,
+            change_reasons=tuple(
+                self._build_change_reason(
+                    section=section,
+                    trend_output=section_trend_values[
+                        section
+                    ],
+                )
+                for section in (
+                    "diet",
+                    "exercise",
+                    "health_data",
+                )
+            ),
+        )
+
+    @staticmethod
+    def _score_trend_output(
+        *,
+        previous_score: float,
+        current_score: float,
+    ) -> HealthScoreTrendOutput:
+        score_delta = round(
+            current_score - previous_score,
+            1,
+        )
+
+        if score_delta > 0:
+            trend: HealthScoreTrend = "improved"
+        elif score_delta < 0:
+            trend = "declined"
+        else:
+            trend = "unchanged"
+
+        return HealthScoreTrendOutput(
+            previous_score=previous_score,
+            current_score=current_score,
+            score_delta=score_delta,
+            trend=trend,
+        )
+
+    @staticmethod
+    def _build_change_reason(
+        *,
+        section: HealthScoreSectionName,
+        trend_output: HealthScoreTrendOutput,
+    ) -> HealthScoreChangeReasonOutput:
+        section_labels = {
+            "diet": "식단 관리",
+            "exercise": "운동 관리",
+            "health_data": "건강데이터",
+        }
+        trend_labels = {
+            "improved": "상승",
+            "unchanged": "유지",
+            "declined": "하락",
+        }
+        section_label = section_labels[section]
+        trend_label = trend_labels[
+            trend_output.trend
+        ]
+        delta = abs(trend_output.score_delta)
+
+        if trend_output.trend == "unchanged":
+            message = (
+                f"{section_label} 점수가 이전 주와 같은 "
+                f"{trend_output.current_score:.1f}점입니다."
+            )
+        else:
+            message = (
+                f"{section_label} 점수가 이전 주 "
+                f"{trend_output.previous_score:.1f}점에서 "
+                f"{trend_output.current_score:.1f}점으로 "
+                f"{delta:.1f}점 {trend_label}했습니다."
+            )
+
+        return HealthScoreChangeReasonOutput(
+            section=section,
+            trend=trend_output.trend,
+            title=f"{section_label} 점수 {trend_label}",
+            message=message,
+        )
+
+    def _build_priority_actions(
+        self,
+        *,
+        diet: HealthScoreSectionOutput,
+        exercise: HealthScoreSectionOutput,
+        health_data: HealthScoreSectionOutput,
+        adjustments: list[HealthMetricAdjustmentOutput],
+    ) -> list[HealthScorePriorityActionOutput]:
+        candidates: list[
+            tuple[
+                float,
+                int,
+                HealthScoreSectionName,
+                str,
+                str,
+            ]
+        ] = []
+
+        if diet.score is not None and diet.score < 100:
+            title, message = self._diet_priority_action(
+                diet
+            )
+            candidates.append(
+                (
+                    (100.0 - diet.score) * 0.30,
+                    0,
+                    "diet",
+                    title,
+                    message,
+                )
+            )
+
+        if (
+            exercise.score is not None
+            and exercise.score < 100
+        ):
+            title, message = (
+                self._exercise_priority_action(
+                    exercise
+                )
+            )
+            candidates.append(
+                (
+                    (100.0 - exercise.score) * 0.30,
+                    1,
+                    "exercise",
+                    title,
+                    message,
+                )
+            )
+
+        declined_metrics = [
+            item
+            for item in adjustments
+            if item.trend == "declined"
+        ]
+        if (
+            health_data.score is not None
+            and (
+                health_data.score < 80
+                or declined_metrics
+            )
+        ):
+            metric_labels = [
+                HEALTH_METRIC_LABELS.get(
+                    item.metric_key,
+                    item.metric_key,
+                )
+                for item in declined_metrics[:2]
+            ]
+            metric_text = (
+                ", ".join(metric_labels)
+                if metric_labels
+                else "인바디와 건강검진 지표"
+            )
+            candidates.append(
+                (
+                    max(
+                        0.1,
+                        (80.0 - health_data.score) * 0.40,
+                    ),
+                    2,
+                    "health_data",
+                    "건강데이터 추이 재확인",
+                    (
+                        f"{metric_text}의 변화를 동일한 측정 조건에서 "
+                        "다시 확인하고, 우려되는 변화는 의료진과 "
+                        "상담하세요."
+                    ),
+                )
+            )
+
+        candidates.sort(
+            key=lambda item: (
+                -item[0],
+                item[1],
+            )
+        )
+
+        return [
+            HealthScorePriorityActionOutput(
+                section=section,
+                priority=priority,
+                title=title,
+                message=message,
+            )
+            for priority, (
+                _urgency,
+                _order,
+                section,
+                title,
+                message,
+            ) in enumerate(
+                candidates[:3],
+                start=1,
+            )
+        ]
+
+    @staticmethod
+    def _diet_priority_action(
+        diet: HealthScoreSectionOutput,
+    ) -> tuple[str, str]:
+        logged_days = diet.breakdown.get(
+            "logged_days",
+            0.0,
+        )
+        expected_days = diet.breakdown.get(
+            "expected_days",
+            7.0,
+        )
+        missing_days = max(
+            0,
+            int(round(expected_days - logged_days)),
+        )
+
+        if missing_days > 0:
+            return (
+                "식단 기록 채우기",
+                (
+                    f"기록되지 않은 {missing_days}일의 실제 섭취량을 "
+                    "입력해 주간 영양 목표 준수율을 확인하세요."
+                ),
+            )
+
+        nutrient_labels = {
+            "calories": "칼로리",
+            "protein": "단백질",
+            "carbohydrate": "탄수화물",
+            "fat": "지방",
+        }
+        lowest_nutrient = min(
+            nutrient_labels,
+            key=lambda key: diet.breakdown.get(
+                key,
+                0.0,
+            ),
+        )
+        nutrient_label = nutrient_labels[
+            lowest_nutrient
+        ]
+        return (
+            f"{nutrient_label} 목표 준수 점검",
+            (
+                f"다음 1주 동안 {nutrient_label} 실제 섭취량이 "
+                "일일 목표의 ±10% 범위에 들도록 확인하세요."
+            ),
+        )
+
+    @staticmethod
+    def _exercise_priority_action(
+        exercise: HealthScoreSectionOutput,
+    ) -> tuple[str, str]:
+        ratios = {
+            "duration": exercise.breakdown.get(
+                "duration",
+                0.0,
+            ) / 50.0,
+            "frequency": exercise.breakdown.get(
+                "frequency",
+                0.0,
+            ) / 30.0,
+            "goal_alignment": exercise.breakdown.get(
+                "goal_alignment",
+                0.0,
+            ) / 20.0,
+        }
+        weakest = min(
+            ratios,
+            key=ratios.get,
+        )
+        actions = {
+            "duration": (
+                "주간 운동 시간 확보",
+                "남은 주간 목표 시간을 가능한 운동일에 나누어 수행하세요.",
+            ),
+            "frequency": (
+                "주간 운동 횟수 채우기",
+                "한 번에 무리하지 말고 짧은 운동을 추가해 목표 횟수를 채우세요.",
+            ),
+            "goal_alignment": (
+                "운동 목적에 맞는 루틴 수행",
+                "설정한 운동 목적과 일치하는 추천 루틴을 우선 수행하세요.",
+            ),
+        }
+        return actions[weakest]
 
     def _calculate_diet_score(
         self,

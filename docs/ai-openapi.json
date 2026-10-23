@@ -5344,6 +5344,44 @@
         ],
         "title": "HealthRiskItem"
       },
+      "HealthScoreChangeReasonOutput": {
+        "properties": {
+          "section": {
+            "type": "string",
+            "enum": [
+              "diet",
+              "exercise",
+              "health_data"
+            ],
+            "title": "Section"
+          },
+          "trend": {
+            "type": "string",
+            "enum": [
+              "improved",
+              "unchanged",
+              "declined"
+            ],
+            "title": "Trend"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "section",
+          "trend",
+          "title",
+          "message"
+        ],
+        "title": "HealthScoreChangeReasonOutput"
+      },
       "HealthScoreContextInput": {
         "properties": {
           "baseline_health_checkup": {
@@ -5380,6 +5418,16 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/WeeklyExerciseScoreInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "previous_health_score": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PreviousHealthScoreInput"
               },
               {
                 "type": "null"
@@ -5455,6 +5503,83 @@
             ],
             "title": "Tier Level"
           },
+          "comparison_status": {
+            "type": "string",
+            "enum": [
+              "available",
+              "not_provided",
+              "current_score_unavailable",
+              "version_mismatch"
+            ],
+            "title": "Comparison Status",
+            "default": "not_provided"
+          },
+          "previous_total_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Previous Total Score"
+          },
+          "score_delta": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": -100.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Delta"
+          },
+          "trend": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "improved",
+                  "unchanged",
+                  "declined"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trend"
+          },
+          "section_trends": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HealthScoreSectionTrendsOutput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "change_reasons": {
+            "items": {
+              "$ref": "#/components/schemas/HealthScoreChangeReasonOutput"
+            },
+            "type": "array",
+            "title": "Change Reasons"
+          },
+          "priority_actions": {
+            "items": {
+              "$ref": "#/components/schemas/HealthScorePriorityActionOutput"
+            },
+            "type": "array",
+            "title": "Priority Actions"
+          },
           "diet": {
             "$ref": "#/components/schemas/HealthScoreSectionOutput"
           },
@@ -5480,6 +5605,41 @@
           "health_data"
         ],
         "title": "HealthScoreOutput"
+      },
+      "HealthScorePriorityActionOutput": {
+        "properties": {
+          "section": {
+            "type": "string",
+            "enum": [
+              "diet",
+              "exercise",
+              "health_data"
+            ],
+            "title": "Section"
+          },
+          "priority": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Priority"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "section",
+          "priority",
+          "title",
+          "message"
+        ],
+        "title": "HealthScorePriorityActionOutput"
       },
       "HealthScoreSectionOutput": {
         "properties": {
@@ -5527,6 +5687,65 @@
           "message"
         ],
         "title": "HealthScoreSectionOutput"
+      },
+      "HealthScoreSectionTrendsOutput": {
+        "properties": {
+          "diet": {
+            "$ref": "#/components/schemas/HealthScoreTrendOutput"
+          },
+          "exercise": {
+            "$ref": "#/components/schemas/HealthScoreTrendOutput"
+          },
+          "health_data": {
+            "$ref": "#/components/schemas/HealthScoreTrendOutput"
+          }
+        },
+        "type": "object",
+        "required": [
+          "diet",
+          "exercise",
+          "health_data"
+        ],
+        "title": "HealthScoreSectionTrendsOutput"
+      },
+      "HealthScoreTrendOutput": {
+        "properties": {
+          "previous_score": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Previous Score"
+          },
+          "current_score": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Current Score"
+          },
+          "score_delta": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": -100.0,
+            "title": "Score Delta"
+          },
+          "trend": {
+            "type": "string",
+            "enum": [
+              "improved",
+              "unchanged",
+              "declined"
+            ],
+            "title": "Trend"
+          }
+        },
+        "type": "object",
+        "required": [
+          "previous_score",
+          "current_score",
+          "score_delta",
+          "trend"
+        ],
+        "title": "HealthScoreTrendOutput"
       },
       "HomeTrainingPreferences": {
         "properties": {
@@ -5836,6 +6055,48 @@
           "fat_g"
         ],
         "title": "NutritionTargetInput"
+      },
+      "PreviousHealthScoreInput": {
+        "properties": {
+          "scoring_version": {
+            "type": "string",
+            "title": "Scoring Version",
+            "default": "health-score-v1"
+          },
+          "total_score": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Total Score"
+          },
+          "diet_score": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Diet Score"
+          },
+          "exercise_score": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Exercise Score"
+          },
+          "health_data_score": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Health Data Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_score",
+          "diet_score",
+          "exercise_score",
+          "health_data_score"
+        ],
+        "title": "PreviousHealthScoreInput",
+        "description": "Backend가 보존한 직전 주 건강점수 snapshot.\n\n현재 점수와 동일한 scoring_version일 때만 증감 비교에 사용한다."
       },
       "RAGDebugItem": {
         "properties": {
