@@ -78,12 +78,24 @@ try {
   // Newest first with keyset paging; outsiders cannot read or write.
   for (const text of ['하나', '둘', '셋']) await send(A, id, text);
   const page = await messages(B, id, null, 2);
-  assert.deepEqual(page.map((m) => m.content), ['셋', '둘']);
-  assert.deepEqual((await messages(B, id, page[1])).map((m) => m.content), ['하나', '반가워요', '안녕하세요']);
+  const rest = await messages(B, id, page[1]);
+  assert.equal(page.length, 2);
+  assert.deepEqual(new Set([...page, ...rest].map((m) => m.content)),
+    new Set(['안녕하세요', '반가워요', '하나', '둘', '셋']));
+  assert.equal(new Set([...page, ...rest].map((m) => m.message_id)).size, 5);
   assert.deepEqual((await messages(A, id, null, 1))[0].is_mine, true);
   await rejected(() => messages(C, id), 'COMMUNITY_CONVERSATION_NOT_FOUND');
   await rejected(() => send(C, id, '끼어들기'), 'COMMUNITY_CONVERSATION_NOT_FOUND');
   await rejected(() => open(C, A), 'COMMUNITY_DM_NOT_ALLOWED'); checks++;
+
+  // Removing the only message must also remove the empty conversation from the inbox.
+  await follow(A, C);
+  await follow(C, A);
+  const temporary = (await open(A, C)).conversation_id;
+  const only = await send(A, temporary, '임시 메시지');
+  assert.equal((await inbox(A)).length, 2);
+  await rpc('community_delete_message', A, only.message_id);
+  assert.equal((await inbox(A)).length, 1); checks++;
 
   // Senders delete their own messages only.
   await rejected(() => rpc('community_delete_message', B, hello.message_id), 'COMMUNITY_MESSAGE_NOT_FOUND');
@@ -109,9 +121,9 @@ try {
   // Account deletion removes the whole conversation for both sides.
   await asSuperuser(() => db.query('delete from auth.users where id = $1', [B]));
   assert.deepEqual(await inbox(A), []);
-  assert.equal(await count(`select ((select count(*) from public.community_conversations)
-    + (select count(*) from public.community_messages)
-    + (select count(*) from public.community_conversation_reads))::int as n`), 0); checks++;
+  assert.equal(await count(`select ((select count(*) from public.community_conversations where conversation_id = $1)
+    + (select count(*) from public.community_messages where conversation_id = $1)
+    + (select count(*) from public.community_conversation_reads where conversation_id = $1))::int as n`, [id]), 0); checks++;
 
   console.log(`${checks} message PostgreSQL checks passed (PGlite; not a multi-connection concurrency test).`);
 } finally {

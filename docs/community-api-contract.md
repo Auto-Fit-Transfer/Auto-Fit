@@ -3,7 +3,7 @@
 상태: 1~5단계는 DB 적용, backend·frontend 병합, Render 배포 완료(2026-10-15).
 2026-10-19 추가분 3개(클럽 관리·신고 검토·1:1 메시지)는 공용 DB 적용 완료(원격 `20261019022924_community_club_management`,
 `20261019022935_community_moderation`, `20261019023132_community_direct_messages`, 원래 이름 `20261019090000`·`…100000`·`…110000`).
-DB 수정본(빈 대화 정리, 읽음 표시 잠금)은 `codex/community-sql-rollout`의 `c8e9866`으로 GitHub에 반영했다. 서버·화면은 병합·배포 전.
+DB 수정본(빈 대화 정리, 읽음 표시 잠금)은 `codex/community-sql-rollout`의 `c8e9866`을 기준으로 원격 버전명 마이그레이션에도 반영했다.
 운영자 도구 SQL(`20261019130000_community_admin_tools.sql`)은 공용 DB에 원격 `20261023002812_community_admin_tools`로 적용했다.
 
 기준일: 2026-10-19
@@ -341,7 +341,7 @@ POST /api/community/reports
    마일리지 사유 제약(`community_mileage_ledger_reason_check`)에 `challenge`를 더한다. 기존 함수는 바꾸지 않는다.
    시험: `node backend/tests/community_challenges_sql.mjs …`.
 6. 2026-10-19 추가 SQL 3개는 위 순서로 하나씩 적용한다. 시험: `community_club_management_sql.mjs`(17),
-   `community_moderation_sql.mjs`(18), `community_messages_sql.mjs`(21), `community_account_deletion_sql.mjs`(53).
+   `community_moderation_sql.mjs`(18), `community_messages_sql.mjs`(22), `community_account_deletion_sql.mjs`(53).
    교체하는 기존 함수: 클럽 관리 = `community_set_club_membership`, `community_create_club_post` /
    신고 검토 = `community_visible_post`, `community_comments`, `community_timeline`, `community_club_feed` /
    메시지 = `check_community_pair_writable`, `community_delete_user_data`. 모두 같은 이름·인자다.
