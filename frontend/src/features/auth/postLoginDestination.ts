@@ -1,6 +1,5 @@
 import type { Href } from 'expo-router';
 
-import { getHealthDocuments } from '@/src/api/healthDocuments';
 import { getOnboardingStatus } from '@/src/api/onboarding';
 
 export type PostLoginDestination = Href;
@@ -14,6 +13,5 @@ export async function getPostLoginDestination(): Promise<PostLoginDestination> {
     };
   }
 
-  const response = await getHealthDocuments({ limit: 1, status: 'confirmed' });
-  return response.items.length > 0 ? '/home' : '/upload';
+  return '/home';
 }

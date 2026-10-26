@@ -290,9 +290,22 @@ export default function HealthDataUploadScreen() {
             <View style={[styles.intro, { top: introTop }]}>
               <View style={styles.introTextGroup}>
                 <Text style={[styles.introTitle, { color: colors.textWhite }]}>
-                  건강 데이터를{`\n`}
-                  <Text style={{ color: colors.primaryMedium }}>업로드 해주세요</Text>
+                  건강 데이터가 있다면{`\n`}
+                  <Text style={{ color: colors.primaryMedium }}>업로드해 주세요</Text>
                 </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: isSelecting || isUploading }}
+                  disabled={isSelecting || isUploading}
+                  onPress={() => router.replace('/home')}
+                  style={({ pressed }) => [
+                    styles.skipButton,
+                    pressed && styles.pressed,
+                    (isSelecting || isUploading) && styles.nextButtonDisabled,
+                  ]}
+                >
+                  <Text style={styles.skipButtonLabel}>건강 데이터 없이 시작하기</Text>
+                </Pressable>
               </View>
               <Image
                 accessibilityIgnoresInvertColors
@@ -429,8 +442,23 @@ const styles = StyleSheet.create({
     top: 82,
   },
   introTextGroup: {
-    gap: 14,
+    gap: 8,
     width: 220,
+  },
+  skipButton: {
+    alignItems: 'center',
+    borderColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: 'center',
+    width: 195,
+  },
+  skipButtonLabel: {
+    color: colors.surface,
+    fontFamily: fontFamilies.pretendardSemiBold,
+    fontSize: 14,
+    includeFontPadding: false,
   },
   introTitle: {
     color: colors.textBody,
