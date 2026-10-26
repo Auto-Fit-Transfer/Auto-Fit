@@ -6,6 +6,7 @@ import {
   View,
   type StyleProp,
   type TextInputProps,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 
@@ -19,6 +20,8 @@ export interface AppTextFieldProps extends TextInputProps {
   leftElement?: ReactNode;
   rightElement?: ReactNode;
   containerStyle?: StyleProp<ViewStyle>;
+  fieldStyle?: StyleProp<ViewStyle>;
+  labelStyle?: StyleProp<TextStyle>;
 }
 
 export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function AppTextField(
@@ -30,6 +33,8 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
     leftElement,
     rightElement,
     containerStyle,
+    fieldStyle,
+    labelStyle,
     onFocus,
     onBlur,
     placeholderTextColor = colors.textNavigator,
@@ -43,13 +48,14 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
 
   return (
     <View style={containerStyle}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? <Text style={[styles.label, labelStyle]}>{label}</Text> : null}
       <View
         style={[
           styles.field,
           focused && styles.focused,
           error && styles.error,
           disabled && styles.disabled,
+          fieldStyle,
         ]}
       >
         {leftElement}

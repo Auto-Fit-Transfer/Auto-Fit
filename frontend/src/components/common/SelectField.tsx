@@ -25,6 +25,7 @@ export interface SelectFieldProps {
   style?: StyleProp<ViewStyle>;
   fieldStyle?: StyleProp<ViewStyle>;
   valueStyle?: StyleProp<TextStyle>;
+  labelStyle?: StyleProp<TextStyle>;
   placeholderTextColor?: string;
   accessibilityLabel?: string;
 }
@@ -42,13 +43,14 @@ export function SelectField({
   style,
   fieldStyle,
   valueStyle,
+  labelStyle,
   placeholderTextColor = colors.textDisabled,
   accessibilityLabel,
 }: SelectFieldProps) {
   const supportingText = error ?? helperText;
   return (
     <View style={style}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? <Text style={[styles.label, labelStyle]}>{label}</Text> : null}
       <Pressable
         accessibilityLabel={accessibilityLabel ?? label ?? placeholder}
         accessibilityRole="button"

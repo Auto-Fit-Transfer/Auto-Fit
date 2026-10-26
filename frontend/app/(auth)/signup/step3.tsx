@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ComponentType } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Alert,
@@ -11,28 +11,26 @@ import {
   TextInput,
   useWindowDimensions,
   View,
-  type ViewStyle,
 } from 'react-native';
-import Svg, { Defs, LinearGradient, Mask, Rect, Stop, type SvgProps } from 'react-native-svg';
+import type { SvgProps } from 'react-native-svg';
 
-import BreadIcon from '@/assets/icons/food/Bread.svg';
-import BuckwheatIcon from '@/assets/icons/food/Buckwheat.svg';
-import CrabIcon from '@/assets/icons/food/Crab.svg';
-import EggsIcon from '@/assets/icons/food/Eggs.svg';
-import FishIcon from '@/assets/icons/food/Fish.svg';
-import MilkIcon from '@/assets/icons/food/Milk.svg';
-import NutsIcon from '@/assets/icons/food/Nuts.svg';
-import PeachIcon from '@/assets/icons/food/Peach.svg';
-import PeanutIcon from '@/assets/icons/food/Peanut.svg';
-import SesameIcon from '@/assets/icons/food/Sesame.svg';
-import ShellfishIcon from '@/assets/icons/food/Shellfish.svg';
-import SoybeanIcon from '@/assets/icons/food/Soybean.svg';
-import CheckCircleFillIcon from '@/assets/icons/system/CheckCircle_Fill.svg';
-import WarningIcon from '@/assets/icons/system/WarningCircle.svg';
+import BreadIcon from '@/assets/icons/auth-redesign/12bc3.svg';
+import BuckwheatIcon from '@/assets/icons/auth-redesign/3697c.svg';
+import CrabIcon from '@/assets/icons/auth-redesign/01695.svg';
+import EggsIcon from '@/assets/icons/auth-redesign/1c264.svg';
+import FishIcon from '@/assets/icons/auth-redesign/e110e.svg';
+import MilkIcon from '@/assets/icons/auth-redesign/8d42b.svg';
+import NutsIcon from '@/assets/icons/auth-redesign/266a5.svg';
+import PeachIcon from '@/assets/icons/auth-redesign/c4fd2.svg';
+import PeanutIcon from '@/assets/icons/auth-redesign/987d2.svg';
+import SesameIcon from '@/assets/icons/auth-redesign/295ae.svg';
+import ShellfishIcon from '@/assets/icons/auth-redesign/7746e.svg';
+import SoybeanIcon from '@/assets/icons/auth-redesign/73335.svg';
 import { getSignupApiErrorMessage, saveAllergies } from '@/src/api/onboarding';
 import { SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
 import { useSignup } from '@/src/features/signup/SignupContext';
-import { colors, fontFamilies, radius, typography } from '@/src/theme';
+import { colors, fontFamilies } from '@/src/theme';
+import OtherIcon from '@/assets/icons/auth-redesign/00654.svg';
 
 interface AllergenOption {
   id: string;
@@ -55,17 +53,6 @@ const allergenOptions: AllergenOption[] = [
   { id: 'sesame', label: '참깨', icon: SesameIcon },
 ];
 
-const otherCardShadow: ViewStyle =
-  Platform.OS === 'web'
-    ? { boxShadow: '0 0 1.5px rgba(0, 0, 0, 0.05)' }
-    : {
-        elevation: 1,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.05,
-        shadowRadius: 1.5,
-      };
-
 const descriptionTop = 285;
 const allergenGridTop = 397;
 const allergenGridHeight = 230;
@@ -86,7 +73,7 @@ export default function SignUpStep3Screen() {
   const saveInFlightRef = useRef(false);
   const [selectedAllergens, setSelectedAllergens] = useState<string[]>(draft.selectedAllergens);
   const [otherAllergy, setOtherAllergy] = useState(draft.otherAllergy);
-  const [descriptionHeight, setDescriptionHeight] = useState(referenceDescriptionHeight);
+  const descriptionHeight = referenceDescriptionHeight;
   const [isOtherAllergyFocused, setIsOtherAllergyFocused] = useState(false);
   const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
   const [keyboardContentOffset, setKeyboardContentOffset] = useState(0);
@@ -189,7 +176,6 @@ export default function SignUpStep3Screen() {
 
   return (
     <SignUpScreenLayout
-      alignStepCta
       ctaLabel="다음"
       ctaLoading={isSaving}
       contentOffsetY={keyboardContentOffset}
@@ -198,43 +184,33 @@ export default function SignUpStep3Screen() {
       onBack={() => router.back()}
       onContinue={() => void goNext()}
     >
-      <SignUpSection
-        innerStyle={[styles.explanation, { gap: explanationGap }]}
-        top={protectedDescriptionTop}
-      >
-        <Text style={styles.sectionTitle}>
-          알레르기 정보 <Text style={styles.titleAside}>(복수 선택 가능)</Text>
-        </Text>
-        <Text
-          onLayout={(event) => setDescriptionHeight(event.nativeEvent.layout.height)}
-          style={styles.description}
-        >
-          알레르기 정보는 더 정확한 식단 추천을 위해 활용돼요.{`\n`}나중에 프로필에서 정보를 수정할
-          수 있어요.
-        </Text>
-      </SignUpSection>
-
-      <SignUpSection innerStyle={styles.allergenGrid} top={responsiveAllergenGridTop}>
-        {[0, 1, 2].map((rowIndex) => (
-          <View key={rowIndex} style={styles.allergenRow}>
-            {allergenOptions.slice(rowIndex * 4, rowIndex * 4 + 4).map((option) => (
-              <AllergenButton
-                key={option.id}
-                onPress={() => toggleAllergen(option.id)}
-                option={option}
-                selected={selectedAllergens.includes(option.id)}
-              />
-            ))}
-          </View>
-        ))}
-      </SignUpSection>
-
-      <SignUpSection innerStyle={styles.otherCard} top={responsiveOtherCardTop}>
-        <View style={styles.otherTitleRow}>
-          <WarningIcon color={colors.primaryDark} height={25} width={25} />
-          <Text style={styles.otherTitle}>기타 알레르기가 있으신가요?</Text>
+      <SignUpSection top={protectedDescriptionTop} innerStyle={styles.allergyCard}>
+        <View style={styles.headingRow}>
+          <Text style={styles.sectionTitle}>알레르기 정보</Text>
+          <Text style={styles.titleAside}>복수 선택 가능</Text>
         </View>
-        <View style={styles.otherInputIndent}>
+        <Text style={styles.description}>
+          선택 사항이며, 나중에 프로필에서{`\n`}정보를 수정할 수 있어요.
+        </Text>
+        <View style={styles.allergenGrid}>
+          {[0, 1, 2, 3].map((rowIndex) => (
+            <View key={rowIndex} style={styles.allergenRow}>
+              {allergenOptions.slice(rowIndex * 3, rowIndex * 3 + 3).map((option) => (
+                <AllergenButton
+                  key={option.id}
+                  onPress={() => toggleAllergen(option.id)}
+                  option={option}
+                  selected={selectedAllergens.includes(option.id)}
+                />
+              ))}
+            </View>
+          ))}
+        </View>
+      </SignUpSection>
+      <SignUpSection top={responsiveOtherCardTop} innerStyle={styles.otherCard}>
+        <Text style={styles.otherTitle}>기타 알레르기가 있으신가요?</Text>
+        <View style={styles.otherField}>
+          <OtherIcon height={20} width={20} />
           <TextInput
             ref={otherAllergyInputRef}
             accessibilityLabel="기타 알레르기"
@@ -244,8 +220,8 @@ export default function SignUpStep3Screen() {
               setKeyboardContentOffset(0);
             }}
             onFocus={() => setIsOtherAllergyFocused(true)}
-            placeholder="직접 입력해주세요 (선택 사항)"
-            placeholderTextColor={colors.textDisabled}
+            placeholder="직접 입력해 주세요 (선택 사항)"
+            placeholderTextColor={colors.textSecondary}
             returnKeyType="done"
             style={styles.otherInput}
             value={otherAllergy}
@@ -278,164 +254,87 @@ function AllergenButton({
         pressed && styles.pressed,
       ]}
     >
-      {selected ? (
-        <View style={styles.selectionMark}>
-          <GradientCheckMark />
-        </View>
-      ) : null}
-      <AllergenIcon
-        color={selected ? colors.primary : colors.textSecondary}
-        height={35}
-        width={35}
-      />
+      <View style={styles.allergenIcon}>
+        <AllergenIcon />
+      </View>
       <Text style={[styles.allergenLabel, selected && styles.allergenLabelSelected]}>
         {option.label}
+        {selected ? ' · 선택' : ''}
       </Text>
     </Pressable>
   );
 }
 
-function GradientCheckMark() {
-  const id = useId().replace(/:/g, '');
-  const gradientId = `check-gradient-${id}`;
-  const maskId = `check-mask-${id}`;
-
-  return (
-    <Svg height={15} viewBox="0 0 15 15" width={15}>
-      <Defs>
-        <LinearGradient
-          gradientUnits="userSpaceOnUse"
-          id={gradientId}
-          x1="10.8516"
-          x2="3.6914"
-          y1="2.625"
-          y2="12.375"
-        >
-          <Stop offset="0" stopColor="#49CDB1" />
-          <Stop offset="0.2" stopColor="#42C0A6" />
-          <Stop offset="0.4" stopColor="#49CDB1" />
-          <Stop offset="0.600962" stopColor="#42C0A6" />
-          <Stop offset="0.8" stopColor="#49CDB1" />
-          <Stop offset="1" stopColor="#42C0A6" />
-        </LinearGradient>
-        <Mask height={15} id={maskId} maskUnits="userSpaceOnUse" width={15} x={0} y={0}>
-          <CheckCircleFillIcon color="#FFFFFF" height={15} width={15} />
-        </Mask>
-      </Defs>
-      <Rect fill={`url(#${gradientId})`} height={15} mask={`url(#${maskId})`} width={15} />
-    </Svg>
-  );
-}
-
 const styles = StyleSheet.create({
-  explanation: {
-    gap: 30,
-  },
+  allergyCard: { gap: 16 },
+  headingRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   sectionTitle: {
-    ...typography.sectionTitle,
-    color: colors.textBody,
-    fontSize: 18,
-    height: 20,
-    includeFontPadding: false,
-    lineHeight: 20,
+    color: colors.dark,
+    fontFamily: fontFamilies.pretendardBold,
+    fontSize: 20,
+    lineHeight: 26,
   },
   titleAside: {
-    color: colors.textBody,
-    fontSize: 14,
+    color: colors.textSecondary,
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 13,
+    lineHeight: 20,
   },
   description: {
-    ...typography.body,
-    color: colors.textBody,
-    flexShrink: 1,
+    color: colors.textSecondary,
+    fontFamily: fontFamilies.pretendardRegular,
     fontSize: 15,
-    includeFontPadding: false,
-    lineHeight: 22,
-    width: '100%',
+    lineHeight: 23,
   },
-  allergenGrid: {
-    gap: 10,
-    height: 230,
-  },
-  allergenRow: {
-    flexDirection: 'row',
-    gap: 10,
-    height: 70,
-  },
+  allergenGrid: { gap: 8 },
+  allergenRow: { flexDirection: 'row', gap: 8 },
   allergenButton: {
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: 12,
     borderWidth: 1,
     flex: 1,
-    height: 70,
-    justifyContent: 'space-between',
-    maxWidth: 80,
-    paddingBottom: 5,
-    paddingHorizontal: 4,
-    paddingTop: 10,
-    position: 'relative',
+    height: 72,
+    justifyContent: 'center',
+    minWidth: 0,
   },
-  allergenButtonSelected: {
-    borderColor: colors.primary,
-  },
-  selectionMark: {
-    position: 'absolute',
-    right: 3,
-    top: 2,
-  },
+  allergenButtonSelected: { backgroundColor: colors.surfaceSoft, borderColor: colors.primary },
+  allergenIcon: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
   allergenLabel: {
-    ...typography.label,
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    includeFontPadding: false,
-    lineHeight: 22,
+    color: colors.dark,
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 13,
+    lineHeight: 20,
     textAlign: 'center',
   },
-  allergenLabelSelected: {
-    color: colors.primary,
-  },
-  otherCard: {
-    ...otherCardShadow,
-    backgroundColor: colors.surfaceSoft,
-    borderRadius: radius.lg,
-    height: 100,
-    justifyContent: 'space-between',
-    paddingBottom: 9,
-    paddingHorizontal: 10,
-    paddingTop: 10,
-  },
-  otherTitleRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-  },
+  allergenLabelSelected: { color: colors.primaryDark },
+  otherCard: { gap: 8 },
   otherTitle: {
-    ...typography.label,
-    color: colors.primaryDark,
+    color: colors.dark,
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 15,
-    includeFontPadding: false,
     lineHeight: 22,
   },
-  otherInputIndent: {
-    width: '100%',
+  otherField: {
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    height: 48,
+    paddingHorizontal: 14,
   },
   otherInput: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
-    height: 50,
-    includeFontPadding: false,
-    lineHeight: 22,
-    paddingHorizontal: 10,
-    paddingVertical: 0,
+    color: colors.dark,
+    flex: 1,
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 15,
+    height: '100%',
+    minWidth: 0,
+    padding: 0,
   },
-  pressed: {
-    opacity: 0.75,
-  },
+  pressed: { opacity: 0.75 },
 });

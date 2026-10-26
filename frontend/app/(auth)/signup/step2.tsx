@@ -12,19 +12,19 @@ import {
   View,
 } from 'react-native';
 
-import EmailIcon from '@/assets/icons/input/Email.svg';
+import EmailIcon from '@/assets/icons/auth-redesign/66005.svg';
+import NoticeIcon from '@/assets/icons/auth-redesign/e062d.svg';
 import { SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
 import { useSignup } from '@/src/features/signup/SignupContext';
 import { getSignupAuthErrorMessage } from '@/src/features/signup/signupAuthError';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { colors, fontFamilies, radius, typography } from '@/src/theme';
+import { colors, fontFamilies } from '@/src/theme';
 
 const verificationCodeLength = 6;
 const minimumScreenHeight = 740;
 const maximumScreenHeight = 917;
 const signUpBrandVisualHeight = 144;
 const sectionGap = 20;
-const confirmContentHeight = 254;
 
 export default function SignUpStep2Screen() {
   const router = useRouter();
@@ -54,7 +54,6 @@ export default function SignUpStep2Screen() {
     compact + (expanded - compact) * heightProgress;
   const signUpBrandBottom = verticalValue(96, 74) + signUpBrandVisualHeight;
   const confirmTop = Math.max(verticalValue(285, 238), signUpBrandBottom + sectionGap);
-  const resendTop = Math.max(verticalValue(629, 530), confirmTop + confirmContentHeight + 16);
 
   const updateDigit = (index: number, value: string) => {
     const digit = value.replace(/\D/g, '').slice(-1);
@@ -127,7 +126,6 @@ export default function SignUpStep2Screen() {
 
   return (
     <SignUpScreenLayout
-      alignStepCta
       ctaLabel="다음"
       ctaDisabled={digits.some((digit) => !digit)}
       ctaLoading={isVerifying}
@@ -135,24 +133,22 @@ export default function SignUpStep2Screen() {
       onBack={() => router.back()}
       onContinue={() => void verifyCode()}
     >
-      <SignUpSection innerStyle={styles.confirmContent} top={confirmTop}>
-        <Text style={styles.sectionTitle}>이메일 인증</Text>
+      <SignUpSection top={confirmTop} innerStyle={styles.confirmContent}>
+        <View style={styles.emblem}>
+          <EmailIcon height={32} width={32} />
+        </View>
         <Text style={styles.description}>
-          입력하신 이메일로 인증번호를 발송했어요.{`\n`}인증번호 6자리를 입력해주세요.
+          입력하신 이메일로 인증번호를 발송했어요.{`\n`}인증번호 6자리를 입력해 주세요.
         </Text>
         <View style={styles.emailCard}>
-          <View style={styles.emailLeft}>
-            <View style={styles.fieldIcon}>
-              <EmailIcon color={colors.textNavigator} height={18} width={18} />
-            </View>
-            <Text numberOfLines={1} style={styles.emailText}>
-              {email}
-            </Text>
-          </View>
+          <Text numberOfLines={1} style={styles.emailText}>
+            {email}
+          </Text>
           <Pressable accessibilityRole="button" hitSlop={8} onPress={() => router.back()}>
             <Text style={styles.changeEmail}>이메일 변경</Text>
           </Pressable>
         </View>
+        <Text style={styles.codeLabel}>인증번호</Text>
         <View style={styles.codeRow}>
           {digits.map((digit, index) => (
             <TextInput
@@ -167,9 +163,8 @@ export default function SignUpStep2Screen() {
               onChangeText={(value) => updateDigit(index, value)}
               onFocus={() => setFocusedIndex(index)}
               onKeyPress={({ nativeEvent }) => {
-                if (nativeEvent.key === 'Backspace' && !digits[index] && index > 0) {
+                if (nativeEvent.key === 'Backspace' && !digits[index] && index > 0)
                   inputRefs.current[index - 1]?.focus();
-                }
               }}
               selectTextOnFocus
               style={[styles.codeInput, focusedIndex === index && styles.codeInputFocused]}
@@ -177,130 +172,124 @@ export default function SignUpStep2Screen() {
             />
           ))}
         </View>
+        <View style={styles.resendContent}>
+          <Text style={styles.resendQuestion}>이메일을 받지 못하였나요?</Text>
+          <Pressable
+            accessibilityRole="button"
+            disabled={isResending}
+            hitSlop={8}
+            onPress={() => void resendCode()}
+          >
+            <Text style={[styles.resendLink, isResending && styles.resendLinkDisabled]}>
+              {isResending ? '재발송 중...' : '인증 메일 재발송'}
+            </Text>
+          </Pressable>
+        </View>
       </SignUpSection>
-
-      <SignUpSection innerStyle={styles.resendContent} top={resendTop}>
-        <Text style={styles.resendQuestion}>이메일을 받지 못하였나요?</Text>
-        <Pressable
-          accessibilityRole="button"
-          disabled={isResending}
-          hitSlop={8}
-          onPress={() => void resendCode()}
-        >
-          <Text style={[styles.resendLink, isResending && styles.resendLinkDisabled]}>
-            {isResending ? '재발송 중...' : '인증 메일 재발송'}
+      <SignUpSection card={false} top={0} innerStyle={styles.notice}>
+        <NoticeIcon height={24} width={24} />
+        <View style={styles.noticeCopy}>
+          <Text style={styles.noticeTitle}>메일함을 확인해 주세요</Text>
+          <Text style={styles.noticeDescription}>
+            인증 메일이 보이지 않으면{`\n`}스팸 메일함도 확인해 주세요.
           </Text>
-        </Pressable>
+        </View>
       </SignUpSection>
     </SignUpScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  confirmContent: {
-    gap: 30,
-  },
-  sectionTitle: {
-    ...typography.sectionTitle,
-    color: colors.textBody,
-    fontSize: 18,
-    height: 20,
-    includeFontPadding: false,
-    lineHeight: 20,
+  confirmContent: { gap: 20, paddingTop: 8 },
+  emblem: {
+    alignItems: 'center',
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: 16,
+    height: 64,
+    justifyContent: 'center',
+    width: 64,
   },
   description: {
-    ...typography.body,
-    color: colors.textBody,
+    color: colors.dark,
+    fontFamily: fontFamilies.pretendardRegular,
     fontSize: 15,
-    height: 44,
-    includeFontPadding: false,
-    lineHeight: 22,
+    lineHeight: 23,
   },
   emailCard: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    backgroundColor: colors.background,
+    borderRadius: 12,
     flexDirection: 'row',
-    height: 55,
+    height: 48,
     justifyContent: 'space-between',
-    paddingHorizontal: 10,
-  },
-  emailLeft: {
-    alignItems: 'center',
-    flex: 1,
-    flexDirection: 'row',
-    gap: 10,
-    minWidth: 0,
-  },
-  fieldIcon: {
-    alignItems: 'center',
-    height: 20,
-    justifyContent: 'center',
-    width: 20,
+    paddingHorizontal: 12,
   },
   emailText: {
-    ...typography.body,
-    color: colors.textNavigator,
+    color: colors.dark,
     flex: 1,
-    includeFontPadding: false,
-    lineHeight: 17,
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 13,
   },
   changeEmail: {
-    ...typography.body,
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 15,
-    includeFontPadding: false,
-    lineHeight: 19,
-    marginLeft: 10,
-  },
-  codeRow: {
-    flexDirection: 'row',
-    gap: 16,
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  codeInput: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    color: colors.textBody,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardLight,
-    fontSize: 25,
-    height: 45,
-    includeFontPadding: false,
-    maxWidth: 45,
-    padding: 0,
-    textAlign: 'center',
-  },
-  codeInputFocused: {
-    borderColor: colors.primary,
-  },
-  resendContent: {
-    alignItems: 'center',
-    gap: 10,
-  },
-  resendQuestion: {
-    ...typography.body,
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 15,
-    includeFontPadding: false,
-    lineHeight: 19,
-  },
-  resendLink: {
-    ...typography.body,
     color: colors.primaryDark,
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 15,
-    includeFontPadding: false,
-    lineHeight: 19,
+    marginLeft: 8,
   },
-  resendLinkDisabled: {
-    opacity: 0.55,
+  codeLabel: {
+    color: colors.dark,
+    fontFamily: fontFamilies.pretendardSemiBold,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  codeRow: { flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
+  codeInput: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
+    color: colors.dark,
+    flex: 1,
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 24,
+    height: 48,
+    minWidth: 0,
+    padding: 0,
+    textAlign: 'center',
+  },
+  codeInputFocused: { borderColor: colors.primary, borderWidth: 1.5 },
+  resendContent: { alignItems: 'center', gap: 8, paddingVertical: 12 },
+  resendQuestion: {
+    color: colors.textSecondary,
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 13,
+    lineHeight: 20,
+  },
+  resendLink: {
+    color: colors.primaryDark,
+    fontFamily: fontFamilies.pretendardSemiBold,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  resendLinkDisabled: { opacity: 0.55 },
+  notice: {
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: 12,
+    flexDirection: 'row',
+    gap: 12,
+    padding: 16,
+  },
+  noticeCopy: { flex: 1, gap: 4 },
+  noticeTitle: {
+    color: colors.dark,
+    fontFamily: fontFamilies.pretendardSemiBold,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  noticeDescription: {
+    color: colors.textSecondary,
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 13,
+    lineHeight: 20,
   },
 });

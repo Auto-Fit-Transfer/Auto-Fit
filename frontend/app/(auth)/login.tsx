@@ -1,80 +1,51 @@
 import { useRef, useState, type ComponentType } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  Dimensions,
-  Image,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-  type ViewStyle,
-} from 'react-native';
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { SvgProps } from 'react-native-svg';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import EmailIcon from '@/assets/icons/input/Email.svg';
+import EmailIcon from '@/assets/icons/auth-redesign/1790c.svg';
+import LockIcon from '@/assets/icons/auth-redesign/6a5e9.svg';
+import EyeSlashIcon from '@/assets/icons/auth-redesign/5facc.svg';
 import EyeIcon from '@/assets/icons/input/Eye.svg';
-import EyeCloseIcon from '@/assets/icons/input/EyeClose.svg';
-import PasswordIcon from '@/assets/icons/input/Password.svg';
-import LogoIcon from '@/assets/icons/Logo_Auto-Fit.svg';
-import GoogleIcon from '@/assets/icons/social/Google.svg';
-import KakaoIcon from '@/assets/icons/social/Kakao.svg';
-import { AppButton, AppTextField, IconButton } from '@/src/components/common';
+import GoogleIcon from '@/assets/icons/auth-redesign/1aa1b.svg';
+import KakaoIcon from '@/assets/icons/auth-redesign/e9a73.svg';
+import { AuthButton, AuthCard, AuthPage, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import {
   signInWithSocialProvider,
   type SocialLoginProvider,
 } from '@/src/features/auth/socialOAuth';
 import { getPostLoginDestination } from '@/src/features/auth/postLoginDestination';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { colors, radius, spacing, typography } from '@/src/theme';
-
-const authBackground = require('../../assets/images/backgrounds/2_Auth.png');
-
-const referenceWidth = 412;
-
-const minimumScreenHeight = 740;
-const maximumScreenHeight = 917;
-
-const figmaContentTop = 80;
-const figmaBrandToFormGap = 71.521;
-const formGroupUpwardAdjustment = spacing.sm;
+import { colors, fontFamilies } from '@/src/theme';
 
 type SocialLoginButtonProps = {
-  disabled?: boolean;
+  disabled: boolean;
   label: string;
   icon: ComponentType<SvgProps>;
   onPress: () => void;
-  style?: ViewStyle;
+  google?: boolean;
 };
 
 function SocialLoginButton({
-  disabled = false,
+  disabled,
   label,
-  icon: SocialIcon,
+  icon: Icon,
   onPress,
-  style,
+  google = false,
 }: SocialLoginButtonProps) {
   return (
     <Pressable
-      accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.socialButton, pressed && styles.pressed, style]}
+      style={({ pressed }) => [styles.socialButton, pressed && styles.pressed]}
     >
       <View style={styles.socialIconBox}>
-        <SocialIcon height={50} width={50} />
+        <Icon height={google ? 50 : 30} width={google ? 50 : 30} />
       </View>
-
       <Text style={styles.socialLabel}>{label}</Text>
-
-      <View style={styles.socialBalance} />
+      <View style={styles.socialSpacer} />
     </Pressable>
   );
 }
@@ -82,27 +53,21 @@ function SocialLoginButton({
 export default function LoginScreen() {
   const router = useRouter();
   const { oauthError } = useLocalSearchParams<{ oauthError?: string | string[] }>();
-  const insets = useSafeAreaInsets();
-
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
-
   const passwordRef = useRef<TextInput>(null);
   const activeLoginProviderRef = useRef<'email' | SocialLoginProvider | null>(null);
-
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [loginError, setLoginError] = useState<string | undefined>(() =>
     Array.isArray(oauthError) ? oauthError[0] : oauthError,
   );
   const [activeLoginProvider, setActiveLoginProvider] = useState<
     'email' | SocialLoginProvider | null
   >(null);
-  const [password, setPassword] = useState('');
-  const [passwordVisible, setPasswordVisible] = useState(false);
 
   const handleLogin = async () => {
     Keyboard.dismiss();
     if (activeLoginProviderRef.current) return;
-
     activeLoginProviderRef.current = 'email';
     setActiveLoginProvider('email');
     setLoginError(undefined);
@@ -125,11 +90,9 @@ export default function LoginScreen() {
   const handleSocialLogin = async (provider: SocialLoginProvider) => {
     Keyboard.dismiss();
     if (activeLoginProviderRef.current) return;
-
     activeLoginProviderRef.current = provider;
     setActiveLoginProvider(provider);
     setLoginError(undefined);
-
     try {
       const result = await signInWithSocialProvider(provider);
       if (result.status === 'success') router.replace(await getPostLoginDestination());
@@ -142,413 +105,161 @@ export default function LoginScreen() {
     }
   };
 
-  const dismissKeyboard = () => {
-    Keyboard.dismiss();
-  };
-
-  const openSignUp = () => {
-    Keyboard.dismiss();
-    router.push('/signup/step1');
-  };
-
-  const openForgotPassword = () => {
-    Keyboard.dismiss();
-    router.push('/password/forgot');
-  };
-
-  const availableWidth = Math.max(0, windowWidth - insets.left - insets.right);
-
-  const widthScale = Math.min(1, availableWidth / referenceWidth);
-
-  const scaledWidth = referenceWidth * widthScale;
-
-  const canvasLeft = insets.left + (availableWidth - scaledWidth) / 2;
-
-  const screenHeight = Dimensions.get('screen').height;
-
-  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
-
-  const heightProgress = Math.max(
-    0,
-    Math.min(
-      1,
-      (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight),
-    ),
-  );
-
-  const verticalValue = (expanded: number, compact: number) =>
-    compact + (expanded - compact) * heightProgress;
-
-  const contentTop = Math.max(insets.top, verticalValue(figmaContentTop, 42));
-
-  const brandToFormGap = verticalValue(figmaBrandToFormGap - formGroupUpwardAdjustment, 34);
-
-  const dividerTopGap = verticalValue(spacing.xl, 13);
-
-  const socialTopGap = verticalValue(spacing.xl, 13);
-
-  const socialGap = verticalValue(17, 10);
-
   return (
-    <View style={styles.background}>
-      <Image
-        accessibilityIgnoresInvertColors
-        resizeMode="stretch"
-        source={authBackground}
-        style={styles.backgroundImage}
-      />
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardAvoidingView}
-      >
-        <Pressable accessible={false} onPress={dismissKeyboard} style={styles.keyboardDismissArea}>
-          <View style={styles.contentViewport}>
-            <View
-              style={[
-                styles.contentContainer,
-                {
-                  left: canvasLeft,
-                  top: contentTop,
-                  transform: [
-                    {
-                      scale: widthScale,
-                    },
-                  ],
-                },
-              ]}
+    <AuthPage mode="login">
+      <AuthCard style={styles.loginCard}>
+        <Text style={styles.cardTitle}>로그인</Text>
+        <AuthTextField
+          accessibilityLabel="이메일"
+          autoCapitalize="none"
+          autoComplete="email"
+          autoCorrect={false}
+          keyboardType="email-address"
+          label="이메일"
+          leftElement={<EmailIcon height={20} width={20} />}
+          onChangeText={setEmail}
+          onSubmitEditing={() => passwordRef.current?.focus()}
+          placeholder="이메일을 입력해 주세요"
+          returnKeyType="next"
+          textContentType="emailAddress"
+          value={email}
+        />
+        <AuthTextField
+          ref={passwordRef}
+          accessibilityLabel="비밀번호"
+          autoCapitalize="none"
+          autoComplete="password"
+          error={loginError}
+          label="비밀번호"
+          leftElement={<LockIcon height={20} width={20} />}
+          onChangeText={setPassword}
+          onSubmitEditing={handleLogin}
+          placeholder="비밀번호를 입력해 주세요"
+          returnKeyType="done"
+          rightElement={
+            <Pressable
+              accessibilityLabel={passwordVisible ? '비밀번호 숨기기' : '비밀번호 보기'}
+              accessibilityRole="button"
+              hitSlop={10}
+              onPress={() => setPasswordVisible(!passwordVisible)}
             >
-              <View style={styles.brandSection}>
-                <LogoIcon accessibilityLabel="Auto-Fit 로고" height={68.479} width={71.591} />
-
-                <Text style={styles.brandName}>Auto-Fit</Text>
-
-                <Text style={styles.tagline}>
-                  <Text style={styles.taglineAccent}>AI</Text>가 함께하는 나만의 헬스케어
-                </Text>
-              </View>
-
-              <View
-                style={[
-                  styles.form,
-                  {
-                    marginTop: brandToFormGap,
-                  },
-                ]}
-              >
-                <AppTextField
-                  accessibilityLabel="이메일"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  autoCorrect={false}
-                  keyboardType="email-address"
-                  leftElement={
-                    <View style={styles.inputIconSlot}>
-                      <EmailIcon color={colors.textNavigator} height={18} width={18} />
-                    </View>
-                  }
-                  onChangeText={setEmail}
-                  onSubmitEditing={() => passwordRef.current?.focus()}
-                  placeholder="이메일을 입력해주세요"
-                  returnKeyType="next"
-                  textContentType="emailAddress"
-                  value={email}
-                />
-
-                <AppTextField
-                  ref={passwordRef}
-                  accessibilityLabel="비밀번호"
-                  autoCapitalize="none"
-                  autoComplete="password"
-                  error={loginError}
-                  leftElement={
-                    <View style={styles.inputIconSlot}>
-                      <PasswordIcon color={colors.textNavigator} height={18} width={18} />
-                    </View>
-                  }
-                  onChangeText={setPassword}
-                  onSubmitEditing={handleLogin}
-                  placeholder="비밀번호를 입력해주세요"
-                  returnKeyType="done"
-                  rightElement={
-                    <IconButton
-                      accessibilityLabel={passwordVisible ? '비밀번호 숨기기' : '비밀번호 보기'}
-                      icon={
-                        passwordVisible ? (
-                          <EyeIcon color={colors.textNavigator} height={18} width={18} />
-                        ) : (
-                          <EyeCloseIcon color={colors.textNavigator} height={18} width={18} />
-                        )
-                      }
-                      onPress={() => setPasswordVisible((visible) => !visible)}
-                      size={44}
-                      style={styles.eyeButton}
-                    />
-                  }
-                  secureTextEntry={!passwordVisible}
-                  textContentType="password"
-                  value={password}
-                />
-
-                <Pressable
-                  accessibilityRole="button"
-                  hitSlop={8}
-                  onPress={openForgotPassword}
-                  style={styles.forgotPasswordButton}
-                >
-                  <Text style={styles.forgotPasswordText}>비밀번호 찾기</Text>
-                </Pressable>
-
-                <AppButton
-                  loading={activeLoginProvider === 'email'}
-                  onPress={handleLogin}
-                  title="로그인"
-                />
-              </View>
-
-              <View
-                accessible={false}
-                style={[
-                  styles.divider,
-                  {
-                    marginTop: dividerTopGap,
-                  },
-                ]}
-              >
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerLabel}>또는</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <View
-                style={[
-                  styles.socialSection,
-                  {
-                    gap: socialGap,
-                    marginTop: socialTopGap,
-                  },
-                ]}
-              >
-                <SocialLoginButton
-                  disabled={activeLoginProvider !== null}
-                  icon={GoogleIcon}
-                  label="Google로 계속하기"
-                  onPress={() => void handleSocialLogin('google')}
-                />
-
-                <SocialLoginButton
-                  disabled={activeLoginProvider !== null}
-                  icon={KakaoIcon}
-                  label="Kakao로 계속하기"
-                  onPress={() => void handleSocialLogin('kakao')}
-                />
-
-                <View style={styles.signUpGuide}>
-                  <Text style={styles.signUpGuideText}>계정이 없으신가요?</Text>
-
-                  <Pressable accessibilityRole="button" hitSlop={8} onPress={openSignUp}>
-                    <Text style={styles.signUpLinkText}>회원가입</Text>
-                  </Pressable>
-                </View>
-              </View>
-            </View>
-          </View>
+              {passwordVisible ? (
+                <EyeIcon height={20} width={20} />
+              ) : (
+                <EyeSlashIcon height={20} width={20} />
+              )}
+            </Pressable>
+          }
+          secureTextEntry={!passwordVisible}
+          textContentType="password"
+          value={password}
+        />
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/password/forgot')}
+          style={styles.forgot}
+        >
+          <Text style={styles.link}>비밀번호 찾기</Text>
         </Pressable>
-      </KeyboardAvoidingView>
-    </View>
+        <AuthButton
+          loading={activeLoginProvider === 'email'}
+          onPress={handleLogin}
+          title="로그인"
+        />
+      </AuthCard>
+      <View style={styles.divider}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>또는</Text>
+        <View style={styles.dividerLine} />
+      </View>
+      <View style={styles.socialGroup}>
+        <SocialLoginButton
+          disabled={activeLoginProvider !== null}
+          google
+          icon={GoogleIcon}
+          label="Google로 계속하기"
+          onPress={() => void handleSocialLogin('google')}
+        />
+        <SocialLoginButton
+          disabled={activeLoginProvider !== null}
+          icon={KakaoIcon}
+          label="Kakao로 계속하기"
+          onPress={() => void handleSocialLogin('kakao')}
+        />
+      </View>
+      <View style={styles.signUpGuide}>
+        <Text style={styles.guideText}>계정이 없으신가요?</Text>
+        <Pressable
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => router.push('/signup/step1')}
+        >
+          <Text style={styles.link}>회원가입</Text>
+        </Pressable>
+      </View>
+    </AuthPage>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
-    backgroundColor: colors.surface,
-    flex: 1,
-    minHeight: 0,
-    overflow: 'hidden',
-    width: '100%',
+  loginCard: { gap: 12 },
+  cardTitle: {
+    color: colors.dark,
+    fontFamily: fontFamilies.pretendardBold,
+    fontSize: 20,
+    lineHeight: 28,
   },
-
-  backgroundImage: {
-    bottom: 0,
-    height: '100%',
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    width: '100%',
-  },
-
-  keyboardAvoidingView: {
-    flex: 1,
-    width: '100%',
-  },
-
-  keyboardDismissArea: {
-    flex: 1,
-    width: '100%',
-  },
-
-  contentViewport: {
-    flex: 1,
-    overflow: 'hidden',
-    position: 'relative',
-    width: '100%',
-  },
-
-  contentContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 31,
-    position: 'absolute',
-    transformOrigin: 'top left',
-    width: referenceWidth,
-  },
-
-  brandSection: {
-    alignItems: 'center',
-    paddingVertical: 25,
-    width: '100%',
-  },
-
-  brandName: {
-    ...typography.display,
-    color: colors.textBody,
-    height: 50,
-    includeFontPadding: false,
-    marginTop: 6,
-    textAlign: 'center',
-    width: 200,
-  },
-
-  tagline: {
-    ...typography.body,
-    color: colors.textBody,
-    height: 17,
-    includeFontPadding: false,
-    lineHeight: 17,
-    textAlign: 'center',
-    width: 252,
-  },
-
-  taglineAccent: {
-    color: colors.primary,
-  },
-
-  form: {
-    alignSelf: 'center',
-    gap: spacing.sm,
-    maxWidth: 350,
-    width: '100%',
-  },
-
-  eyeButton: {
-    marginRight: -11,
-  },
-
-  inputIconSlot: {
-    alignItems: 'center',
-    height: 20,
-    justifyContent: 'center',
-    width: 20,
-  },
-
-  forgotPasswordButton: {
-    alignSelf: 'flex-end',
-    justifyContent: 'center',
-    minHeight: 14,
-  },
-
-  forgotPasswordText: {
-    ...typography.label,
+  forgot: { alignSelf: 'flex-end', minHeight: 22 },
+  link: {
     color: colors.primaryDark,
-    includeFontPadding: false,
-    lineHeight: 14,
+    fontFamily: fontFamilies.pretendardSemiBold,
+    fontSize: 15,
+    lineHeight: 22,
   },
-
-  divider: {
-    alignItems: 'center',
-    alignSelf: 'center',
-    flexDirection: 'row',
-    gap: 6,
-    height: 16,
-    maxWidth: 350,
-    width: '100%',
+  divider: { alignItems: 'center', flexDirection: 'row', gap: 12, height: 24 },
+  dividerLine: { backgroundColor: colors.border, flex: 1, height: 1 },
+  dividerText: {
+    color: colors.textSecondary,
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 13,
   },
-
-  dividerLine: {
-    backgroundColor: colors.textDisabled,
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-  },
-
-  dividerLabel: {
-    ...typography.label,
-    color: colors.textDisabled,
-    includeFontPadding: false,
-    lineHeight: 14,
-  },
-
-  socialSection: {
-    alignSelf: 'center',
-    maxWidth: 350,
-    width: '100%',
-  },
-
+  socialGroup: { gap: 10 },
   socialButton: {
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: 12,
     borderWidth: 1,
     flexDirection: 'row',
-    height: 45,
-    justifyContent: 'space-between',
-    overflow: 'hidden',
+    height: 50,
+    paddingHorizontal: 16,
   },
-
   socialIconBox: {
     alignItems: 'center',
-    height: 50,
+    height: 24,
     justifyContent: 'center',
-    marginLeft: 10,
-    width: 50,
+    overflow: 'hidden',
+    width: 24,
   },
-
-  socialBalance: {
-    marginRight: 10,
-    width: 50,
-  },
-
   socialLabel: {
-    ...typography.bodySmall,
-    color: colors.textBody,
-    includeFontPadding: false,
-    lineHeight: 16,
+    color: colors.dark,
+    flex: 1,
+    fontFamily: fontFamilies.pretendardSemiBold,
+    fontSize: 15,
     textAlign: 'center',
   },
-
+  socialSpacer: { width: 24 },
   signUpGuide: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
     justifyContent: 'center',
+    minHeight: 44,
   },
-
-  signUpGuideText: {
-    ...typography.bodySmall,
+  guideText: {
     color: colors.textSecondary,
-    includeFontPadding: false,
-    lineHeight: 16,
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 13,
   },
-
-  signUpLinkText: {
-    ...typography.bodySmall,
-    color: colors.primaryDark,
-    fontFamily: typography.label.fontFamily,
-    includeFontPadding: false,
-    lineHeight: 16,
-  },
-
-  pressed: {
-    opacity: 0.7,
-  },
+  pressed: { opacity: 0.75 },
 });

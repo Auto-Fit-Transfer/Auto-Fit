@@ -1,31 +1,14 @@
 import type { ReactNode } from 'react';
-import {
-  Image,
-  Dimensions,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { AppButton, BackButton } from '@/src/components/common';
-import { colors, fontFamilies } from '@/src/theme';
+import { AuthButton, AuthCard, AuthPage } from './AuthRedesign';
 
-import { SignUpBrand } from './SignUpBrand';
-import { SignUpStepIndicator } from './SignUpStepIndicator';
-
-const authBackground = require('../../../assets/images/backgrounds/2_Auth.png');
-const referenceContentHeight = 815;
-const referenceWidth = 412;
-const referenceBackTop = 67;
-const minimumScreenHeight = 740;
-const maximumScreenHeight = 917;
+const copy = {
+  basic: ['기본 정보를 알려주세요', '건강한 변화를 위한 첫걸음, 함께 시작해요!'],
+  verify: ['이메일을 인증해 주세요', '이메일 인증으로 계정을 안전하게 보호해요.'],
+  allergy: ['알레르기를 알려주세요', '더 정확한 맞춤 식단을 위한 정보예요.'],
+  goal: ['목표에 맞춰 시작해요', '나에게 맞는 운동을 위해 마지막으로 알려주세요.'],
+} as const;
 
 export interface SignUpScreenLayoutProps {
   currentStep: 1 | 2 | 3 | 4;
@@ -46,14 +29,12 @@ export interface SignUpSectionProps {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   innerStyle?: StyleProp<ViewStyle>;
+  card?: boolean;
 }
 
-export function SignUpSection({ top, children, style, innerStyle }: SignUpSectionProps) {
-  return (
-    <View style={[styles.section, { top }, style]}>
-      <View style={[styles.sectionInner, innerStyle]}>{children}</View>
-    </View>
-  );
+export function SignUpSection({ children, style, innerStyle, card = true }: SignUpSectionProps) {
+  const content = <View style={innerStyle}>{children}</View>;
+  return card ? <AuthCard style={style}>{content}</AuthCard> : <View style={style}>{content}</View>;
 }
 
 export function SignUpScreenLayout({
@@ -64,151 +45,34 @@ export function SignUpScreenLayout({
   onContinue,
   children,
   contentOffsetY = 0,
-  ctaTop,
-  alignStepCta = false,
   ctaDisabled = false,
   ctaLoading = false,
 }: SignUpScreenLayoutProps) {
-  const insets = useSafeAreaInsets();
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
-  const topSafetyOffset = Math.max(0, insets.top - referenceBackTop);
-  const availableWidth = Math.max(0, windowWidth - insets.left - insets.right);
-  const widthScale = Math.min(1, availableWidth / referenceWidth);
-  const scaledWidth = referenceWidth * widthScale;
-  const canvasLeft = insets.left + (availableWidth - scaledWidth) / 2;
-  const screenHeight = Dimensions.get('screen').height;
-  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
-  const heightProgress = Math.max(
-    0,
-    Math.min(
-      1,
-      (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight),
-    ),
-  );
-  const verticalValue = (expanded: number, compact: number) =>
-    compact + (expanded - compact) * heightProgress;
-
+  const key =
+    totalSteps === 3
+      ? (['basic', 'allergy', 'goal'] as const)[currentStep - 1]
+      : (['basic', 'verify', 'allergy', 'goal'] as const)[currentStep - 1];
+  const [heading, description] = copy[key];
   return (
-    <View style={styles.root}>
-      <Image
-        accessibilityIgnoresInvertColors
-        resizeMode="stretch"
-        source={authBackground}
-        style={styles.background}
-      />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardAvoidingView}
-      >
-        <Pressable accessible={false} onPress={Keyboard.dismiss} style={styles.dismissArea}>
-          <View style={styles.viewport}>
-            <View
-              style={[
-                styles.contentUnit,
-                {
-                  left: canvasLeft,
-                  top: topSafetyOffset - contentOffsetY,
-                  transform: [{ scale: widthScale }],
-                },
-              ]}
-            >
-              <View style={styles.backButton}>
-                <BackButton onPress={onBack} size={44} />
-              </View>
-              <View style={[styles.stepIndicator, { top: verticalValue(70, 55) }]}>
-                <SignUpStepIndicator currentStep={currentStep} totalSteps={totalSteps} />
-              </View>
-              <View style={[styles.brand, { top: verticalValue(96, 74) }]}>
-                <SignUpBrand />
-              </View>
-              {children}
-              <SignUpSection top={ctaTop ?? verticalValue(760, alignStepCta ? 696 : 660)}>
-                <AppButton
-                  disabled={ctaDisabled}
-                  labelStyle={alignStepCta ? styles.stepCtaLabel : undefined}
-                  loading={ctaLoading}
-                  onPress={onContinue}
-                  title={ctaLabel}
-                />
-              </SignUpSection>
-            </View>
-          </View>
-        </Pressable>
-      </KeyboardAvoidingView>
-    </View>
+    <AuthPage
+      contentOffsetY={contentOffsetY}
+      description={description}
+      footer={
+        <AuthButton
+          disabled={ctaDisabled}
+          loading={ctaLoading}
+          onPress={onContinue}
+          title={ctaLabel}
+        />
+      }
+      heading={heading}
+      mode="signup"
+      onBack={onBack}
+      step={currentStep}
+      title="회원가입"
+      totalSteps={totalSteps}
+    >
+      {children}
+    </AuthPage>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    backgroundColor: colors.surface,
-    flex: 1,
-    minHeight: 0,
-    overflow: 'hidden',
-    width: '100%',
-  },
-  background: {
-    bottom: 0,
-    height: '100%',
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    width: '100%',
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-    width: '100%',
-  },
-  dismissArea: {
-    flex: 1,
-    width: '100%',
-  },
-  viewport: {
-    alignItems: 'center',
-    flex: 1,
-    overflow: 'hidden',
-    width: '100%',
-  },
-  contentUnit: {
-    height: referenceContentHeight,
-    position: 'absolute',
-    transformOrigin: 'top left',
-    width: referenceWidth,
-  },
-  backButton: {
-    left: 0,
-    position: 'absolute',
-    top: 57.5,
-    zIndex: 2,
-  },
-  stepIndicator: {
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 70,
-  },
-  brand: {
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 96,
-  },
-  section: {
-    alignItems: 'center',
-    left: 0,
-    paddingHorizontal: 31,
-    pointerEvents: 'box-none',
-    position: 'absolute',
-    right: 0,
-  },
-  sectionInner: {
-    maxWidth: 350,
-    width: '100%',
-  },
-  stepCtaLabel: {
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 20,
-    lineHeight: 24,
-  },
-});

@@ -13,23 +13,23 @@ import {
   View,
 } from 'react-native';
 
-import DownIcon from '@/assets/icons/common/chevrons/Down.svg';
-import CalendarIcon from '@/assets/icons/input/Calendar.svg';
-import EmailIcon from '@/assets/icons/input/Email.svg';
+import DownIcon from '@/assets/icons/auth-redesign/27cb4.svg';
+import BirthChevronIcon from '@/assets/icons/auth-redesign/167c7.svg';
+import CalendarIcon from '@/assets/icons/auth-redesign/dc269.svg';
+import EmailIcon from '@/assets/icons/auth-redesign/1790c.svg';
 import EyeIcon from '@/assets/icons/input/Eye.svg';
-import EyeCloseIcon from '@/assets/icons/input/EyeClose.svg';
-import FemaleIcon from '@/assets/icons/input/gender/Gender_Female.svg';
-import MaleIcon from '@/assets/icons/input/gender/Gender_Male.svg';
-import PasswordIcon from '@/assets/icons/input/Password.svg';
-import UserIcon from '@/assets/icons/input/User.svg';
-import CheckIcon from '@/assets/icons/system/Check.svg';
+import EyeCloseIcon from '@/assets/icons/auth-redesign/5facc.svg';
+import PasswordIcon from '@/assets/icons/auth-redesign/6a5e9.svg';
+import UserIcon from '@/assets/icons/auth-redesign/5df69.svg';
+import CheckIcon from '@/assets/icons/auth-redesign/ab4c2.svg';
 import { BirthDatePicker, SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
-import { AppTextField, IconButton, SelectField } from '@/src/components/common';
+import { IconButton, SelectField } from '@/src/components/common';
+import { AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { getSignupApiErrorMessage, saveProfile } from '@/src/api/onboarding';
 import { useSignup, type SignupGender } from '@/src/features/signup/SignupContext';
 import { getSignupAuthErrorMessage } from '@/src/features/signup/signupAuthError';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { colors, radius, spacing, typography } from '@/src/theme';
+import { colors, fontFamilies, typography } from '@/src/theme';
 
 type Gender = SignupGender;
 type Step1InputKey = 'email' | 'password' | 'confirm-password' | 'name';
@@ -191,7 +191,7 @@ export default function SignUpStep1Screen() {
           ? '성별을 선택해 주세요.'
           : !name.trim()
             ? '이름을 입력해 주세요.'
-          : undefined
+            : undefined
       : getValidationMessage({
           email,
           password,
@@ -278,41 +278,43 @@ export default function SignUpStep1Screen() {
       <SignUpSection innerStyle={styles.form} top={formTop}>
         {!isPostLoginOnboarding ? (
           <>
-            <AppTextField
+            <AuthTextField
               ref={emailRef}
               accessibilityLabel="이메일"
+              label="이메일"
               autoCapitalize="none"
               autoComplete="email"
               autoCorrect={false}
               keyboardType="email-address"
               leftElement={
                 <FieldIcon
-                  icon={<EmailIcon color={colors.textNavigator} height={18} width={18} />}
+                  icon={<EmailIcon color={colors.textNavigator} height={20} width={20} />}
                 />
               }
               onChangeText={setEmail}
               onFocus={() => handleInputFocus('email', emailRef.current)}
               onSubmitEditing={() => passwordRef.current?.focus()}
-              placeholder="이메일을 입력해주세요"
+              placeholder="이메일을 입력해 주세요"
               returnKeyType="next"
               style={styles.textFieldInput}
               textContentType="emailAddress"
               value={email}
             />
-            <AppTextField
+            <AuthTextField
               ref={passwordRef}
               accessibilityLabel="비밀번호"
+              label="비밀번호"
               autoCapitalize="none"
               autoComplete="new-password"
               leftElement={
                 <FieldIcon
-                  icon={<PasswordIcon color={colors.textNavigator} height={18} width={18} />}
+                  icon={<PasswordIcon color={colors.textNavigator} height={20} width={20} />}
                 />
               }
               onChangeText={setPassword}
               onFocus={() => handleInputFocus('password', passwordRef.current)}
               onSubmitEditing={() => confirmPasswordRef.current?.focus()}
-              placeholder="비밀번호를 입력해주세요"
+              placeholder="비밀번호를 입력해 주세요"
               returnKeyType="next"
               rightElement={
                 <PasswordVisibilityButton
@@ -325,20 +327,21 @@ export default function SignUpStep1Screen() {
               textContentType="newPassword"
               value={password}
             />
-            <AppTextField
+            <AuthTextField
               ref={confirmPasswordRef}
               accessibilityLabel="비밀번호 확인"
+              label="비밀번호 확인"
               autoCapitalize="none"
               autoComplete="new-password"
               leftElement={
                 <FieldIcon
-                  icon={<PasswordIcon color={colors.textNavigator} height={18} width={18} />}
+                  icon={<PasswordIcon color={colors.textNavigator} height={20} width={20} />}
                 />
               }
               onChangeText={setConfirmPassword}
               onFocus={() => handleInputFocus('confirm-password', confirmPasswordRef.current)}
               onSubmitEditing={() => nameRef.current?.focus()}
-              placeholder="비밀번호를 다시 입력해주세요"
+              placeholder="비밀번호를 다시 입력해 주세요"
               returnKeyType="next"
               rightElement={
                 <PasswordVisibilityButton
@@ -358,25 +361,29 @@ export default function SignUpStep1Screen() {
           fieldStyle={styles.selectField}
           leftElement={
             <FieldIcon
-              icon={<CalendarIcon color={colors.textNavigator} height={17} width={17} />}
+              icon={<CalendarIcon color={colors.textNavigator} height={20} width={20} />}
             />
           }
           onPress={openBirthdayPicker}
-          placeholder="생년월일을 선택해주세요"
+          label="생년월일"
+          labelStyle={styles.fieldLabel}
+          placeholder="생년월일을 선택해 주세요"
           placeholderTextColor={colors.textNavigator}
           valueStyle={styles.selectFieldText}
+          rightElement={<BirthChevronIcon height={20} width={20} />}
           value={birthday ? formatBirthday(birthday) : undefined}
         />
-        <AppTextField
+        <AuthTextField
           ref={nameRef}
           accessibilityLabel="이름"
+          label="이름"
           autoComplete="name"
           leftElement={
-            <FieldIcon icon={<UserIcon color={colors.textNavigator} height={17} width={17} />} />
+            <FieldIcon icon={<UserIcon color={colors.textNavigator} height={20} width={20} />} />
           }
           onChangeText={setName}
           onFocus={() => handleInputFocus('name', nameRef.current)}
-          placeholder="이름을 입력해주세요"
+          placeholder="이름을 입력해 주세요"
           returnKeyType="done"
           style={styles.textFieldInput}
           textContentType="name"
@@ -386,32 +393,20 @@ export default function SignUpStep1Screen() {
           <Text style={styles.genderLabel}>성별</Text>
           <View style={styles.genderActions}>
             <GenderButton
-              icon={
-                <MaleIcon
-                  color={gender === 'male' ? colors.primary : colors.textNavigator}
-                  height={20}
-                  width={20}
-                />
-              }
               label="남성"
               onPress={() => setGender('male')}
               selected={gender === 'male'}
             />
             <GenderButton
-              icon={
-                <FemaleIcon
-                  color={gender === 'female' ? colors.primary : colors.textNavigator}
-                  height={20}
-                  width={20}
-                />
-              }
               label="여성"
               onPress={() => setGender('female')}
               selected={gender === 'female'}
             />
           </View>
         </View>
-        {!isPostLoginOnboarding ? (
+      </SignUpSection>
+      {!isPostLoginOnboarding ? (
+        <SignUpSection card={false} top={0}>
           <Pressable
             accessibilityLabel="모든 약관 동의"
             accessibilityRole="checkbox"
@@ -421,14 +416,14 @@ export default function SignUpStep1Screen() {
           >
             <View style={styles.termsLeft}>
               <View style={[styles.checkbox, agreed && styles.checkboxSelected]}>
-                {agreed ? <CheckIcon color={colors.primaryDark} height={11} width={11} /> : null}
+                {agreed ? <CheckIcon color={colors.primaryDark} height={14} width={14} /> : null}
               </View>
               <Text style={styles.termsText}>모든 약관에 동의합니다</Text>
             </View>
-            <DownIcon color={colors.textSecondary} height={17} width={17} />
+            <DownIcon color={colors.textSecondary} height={20} width={20} />
           </Pressable>
-        ) : null}
-      </SignUpSection>
+        </SignUpSection>
+      ) : null}
       <BirthDatePicker
         maximumDate={new Date()}
         onCancel={() => setBirthdayPickerVisible(false)}
@@ -453,9 +448,9 @@ function PasswordVisibilityButton({ visible, onPress }: { visible: boolean; onPr
       accessibilityLabel={visible ? '비밀번호 숨기기' : '비밀번호 보기'}
       icon={
         visible ? (
-          <EyeIcon color={colors.textNavigator} height={18} width={18} />
+          <EyeIcon color={colors.textNavigator} height={20} width={20} />
         ) : (
-          <EyeCloseIcon color={colors.textNavigator} height={18} width={18} />
+          <EyeCloseIcon color={colors.textNavigator} height={20} width={20} />
         )
       }
       onPress={onPress}
@@ -467,12 +462,11 @@ function PasswordVisibilityButton({ visible, onPress }: { visible: boolean; onPr
 
 interface GenderButtonProps {
   label: string;
-  icon: React.ReactNode;
   selected: boolean;
   onPress: () => void;
 }
 
-function GenderButton({ label, icon, selected, onPress }: GenderButtonProps) {
+function GenderButton({ label, selected, onPress }: GenderButtonProps) {
   return (
     <Pressable
       accessibilityRole="radio"
@@ -484,127 +478,99 @@ function GenderButton({ label, icon, selected, onPress }: GenderButtonProps) {
         pressed && styles.pressed,
       ]}
     >
-      {icon}
       <Text style={[styles.genderButtonText, selected && styles.genderButtonTextSelected]}>
         {label}
       </Text>
+      <View style={[styles.genderRadio, selected && styles.genderRadioSelected]}>
+        {selected ? <CheckIcon height={14} width={14} /> : null}
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  form: {
-    gap: 10,
-  },
-  textFieldInput: {
-    fontSize: 15,
-    lineHeight: 19,
-  },
-  fieldIcon: {
-    alignItems: 'center',
-    height: 20,
-    justifyContent: 'center',
-    width: 20,
-  },
-  eyeButton: {
-    marginRight: -11,
-  },
+  form: { gap: 12 },
+  textFieldInput: { fontSize: 15, lineHeight: 23 },
+  fieldIcon: { alignItems: 'center', height: 20, justifyContent: 'center', width: 20 },
+  eyeButton: { marginRight: -11 },
   selectField: {
-    gap: 10,
-    paddingHorizontal: 10,
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    height: 48,
+    paddingHorizontal: 14,
   },
-  selectFieldText: {
+  selectFieldText: { fontSize: 15, lineHeight: 23 },
+  fieldLabel: {
+    color: colors.dark,
+    fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 15,
-    lineHeight: 19,
+    lineHeight: 22,
+    marginBottom: 6,
   },
-  genderField: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    flexDirection: 'row',
-    height: 56,
-    justifyContent: 'space-between',
-    paddingHorizontal: 7,
-  },
+  genderField: { gap: 6 },
   genderLabel: {
-    ...typography.body,
-    color: colors.textSecondary,
+    color: colors.dark,
+    fontFamily: typography.sectionTitle.fontFamily,
     fontSize: 15,
-    lineHeight: 19,
-    marginLeft: spacing.sm,
+    lineHeight: 22,
   },
-  genderActions: {
-    flex: 1,
-    flexDirection: 'row',
-    gap: 5,
-    justifyContent: 'flex-end',
-    marginLeft: spacing.md,
-    maxWidth: 205,
-  },
+  genderActions: { flexDirection: 'row', gap: 8 },
   genderButton: {
     alignItems: 'center',
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: 12,
     borderWidth: 1,
     flex: 1,
     flexDirection: 'row',
-    gap: 6,
-    height: 40,
-    justifyContent: 'center',
-    maxWidth: 100,
+    height: 48,
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
   },
-  genderButtonSelected: {
-    borderColor: colors.primary,
-  },
+  genderButtonSelected: { backgroundColor: colors.surfaceSoft, borderColor: colors.primary },
   genderButtonText: {
-    ...typography.body,
-    color: colors.textNavigator,
-    fontFamily: typography.label.fontFamily,
+    color: colors.dark,
+    fontFamily: typography.sectionTitle.fontFamily,
     fontSize: 15,
-    lineHeight: 19,
   },
-  genderButtonTextSelected: {
-    color: colors.primary,
+  genderButtonTextSelected: { color: colors.primaryDark },
+  genderRadio: {
+    borderColor: colors.border,
+    borderRadius: 10,
+    borderWidth: 1,
+    height: 20,
+    width: 20,
+  },
+  genderRadioSelected: {
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+    justifyContent: 'center',
   },
   termsField: {
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: 12,
     borderWidth: 1,
     flexDirection: 'row',
-    height: 50,
+    height: 52,
     justifyContent: 'space-between',
-    paddingHorizontal: 10,
+    paddingHorizontal: 16,
   },
-  termsLeft: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
+  termsLeft: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   checkbox: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
     borderColor: colors.textSecondary,
-    borderRadius: radius.xs,
+    borderRadius: 4,
     borderWidth: 1,
-    height: 15,
-    justifyContent: 'center',
-    width: 15,
+    height: 20,
+    width: 20,
   },
   checkboxSelected: {
-    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    backgroundColor: colors.primary,
     borderColor: colors.primary,
+    justifyContent: 'center',
   },
-  termsText: {
-    ...typography.body,
-    color: colors.textSecondary,
-    fontSize: 15,
-    lineHeight: 19,
-  },
-  pressed: {
-    opacity: 0.75,
-  },
+  termsText: { color: colors.dark, fontFamily: typography.sectionTitle.fontFamily, fontSize: 15 },
+  pressed: { opacity: 0.75 },
 });

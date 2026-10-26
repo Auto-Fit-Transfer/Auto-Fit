@@ -1,219 +1,145 @@
 import { useState } from 'react';
+import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { Dimensions, Keyboard, Platform, StyleSheet, Text, useWindowDimensions, View, type ViewStyle } from 'react-native';
+import { Alert, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import EmailIcon from '@/assets/icons/input/Email.svg';
-import ShieldCheckIcon from '@/assets/icons/system/ShieldCheck.svg';
+import EmailIcon from '@/assets/icons/auth-redesign/1790c.svg';
+import EmailEmblem from '@/assets/icons/auth-redesign/c08e0.svg';
+import ShieldIcon from '@/assets/icons/auth-redesign/6e53a.svg';
+import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { PasswordAuthScreenLayout, PasswordAuthSection } from '@/src/components/auth';
-import { AppButton, AppTextField } from '@/src/components/common';
-import { colors, fontFamilies, radius, typography } from '@/src/theme';
-
-const securityCardShadow: ViewStyle =
-  Platform.OS === 'web'
-    ? { boxShadow: '0 0 2.5px rgba(0, 0, 0, 0.05)' }
-    : {
-        elevation: 1,
-        shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2.5,
-      };
-
-const minimumScreenHeight = 740;
-const maximumScreenHeight = 917;
-const passwordHeaderVisualHeight = 183;
+import { getSupabaseClient } from '@/src/lib/supabase';
+import { colors, fontFamilies } from '@/src/theme';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
-  const { height: windowHeight } = useWindowDimensions();
   const [email, setEmail] = useState('');
-  const screenHeight = Dimensions.get('screen').height;
-  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
-  const heightProgress = Math.max(
-    0,
-    Math.min(1, (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight)),
-  );
-  const verticalValue = (expanded: number, compact: number) =>
-    compact + (expanded - compact) * heightProgress;
-  const passwordHeaderBottom = verticalValue(69, 54) + passwordHeaderVisualHeight;
-  const emailContentTop = Math.max(
-    verticalValue(317, 225),
-    passwordHeaderBottom + 20,
-  );
-  const securityCardTop = Math.max(
-    verticalValue(468, 390),
-    emailContentTop + 112 + 18,
-  );
-  const dividerTop = Math.max(
-    verticalValue(570, 480),
-    securityCardTop + 74 + 18,
-  );
-  const deliveryHelpTop = Math.max(
-    verticalValue(608, 520),
-    dividerTop + 26,
-  );
-
-  const openResetPassword = () => {
+  const [isSending, setIsSending] = useState(false);
+  const sendResetEmail = async () => {
+    if (isSending) return;
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      Alert.alert('이메일을 확인해 주세요', '올바른 이메일 주소를 입력해 주세요.');
+      return;
+    }
     Keyboard.dismiss();
-    router.push('/password/reset');
+    setIsSending(true);
+    try {
+      const { error } = await getSupabaseClient().auth.resetPasswordForEmail(normalizedEmail, {
+        redirectTo: Linking.createURL('auth/recovery'),
+      });
+      if (error) throw error;
+      Alert.alert('메일 발송을 요청했습니다', '가입된 이메일이라면 비밀번호 재설정 링크가 도착합니다.');
+    } catch (error) {
+      console.error('비밀번호 재설정 메일 요청 실패:', error);
+      Alert.alert('메일을 보내지 못했습니다', '잠시 후 다시 시도해 주세요.');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
     <PasswordAuthScreenLayout
-      description={
-        <>
-          가입 시 입력한 이메일을 입력해주세요.{`\n`}비밀번호 재설정 링크를 이메일로 보내드릴게요.
-        </>
-      }
+      description="가입한 이메일로 비밀번호 재설정 링크를 보내드려요."
       onBack={() => router.back()}
       title="비밀번호 찾기"
     >
-      <PasswordAuthSection innerStyle={styles.emailContent} top={emailContentTop}>
-        <AppTextField
-          accessibilityLabel="가입 이메일"
+      <PasswordAuthSection top={0} innerStyle={styles.recoveryCard}>
+        <View style={styles.emblem}>
+          <EmailEmblem height={28} width={28} />
+        </View>
+        <AuthTextField
+          accessibilityLabel="이메일"
           autoCapitalize="none"
           autoComplete="email"
           autoCorrect={false}
           keyboardType="email-address"
-          leftElement={
-            <View style={styles.inputIconSlot}>
-              <EmailIcon color={colors.textSecondary} height={18} width={18} />
-            </View>
-          }
+          label="이메일"
+          leftElement={<EmailIcon height={20} width={20} />}
           onChangeText={setEmail}
-          onSubmitEditing={openResetPassword}
-          placeholder="이메일을 입력해주세요"
+          onSubmitEditing={() => void sendResetEmail()}
+          placeholder="가입 시 입력한 이메일을 입력해 주세요"
           returnKeyType="send"
           textContentType="emailAddress"
           value={email}
         />
-        <AppButton onPress={openResetPassword} title="인증 메일 보내기" />
+        <AuthButton loading={isSending} onPress={() => void sendResetEmail()} title="인증 메일 보내기" />
       </PasswordAuthSection>
-
-      <PasswordAuthSection innerStyle={styles.securityCard} top={securityCardTop}>
-        <View style={styles.securityIconCircle}>
-          <ShieldCheckIcon color={colors.primary} height={30} width={30} />
-        </View>
-        <View style={styles.securityCopy}>
-          <Text style={styles.securityTitle}>안전하게 비밀번호를 재설정해요</Text>
-          <Text style={styles.securityDescription}>
-            입력하신 이메일로 비밀번호 재설정 링크를 보내드려요.{`\n`}링크는{' '}
-            <Text style={styles.securityAccent}>10분</Text>동안 유효합니다.
+      <PasswordAuthSection card={false} top={0} innerStyle={styles.notice}>
+        <ShieldIcon height={24} width={24} />
+        <View style={styles.noticeText}>
+          <Text style={styles.noticeTitle}>안전하게 비밀번호를 재설정해요</Text>
+          <Text style={styles.noticeDescription}>
+            입력하신 이메일로 재설정 링크를 보내드려요.{`\n`}링크는 10분 동안 유효합니다.
           </Text>
         </View>
       </PasswordAuthSection>
-
-      <PasswordAuthSection innerStyle={styles.divider} top={dividerTop}>
-        <View style={styles.dividerLine} />
-      </PasswordAuthSection>
-
-      <PasswordAuthSection innerStyle={styles.deliveryHelp} top={deliveryHelpTop}>
-        <View style={styles.emailBadge}>
-          <EmailIcon color={colors.primary} height={15} width={15} />
-        </View>
+      <PasswordAuthSection top={0} innerStyle={styles.help}>
         <Text style={styles.helpTitle}>메일이 오지 않나요?</Text>
         <Text style={styles.helpDescription}>
-          스팸 메일함을 확인하거나 잠시 후 다시 시도해주세요.
+          스팸 메일함을 확인하거나{`\n`}잠시 후 다시 시도해 주세요.
         </Text>
       </PasswordAuthSection>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.replace('/login')}
+        style={styles.backToLogin}
+      >
+        <Text style={styles.backToLoginText}>로그인으로 돌아가기</Text>
+      </Pressable>
     </PasswordAuthScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  emailContent: {
-    gap: 11,
-  },
-  inputIconSlot: {
+  recoveryCard: { gap: 20 },
+  emblem: {
     alignItems: 'center',
-    height: 20,
-    justifyContent: 'center',
-    width: 20,
-  },
-  securityCard: {
-    ...securityCardShadow,
-    alignItems: 'center',
-    alignSelf: 'center',
     backgroundColor: colors.surfaceSoft,
-    borderRadius: radius.xl,
+    borderRadius: 16,
+    height: 56,
+    justifyContent: 'center',
+    width: 56,
+  },
+  notice: {
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: 12,
     flexDirection: 'row',
-    gap: 20,
-    minHeight: 74,
-    maxWidth: 344,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    width: '100%',
+    gap: 12,
+    minHeight: 98,
+    padding: 16,
   },
-  securityIconCircle: {
-    alignItems: 'center',
-    backgroundColor: '#DEF2EF',
-    borderRadius: 25,
-    height: 45,
-    justifyContent: 'center',
-    width: 45,
-  },
-  securityCopy: {
-    flex: 1,
-    gap: 4,
-    minWidth: 0,
-  },
-  securityTitle: {
-    ...typography.bodySmall,
-    color: '#373737',
+  noticeText: { flex: 1, gap: 4 },
+  noticeTitle: {
+    color: colors.dark,
     fontFamily: fontFamilies.pretendardSemiBold,
-    includeFontPadding: false,
-    lineHeight: 16,
+    fontSize: 15,
+    lineHeight: 22,
   },
-  securityDescription: {
-    ...typography.caption,
+  noticeDescription: {
     color: colors.textSecondary,
-    flexShrink: 1,
-    fontSize: 10,
-    includeFontPadding: false,
-    lineHeight: 17,
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 13,
+    lineHeight: 20,
   },
-  securityAccent: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-  },
-  dividerLine: {
-    backgroundColor: colors.textDisabled,
-    height: StyleSheet.hairlineWidth,
-    width: '100%',
-  },
-  deliveryHelp: {
-    alignItems: 'center',
-    alignSelf: 'center',
-    gap: 10,
-    maxWidth: 241,
-  },
-  emailBadge: {
-    alignItems: 'center',
-    backgroundColor: '#DEF2EF',
-    borderRadius: 12.5,
-    height: 25,
-    justifyContent: 'center',
-    width: 25,
-  },
+  help: { gap: 8 },
   helpTitle: {
-    ...typography.bodySmall,
-    color: colors.textBody,
+    color: colors.dark,
     fontFamily: fontFamilies.pretendardSemiBold,
-    includeFontPadding: false,
-    lineHeight: 17,
-    textAlign: 'center',
-    width: '100%',
+    fontSize: 15,
+    lineHeight: 22,
   },
   helpDescription: {
-    ...typography.caption,
     color: colors.textSecondary,
-    flexShrink: 1,
-    includeFontPadding: false,
-    lineHeight: 17,
-    textAlign: 'center',
-    width: '100%',
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 15,
+    lineHeight: 23,
+  },
+  backToLogin: { alignItems: 'center', justifyContent: 'center', minHeight: 48 },
+  backToLoginText: {
+    color: colors.primaryDark,
+    fontFamily: fontFamilies.pretendardSemiBold,
+    fontSize: 15,
+    lineHeight: 22,
   },
 });
