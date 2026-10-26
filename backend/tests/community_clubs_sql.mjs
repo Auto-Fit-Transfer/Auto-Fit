@@ -57,7 +57,7 @@ try {
   await rejected(() => rpc('community_sync_mileage', A), 'permission denied');
   await rejected(() => db.query('select * from public.community_rules'), 'permission denied');
   await db.exec('set role authenticated');
-  // Since 20261019130000 the service role may change rules, only through the moderator tools.
+  // Since 20261023002812 the service role may change rules, only through the moderator tools.
   await rejected(() => db.query("update public.community_rules set amount = 1 where rule_key = 'earn_workout'"),
     'permission denied');
   await db.exec('set role service_role');

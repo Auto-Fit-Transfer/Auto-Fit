@@ -4,7 +4,7 @@
 2026-10-19 추가분 3개(클럽 관리·신고 검토·1:1 메시지)는 공용 DB 적용 완료(원격 `20261019022924_community_club_management`,
 `20261019022935_community_moderation`, `20261019023132_community_direct_messages`, 원래 이름 `20261019090000`·`…100000`·`…110000`).
 DB 수정본(빈 대화 정리, 읽음 표시 잠금)은 `codex/community-sql-rollout`의 `c8e9866`을 기준으로 원격 버전명 마이그레이션에도 반영했다.
-운영자 도구 SQL(`20261019130000_community_admin_tools.sql`)은 공용 DB에 원격 `20261023002812_community_admin_tools`로 적용했다.
+운영자 도구 SQL은 공용 DB에 원격 `20261023002812_community_admin_tools`로 적용했다(원래 파일 이름 `20261019130000`, 저장소 파일 이름도 원격 버전으로 맞춤).
 
 기준일: 2026-10-19
 
@@ -346,6 +346,6 @@ POST /api/community/reports
    신고 검토 = `community_visible_post`, `community_comments`, `community_timeline`, `community_club_feed` /
    메시지 = `check_community_pair_writable`, `community_delete_user_data`. 모두 같은 이름·인자다.
 7. 관리자 지정: `insert into public.community_moderators(user_id, note) values (…)` (DB 담당자만).
-8. 운영자 도구 SQL `20261019130000_community_admin_tools.sql`: 원격 `20261023002812_community_admin_tools`로 적용했다. 운영자 함수 6개, 챌린지 참여 잠금 트리거 함수 1개와 권한 2줄을 추가한다(기존 함수 교체 없음).
+8. 운영자 도구 SQL `20261023002812_community_admin_tools.sql`(원래 이름 `20261019130000`): 공용 DB 적용 완료. 운영자 함수 6개, 챌린지 참여 잠금 트리거 함수 1개와 권한 2줄을 추가한다(기존 함수 교체 없음).
    참여와 운영자 수정이 겹쳐도 목표·보상 고정 규칙이 유지되도록 참여 시 챌린지 행을 잠근다.
    시험: `community_admin_tools_sql.mjs`(21). 여러 연결의 동시성 시험은 별도로 필요하다.

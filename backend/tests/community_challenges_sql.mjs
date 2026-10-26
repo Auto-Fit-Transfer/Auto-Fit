@@ -58,7 +58,7 @@ try {
   await rejected(() => list(A), 'permission denied');
   await rejected(() => db.query('select * from public.community_ranking_participants'), 'permission denied');
   await db.exec('set role authenticated');
-  // Since 20261019130000 the service role may change challenges, only through the moderator tools.
+  // Since 20261023002812 the service role may change challenges, only through the moderator tools.
   await rejected(() => db.query("update public.community_challenges set goal = 1"), 'permission denied');
   await db.exec('set role service_role');
 
