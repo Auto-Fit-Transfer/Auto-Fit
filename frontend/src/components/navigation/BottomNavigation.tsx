@@ -65,7 +65,8 @@ interface BottomNavigationProps extends NativeTabsProps {
 export function BottomNavigation({
   state,
   descriptors,
-  navigation,
+  emitter,
+  navigateToTab,
   onNavigationLayout,
 }: BottomNavigationProps) {
   const insets = useSafeAreaInsets();
@@ -116,13 +117,12 @@ export function BottomNavigation({
           const Icon = isFocused ? meta.ActiveIcon : meta.Icon;
 
           const onPress = () => {
-            const event = navigation.emit({
+            const event = emitter.emit({
               type: 'tabPress',
               target: route.key,
               canPreventDefault: true,
             });
-            if (!isFocused && !event.defaultPrevented)
-              navigation.navigate(route.name, route.params);
+            if (!isFocused && !event.defaultPrevented) navigateToTab(route.key);
           };
 
           return (
@@ -133,7 +133,7 @@ export function BottomNavigation({
               }
               accessibilityRole="button"
               accessibilityState={isFocused ? { selected: true } : {}}
-              onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+              onLongPress={() => emitter.emit({ type: 'tabLongPress', target: route.key })}
               onPress={onPress}
               style={({ pressed }) => [
                 styles.item,
