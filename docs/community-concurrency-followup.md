@@ -87,3 +87,25 @@ python -m pytest backend/tests/test_community.py backend/tests/test_account_dele
 2. 보완 SQL 하나를 Auto-Fit에 적용하고 원격 버전·함수·실행 권한을 확인한다.
 3. 커뮤니티 담당자가 완성한 커뮤니티 화면과 API를 함께 검증한다. 현재 `community-backend`와 `backend`의 차이는 서버·DB·문서·테스트이며 화면 변경이 없다.
 4. 검증된 커뮤니티 변경을 backend에 병합하고 Render에 배포한다.
+
+## 2026-10-26 추가 다중 연결 시험
+
+클럽 삭제↔회원 탈퇴, 메시지 전송↔상대 탈퇴, 운영자 챌린지 수정↔참여를
+각각 양쪽 실행 순서로 겹쳐 실행하는 `backend/tests/community_management_concurrency.py`를 추가했다.
+`pg_blocking_pids`로 실제 잠금 대기를 확인한 뒤 선행 트랜잭션을 끝낸다.
+클럽·대화 데이터 정리, 참여자 수와 목표 잠금 결과까지 검사한다.
+시험은 합성 계정만 만들며, 원격 DB 접속 옵션이 없다.
+
+표준 PostgreSQL 17.6 컨테이너를 네트워크 없이 시작하고, 기존 PGlite 스키마 로더와 같은
+마이그레이션을 적용한 뒤 실행한다. 아래 `/path/to/integrity-sql`은 2026-09-17 적용 SQL이
+들어 있는 실제 폴더 경로로 바꾼다.
+
+```bash
+docker run -d --rm --name autofit-community-check-20261014 --network none \
+  -e POSTGRES_PASSWORD=autofit_local_test postgres:17.6 \
+  postgres -c unix_socket_directories=/var/run/postgresql,/tmp
+node backend/tests/support/load_docker_schema.mjs /path/to/integrity-sql
+python3 backend/tests/community_concurrency.py
+python3 backend/tests/community_management_concurrency.py
+docker stop autofit-community-check-20261014
+```
