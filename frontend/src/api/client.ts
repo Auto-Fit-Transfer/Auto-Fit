@@ -1,9 +1,9 @@
 import { getSupabaseClient } from '@/src/lib/supabase';
 
-const DEFAULT_API_BASE_URL = 'https://auto-fit-api-dev.onrender.com';
+const DEFAULT_API_BASE_URL = 'https://211-233-206-193.sslip.io';
 
 // Keep endpoint paths (for example, `/api/profile`) unchanged while allowing
-// each build environment to select its Render API server.
+// each build environment to select its API server.
 const configuredApiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim().replace(/\/+$/, '');
 
 export const API_BASE_URL = configuredApiBaseUrl || DEFAULT_API_BASE_URL;

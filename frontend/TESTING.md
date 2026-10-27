@@ -7,7 +7,7 @@
 - EAS: [@gogosi/auto-fit-test](https://expo.dev/accounts/gogosi/projects/auto-fit-test)
 - 앱 이름: Auto-Fit Test
 - Android / iOS 식별자: `com.gogosi.autofit.test`
-- 개발 API: `https://auto-fit-api-dev.onrender.com`
+- 개발 API: `https://211-233-206-193.sslip.io`
 - 로그인: 기존 Supabase Auth. 애플리케이션 데이터는 FastAPI로만 요청한다.
 - `.env`는 Git에서 제외한다. EAS `preview`에는 공개 API URL, Supabase URL, publishable key만 설정한다. 서버 secret/service-role key는 앱에 넣지 않는다.
 
