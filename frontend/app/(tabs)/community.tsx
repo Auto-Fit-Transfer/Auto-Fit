@@ -38,6 +38,7 @@ import {
 } from '@/src/features/community/communityEvents';
 import { CommunityChallengesPane } from '@/src/features/community/CommunityChallengesPane';
 import { CommunityClubsPane } from '@/src/features/community/CommunityClubsPane';
+import { COMMUNITY_MESSAGES_ENABLED } from '@/src/features/community/communityFeatures';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, shadows, spacing, typography } from '@/src/theme';
 
@@ -140,10 +141,12 @@ export default function CommunityScreen() {
         (result) => setUnread(result.unread_count),
         () => undefined,
       );
-      getCommunityUnreadMessages().then(
-        (result) => setUnreadMessages(result.unread_count),
-        () => undefined,
-      );
+      if (COMMUNITY_MESSAGES_ENABLED) {
+        getCommunityUnreadMessages().then(
+          (result) => setUnreadMessages(result.unread_count),
+          () => undefined,
+        );
+      }
     }, []),
   );
 
@@ -198,21 +201,25 @@ export default function CommunityScreen() {
               </View>
             ) : null}
           </View>
-          <View>
-            <IconButton
-              accessibilityLabel={
-                unreadMessages > 0 ? `메시지, 안 읽은 메시지 ${unreadMessages}개` : '메시지'
-              }
-              icon={<ChatIcon color={colors.textBody} height={24} width={24} />}
-              onPress={() => router.push('/community/messages')}
-              size={44}
-            />
-            {unreadMessages > 0 ? (
-              <View pointerEvents="none" style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadMessages > 99 ? '99+' : unreadMessages}</Text>
-              </View>
-            ) : null}
-          </View>
+          {COMMUNITY_MESSAGES_ENABLED ? (
+            <View>
+              <IconButton
+                accessibilityLabel={
+                  unreadMessages > 0 ? `메시지, 안 읽은 메시지 ${unreadMessages}개` : '메시지'
+                }
+                icon={<ChatIcon color={colors.textBody} height={24} width={24} />}
+                onPress={() => router.push('/community/messages')}
+                size={44}
+              />
+              {unreadMessages > 0 ? (
+                <View pointerEvents="none" style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadMessages > 99 ? '99+' : unreadMessages}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
           <IconButton
             accessibilityLabel="내 프로필"
             icon={<UserIcon color={colors.textBody} height={24} width={24} />}

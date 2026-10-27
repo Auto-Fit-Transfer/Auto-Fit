@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
@@ -27,6 +27,7 @@ import {
 } from '@/src/api/community';
 import { AppButton, AppHeader, IconButton } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
+import { COMMUNITY_MESSAGES_ENABLED } from '@/src/features/community/communityFeatures';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 
@@ -43,7 +44,13 @@ const merge = (current: CommunityMessage[], incoming: CommunityMessage[]) => {
   );
 };
 
-export default function CommunityChatScreen() {
+// While messages are switched off, a direct link lands on the community tab instead.
+export default function CommunityChatRoute() {
+  if (!COMMUNITY_MESSAGES_ENABLED) return <Redirect href="/community" />;
+  return <CommunityChatScreen />;
+}
+
+function CommunityChatScreen() {
   const params = useLocalSearchParams<{
     conversationId: string;
     nickname?: string;

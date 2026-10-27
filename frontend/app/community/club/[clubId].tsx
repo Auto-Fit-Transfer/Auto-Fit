@@ -29,6 +29,7 @@ import {
   applyCommunityEvent,
   subscribeCommunityEvents,
 } from '@/src/features/community/communityEvents';
+import { COMMUNITY_RANKING_ENABLED } from '@/src/features/community/communityFeatures';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, shadows, spacing, typography } from '@/src/theme';
 
@@ -181,17 +182,19 @@ export default function CommunityClubScreen() {
           · 글 {club.post_count.toLocaleString()}개 · 클럽장 {club.owner.nickname}
         </Text>
       </View>
-      <Pressable
-        accessibilityRole="link"
-        onPress={() =>
-          router.push({
-            params: { clubId: club.club_id, clubName: club.name, scope: 'club' },
-            pathname: '/community/ranking',
-          })
-        }
-      >
-        <Text style={styles.rankingLink}>이번 주 클럽 랭킹 보기 ›</Text>
-      </Pressable>
+      {COMMUNITY_RANKING_ENABLED ? (
+        <Pressable
+          accessibilityRole="link"
+          onPress={() =>
+            router.push({
+              params: { clubId: club.club_id, clubName: club.name, scope: 'club' },
+              pathname: '/community/ranking',
+            })
+          }
+        >
+          <Text style={styles.rankingLink}>이번 주 클럽 랭킹 보기 ›</Text>
+        </Pressable>
+      ) : null}
       {club.is_owner ? (
         <Text style={styles.ownerNote}>내가 만든 클럽이에요.</Text>
       ) : (

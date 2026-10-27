@@ -35,6 +35,7 @@ import {
   applyCommunityEvent,
   subscribeCommunityEvents,
 } from '@/src/features/community/communityEvents';
+import { COMMUNITY_MESSAGES_ENABLED } from '@/src/features/community/communityFeatures';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, spacing, typography } from '@/src/theme';
 
@@ -228,7 +229,9 @@ export default function CommunityProfileScreen() {
             onPress={() => router.push('/community/membership')}
             value={mine.member === undefined ? '' : mine.member ? '이용 중' : '미가입'}
           />
-          <MyRow label="메시지" onPress={() => router.push('/community/messages')} value="" />
+          {COMMUNITY_MESSAGES_ENABLED ? (
+            <MyRow label="메시지" onPress={() => router.push('/community/messages')} value="" />
+          ) : null}
           {mine.moderator ? (
             <MyRow label="운영자 도구" onPress={() => router.push('/community/admin')} value="" />
           ) : null}
@@ -244,7 +247,7 @@ export default function CommunityProfileScreen() {
               wide
             />
           </View>
-          {profile.followed_by_me && profile.follows_me ? (
+          {COMMUNITY_MESSAGES_ENABLED && profile.followed_by_me && profile.follows_me ? (
             <Pressable
               accessibilityLabel={`${profile.nickname}님에게 메시지`}
               accessibilityRole="button"
