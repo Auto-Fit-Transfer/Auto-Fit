@@ -1,7 +1,6 @@
 import { forwardRef, useState, type ReactNode } from 'react';
 import {
   StyleSheet,
-  Text,
   TextInput,
   View,
   type StyleProp,
@@ -11,6 +10,8 @@ import {
 } from 'react-native';
 
 import { colors, radius, spacing, typography } from '@/src/theme';
+
+import { Text } from './Text';
 
 export interface AppTextFieldProps extends TextInputProps {
   label?: string;
@@ -61,6 +62,7 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
         {leftElement}
         <TextInput
           ref={ref}
+          lineBreakStrategyIOS="hangul-word"
           {...textInputProps}
           accessibilityLabel={textInputProps.accessibilityLabel ?? label}
           accessibilityState={{ disabled }}

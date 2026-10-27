@@ -8,7 +8,6 @@ import {
   ScrollView,
   type ScrollViewProps,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
   type StyleProp,
@@ -20,6 +19,7 @@ import CloseIcon from '@/assets/icons/common/X.svg';
 import { colors, radius, shadows, spacing, typography } from '@/src/theme';
 
 import { IconButton } from './IconButton';
+import { Text } from './Text';
 
 export interface AppBottomSheetProps extends PropsWithChildren {
   visible: boolean;

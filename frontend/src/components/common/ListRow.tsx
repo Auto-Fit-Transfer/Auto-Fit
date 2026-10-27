@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { colors, spacing, typography } from '@/src/theme';
+
+import { Text } from './Text';
 
 export interface ListRowProps {
   title: string;

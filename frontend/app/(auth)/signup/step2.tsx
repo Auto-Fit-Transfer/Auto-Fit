@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   useWindowDimensions,
   View,
@@ -15,6 +14,7 @@ import {
 import EmailIcon from '@/assets/icons/auth-redesign/66005.svg';
 import NoticeIcon from '@/assets/icons/auth-redesign/e062d.svg';
 import { SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
+import { Text } from '@/src/components/common';
 import { useSignup } from '@/src/features/signup/SignupContext';
 import { getSignupAuthErrorMessage } from '@/src/features/signup/signupAuthError';
 import { getSupabaseClient } from '@/src/lib/supabase';

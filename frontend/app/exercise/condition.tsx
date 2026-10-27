@@ -16,7 +16,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   useWindowDimensions,
   View,
@@ -41,6 +40,7 @@ import CheckCircleFillIcon from '@/assets/icons/system/CheckCircle_Fill.svg';
 import DotsThreeCircleVerticalIcon from '@/assets/icons/system/DotsThreeCircleVertical.svg';
 import DotsThreeOutlineIcon from '@/assets/icons/system/DotsThreeOutline.svg';
 import { getExerciseApiErrorMessage } from '@/src/api/exercise';
+import { Text } from '@/src/components/common';
 import { BackButton } from '@/src/components/common/BackButton';
 import { ExerciseActionButton } from '@/src/components/exercise/ExerciseActionButton';
 import { ExerciseScreenFrame } from '@/src/components/exercise/ExerciseScreenFrame';

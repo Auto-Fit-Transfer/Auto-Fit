@@ -1,6 +1,7 @@
+import { Text } from '@/src/components/common';
 import { sessionLocalDate, sessionMinutes } from '@/src/features/exercise/weeklyMetrics';
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getExerciseHistory } from '@/src/api/exercise';
 import { getApiErrorMessage } from '@/src/api/client';

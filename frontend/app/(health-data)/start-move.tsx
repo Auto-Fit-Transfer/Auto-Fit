@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Image, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import LeftShade from '@/assets/figma/main/e760c.svg';
@@ -11,6 +11,7 @@ import Arrow from '@/assets/figma/main/ff5ff.svg';
 import House from '@/assets/figma/main/40b15.svg';
 import Chevron from '@/assets/figma/main/e010e.svg';
 import Shield from '@/assets/figma/main/bd3a5.svg';
+import { Text } from '@/src/components/common';
 import { MainGradient, MainScreen } from '@/src/components/main/MainSurface';
 import { colors, fontFamilies } from '@/src/theme';
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -9,7 +9,7 @@ import {
   type CommunityFollowKind,
   type CommunityFollowUser,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar, CommunityFollowButton } from '@/src/components/community';
 import { subscribeCommunityEvents } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';

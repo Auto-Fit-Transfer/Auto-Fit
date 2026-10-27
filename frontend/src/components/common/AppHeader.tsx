@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { colors, spacing, typography } from '@/src/theme';
 
 import { BackButton } from './BackButton';
+import { Text } from './Text';
 
 export interface AppHeaderProps {
   title: string;

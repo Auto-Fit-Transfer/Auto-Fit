@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import HeartIcon from '@/assets/icons/deco/Heart.svg';
 import HeartFillIcon from '@/assets/icons/deco/Heart_Fill.svg';
@@ -7,6 +7,7 @@ import ChatIcon from '@/assets/icons/feature/ChatCircle.svg';
 import RepeatIcon from '@/assets/icons/feature/Repeat.svg';
 import MoreIcon from '@/assets/icons/system/DotsThreeVertical.svg';
 import type { CommunityAuthor, CommunityPost } from '@/src/api/community';
+import { Text } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { colors, fontFamilies, spacing } from '@/src/theme';
 

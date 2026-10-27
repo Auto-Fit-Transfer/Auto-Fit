@@ -10,7 +10,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -23,7 +22,7 @@ import ForkKnife from '@/assets/icons/feature/navigator/Diet.svg';
 import Pencil from '@/assets/icons/feature/Pencil_Line.svg';
 import Check from '@/assets/icons/system/Check_Fat.svg';
 import Prohibit from '@/assets/icons/system/Prohibit.svg';
-import { CustomScrollIndicator, useCustomScrollIndicator } from '@/src/components/common';
+import { CustomScrollIndicator, Text, useCustomScrollIndicator } from '@/src/components/common';
 import { MealRecordSheets, type MealRecordDraft } from '@/src/components/diet/MealRecordSheets';
 import {
   getDietApiErrorMessage,

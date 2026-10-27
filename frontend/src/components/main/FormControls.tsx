@@ -1,4 +1,5 @@
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
+import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { Text } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 export function FormField({ label, ...props }: TextInputProps & { label: string }) {
   return (

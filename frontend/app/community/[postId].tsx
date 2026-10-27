@@ -6,7 +6,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -24,7 +23,7 @@ import {
   type CommunityComment,
   type CommunityPost,
 } from '@/src/api/community';
-import { AppButton, AppHeader, IconButton } from '@/src/components/common';
+import { AppButton, AppHeader, IconButton, Text } from '@/src/components/common';
 import { CommunityCommentRow, CommunityPostCard } from '@/src/components/community';
 import {
   emitCommunityEvent,
@@ -222,6 +221,7 @@ export default function CommunityPostScreen() {
           <View style={[styles.inputBar, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}>
             <TextInput
               accessibilityLabel="댓글 입력"
+              lineBreakStrategyIOS="hangul-word"
               maxLength={COMMUNITY_MAX_COMMENT_LENGTH}
               multiline
               onChangeText={setDraft}

@@ -1,5 +1,6 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Text } from '@/src/components/common';
 import { MainHeader, MainScreen, mainStyles } from '@/src/components/main/MainSurface';
 export default function Notifications() {
   const router = useRouter();

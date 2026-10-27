@@ -4,7 +4,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
   type ViewStyle,
@@ -21,6 +20,7 @@ import CommunityIcon from '@/assets/figma/main/73de7.svg';
 import CommunityActiveIcon from '@/assets/figma/main/3846e.svg';
 import MyIcon from '@/assets/figma/main/792cf.svg';
 import MyActiveIcon from '@/assets/figma/main/86e3d.svg';
+import { Text } from '@/src/components/common';
 import { MainGradient } from '@/src/components/main/MainSurface';
 import { colors, fontFamilies, shadows, spacing } from '@/src/theme';
 

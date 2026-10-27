@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   getActiveExerciseGoal,
@@ -7,6 +7,7 @@ import {
   type ExerciseGoalInput,
 } from '@/src/api/exercise';
 import { getApiErrorMessage } from '@/src/api/client';
+import { Text } from '@/src/components/common';
 import { MainHeader, MainScreen, mainStyles } from '@/src/components/main/MainSurface';
 import { FormField, form } from '@/src/components/main/FormControls';
 const options = [

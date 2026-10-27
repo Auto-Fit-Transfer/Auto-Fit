@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
   type StyleProp,
@@ -17,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BackIcon from '@/assets/icons/auth-redesign/5cd86.svg';
 import LogoIcon from '@/assets/icons/auth-redesign/f36f4.svg';
-import { AppTextField, type AppTextFieldProps } from '@/src/components/common';
+import { AppTextField, type AppTextFieldProps, Text } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 
 type AuthPageProps = {

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Constants from 'expo-constants';
 import Avatar from '@/assets/figma/main/143da.svg';
 import Pencil from '@/assets/figma/main/3c25f.svg';
@@ -10,6 +10,7 @@ import Info from '@/assets/figma/main/62626.svg';
 import Arrow from '@/assets/figma/main/ff5ff.svg';
 import Chevron from '@/assets/figma/main/98363.svg';
 import { getProfile, getProfileName } from '@/src/api/home';
+import { Text } from '@/src/components/common';
 import { MainHeader, MainScreen, mainStyles } from '@/src/components/main/MainSurface';
 import { colors, fontFamilies } from '@/src/theme';
 

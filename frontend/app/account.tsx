@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -8,6 +8,7 @@ import Lock from '@/assets/figma/main/1d22c.svg';
 import User from '@/assets/figma/main/1e751.svg';
 import Shield from '@/assets/figma/main/73089.svg';
 import Arrow from '@/assets/figma/main/a9821.svg';
+import { Text } from '@/src/components/common';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { apiRequest, getApiErrorMessage } from '@/src/api/client';
 import { mainStyles } from '@/src/components/main/MainSurface';

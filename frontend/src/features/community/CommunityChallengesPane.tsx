@@ -6,7 +6,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 
@@ -18,7 +17,7 @@ import {
   setCommunityChallengeParticipation,
   type CommunityChallenge,
 } from '@/src/api/community';
-import { AppButton } from '@/src/components/common';
+import { AppButton, Text } from '@/src/components/common';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 
 import { useCommunityActions } from './useCommunityActions';

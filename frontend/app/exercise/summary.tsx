@@ -8,7 +8,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -25,6 +24,7 @@ import ClockIcon from '@/assets/icons/input/Clock.svg';
 import CheckIcon from '@/assets/icons/system/CheckCircle_Fill.svg';
 import LightbulbIcon from '@/assets/icons/system/Lightbulb.svg';
 import { getExerciseApiErrorMessage } from '@/src/api/exercise';
+import { Text } from '@/src/components/common';
 import { BackButton } from '@/src/components/common/BackButton';
 import { ExerciseActionButton } from '@/src/components/exercise/ExerciseActionButton';
 import { ExerciseScreenFrame } from '@/src/components/exercise/ExerciseScreenFrame';

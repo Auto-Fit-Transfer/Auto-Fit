@@ -1,8 +1,8 @@
 import type { ComponentType } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import type { SvgProps } from 'react-native-svg';
 
-import { AppCard } from '@/src/components/common';
+import { AppCard, Text } from '@/src/components/common';
 import { colors, fontFamilies, radius } from '@/src/theme';
 
 interface HealthUploadOptionCardProps {

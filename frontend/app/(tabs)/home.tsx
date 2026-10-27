@@ -1,9 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getHome } from '@/src/api/home';
+import { Text } from '@/src/components/common';
 import { HealthScore, HomeGreeting, WeeklyProgressCard } from '@/src/components/home';
 import {
   BOTTOM_NAVIGATION_MIN_BOTTOM_GAP,

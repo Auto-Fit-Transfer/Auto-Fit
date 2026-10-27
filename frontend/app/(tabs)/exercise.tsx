@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, View } from 'react-native';
 import Fire from '@/assets/figma/main/8e9a7.svg';
 import Target from '@/assets/figma/main/38132.svg';
 import Sneaker from '@/assets/figma/main/d4633.svg';
@@ -13,6 +13,7 @@ import Gym from '@/assets/figma/main/fca0e.svg';
 import House from '@/assets/figma/main/5e1e4.svg';
 import Run from '@/assets/figma/main/a72ff.svg';
 import Arrow from '@/assets/figma/main/ab977.svg';
+import { Text } from '@/src/components/common';
 import {
   MainHeader,
   MainScreen,

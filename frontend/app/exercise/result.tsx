@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -24,6 +23,7 @@ import ClockIcon from '@/assets/icons/input/Clock.svg';
 import CheckBoldIcon from '@/assets/icons/system/Check_Bold.svg';
 import CheckCircleIcon from '@/assets/icons/system/CheckCircle.svg';
 import LightbulbIcon from '@/assets/icons/system/Lightbulb.svg';
+import { Text } from '@/src/components/common';
 import { BackButton } from '@/src/components/common/BackButton';
 import {
   getExerciseApiErrorMessage,

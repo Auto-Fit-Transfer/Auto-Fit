@@ -9,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text as NativeText,
   TextInput,
   type TextProps,
   useWindowDimensions,
@@ -37,7 +36,12 @@ import LightbulbIcon from '@/assets/icons/system/Lightbulb.svg';
 import PencilIcon from '@/assets/icons/feature/Pencil_Line.svg';
 import SearchIcon from '@/assets/icons/input/MagnifyingGlass.svg';
 import WarningFillIcon from '@/assets/icons/system/WarningCircle_Fill.svg';
-import { AppBottomSheet, CustomScrollIndicator, useCustomScrollIndicator } from '@/src/components/common';
+import {
+  AppBottomSheet,
+  CustomScrollIndicator,
+  Text as NativeText,
+  useCustomScrollIndicator,
+} from '@/src/components/common';
 import { useTemporaryAdjustmentProgress } from '@/src/features/exercise/useTemporaryAdjustmentProgress';
 import { colors, fontFamilies } from '@/src/theme';
 import { analyzeRecordedMealMock } from '@/src/utils/diet/analyzeRecordedMealMock';

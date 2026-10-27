@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -20,7 +20,7 @@ import {
   type CommunityReportReason,
   type CommunityReportTarget,
 } from '@/src/api/community';
-import { AppDialog } from '@/src/components/common';
+import { AppDialog, Text } from '@/src/components/common';
 import {
   CommunityOptionsSheet,
   type CommunityOption,

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Avatar from '@/assets/figma/main/143da.svg';
 import { getProfile, updateProfile, type Profile } from '@/src/api/home';
 import { getApiErrorMessage } from '@/src/api/client';
+import { Text } from '@/src/components/common';
 import { MainHeader, MainScreen, mainStyles } from '@/src/components/main/MainSurface';
 import { FormField, form } from '@/src/components/main/FormControls';
 import { colors, fontFamilies } from '@/src/theme';

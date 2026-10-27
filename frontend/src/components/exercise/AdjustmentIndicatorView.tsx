@@ -1,10 +1,11 @@
 import { useEffect, useId, useState, type ComponentType } from 'react';
-import { Image, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Image, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Defs, Mask, Rect, type SvgProps } from 'react-native-svg';
 
 import ClockIcon from '@/assets/icons/input/Clock.svg';
 import CheckCircleIcon from '@/assets/icons/system/CheckCircle.svg';
 import WarningCircleIcon from '@/assets/icons/system/WarningCircle.svg';
+import { Text } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 
 const adjustmentBackground = require('@/assets/images/backgrounds/8_Adjusting.png');

@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -25,7 +24,7 @@ import {
   type CommunityMileage,
   updateCommunityClub,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 
@@ -173,6 +172,7 @@ export default function CommunityNewClubScreen() {
         <Text style={styles.label}>소개 (선택)</Text>
         <TextInput
           accessibilityLabel="클럽 소개"
+          lineBreakStrategyIOS="hangul-word"
           maxLength={300}
           multiline
           onChangeText={setDescription}

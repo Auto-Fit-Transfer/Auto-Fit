@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { COMMUNITY_CLUB_CATEGORIES, type CommunityClub } from '@/src/api/community';
+import { Text } from '@/src/components/common';
 import { colors, fontFamilies, radius, spacing } from '@/src/theme';
 
 export function communityClubCategoryLabel(category: CommunityClub['category']) {

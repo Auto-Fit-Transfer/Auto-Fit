@@ -6,7 +6,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,7 +24,7 @@ import {
   type CommunityPost,
   type CommunityProfile,
 } from '@/src/api/community';
-import { AppButton, AppHeader, IconButton } from '@/src/components/common';
+import { AppButton, AppHeader, IconButton, Text } from '@/src/components/common';
 import {
   CommunityAvatar,
   CommunityFollowButton,

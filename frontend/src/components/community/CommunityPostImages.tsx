@@ -5,7 +5,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -13,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import CloseIcon from '@/assets/icons/common/X.svg';
 import type { CommunityImage } from '@/src/api/community';
+import { Text } from '@/src/components/common';
 import { colors, fontFamilies, radius } from '@/src/theme';
 
 const GAP = 2;

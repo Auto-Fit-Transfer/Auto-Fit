@@ -8,7 +8,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -21,7 +20,12 @@ import DocumentIcon from '@/assets/figma/main/e8bfe.svg';
 import FolderIcon from '@/assets/icons/system/Folder.svg';
 import TrashIcon from '@/assets/icons/common/Trash.svg';
 import { getHealthDocumentErrorMessage, uploadHealthDocument } from '@/src/api/healthDocuments';
-import { AppCard, CustomScrollIndicator, useCustomScrollIndicator } from '@/src/components/common';
+import {
+  AppCard,
+  CustomScrollIndicator,
+  Text,
+  useCustomScrollIndicator,
+} from '@/src/components/common';
 import { HealthUploadOptionCard } from '@/src/features/health-data/HealthUploadOptionCard';
 import type { OCRUploadRouteItem } from '@/src/features/health-data/ocrResults';
 import {

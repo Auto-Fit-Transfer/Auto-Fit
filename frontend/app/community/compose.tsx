@@ -8,7 +8,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -25,7 +24,7 @@ import {
   uploadCommunityPhoto,
   type CommunityPhoto,
 } from '@/src/api/community';
-import { AppDialog } from '@/src/components/common';
+import { AppDialog, Text } from '@/src/components/common';
 import { emitCommunityEvent } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
@@ -154,6 +153,7 @@ export default function CommunityComposeScreen() {
         <TextInput
           accessibilityLabel="글 내용"
           autoFocus
+          lineBreakStrategyIOS="hangul-word"
           maxLength={COMMUNITY_MAX_POST_LENGTH}
           multiline
           onChangeText={setContent}

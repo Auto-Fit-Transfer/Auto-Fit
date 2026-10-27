@@ -6,7 +6,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -26,7 +25,7 @@ import {
   type CommunityFeedScope,
   type CommunityPost,
 } from '@/src/api/community';
-import { AppButton, IconButton } from '@/src/components/common';
+import { AppButton, IconButton, Text } from '@/src/components/common';
 import { CommunityPostCard } from '@/src/components/community';
 import {
   BOTTOM_NAVIGATION_MIN_BOTTOM_GAP,

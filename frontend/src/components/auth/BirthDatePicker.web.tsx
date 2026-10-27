@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import { Text } from '@/src/components/common';
 import { colors, radius, spacing, typography } from '@/src/theme';
 
 interface BirthDatePickerProps {

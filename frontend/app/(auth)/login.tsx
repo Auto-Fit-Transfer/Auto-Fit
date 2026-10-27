@@ -1,6 +1,6 @@
 import { useRef, useState, type ComponentType } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import type { SvgProps } from 'react-native-svg';
 
 import EmailIcon from '@/assets/icons/auth-redesign/1790c.svg';
@@ -10,6 +10,7 @@ import EyeIcon from '@/assets/icons/input/Eye.svg';
 import GoogleIcon from '@/assets/icons/auth-redesign/1aa1b.svg';
 import KakaoIcon from '@/assets/icons/auth-redesign/e9a73.svg';
 import { AuthButton, AuthCard, AuthPage, AuthTextField } from '@/src/components/auth/AuthRedesign';
+import { Text } from '@/src/components/common';
 import {
   signInWithSocialProvider,
   type SocialLoginProvider,

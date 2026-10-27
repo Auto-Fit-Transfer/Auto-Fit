@@ -1,15 +1,6 @@
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  Alert,
-  Keyboard,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, Keyboard, Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import {
   completeOnboarding,
   getSignupApiErrorMessage,
@@ -18,6 +9,7 @@ import {
   type ExerciseGoalType,
 } from '@/src/api/onboarding';
 import { SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
+import { Text } from '@/src/components/common';
 import { getPostLoginDestination } from '@/src/features/auth/postLoginDestination';
 import {
   useSignup,

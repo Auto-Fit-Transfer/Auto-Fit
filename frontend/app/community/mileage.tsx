@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -12,7 +12,7 @@ import {
   type CommunityMileageEntry,
   type CommunityRule,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 

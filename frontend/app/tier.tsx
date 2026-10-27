@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
+import { Text } from '@/src/components/common';
 import { MainHeader, MainScreen, mainStyles } from '@/src/components/main/MainSurface';
 import { colors, fontFamilies } from '@/src/theme';
 import DietIcon from '@/assets/figma/main/8f046.svg';

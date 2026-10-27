@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { AppBottomSheet } from '@/src/components/common';
+import { AppBottomSheet, Text } from '@/src/components/common';
 import { colors, fontFamilies, spacing } from '@/src/theme';
 
 export type CommunityOption = {

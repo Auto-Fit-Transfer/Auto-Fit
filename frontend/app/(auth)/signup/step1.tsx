@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   useWindowDimensions,
   View,
@@ -23,7 +22,7 @@ import PasswordIcon from '@/assets/icons/auth-redesign/6a5e9.svg';
 import UserIcon from '@/assets/icons/auth-redesign/5df69.svg';
 import CheckIcon from '@/assets/icons/auth-redesign/ab4c2.svg';
 import { BirthDatePicker, SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
-import { IconButton, SelectField } from '@/src/components/common';
+import { IconButton, SelectField, Text } from '@/src/components/common';
 import { AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { getSignupApiErrorMessage, saveProfile } from '@/src/api/onboarding';
 import { useSignup, type SignupGender } from '@/src/features/signup/SignupContext';

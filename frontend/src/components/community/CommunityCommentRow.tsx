@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import MoreIcon from '@/assets/icons/system/DotsThreeVertical.svg';
 import type { CommunityAuthor, CommunityComment } from '@/src/api/community';
+import { Text } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { colors, fontFamilies, spacing } from '@/src/theme';
 

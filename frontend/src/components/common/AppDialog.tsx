@@ -1,9 +1,10 @@
 import type { PropsWithChildren } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { colors, radius, shadows, spacing, typography } from '@/src/theme';
 
 import { AppButton } from './AppButton';
+import { Text } from './Text';
 
 export interface AppDialogProps extends PropsWithChildren {
   visible: boolean;

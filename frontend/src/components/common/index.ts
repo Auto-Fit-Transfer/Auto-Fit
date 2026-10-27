@@ -10,3 +10,4 @@ export * from './IconButton';
 export * from './ListRow';
 export * from './SectionHeader';
 export * from './SelectField';
+export * from './Text';

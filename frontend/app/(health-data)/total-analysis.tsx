@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Image, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import GoalIcon from '@/assets/figma/main/605b2.svg';
 import DietIcon from '@/assets/figma/main/2c97f.svg';
 import ExerciseIcon from '@/assets/figma/main/0360a.svg';
@@ -20,6 +20,7 @@ import {
   TotalAnalysisBottomSheet,
   type AnalysisSheetState,
 } from '@/src/components/analysis/TotalAnalysisBottomSheet';
+import { Text } from '@/src/components/common';
 import {
   MainGradient,
   MainHeader,

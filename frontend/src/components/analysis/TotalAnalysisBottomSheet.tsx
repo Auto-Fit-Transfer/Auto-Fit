@@ -1,12 +1,4 @@
-import {
-  Alert,
-  Linking,
-  Pressable,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ChevronRightIcon from '@/assets/icons/common/chevrons/Right.svg';
@@ -18,7 +10,7 @@ import InfoIcon from '@/assets/icons/system/Question.svg';
 import LightbulbIcon from '@/assets/icons/system/Lightbulb.svg';
 import ListIcon from '@/assets/icons/system/ListBullets.svg';
 import WarningCircleIcon from '@/assets/icons/system/WarningCircle.svg';
-import { AppBottomSheet } from '@/src/components/common';
+import { AppBottomSheet, Text } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 
 import type {

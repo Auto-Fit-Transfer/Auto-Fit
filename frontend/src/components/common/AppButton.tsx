@@ -3,13 +3,14 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
-  Text,
   type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
 
 import { colors, radius, spacing, typography } from '@/src/theme';
+
+import { Text } from './Text';
 
 export type AppButtonVariant = 'primary' | 'secondary';
 

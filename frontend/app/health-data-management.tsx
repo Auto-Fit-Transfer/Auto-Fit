@@ -8,7 +8,6 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +26,7 @@ import {
   uploadHealthDocument,
   type HealthDocumentListItem,
 } from '@/src/api/healthDocuments';
+import { Text } from '@/src/components/common';
 import { HealthDataUploadBottomSheet } from '@/src/components/health-data/HealthDataUploadBottomSheet';
 import { BackButton } from '@/src/components/common/BackButton';
 import type { OCRUploadRouteItem } from '@/src/features/health-data/ocrResults';

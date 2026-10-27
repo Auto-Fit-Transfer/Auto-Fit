@@ -13,7 +13,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   useWindowDimensions,
   View,
@@ -35,6 +34,7 @@ import PauseIcon from '@/assets/icons/feature/Pause_Fill.svg';
 import PencilIcon from '@/assets/icons/feature/Pencil_Line.svg';
 import PlayIcon from '@/assets/icons/feature/Play_Fill.svg';
 import { getExerciseApiErrorMessage } from '@/src/api/exercise';
+import { Text } from '@/src/components/common';
 import { BackButton } from '@/src/components/common/BackButton';
 import { AdjustmentIndicatorView } from '@/src/components/exercise/AdjustmentIndicatorView';
 import { ExerciseActionButton } from '@/src/components/exercise/ExerciseActionButton';
@@ -1370,6 +1370,7 @@ function DiscomfortRecordModal({
                     <DiscomfortSectionTitle title="어떤 변화가 있었나요?" />
                     <View style={styles.discomfortTextInputWrap}>
                       <TextInput
+                        lineBreakStrategyIOS="hangul-word"
                         maxFontSizeMultiplier={1}
                         maxLength={100}
                         multiline

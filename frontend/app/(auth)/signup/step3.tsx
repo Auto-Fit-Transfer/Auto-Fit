@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   useWindowDimensions,
   View,
@@ -28,6 +27,7 @@ import ShellfishIcon from '@/assets/icons/auth-redesign/7746e.svg';
 import SoybeanIcon from '@/assets/icons/auth-redesign/73335.svg';
 import { getSignupApiErrorMessage, saveAllergies } from '@/src/api/onboarding';
 import { SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
+import { Text } from '@/src/components/common';
 import { useSignup } from '@/src/features/signup/SignupContext';
 import { colors, fontFamilies } from '@/src/theme';
 import OtherIcon from '@/assets/icons/auth-redesign/00654.svg';

@@ -6,7 +6,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,7 +16,7 @@ import {
   readCommunityNotifications,
   type CommunityNotification,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { colors, fontFamilies, spacing, typography } from '@/src/theme';

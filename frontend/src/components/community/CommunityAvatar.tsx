@@ -1,6 +1,7 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
 import type { CommunityAuthor } from '@/src/api/community';
+import { Text } from '@/src/components/common';
 import { colors, fontFamilies, radius } from '@/src/theme';
 
 export function CommunityAvatar({ author, size = 44 }: { author: CommunityAuthor; size?: number }) {

@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   useWindowDimensions,
   View,
@@ -30,7 +29,7 @@ import PaperPlaneIcon from '@/assets/icons/feature/PaperPlane_Fill.svg';
 import RobotIcon from '@/assets/icons/feature/Robot_Fill.svg';
 import { createChat, getChatMessages, getChats, sendChatMessage } from '@/src/api/chat';
 import { getApiErrorMessage } from '@/src/api/client';
-import { CustomScrollIndicator, useCustomScrollIndicator } from '@/src/components/common';
+import { CustomScrollIndicator, Text, useCustomScrollIndicator } from '@/src/components/common';
 import {
   BOTTOM_NAVIGATION_MIN_BOTTOM_GAP,
   getBottomNavigationVisualHeight,

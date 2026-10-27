@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import {
   Pressable,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type TextStyle,
@@ -11,6 +10,8 @@ import {
 
 import DownIcon from '@/assets/icons/common/chevrons/Down.svg';
 import { colors, radius, spacing, typography } from '@/src/theme';
+
+import { Text } from './Text';
 
 export interface SelectFieldProps {
   label?: string;

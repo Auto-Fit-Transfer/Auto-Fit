@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -21,6 +20,7 @@ import UserIcon from '@/assets/icons/input/User.svg';
 import ArrowsClockwiseIcon from '@/assets/icons/system/ArrowsClockwise.svg';
 import CheckCircleIcon from '@/assets/icons/system/CheckCircle.svg';
 import CheckCircleOutIcon from '@/assets/icons/system/CheckCircleOut.svg';
+import { Text } from '@/src/components/common';
 import { BackButton } from '@/src/components/common/BackButton';
 import { ExerciseScreenFrame } from '@/src/components/exercise/ExerciseScreenFrame';
 import { getExerciseApiErrorMessage, getExerciseSessionAnalysis } from '@/src/api/exercise';

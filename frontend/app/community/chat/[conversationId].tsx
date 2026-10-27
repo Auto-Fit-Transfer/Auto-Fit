@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -25,7 +24,7 @@ import {
   sendCommunityMessage,
   type CommunityMessage,
 } from '@/src/api/community';
-import { AppButton, AppHeader, IconButton } from '@/src/components/common';
+import { AppButton, AppHeader, IconButton, Text } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
@@ -202,6 +201,7 @@ export default function CommunityChatScreen() {
         <View style={[styles.composer, { paddingBottom: insets.bottom + spacing.sm }]}>
           <TextInput
             accessibilityLabel="메시지 입력"
+            lineBreakStrategyIOS="hangul-word"
             maxLength={COMMUNITY_MAX_MESSAGE_LENGTH}
             multiline
             onChangeText={setDraft}
