@@ -28,10 +28,15 @@ jobs:
         env:
           DIET_REFRESH_CRON_TOKEN: ${{ secrets.DIET_REFRESH_CRON_TOKEN }}
           DIET_REFRESH_MODE: ${{ inputs.all_ai && 'all-ai' || 'normal' }}
+          API_BASE_URL: ${{ vars.API_BASE_URL }}
         run: |
+          if [[ ! "$API_BASE_URL" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?$ ]]; then
+            echo "API_BASE_URL must be an HTTPS origin" >&2
+            exit 1
+          fi
           curl --fail-with-body --show-error --silent \
             --retry 3 --retry-all-errors --max-time 1200 \
             --request POST \
             --header "X-Cron-Token: ${DIET_REFRESH_CRON_TOKEN}" \
             --header "X-Diet-Refresh-Mode: ${DIET_REFRESH_MODE}" \
-            https://auto-fit-api-dev.onrender.com/internal/diet-refresh
+            "${API_BASE_URL}/internal/diet-refresh"
