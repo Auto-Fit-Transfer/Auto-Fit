@@ -3,6 +3,7 @@ import json
 import httpx
 
 from app.schemas.health_analysis import (
+    DietRefreshRequest,
     HealthAnalysisRequest,
 )
 from app.scripts.deployed_server_smoke import (
@@ -126,6 +127,13 @@ def _mock_handler(
                     "llm_errors": 0,
                     "empty_inventory_fallbacks": 1,
                 },
+                "diet_refresh_resilience": {
+                    "llm_successes": 1,
+                    "llm_fallbacks": 0,
+                    "llm_timeouts": 0,
+                    "llm_errors": 0,
+                    "empty_inventory_fallbacks": 1,
+                },
             },
         )
 
@@ -137,6 +145,9 @@ def _mock_handler(
                     "/health": {"get": {}},
                     "/health/analysis": {"get": {}},
                     "/health-analysis": {"post": {}},
+                    "/health-analysis/diet-refresh": {
+                        "post": {}
+                    },
                     "/chat/orchestrate": {"post": {}},
                 }
             },
@@ -171,6 +182,40 @@ def _mock_handler(
             ),
         )
 
+    if request.url.path == "/health-analysis/diet-refresh":
+        body = json.loads(
+            request.content.decode("utf-8")
+        )
+        validated = DietRefreshRequest.model_validate(
+            body
+        )
+        return httpx.Response(
+            200,
+            json={
+                "schema_version": validated.schema_version,
+                "request_id": validated.request_id,
+                "diet_suggestion": {
+                    "title": "냉장고 재료를 등록해 보세요",
+                    "message": "사용 가능한 재료가 없습니다.",
+                    "action_items": [],
+                    "evidence_metric_keys": [],
+                    "used_inventory_item_ids": [],
+                },
+                "refrigerator_context": {
+                    "captured_at": None,
+                    "available_count": 0,
+                    "expiring_soon_count": 0,
+                    "allergy_excluded_count": 0,
+                    "used_items": [],
+                    "expiring_soon_items": [],
+                },
+                "model": {
+                    "name": "deterministic",
+                    "version": "diet-refresh-fallback-v1",
+                },
+            },
+        )
+
     return httpx.Response(404)
 
 
@@ -197,6 +242,7 @@ def test_deployed_server_smoke_contract() -> None:
         "health_analysis_resilience",
         "openapi_contract",
         "authentication_boundary",
+        "diet_refresh_fallback",
         "health_score_chat",
         "full_health_analysis",
     ]

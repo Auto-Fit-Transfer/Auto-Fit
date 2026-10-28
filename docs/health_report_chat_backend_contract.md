@@ -309,6 +309,21 @@ Fallback 응답은 다음 원칙을 지킨다.
 - Backend는 fallback 응답을 실패로 폐기하지 않고 점수 snapshot을 정상 저장할 수 있다.
 - 운영 지표는 `GET /health/analysis`의 `health_analysis_resilience`에서 확인한다. 원본 건강정보나 API Key는 포함하지 않는다.
 
+### 5.8 냉장고 식단 갱신 OpenAI 장애 fallback
+
+`POST /health-analysis/diet-refresh`도 OpenAI 호출이 timeout, 오류 또는 빈 Structured Output으로 실패할 때 HTTP `503` 대신 HTTP `200`의 결정론적 fallback 응답을 반환한다.
+
+| `model.name` | `model.version` | 의미 |
+|---|---|---|
+| 설정된 OpenAI 모델명 | `diet-refresh-v1` | 정상 식단 개인화 갱신 완료 |
+| `deterministic` | `diet-refresh-fallback-v1` | OpenAI 없이 실제 안전 재고 상태만 반환 |
+
+Fallback 응답은 알레르기 필터를 통과한 재고 개수와 실제 `expiring_soon` 항목만 사용한다. 구체적인 메뉴나 레시피를 추측하지 않으며 `used_items`와 `used_inventory_item_ids`를 비운다. Backend는 응답의 `model.version`을 확인해 기본 안내임을 표시할 수 있고, 기존 분석 결과에서는 `diet_suggestion`과 `refrigerator_context`만 교체한다.
+
+사용 가능한 재고가 처음부터 없으면 건강 입력 형식 검증 후 RAG와 OpenAI 호출을 모두 생략하고 같은 fallback 계약으로 즉시 반환한다.
+
+운영 지표는 `GET /health/analysis`의 `diet_refresh_resilience`에서 확인한다. 식단 갱신 OpenAI 제한 시간은 AI Server의 `DIET_REFRESH_OPENAI_TIMEOUT_SECONDS`로 설정하며 기본값은 30초다.
+
 ## 6. Backend 저장 및 다음 주 매핑 계약
 
 Backend는 `analysis.health_score`를 사용자·평가 주차·`scoring_version` 기준의 불변 snapshot으로 저장하는 방식을 권장한다. AI Server는 저장소가 아니다.

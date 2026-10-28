@@ -46,6 +46,13 @@ class Settings(BaseSettings):
         le=300,
     )
 
+    # 냉장고 변경 후 식단 개인화 갱신 제한 시간
+    diet_refresh_openai_timeout_seconds: float = Field(
+        default=30.0,
+        gt=0,
+        le=300,
+    )
+
     # 음식 사진 인식 / 공식 Food DB 매칭
     openai_food_image_model: str = "gpt-5-mini"
     food_image_openai_timeout_seconds: float = Field(

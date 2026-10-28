@@ -18,6 +18,9 @@ from app.services.local_specialty_service import (
 from app.services.health_analysis_service import (
     get_health_analysis_resilience_stats,
 )
+from app.services.diet_refresh_service import (
+    get_diet_refresh_resilience_stats,
+)
 from app.services.meal_recipe_service import (
     MealRecipeService,
 )
@@ -85,5 +88,8 @@ async def health_analysis_health_check():
         "service": "healthcare-ai-server",
         "health_analysis_resilience": (
             get_health_analysis_resilience_stats()
+        ),
+        "diet_refresh_resilience": (
+            get_diet_refresh_resilience_stats()
         ),
     }

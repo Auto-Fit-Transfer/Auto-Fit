@@ -7,11 +7,12 @@
 기본 검사는 OpenAI 호출 없이 다음 항목을 확인한다.
 
 1. `GET /health` 준비 상태
-2. `GET /health/analysis` 건강분석 fallback 운영 지표
+2. `GET /health/analysis` 건강분석·식단 갱신 fallback 운영 지표
 3. `GET /openapi.json`의 핵심 경로 존재 여부
 4. Bearer 인증이 없는 요청의 `401` 응답
-5. 계약 fixture로 계산한 건강점수의 `POST /chat/orchestrate` 전달
-6. 챗봇 응답에서 건강검진·인바디 원본 변화량을 다시 노출하지 않는지 확인
+5. 빈 재고 요청으로 `POST /health-analysis/diet-refresh`의 결정론적 fallback 계약 확인
+6. 계약 fixture로 계산한 건강점수의 `POST /chat/orchestrate` 전달
+7. 챗봇 응답에서 건강검진·인바디 원본 변화량을 다시 노출하지 않는지 확인
 
 `--full` 옵션은 위 검사에 `POST /health-analysis` 실호출을 추가한다. 이 검사는 OpenAI를 사용할 수 있으므로 비용과 지연이 발생할 수 있다.
 
@@ -59,6 +60,7 @@ PASS health: HTTP 200, ... ms
 PASS health_analysis_resilience: HTTP 200, ... ms
 PASS openapi_contract: HTTP 200, ... ms
 PASS authentication_boundary: HTTP 401, ... ms
+PASS diet_refresh_fallback: HTTP 200, ... ms
 PASS health_score_chat: HTTP 200, ... ms
 Deployment smoke test completed. Secret values were not printed.
 ```
@@ -80,9 +82,10 @@ MockTransport가 건강 상태, OpenAPI, 인증 경계, 챗봇, 전체 건강분
 | 실패 지점 | 의미 |
 |---|---|
 | `health` | 배포 프로세스 또는 라우팅 준비 상태 확인 필요 |
-| `health_analysis_resilience` | 건강분석 fallback 지표 endpoint 또는 최신 배포 상태 확인 필요 |
+| `health_analysis_resilience` | 건강분석 또는 식단 갱신 fallback 지표 endpoint, 최신 배포 상태 확인 필요 |
 | `openapi_contract` | 배포 커밋이 최신 계약보다 오래됐거나 Router 등록 누락 |
 | `authentication_boundary` | 인증 미들웨어 또는 서버 간 Key 경계 확인 필요 |
+| `diet_refresh_fallback` | 식단 갱신 Router, 빈 재고 fallback Schema 또는 최신 배포 상태 확인 필요 |
 | `health_score_chat` | 최신 챗봇 Schema·Action이 배포되지 않았거나 응답 계약 불일치 |
 | `full_health_analysis` | 건강분석 Schema, RAG/OpenAI 설정 또는 배포 환경 확인 필요 |
 

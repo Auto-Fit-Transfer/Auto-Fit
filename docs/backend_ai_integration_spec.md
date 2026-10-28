@@ -505,6 +505,8 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
 
 냉장고 정보만 바뀐 경우 `POST /health-analysis/diet-refresh`를 사용하며, 기존 `health_checkup`, `body_composition`, `goal`과 최신 `diet_context`를 전달한다. 응답의 `diet_suggestion`과 `refrigerator_context`만 기존 분석 결과에서 교체한다.
 
+식단 갱신용 OpenAI가 timeout, 오류 또는 빈 응답으로 실패해도 AI Server는 HTTP `200`과 `model.version=diet-refresh-fallback-v1`을 반환한다. 이 fallback은 알레르기 필터를 통과한 실제 재고 상태만 사용하고 임의 메뉴·레시피를 만들지 않는다. Backend는 `503`으로 재시도하지 않고 기본 안내로 처리할 수 있다. 운영 횟수는 `GET /health/analysis`의 `diet_refresh_resilience`에서 확인한다.
+
 ### Backend와 확정해야 하는 중복 경로
 
 현재 repository에는 LangGraph 기반 `POST /analysis`도 존재한다. `/analysis`와 `/health-analysis`는 입력과 응답 구조가 서로 다르므로 Backend가 둘을 동시에 종합 분석 API로 사용하면 안 된다. Backend 명세를 받은 후 다음 중 하나를 공식 계약으로 확정한다.

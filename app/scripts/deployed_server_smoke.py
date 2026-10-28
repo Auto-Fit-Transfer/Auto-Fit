@@ -15,6 +15,9 @@ from app.schemas.chat import (
     ChatResponse,
 )
 from app.schemas.health_analysis import (
+    DietContextInput,
+    DietRefreshRequest,
+    DietRefreshResponse,
     HealthAnalysisRequest,
     HealthAnalysisResponse,
     HealthScoreOutput,
@@ -35,6 +38,7 @@ CRITICAL_OPENAPI_OPERATIONS = {
     "/health": "get",
     "/health/analysis": "get",
     "/health-analysis": "post",
+    "/health-analysis/diet-refresh": "post",
     "/chat/orchestrate": "post",
 }
 
@@ -252,6 +256,9 @@ def _run_with_client(
     resilience_stats = resilience_payload.get(
         "health_analysis_resilience"
     )
+    diet_refresh_stats = resilience_payload.get(
+        "diet_refresh_resilience"
+    )
     if (
         resilience_payload.get("status") != "ok"
         or not isinstance(resilience_stats, dict)
@@ -262,6 +269,14 @@ def _run_with_client(
             "llm_errors",
             "empty_inventory_fallbacks",
         }.issubset(resilience_stats)
+        or not isinstance(diet_refresh_stats, dict)
+        or not {
+            "llm_successes",
+            "llm_fallbacks",
+            "llm_timeouts",
+            "llm_errors",
+            "empty_inventory_fallbacks",
+        }.issubset(diet_refresh_stats)
     ):
         raise DeploymentSmokeError(
             "The health analysis resilience endpoint is invalid."
@@ -356,6 +371,71 @@ def _run_with_client(
     headers = {
         "Authorization": f"Bearer {api_key}",
     }
+
+    diet_refresh_request = DietRefreshRequest(
+        schema_version=health_request.schema_version,
+        request_id=(
+            f"{health_request.request_id}-diet-refresh"
+        ),
+        goal=health_request.goal,
+        health_checkup=(
+            health_request.input.health_checkup
+        ),
+        body_composition=(
+            health_request.input.body_composition
+        ),
+        diet_context=DietContextInput(
+            captured_at=None,
+            inventory=[],
+            allergies=[],
+        ),
+    )
+    diet_refresh_response, elapsed = _timed_request(
+        client,
+        "POST",
+        "/health-analysis/diet-refresh",
+        headers=headers,
+        json=diet_refresh_request.model_dump(
+            mode="json",
+            exclude_none=True,
+        ),
+    )
+    _require_status(
+        diet_refresh_response,
+        200,
+        "diet_refresh_fallback",
+    )
+    try:
+        diet_refresh_result = DietRefreshResponse.model_validate(
+            _response_json(
+                diet_refresh_response,
+                "diet_refresh_fallback",
+            )
+        )
+    except ValidationError as exc:
+        raise DeploymentSmokeError(
+            "The deployed diet refresh fallback schema is invalid."
+        ) from exc
+    if (
+        diet_refresh_result.request_id
+        != diet_refresh_request.request_id
+        or diet_refresh_result.model.name != "deterministic"
+        or diet_refresh_result.model.version
+        != "diet-refresh-fallback-v1"
+        or diet_refresh_result.refrigerator_context.available_count
+        != 0
+    ):
+        raise DeploymentSmokeError(
+            "The deployed diet refresh fallback is invalid."
+        )
+    checks.append(
+        SmokeCheck(
+            name="diet_refresh_fallback",
+            http_status=diet_refresh_response.status_code,
+            elapsed_ms=elapsed,
+        )
+    )
+
     chat_response, elapsed = _timed_request(
         client,
         "POST",

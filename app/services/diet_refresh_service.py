@@ -1,3 +1,6 @@
+import asyncio
+import logging
+import threading
 from typing import Any
 
 from openai import AsyncOpenAI
@@ -38,6 +41,45 @@ from app.services.health_analysis_output_validator import (
     validate_expiring_soon_items,
     validate_inventory_usage,
 )
+
+
+logger = logging.getLogger(__name__)
+
+
+_DIET_REFRESH_STATE_LOCK = threading.RLock()
+_DIET_REFRESH_RESILIENCE_STATS = {
+    "llm_successes": 0,
+    "llm_fallbacks": 0,
+    "llm_timeouts": 0,
+    "llm_errors": 0,
+    "empty_inventory_fallbacks": 0,
+}
+
+
+def _increment_diet_refresh_metric(
+    metric_name: str,
+) -> None:
+    with _DIET_REFRESH_STATE_LOCK:
+        _DIET_REFRESH_RESILIENCE_STATS[
+            metric_name
+        ] += 1
+
+
+def get_diet_refresh_resilience_stats() -> dict[str, int]:
+    """식단 개인화 갱신의 LLM 성공·fallback 횟수를 반환한다."""
+
+    with _DIET_REFRESH_STATE_LOCK:
+        return dict(
+            _DIET_REFRESH_RESILIENCE_STATS
+        )
+
+
+def _reset_diet_refresh_resilience_for_tests() -> None:
+    with _DIET_REFRESH_STATE_LOCK:
+        for metric_name in _DIET_REFRESH_RESILIENCE_STATS:
+            _DIET_REFRESH_RESILIENCE_STATS[
+                metric_name
+            ] = 0
 
 
 # =========================================================
@@ -295,22 +337,62 @@ def _build_analysis_request(
 
 
 # =========================================================
-# Empty Refrigerator Fallback
+# Deterministic Fallback
 # =========================================================
 
 
-def _build_empty_inventory_response(
+def _build_deterministic_response(
     *,
     request: DietRefreshRequest,
     prepared: PreparedDietContext,
+    empty_inventory: bool,
 ) -> DietRefreshResponse:
     """
-    사용 가능한 냉장고 재료가 없는 경우.
+    OpenAI를 사용할 수 없어도 실제 전처리된 재고 정보만으로
+    안전한 식단 개인화 응답을 반환한다.
 
-    LLM 호출 없이 deterministic fallback 반환.
+    구체적인 메뉴나 조리법은 추측하지 않는다.
     """
 
-    settings = get_settings()
+    if empty_inventory:
+        title = "냉장고 재료를 등록해 보세요"
+        message = (
+            "현재 사용할 수 있는 냉장고 재료가 없어 "
+            "구체적인 재료 활용 제안을 만들기 어렵습니다."
+        )
+        action_items = [
+            "사용 가능한 냉장고 재료 등록하기"
+        ]
+    else:
+        expiring_soon_items = (
+            validate_expiring_soon_items(
+                prepared
+            )
+        )
+        if expiring_soon_items:
+            item_names = ", ".join(
+                expiring_soon_items[:3]
+            )
+            title = "유통기한 임박 재료를 확인해 보세요"
+            message = (
+                f"{item_names}의 상태와 알레르기 정보를 먼저 "
+                "확인한 뒤 식단에 활용해 주세요."
+            )
+            action_items = [
+                "유통기한 임박 재료의 상태 확인하기",
+                "알레르기와 섭취 제한 다시 확인하기",
+            ]
+        else:
+            title = "등록된 냉장고 재료를 확인해 보세요"
+            message = (
+                "현재 안전하게 분류된 냉장고 재료가 있습니다. "
+                "재료 상태와 알레르기 정보를 확인한 뒤 "
+                "식단에 활용해 주세요."
+            )
+            action_items = [
+                "사용 가능한 재료 상태 확인하기",
+                "알레르기와 섭취 제한 다시 확인하기",
+            ]
 
     return DietRefreshResponse(
         schema_version=(
@@ -322,20 +404,12 @@ def _build_empty_inventory_response(
         diet_suggestion=(
             DietSuggestionOutput(
                 title=(
-                    "냉장고 재료를 "
-                    "등록해 보세요"
+                    title
                 ),
                 message=(
-                    "현재 사용할 수 있는 냉장고 "
-                    "재료가 없어 구체적인 재료 활용 "
-                    "제안을 만들기 어렵습니다."
+                    message
                 ),
-                action_items=[
-                    (
-                        "사용 가능한 냉장고 "
-                        "재료 등록하기"
-                    )
-                ],
+                action_items=action_items,
                 evidence_metric_keys=[],
                 used_inventory_item_ids=[],
             )
@@ -345,23 +419,55 @@ def _build_empty_inventory_response(
                 captured_at=(
                     prepared.captured_at
                 ),
-                available_count=0,
-                expiring_soon_count=0,
+                available_count=len(
+                    prepared.available_items
+                ),
+                expiring_soon_count=len(
+                    prepared.expiring_soon_items
+                ),
                 allergy_excluded_count=len(
                     prepared.allergy_excluded_items
                 ),
                 used_items=[],
-                expiring_soon_items=[],
+                expiring_soon_items=(
+                    validate_expiring_soon_items(
+                        prepared
+                    )
+                ),
             )
         ),
         model=HealthAnalysisModelInfo(
-            name=(
-                settings.openai_model
-            ),
+            name="deterministic",
             version=(
-                "diet-refresh-v1"
+                "diet-refresh-fallback-v1"
             ),
         ),
+    )
+
+
+def _build_empty_inventory_response(
+    *,
+    request: DietRefreshRequest,
+    prepared: PreparedDietContext,
+) -> DietRefreshResponse:
+    """기존 호출부와 테스트 호환을 위한 빈 재고 fallback."""
+
+    return _build_deterministic_response(
+        request=request,
+        prepared=prepared,
+        empty_inventory=True,
+    )
+
+
+def _build_llm_unavailable_response(
+    *,
+    request: DietRefreshRequest,
+    prepared: PreparedDietContext,
+) -> DietRefreshResponse:
+    return _build_deterministic_response(
+        request=request,
+        prepared=prepared,
+        empty_inventory=False,
     )
 
 
@@ -547,7 +653,32 @@ async def generate_diet_refresh(
     )
 
     # -----------------------------------------------------
-    # 3. Rule Engine -> Merge -> RAG
+    # 3. 최신 냉장고 / 알레르기 전처리
+    # -----------------------------------------------------
+
+    prepared = (
+        prepare_diet_context(
+            request.diet_context
+        )
+    )
+
+    # -----------------------------------------------------
+    # 4. 사용 가능한 재료 없음
+    # -----------------------------------------------------
+
+    if not prepared.available_items:
+        _increment_diet_refresh_metric(
+            "empty_inventory_fallbacks"
+        )
+        return (
+            _build_empty_inventory_response(
+                request=request,
+                prepared=prepared,
+            )
+        )
+
+    # -----------------------------------------------------
+    # 5. Rule Engine -> Merge -> RAG
     # -----------------------------------------------------
 
     graph_result = (
@@ -621,43 +752,63 @@ async def generate_diet_refresh(
     )
 
     # -----------------------------------------------------
-    # 4. 최신 냉장고 / 알레르기 전처리
-    # -----------------------------------------------------
-
-    prepared = (
-        prepare_diet_context(
-            request.diet_context
-        )
-    )
-
-    # -----------------------------------------------------
-    # 5. 사용 가능한 재료 없음
-    # -----------------------------------------------------
-
-    if not prepared.available_items:
-        return (
-            _build_empty_inventory_response(
-                request=request,
-                prepared=prepared,
-            )
-        )
-
-    # -----------------------------------------------------
     # 6. 식단 부분만 LLM 재생성
     # -----------------------------------------------------
 
-    draft = (
-        await _generate_diet_refresh_draft(
-            metric_statuses=(
-                metric_statuses
+    settings = get_settings()
+
+    try:
+        draft = await asyncio.wait_for(
+            _generate_diet_refresh_draft(
+                metric_statuses=(
+                    metric_statuses
+                ),
+                rag_context=(
+                    rag_context
+                ),
+                request=request,
+                prepared=prepared,
             ),
-            rag_context=(
-                rag_context
+            timeout=(
+                settings
+                .diet_refresh_openai_timeout_seconds
             ),
+        )
+        _increment_diet_refresh_metric(
+            "llm_successes"
+        )
+
+    except asyncio.TimeoutError:
+        _increment_diet_refresh_metric(
+            "llm_timeouts"
+        )
+        _increment_diet_refresh_metric(
+            "llm_fallbacks"
+        )
+        logger.warning(
+            "Diet refresh OpenAI generation timed out; "
+            "using deterministic fallback"
+        )
+        return _build_llm_unavailable_response(
             request=request,
             prepared=prepared,
         )
-    )
+
+    except Exception:
+        _increment_diet_refresh_metric(
+            "llm_errors"
+        )
+        _increment_diet_refresh_metric(
+            "llm_fallbacks"
+        )
+        logger.exception(
+            "Diet refresh OpenAI generation failed; "
+            "using deterministic fallback"
+        )
+        return _build_llm_unavailable_response(
+            request=request,
+            prepared=prepared,
+        )
 
     # -----------------------------------------------------
     # 7. 건강 지표 allowlist 검증
@@ -695,8 +846,6 @@ async def generate_diet_refresh(
     # -----------------------------------------------------
     # 10. Backend Response
     # -----------------------------------------------------
-
-    settings = get_settings()
 
     return DietRefreshResponse(
         schema_version=(
