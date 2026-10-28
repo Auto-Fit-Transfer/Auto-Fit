@@ -1,0 +1,485 @@
+{
+  "contract_version": "1.2",
+  "place_search": {
+    "request": {
+      "query": "판교역",
+      "latitude": 37.3948,
+      "longitude": 127.1112,
+      "radius_m": 5000
+    },
+    "response": {
+      "ok": true,
+      "generator": "auto-fit-ai",
+      "places": [
+        {
+          "place_name": "판교역",
+          "address_name": "경기도 성남시 분당구 백현동",
+          "road_address_name": "경기도 성남시 분당구 판교역로 160",
+          "coordinate": {
+            "latitude": 37.3948,
+            "longitude": 127.1112
+          },
+          "distance_m": 120
+        }
+      ]
+    }
+  },
+  "official_metadata_recommendation": {
+    "request": {
+      "region": "성남시",
+      "distance_option": "5km",
+      "latitude": 37.3948,
+      "longitude": 127.1112,
+      "pace_minutes_per_km": 6.5,
+      "desired_difficulty": "easy",
+      "limit": 3
+    },
+    "response": {
+      "ok": true,
+      "generator": "auto-fit-ai",
+      "status": "matched",
+      "resolved_region": "성남시",
+      "target_distance_km": 5.0,
+      "distance_min_km": 4.5,
+      "distance_max_km": 5.5,
+      "courses": [
+        {
+          "course_id": "metadata-example",
+          "name": "성남 건강길",
+          "description": "지자체 공식 코스",
+          "region": "경기도 성남시",
+          "distance_km": 5.1,
+          "distance_to_user_km": 0.8,
+          "estimated_duration_minutes": 33.2,
+          "pace_minutes_per_km": 6.5,
+          "pace_source": "user",
+          "pace_assumed": false,
+          "difficulty": "easy",
+          "difficulty_basis": "heuristic",
+          "is_loop": true,
+          "start": {
+            "name": "중앙공원",
+            "address": "경기도 성남시 분당구",
+            "coordinate": {
+              "latitude": 37.3948,
+              "longitude": 127.1112
+            }
+          },
+          "end": {
+            "name": "중앙공원",
+            "address": "경기도 성남시 분당구",
+            "coordinate": {
+              "latitude": 37.3948,
+              "longitude": 127.1112
+            }
+          },
+          "waypoints": ["중앙공원", "탄천", "중앙공원"],
+          "geometry_status": "endpoints_geocoded",
+          "geometry_distance_km": null,
+          "requires_route_validation": true,
+          "source": {
+            "provider": "성남시",
+            "dataset_name": "전국길관광정보표준데이터",
+            "source_type": "official_metadata",
+            "source_course_id": null,
+            "reference_date": "2026-10-01",
+            "license_name": null
+          }
+        }
+      ],
+      "data_sources": [
+        {
+          "source_type": "official_metadata",
+          "state": "available",
+          "message": "1 matching course from the official metadata catalog."
+        },
+        {
+          "source_type": "official_gpx",
+          "state": "disabled",
+          "message": "Durunubi GPX enrichment is disabled."
+        }
+      ],
+      "generation_recommended": false,
+      "message": null
+    }
+  },
+  "generation_required": {
+    "request": {
+      "region": "성남시",
+      "distance_option": "10km",
+      "limit": 3
+    },
+    "response": {
+      "ok": true,
+      "generator": "auto-fit-ai",
+      "status": "generation_required",
+      "resolved_region": "성남시",
+      "target_distance_km": 10.0,
+      "distance_min_km": 9.0,
+      "distance_max_km": 11.0,
+      "courses": [],
+      "data_sources": [
+        {
+          "source_type": "official_metadata",
+          "state": "available",
+          "message": "0 matching courses from the official metadata catalog."
+        },
+        {
+          "source_type": "official_gpx",
+          "state": "disabled",
+          "message": "Durunubi GPX enrichment is disabled."
+        }
+      ],
+      "generation_recommended": true,
+      "message": "No official course matched the requested region and distance range."
+    }
+  },
+  "official_metadata_detail": {
+    "request": {
+      "course_id": "metadata-example",
+      "pace_minutes_per_km": 6.5
+    },
+    "response": {
+      "ok": true,
+      "generator": "auto-fit-ai",
+      "course": {
+        "course_id": "metadata-example",
+        "name": "성남 건강길",
+        "description": "지자체 공식 코스",
+        "region": "경기도 성남시",
+        "distance_km": 5.1,
+        "distance_to_user_km": null,
+        "estimated_duration_minutes": 33.2,
+        "pace_minutes_per_km": 6.5,
+        "pace_source": "user",
+        "pace_assumed": false,
+        "difficulty": "easy",
+        "difficulty_basis": "heuristic",
+        "is_loop": true,
+        "start": {
+          "name": "중앙공원",
+          "address": "경기도 성남시 분당구",
+          "coordinate": {
+            "latitude": 37.3948,
+            "longitude": 127.1112
+          }
+        },
+        "end": {
+          "name": "중앙공원",
+          "address": "경기도 성남시 분당구",
+          "coordinate": {
+            "latitude": 37.3948,
+            "longitude": 127.1112
+          }
+        },
+        "waypoints": ["중앙공원", "탄천", "중앙공원"],
+        "geometry_status": "endpoints_geocoded",
+        "geometry_distance_km": null,
+        "requires_route_validation": true,
+        "source": {
+          "provider": "성남시",
+          "dataset_name": "전국길관광정보표준데이터",
+          "source_type": "official_metadata",
+          "source_course_id": null,
+          "reference_date": "2026-10-01",
+          "license_name": null
+        },
+        "source_duration_text": "약 1시간",
+        "route_description": "중앙공원→탄천→중앙공원",
+        "path": []
+      }
+    }
+  },
+  "official_gpx_detail": {
+    "request": {
+      "course_id": "durunubi-123",
+      "pace_minutes_per_km": 6.5
+    },
+    "response": {
+      "ok": true,
+      "generator": "auto-fit-ai",
+      "course": {
+        "course_id": "durunubi-123",
+        "name": "두루누비 순환길",
+        "description": "공식 GPX 코스",
+        "region": "경기도 성남시",
+        "distance_km": 5.2,
+        "distance_to_user_km": null,
+        "estimated_duration_minutes": 33.8,
+        "pace_minutes_per_km": 6.5,
+        "pace_source": "user",
+        "pace_assumed": false,
+        "difficulty": "moderate",
+        "difficulty_basis": "official",
+        "is_loop": true,
+        "start": {
+          "name": "두루누비 순환길 출발점",
+          "address": "경기도 성남시",
+          "coordinate": {
+            "latitude": 37.3948,
+            "longitude": 127.1112
+          }
+        },
+        "end": {
+          "name": "두루누비 순환길 도착점",
+          "address": "경기도 성남시",
+          "coordinate": {
+            "latitude": 37.3949,
+            "longitude": 127.1113
+          }
+        },
+        "waypoints": ["중앙공원"],
+        "geometry_status": "verified_polyline",
+        "geometry_distance_km": 5.2,
+        "requires_route_validation": false,
+        "source": {
+          "provider": "한국관광공사",
+          "dataset_name": "한국관광공사 두루누비 정보 서비스",
+          "source_type": "official_gpx",
+          "source_course_id": "123",
+          "reference_date": "20261001",
+          "license_name": "이용허락범위 제한 없음"
+        },
+        "source_duration_text": "1시간 10분",
+        "route_description": "두루누비 공식 경로",
+        "path": [
+          {"latitude": 37.3948, "longitude": 127.1112},
+          {"latitude": 37.4100, "longitude": 127.1300},
+          {"latitude": 37.3949, "longitude": 127.1113}
+        ]
+      }
+    }
+  },
+  "loop_matched": {
+    "request": {
+      "start": {
+        "latitude": 37.3948,
+        "longitude": 127.1112
+      },
+      "distance_option": "5km",
+      "pace_minutes_per_km": 6.5,
+      "candidate_count": 1,
+      "seed": 0
+    },
+    "response": {
+      "ok": true,
+      "generator": "auto-fit-ai",
+      "status": "matched",
+      "resolved_region": "성남시",
+      "target_distance_km": 5.0,
+      "distance_min_km": 4.5,
+      "distance_max_km": 5.5,
+      "tolerance_percent": 10.0,
+      "attempts_used": 2,
+      "candidates": [
+        {
+          "course_id": "generated-example-matched",
+          "name": "Auto-Fit 5km 순환 코스 1",
+          "target_distance_km": 5.0,
+          "distance_km": 5.19,
+          "distance_error_km": 0.19,
+          "distance_error_percent": 3.8,
+          "within_tolerance": true,
+          "estimated_duration_minutes": 33.7,
+          "pace_minutes_per_km": 6.5,
+          "pace_source": "user",
+          "pace_assumed": false,
+          "difficulty": "easy",
+          "is_loop": true,
+          "start": {
+            "name": "출발점",
+            "address": null,
+            "coordinate": {
+              "latitude": 37.3948,
+              "longitude": 127.1112
+            }
+          },
+          "end": {
+            "name": "도착점",
+            "address": null,
+            "coordinate": {
+              "latitude": 37.3948,
+              "longitude": 127.1112
+            }
+          },
+          "waypoints": [
+            {"latitude": 37.3948, "longitude": 127.1253},
+            {"latitude": 37.4060, "longitude": 127.1253},
+            {"latitude": 37.4060, "longitude": 127.1112}
+          ],
+          "path": [
+            {"latitude": 37.3948, "longitude": 127.1112},
+            {"latitude": 37.4000, "longitude": 127.1250},
+            {"latitude": 37.4060, "longitude": 127.1112},
+            {"latitude": 37.3948, "longitude": 127.1112}
+          ],
+          "provider_duration_seconds": 4200,
+          "generation_seed": 0,
+          "source": {
+            "provider": "Kakao Maps",
+            "dataset_name": "Kakao walking route",
+            "source_type": "auto_generated",
+            "source_course_id": null,
+            "reference_date": null,
+            "license_name": null
+          }
+        }
+      ],
+      "message": null
+    }
+  },
+  "loop_best_effort": {
+    "request": {
+      "start": {
+        "latitude": 37.3948,
+        "longitude": 127.1112
+      },
+      "distance_option": "5km",
+      "pace_minutes_per_km": null,
+      "candidate_count": 1,
+      "seed": 13751
+    },
+    "response": {
+      "ok": true,
+      "generator": "auto-fit-ai",
+      "status": "best_effort",
+      "resolved_region": "성남시",
+      "target_distance_km": 5.0,
+      "distance_min_km": 4.5,
+      "distance_max_km": 5.5,
+      "tolerance_percent": 10.0,
+      "attempts_used": 2,
+      "candidates": [
+        {
+          "course_id": "generated-example-best-effort",
+          "name": "Auto-Fit 5km 순환 코스 1",
+          "target_distance_km": 5.0,
+          "distance_km": 6.2,
+          "distance_error_km": 1.2,
+          "distance_error_percent": 24.0,
+          "within_tolerance": false,
+          "estimated_duration_minutes": 43.4,
+          "pace_minutes_per_km": 7.0,
+          "pace_source": "default",
+          "pace_assumed": true,
+          "difficulty": "moderate",
+          "is_loop": true,
+          "start": {
+            "name": "출발점",
+            "address": null,
+            "coordinate": {
+              "latitude": 37.3948,
+              "longitude": 127.1112
+            }
+          },
+          "end": {
+            "name": "도착점",
+            "address": null,
+            "coordinate": {
+              "latitude": 37.3948,
+              "longitude": 127.1112
+            }
+          },
+          "waypoints": [
+            {"latitude": 37.3900, "longitude": 127.1000},
+            {"latitude": 37.3800, "longitude": 127.1050},
+            {"latitude": 37.3850, "longitude": 127.1170}
+          ],
+          "path": [
+            {"latitude": 37.3948, "longitude": 127.1112},
+            {"latitude": 37.3800, "longitude": 127.1050},
+            {"latitude": 37.3948, "longitude": 127.1112}
+          ],
+          "provider_duration_seconds": 5100,
+          "generation_seed": 13751,
+          "source": {
+            "provider": "Kakao Maps",
+            "dataset_name": "Kakao walking route",
+            "source_type": "auto_generated",
+            "source_course_id": null,
+            "reference_date": null,
+            "license_name": null
+          }
+        }
+      ],
+      "message": "No generated route met the requested distance within the configured tolerance."
+    }
+  },
+  "loop_unavailable": {
+    "request": {
+      "start": {
+        "latitude": 37.3948,
+        "longitude": 127.1112
+      },
+      "distance_option": "5km",
+      "candidate_count": 3,
+      "seed": 27502
+    },
+    "response": {
+      "ok": true,
+      "generator": "auto-fit-ai",
+      "status": "unavailable",
+      "resolved_region": null,
+      "target_distance_km": 5.0,
+      "distance_min_km": 4.5,
+      "distance_max_km": 5.5,
+      "tolerance_percent": 10.0,
+      "attempts_used": 6,
+      "candidates": [],
+      "message": "No walkable loop route could be generated after the limited attempts."
+    }
+  },
+  "route_preview": {
+    "request": {
+      "start": {"latitude": 37.3948, "longitude": 127.1112},
+      "end": {"latitude": 37.3948, "longitude": 127.1112},
+      "waypoints": [
+        {"latitude": 37.4000, "longitude": 127.1200},
+        {"latitude": 37.4050, "longitude": 127.1150}
+      ],
+      "pace_minutes_per_km": 6.5
+    },
+    "response": {
+      "ok": true,
+      "generator": "auto-fit-ai",
+      "provider": "kakao",
+      "distance_km": 4.9,
+      "estimated_duration_minutes": 31.9,
+      "pace_minutes_per_km": 6.5,
+      "pace_source": "user",
+      "pace_assumed": false,
+      "provider_duration_seconds": 3900,
+      "start": {"latitude": 37.3948, "longitude": 127.1112},
+      "end": {"latitude": 37.3948, "longitude": 127.1112},
+      "waypoints": [
+        {"latitude": 37.4000, "longitude": 127.1200},
+        {"latitude": 37.4050, "longitude": 127.1150}
+      ],
+      "path": [
+        {"latitude": 37.3948, "longitude": 127.1112},
+        {"latitude": 37.4050, "longitude": 127.1150},
+        {"latitude": 37.3948, "longitude": 127.1112}
+      ],
+      "route": {
+        "provider": "kakao",
+        "distance_km": 4.9,
+        "estimated_duration_minutes": 31.9,
+        "pace_minutes_per_km": 6.5,
+        "pace_source": "user",
+        "pace_assumed": false,
+        "provider_duration_seconds": 3900,
+        "start": {"latitude": 37.3948, "longitude": 127.1112},
+        "end": {"latitude": 37.3948, "longitude": 127.1112},
+        "waypoints": [
+          {"latitude": 37.4000, "longitude": 127.1200},
+          {"latitude": 37.4050, "longitude": 127.1150}
+        ],
+        "path": [
+          {"latitude": 37.3948, "longitude": 127.1112},
+          {"latitude": 37.4050, "longitude": 127.1150},
+          {"latitude": 37.3948, "longitude": 127.1112}
+        ]
+      }
+    }
+  }
+}

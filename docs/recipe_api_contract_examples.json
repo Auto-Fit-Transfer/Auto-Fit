@@ -1,0 +1,172 @@
+{
+  "official_exact": {
+    "ok": true,
+    "generator": "auto-fit-ai",
+    "meal": {
+      "items": [
+        {
+          "food_name": "톳나물 두부무침",
+          "portion_g": 70.0,
+          "calories_kcal": 95.0,
+          "protein_g": 7.0,
+          "fat_g": 4.0,
+          "carbohydrate_g": 8.0,
+          "recipe_available": true,
+          "recipe_source": "official_exact",
+          "official_recipe": true,
+          "matched_recipe_name": "톳나물 두부무침",
+          "match_score": 1.0,
+          "safety_checked": true,
+          "restriction_matches": [],
+          "recipe": {
+            "recipe_id": "2975",
+            "menu_name": "톳나물 두부무침",
+            "cooking_method": "기타",
+            "dish_type": "반찬",
+            "serving_weight": 70.0,
+            "ingredients_text": "톳나물 15g, 두부 40g, 천일염 0.1g",
+            "ingredients": [
+              {"name": "톳나물", "amount_g": 21.0},
+              {"name": "두부", "amount_g": 56.0},
+              {"name": "천일염", "amount_g": 0.14}
+            ],
+            "steps": ["톳나물을 손질한다.", "두부와 함께 무친다."],
+            "cooking_tip": null,
+            "image_small": null,
+            "image_large": null,
+            "source": "식품의약품안전처 식품안전나라"
+          }
+        }
+      ]
+    }
+  },
+  "official_similar": {
+    "ok": true,
+    "generator": "auto-fit-ai",
+    "meal": {
+      "items": [
+        {
+          "food_name": "톳나물_두부",
+          "portion_g": 70.0,
+          "calories_kcal": 95.0,
+          "protein_g": 7.0,
+          "fat_g": 4.0,
+          "carbohydrate_g": 8.0,
+          "recipe_available": true,
+          "recipe_source": "official_similar",
+          "official_recipe": true,
+          "matched_recipe_name": "톳나물 두부무침",
+          "match_score": 0.9157,
+          "safety_checked": true,
+          "restriction_matches": [],
+          "recipe": {
+            "recipe_id": "2975",
+            "menu_name": "톳나물 두부무침",
+            "cooking_method": "기타",
+            "dish_type": "반찬",
+            "serving_weight": 70.0,
+            "ingredients_text": "톳나물 15g, 두부 40g, 천일염 0.1g",
+            "ingredients": [
+              {"name": "톳나물", "amount_g": 21.0},
+              {"name": "두부", "amount_g": 56.0},
+              {"name": "천일염", "amount_g": 0.14}
+            ],
+            "steps": ["톳나물을 손질한다.", "두부와 함께 무친다."],
+            "cooking_tip": null,
+            "image_small": null,
+            "image_large": null,
+            "source": "식품의약품안전처 식품안전나라"
+          }
+        }
+      ]
+    }
+  },
+  "llm_generated": {
+    "ok": true,
+    "generator": "auto-fit-ai",
+    "meal": {
+      "items": [
+        {
+          "food_name": "공식 레시피가 없는 검증 메뉴",
+          "portion_g": 180.0,
+          "calories_kcal": 240.5,
+          "protein_g": 18.2,
+          "fat_g": 7.4,
+          "carbohydrate_g": 24.8,
+          "recipe_available": true,
+          "recipe_source": "llm_generated",
+          "official_recipe": false,
+          "matched_recipe_name": null,
+          "match_score": null,
+          "safety_checked": true,
+          "restriction_matches": [],
+          "recipe": {
+            "recipe_id": null,
+            "menu_name": "공식 레시피가 없는 검증 메뉴",
+            "cooking_method": null,
+            "dish_type": null,
+            "serving_weight": 180.0,
+            "ingredients_text": null,
+            "ingredients": [
+              {"name": "검증 재료", "amount_g": 120.0},
+              {"name": "양념", "amount_g": 5.0}
+            ],
+            "steps": ["재료를 손질한다.", "충분히 익힌다."],
+            "cooking_tip": "간을 약하게 조절한다.",
+            "image_small": null,
+            "image_large": null,
+            "source": "Auto-Fit AI 생성 조리법"
+          }
+        }
+      ]
+    }
+  },
+  "restriction_conflict": {
+    "ok": true,
+    "generator": "auto-fit-ai",
+    "meal": {
+      "items": [
+        {
+          "food_name": "땅콩 소스 메뉴",
+          "portion_g": 150.0,
+          "calories_kcal": 260.0,
+          "protein_g": 12.0,
+          "fat_g": 11.0,
+          "carbohydrate_g": 28.0,
+          "recipe_available": false,
+          "recipe_source": "unavailable",
+          "official_recipe": false,
+          "matched_recipe_name": null,
+          "match_score": null,
+          "safety_checked": true,
+          "restriction_matches": ["땅콩"],
+          "recipe": null
+        }
+      ]
+    }
+  },
+  "unavailable": {
+    "ok": true,
+    "generator": "auto-fit-ai",
+    "meal": {
+      "items": [
+        {
+          "food_name": "조리법 확인 불가 메뉴",
+          "portion_g": 150.0,
+          "calories_kcal": 210.0,
+          "protein_g": 10.0,
+          "fat_g": 6.0,
+          "carbohydrate_g": 30.0,
+          "recipe_available": false,
+          "recipe_source": "unavailable",
+          "official_recipe": false,
+          "matched_recipe_name": null,
+          "match_score": null,
+          "safety_checked": true,
+          "restriction_matches": [],
+          "recipe": null
+        }
+      ]
+    }
+  }
+}

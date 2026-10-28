@@ -1,0 +1,623 @@
+{
+  "contract_version": "1.2",
+  "legacy_chat": {
+    "request": {
+      "question": "운동 방향을 알려줘",
+      "user_info": {},
+      "chat_history": [
+        {
+          "role": "user",
+          "content": "무리하지 않는 운동을 원해"
+        }
+      ]
+    },
+    "response": {
+      "answer": "저장된 정보 범위에서 운동 방향을 안내합니다.",
+      "model": "configured-openai-model"
+    }
+  },
+  "health_question": {
+    "request": {
+      "content": "혈압 관리는 어떻게 해?",
+      "history": [],
+      "context": {
+        "metric_statuses": {
+          "blood_pressure": "high"
+        }
+      },
+      "pending_action": null
+    },
+    "response": {
+      "intent": "health_question",
+      "message": "검증된 건강 관리 자료를 바탕으로 안내합니다.",
+      "action": "health_rag",
+      "action_status": "completed",
+      "requires_backend_apply": false,
+      "pending_action": null,
+      "target_day": null,
+      "target_meal": null,
+      "data": null,
+      "sources": [
+        {
+          "source_org": "대한고혈압학회",
+          "title": "고혈압 진료지침"
+        }
+      ]
+    }
+  },
+  "health_score_comparison": {
+    "request": {
+      "content": "지난주보다 좋아졌어?",
+      "history": [],
+      "context": {
+        "health_score": {
+          "status": "available",
+          "total_score": 77.2,
+          "tier": "FIT",
+          "tier_level": 1,
+          "comparison_status": "available",
+          "previous_total_score": 70.5,
+          "score_delta": 6.7,
+          "trend": "improved",
+          "section_trends": {
+            "diet": {
+              "previous_score": 65.0,
+              "current_score": 80.0,
+              "score_delta": 15.0,
+              "trend": "improved"
+            },
+            "exercise": {
+              "previous_score": 70.0,
+              "current_score": 72.0,
+              "score_delta": 2.0,
+              "trend": "improved"
+            },
+            "health_data": {
+              "previous_score": 75.0,
+              "current_score": 79.0,
+              "score_delta": 4.0,
+              "trend": "improved"
+            }
+          },
+          "change_reasons": [
+            {
+              "section": "diet",
+              "trend": "improved",
+              "title": "식단 관리 점수 상승",
+              "message": "식단 관리 점수가 15점 상승했습니다."
+            },
+            {
+              "section": "exercise",
+              "trend": "improved",
+              "title": "운동 관리 점수 상승",
+              "message": "운동 관리 점수가 2점 상승했습니다."
+            },
+            {
+              "section": "health_data",
+              "trend": "improved",
+              "title": "건강데이터 점수 상승",
+              "message": "건강데이터 점수가 4점 상승했습니다."
+            }
+          ],
+          "priority_actions": [
+            {
+              "section": "exercise",
+              "priority": 1,
+              "title": "주간 운동 시간 확보",
+              "message": "남은 목표 시간을 운동일에 나누어 수행하세요."
+            },
+            {
+              "section": "diet",
+              "priority": 2,
+              "title": "단백질 목표 준수 점검",
+              "message": "단백질 섭취량을 목표 범위에 맞추세요."
+            }
+          ],
+          "diet": {
+            "status": "available",
+            "score": 80.0,
+            "message": "식단 점수 계산 완료"
+          },
+          "exercise": {
+            "status": "available",
+            "score": 72.0,
+            "message": "운동 점수 계산 완료"
+          },
+          "health_data": {
+            "status": "available",
+            "score": 79.0,
+            "message": "건강데이터 점수 계산 완료"
+          },
+          "health_metric_adjustments": [
+            {
+              "metric_key": "fasting_glucose",
+              "baseline_value": 110.0,
+              "current_value": 100.0,
+              "unit": "mg/dL",
+              "trend": "improved",
+              "normalized_change": 0.5
+            }
+          ]
+        }
+      },
+      "pending_action": null
+    },
+    "response": {
+      "intent": "health_score_question",
+      "message": "지난주 70.5점에서 현재 77.2점으로 6.7점 상승했습니다. 식단 관리 점수가 15점 상승했습니다.",
+      "action": "health_score_context",
+      "action_status": "completed",
+      "requires_backend_apply": false,
+      "pending_action": null,
+      "target_day": null,
+      "target_meal": null,
+      "data": {
+        "status": "available",
+        "scoring_version": "health-score-v1",
+        "total_score": 77.2,
+        "tier": "FIT",
+        "tier_level": 1,
+        "comparison_status": "available",
+        "previous_total_score": 70.5,
+        "score_delta": 6.7,
+        "trend": "improved",
+        "sections": {
+          "diet": {
+            "status": "available",
+            "score": 80.0
+          },
+          "exercise": {
+            "status": "available",
+            "score": 72.0
+          },
+          "health_data": {
+            "status": "available",
+            "score": 79.0
+          }
+        },
+        "section_trends": {
+          "diet": {
+            "previous_score": 65.0,
+            "current_score": 80.0,
+            "score_delta": 15.0,
+            "trend": "improved"
+          },
+          "exercise": {
+            "previous_score": 70.0,
+            "current_score": 72.0,
+            "score_delta": 2.0,
+            "trend": "improved"
+          },
+          "health_data": {
+            "previous_score": 75.0,
+            "current_score": 79.0,
+            "score_delta": 4.0,
+            "trend": "improved"
+          }
+        },
+        "change_reasons": [
+          {
+            "section": "diet",
+            "trend": "improved",
+            "title": "식단 관리 점수 상승",
+            "message": "식단 관리 점수가 15점 상승했습니다."
+          },
+          {
+            "section": "exercise",
+            "trend": "improved",
+            "title": "운동 관리 점수 상승",
+            "message": "운동 관리 점수가 2점 상승했습니다."
+          },
+          {
+            "section": "health_data",
+            "trend": "improved",
+            "title": "건강데이터 점수 상승",
+            "message": "건강데이터 점수가 4점 상승했습니다."
+          }
+        ],
+        "priority_actions": [
+          {
+            "section": "exercise",
+            "priority": 1,
+            "title": "주간 운동 시간 확보",
+            "message": "남은 목표 시간을 운동일에 나누어 수행하세요."
+          },
+          {
+            "section": "diet",
+            "priority": 2,
+            "title": "단백질 목표 준수 점검",
+            "message": "단백질 섭취량을 목표 범위에 맞추세요."
+          }
+        ],
+        "recommended_next_feature": "exercise_recommendation",
+        "query_type": "comparison",
+        "section": "overall"
+      },
+      "sources": []
+    }
+  },
+  "exercise_replace_unavailable": {
+    "request": {
+      "content": "운동 계획을 다른 것으로 바꿔줘",
+      "history": [],
+      "context": null,
+      "pending_action": null
+    },
+    "response": {
+      "intent": "exercise_replace_request",
+      "message": "현재는 운동 계획 변경 기능을 지원하지 않습니다. 저장된 운동 계획에 대한 설명과 안전 안내는 도와드릴 수 있어요.",
+      "action": "exercise_replace_unavailable",
+      "action_status": "unable_to_apply",
+      "requires_backend_apply": false,
+      "pending_action": null,
+      "target_day": null,
+      "target_meal": null,
+      "data": null,
+      "sources": []
+    }
+  },
+  "diet_replace_proposal": {
+    "request": {
+      "content": "월요일 점심을 바꿔줘",
+      "history": [],
+      "context": {
+        "metric_statuses": {},
+        "food_allergens": [],
+        "disliked_foods": [],
+        "diet_summary": {
+          "weekly_plan": [
+            {
+              "day": "monday",
+              "meals": {
+                "lunch": {
+                  "menu_name": "기존 점심",
+                  "items": [
+                    {
+                      "food_name": "현미밥",
+                      "portion_g": 100.0
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "pending_action": null
+    },
+    "response": {
+      "intent": "diet_replace_request",
+      "message": "monday lunch의 '기존 점심' 메뉴를 변경할까요?",
+      "action": "confirm_diet_replace",
+      "action_status": "awaiting_confirmation",
+      "requires_backend_apply": false,
+      "pending_action": {
+        "action": "diet_replace",
+        "target_day": "monday",
+        "target_meal": "lunch"
+      },
+      "target_day": "monday",
+      "target_meal": "lunch",
+      "data": null,
+      "sources": []
+    }
+  },
+  "diet_replace_confirmation": {
+    "request": {
+      "content": "네, 진행해줘",
+      "history": [],
+      "context": {
+        "metric_statuses": {},
+        "food_allergens": [],
+        "disliked_foods": [],
+        "diet_summary": {
+          "weekly_plan": [
+            {
+              "day": "monday",
+              "meals": {
+                "lunch": {
+                  "menu_name": "기존 점심",
+                  "items": [
+                    {
+                      "food_name": "현미밥",
+                      "portion_g": 100.0
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      },
+      "pending_action": {
+        "action": "diet_replace",
+        "target_day": "monday",
+        "target_meal": "lunch"
+      }
+    },
+    "response": {
+      "intent": "diet_replace_request",
+      "message": "monday lunch 메뉴를 '새 점심'으로 변경할 준비가 됐어요.",
+      "action": "diet_replace",
+      "action_status": "ready_for_backend_apply",
+      "requires_backend_apply": true,
+      "pending_action": null,
+      "target_day": "monday",
+      "target_meal": "lunch",
+      "data": {
+        "day": "monday",
+        "meal_type": "lunch",
+        "meal": {
+          "menu_name": "새 점심",
+          "menu_description": "공식 Food DB 후보로 구성한 대체 식사입니다.",
+          "image_prompt": null,
+          "estimated_calories_kcal": 450.0,
+          "nutrition": {
+            "carbohydrate_g": 50.0,
+            "protein_g": 30.0,
+            "fat_g": 14.0
+          },
+          "items": [
+            {
+              "food_name": "현미밥",
+              "portion_g": 100.0,
+              "calories_kcal": 240.0,
+              "carbohydrate_g": 50.0,
+              "protein_g": 5.0,
+              "fat_g": 2.0
+            },
+            {
+              "food_name": "닭가슴살구이",
+              "portion_g": 120.0,
+              "calories_kcal": 210.0,
+              "carbohydrate_g": 0.0,
+              "protein_g": 25.0,
+              "fat_g": 12.0
+            }
+          ],
+          "ingredients": null,
+          "guidance": "목표 섭취량에 맞춰 드세요."
+        },
+        "cautions": [],
+        "sources": []
+      },
+      "sources": []
+    }
+  },
+  "diet_replace_cancellation": {
+    "request": {
+      "content": "취소해줘",
+      "history": [],
+      "context": null,
+      "pending_action": {
+        "action": "diet_replace",
+        "target_day": "monday",
+        "target_meal": "lunch"
+      }
+    },
+    "response": {
+      "intent": "diet_replace_request",
+      "message": "식단 변경 요청을 취소했어요.",
+      "action": "diet_replace_cancelled",
+      "action_status": "completed",
+      "requires_backend_apply": false,
+      "pending_action": null,
+      "target_day": "monday",
+      "target_meal": "lunch",
+      "data": null,
+      "sources": []
+    }
+  },
+  "running_gps_recommendation": {
+    "request": {
+      "content": "현재 위치에서 쉬운 5km 러닝 코스를 추천해줘",
+      "history": [],
+      "context": {
+        "running": {
+          "latitude": 37.3948,
+          "longitude": 127.1112,
+          "pace_minutes_per_km": 6.5,
+          "desired_difficulty": "easy"
+        }
+      },
+      "pending_action": null
+    },
+    "response": {
+      "intent": "running_recommend_request",
+      "message": "성남시에서 약 5km인 러닝 코스 1개를 찾았어요.",
+      "action": "running_courses_recommended",
+      "action_status": "completed",
+      "requires_backend_apply": false,
+      "pending_action": null,
+      "target_day": null,
+      "target_meal": null,
+      "data": {
+        "ok": true,
+        "generator": "auto-fit-ai",
+        "status": "matched",
+        "resolved_region": "성남시",
+        "target_distance_km": 5.0,
+        "distance_min_km": 4.5,
+        "distance_max_km": 5.5,
+        "courses": [
+          {
+            "course_id": "metadata-example",
+            "name": "성남 건강길",
+            "description": "지자체 공식 코스",
+            "region": "경기도 성남시",
+            "distance_km": 5.1,
+            "distance_to_user_km": 0.8,
+            "estimated_duration_minutes": 33.2,
+            "pace_minutes_per_km": 6.5,
+            "pace_source": "user",
+            "pace_assumed": false,
+            "difficulty": "easy",
+            "difficulty_basis": "heuristic",
+            "is_loop": true,
+            "start": {
+              "name": "중앙공원",
+              "address": "경기도 성남시 분당구",
+              "coordinate": {
+                "latitude": 37.3948,
+                "longitude": 127.1112
+              }
+            },
+            "end": {
+              "name": "중앙공원",
+              "address": "경기도 성남시 분당구",
+              "coordinate": {
+                "latitude": 37.3948,
+                "longitude": 127.1112
+              }
+            },
+            "waypoints": [
+              "중앙공원",
+              "탄천",
+              "중앙공원"
+            ],
+            "geometry_status": "endpoints_geocoded",
+            "geometry_distance_km": null,
+            "requires_route_validation": true,
+            "source": {
+              "provider": "성남시",
+              "dataset_name": "전국길관광정보표준데이터",
+              "source_type": "official_metadata",
+              "source_course_id": null,
+              "reference_date": "2026-10-01",
+              "license_name": null
+            }
+          }
+        ],
+        "data_sources": [
+          {
+            "source_type": "official_metadata",
+            "state": "available",
+            "message": "1 matching course from the official metadata catalog."
+          },
+          {
+            "source_type": "official_gpx",
+            "state": "disabled",
+            "message": "Durunubi GPX enrichment is disabled."
+          }
+        ],
+        "generation_recommended": false,
+        "message": null
+      },
+      "sources": []
+    }
+  },
+  "running_gps_loop_generation": {
+    "request": {
+      "content": "현재 위치에서 5km 순환 코스를 만들어줘",
+      "history": [],
+      "context": {
+        "running": {
+          "latitude": 37.3948,
+          "longitude": 127.1112,
+          "pace_minutes_per_km": 6.5,
+          "candidate_count": 1,
+          "seed": 0
+        }
+      },
+      "pending_action": null
+    },
+    "response": {
+      "intent": "running_generate_request",
+      "message": "약 5km인 순환 코스 1개를 만들었어요.",
+      "action": "running_loops_generated",
+      "action_status": "completed",
+      "requires_backend_apply": false,
+      "pending_action": null,
+      "target_day": null,
+      "target_meal": null,
+      "data": {
+        "ok": true,
+        "generator": "auto-fit-ai",
+        "status": "matched",
+        "resolved_region": "성남시",
+        "target_distance_km": 5.0,
+        "distance_min_km": 4.5,
+        "distance_max_km": 5.5,
+        "tolerance_percent": 10.0,
+        "attempts_used": 2,
+        "candidates": [
+          {
+            "course_id": "generated-example-matched",
+            "name": "Auto-Fit 5km 순환 코스 1",
+            "target_distance_km": 5.0,
+            "distance_km": 5.19,
+            "distance_error_km": 0.19,
+            "distance_error_percent": 3.8,
+            "within_tolerance": true,
+            "estimated_duration_minutes": 33.7,
+            "pace_minutes_per_km": 6.5,
+            "pace_source": "user",
+            "pace_assumed": false,
+            "difficulty": "easy",
+            "is_loop": true,
+            "start": {
+              "name": "출발점",
+              "address": null,
+              "coordinate": {
+                "latitude": 37.3948,
+                "longitude": 127.1112
+              }
+            },
+            "end": {
+              "name": "도착점",
+              "address": null,
+              "coordinate": {
+                "latitude": 37.3948,
+                "longitude": 127.1112
+              }
+            },
+            "waypoints": [
+              {
+                "latitude": 37.3948,
+                "longitude": 127.1253
+              },
+              {
+                "latitude": 37.406,
+                "longitude": 127.1253
+              },
+              {
+                "latitude": 37.406,
+                "longitude": 127.1112
+              }
+            ],
+            "path": [
+              {
+                "latitude": 37.3948,
+                "longitude": 127.1112
+              },
+              {
+                "latitude": 37.4,
+                "longitude": 127.125
+              },
+              {
+                "latitude": 37.406,
+                "longitude": 127.1112
+              },
+              {
+                "latitude": 37.3948,
+                "longitude": 127.1112
+              }
+            ],
+            "provider_duration_seconds": 4200,
+            "generation_seed": 0,
+            "source": {
+              "provider": "Kakao Maps",
+              "dataset_name": "Kakao walking route",
+              "source_type": "auto_generated",
+              "source_course_id": null,
+              "reference_date": null,
+              "license_name": null
+            }
+          }
+        ],
+        "message": null
+      },
+      "sources": []
+    }
+  }
+}

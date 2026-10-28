@@ -1,0 +1,437 @@
+{
+  "contract_version": "1.0",
+  "scoring_version": "health-score-v1",
+  "initial_baseline": {
+    "description": "식단·운동은 0점에서 시작하고 최초 건강데이터는 80점에서 시작하는 기준 사례",
+    "request": {
+      "schema_version": "1.0",
+      "request_id": "health-contract-initial-baseline",
+      "input": {
+        "health_checkup": {
+          "systolic_bp": 130,
+          "diastolic_bp": 85,
+          "fasting_glucose": 110,
+          "total_cholesterol": 220,
+          "hdl_cholesterol": 45,
+          "ldl_cholesterol": 140,
+          "triglycerides": 180
+        },
+        "body_composition": {
+          "skeletal_muscle_mass_kg": 25,
+          "body_fat_percentage": 28,
+          "bmi": 25,
+          "visceral_fat_level": 10
+        },
+        "score_context": {
+          "baseline_health_checkup": {
+            "systolic_bp": 130,
+            "diastolic_bp": 85,
+            "fasting_glucose": 110,
+            "total_cholesterol": 220,
+            "hdl_cholesterol": 45,
+            "ldl_cholesterol": 140,
+            "triglycerides": 180
+          },
+          "baseline_body_composition": {
+            "skeletal_muscle_mass_kg": 25,
+            "body_fat_percentage": 28,
+            "bmi": 25,
+            "visceral_fat_level": 10
+          },
+          "weekly_diet": {
+            "expected_days": 7,
+            "days": []
+          },
+          "weekly_exercise": {
+            "goal_type": "body_fat_loss",
+            "target_minutes": 90,
+            "completed_minutes": 0,
+            "target_days": 3,
+            "completed_days": 0,
+            "goal_aligned_completed_days": 0
+          }
+        }
+      }
+    },
+    "expected": {
+      "status": "available",
+      "total_score": 32.0,
+      "tier": "CORE",
+      "tier_level": 1,
+      "comparison_status": "not_provided",
+      "previous_total_score": null,
+      "score_delta": null,
+      "trend": null,
+      "section_scores": {
+        "diet": 0.0,
+        "exercise": 0.0,
+        "health_data": 80.0
+      },
+      "section_statuses": {
+        "diet": "available",
+        "exercise": "available",
+        "health_data": "available"
+      },
+      "priority_sections": [
+        "diet",
+        "exercise"
+      ],
+      "change_reason_trends": []
+    }
+  },
+  "weekly_comparison": {
+    "description": "직전 32점 snapshot 이후 식단·운동 목표를 모두 달성한 주간 비교 사례",
+    "request": {
+      "schema_version": "1.0",
+      "request_id": "health-contract-weekly-comparison",
+      "input": {
+        "health_checkup": {
+          "systolic_bp": 130,
+          "diastolic_bp": 85,
+          "fasting_glucose": 110,
+          "total_cholesterol": 220,
+          "hdl_cholesterol": 45,
+          "ldl_cholesterol": 140,
+          "triglycerides": 180
+        },
+        "body_composition": {
+          "skeletal_muscle_mass_kg": 25,
+          "body_fat_percentage": 28,
+          "bmi": 25,
+          "visceral_fat_level": 10
+        },
+        "score_context": {
+          "baseline_health_checkup": {
+            "systolic_bp": 130,
+            "diastolic_bp": 85,
+            "fasting_glucose": 110,
+            "total_cholesterol": 220,
+            "hdl_cholesterol": 45,
+            "ldl_cholesterol": 140,
+            "triglycerides": 180
+          },
+          "baseline_body_composition": {
+            "skeletal_muscle_mass_kg": 25,
+            "body_fat_percentage": 28,
+            "bmi": 25,
+            "visceral_fat_level": 10
+          },
+          "weekly_diet": {
+            "expected_days": 7,
+            "days": [
+              {
+                "date": "2026-10-13",
+                "target": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                },
+                "actual": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                }
+              },
+              {
+                "date": "2026-10-14",
+                "target": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                },
+                "actual": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                }
+              },
+              {
+                "date": "2026-10-15",
+                "target": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                },
+                "actual": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                }
+              },
+              {
+                "date": "2026-10-16",
+                "target": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                },
+                "actual": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                }
+              },
+              {
+                "date": "2026-10-17",
+                "target": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                },
+                "actual": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                }
+              },
+              {
+                "date": "2026-10-18",
+                "target": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                },
+                "actual": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                }
+              },
+              {
+                "date": "2026-10-19",
+                "target": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                },
+                "actual": {
+                  "calories_kcal": 2000,
+                  "carbohydrate_g": 250,
+                  "protein_g": 120,
+                  "fat_g": 55
+                }
+              }
+            ]
+          },
+          "weekly_exercise": {
+            "goal_type": "body_fat_loss",
+            "target_minutes": 90,
+            "completed_minutes": 90,
+            "target_days": 3,
+            "completed_days": 3,
+            "goal_aligned_completed_days": 3
+          },
+          "previous_health_score": {
+            "scoring_version": "health-score-v1",
+            "total_score": 32.0,
+            "diet_score": 0.0,
+            "exercise_score": 0.0,
+            "health_data_score": 80.0
+          }
+        }
+      }
+    },
+    "expected": {
+      "status": "available",
+      "total_score": 92.0,
+      "tier": "PEAK",
+      "tier_level": 1,
+      "comparison_status": "available",
+      "previous_total_score": 32.0,
+      "score_delta": 60.0,
+      "trend": "improved",
+      "section_scores": {
+        "diet": 100.0,
+        "exercise": 100.0,
+        "health_data": 80.0
+      },
+      "section_statuses": {
+        "diet": "available",
+        "exercise": "available",
+        "health_data": "available"
+      },
+      "priority_sections": [],
+      "change_reason_trends": [
+        {
+          "section": "diet",
+          "trend": "improved"
+        },
+        {
+          "section": "exercise",
+          "trend": "improved"
+        },
+        {
+          "section": "health_data",
+          "trend": "unchanged"
+        }
+      ]
+    }
+  },
+  "version_mismatch": {
+    "description": "직전 점수 버전이 달라 수치 비교를 하지 않는 사례",
+    "request": {
+      "schema_version": "1.0",
+      "request_id": "health-contract-version-mismatch",
+      "input": {
+        "health_checkup": {
+          "systolic_bp": 130,
+          "diastolic_bp": 85,
+          "fasting_glucose": 110,
+          "total_cholesterol": 220,
+          "hdl_cholesterol": 45,
+          "ldl_cholesterol": 140,
+          "triglycerides": 180
+        },
+        "body_composition": {
+          "skeletal_muscle_mass_kg": 25,
+          "body_fat_percentage": 28,
+          "bmi": 25,
+          "visceral_fat_level": 10
+        },
+        "score_context": {
+          "baseline_health_checkup": {
+            "systolic_bp": 130,
+            "diastolic_bp": 85,
+            "fasting_glucose": 110,
+            "total_cholesterol": 220,
+            "hdl_cholesterol": 45,
+            "ldl_cholesterol": 140,
+            "triglycerides": 180
+          },
+          "baseline_body_composition": {
+            "skeletal_muscle_mass_kg": 25,
+            "body_fat_percentage": 28,
+            "bmi": 25,
+            "visceral_fat_level": 10
+          },
+          "weekly_diet": {
+            "expected_days": 7,
+            "days": []
+          },
+          "weekly_exercise": {
+            "goal_type": "body_fat_loss",
+            "target_minutes": 90,
+            "completed_minutes": 0,
+            "target_days": 3,
+            "completed_days": 0,
+            "goal_aligned_completed_days": 0
+          },
+          "previous_health_score": {
+            "scoring_version": "health-score-v0",
+            "total_score": 32.0,
+            "diet_score": 0.0,
+            "exercise_score": 0.0,
+            "health_data_score": 80.0
+          }
+        }
+      }
+    },
+    "expected": {
+      "status": "available",
+      "total_score": 32.0,
+      "tier": "CORE",
+      "tier_level": 1,
+      "comparison_status": "version_mismatch",
+      "previous_total_score": null,
+      "score_delta": null,
+      "trend": null,
+      "section_scores": {
+        "diet": 0.0,
+        "exercise": 0.0,
+        "health_data": 80.0
+      },
+      "section_statuses": {
+        "diet": "available",
+        "exercise": "available",
+        "health_data": "available"
+      },
+      "priority_sections": [
+        "diet",
+        "exercise"
+      ],
+      "change_reason_trends": []
+    }
+  },
+  "missing_health_data": {
+    "description": "현재 인바디가 없어 건강데이터와 종합점수를 계산하지 않는 사례",
+    "request": {
+      "schema_version": "1.0",
+      "request_id": "health-contract-missing-health-data",
+      "input": {
+        "health_checkup": {
+          "systolic_bp": 130,
+          "diastolic_bp": 85,
+          "fasting_glucose": 110,
+          "total_cholesterol": 220,
+          "hdl_cholesterol": 45,
+          "ldl_cholesterol": 140,
+          "triglycerides": 180
+        },
+        "score_context": {
+          "baseline_health_checkup": {
+            "systolic_bp": 130,
+            "diastolic_bp": 85,
+            "fasting_glucose": 110,
+            "total_cholesterol": 220,
+            "hdl_cholesterol": 45,
+            "ldl_cholesterol": 140,
+            "triglycerides": 180
+          },
+          "baseline_body_composition": {
+            "skeletal_muscle_mass_kg": 25,
+            "body_fat_percentage": 28,
+            "bmi": 25,
+            "visceral_fat_level": 10
+          },
+          "weekly_diet": {
+            "expected_days": 7,
+            "days": []
+          },
+          "weekly_exercise": {
+            "goal_type": "body_fat_loss",
+            "target_minutes": 90,
+            "completed_minutes": 0,
+            "target_days": 3,
+            "completed_days": 0,
+            "goal_aligned_completed_days": 0
+          }
+        }
+      }
+    },
+    "expected": {
+      "status": "unavailable",
+      "total_score": null,
+      "tier": null,
+      "tier_level": null,
+      "comparison_status": "current_score_unavailable",
+      "previous_total_score": null,
+      "score_delta": null,
+      "trend": null,
+      "section_scores": {
+        "diet": 0.0,
+        "exercise": 0.0,
+        "health_data": null
+      },
+      "section_statuses": {
+        "diet": "available",
+        "exercise": "available",
+        "health_data": "unavailable"
+      },
+      "priority_sections": [],
+      "change_reason_trends": []
+    }
+  }
+}

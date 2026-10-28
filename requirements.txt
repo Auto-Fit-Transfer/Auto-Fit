@@ -1,0 +1,15 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+openai>=1.0.0
+httpx>=0.27.0
+beautifulsoup4>=4.12.0
+python-dotenv>=1.0.0
+pydantic-settings>=2.0.0
+python-multipart>=0.0.9
+joblib>=1.4.0
+scikit-learn>=1.5.0
+numpy
+pandas
+langgraph
+chromadb
+pypdf>=5.0.0
