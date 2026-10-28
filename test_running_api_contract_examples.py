@@ -147,6 +147,29 @@ def main() -> None:
     assert preview_response.route.start == preview_request.start
     assert preview_response.route.end == preview_request.end
     assert preview_response.route.path
+    assert preview_response.distance_km == (
+        preview_response.route.distance_km
+    )
+    assert preview_response.path == preview_response.route.path
+
+    # The router constructs this response with only ``route``.  Verify that
+    # the response model emits the flat fields consumed by origin/backend.
+    backend_compatible = RunningRoutePreviewResponse(
+        route=preview_response.route
+    ).model_dump(mode="json")
+    assert backend_compatible["distance_km"] > 0
+    assert 2 <= len(backend_compatible["path"]) <= 10_000
+    assert all(
+        -90 <= point["latitude"] <= 90
+        and -180 <= point["longitude"] <= 180
+        for point in backend_compatible["path"]
+    )
+    assert backend_compatible["distance_km"] == (
+        backend_compatible["route"]["distance_km"]
+    )
+    assert backend_compatible["path"] == (
+        backend_compatible["route"]["path"]
+    )
 
     print("Running API contract examples: OK")
 

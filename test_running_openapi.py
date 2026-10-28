@@ -47,6 +47,13 @@ def main() -> None:
     assert "RunningSessionRecommendationRequest" in components
     assert "RunningSessionRecommendationResponse" in components
 
+    preview_properties = components[
+        "RunningRoutePreviewResponse"
+    ]["properties"]
+    assert "route" in preview_properties
+    assert "distance_km" in preview_properties
+    assert "path" in preview_properties
+
     print("running OpenAPI contract: OK")
 
 

@@ -2,6 +2,25 @@
 
 이 문서는 Auto-Fit Backend가 AI Server를 연결할 때 필요한 입력 데이터, AI Server 응답, 저장 책임과 연동 순서를 정의한다. 현재 코드에 구현된 Router와 Pydantic Schema를 기준으로 작성했으며, Backend API 명세를 받으면 필드 매핑과 최종 endpoint를 함께 확정한다.
 
+## 실제 Backend 코드 대조 상태
+
+2026-10-28 기준 `origin/backend` 커밋 `51dcf00`의 실제 import와 호출 관계를 확인한 결과다. 아래 상태는 구현 목표가 아니라 해당 커밋에서 실행되는 코드 기준이다.
+
+| 기능 | 현재 Backend → AI 호출 | 현재 상태 |
+|---|---|---|
+| 러닝 | 필수 5개 `/running/*` 경로 | 직접 연동 구현됨 |
+| 기존 챗봇 일반 답변 | `POST /chat` | `CHAT_AI_*` 환경변수로 선택적 연동 |
+| Backend 일일 식단 AI 슬롯 | `POST /chat`에 JSON 생성 prompt 전달 | 전용 식단 API를 사용하지 않음 |
+| 주간 식단·한 끼 교체·Recipe | `/recommend/diet*` | 문서 예시는 있으나 실제 호출 없음 |
+| 건강 리포트 | `/health-analysis*` | 실제 호출 없음 |
+| 운동 추천 | `/recommend/exercise` | Backend `rules_v1` 자체 생성 사용 |
+| 음식 사진 분석 | `/food-analysis/*` | AI 분석 proxy 없음; 사진 저장 경로만 존재 |
+| 행동형 챗봇 | `/chat/orchestrate` | 실제 호출과 action 적용 흐름 없음 |
+
+따라서 현재 바로 E2E 가능한 AI 기능은 러닝과 기존 `/chat` 호환 경로다. 나머지 endpoint는 AI Server에 구현되어 있어도 Backend Router·DTO·저장 mapping이 추가되기 전에는 Frontend에서 사용할 수 없다. 특히 Backend의 식단 생성 prompt를 `/chat`에 계속 싣는 방식은 전용 Food DB·Recipe·알레르기 검증 파이프라인을 우회하므로 최종 구조로 사용하지 않는다.
+
+또한 해당 Backend 커밋의 `/chat` 호출 제한은 socket 8초·전체 10초인데 AI Server의 기본 OpenAI 제한은 30초다. Backend가 먼저 연결을 끊은 뒤 AI 호출만 계속되는 상황을 막으려면 Backend의 upstream 제한을 AI 제한보다 길게 조정하거나, 기능별 전용 endpoint로 전환하면서 공통 timeout 정책을 합의해야 한다. AI 응답 품질을 떨어뜨릴 수 있으므로 AI 제한을 임의로 8초 미만으로 낮추지는 않는다.
+
 ## 가장 먼저 합의할 사항
 
 Backend 담당자는 아래 항목을 먼저 제공해야 한다.

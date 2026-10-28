@@ -36,6 +36,17 @@
 
 정적 snapshot과 실행 중인 `/openapi.json`이 다르면 실행 중인 배포본을 기준으로 원인을 확인한다.
 
+## Backend 브랜치 대조 결과
+
+`origin/backend`의 실제 `backend/app/running.py`와 `backend/app/running_ai.py`를 기준으로 확인한 계약은 다음과 같다.
+
+- Backend는 필수 5개 AI 경로를 호출한 뒤 사용자별 선택 token을 서명하고 Supabase에 선택·즐겨찾기·페이스·전체 경로 snapshot을 저장한다.
+- `POST /running/routes/preview`는 Backend가 최상위 `distance_km`과 `path`를 검증하므로 AI Server는 이 필드를 최상위에 반환한다. 기존 `route` wrapper도 호환을 위해 유지한다.
+- Backend의 코스 추천 proxy는 아직 `desired_difficulty`를 AI Server에 전달하지 않는다. Frontend 강도 반영을 위해 Backend query DTO와 전달 params에 이 필드를 추가해야 한다.
+- Backend는 `custom_distance_km`를 100km까지, AI Server는 서비스 정책상 50km까지 허용한다. Backend 상한을 50km로 맞춰야 한다.
+- Backend route preview는 경유점을 25개까지 허용하지만 AI Server와 현재 Kakao 연동 계약은 최대 5개다. Backend 상한을 5개로 맞춰야 한다.
+- Backend의 `region` 최대 길이는 120자, AI Server는 100자다. Backend validation을 100자로 맞춰야 upstream 422를 사전에 방지할 수 있다.
+
 ## Backend 환경변수
 
 Backend의 공용 Render 환경에는 다음 값을 secret으로 설정한다.

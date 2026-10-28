@@ -7510,6 +7510,74 @@
       },
       "RunningRoutePreviewResponse": {
         "properties": {
+          "provider": {
+            "type": "string",
+            "const": "kakao",
+            "title": "Provider",
+            "default": "kakao"
+          },
+          "distance_km": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Distance Km"
+          },
+          "estimated_duration_minutes": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Estimated Duration Minutes"
+          },
+          "pace_minutes_per_km": {
+            "type": "number",
+            "maximum": 20.0,
+            "minimum": 2.0,
+            "title": "Pace Minutes Per Km"
+          },
+          "pace_source": {
+            "type": "string",
+            "enum": [
+              "user",
+              "default"
+            ],
+            "title": "Pace Source"
+          },
+          "pace_assumed": {
+            "type": "boolean",
+            "title": "Pace Assumed"
+          },
+          "provider_duration_seconds": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Duration Seconds"
+          },
+          "start": {
+            "$ref": "#/components/schemas/GeoCoordinate"
+          },
+          "end": {
+            "$ref": "#/components/schemas/GeoCoordinate"
+          },
+          "waypoints": {
+            "items": {
+              "$ref": "#/components/schemas/GeoCoordinate"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Waypoints"
+          },
+          "path": {
+            "items": {
+              "$ref": "#/components/schemas/GeoCoordinate"
+            },
+            "type": "array",
+            "minItems": 2,
+            "title": "Path"
+          },
           "ok": {
             "type": "boolean",
             "title": "Ok",
@@ -7526,9 +7594,18 @@
         },
         "type": "object",
         "required": [
+          "distance_km",
+          "estimated_duration_minutes",
+          "pace_minutes_per_km",
+          "pace_source",
+          "pace_assumed",
+          "start",
+          "end",
+          "path",
           "route"
         ],
-        "title": "RunningRoutePreviewResponse"
+        "title": "RunningRoutePreviewResponse",
+        "description": "Route preview with the legacy wrapper and Backend flat fields.\n\nThe AI contract originally exposed the preview under ``route``.  The\nauthenticated Backend proxy validates and signs ``distance_km`` and\n``path`` at the response root.  Keep both representations identical so\nexisting clients remain compatible while the Backend can consume the\nresponse without reshaping it."
       },
       "RunningSessionRecommendationRequest": {
         "properties": {

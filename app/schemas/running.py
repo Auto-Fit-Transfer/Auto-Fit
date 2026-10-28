@@ -501,7 +501,40 @@ class RunningRoutePreview(BaseModel):
     )
 
 
-class RunningRoutePreviewResponse(BaseModel):
+class RunningRoutePreviewResponse(RunningRoutePreview):
+    """Route preview with the legacy wrapper and Backend flat fields.
+
+    The AI contract originally exposed the preview under ``route``.  The
+    authenticated Backend proxy validates and signs ``distance_km`` and
+    ``path`` at the response root.  Keep both representations identical so
+    existing clients remain compatible while the Backend can consume the
+    response without reshaping it.
+    """
+
     ok: bool = True
     generator: str = "auto-fit-ai"
     route: RunningRoutePreview
+
+    @model_validator(mode="before")
+    @classmethod
+    def mirror_route_fields(
+        cls,
+        value: object,
+    ) -> object:
+        if not isinstance(value, dict):
+            return value
+
+        normalized = dict(value)
+        route = normalized.get("route")
+        if isinstance(route, RunningRoutePreview):
+            route_fields = route.model_dump()
+        elif isinstance(route, dict):
+            route_fields = route
+        else:
+            return normalized
+
+        for field_name in RunningRoutePreview.model_fields:
+            if field_name in route_fields:
+                normalized[field_name] = route_fields[field_name]
+
+        return normalized

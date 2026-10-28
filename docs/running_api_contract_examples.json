@@ -442,6 +442,24 @@
     "response": {
       "ok": true,
       "generator": "auto-fit-ai",
+      "provider": "kakao",
+      "distance_km": 4.9,
+      "estimated_duration_minutes": 31.9,
+      "pace_minutes_per_km": 6.5,
+      "pace_source": "user",
+      "pace_assumed": false,
+      "provider_duration_seconds": 3900,
+      "start": {"latitude": 37.3948, "longitude": 127.1112},
+      "end": {"latitude": 37.3948, "longitude": 127.1112},
+      "waypoints": [
+        {"latitude": 37.4000, "longitude": 127.1200},
+        {"latitude": 37.4050, "longitude": 127.1150}
+      ],
+      "path": [
+        {"latitude": 37.3948, "longitude": 127.1112},
+        {"latitude": 37.4050, "longitude": 127.1150},
+        {"latitude": 37.3948, "longitude": 127.1112}
+      ],
       "route": {
         "provider": "kakao",
         "distance_km": 4.9,

@@ -179,6 +179,17 @@ def main() -> None:
             assert preview.json() == examples[
                 "route_preview"
             ]["response"]
+            preview_payload = preview.json()
+            # origin/backend validates these fields at the response root
+            # before signing and storing the route snapshot.
+            assert preview_payload["distance_km"] > 0
+            assert preview_payload["path"]
+            assert preview_payload["distance_km"] == (
+                preview_payload["route"]["distance_km"]
+            )
+            assert preview_payload["path"] == (
+                preview_payload["route"]["path"]
+            )
     finally:
         security_module.get_settings = original_security_settings
         running_router_module.recommend_running_courses = original_recommend

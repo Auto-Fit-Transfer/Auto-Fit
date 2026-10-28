@@ -223,7 +223,7 @@ POST /running/routes/preview
 
 추천 메타데이터의 `waypoints`는 장소 이름 문자열이며 이 API의 `waypoints`는 좌표다. Backend가 문자열을 좌표처럼 전달하면 안 된다. Frontend에서 사용자가 위치를 선택하거나 `GET /running/places/search`로 좌표를 확정한 뒤 전달한다.
 
-이 endpoint가 반환한 `distance_km`과 `path`는 Kakao가 검증한 실제 도보 경로다. 다만 해당 경로가 원본 지자체 코스 전체와 동일하다는 의미는 아니다.
+이 endpoint가 반환한 최상위 `distance_km`과 `path`는 Kakao가 검증한 실제 도보 경로다. 현재 AI Server는 기존 클라이언트 호환을 위해 동일한 값을 `route.distance_km`, `route.path`에도 함께 반환하며 응답 Schema가 두 표현을 항상 같은 값으로 맞춘다. Backend는 최상위 필드를 서명·저장 대상으로 사용한다. 다만 해당 경로가 원본 지자체 코스 전체와 동일하다는 의미는 아니다.
 
 ## 9. 순환 코스 자동 생성
 
