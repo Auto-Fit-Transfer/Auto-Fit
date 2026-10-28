@@ -15,6 +15,9 @@ from app.services.llm_service import (
 from app.services.local_specialty_service import (
     LocalSpecialtyService,
 )
+from app.services.health_analysis_service import (
+    get_health_analysis_resilience_stats,
+)
 from app.services.meal_recipe_service import (
     MealRecipeService,
 )
@@ -69,5 +72,18 @@ async def chat_health_check():
         ),
         "backend_chat_resilience": (
             get_backend_chat_resilience_stats()
+        ),
+    }
+
+
+@router.get("/health/analysis")
+async def health_analysis_health_check():
+    """건강분석의 LLM 성공·fallback 상태만 반환한다."""
+
+    return {
+        "status": "ok",
+        "service": "healthcare-ai-server",
+        "health_analysis_resilience": (
+            get_health_analysis_resilience_stats()
         ),
     }

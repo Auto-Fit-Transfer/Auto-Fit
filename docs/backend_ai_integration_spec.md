@@ -420,6 +420,9 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
 - 건강데이터 개선은 최대 +20점, 악화는 최대 -80점으로 반영한다.
 - 종합점수는 식단 30%, 운동 30%, 건강데이터 40%를 반영한다.
 - 점수와 등급은 결정론적 코드로 계산하며 LLM이 생성하거나 수정하지 않는다.
+- 개인화 설명용 OpenAI가 timeout·오류·빈 응답으로 실패해도 계산된 점수는 유지하고 `model.version=health-analysis-fallback-v1`의 결정론적 응답을 반환한다.
+- fallback은 알레르기 필터를 통과한 냉장고 현황만 사용하며 구체적인 사용 재료를 임의 생성하지 않는다.
+- `GET /health/analysis`는 원본 건강정보 없이 LLM 성공·fallback·timeout·오류 누적 횟수만 반환한다.
 - 최초 기준 데이터는 AI Server가 저장하지 않으며 Backend가 사용자별로 보존해 매 요청에 전달한다.
 - `previous_health_score`는 선택값이며 Backend가 직전 주의 확정 점수 snapshot을 보존해 전달한다.
 - 이전 점수와 현재 점수의 `scoring_version`이 다르면 서로 비교하지 않는다.

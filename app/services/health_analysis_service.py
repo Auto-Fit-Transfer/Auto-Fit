@@ -1,4 +1,7 @@
-from typing import Any
+import asyncio
+import logging
+import threading
+from typing import Any, Literal
 
 from openai import AsyncOpenAI
 from pydantic import (
@@ -52,6 +55,43 @@ from app.services.health_analysis_validation_service import (
 from app.services.health_score_service import (
     health_score_service,
 )
+
+
+logger = logging.getLogger(__name__)
+
+
+_HEALTH_ANALYSIS_STATE_LOCK = threading.RLock()
+_HEALTH_ANALYSIS_RESILIENCE_STATS = {
+    "llm_successes": 0,
+    "llm_fallbacks": 0,
+    "llm_timeouts": 0,
+    "llm_errors": 0,
+    "empty_inventory_fallbacks": 0,
+}
+
+
+def _increment_health_analysis_metric(
+    metric_name: str,
+) -> None:
+    with _HEALTH_ANALYSIS_STATE_LOCK:
+        _HEALTH_ANALYSIS_RESILIENCE_STATS[
+            metric_name
+        ] += 1
+
+
+def get_health_analysis_resilience_stats() -> dict[str, int]:
+    with _HEALTH_ANALYSIS_STATE_LOCK:
+        return dict(
+            _HEALTH_ANALYSIS_RESILIENCE_STATS
+        )
+
+
+def _reset_health_analysis_resilience_for_tests() -> None:
+    with _HEALTH_ANALYSIS_STATE_LOCK:
+        for metric_name in _HEALTH_ANALYSIS_RESILIENCE_STATS:
+            _HEALTH_ANALYSIS_RESILIENCE_STATS[
+                metric_name
+            ] = 0
 
 
 # =========================================================
@@ -334,22 +374,25 @@ def _build_safe_rag_context(
 
 
 # =========================================================
-# Empty Inventory Fallback
+# Deterministic Fallback
 # =========================================================
 
 
-def _build_empty_inventory_fallback(
+def _build_deterministic_fallback(
     *,
     request: HealthAnalysisRequest,
     metric_statuses: dict[str, str],
     prepared: PreparedDietContext,
     health_score: HealthScoreOutput,
+    fallback_kind: Literal[
+        "empty_inventory",
+        "llm_unavailable",
+    ],
 ) -> HealthAnalysisResponse:
     """
-    사용 가능한 냉장고 재료가 없는 경우.
+    건강점수와 검증된 상태·냉장고 context만 사용하는 fallback.
 
-    없는 식재료를 LLM이 생성하지 않도록
-    deterministic fallback을 반환한다.
+    LLM 장애 시에도 새 재료나 건강 수치를 만들지 않는다.
     """
 
     goal_text = "건강 관리"
@@ -367,6 +410,43 @@ def _build_empty_inventory_fallback(
             metric_statuses.keys()
         )
     )
+
+    expiring_soon_items = (
+        validate_expiring_soon_items(
+            prepared
+        )
+    )
+
+    if fallback_kind == "empty_inventory":
+        diet_title = (
+            "냉장고 재료를 등록해 보세요"
+        )
+        diet_message = (
+            "현재 사용할 수 있는 냉장고 재료가 없어 "
+            "구체적인 재료 활용 제안을 만들기 어렵습니다."
+        )
+        action_items = [
+            "사용 가능한 냉장고 재료 등록하기"
+        ]
+    else:
+        diet_title = (
+            "안전한 냉장고 재료를 확인했어요"
+        )
+        diet_message = (
+            "개인화 설명 생성이 지연되어 현재는 검증된 "
+            "건강 상태와 사용 가능한 재료 범위를 제공합니다. "
+            "구체적인 메뉴는 추천 식단에서 확인해 주세요."
+        )
+        action_items = []
+
+        if expiring_soon_items:
+            action_items.append(
+                "유통기한 임박 재료부터 확인하기"
+            )
+
+        action_items.append(
+            "공식 영양정보 기반 추천 식단 확인하기"
+        )
 
     analysis = HealthAnalysisOutput(
         health_score=health_score,
@@ -418,19 +498,9 @@ def _build_empty_inventory_fallback(
         ),
 
         diet_suggestion=DietSuggestionOutput(
-            title=(
-                "냉장고 재료를 "
-                "등록해 보세요"
-            ),
-            message=(
-                "현재 사용할 수 있는 "
-                "냉장고 재료가 없어 "
-                "구체적인 재료 활용 "
-                "제안을 만들기 어렵습니다."
-            ),
-            action_items=[
-                "사용 가능한 냉장고 재료 등록하기"
-            ],
+            title=diet_title,
+            message=diet_message,
+            action_items=action_items,
             evidence_metric_keys=(
                 key_metrics
             ),
@@ -442,18 +512,22 @@ def _build_empty_inventory_fallback(
                 captured_at=(
                     prepared.captured_at
                 ),
-                available_count=0,
-                expiring_soon_count=0,
+                available_count=len(
+                    prepared.available_items
+                ),
+                expiring_soon_count=len(
+                    prepared.expiring_soon_items
+                ),
                 allergy_excluded_count=len(
                     prepared.allergy_excluded_items
                 ),
                 used_items=[],
-                expiring_soon_items=[],
+                expiring_soon_items=(
+                    expiring_soon_items
+                ),
             )
         ),
     )
-
-    settings = get_settings()
 
     return HealthAnalysisResponse(
         schema_version=(
@@ -464,11 +538,45 @@ def _build_empty_inventory_fallback(
         ),
         analysis=analysis,
         model=HealthAnalysisModelInfo(
-            name=settings.openai_model,
+            name="deterministic",
             version=(
-                "health-analysis-v1"
+                "health-analysis-fallback-v1"
             ),
         ),
+    )
+
+
+def _build_empty_inventory_fallback(
+    *,
+    request: HealthAnalysisRequest,
+    metric_statuses: dict[str, str],
+    prepared: PreparedDietContext,
+    health_score: HealthScoreOutput,
+) -> HealthAnalysisResponse:
+    """기존 내부 호출명을 유지하는 무냉장고 wrapper."""
+
+    return _build_deterministic_fallback(
+        request=request,
+        metric_statuses=metric_statuses,
+        prepared=prepared,
+        health_score=health_score,
+        fallback_kind="empty_inventory",
+    )
+
+
+def _build_llm_unavailable_fallback(
+    *,
+    request: HealthAnalysisRequest,
+    metric_statuses: dict[str, str],
+    prepared: PreparedDietContext,
+    health_score: HealthScoreOutput,
+) -> HealthAnalysisResponse:
+    return _build_deterministic_fallback(
+        request=request,
+        metric_statuses=metric_statuses,
+        prepared=prepared,
+        health_score=health_score,
+        fallback_kind="llm_unavailable",
     )
 
 
@@ -768,6 +876,9 @@ async def generate_health_analysis(
     # -----------------------------------------------------
 
     if not prepared.available_items:
+        _increment_health_analysis_metric(
+            "empty_inventory_fallbacks"
+        )
         return (
             _build_empty_inventory_fallback(
                 request=request,
@@ -783,17 +894,64 @@ async def generate_health_analysis(
     # 7. Backend 전용 LLM Structured Output
     # -----------------------------------------------------
 
-    draft = (
-        await _generate_llm_draft(
-            metric_statuses=(
-                metric_statuses
+    settings = get_settings()
+
+    try:
+        draft = await asyncio.wait_for(
+            _generate_llm_draft(
+                metric_statuses=(
+                    metric_statuses
+                ),
+                rag_context=(
+                    rag_context
+                ),
+                request=request,
+                prepared=prepared,
             ),
-            rag_context=(
-                rag_context
+            timeout=(
+                settings
+                .health_analysis_openai_timeout_seconds
             ),
-            request=request,
-            prepared=prepared,
         )
+
+    except asyncio.TimeoutError:
+        _increment_health_analysis_metric(
+            "llm_fallbacks"
+        )
+        _increment_health_analysis_metric(
+            "llm_timeouts"
+        )
+        logger.warning(
+            "Health analysis generation timed out; "
+            "using deterministic fallback"
+        )
+        return _build_llm_unavailable_fallback(
+            request=request,
+            metric_statuses=metric_statuses,
+            prepared=prepared,
+            health_score=health_score,
+        )
+
+    except Exception:
+        _increment_health_analysis_metric(
+            "llm_fallbacks"
+        )
+        _increment_health_analysis_metric(
+            "llm_errors"
+        )
+        logger.exception(
+            "Health analysis generation failed; "
+            "using deterministic fallback"
+        )
+        return _build_llm_unavailable_fallback(
+            request=request,
+            metric_statuses=metric_statuses,
+            prepared=prepared,
+            health_score=health_score,
+        )
+
+    _increment_health_analysis_metric(
+        "llm_successes"
     )
 
     # -----------------------------------------------------
@@ -1002,8 +1160,6 @@ async def generate_health_analysis(
     # -----------------------------------------------------
     # 13. Model Metadata
     # -----------------------------------------------------
-
-    settings = get_settings()
 
     return HealthAnalysisResponse(
         schema_version=(

@@ -113,12 +113,29 @@ def _mock_handler(
             },
         )
 
+    if request.url.path == "/health/analysis":
+        return httpx.Response(
+            200,
+            json={
+                "status": "ok",
+                "service": "healthcare-ai-server",
+                "health_analysis_resilience": {
+                    "llm_successes": 1,
+                    "llm_fallbacks": 0,
+                    "llm_timeouts": 0,
+                    "llm_errors": 0,
+                    "empty_inventory_fallbacks": 1,
+                },
+            },
+        )
+
     if request.url.path == "/openapi.json":
         return httpx.Response(
             200,
             json={
                 "paths": {
                     "/health": {"get": {}},
+                    "/health/analysis": {"get": {}},
                     "/health-analysis": {"post": {}},
                     "/chat/orchestrate": {"post": {}},
                 }
@@ -177,6 +194,7 @@ def test_deployed_server_smoke_contract() -> None:
         for check in checks
     ] == [
         "health",
+        "health_analysis_resilience",
         "openapi_contract",
         "authentication_boundary",
         "health_score_chat",

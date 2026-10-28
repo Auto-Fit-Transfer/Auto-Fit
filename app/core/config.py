@@ -39,6 +39,13 @@ class Settings(BaseSettings):
         le=300,
     )
 
+    # 종합 건강분석 Structured Output 제한 시간
+    health_analysis_openai_timeout_seconds: float = Field(
+        default=45.0,
+        gt=0,
+        le=300,
+    )
+
     # 음식 사진 인식 / 공식 Food DB 매칭
     openai_food_image_model: str = "gpt-5-mini"
     food_image_openai_timeout_seconds: float = Field(

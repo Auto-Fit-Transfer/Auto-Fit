@@ -33,6 +33,7 @@ CONTRACT_PATH = (
 
 CRITICAL_OPENAPI_OPERATIONS = {
     "/health": "get",
+    "/health/analysis": "get",
     "/health-analysis": "post",
     "/chat/orchestrate": "post",
 }
@@ -230,6 +231,47 @@ def _run_with_client(
         SmokeCheck(
             name="health",
             http_status=health_response.status_code,
+            elapsed_ms=elapsed,
+        )
+    )
+
+    resilience_response, elapsed = _timed_request(
+        client,
+        "GET",
+        "/health/analysis",
+    )
+    _require_status(
+        resilience_response,
+        200,
+        "health_analysis_resilience",
+    )
+    resilience_payload = _response_json(
+        resilience_response,
+        "health_analysis_resilience",
+    )
+    resilience_stats = resilience_payload.get(
+        "health_analysis_resilience"
+    )
+    if (
+        resilience_payload.get("status") != "ok"
+        or not isinstance(resilience_stats, dict)
+        or not {
+            "llm_successes",
+            "llm_fallbacks",
+            "llm_timeouts",
+            "llm_errors",
+            "empty_inventory_fallbacks",
+        }.issubset(resilience_stats)
+    ):
+        raise DeploymentSmokeError(
+            "The health analysis resilience endpoint is invalid."
+        )
+    checks.append(
+        SmokeCheck(
+            name="health_analysis_resilience",
+            http_status=(
+                resilience_response.status_code
+            ),
             elapsed_ms=elapsed,
         )
     )

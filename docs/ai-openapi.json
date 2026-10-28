@@ -85,6 +85,26 @@
         }
       }
     },
+    "/health/analysis": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health Analysis Health Check",
+        "description": "건강분석의 LLM 성공·fallback 상태만 반환한다.",
+        "operationId": "health_analysis_health_check_health_analysis_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/chat": {
       "post": {
         "tags": [

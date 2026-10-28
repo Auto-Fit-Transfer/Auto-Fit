@@ -291,6 +291,24 @@ Backend가 저장하고 재사용할 핵심 객체는 `analysis.health_score` �
 | `comparison_status` | `version_mismatch` | 점수 버전 변경 안내, 수치 증감 비교 금지 |
 | `trend` | `improved` / `unchanged` / `declined` | 문자열 번역이 아닌 enum 기준으로 UI 처리 |
 
+### 5.7 OpenAI 지연·장애 fallback
+
+`/health-analysis`는 건강점수 계산 후 개인화 설명을 생성한다. 개인화 설명용 OpenAI 호출이 timeout, 오류 또는 빈 Structured Output으로 실패해도 이미 계산된 건강점수는 버리지 않고 HTTP `200`의 결정론적 fallback 응답으로 반환한다.
+
+| `model.name` | `model.version` | 의미 |
+|---|---|---|
+| 설정된 OpenAI 모델명 | `health-analysis-v1` | 정상 개인화 설명 생성 완료 |
+| `deterministic` | `health-analysis-fallback-v1` | OpenAI 없이 안전한 기본 건강 리포트 반환 |
+
+Fallback 응답은 다음 원칙을 지킨다.
+
+- `analysis.health_score`를 정상 계산 결과 그대로 보존한다.
+- Rule Engine이 확정한 허용 건강지표 key만 사용한다.
+- 알레르기 필터를 통과한 냉장고 재료의 개수와 실제 `expiring_soon` 이름만 표시한다.
+- 구체적인 음식 조합이나 사용 재료를 임의 생성하지 않으므로 `used_items`와 `used_inventory_item_ids`는 비운다.
+- Backend는 fallback 응답을 실패로 폐기하지 않고 점수 snapshot을 정상 저장할 수 있다.
+- 운영 지표는 `GET /health/analysis`의 `health_analysis_resilience`에서 확인한다. 원본 건강정보나 API Key는 포함하지 않는다.
+
 ## 6. Backend 저장 및 다음 주 매핑 계약
 
 Backend는 `analysis.health_score`를 사용자·평가 주차·`scoring_version` 기준의 불변 snapshot으로 저장하는 방식을 권장한다. AI Server는 저장소가 아니다.
@@ -446,7 +464,7 @@ Backend는 최신 `/health-analysis` 응답의 `analysis.health_score`를 가능
 | HTTP | 응답 형태 | 의미 |
 |---:|---|---|
 | `422` | `{"error":{"code":"VALIDATION_ERROR","message":"...","fields":[]}}` | 건강 분석 입력 검증 실패 |
-| `503` | `{"error":{"code":"SERVICE_UNAVAILABLE","message":"...","fields":[]}}` | 외부 AI 또는 내부 서비스 일시 장애 |
+| `503` | `{"error":{"code":"SERVICE_UNAVAILABLE","message":"...","fields":[]}}` | Rule/RAG Graph 또는 기타 복구 불가능한 내부 서비스 장애. OpenAI 설명 생성 오류는 정상 fallback 응답으로 복구 |
 | `500` | `{"error":{"code":"INTERNAL_ERROR","message":"...","fields":[]}}` | 기타 서버 오류 |
 
 ### 8.3 `/chat/orchestrate` 오류
@@ -482,12 +500,14 @@ Backend는 `health_score.status=unavailable` 또는 `action=need_health_score_co
 | 10 | 일반 건강 질문 | 기존 `health_rag / completed` 및 실제 RAG `sources` 유지 |
 | 11 | 잘못된 Bearer Key | HTTP `401` |
 | 12 | 사용자 A 점수를 사용자 B 채팅에 전달하지 않음 | 사용자별 완전 격리 확인 |
+| 13 | 냉장고 재료가 있는 요청에서 OpenAI timeout 또는 오류 발생 | HTTP `200`, `model.version=health-analysis-fallback-v1`, 건강점수 보존 |
+| 14 | fallback 응답의 냉장고 context 확인 | 알레르기 제외·유통기한 상태는 원본 입력과 일치하고 사용 재료는 빈 배열 |
 
 시나리오 1의 32점은 `0×0.3 + 0×0.3 + 80×0.4` 정책에 따른 기준값이다. 실제 E2E에서는 AI 설명 문장 전체 일치보다 점수·상태·Action·Schema를 검증한다.
 
 ## 11. Backend 구현 체크리스트
 
-- [ ] 배포 AI Server의 커밋이 `33206c1` 이상인지 확인했다.
+- [ ] 배포 AI Server가 최신 `ai` 브랜치 커밋인지 확인했다.
 - [ ] 배포 서버 `/openapi.json`을 받아 Backend DTO와 대조했다.
 - [ ] `health_report_api_contract_examples.json`의 네 가지 기준 사례를 Backend DTO로 역직렬화했다.
 - [ ] `AI_SERVER_BASE_URL`, `AI_SERVER_API_KEY`, `AI_SERVER_ENABLED`를 서버 환경에만 설정했다.
@@ -500,6 +520,8 @@ Backend는 `health_score.status=unavailable` 또는 `action=need_health_score_co
 - [ ] `/chat/orchestrate`에 최신 `health_score` 전체 객체를 전달한다.
 - [ ] 챗봇 응답을 문장이 아닌 `action`과 `action_status`로 분기한다.
 - [ ] `health_metric_adjustments`를 챗봇 UI에 노출하지 않는다.
+- [ ] `model.version=health-analysis-fallback-v1` 응답에서도 건강점수 snapshot을 저장한다.
+- [ ] `GET /health/analysis` 운영 지표를 배포 확인에 사용한다.
 - [ ] `401`, `422`, `500`, `503` 및 timeout 처리를 구현했다.
 - [ ] 사용자 간 건강정보·대화 context가 섞이지 않는 테스트를 추가했다.
 - [ ] 민감정보가 로그·모니터링·예외 추적에 원문으로 남지 않는지 확인했다.
