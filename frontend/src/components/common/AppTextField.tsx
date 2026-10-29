@@ -1,5 +1,6 @@
 import { forwardRef, useState, type ReactNode } from 'react';
 import {
+  Platform,
   TextInput,
   View,
   type StyleProp,
@@ -11,6 +12,11 @@ import {
 import { radius, scaleForEasyMode, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { Text } from './Text';
+
+// The field border already shows focus, so the browser's own focus ring is turned off on the web.
+// React Native's types leave out 'none', which react-native-web accepts.
+export const noWebFocusRing: TextStyle =
+  Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : {};
 
 export interface AppTextFieldProps extends TextInputProps {
   label?: string;
@@ -123,6 +129,7 @@ function createStyles({ colors, text, easyMode }: AppTheme) {
       includeFontPadding: false,
       lineHeight: undefined,
       padding: 0,
+      ...noWebFocusRing,
     },
     disabledText: { color: colors.textDisabled },
     supporting: { ...text.body2, color: colors.textSecondary, marginTop: 8 },
