@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
@@ -18,10 +18,17 @@ import {
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
+import { COMMUNITY_MESSAGES_ENABLED } from '@/src/features/community/communityFeatures';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 
+// While messages are switched off, a direct link lands on the community tab instead.
+export default function CommunityMessagesRoute() {
+  if (!COMMUNITY_MESSAGES_ENABLED) return <Redirect href="/community" />;
+  return <CommunityMessagesScreen />;
+}
+
 // Conversations with at least one message, most recent first. Reloads when shown again.
-export default function CommunityMessagesScreen() {
+function CommunityMessagesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<CommunityConversation[] | null>(null);

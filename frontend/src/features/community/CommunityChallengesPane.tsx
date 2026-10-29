@@ -20,6 +20,7 @@ import {
 import { AppButton, Text } from '@/src/components/common';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 
+import { COMMUNITY_RANKING_ENABLED } from './communityFeatures';
 import { useCommunityActions } from './useCommunityActions';
 
 const METRIC_UNIT: Record<CommunityChallenge['metric'], string> = {
@@ -32,8 +33,8 @@ function shortDate(value: string) {
   return `${month}/${day}`;
 }
 
-// The 챌린지 tab: provisional challenges counted from workout and meal records, and the way
-// into the weekly ranking.
+// The 챌린지 tab: provisional challenges counted from workout and meal records, and (when the
+// ranking is switched on) the way into the weekly ranking.
 export function CommunityChallengesPane({ bottomSpace }: { bottomSpace: number }) {
   const router = useRouter();
   const actions = useCommunityActions();
@@ -138,17 +139,19 @@ export function CommunityChallengesPane({ bottomSpace }: { bottomSpace: number }
 
   const header = (
     <View style={styles.header}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.push('/community/ranking')}
-        style={({ pressed }) => [styles.rankingCard, pressed && styles.pressed]}
-      >
-        <View style={styles.rankingBody}>
-          <Text style={styles.rankingTitle}>이번 주 랭킹</Text>
-          <Text style={styles.rankingText}>운동 횟수·마일리지 순위 (참여한 사람만 보여요)</Text>
-        </View>
-        <Text style={styles.chevron}>›</Text>
-      </Pressable>
+      {COMMUNITY_RANKING_ENABLED ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/community/ranking')}
+          style={({ pressed }) => [styles.rankingCard, pressed && styles.pressed]}
+        >
+          <View style={styles.rankingBody}>
+            <Text style={styles.rankingTitle}>이번 주 랭킹</Text>
+            <Text style={styles.rankingText}>운동 횟수·마일리지 순위 (참여한 사람만 보여요)</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
+      ) : null}
       <Text style={styles.note}>
         챌린지는 운동 완료·식단 기록으로 자동으로 쌓여요.
         {challenges?.some((item) => isProvisionalNote(item.note))
