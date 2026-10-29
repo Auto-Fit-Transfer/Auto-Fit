@@ -1,44 +1,36 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   Alert,
   Animated,
   BackHandler,
-  Dimensions,
   Easing,
   Image,
-  Keyboard,
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
-  TextInput,
-  useWindowDimensions,
   View,
-  type ImageSourcePropType,
 } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
 
-import RightIcon from '@/assets/icons/common/chevrons/Right.svg';
-import XIcon from '@/assets/icons/common/X.svg';
-import BarbellIcon from '@/assets/icons/deco/Barbell.svg';
-import FireIcon from '@/assets/icons/deco/Fire.svg';
-import ClockIcon from '@/assets/icons/input/Clock.svg';
-import LightbulbIcon from '@/assets/icons/system/Lightbulb.svg';
-import CheckIcon from '@/assets/icons/system/Check_Bold.svg';
-import SpeakerHighIcon from '@/assets/icons/system/SpeakerSimpleHigh.svg';
-import SpeakerSlashIcon from '@/assets/icons/system/SpeakerSimpleSlash.svg';
-import WarningIcon from '@/assets/icons/system/WarningCircle.svg';
-import PauseIcon from '@/assets/icons/feature/Pause_Fill.svg';
-import PencilIcon from '@/assets/icons/feature/Pencil_Line.svg';
-import PlayIcon from '@/assets/icons/feature/Play_Fill.svg';
+import BarbellIcon from '@/assets/icons/ui/barbell.svg';
+import CheckIcon from '@/assets/icons/ui/check.svg';
+import PauseIcon from '@/assets/icons/ui/pause-fill.svg';
+import PlayIcon from '@/assets/icons/ui/play-fill.svg';
 import { getExerciseApiErrorMessage } from '@/src/api/exercise';
-import { Text } from '@/src/components/common';
-import { BackButton } from '@/src/components/common/BackButton';
+import {
+  AppBottomSheet,
+  AppButton,
+  AppDialog,
+  AppTextField,
+  IconButton,
+  Notice,
+  ProgressBar,
+  Text,
+} from '@/src/components/common';
 import { AdjustmentIndicatorView } from '@/src/components/exercise/AdjustmentIndicatorView';
-import { ExerciseActionButton } from '@/src/components/exercise/ExerciseActionButton';
-import { ExerciseScreenFrame } from '@/src/components/exercise/ExerciseScreenFrame';
+import { ChoiceChips, ChoiceSection } from '@/src/components/exercise/ExerciseFormParts';
+import { SubScreen } from '@/src/components/navigation';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import {
   useExerciseSession,
@@ -46,107 +38,68 @@ import {
   type ExerciseSessionExercise,
   type ExerciseSessionState,
 } from '@/src/features/exercise/ExerciseSessionContext';
-import {
-  getMockExerciseBodyParts,
-  type ExerciseBodyPart,
-} from '@/src/features/exercise/exerciseData';
 import { useTemporaryAdjustmentProgress } from '@/src/features/exercise/useTemporaryAdjustmentProgress';
-import { colors, fontFamilies } from '@/src/theme';
-
-const fallbackExerciseImage = require('@/assets/images/illustrations/temp/Image_Exercise.png');
-const finishOneImage = require('@/assets/images/illustrations/exercise/finishes/Finish_One.png');
-const finishAllImage = require('@/assets/images/illustrations/exercise/finishes/Finish_All.png');
-const skipAllImage = require('@/assets/images/illustrations/exercise/finishes/Skip_All.png');
-const completeBadgeImage = require('@/assets/images/illustrations/exercise/Complete_Badge.png');
-const skipBadgeImage = require('@/assets/images/illustrations/exercise/Skip_Badge.png');
-const modifyImage = require('@/assets/images/illustrations/exercise/circles/Modify.png');
-
-const referenceHeight = 917;
-const minimumScreenHeight = 740;
-// The Skip_All asset has more transparent edge space than the other completion illustrations.
-// Keep this state-specific scale so its visible artwork matches the Figma visual bounds.
-const skippedCompletionIllustrationScale = 1.45;
+import { radius, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type DiscomfortFeedbackType = 'pain' | 'fatigue' | 'dizziness' | 'breathing' | 'other';
-type DiscomfortCloseAction = 'dismiss' | 'end';
-type FocusedDiscomfortInput = 'other' | 'pain' | null;
-type FollowUpChoice = 'adjust' | 'end';
 
 type DiscomfortFeedbackDraft = {
+  bodyParts: string[];
   feedbackLevel: number;
   feedbackType: DiscomfortFeedbackType;
-  otherDescription: string;
-  painArea: string;
+  note: string;
 };
 
-type DiscomfortFeedbackOption = {
-  endLabel: string;
-  info: string;
-  label: string;
-  levelLabel: string;
-  startLabel: string;
-  value: DiscomfortFeedbackType;
-};
-
-const discomfortFeedbackOptions: DiscomfortFeedbackOption[] = [
-  {
-    endLabel: '매우 심함',
-    info: '통증 정도와 불편 부위를 반영해 남은 운동 강도와 횟수를 조정해드려요.',
-    label: '통증 증가',
-    levelLabel: '현재 통증 정도',
-    startLabel: '통증 없음',
-    value: 'pain',
-  },
-  {
-    endLabel: '매우 피곤함',
-    info: '현재 피로도를 반영해 남은 운동 강도와 횟수를 조정해드려요.',
-    label: '피로 증가',
-    levelLabel: '현재 피로 정도',
-    startLabel: '피로 없음',
-    value: 'fatigue',
-  },
-  {
-    endLabel: '매우 어지러움',
-    info: '현재 상태를 반영해 남은 운동 강도를 조정해드려요.',
-    label: '어지럼',
-    levelLabel: '현재 어지러움 정도',
-    startLabel: '어지럽지 않음',
-    value: 'dizziness',
-  },
-  {
-    endLabel: '매우 불편함',
-    info: '현재 호흡 상태를 반영해 남은 운동 강도를 조정해드려요.',
-    label: '호흡 불편',
-    levelLabel: '현재 호흡이 불편한 정도',
-    startLabel: '불편하지 않음',
-    value: 'breathing',
-  },
-  {
-    endLabel: '매우 불편함',
-    info: '입력한 불편 사항을 반영해 남은 운동을 조정해드려요.',
-    label: '기타',
-    levelLabel: '현재 불편한 정도',
-    startLabel: '불편하지 않음',
-    value: 'other',
-  },
+const changeOptions: { value: DiscomfortFeedbackType; label: string }[] = [
+  { value: 'pain', label: '아파요' },
+  { value: 'fatigue', label: '피곤해요' },
+  { value: 'dizziness', label: '어지러워요' },
+  { value: 'breathing', label: '숨이 차요' },
+  { value: 'other', label: '기타' },
+];
+const bodyPartOptions = ['목', '어깨', '허리', '무릎', '손목', '발목', '기타'].map((part) => ({
+  value: part,
+  label: part,
+}));
+// Words in place of the old 0~10 slider; the number goes with the report.
+const painFeelingOptions = [
+  { value: 3, label: '뻐근해요' },
+  { value: 6, label: '찌릿해요' },
+  { value: 9, label: '아파요' },
+];
+const levelOptions = [
+  { value: 3, label: '조금' },
+  { value: 6, label: '꽤' },
+  { value: 9, label: '많이' },
 ];
 
-function formatClock(totalSeconds: number, spaced = false) {
+function formatClock(totalSeconds: number) {
   const safeSeconds = Math.max(0, Math.floor(totalSeconds));
   const minutes = String(Math.floor(safeSeconds / 60)).padStart(2, '0');
   const seconds = String(safeSeconds % 60).padStart(2, '0');
-  return spaced ? `${minutes} : ${seconds}` : `${minutes}:${seconds}`;
+  return `${minutes}:${seconds}`;
 }
 
-function speedCopy(speed: ExerciseCountSpeed) {
-  if (speed === 'fast') return { badge: '1.5x', label: '빠름' };
-  if (speed === 'slow') return { badge: '0.75x', label: '느림' };
-  return { badge: '1.0x', label: '일반' };
+function speedLabel(speed: ExerciseCountSpeed) {
+  if (speed === 'fast') return '빠름';
+  if (speed === 'slow') return '느림';
+  return '보통';
 }
 
+function prescription(exercise: ExerciseSessionExercise) {
+  const amount =
+    exercise.mode === 'timed'
+      ? `${exercise.targetSeconds ?? 0}초`
+      : `${exercise.targetRepetitions ?? 0}회`;
+  const rest = exercise.restSeconds ? ` · 쉬기 ${exercise.restSeconds}초` : '';
+  return `${exercise.totalSets}세트 × ${amount}${rest}`;
+}
+
+// Figma E4 (운동하기) and E5 (몸이 불편해요). The session logic lives in ExerciseSessionContext.
 export default function ExerciseSessionScreen() {
   const router = useRouter();
-  const { height: windowHeight } = useWindowDimensions();
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { markRoutineCompleted, resultRecordCompleted } = useExerciseRoutine();
   const {
     addRestSeconds,
@@ -164,92 +117,57 @@ export default function ExerciseSessionScreen() {
     skipRest,
     skipCurrentExercise,
     summary,
-    toggleGuide,
     togglePause,
   } = useExerciseSession();
   const [isCompleting, setIsCompleting] = useState(false);
-  const [discomfortRecordVisible, setDiscomfortRecordVisible] = useState(false);
-  const [discomfortRecordClosing, setDiscomfortRecordClosing] = useState(false);
+  const [discomfortVisible, setDiscomfortVisible] = useState(false);
   const [adjustmentOverlayVisible, setAdjustmentOverlayVisible] = useState(false);
-  const [discomfortCloseAction, setDiscomfortCloseAction] =
-    useState<DiscomfortCloseAction>('dismiss');
   const adjustmentDraftRef = useRef<DiscomfortFeedbackDraft | null>(null);
-  const responsiveHeight =
-    Platform.OS === 'android' ? Dimensions.get('screen').height : windowHeight;
-  const heightProgress = Math.max(
-    0,
-    Math.min(1, (responsiveHeight - minimumScreenHeight) / (referenceHeight - minimumScreenHeight)),
-  );
-  const verticalValue = (expanded: number, compact: number) =>
-    compact + (expanded - compact) * heightProgress;
-  const layout = {
-    buttonsTop: verticalValue(800, 730),
-    completionButtonTop: verticalValue(800, 740),
-    completionCardHeight: 110,
-    completionCardTop: verticalValue(676, 620),
-    completionImageSize: verticalValue(320, 285),
-    completionImageTop: verticalValue(268, 225),
-    completionTitleTop: verticalValue(165, 140),
-    contentHeight: verticalValue(900, 815),
-    countToTipMinGap: verticalValue(15, 18),
-    counterTop: verticalValue(450, 396),
-    mediaHeight: verticalValue(310, 270),
-    mediaImageHeight: verticalValue(210, 175),
-    mediaTop: verticalValue(125, 110),
-    restCircleTop: verticalValue(313, 260),
-    restTitleTop: verticalValue(160, 135),
-    repProgressGap: verticalValue(25, 18),
-    tipHeight: verticalValue(150, 120),
-    tipTop: verticalValue(635, 570),
-    timedCounterTop: verticalValue(480, 410),
-  };
+  // The workout pauses while the discomfort sheet is open and goes on when it closes.
+  const pausedForSheetRef = useRef(false);
   const hasSession = session !== null;
   const exitConfirmationVisible = session?.exitConfirmationVisible ?? false;
   const skipConfirmationVisible = session?.skipConfirmationVisible ?? false;
 
-  const openDiscomfortRecord = useCallback(() => {
-    setDiscomfortCloseAction('dismiss');
-    setDiscomfortRecordClosing(false);
-    setDiscomfortRecordVisible(true);
+  const resumeAfterSheet = useCallback(() => {
+    if (pausedForSheetRef.current) {
+      pausedForSheetRef.current = false;
+      togglePause();
+    }
+  }, [togglePause]);
+
+  const openDiscomfort = useCallback(() => {
+    if (session && !session.paused) {
+      pausedForSheetRef.current = true;
+      togglePause();
+    }
+    setDiscomfortVisible(true);
+  }, [session, togglePause]);
+
+  const closeDiscomfort = useCallback(() => {
+    setDiscomfortVisible(false);
+    resumeAfterSheet();
+  }, [resumeAfterSheet]);
+
+  const requestAdjustment = useCallback((draft: DiscomfortFeedbackDraft) => {
+    adjustmentDraftRef.current = draft;
+    setDiscomfortVisible(false);
+    setAdjustmentOverlayVisible(true);
   }, []);
 
-  const closeDiscomfortRecord = useCallback(
-    (action: DiscomfortCloseAction = 'dismiss') => {
-      if (!discomfortRecordVisible || discomfortRecordClosing) return;
-      setDiscomfortCloseAction(action);
-      setDiscomfortRecordClosing(true);
-    },
-    [discomfortRecordClosing, discomfortRecordVisible],
-  );
-
-  const requestAdjustment = useCallback(
-    (draft: DiscomfortFeedbackDraft) => {
-      adjustmentDraftRef.current = draft;
-      setAdjustmentOverlayVisible(true);
-    },
-    [],
-  );
-
-  const handleDiscomfortRecordClosed = useCallback(() => {
-    const shouldEndWorkout = discomfortCloseAction === 'end';
-    setDiscomfortRecordVisible(false);
-    setDiscomfortRecordClosing(false);
-    setDiscomfortCloseAction('dismiss');
-    if (shouldEndWorkout) openExitConfirmation();
-  }, [discomfortCloseAction, openExitConfirmation]);
-
-  const handleAdjustmentOverlayCovered = useCallback(() => {
-    setDiscomfortRecordVisible(false);
-    setDiscomfortRecordClosing(false);
-    setDiscomfortCloseAction('dismiss');
-  }, []);
+  const endFromDiscomfort = useCallback(() => {
+    pausedForSheetRef.current = false;
+    setDiscomfortVisible(false);
+    openExitConfirmation();
+  }, [openExitConfirmation]);
 
   const handleAdjustmentOverlayFinished = useCallback(() => {
     // TODO: Replace this TEMP simulation completion with the adjustment API response,
     // then update the remaining exercises in ExerciseSessionContext before revealing the session.
     adjustmentDraftRef.current = null;
     setAdjustmentOverlayVisible(false);
-  }, []);
+    resumeAfterSheet();
+  }, [resumeAfterSheet]);
 
   useEffect(() => {
     if (session || resultRecordCompleted) return undefined;
@@ -263,17 +181,17 @@ export default function ExerciseSessionScreen() {
       if (adjustmentOverlayVisible) return true;
       if (skipConfirmationVisible) closeSkipConfirmation();
       else if (exitConfirmationVisible) closeExitConfirmation();
-      else if (discomfortRecordVisible) closeDiscomfortRecord();
+      else if (discomfortVisible) closeDiscomfort();
       else openExitConfirmation();
       return true;
     });
     return () => subscription.remove();
   }, [
-    closeDiscomfortRecord,
+    adjustmentOverlayVisible,
+    closeDiscomfort,
     closeExitConfirmation,
     closeSkipConfirmation,
-    discomfortRecordVisible,
-    adjustmentOverlayVisible,
+    discomfortVisible,
     exitConfirmationVisible,
     hasSession,
     openExitConfirmation,
@@ -281,7 +199,7 @@ export default function ExerciseSessionScreen() {
   ]);
 
   if (!session || !currentExercise) {
-    return <ExerciseScreenFrame contentHeight={layout.contentHeight}>{null}</ExerciseScreenFrame>;
+    return <SubScreen onBack={() => router.back()} title="운동하기" />;
   }
 
   const leaveSession = () => {
@@ -304,7 +222,7 @@ export default function ExerciseSessionScreen() {
       requestAnimationFrame(() => router.replace('/exercise'));
     } catch (error) {
       console.error('Exercise session completion failed:', error);
-      Alert.alert('운동 결과 저장 실패', getExerciseApiErrorMessage(error));
+      Alert.alert('운동 결과를 저장하지 못했어요', getExerciseApiErrorMessage(error));
     } finally {
       setIsCompleting(false);
     }
@@ -328,739 +246,581 @@ export default function ExerciseSessionScreen() {
       );
     } catch (error) {
       console.error('Exercise session completion failed:', error);
-      Alert.alert('운동 결과 저장 실패', getExerciseApiErrorMessage(error));
+      Alert.alert('운동 결과를 저장하지 못했어요', getExerciseApiErrorMessage(error));
     } finally {
       setIsCompleting(false);
     }
   };
 
-  let content: ReactNode;
+  const nextExercise = session.exercises[session.currentExerciseIndex + 1] ?? null;
+  const inProgress = session.phase === 'exercise' || session.phase === 'rest';
+  const allDone = session.phase === 'all-completed' || session.phase === 'all-skipped';
+
+  let content = null;
+  let footer = null;
   if (session.phase === 'rest') {
     content = (
-      <RestContent
-        addRestSeconds={addRestSeconds}
-        layout={layout}
-        onSkip={openSkipConfirmation}
+      <RestView
+        onAddRest={() => addRestSeconds(10)}
+        onSkipExercise={openSkipConfirmation}
+        onTogglePause={togglePause}
         session={session}
-        skipRest={skipRest}
-        togglePause={togglePause}
       />
     );
+    footer = <AppButton onPress={skipRest} title="휴식 건너뛰기" />;
   } else if (session.phase === 'exercise-completed') {
-    content = (
-      <ExerciseCompletedContent
-        exercise={currentExercise}
-        layout={layout}
-        onNext={goToNextExercise}
-        session={session}
-      />
-    );
-  } else if (session.phase === 'all-completed' || session.phase === 'all-skipped') {
-    content = (
-      <AllCompletedContent
-        allSkipped={session.phase === 'all-skipped'}
-        disabled={isCompleting}
-        layout={layout}
-        onFinish={() =>
-          void (session.phase === 'all-skipped'
-            ? finishAndReturnHome()
-            : finishAndOpenResultRecord())
-        }
-        session={session}
-        summary={summary}
+    content = <ExerciseDoneView exercise={currentExercise} session={session} />;
+    footer = <AppButton onPress={goToNextExercise} title="다음" />;
+  } else if (allDone) {
+    const allSkipped = session.phase === 'all-skipped';
+    content = <AllDoneView allSkipped={allSkipped} summary={summary} />;
+    footer = (
+      <AppButton
+        loading={isCompleting}
+        onPress={() => void (allSkipped ? finishAndReturnHome() : finishAndOpenResultRecord())}
+        title={allSkipped ? '운동 홈으로' : '운동 결과 기록하기'}
       />
     );
   } else {
     content = (
-      <ExerciseContent
-        completeCurrentSet={completeCurrentSet}
-        cycleCountSpeed={cycleCountSpeed}
+      <ExerciseView
         exercise={currentExercise}
-        layout={layout}
-        onRecordDiscomfort={openDiscomfortRecord}
+        nextExercise={nextExercise}
+        onCycleSpeed={cycleCountSpeed}
         onSkip={openSkipConfirmation}
+        onTogglePause={togglePause}
         session={session}
-        toggleGuide={toggleGuide}
-        togglePause={togglePause}
       />
+    );
+    footer = (
+      <View style={styles.footerRow}>
+        <AppButton
+          fullWidth={false}
+          onPress={openDiscomfort}
+          style={styles.flex}
+          title="몸이 불편해요"
+          variant="secondary"
+        />
+        <AppButton
+          fullWidth={false}
+          onPress={completeCurrentSet}
+          style={styles.flex}
+          title="세트 완료"
+        />
+      </View>
     );
   }
 
   return (
-    <ExerciseScreenFrame contentHeight={layout.contentHeight}>
-      <SessionHeader
-        exercise={currentExercise}
+    <>
+      <SubScreen
+        footer={footer}
+        gap={16}
         onBack={openExitConfirmation}
-        session={session}
-        togglePause={togglePause}
+        right={
+          inProgress ? (
+            <IconButton
+              accessibilityLabel={session.paused ? '다시 시작' : '잠시 멈추기'}
+              icon={
+                session.paused ? (
+                  <PlayIcon color={colors.textPrimary} height={24} width={24} />
+                ) : (
+                  <PauseIcon color={colors.textPrimary} height={24} width={24} />
+                )
+              }
+              onPress={togglePause}
+              size={44}
+            />
+          ) : undefined
+        }
+        title="운동하기"
+      >
+        {inProgress ? (
+          <View style={styles.progress}>
+            <View style={styles.progressRow}>
+              <Text style={styles.progressText}>
+                {session.currentExerciseIndex + 1} / {session.exercises.length} 동작
+              </Text>
+              <Text style={styles.caption}>
+                {session.paused ? '멈춤 · ' : ''}
+                {formatClock(session.elapsedExerciseMs / 1000)}
+              </Text>
+            </View>
+            <ProgressBar
+              height={6}
+              value={(session.currentExerciseIndex + 1) / session.exercises.length}
+            />
+          </View>
+        ) : null}
+        {content}
+      </SubScreen>
+      <DiscomfortSheet
+        onAdjust={requestAdjustment}
+        onClose={closeDiscomfort}
+        onEnd={endFromDiscomfort}
+        visible={discomfortVisible}
       />
-      {content}
-      {discomfortRecordVisible ? (
-        <DiscomfortRecordModal
-          isClosing={discomfortRecordClosing}
-          onClose={closeDiscomfortRecord}
-          onClosed={handleDiscomfortRecordClosed}
-          onRequestAdjust={requestAdjustment}
-          onRequestEnd={() => closeDiscomfortRecord('end')}
-        />
-      ) : null}
       {adjustmentOverlayVisible ? (
-        <AdjustmentIndicatorOverlay
-          onCovered={handleAdjustmentOverlayCovered}
-          onFinished={handleAdjustmentOverlayFinished}
-        />
+        <AdjustmentIndicatorOverlay onFinished={handleAdjustmentOverlayFinished} />
       ) : null}
-      {session.skipConfirmationVisible ? (
-        <ConfirmationModal
-          cancelLabel="취소"
-          contentHeight={layout.contentHeight}
-          confirmLabel="건너뛰기"
-          description={'현재 운동의 진행 내용은 저장되지 않아요.\n다음 운동으로 이동할까요?'}
-          onCancel={closeSkipConfirmation}
-          onConfirm={skipCurrentExercise}
-          title="이 운동을 건너뛸까요?"
-        />
-      ) : null}
-      {session.exitConfirmationVisible ? (
-        <ConfirmationModal
-          contentHeight={layout.contentHeight}
-          confirmLabel="운동 중단"
-          description={'지금 나가면 현재 진행중인 운동이\n기록되지 않을 수 있어요.'}
-          onCancel={closeExitConfirmation}
-          onConfirm={leaveSession}
-          title="운동을 중단하시겠어요?"
-        />
-      ) : null}
-    </ExerciseScreenFrame>
+      <AppDialog
+        cancelText="취소"
+        confirmText="건너뛰기"
+        description="지금 동작의 진행 내용은 저장되지 않아요."
+        onCancel={closeSkipConfirmation}
+        onConfirm={skipCurrentExercise}
+        title="이 동작을 건너뛸까요?"
+        visible={skipConfirmationVisible}
+      />
+      <AppDialog
+        cancelText="계속하기"
+        confirmText="그만하기"
+        description="지금 나가면 진행 중인 운동이 기록되지 않을 수 있어요."
+        destructive
+        onCancel={closeExitConfirmation}
+        onConfirm={leaveSession}
+        title="운동을 그만할까요?"
+        visible={exitConfirmationVisible}
+      />
+    </>
   );
 }
 
-type SessionLayout = {
-  buttonsTop: number;
-  countToTipMinGap: number;
-  completionCardTop: number;
-  completionCardHeight: number;
-  completionButtonTop: number;
-  completionImageSize: number;
-  completionImageTop: number;
-  completionTitleTop: number;
-  contentHeight: number;
-  counterTop: number;
-  mediaHeight: number;
-  mediaImageHeight: number;
-  mediaTop: number;
-  restCircleTop: number;
-  restTitleTop: number;
-  repProgressGap: number;
-  tipHeight: number;
-  tipTop: number;
-  timedCounterTop: number;
-};
-
-function SessionHeader({
+function ExerciseView({
   exercise,
-  onBack,
+  nextExercise,
+  onCycleSpeed,
+  onSkip,
+  onTogglePause,
   session,
-  togglePause,
 }: {
   exercise: ExerciseSessionExercise;
-  onBack: () => void;
+  nextExercise: ExerciseSessionExercise | null;
+  onCycleSpeed: () => void;
+  onSkip: () => void;
+  onTogglePause: () => void;
   session: ExerciseSessionState;
-  togglePause: () => void;
 }) {
-  const showTimer = session.phase === 'exercise';
-  const progress = (session.currentExerciseIndex + 1) / session.exercises.length;
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+  const [failedImageUri, setFailedImageUri] = useState<string | null>(null);
+  const imageUri = exercise.thumbnailUrl?.trim();
+  const showImage = Boolean(imageUri) && imageUri !== failedImageUri;
+  const timed = exercise.mode === 'timed';
+  const targetSeconds = exercise.targetSeconds ?? 0;
+  const remainingSeconds = Math.ceil(session.setRemainingMs / 1000);
+  const currentProgress = timed
+    ? targetSeconds > 0
+      ? 1 - session.setRemainingMs / (targetSeconds * 1000)
+      : 0
+    : (exercise.targetRepetitions ?? 0) > 0
+      ? session.currentRep / (exercise.targetRepetitions ?? 1)
+      : 0;
+
   return (
     <>
-      <BackButton onPress={onBack} style={styles.back} />
-      <Text style={styles.screenTitle}>운동 수행</Text>
-      {showTimer ? (
-        <Pressable onPress={togglePause} style={styles.topTimer}>
-          <View style={styles.timerDot} />
-          <Text style={styles.topTimerText}>
-            {formatClock(Math.floor(session.elapsedExerciseMs / 1000))}
-          </Text>
-          {session.paused ? (
-            <PlayIcon color={colors.primary} height={25} width={25} />
-          ) : (
-            <PauseIcon color={colors.primary} height={25} width={25} />
-          )}
-        </Pressable>
-      ) : null}
-      <View style={styles.progressRow}>
-        <Text style={styles.progressCurrent}>{session.currentExerciseIndex + 1}</Text>
-        <Text style={styles.progressTotal}> / {session.exercises.length}</Text>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
-        </View>
-      </View>
-      <Text accessibilityElementsHidden style={styles.hiddenExerciseName}>
+      <Text accessibilityRole="header" style={styles.exerciseName}>
         {exercise.name}
       </Text>
-    </>
-  );
-}
-
-function ExerciseContent({
-  completeCurrentSet,
-  cycleCountSpeed,
-  exercise,
-  layout,
-  onRecordDiscomfort,
-  onSkip,
-  session,
-  toggleGuide,
-  togglePause,
-}: {
-  completeCurrentSet: () => void;
-  cycleCountSpeed: () => void;
-  exercise: ExerciseSessionExercise;
-  layout: SessionLayout;
-  onRecordDiscomfort: () => void;
-  onSkip: () => void;
-  session: ExerciseSessionState;
-  toggleGuide: () => void;
-  togglePause: () => void;
-}) {
-  const [repProgressHeight, setRepProgressHeight] = useState<number | null>(null);
-  const expectedRepProgressHeight = 120 + layout.repProgressGap * 2;
-  const measuredRepProgressHeight = repProgressHeight ?? expectedRepProgressHeight;
-  // Preserve the shared lower layout while keeping the speed button clear of the fixed TIP card.
-  const constrainedRepProgressTop = Math.min(
-    layout.counterTop,
-    layout.tipTop - layout.countToTipMinGap - measuredRepProgressHeight,
-  );
-  const handleRepProgressLayout = useCallback((height: number) => {
-    setRepProgressHeight((previousHeight) =>
-      previousHeight === height ? previousHeight : height,
-    );
-  }, []);
-
-  return (
-    <>
-      <ExerciseMediaCard
-        exercise={exercise}
-        guideEnabled={session.guideEnabled}
-        height={layout.mediaHeight}
-        imageHeight={layout.mediaImageHeight}
-        onToggleGuide={toggleGuide}
-        top={layout.mediaTop}
-      />
-      {exercise.mode === 'timed' ? (
-        <TimedProgress
-          exercise={exercise}
-          onPress={togglePause}
-          paused={session.paused}
-          remainingSeconds={Math.ceil(session.setRemainingMs / 1000)}
-          set={session.currentSet}
-          top={layout.timedCounterTop}
-        />
-      ) : (
-        <RepProgress
-          currentRep={session.currentRep}
-          exercise={exercise}
-          onCycleSpeed={cycleCountSpeed}
-          onLayout={handleRepProgressLayout}
-          gap={layout.repProgressGap}
-          set={session.currentSet}
-          speed={session.countSpeed}
-          top={constrainedRepProgressTop}
-        />
-      )}
-      <TipCard height={layout.tipHeight} instruction={exercise.instruction} top={layout.tipTop} />
-      <ExerciseControls
-        onCompleteSet={completeCurrentSet}
-        onRecordDiscomfort={onRecordDiscomfort}
-        onSkip={onSkip}
-        set={session.currentSet}
-        totalSets={exercise.totalSets}
-        top={layout.buttonsTop}
-      />
-    </>
-  );
-}
-
-function ExerciseMediaCard({
-  exercise,
-  guideEnabled,
-  height,
-  imageHeight,
-  onToggleGuide,
-  top,
-}: {
-  exercise: ExerciseSessionExercise;
-  guideEnabled: boolean;
-  height: number;
-  imageHeight: number;
-  onToggleGuide: () => void;
-  top: number;
-}) {
-  const [failedImageUri, setFailedImageUri] = useState<string | null>(null);
-  const remoteSource = exercise.thumbnailUrl?.trim();
-  const imageSource: ImageSourcePropType =
-    remoteSource && remoteSource !== failedImageUri ? { uri: remoteSource } : fallbackExerciseImage;
-  const bodyParts = getMockExerciseBodyParts(exercise.name);
-
-  return (
-    <View style={[styles.mediaCard, { height, top }]}>
-      <View style={styles.mediaHeader}>
-        <View style={styles.exerciseIdentity}>
-          <View style={styles.exerciseNumber}>
-            <Text style={styles.exerciseNumberText}>{exercise.sequenceOrder ?? ''}</Text>
-          </View>
-          <View style={styles.exerciseHeading}>
-            <Text numberOfLines={1} style={styles.exerciseName}>
-              {exercise.name}
-            </Text>
-            <View style={styles.tagRow}>
-              {bodyParts.map((bodyPart) => (
-                <ExerciseBodyPartBadge bodyPart={bodyPart} key={bodyPart} />
-              ))}
-            </View>
-          </View>
-        </View>
-        <Pressable onPress={onToggleGuide} style={styles.guideButton}>
-          <Text style={styles.guideText}>{guideEnabled ? 'Guide ON' : 'Guide OFF'}</Text>
-          <View style={styles.guideIcon}>
-            {guideEnabled ? (
-              <SpeakerHighIcon color="#FFFFFF" height={18} width={18} />
-            ) : (
-              <SpeakerSlashIcon color="#FFFFFF" height={18} width={18} />
-            )}
-          </View>
-        </Pressable>
-      </View>
-      <View style={[styles.mediaImageArea, { height: imageHeight }]}>
-        <Image
-          onError={() => setFailedImageUri(remoteSource ?? null)}
-          resizeMode="cover"
-          source={imageSource}
-          style={styles.mediaImage}
-        />
-        <View pointerEvents="none" style={styles.playCircle}>
-          <PlayIcon color={colors.primary} height={30} width={30} />
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function ExerciseBodyPartBadge({ bodyPart }: { bodyPart: ExerciseBodyPart }) {
-  const useGoldBadge = bodyPart === '둔근' || bodyPart === '종아리';
-  return (
-    <View style={useGoldBadge ? styles.goldTag : styles.blueTag}>
-      <Text style={useGoldBadge ? styles.goldTagText : styles.blueTagText}>{bodyPart}</Text>
-    </View>
-  );
-}
-
-function RepProgress({
-  currentRep,
-  exercise,
-  gap,
-  onCycleSpeed,
-  onLayout,
-  set,
-  speed,
-  top,
-}: {
-  currentRep: number;
-  exercise: ExerciseSessionExercise;
-  gap: number;
-  onCycleSpeed: () => void;
-  onLayout: (height: number) => void;
-  set: number;
-  speed: ExerciseCountSpeed;
-  top: number;
-}) {
-  const speedState = speedCopy(speed);
-  return (
-    <View
-      onLayout={(event) => onLayout(event.nativeEvent.layout.height)}
-      style={[styles.repProgress, { gap, top }]}
-    >
-      <Text style={styles.repCount}>
-        {currentRep}
-        <Text style={styles.repGoal}> / {exercise.targetRepetitions}회</Text>
-      </Text>
-      <View style={styles.setDescription}>
-        <Text style={styles.setActive}>{set}세트 진행중</Text>
-        <View style={styles.shortDivider} />
-        <Text style={styles.setTotal}>
-          총 {exercise.totalSets}세트, {exercise.targetRepetitions}회
-        </Text>
-      </View>
-      <Pressable onPress={onCycleSpeed} style={styles.speedButton}>
-        <Text style={styles.speedButtonText}>속도 {speedState.label}</Text>
-        <PencilIcon color={colors.primaryDark} height={20} width={20} />
-      </Pressable>
-    </View>
-  );
-}
-
-function TimedProgress({
-  exercise,
-  onPress,
-  paused,
-  remainingSeconds,
-  set,
-  top,
-}: {
-  exercise: ExerciseSessionExercise;
-  onPress: () => void;
-  paused: boolean;
-  remainingSeconds: number;
-  set: number;
-  top: number;
-}) {
-  return (
-    <View style={[styles.timedProgress, { top }]}>
-      <Pressable onPress={onPress} style={styles.timedButton}>
-        <Text style={styles.timedText}>{formatClock(remainingSeconds)}</Text>
-        {paused ? (
-          <PlayIcon color="#FFFFFF" height={32} width={32} />
-        ) : (
-          <PauseIcon color="#FFFFFF" height={32} width={32} />
-        )}
-      </Pressable>
-      <View style={styles.setDescription}>
-        <Text style={styles.setActive}>{set}세트 진행중</Text>
-        <View style={styles.shortDivider} />
-        <Text style={styles.setTotal}>
-          총 {exercise.totalSets}세트, {exercise.targetSeconds}초
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function TipCard({
-  height,
-  instruction,
-  top,
-}: {
-  height: number;
-  instruction: string | null;
-  top: number;
-}) {
-  return (
-    <View style={[styles.tipCard, { height, top }]}>
-      <View style={styles.tipIconCircle}>
-        <LightbulbIcon color={colors.primaryDark} height={27} width={27} />
-      </View>
-      <View style={styles.tipCopy}>
-        <Text style={styles.tipTitle}>TIP</Text>
-        <Text style={styles.tipText}>{instruction ?? '자세를 확인하고 천천히 움직여 주세요.'}</Text>
-      </View>
-    </View>
-  );
-}
-
-function ExerciseControls({
-  onCompleteSet,
-  onRecordDiscomfort,
-  onSkip,
-  set,
-  totalSets,
-  top,
-}: {
-  onCompleteSet: () => void;
-  onRecordDiscomfort: () => void;
-  onSkip: () => void;
-  set: number;
-  totalSets: number;
-  top: number;
-}) {
-  const isLastSet = set === totalSets;
-
-  return (
-    <View style={[styles.controls, { top }]}>
-      <View style={styles.controlRow}>
-        <Pressable onPress={onRecordDiscomfort} style={styles.secondaryControl}>
-          <Text style={styles.secondaryControlText}>불편함 기록</Text>
-        </Pressable>
-        <Pressable onPress={onCompleteSet} style={styles.primaryControl}>
-          <Text style={styles.primaryControlText}>{isLastSet ? '세트 완료' : '다음'}</Text>
-        </Pressable>
-      </View>
-      <Pressable onPress={onSkip} style={styles.skipLink}>
-        <Text style={styles.skipLinkText}>지금 운동 건너뛰기</Text>
-        <RightIcon color={colors.primaryDark} height={22} width={22} />
-      </Pressable>
-    </View>
-  );
-}
-
-function RestContent({
-  addRestSeconds,
-  layout,
-  onSkip,
-  session,
-  skipRest,
-  togglePause,
-}: {
-  addRestSeconds: (seconds: number) => void;
-  layout: SessionLayout;
-  onSkip: () => void;
-  session: ExerciseSessionState;
-  skipRest: () => void;
-  togglePause: () => void;
-}) {
-  const remainingSeconds = Math.ceil(session.restRemainingMs / 1000);
-  const progress =
-    session.restTotalMs > 0
-      ? Math.max(0, Math.min(1, session.restRemainingMs / session.restTotalMs))
-      : 0;
-  const radius = 119;
-  const circumference = 2 * Math.PI * radius;
-  return (
-    <>
-      <View style={[styles.restHeading, { top: layout.restTitleTop }]}>
-        <Text style={styles.restTitle}>휴식</Text>
-        <Text style={styles.restDescription}>다음 세트를 위해{`\n`}휴식을 취하세요.</Text>
-      </View>
-      <Pressable
-        accessibilityRole="button"
-        onPress={togglePause}
-        style={[styles.restCircle, { top: layout.restCircleTop }]}
-      >
-        <Svg
-          height={250}
-          pointerEvents="none"
-          style={styles.restProgressRing}
-          viewBox="0 0 250 250"
-          width={250}
-        >
-          <Circle cx="125" cy="125" fill="none" r={radius} stroke="#EEEEEE" strokeWidth="12" />
-          <Circle
-            cx="125"
-            cy="125"
-            fill="none"
-            originX="125"
-            originY="125"
-            r={radius}
-            rotation="-90"
-            stroke={colors.primary}
-            strokeDasharray={`${circumference} ${circumference}`}
-            strokeDashoffset={circumference * (1 - progress)}
-            strokeLinecap="round"
-            strokeWidth="12"
-            x="0"
-            y="0"
+      <View style={styles.media}>
+        {showImage ? (
+          <Image
+            accessibilityLabel={`${exercise.name} 동작`}
+            onError={() => setFailedImageUri(imageUri ?? null)}
+            resizeMode="cover"
+            source={{ uri: imageUri }}
+            style={styles.mediaImage}
           />
-        </Svg>
-        <Text style={styles.restTimer}>{formatClock(remainingSeconds, true)}</Text>
-        {session.paused ? (
-          <PlayIcon color={colors.primary} height={49} width={49} />
         ) : (
-          <PauseIcon color={colors.primary} height={49} width={49} />
+          <BarbellIcon color={colors.textDisabled} height={40} width={40} />
         )}
-      </Pressable>
-      <Pressable
-        onPress={() => addRestSeconds(10)}
-        style={[styles.addRestButton, { top: layout.restCircleTop + 275 }]}
-      >
-        <Text style={styles.addRestText}>+ 10초</Text>
-      </Pressable>
-      <View style={[styles.restControls, { top: layout.buttonsTop }]}>
-        <Pressable onPress={skipRest} style={styles.restSkipButton}>
-          <Text style={styles.restSkipText}>휴식 건너뛰기</Text>
-        </Pressable>
-        <Pressable onPress={onSkip} style={styles.skipLink}>
-          <Text style={styles.skipLinkText}>지금 운동 건너뛰기</Text>
-          <RightIcon color={colors.primaryDark} height={22} width={22} />
-        </Pressable>
       </View>
-    </>
-  );
-}
 
-function ExerciseCompletedContent({
-  exercise,
-  layout,
-  onNext,
-  session,
-}: {
-  exercise: ExerciseSessionExercise;
-  layout: SessionLayout;
-  onNext: () => void;
-  session: ExerciseSessionState;
-}) {
-  const result = session.results[session.results.length - 1];
-  return (
-    <>
-      <View style={[styles.completionHeading, { top: layout.completionTitleTop }]}>
-        <Text ellipsizeMode="tail" numberOfLines={1} style={styles.completionTitle}>
-          {exercise.name} 완료!
-        </Text>
-        <Text style={styles.completionDescription}>
-          {session.currentExerciseIndex + 1}번째 운동을 완료했어요.
+      <View style={styles.counter}>
+        {timed ? (
+          <Pressable
+            accessibilityLabel={session.paused ? '다시 시작' : '잠시 멈추기'}
+            accessibilityRole="button"
+            onPress={onTogglePause}
+          >
+            <Text style={styles.bigNumber}>{formatClock(remainingSeconds)}</Text>
+          </Pressable>
+        ) : (
+          <Text style={styles.bigNumber}>
+            {session.currentRep}
+            <Text style={styles.bigGoal}> / {exercise.targetRepetitions ?? 0}회</Text>
+          </Text>
+        )}
+        <Text style={styles.caption}>
+          총 {exercise.totalSets}세트
+          {exercise.restSeconds ? ` · 세트 사이 쉬기 ${exercise.restSeconds}초` : ''}
         </Text>
       </View>
-      <Image
-        resizeMode="contain"
-        source={finishOneImage}
-        style={[
-          styles.completionImage,
-          {
-            height: layout.completionImageSize,
-            top: layout.completionImageTop,
-            width: layout.completionImageSize,
-          },
-        ]}
+
+      <SetSegments
+        current={session.currentSet}
+        currentProgress={currentProgress}
+        currentLabel={
+          timed
+            ? `${session.currentSet}세트 진행 중`
+            : `${session.currentSet}세트 · ${session.currentRep}/${exercise.targetRepetitions ?? 0}회`
+        }
+        total={exercise.totalSets}
       />
-      <View
-        style={[
-          styles.resultCard,
-          { height: layout.completionCardHeight, top: layout.completionCardTop },
-        ]}
-      >
-        <ResultFactor
-          Icon={ClockIcon}
-          label="운동 시간"
-          value={formatClock(result?.elapsedSeconds ?? 0)}
+
+      {!timed ? (
+        <AppButton
+          fullWidth={false}
+          onPress={onCycleSpeed}
+          size="S"
+          style={styles.speedButton}
+          title={`세는 속도 · ${speedLabel(session.countSpeed)}`}
+          variant="outline"
         />
-        <ResultFactor
-          Icon={BarbellIcon}
-          label="완료 세트"
-          value={`${result?.completedSets ?? exercise.totalSets}세트`}
-        />
-        <ResultFactor
-          Icon={FireIcon}
-          last
-          label="소모 칼로리"
-          value={result?.caloriesBurned === null ? '-' : `${result?.caloriesBurned ?? '-'} kcal`}
-        />
-      </View>
-      <View style={[styles.completionButton, { top: layout.completionButtonTop }]}>
-        <ExerciseActionButton
-          borderRadius={10}
-          gap={0}
-          gradient
-          icon={<View />}
-          labelStyle={styles.completionButtonText}
-          onPress={onNext}
-          title="다음"
-        />
-      </View>
+      ) : null}
+
+      <Notice
+        body={exercise.instruction ?? '자세를 확인하고 천천히 움직여 주세요.'}
+        title="자세 팁"
+      />
+
+      {nextExercise ? (
+        <View style={styles.nextCard}>
+          <View style={styles.nextIcon}>
+            <BarbellIcon color={colors.textPrimary} height={20} width={20} />
+          </View>
+          <View style={styles.flex}>
+            <Text numberOfLines={1} style={styles.strong}>
+              다음 · {nextExercise.name}
+            </Text>
+            <Text style={styles.caption}>{prescription(nextExercise)}</Text>
+          </View>
+          <AppButton
+            fullWidth={false}
+            onPress={onSkip}
+            size="S"
+            title="바로 넘어가기"
+            variant="outline"
+          />
+        </View>
+      ) : (
+        <AppButton onPress={onSkip} size="M" title="이 동작 건너뛰기" variant="text" />
+      )}
     </>
   );
 }
 
-function ResultFactor({
-  Icon,
-  label,
-  last = false,
-  value,
+// One bar per set: done sets full, the current one by reps or time, the rest empty.
+function SetSegments({
+  current,
+  currentLabel,
+  currentProgress,
+  total,
 }: {
-  Icon: typeof ClockIcon;
-  label: string;
-  last?: boolean;
-  value: string;
+  current: number;
+  currentLabel: string;
+  currentProgress: number;
+  total: number;
 }) {
+  const styles = useThemedStyles(createStyles);
+  const sets = Array.from({ length: total }, (_, index) => index + 1);
+  const labelFor = (set: number) =>
+    set < current ? `${set}세트 완료` : set === current ? currentLabel : `${set}세트 남음`;
   return (
-    <View style={[styles.resultFactor, !last && styles.resultDivider]}>
-      <Icon color={colors.primary} height={27} width={27} />
-      <Text style={styles.resultLabel}>{label}</Text>
-      <Text style={styles.resultValue}>{value}</Text>
+    <View style={styles.segments}>
+      <View style={styles.segmentRow}>
+        {sets.map((set) => {
+          const fill = set < current ? 1 : set === current ? currentProgress : 0;
+          return (
+            <View key={set} style={styles.segment}>
+              <View
+                style={[styles.segmentFill, { width: `${Math.max(0, Math.min(1, fill)) * 100}%` }]}
+              />
+            </View>
+          );
+        })}
+      </View>
+      {total <= 4 ? (
+        <View style={styles.segmentRow}>
+          {sets.map((set) => (
+            <Text
+              key={set}
+              numberOfLines={1}
+              style={[styles.segmentLabel, set === current && styles.segmentLabelCurrent]}
+            >
+              {labelFor(set)}
+            </Text>
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.segmentLabelCurrent}>{labelFor(current)}</Text>
+      )}
     </View>
   );
 }
 
-function AllCompletedContent({
-  allSkipped,
-  disabled,
-  layout,
-  onFinish,
+function RestView({
+  onAddRest,
+  onSkipExercise,
+  onTogglePause,
   session,
+}: {
+  onAddRest: () => void;
+  onSkipExercise: () => void;
+  onTogglePause: () => void;
+  session: ExerciseSessionState;
+}) {
+  const styles = useThemedStyles(createStyles);
+  const remaining = session.restRemainingMs / 1000;
+  const ratio = session.restTotalMs > 0 ? session.restRemainingMs / session.restTotalMs : 0;
+  return (
+    <>
+      <View style={styles.heading}>
+        <Text accessibilityRole="header" style={styles.title}>
+          쉬어 가세요
+        </Text>
+        <Text style={styles.description}>다음 세트를 위해 숨을 골라 주세요.</Text>
+      </View>
+      <Pressable
+        accessibilityLabel={session.paused ? '다시 시작' : '잠시 멈추기'}
+        accessibilityRole="button"
+        onPress={onTogglePause}
+        style={styles.restTimer}
+      >
+        <Text style={styles.bigNumber}>{formatClock(Math.ceil(remaining))}</Text>
+        <Text style={styles.caption}>
+          {session.paused ? '멈춤 · 누르면 다시 시작' : '누르면 멈춰요'}
+        </Text>
+      </Pressable>
+      <ProgressBar height={6} value={ratio} />
+      <View style={styles.restActions}>
+        <AppButton
+          fullWidth={false}
+          onPress={onAddRest}
+          size="M"
+          title="+ 10초"
+          variant="outline"
+        />
+        <AppButton
+          fullWidth={false}
+          onPress={onSkipExercise}
+          size="M"
+          title="이 동작 건너뛰기"
+          variant="text"
+        />
+      </View>
+    </>
+  );
+}
+
+function ExerciseDoneView({
+  exercise,
+  session,
+}: {
+  exercise: ExerciseSessionExercise;
+  session: ExerciseSessionState;
+}) {
+  const styles = useThemedStyles(createStyles);
+  const result = session.results[session.results.length - 1];
+  const stats = [
+    { label: '운동 시간', value: formatClock(result?.elapsedSeconds ?? 0) },
+    { label: '마친 세트', value: `${result?.completedSets ?? exercise.totalSets}세트` },
+    {
+      label: '소모 칼로리',
+      value: result?.caloriesBurned == null ? '-' : `${result.caloriesBurned}kcal`,
+    },
+  ];
+  return (
+    <>
+      <DoneHeading
+        description={`${session.currentExerciseIndex + 1}번째 동작을 마쳤어요.`}
+        title={`${exercise.name} 완료`}
+      />
+      <View style={styles.stats}>
+        {stats.map((stat, index) => (
+          <View key={stat.label} style={[styles.stat, index > 0 && styles.statDivider]}>
+            <Text style={styles.caption}>{stat.label}</Text>
+            <Text style={styles.statValue}>{stat.value}</Text>
+          </View>
+        ))}
+      </View>
+    </>
+  );
+}
+
+function AllDoneView({
+  allSkipped,
   summary,
 }: {
   allSkipped: boolean;
-  disabled: boolean;
-  layout: SessionLayout;
-  onFinish: () => void;
-  session: ExerciseSessionState;
   summary: { completedCount: number; skippedCount: number };
 }) {
-  const description = allSkipped
-    ? `건너뛴 운동 ${summary.skippedCount}개`
-    : summary.skippedCount > 0
-      ? `완료 ${summary.completedCount}개 · 건너뜀 ${summary.skippedCount}개`
-      : '모든 운동을 완료했어요.';
-  const completionImageSize = allSkipped
-    ? layout.completionImageSize * skippedCompletionIllustrationScale
-    : layout.completionImageSize;
-  const completionImageTop = allSkipped
-    ? layout.completionImageTop - (completionImageSize - layout.completionImageSize) / 2
-    : layout.completionImageTop;
   return (
-    <>
-      <View style={[styles.completionHeading, { top: layout.completionTitleTop }]}>
-        <Text style={styles.completionTitle}>
-          {allSkipped ? '오늘 운동을 종료했어요' : '오늘의 운동 완료!'}
-        </Text>
-        <Text style={styles.completionDescription}>{description}</Text>
-      </View>
-      <Image
-        resizeMode="contain"
-        source={allSkipped ? skipAllImage : finishAllImage}
-        style={[
-          styles.completionImage,
-          {
-            height: completionImageSize,
-            top: completionImageTop,
-            width: completionImageSize,
-          },
-        ]}
-      />
-      <View style={[styles.encouragementCard, { top: layout.completionCardTop }]}>
-        <Image
-          resizeMode="contain"
-          source={allSkipped ? skipBadgeImage : completeBadgeImage}
-          style={styles.encouragementImage}
-        />
-        <View style={styles.encouragementCopy}>
-          <Text style={styles.encouragementTitle}>
-            {allSkipped ? '오늘은 수행한 운동이 없어요.' : '정말 멋져요!'}
-          </Text>
-          <Text style={styles.encouragementText}>
-            {allSkipped
-              ? '컨디션을 확인하고 다음 운동을 준비해보세요.'
-              : '꾸준한 운동 습관이 더 건강한 내일을 만듭니다.\n내일도 함께해요!'}
-          </Text>
-        </View>
-      </View>
-      <View
-        pointerEvents={disabled ? 'none' : 'auto'}
-        style={[styles.completionButton, { top: layout.buttonsTop }, disabled && styles.disabled]}
-      >
-        <ExerciseActionButton
-          borderRadius={10}
-          gap={0}
-          gradient
-          icon={<View />}
-          labelStyle={styles.completionButtonText}
-          onPress={onFinish}
-          title={allSkipped ? '운동 홈으로' : '운동 결과 기록하기'}
-        />
-      </View>
-      <Text accessibilityElementsHidden style={styles.hiddenExerciseName}>
-        {session.exercises.length}
-      </Text>
-    </>
+    <DoneHeading
+      description={
+        allSkipped
+          ? `건너뛴 동작 ${summary.skippedCount}개 · 오늘은 마친 동작이 없어요.`
+          : summary.skippedCount > 0
+            ? `마친 동작 ${summary.completedCount}개 · 건너뛴 동작 ${summary.skippedCount}개`
+            : '모든 동작을 마쳤어요. 어땠는지 기록해 주세요.'
+      }
+      done={!allSkipped}
+      title={allSkipped ? '오늘 운동을 끝냈어요' : '오늘 운동을 마쳤어요'}
+    />
   );
 }
 
-function AdjustmentIndicatorOverlay({
-  onCovered,
-  onFinished,
+function DoneHeading({
+  description,
+  done = true,
+  title,
 }: {
-  onCovered: () => void;
-  onFinished: () => void;
+  description: string;
+  done?: boolean;
+  title: string;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+  return (
+    <View style={styles.heading}>
+      <View style={[styles.checkCircle, !done && styles.checkCircleMuted]}>
+        <CheckIcon color={done ? colors.success : colors.textSecondary} height={30} width={30} />
+      </View>
+      <Text accessibilityRole="header" numberOfLines={2} style={styles.title}>
+        {title}
+      </Text>
+      <Text style={styles.description}>{description}</Text>
+    </View>
+  );
+}
+
+// Figma E5. TEMP: the report is not sent yet and "남은 운동 바꾸기" only shows the adjusting
+// screen; the remaining exercises stay as they are until the adjustment service is connected.
+function DiscomfortSheet({
+  onAdjust,
+  onClose,
+  onEnd,
+  visible,
+}: {
+  onAdjust: (draft: DiscomfortFeedbackDraft) => void;
+  onClose: () => void;
+  onEnd: () => void;
+  visible: boolean;
+}) {
+  const styles = useThemedStyles(createStyles);
+  const [feedbackType, setFeedbackType] = useState<DiscomfortFeedbackType>('pain');
+  const [bodyParts, setBodyParts] = useState<string[]>([]);
+  const [level, setLevel] = useState(6);
+  const [note, setNote] = useState('');
+  const urgent = feedbackType === 'dizziness' || feedbackType === 'breathing';
+
+  useEffect(() => {
+    if (!visible) return;
+    const frame = requestAnimationFrame(() => {
+      setFeedbackType('pain');
+      setBodyParts([]);
+      setLevel(6);
+      setNote('');
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [visible]);
+
+  const togglePart = (part: string) =>
+    setBodyParts((current) =>
+      current.includes(part) ? current.filter((item) => item !== part) : [...current, part],
+    );
+
+  return (
+    <AppBottomSheet
+      contentStyle={styles.sheetContent}
+      footer={
+        <View style={styles.footerRow}>
+          <AppButton
+            fullWidth={false}
+            onPress={onEnd}
+            style={styles.flex}
+            title="오늘은 그만하기"
+            variant="secondary"
+          />
+          <AppButton
+            fullWidth={false}
+            onPress={() => onAdjust({ bodyParts, feedbackLevel: level, feedbackType, note })}
+            style={styles.flex}
+            title="남은 운동 바꾸기"
+          />
+        </View>
+      }
+      keyboardShouldPersistTaps="handled"
+      onClose={onClose}
+      scrollable="when-overflow"
+      title="어디가 불편했나요?"
+      visible={visible}
+    >
+      <Text style={styles.description}>
+        운동은 잠시 멈춰 있어요. 알려 주시면 남은 운동을 바꿔 드려요.
+      </Text>
+      <Notice
+        body={
+          urgent
+            ? '바로 멈추고 앉아서 쉬어 주세요. 나아지지 않으면 주변에 도움을 요청하세요.'
+            : '바로 멈추고 전문가와 상담해 주세요.'
+        }
+        title={urgent ? '어지럽거나 숨이 많이 차면' : '통증이 심하면'}
+        tone="warning"
+      />
+      <ChoiceSection title="무엇이 달라졌나요?">
+        <ChoiceChips
+          isSelected={(value) => feedbackType === value}
+          onSelect={(value) => {
+            setFeedbackType(value);
+            setLevel(6);
+          }}
+          options={changeOptions}
+        />
+      </ChoiceSection>
+      {feedbackType === 'pain' ? (
+        <>
+          <ChoiceSection aside="여러 개 고를 수 있어요" title="불편한 곳">
+            <ChoiceChips
+              isSelected={(value) => bodyParts.includes(value)}
+              onSelect={togglePart}
+              options={bodyPartOptions}
+            />
+          </ChoiceSection>
+          <ChoiceSection title="어떤 느낌인가요?">
+            <ChoiceChips
+              isSelected={(value) => level === value}
+              onSelect={setLevel}
+              options={painFeelingOptions}
+            />
+          </ChoiceSection>
+        </>
+      ) : feedbackType !== 'other' ? (
+        <ChoiceSection title="얼마나 심한가요?">
+          <ChoiceChips
+            isSelected={(value) => level === value}
+            onSelect={setLevel}
+            options={levelOptions}
+          />
+        </ChoiceSection>
+      ) : null}
+      <AppTextField
+        maxLength={100}
+        onChangeText={setNote}
+        placeholder={
+          feedbackType === 'pain'
+            ? '예) 당길 때 오른쪽 어깨가 찌릿해요 (선택)'
+            : '더 알려 주실 내용 (선택)'
+        }
+        value={note}
+      />
+    </AppBottomSheet>
+  );
+}
+
+function AdjustmentIndicatorOverlay({ onFinished }: { onFinished: () => void }) {
   const progress = useTemporaryAdjustmentProgress();
   const [opacity] = useState(() => new Animated.Value(0));
-  const coveredRef = useRef(false);
   const finishedRef = useRef(false);
 
   useEffect(() => {
@@ -1068,18 +828,11 @@ function AdjustmentIndicatorOverlay({
       duration: 240,
       easing: Easing.out(Easing.cubic),
       toValue: 1,
-      useNativeDriver: true,
+      useNativeDriver: Platform.OS !== 'web',
     });
-
-    animation.start(({ finished }) => {
-      if (finished && !coveredRef.current) {
-        coveredRef.current = true;
-        onCovered();
-      }
-    });
-
+    animation.start();
     return () => animation.stop();
-  }, [onCovered, opacity]);
+  }, [opacity]);
 
   useEffect(() => {
     if (progress < 1 || finishedRef.current) return undefined;
@@ -1091,7 +844,7 @@ function AdjustmentIndicatorOverlay({
         duration: 170,
         easing: Easing.in(Easing.cubic),
         toValue: 0,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       });
 
       fadeOut.start(({ finished }) => {
@@ -1115,1323 +868,101 @@ function AdjustmentIndicatorOverlay({
       transparent
       visible
     >
-      <Animated.View
-        style={[StyleSheet.absoluteFill, styles.adjustmentTransitionLayer, { opacity }]}
-      >
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity }]}>
         <AdjustmentIndicatorView progress={progress} />
       </Animated.View>
     </Modal>
   );
 }
 
-function DiscomfortRecordModal({
-  isClosing,
-  onClose,
-  onClosed,
-  onRequestAdjust,
-  onRequestEnd,
-}: {
-  isClosing: boolean;
-  onClose: () => void;
-  onClosed: () => void;
-  onRequestAdjust: (draft: DiscomfortFeedbackDraft) => void;
-  onRequestEnd: () => void;
-}) {
-  const { height: viewportHeight, width: viewportWidth } = useWindowDimensions();
-  const [stableViewportHeight] = useState(viewportHeight);
-  const discomfortScrollRef = useRef<ScrollView>(null);
-  const focusedInputRef = useRef<TextInput | null>(null);
-  const focusedInputKindRef = useRef<FocusedDiscomfortInput>(null);
-  const otherDescriptionInputRef = useRef<TextInput>(null);
-  const otherDescriptionHintRef = useRef<View>(null);
-  const painAreaInputRef = useRef<TextInput>(null);
-  const scrollOffsetRef = useRef(0);
-  const keyboardTopRef = useRef(Number.POSITIVE_INFINITY);
-  const [selectedFeedbackType, setSelectedFeedbackType] = useState<DiscomfortFeedbackType>('pain');
-  const [feedbackLevel, setFeedbackLevel] = useState(5);
-  const [painArea, setPainArea] = useState('');
-  const [otherDescription, setOtherDescription] = useState('');
-  const [followUpChoice, setFollowUpChoice] = useState<FollowUpChoice>('adjust');
-  const [focusedInputVersion, setFocusedInputVersion] = useState(0);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
-  const [animationProgress] = useState(() => new Animated.Value(0));
-  const selectedOption =
-    discomfortFeedbackOptions.find((option) => option.value === selectedFeedbackType) ??
-    discomfortFeedbackOptions[0];
-  const widthScale = Math.min(1, viewportWidth / 412);
-  const scaledCanvasHeight = stableViewportHeight / Math.max(widthScale, 0.01);
-  const canvasLeft = (viewportWidth - 412 * widthScale) / 2;
-  const modalHeight = Math.min(857, Math.max(700, scaledCanvasHeight - 60));
-
-  useEffect(() => {
-    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
-
-    const showSubscription = Keyboard.addListener(showEvent, (event) => {
-      keyboardTopRef.current = event.endCoordinates.screenY;
-      setKeyboardHeight(event.endCoordinates.height);
-    });
-    const hideSubscription = Keyboard.addListener(hideEvent, () => {
-      keyboardTopRef.current = Number.POSITIVE_INFINITY;
-      setKeyboardHeight(0);
-      scrollOffsetRef.current = 0;
-      discomfortScrollRef.current?.scrollTo({ animated: true, y: 0 });
-    });
-
-    return () => {
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (keyboardHeight <= 0) return undefined;
-
-    const frame = requestAnimationFrame(() => {
-      const focusedInput = focusedInputRef.current;
-      if (!focusedInput) return;
-
-      const isOtherDescription = focusedInputKindRef.current === 'other';
-      const visibilityTarget = isOtherDescription
-        ? (otherDescriptionHintRef.current ?? focusedInput)
-        : focusedInput;
-      const bottomClearance = isOtherDescription ? 20 : 16;
-
-      visibilityTarget.measureInWindow((_x, y, _width, height) => {
-        const overlap = y + height + bottomClearance - keyboardTopRef.current;
-        if (overlap <= 0) return;
-        discomfortScrollRef.current?.scrollTo({
-          animated: true,
-          y: scrollOffsetRef.current + overlap / Math.max(widthScale, 0.01),
-        });
-      });
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [focusedInputVersion, keyboardHeight, widthScale]);
-
-  useEffect(() => {
-    Animated.timing(animationProgress, {
-      duration: 220,
-      easing: Easing.out(Easing.cubic),
-      toValue: 1,
-      useNativeDriver: true,
-    }).start();
-  }, [animationProgress]);
-
-  useEffect(() => {
-    if (!isClosing) return;
-
-    Animated.timing(animationProgress, {
-      duration: 170,
-      easing: Easing.in(Easing.cubic),
-      toValue: 0,
-      useNativeDriver: true,
-    }).start(({ finished }) => {
-      if (finished) onClosed();
-    });
-  }, [animationProgress, isClosing, onClosed]);
-
-  const handleInputFocus = (
-    input: TextInput | null,
-    kind: Exclude<FocusedDiscomfortInput, null>,
-  ) => {
-    focusedInputRef.current = input;
-    focusedInputKindRef.current = kind;
-    setFocusedInputVersion((version) => version + 1);
-  };
-
-  const selectFeedbackType = (type: DiscomfortFeedbackType) => {
-    setSelectedFeedbackType(type);
-    setFeedbackLevel(5);
-    setPainArea('');
-    setOtherDescription('');
-  };
-
-  const submitFeedback = () => {
-    if (followUpChoice === 'end') {
-      onRequestEnd();
-      return;
-    }
-    onRequestAdjust({
-      feedbackLevel,
-      feedbackType: selectedFeedbackType,
-      otherDescription,
-      painArea,
-    });
-  };
-
-  return (
-    <Modal
-      animationType="none"
-      navigationBarTranslucent
-      onRequestClose={onClose}
-      presentationStyle="overFullScreen"
-      statusBarTranslucent
-      transparent
-      visible
-    >
-      <View style={styles.discomfortModalViewport}>
-        <Pressable onPress={onClose} style={styles.discomfortModalDimHitArea}>
-          <Animated.View
-            pointerEvents="none"
-            style={[styles.discomfortModalDim, { opacity: animationProgress }]}
-          />
-        </Pressable>
-        <View
-          pointerEvents="box-none"
-          style={[
-            styles.discomfortModalCanvas,
-            {
-              height: scaledCanvasHeight,
-              left: canvasLeft,
-              transform: [{ scale: widthScale }],
-            },
-          ]}
-        >
-          <Animated.View
-            pointerEvents={isClosing ? 'none' : 'auto'}
-            style={[
-              styles.discomfortModalCard,
-              {
-                height: modalHeight,
-                opacity: animationProgress,
-                transform: [
-                  {
-                    scale: animationProgress.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.97, 1],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <View style={styles.discomfortModalHeader}>
-              <Text maxFontSizeMultiplier={1} style={styles.discomfortModalTitle}>
-                지금 달라진 상태를{`\n`}알려주세요
-              </Text>
-              <Image
-                resizeMode="contain"
-                source={modifyImage}
-                style={styles.discomfortModifyImage}
-              />
-              <Pressable onPress={onClose} style={styles.discomfortCloseButton}>
-                <XIcon color={colors.primaryDark} height={17} width={17} />
-              </Pressable>
-            </View>
-            <ScrollView
-              contentContainerStyle={styles.discomfortScrollContainer}
-              keyboardShouldPersistTaps="handled"
-              onScroll={(event) => {
-                scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
-              }}
-              ref={discomfortScrollRef}
-              scrollEventThrottle={16}
-              showsVerticalScrollIndicator={false}
-              style={styles.discomfortScroll}
-            >
-              <View style={[styles.discomfortModalContent, { height: modalHeight - 317 }]}>
-                <DiscomfortSectionTitle title="어떤 변화가 있나요?" />
-                <View style={styles.discomfortTypeGrid}>
-                  {[discomfortFeedbackOptions.slice(0, 3), discomfortFeedbackOptions.slice(3)].map(
-                    (row, rowIndex) => (
-                      <View key={rowIndex} style={styles.discomfortTypeRow}>
-                        {row.map((option) => {
-                          const selected = selectedFeedbackType === option.value;
-                          return (
-                            <Pressable
-                              key={option.value}
-                              onPress={() => selectFeedbackType(option.value)}
-                              style={[
-                                styles.discomfortTypeChip,
-                                selected && styles.discomfortTypeChipSelected,
-                              ]}
-                            >
-                              <Text
-                                maxFontSizeMultiplier={1}
-                                style={[
-                                  styles.discomfortTypeChipText,
-                                  selected && styles.discomfortTypeChipTextSelected,
-                                ]}
-                              >
-                                {option.label}
-                              </Text>
-                            </Pressable>
-                          );
-                        })}
-                      </View>
-                    ),
-                  )}
-                </View>
-                <View style={styles.discomfortDivider} />
-                {selectedFeedbackType === 'other' ? (
-                  <View style={styles.discomfortSection}>
-                    <DiscomfortSectionTitle title="어떤 변화가 있었나요?" />
-                    <View style={styles.discomfortTextInputWrap}>
-                      <TextInput
-                        lineBreakStrategyIOS="hangul-word"
-                        maxFontSizeMultiplier={1}
-                        maxLength={100}
-                        multiline
-                        onChangeText={setOtherDescription}
-                        onFocus={() => handleInputFocus(otherDescriptionInputRef.current, 'other')}
-                        placeholder="느껴지는 불편함을 입력해주세요."
-                        placeholderTextColor={colors.textDisabled}
-                        ref={otherDescriptionInputRef}
-                        style={styles.discomfortTextInput}
-                        textAlignVertical="top"
-                        value={otherDescription}
-                      />
-                      <Text maxFontSizeMultiplier={1} style={styles.discomfortCharacterCount}>
-                        {otherDescription.length} / 100
-                      </Text>
-                    </View>
-                    <View collapsable={false} ref={otherDescriptionHintRef}>
-                      <Text maxFontSizeMultiplier={1} style={styles.discomfortInputHint}>
-                        예시 : 메스꺼움, 식은땀, 두근거림, 손발 저림 등
-                      </Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.discomfortSection}>
-                    <View style={styles.discomfortLevelHeader}>
-                      <DiscomfortSectionTitle title={selectedOption.levelLabel} />
-                      <Text maxFontSizeMultiplier={1} style={styles.discomfortLevelValue}>
-                        {feedbackLevel}{' '}
-                        <Text maxFontSizeMultiplier={1} style={styles.discomfortLevelTotal}>
-                          / 10
-                        </Text>
-                      </Text>
-                    </View>
-                    <DiscomfortLevelSlider
-                      endLabel={selectedOption.endLabel}
-                      onChange={setFeedbackLevel}
-                      startLabel={selectedOption.startLabel}
-                      value={feedbackLevel}
-                    />
-                  </View>
-                )}
-                {selectedFeedbackType === 'pain' ? (
-                  <>
-                    <View style={styles.discomfortDivider} />
-                    <View style={styles.discomfortSection}>
-                      <DiscomfortSectionTitle title="변화가 느껴지는 부위" />
-                      <TextInput
-                        maxFontSizeMultiplier={1}
-                        maxLength={50}
-                        onChangeText={setPainArea}
-                        onFocus={() => handleInputFocus(painAreaInputRef.current, 'pain')}
-                        placeholder="불편한 부위를 입력해주세요 (예: 오른쪽 무릎)"
-                        placeholderTextColor={colors.textDisabled}
-                        ref={painAreaInputRef}
-                        style={styles.painAreaInput}
-                        value={painArea}
-                      />
-                    </View>
-                  </>
-                ) : null}
-                <View style={styles.discomfortDivider} />
-                <View style={styles.discomfortSection}>
-                  <DiscomfortSectionTitle title="남은 운동을 어떻게 할까요?" />
-                  <View style={styles.followUpChoices}>
-                    <FollowUpChoiceButton
-                      label="운동 조정하기"
-                      onPress={() => setFollowUpChoice('adjust')}
-                      selected={followUpChoice === 'adjust'}
-                    />
-                    <FollowUpChoiceButton
-                      label="오늘 운동 종료"
-                      onPress={() => setFollowUpChoice('end')}
-                      selected={followUpChoice === 'end'}
-                    />
-                  </View>
-                </View>
-              </View>
-              {keyboardHeight > 0 ? (
-                <View style={{ height: keyboardHeight / Math.max(widthScale, 0.01) + 16 }} />
-              ) : null}
-            </ScrollView>
-            <View style={styles.discomfortInfoCard}>
-              <View style={styles.discomfortInfoIcon}>
-                <LightbulbIcon color={colors.primaryDark} height={25} width={25} />
-              </View>
-              <View style={styles.discomfortInfoCopy}>
-                <Text maxFontSizeMultiplier={1} style={styles.discomfortInfoTitle}>
-                  맞춤 조정 안내
-                </Text>
-                <Text maxFontSizeMultiplier={1} style={styles.discomfortInfoText}>
-                  {selectedOption.info}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.discomfortSubmitButton}>
-              <ExerciseActionButton
-                borderRadius={50}
-                gap={10}
-                gradient
-                icon={
-                  <View style={styles.discomfortSubmitIcon}>
-                    <CheckIcon color={colors.primaryDark} height={13} width={13} />
-                  </View>
-                }
-                labelStyle={styles.discomfortSubmitText}
-                maxFontSizeMultiplier={1}
-                onPress={submitFeedback}
-                title={followUpChoice === 'adjust' ? '조정된 운동 확인하기' : '종료하기'}
-              />
-            </View>
-          </Animated.View>
-        </View>
-      </View>
-    </Modal>
-  );
+function createStyles({ colors, text, easyMode }: AppTheme) {
+  return {
+    flex: { flex: 1 },
+    footerRow: { flexDirection: 'row', gap: 8 },
+    caption: { ...text.caption, color: colors.textSecondary },
+    strong: { ...text.body1Strong, color: colors.textPrimary },
+    progress: { gap: 8 },
+    progressRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    progressText: { ...text.body2Strong, color: colors.textPrimary },
+    exerciseName: { ...text.title1, color: colors.textPrimary },
+    media: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: radius.card,
+      borderWidth: 1,
+      height: easyMode ? 200 : 180,
+      justifyContent: 'center',
+      overflow: 'hidden',
+    },
+    mediaImage: { height: '100%', width: '100%' },
+    counter: { alignItems: 'center', gap: 4 },
+    bigNumber: {
+      ...text.display,
+      color: colors.textPrimary,
+      fontSize: easyMode ? 56 : 48,
+      lineHeight: easyMode ? 64 : 56,
+    },
+    bigGoal: { ...text.title2, color: colors.textSecondary },
+    segments: { gap: 8 },
+    segmentRow: { flexDirection: 'row', gap: 6 },
+    segment: {
+      backgroundColor: colors.gaugeTrack,
+      borderRadius: 3,
+      flex: 1,
+      height: 6,
+      overflow: 'hidden',
+    },
+    segmentFill: { backgroundColor: colors.primary, height: '100%' },
+    segmentLabel: { ...text.caption, color: colors.textSecondary, flex: 1 },
+    segmentLabelCurrent: { ...text.captionStrong, color: colors.textPrimary, flex: 1 },
+    speedButton: { alignSelf: 'center' },
+    nextCard: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: radius.card,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 12,
+      padding: 14,
+    },
+    nextIcon: {
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      borderColor: colors.border,
+      borderRadius: radius.button,
+      borderWidth: 1,
+      height: 40,
+      justifyContent: 'center',
+      width: 40,
+    },
+    heading: { gap: 8, paddingTop: 8 },
+    title: { ...text.title1, color: colors.textPrimary },
+    description: { ...text.body2, color: colors.textSecondary },
+    restTimer: { alignItems: 'center', gap: 4, paddingVertical: 24 },
+    restActions: { alignItems: 'center', gap: 4 },
+    checkCircle: {
+      alignItems: 'center',
+      backgroundColor: colors.successLight,
+      borderRadius: 28,
+      height: 56,
+      justifyContent: 'center',
+      marginBottom: 12,
+      width: 56,
+    },
+    checkCircleMuted: { backgroundColor: colors.surfaceMuted },
+    stats: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: radius.card,
+      borderWidth: 1,
+      flexDirection: 'row',
+      paddingVertical: 16,
+    },
+    stat: { alignItems: 'center', flex: 1, gap: 4 },
+    statDivider: { borderLeftColor: colors.border, borderLeftWidth: 1 },
+    statValue: { ...text.title2, color: colors.textPrimary },
+    sheetContent: { gap: 20, paddingBottom: 8 },
+  } as const;
 }
-
-function DiscomfortSectionTitle({ title }: { title: string }) {
-  return (
-    <Text maxFontSizeMultiplier={1} style={styles.discomfortSectionTitle}>
-      {title}
-    </Text>
-  );
-}
-
-function DiscomfortLevelSlider({
-  endLabel,
-  onChange,
-  startLabel,
-  value,
-}: {
-  endLabel: string;
-  onChange: (value: number) => void;
-  startLabel: string;
-  value: number;
-}) {
-  const trackWidthRef = useRef(340);
-  const percentage = (Math.min(10, Math.max(0, value)) / 10) * 100;
-  const updateValueFromPosition = (locationX: number) => {
-    const trackWidth = Math.max(1, trackWidthRef.current);
-    const clampedPosition = Math.min(trackWidth, Math.max(0, locationX));
-    onChange(Math.min(10, Math.max(0, Math.round((clampedPosition / trackWidth) * 10))));
-  };
-
-  return (
-    <View>
-      <View
-        hitSlop={{ bottom: 10, left: 4, right: 4, top: 10 }}
-        onLayout={(event) => {
-          trackWidthRef.current = event.nativeEvent.layout.width;
-        }}
-        onMoveShouldSetResponder={() => true}
-        onResponderGrant={(event) => updateValueFromPosition(event.nativeEvent.locationX)}
-        onResponderMove={(event) => updateValueFromPosition(event.nativeEvent.locationX)}
-        onResponderRelease={(event) => updateValueFromPosition(event.nativeEvent.locationX)}
-        onResponderTerminationRequest={() => false}
-        onStartShouldSetResponder={() => true}
-        style={styles.discomfortSliderTrack}
-      >
-        <View pointerEvents="none" style={styles.discomfortSliderInactive} />
-        <View
-          pointerEvents="none"
-          style={[styles.discomfortSliderFill, { width: `${percentage}%` }]}
-        />
-        <View
-          pointerEvents="none"
-          style={[styles.discomfortSliderThumb, { left: `${percentage}%` }]}
-        />
-      </View>
-      <View style={styles.discomfortSliderLabels}>
-        <Text maxFontSizeMultiplier={1} style={styles.discomfortSliderLabel}>
-          {startLabel}
-        </Text>
-        <Text maxFontSizeMultiplier={1} style={styles.discomfortSliderLabel}>
-          {endLabel}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function FollowUpChoiceButton({
-  label,
-  onPress,
-  selected,
-}: {
-  label: string;
-  onPress: () => void;
-  selected: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.followUpChoice, selected && styles.followUpChoiceSelected]}
-    >
-      <Text
-        maxFontSizeMultiplier={1}
-        style={[styles.followUpChoiceText, selected && styles.followUpChoiceTextSelected]}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-function ConfirmationModal({
-  cancelLabel = '계속하기',
-  confirmLabel,
-  contentHeight,
-  description,
-  onCancel,
-  onConfirm,
-  title,
-}: {
-  cancelLabel?: string;
-  confirmLabel: string;
-  contentHeight: number;
-  description: string;
-  onCancel: () => void;
-  onConfirm: () => void;
-  title: string;
-}) {
-  return (
-    <View style={[styles.modalLayer, { height: contentHeight }]}>
-      <View style={styles.modalDim} />
-      <View style={styles.modalCard}>
-        <View style={styles.modalIcon}>
-          <WarningIcon color={colors.primaryDark} height={30} width={30} />
-        </View>
-        <Text style={styles.modalTitle}>{title}</Text>
-        <Text style={styles.modalDescription}>{description}</Text>
-        <View style={styles.modalButtons}>
-          <Pressable onPress={onCancel} style={styles.modalCancelButton}>
-            <Text style={styles.modalCancelText}>{cancelLabel}</Text>
-          </Pressable>
-          <Pressable onPress={onConfirm} style={styles.modalConfirmButton}>
-            <Text style={styles.modalConfirmText}>{confirmLabel}</Text>
-          </Pressable>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  adjustmentTransitionLayer: {
-    backgroundColor: colors.background,
-  },
-  addRestButton: {
-    alignItems: 'center',
-    alignSelf: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.primary,
-    borderRadius: 7,
-    borderWidth: 1,
-    height: 40,
-    justifyContent: 'center',
-    position: 'absolute',
-    width: 80,
-  },
-  addRestText: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 20,
-  },
-  back: { left: 21, position: 'absolute', top: 31 },
-  blueTag: {
-    backgroundColor: '#EEF4FF',
-    borderColor: '#AFC8FF',
-    borderRadius: 10,
-    borderWidth: 0.5,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  blueTagText: {
-    color: '#4F7FE8',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 12,
-  },
-  completionButton: { left: 21, position: 'absolute', width: 370 },
-  completionButtonText: {
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 20,
-    lineHeight: 24,
-  },
-  completionDescription: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-    marginTop: 13,
-  },
-  completionHeading: {
-    alignItems: 'center',
-    left: 21,
-    position: 'absolute',
-    width: 370,
-  },
-  completionImage: { alignSelf: 'center', position: 'absolute' },
-  completionTitle: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 36,
-    includeFontPadding: false,
-    textAlign: 'center',
-    width: '100%',
-  },
-  controlRow: { flexDirection: 'row', gap: 10, width: '100%' },
-  controls: { alignItems: 'flex-end', gap: 17, left: 21, position: 'absolute', width: 370 },
-  disabled: { opacity: 0.65 },
-  discomfortCharacterCount: {
-    bottom: 8,
-    color: colors.textDisabled,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 12,
-    includeFontPadding: false,
-    lineHeight: 15,
-    position: 'absolute',
-    right: 10,
-  },
-  discomfortCloseButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.primary,
-    borderRadius: 16,
-    borderWidth: 1,
-    height: 32,
-    justifyContent: 'center',
-    left: 332,
-    position: 'absolute',
-    top: 14,
-    width: 32,
-  },
-  discomfortDivider: {
-    backgroundColor: colors.border,
-    height: 1,
-    width: '100%',
-  },
-  discomfortInfoCard: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: 12,
-    bottom: 104,
-    flexDirection: 'row',
-    gap: 10,
-    left: 20,
-    minHeight: 78,
-    padding: 12,
-    position: 'absolute',
-    width: 340,
-  },
-  discomfortInfoCopy: { flex: 1, gap: 2 },
-  discomfortInfoIcon: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-  },
-  discomfortInfoText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    includeFontPadding: false,
-    lineHeight: 17,
-  },
-  discomfortInfoTitle: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 15,
-    includeFontPadding: false,
-    lineHeight: 18,
-  },
-  discomfortInputHint: {
-    color: colors.textDisabled,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 12,
-    includeFontPadding: false,
-    lineHeight: 17,
-    marginTop: -7,
-  },
-  discomfortLevelHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  discomfortLevelValue: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 20,
-    includeFontPadding: false,
-    lineHeight: 24,
-  },
-  discomfortLevelTotal: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 17,
-    lineHeight: 21,
-  },
-  discomfortModalCanvas: {
-    position: 'absolute',
-    top: 0,
-    transformOrigin: 'top left',
-    width: 412,
-  },
-  discomfortModalCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 25,
-    elevation: 10,
-    left: 16,
-    overflow: 'hidden',
-    position: 'absolute',
-    shadowColor: '#000000',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    top: 30,
-    width: 380,
-  },
-  discomfortModalContent: {
-    justifyContent: 'space-between',
-    padding: 20,
-    width: '100%',
-  },
-  discomfortModalDim: {
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
-  discomfortModalDimHitArea: {
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
-  discomfortModalHeader: {
-    backgroundColor: 'rgba(232,248,244,0.5)',
-    height: 120,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  discomfortModalTitle: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 22,
-    includeFontPadding: false,
-    left: 25,
-    lineHeight: 28,
-    position: 'absolute',
-    top: 32,
-    width: 180,
-  },
-  discomfortModalViewport: { flex: 1 },
-  discomfortModifyImage: { height: 110, left: 241, position: 'absolute', top: 5, width: 114 },
-  discomfortSection: { gap: 10, width: '100%' },
-  discomfortSectionTitle: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 18,
-    includeFontPadding: false,
-    lineHeight: 22,
-  },
-  discomfortScroll: {
-    bottom: 190,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 127,
-  },
-  discomfortScrollContainer: { width: '100%' },
-  discomfortSliderFill: {
-    backgroundColor: colors.primary,
-    borderRadius: 3,
-    height: 6,
-    left: 0,
-    position: 'absolute',
-    top: 7,
-  },
-  discomfortSliderInactive: {
-    backgroundColor: colors.border,
-    borderRadius: 3,
-    height: 6,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 7,
-  },
-  discomfortSliderLabel: {
-    color: colors.textDisabled,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    includeFontPadding: false,
-    lineHeight: 18,
-  },
-  discomfortSliderLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  discomfortSliderThumb: {
-    backgroundColor: colors.primary,
-    borderColor: colors.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 20,
-    marginLeft: -10,
-    position: 'absolute',
-    shadowColor: colors.primaryDark,
-    shadowOffset: { height: 2, width: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    top: 0,
-    width: 20,
-  },
-  discomfortSliderTrack: {
-    height: 20,
-    marginTop: 2,
-    position: 'relative',
-    width: '100%',
-  },
-  discomfortSubmitButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 50,
-    bottom: 42,
-    elevation: 4,
-    height: 45,
-    left: 15,
-    position: 'absolute',
-    shadowColor: colors.primaryDark,
-    shadowOffset: { height: 4, width: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    width: 350,
-  },
-  discomfortSubmitIcon: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    height: 24,
-    justifyContent: 'center',
-    width: 24,
-  },
-  discomfortSubmitText: {
-    color: colors.surface,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 18,
-    includeFontPadding: false,
-    lineHeight: 23,
-  },
-  discomfortTextInput: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 15,
-    height: '100%',
-    includeFontPadding: false,
-    lineHeight: 19,
-    paddingBottom: 25,
-    paddingHorizontal: 10,
-    paddingTop: 10,
-    width: '100%',
-  },
-  discomfortTextInputWrap: {
-    backgroundColor: '#F6F6F6',
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 100,
-    position: 'relative',
-    width: '100%',
-  },
-  discomfortTypeChip: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    height: 36,
-    justifyContent: 'center',
-    paddingHorizontal: 15,
-    width: 108.66,
-  },
-  discomfortTypeChipSelected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  discomfortTypeChipText: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 15,
-    includeFontPadding: false,
-    lineHeight: 18,
-  },
-  discomfortTypeChipTextSelected: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-  },
-  discomfortTypeGrid: { gap: 7, height: 79, width: '100%' },
-  discomfortTypeRow: { flexDirection: 'row', gap: 7, height: 36, width: '100%' },
-  encouragementCard: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: 15,
-    flexDirection: 'row',
-    height: 100,
-    left: 21,
-    paddingHorizontal: 10,
-    position: 'absolute',
-    width: 370,
-  },
-  encouragementCopy: { flex: 1, gap: 10, marginLeft: 10 },
-  encouragementImage: { height: 70, width: 70 },
-  encouragementText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  encouragementTitle: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-  },
-  exerciseHeading: { gap: 5, maxWidth: 155 },
-  exerciseIdentity: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  exerciseName: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 20,
-    includeFontPadding: false,
-    letterSpacing: 1,
-  },
-  exerciseNumber: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: 20,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-  },
-  exerciseNumberText: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 22,
-  },
-  followUpChoice: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    flex: 1,
-    height: 44,
-    justifyContent: 'center',
-  },
-  followUpChoiceSelected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  followUpChoiceText: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 15,
-    includeFontPadding: false,
-    lineHeight: 18,
-  },
-  followUpChoiceTextSelected: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-  },
-  followUpChoices: { flexDirection: 'row', gap: 7, width: '100%' },
-  goldTag: {
-    backgroundColor: '#FFF8E8',
-    borderColor: '#EED99E',
-    borderRadius: 10,
-    borderWidth: 0.5,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  goldTagText: {
-    color: '#C8952F',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 12,
-  },
-  guideButton: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: 15,
-    flexDirection: 'row',
-    paddingLeft: 8,
-  },
-  guideIcon: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryMedium,
-    borderRadius: 999,
-    height: 27,
-    justifyContent: 'center',
-    marginLeft: 5,
-    width: 27,
-  },
-  guideText: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 14,
-  },
-  hiddenExerciseName: { height: 0, opacity: 0, position: 'absolute', width: 0 },
-  mediaCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 15,
-    borderWidth: 1,
-    justifyContent: 'space-between',
-    left: 21,
-    paddingBottom: 22,
-    paddingHorizontal: 17,
-    paddingTop: 18,
-    position: 'absolute',
-    width: 370,
-  },
-  mediaHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  mediaImage: { height: '100%', width: '100%' },
-  mediaImageArea: {
-    backgroundColor: '#EEF5F3',
-    borderRadius: 15,
-    overflow: 'hidden',
-    position: 'relative',
-    width: 334,
-  },
-  modalButtons: { flexDirection: 'row', gap: 10, width: '100%' },
-  modalCancelButton: {
-    alignItems: 'center',
-    borderColor: '#D9D9D9',
-    borderRadius: 12,
-    borderWidth: 1,
-    flex: 1,
-    height: 44,
-    justifyContent: 'center',
-  },
-  modalCancelText: {
-    color: '#6C757D',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-  },
-  modalCard: {
-    alignItems: 'center',
-    alignSelf: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 20,
-    gap: 15,
-    height: 230,
-    justifyContent: 'center',
-    left: 56,
-    paddingHorizontal: 24,
-    position: 'absolute',
-    top: '37%',
-    width: 300,
-  },
-  modalConfirmButton: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    flex: 1,
-    height: 44,
-    justifyContent: 'center',
-  },
-  modalConfirmText: {
-    color: colors.surface,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 14,
-  },
-  modalDescription: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
-    lineHeight: 18,
-    textAlign: 'center',
-  },
-  modalDim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.45)' },
-  modalIcon: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: 22,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
-  },
-  modalLayer: { left: 0, position: 'absolute', top: 0, width: 412, zIndex: 50 },
-  modalTitle: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  playCircle: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    borderRadius: 999,
-    height: 55,
-    justifyContent: 'center',
-    left: 139,
-    position: 'absolute',
-    top: '37%',
-    width: 55,
-  },
-  painAreaInput: {
-    backgroundColor: '#FAFAFA',
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 15,
-    height: 45,
-    includeFontPadding: false,
-    lineHeight: 19,
-    paddingHorizontal: 15,
-    width: '100%',
-  },
-  primaryControl: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 10,
-    height: 45,
-    justifyContent: 'center',
-    width: 180,
-  },
-  primaryControlText: {
-    color: colors.surface,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 20,
-  },
-  progressCurrent: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 20,
-    letterSpacing: 2,
-  },
-  progressFill: { backgroundColor: colors.primary, borderRadius: 4, height: 7 },
-  progressRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    left: 21,
-    position: 'absolute',
-    top: 77,
-    width: 370,
-  },
-  progressTotal: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 15,
-  },
-  progressTrack: {
-    backgroundColor: '#E8E8E8',
-    borderRadius: 4,
-    flex: 1,
-    height: 7,
-    marginLeft: 13,
-    overflow: 'hidden',
-  },
-  repCount: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 55,
-    letterSpacing: 3,
-  },
-  repGoal: { fontSize: 25, letterSpacing: 1 },
-  repProgress: {
-    alignItems: 'center',
-    left: 21,
-    position: 'absolute',
-    width: 370,
-  },
-  restCircle: {
-    alignItems: 'center',
-    alignSelf: 'center',
-    height: 250,
-    justifyContent: 'center',
-    position: 'absolute',
-    width: 250,
-  },
-  restProgressRing: { height: 250, position: 'absolute', width: 250 },
-  restControls: { alignItems: 'flex-end', gap: 17, left: 21, position: 'absolute', width: 370 },
-  restDescription: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-    lineHeight: 20,
-    marginTop: 13,
-    textAlign: 'center',
-  },
-  restHeading: { alignItems: 'center', left: 21, position: 'absolute', width: 370 },
-  restSkipButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.primary,
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 45,
-    justifyContent: 'center',
-    width: '100%',
-  },
-  restSkipText: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 20,
-  },
-  restTimer: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 35,
-    letterSpacing: -1,
-    marginBottom: 12,
-  },
-  restTitle: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 36,
-  },
-  resultCard: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 15,
-    borderWidth: 1,
-    flexDirection: 'row',
-    height: 110,
-    left: 21,
-    paddingBottom: 12,
-    paddingTop: 12,
-    position: 'absolute',
-    width: 370,
-  },
-  resultDivider: { borderRightColor: colors.border, borderRightWidth: 1 },
-  resultFactor: { alignItems: 'center', flex: 1, gap: 7, height: 82 },
-  resultLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 13,
-  },
-  resultValue: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 20,
-  },
-  screenTitle: {
-    alignSelf: 'center',
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 15,
-    letterSpacing: 1.5,
-    position: 'absolute',
-    top: 38,
-  },
-  secondaryControl: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.primary,
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 45,
-    justifyContent: 'center',
-    width: 180,
-  },
-  secondaryControlText: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 20,
-  },
-  setActive: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 20,
-  },
-  setDescription: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  setTotal: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 20,
-  },
-  shortDivider: { backgroundColor: colors.border, height: 20, width: 1 },
-  skipLink: { alignItems: 'center', flexDirection: 'row' },
-  skipLinkText: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-  },
-  speedButton: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: 20,
-    flexDirection: 'row',
-    gap: 5,
-    height: 30,
-    paddingHorizontal: 10,
-  },
-  speedButtonText: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 18,
-  },
-  tagRow: { flexDirection: 'row', gap: 5 },
-  timedButton: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryMedium,
-    borderRadius: 10,
-    flexDirection: 'row',
-    gap: 10,
-    height: 60,
-    justifyContent: 'center',
-    width: 230,
-  },
-  timedProgress: {
-    alignItems: 'center',
-    gap: 25,
-    left: 21,
-    position: 'absolute',
-    width: 370,
-  },
-  timedText: {
-    color: colors.surface,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 30,
-    letterSpacing: 3,
-  },
-  timerDot: { backgroundColor: colors.primary, borderRadius: 999, height: 10, width: 10 },
-  tipCard: {
-    alignItems: 'center',
-    backgroundColor: '#EBF4F2',
-    borderRadius: 15,
-    flexDirection: 'row',
-    gap: 15,
-    left: 21,
-    paddingHorizontal: 15,
-    position: 'absolute',
-    width: 370,
-  },
-  tipCopy: { flex: 1, gap: 5 },
-  tipIconCircle: {
-    alignItems: 'center',
-    backgroundColor: '#D1EBE5',
-    borderRadius: 20,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-  },
-  tipText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  tipTitle: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-  },
-  topTimer: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    position: 'absolute',
-    right: 21,
-    top: 31,
-  },
-  topTimerText: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 20,
-    letterSpacing: 2,
-  },
-});
