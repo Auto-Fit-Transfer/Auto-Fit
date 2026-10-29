@@ -3,7 +3,6 @@ import {
   Alert,
   Animated,
   Easing,
-  Image,
   Modal,
   type ImageSourcePropType,
   Platform,
@@ -18,11 +17,18 @@ import Bmr from '@/assets/icons/data/BMR.svg';
 import Fat from '@/assets/icons/data/Fat.svg';
 import Plant from '@/assets/icons/deco/Plant.svg';
 import FishSimple from '@/assets/icons/food/FishSimple.svg';
-import ForkKnife from '@/assets/icons/feature/navigator/Diet.svg';
-import Pencil from '@/assets/icons/feature/Pencil_Line.svg';
-import Check from '@/assets/icons/system/Check_Fat.svg';
-import Prohibit from '@/assets/icons/system/Prohibit.svg';
-import { CustomScrollIndicator, Text, useCustomScrollIndicator } from '@/src/components/common';
+import {
+  AppButton,
+  Badge,
+  CustomScrollIndicator,
+  Text,
+  useCustomScrollIndicator,
+} from '@/src/components/common';
+import {
+  DietIntakeCard,
+  DietPhotoRecordRow,
+  DietWeekStrip,
+} from '@/src/components/diet/DietOverview';
 import { MealRecordSheets, type MealRecordDraft } from '@/src/components/diet/MealRecordSheets';
 import {
   getDietApiErrorMessage,
@@ -37,23 +43,13 @@ import {
   type DietFeedbackInput,
 } from '@/src/api/diet';
 import { API_BASE_URL, ApiError } from '@/src/api/client';
-import { getProfile, getProfileName } from '@/src/api/home';
 import {
   BOTTOM_NAVIGATION_MIN_BOTTOM_GAP,
   getBottomNavigationVisualHeight,
 } from '@/src/components/navigation';
-import { colors, fontFamilies } from '@/src/theme';
-import { MainHeader } from '@/src/components/main/MainSurface';
-import MainLeft from '@/assets/figma/main/065db.svg';
-import MainRight from '@/assets/figma/main/ee8d2.svg';
-import MainCalendar from '@/assets/figma/main/b1d25.svg';
-import MainRefresh from '@/assets/figma/main/b20a8.svg';
-import MainEnergy from '@/assets/figma/main/215b8.svg';
-import MainSun from '@/assets/figma/main/2f5ce.svg';
-import MainMoon from '@/assets/figma/main/75ea4.svg';
+import { colors, fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { nutritionNumber, type NutritionSummary } from '@/src/features/nutritionSummary';
 
-const hero = require('@/assets/figma/main/9dc37.png');
 const breakfastImage = require('../../assets/images/illustrations/temp/Image_MealPicture_1.png');
 const lunchImage = breakfastImage;
 const dinnerImage = require('../../assets/images/illustrations/temp/Image_MealPicture_2.png');
@@ -671,94 +667,47 @@ function mapLogDraft(log: ApiRecord, mealId: MealType): MealRecordDraft | undefi
   };
 }
 
-const CalorieGoal = memo(function CalorieGoal({
-  current,
-  target,
-  unit,
-  accentColor,
-  softColor,
-}: NutritionGoal) {
-  const ratio = target !== null && current !== null && target > 0 ? current / target : 0;
-  const barProgress = Math.max(0, Math.min(ratio, 1));
+const mealStatusLabels: Record<MealStatus, string> = {
+  recommended: '추천',
+  eaten: '먹었어요',
+  modified: '다른 음식',
+  skipped: '건너뜀',
+};
 
-  return (
-    <View style={styles.calorieGoal}>
-      <View style={styles.calorieGoalTop}>
-        <View style={[styles.nutritionIcon, { backgroundColor: softColor }]}>
-          <MainEnergy />
-        </View>
-        <Text style={styles.calorieValue}>
-          {current?.toLocaleString() ?? '—'}{' '}
-          <Text style={styles.calorieTarget}>
-            / {target?.toLocaleString() ?? '—'} {unit}
-          </Text>
-        </Text>
-        <Text style={main.percentage}>
-          {current !== null && target !== null && target > 0 ? `${Math.round(ratio * 100)}%` : '—'}{' '}
-          ⌄
-        </Text>
-      </View>
-      <View style={styles.calorieTrack}>
-        <View
-          style={[
-            styles.calorieFill,
-            { backgroundColor: accentColor, width: `${barProgress * 100}%` },
-          ]}
-        />
-      </View>
-    </View>
-  );
-});
-
-const MacroGoal = memo(function MacroGoal({
+// Small outline button of the Figma meal card; the chosen status stays highlighted.
+function MealAction({
   label,
-  current,
-  target,
-  unit,
-  Icon,
-  accentColor,
-  softColor,
-}: NutritionGoal) {
+  onPress,
+  selected = false,
+  disabled = false,
+}: {
+  label: string;
+  onPress: () => void;
+  selected?: boolean;
+  disabled?: boolean;
+}) {
+  const mealStyles = useThemedStyles(createMealStyles);
   return (
-    <View style={styles.macroGoal}>
-      <View style={[styles.nutritionIcon, { backgroundColor: softColor }]}>
-        <Icon color={accentColor} fill={accentColor} height={20} width={20} />
-      </View>
-      <View style={styles.macroCopy}>
-        <Text style={styles.macroLabel}>{label}</Text>
-        <Text style={styles.macroValue}>
-          {current?.toLocaleString() ?? '—'}{' '}
-          <Text style={styles.macroTarget}>
-            / {target?.toLocaleString() ?? '—'} {unit}
-          </Text>
-        </Text>
-      </View>
-    </View>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled, selected }}
+      disabled={disabled}
+      onPress={(event) => {
+        event.stopPropagation();
+        onPress();
+      }}
+      style={({ pressed }) => [
+        mealStyles.action,
+        selected && mealStyles.actionSelected,
+        disabled && !selected && mealStyles.actionDisabled,
+        pressed && mealStyles.actionPressed,
+      ]}
+    >
+      <Text style={[mealStyles.actionText, selected && mealStyles.actionTextSelected]}>
+        {label}
+      </Text>
+    </Pressable>
   );
-});
-
-function actionStyle(status: MealStatus, selectedStatus: MealStatus, pressed: boolean) {
-  const selected = status === selectedStatus;
-  if (status === 'eaten') {
-    return [
-      styles.actionButton,
-      selected ? styles.actionEatenSelected : styles.actionEaten,
-      pressed && styles.actionEatenPressed,
-    ];
-  }
-  if (status === 'modified') {
-    return [
-      styles.actionButton,
-      styles.actionWide,
-      selected ? styles.actionModifiedSelected : styles.actionModified,
-      pressed && styles.actionModifiedPressed,
-    ];
-  }
-  return [
-    styles.actionButton,
-    selected ? styles.actionSkippedSelected : styles.actionSkipped,
-    pressed && styles.actionSkippedPressed,
-  ];
 }
 
 const MealCard = memo(function MealCard({
@@ -793,6 +742,7 @@ const MealCard = memo(function MealCard({
   feedbackPending: boolean;
   recommendationPending: boolean;
 }) {
+  const mealStyles = useThemedStyles(createMealStyles);
   const [detailHeight, setDetailHeight] = useState(0);
   const [detailProgress] = useState(() => new Animated.Value(expanded ? 1 : 0));
   const [detailOpacity] = useState(() => new Animated.Value(expanded ? 1 : 0));
@@ -874,147 +824,72 @@ const MealCard = memo(function MealCard({
   };
 
   const renderDetailContent = () => (
-    <>
-      <View style={styles.mealDivider} />
-      <View style={styles.intakeCard}>
-        <View style={styles.intakeTitleRow}>
-          <View style={styles.detailTitleRow}>
-            <ForkKnife color="#5C4D3C" height={25} width={25} />
-            <Text style={[styles.detailTitle, styles.intakeTitle]}>레시피</Text>
-          </View>
-
-          <View style={styles.intakeBadge}>
-            <Text style={styles.intakeBadgeText}>1인 기준</Text>
-          </View>
-        </View>
-
-        <View style={styles.intakeItems}>
-          {displayedIntake.map(([name, amount], index) => (
-            <View key={`${name}-${index}`} style={styles.intakeItem}>
-              <Text style={styles.intakeName}>{name}</Text>
-              <Text numberOfLines={1} style={styles.intakeAmount}>
-                {amount}
-              </Text>
-            </View>
-          ))}
-        </View>
+    <View style={mealStyles.detail}>
+      <View style={mealStyles.detailHead}>
+        <Text style={mealStyles.detailTitle}>재료</Text>
+        <Text style={mealStyles.detailMeta}>1인 기준</Text>
       </View>
-
-      {displayedStatus === 'recommended' && meal.dietMealId && (
-        <Pressable
-          accessibilityRole="button"
-          disabled={recommendationPending}
-          onPress={(event) => {
-            event.stopPropagation();
-            onRequestAlternativeMeal(meal.id);
-          }}
-          style={main.record}
-        >
-          <Text style={main.recordText}>
-            {recommendationPending ? '다른 식단 추천 중…' : '다른 식단 추천받기'}
+      {displayedIntake.map(([name, amount], index) => (
+        <View key={`${name}-${index}`} style={mealStyles.ingredient}>
+          <Text style={mealStyles.ingredientName}>{name}</Text>
+          <Text numberOfLines={1} style={mealStyles.ingredientAmount}>
+            {amount}
           </Text>
-        </Pressable>
-      )}
-      {showRecordControls ? (
-        <View style={styles.actions}>
-          <Pressable
-            onPress={(event) => {
-              event.stopPropagation();
-              void chooseStatus('eaten');
-            }}
-            disabled={!feedbackEnabled || feedbackPending}
-            style={({ pressed }) => [
-              actionStyle('eaten', displayedStatus, pressed),
-              !feedbackEnabled && styles.actionDisabled,
-            ]}
-          >
-            <Check color="#7866F4" height={15} width={15} />
-            <Text style={[styles.actionText, styles.actionEatenText]}>먹었어요</Text>
-          </Pressable>
-
-          <Pressable
-            disabled={!feedbackEnabled || feedbackPending || displayedStatus === 'modified'}
-            onPress={(event) => {
-              event.stopPropagation();
-              if (displayedStatus === 'modified') return;
-              onRecordOtherMeal(meal.id);
-            }}
-            style={({ pressed }) => [
-              actionStyle('modified', displayedStatus, pressed),
-              !feedbackEnabled && styles.actionDisabled,
-            ]}
-          >
-            <Pencil color="#0066FF" height={15} width={15} />
-            <Text style={[styles.actionText, styles.actionModifiedText]}>다른 음식 먹었어요</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={(event) => {
-              event.stopPropagation();
-              void chooseStatus('skipped');
-            }}
-            disabled={!feedbackEnabled || feedbackPending}
-            style={({ pressed }) => [
-              actionStyle('skipped', displayedStatus, pressed),
-              !feedbackEnabled && styles.actionDisabled,
-            ]}
-          >
-            <Prohibit color="#727272" height={15} width={15} />
-            <Text style={[styles.actionText, styles.actionSkippedText]}>건너뛰었어요</Text>
-          </Pressable>
         </View>
-      ) : null}
-    </>
+      ))}
+    </View>
   );
+
+  const locked = !feedbackEnabled || feedbackPending;
 
   return (
     <Pressable
       accessibilityState={{ expanded }}
       onPress={() => onToggle(meal.id)}
-      style={[styles.mealCard, Platform.OS === 'web' && styles.mealCardWeb]}
+      style={mealStyles.card}
     >
-      {displayedStatus === 'eaten' ? (
-        <View pointerEvents="none" style={[styles.selectedCardBorder, styles.eatenCardBorder]} />
-      ) : null}
-
-      {displayedStatus === 'modified' ? (
-        <View pointerEvents="none" style={[styles.selectedCardBorder, styles.modifiedCardBorder]} />
-      ) : null}
-
-      <View
-        style={[
-          main.mealAccent,
-          { backgroundColor: displayedStatus === 'recommended' ? colors.primary : '#B5B5B5' },
-        ]}
-      />
-      <View style={main.mealTop}>
-        <View style={main.mealBadge}>
-          {meal.id === 'dinner' ? <MainMoon /> : <MainSun />}
-          <Text style={[styles.mealTitle, { color: colors.primary }]}>{meal.title}</Text>
+      <View style={mealStyles.head}>
+        <Text style={mealStyles.mealName}>{meal.title}</Text>
+        <Text style={mealStyles.kcal}>{displayedKcal}kcal</Text>
+        <Badge
+          label={mealStatusLabels[displayedStatus]}
+          showIcon={displayedStatus !== 'recommended'}
+          tone={displayedStatus === 'eaten' || displayedStatus === 'modified' ? 'good' : 'neutral'}
+        />
+      </View>
+      <Text numberOfLines={2} style={[mealStyles.foods, dimmed && mealStyles.dimmed]}>
+        {displayedFoods}
+      </Text>
+      {showRecordControls ? (
+        <View style={mealStyles.actions}>
+          <MealAction
+            disabled={locked}
+            label="먹었어요"
+            onPress={() => void chooseStatus('eaten')}
+            selected={displayedStatus === 'eaten'}
+          />
+          <MealAction
+            disabled={locked || displayedStatus === 'modified'}
+            label="다른 음식"
+            onPress={() => onRecordOtherMeal(meal.id)}
+            selected={displayedStatus === 'modified'}
+          />
+          {displayedStatus === 'recommended' && meal.dietMealId ? (
+            <MealAction
+              disabled={recommendationPending}
+              label={recommendationPending ? '바꾸는 중' : '바꾸기'}
+              onPress={() => onRequestAlternativeMeal(meal.id)}
+            />
+          ) : null}
+          <MealAction
+            disabled={locked}
+            label="건너뛰기"
+            onPress={() => void chooseStatus('skipped')}
+            selected={displayedStatus === 'skipped'}
+          />
+          <MealAction label={expanded ? '접기' : '재료'} onPress={() => onToggle(meal.id)} />
         </View>
-        <Text style={main.mealKcal}>{displayedKcal} kcal</Text>
-      </View>
-      <View style={main.mealBottom}>
-        <Text numberOfLines={2} style={[main.foods, dimmed && styles.skippedContent]}>
-          {displayedFoods}
-        </Text>
-        {showRecordControls ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={feedbackPending}
-            onPress={(event) => {
-              event.stopPropagation();
-              if (displayedStatus === 'recommended' && feedbackEnabled) void chooseStatus('eaten');
-              else onToggle(meal.id);
-            }}
-            style={main.record}
-          >
-            <Text style={main.recordText}>
-              {displayedStatus === 'recommended' && feedbackEnabled ? '✓ 섭취' : '기록 ⌄'}
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
+      ) : null}
 
       <View
         accessibilityElementsHidden
@@ -1068,7 +943,6 @@ export default function DietScreen() {
   const [selectedDateKey, setSelectedDateKey] = useState(() => toDateKey(today));
   const [expandedMeals, setExpandedMeals] = useState<Set<MealType>>(() => new Set());
   const [statusesByDate, setStatusesByDate] = useState<Record<string, Partial<MealStatuses>>>({});
-  const [showNutrition, setShowNutrition] = useState(false);
   const [showDates, setShowDates] = useState(false);
   const [recordingMealId, setRecordingMealId] = useState<MealType | null>(null);
   const [recommendedMeals, setRecommendedMeals] = useState<Meal[]>([]);
@@ -1083,7 +957,6 @@ export default function DietScreen() {
   const [mealRecordsByDate, setMealRecordsByDate] = useState<
     Record<string, Partial<Record<MealType, MealRecordDraft>>>
   >({});
-  const [userName, setUserName] = useState<string | null>(null);
   const feedbackRequestMealIdsRef = useRef(new Set<MealType>());
   const isMountedRef = useRef(true);
   const mealLogsRequestRef = useRef(0);
@@ -1139,31 +1012,29 @@ export default function DietScreen() {
     [recommendationStatuses, selectedDateKey, statusesByDate],
   );
   const selectedDate = addDays(today, selectedDateOffset);
-  const selectedDateCopy = getDateCopy(selectedDate, selectedDateOffset);
   const todayDateKey = toDateKey(new Date());
   const feedbackEnabled = selectedDateKey === todayDateKey;
   const showRecordControls = selectedDateKey <= todayDateKey;
+  const themed = useThemedStyles(createDietScreenStyles);
+  const nextMealToRecord =
+    visibleMeals.find((meal) => selectedStatuses[meal.id] === 'recommended')?.id ?? 'snack';
+  const weekStart = addDays(selectedDate, -((selectedDate.getDay() + 6) % 7));
+  const weekDays = Array.from({ length: 7 }, (_, index) => {
+    const date = addDays(weekStart, index);
+    const offset = Math.round((date.getTime() - today.getTime()) / 86400000);
+    return {
+      key: String(offset),
+      weekday: weekdays[date.getDay()],
+      day: date.getDate(),
+      selected: offset === selectedDateOffset,
+      disabled: offset < dateWindowMin || offset > dateWindowMax,
+    };
+  });
 
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let isActive = true;
-
-    void getProfile()
-      .then((response) => {
-        if (isActive) setUserName(getProfileName(response) ?? null);
-      })
-      .catch(() => {
-        if (isActive) setUserName(null);
-      });
-
-    return () => {
-      isActive = false;
     };
   }, []);
 
@@ -1612,9 +1483,7 @@ export default function DietScreen() {
         feedbackSaved = true;
 
         if (draft.photoUri) {
-          const result = isApiRecord(feedbackResponse.result)
-            ? feedbackResponse.result
-            : undefined;
+          const result = isApiRecord(feedbackResponse.result) ? feedbackResponse.result : undefined;
           const mealLog = result && isApiRecord(result.meal_log) ? result.meal_log : undefined;
           const mealLogId = mealLog ? readString(mealLog, ['meal_log_id', 'id']) : undefined;
 
@@ -1655,7 +1524,9 @@ export default function DietScreen() {
       } catch (error) {
         if (isMountedRef.current) {
           Alert.alert(
-            feedbackSaved ? '식사는 기록했지만 사진을 저장하지 못했어요' : '식사 기록을 저장하지 못했어요',
+            feedbackSaved
+              ? '식사는 기록했지만 사진을 저장하지 못했어요'
+              : '식사 기록을 저장하지 못했어요',
             feedbackSaved
               ? `${getDietApiErrorMessage(error)}\n사진 저장을 다시 시도해 주세요.`
               : getDietApiErrorMessage(error),
@@ -1701,6 +1572,8 @@ export default function DietScreen() {
     setExpandedMeals(new Set());
   };
 
+  const selectWeekDay = (key: string) => moveSelectedDate(Number(key) - selectedDateOffset);
+
   return (
     <View style={[styles.root, Platform.OS === 'web' && styles.webViewport]}>
       <ScrollView
@@ -1719,116 +1592,43 @@ export default function DietScreen() {
         showsVerticalScrollIndicator={false}
         style={Platform.OS === 'web' ? styles.webScrollViewport : undefined}
       >
-        <MainHeader title="식단 추천">
-          <Image source={hero} resizeMode="contain" style={main.heroImage} />
-          <Text style={main.heroTitle}>
-            {userName ? `${userName}님을 위한` : '나를 위한'}
-            {'\n'}
-            <Text style={main.accent}>맞춤 식단</Text>
+        <View style={[themed.header, { paddingTop: insets.top }]}>
+          <Text accessibilityRole="header" style={themed.title}>
+            식단
           </Text>
-          <Text style={main.heroDescription}>근육은 지키고, 체지방은 천천히</Text>
-          <View style={main.dateControls}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => moveSelectedDate(-selectedDateOffset)}
-              style={main.today}
-            >
-              <MainRefresh />
-              <Text style={main.todayText}>오늘</Text>
-            </Pressable>
-            <View style={main.dateRow}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="이전 날짜"
-                disabled={selectedDateOffset <= dateWindowMin}
-                onPress={() => moveSelectedDate(-1)}
-                style={[
-                  main.dateArrow,
-                  selectedDateOffset <= dateWindowMin && styles.arrowDisabled,
-                ]}
-              >
-                <MainLeft />
-              </Pressable>
-              <Text style={main.dateText}>{selectedDateCopy.date}</Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="다음 날짜"
-                disabled={selectedDateOffset >= dateWindowMax}
-                onPress={() => moveSelectedDate(1)}
-                style={[
-                  main.dateArrow,
-                  selectedDateOffset >= dateWindowMax && styles.arrowDisabled,
-                ]}
-              >
-                <MainRight />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setShowDates(true)}
-                style={main.dateSelect}
-              >
-                <MainCalendar />
-                <Text style={main.dateSelectText}>날짜 선택</Text>
-              </Pressable>
-            </View>
-          </View>
-        </MainHeader>
-        <View style={main.content}>
-          <View style={styles.nutritionCard}>
-            <Text style={styles.nutritionTitle}>오늘의 영양 목표</Text>
-            {nutritionError ? (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => void loadNutritionSummary(selectedDateKey)}
-              >
-                <Text style={styles.mealErrorText}>{nutritionError} · 다시 시도</Text>
-              </Pressable>
-            ) : null}
-            {nutritionSummary?.date === selectedDateKey && nutritionSummary.has_unknown_items ? (
-              <Text style={styles.mealLoadMessage}>
-                영양 정보가 없는 음식은 합계에서 제외되어 있어요.
-              </Text>
-            ) : null}
-            <View style={styles.nutritionInner}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="영양소 상세"
-                accessibilityState={{ expanded: showNutrition }}
-                onPress={() => setShowNutrition((v) => !v)}
-              >
-                <CalorieGoal {...displayedNutritionGoals[0]} />
-              </Pressable>
-              {showNutrition && (
-                <View style={styles.macroGoals}>
-                  {displayedNutritionGoals.slice(1).map((goal) => (
-                    <MacroGoal key={goal.label} {...goal} />
-                  ))}
-                </View>
-              )}
-            </View>
-          </View>
-          <View style={main.mealChips}>
-            {(['breakfast', 'lunch', 'dinner', 'snack'] as MealType[]).map((id, index) => (
-              <View
-                key={id}
-                style={[
-                  main.mealChip,
-                  ['eaten', 'modified'].includes(selectedStatuses[id]) && main.recordedChip,
-                ]}
-              >
-                <Text
-                  style={[
-                    main.mealChipText,
-                    ['eaten', 'modified'].includes(selectedStatuses[id]) && main.recordedChipText,
-                  ]}
-                >
-                  {['eaten', 'modified'].includes(selectedStatuses[id]) ? '✓ ' : ''}
-                  {['아침', '점심', '저녁', '간식'][index]}
-                </Text>
-              </View>
-            ))}
-          </View>
-          <Text style={styles.mealSectionTitle}>오늘의 추천 식단</Text>
+          <AppButton
+            fullWidth={false}
+            onPress={() => setShowDates(true)}
+            title="날짜 선택"
+            variant="outline"
+          />
+        </View>
+        <View style={themed.content}>
+          <DietWeekStrip days={weekDays} onSelect={selectWeekDay} />
+          <DietIntakeCard
+            calories={displayedNutritionGoals[0]}
+            macros={displayedNutritionGoals.slice(1)}
+            notes={
+              <>
+                {nutritionError ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => void loadNutritionSummary(selectedDateKey)}
+                  >
+                    <Text style={themed.error}>{nutritionError} · 다시 시도</Text>
+                  </Pressable>
+                ) : null}
+                {nutritionSummary?.date === selectedDateKey &&
+                nutritionSummary.has_unknown_items ? (
+                  <Text style={themed.note}>영양 정보가 없는 음식은 합계에서 제외되어 있어요.</Text>
+                ) : null}
+              </>
+            }
+          />
+          {showRecordControls ? (
+            <DietPhotoRecordRow onPress={() => openMealRecord(nextMealToRecord)} />
+          ) : null}
+          <Text style={themed.section}>{selectedDateOffset === 0 ? '오늘 식단' : '이날 식단'}</Text>
           <View style={styles.mealList}>
             {usingTemporaryMeals ? (
               <Text style={styles.mealLoadMessage}>
@@ -1868,7 +1668,7 @@ export default function DietScreen() {
           </View>
         </View>
       </ScrollView>
-      <CustomScrollIndicator {...indicator.indicatorProps} color="rgba(120, 102, 244, 0.56)" />
+      <CustomScrollIndicator {...indicator.indicatorProps} color="rgba(79, 63, 222, 0.35)" />
       <Modal
         visible={showDates}
         transparent
@@ -1923,7 +1723,7 @@ export default function DietScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F7F8FA', overflow: 'hidden' },
+  root: { flex: 1, backgroundColor: colors.background, overflow: 'hidden' },
   webViewport: { height: '100%', maxHeight: '100%', minHeight: 0 },
   webScrollViewport: { flex: 1, maxHeight: '100%', minHeight: 0 },
   canvasSlot: { position: 'relative', width: '100%' },
@@ -2427,3 +2227,69 @@ const main = StyleSheet.create({
   dateDialog: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, maxHeight: '75%', gap: 12 },
   dateOption: { padding: 14, borderRadius: 10, alignItems: 'center' },
 });
+
+// Redesigned parts of the diet tab (Figma D1) that follow the theme.
+function createDietScreenStyles({ colors: palette, text }: AppTheme) {
+  return {
+    header: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      minHeight: 56,
+      paddingLeft: 20,
+      paddingRight: 16,
+    },
+    title: { ...text.title1, color: palette.textPrimary },
+    content: { gap: 16, paddingHorizontal: 20, paddingTop: 4 },
+    section: { ...text.title2, color: palette.textPrimary },
+    error: { ...text.body2, color: palette.danger },
+    note: { ...text.caption, color: palette.textSecondary },
+  } as const;
+}
+
+// Figma D1 meal card: name · kcal · status badge, the menu, then small outline buttons.
+function createMealStyles({ colors: palette, text, easyMode }: AppTheme) {
+  return {
+    card: {
+      backgroundColor: palette.surface,
+      borderColor: palette.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      gap: 8,
+      padding: 16,
+    },
+    head: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+    mealName: { ...text.body2Strong, color: palette.textPrimary },
+    kcal: { ...text.body2, color: palette.textSecondary, flex: 1 },
+    foods: { ...text.body1Strong, color: palette.textPrimary },
+    dimmed: { opacity: 0.5 },
+    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, paddingTop: 4 },
+    action: {
+      alignItems: 'center',
+      backgroundColor: palette.elevated,
+      borderColor: palette.border,
+      borderRadius: 8,
+      borderWidth: 1,
+      justifyContent: 'center',
+      minHeight: easyMode ? 40 : 34,
+      paddingHorizontal: 12,
+    },
+    actionSelected: { backgroundColor: palette.primaryLight, borderColor: palette.primary },
+    actionDisabled: { opacity: 0.45 },
+    actionPressed: { opacity: 0.75 },
+    actionText: { ...text.body2Strong, color: palette.textPrimary },
+    actionTextSelected: { color: palette.primaryText },
+    detail: {
+      backgroundColor: palette.surfaceMuted,
+      borderRadius: 12,
+      gap: 6,
+      padding: 12,
+    },
+    detailHead: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    detailTitle: { ...text.body2Strong, color: palette.textPrimary },
+    detailMeta: { ...text.caption, color: palette.textSecondary },
+    ingredient: { flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
+    ingredientName: { ...text.body2, color: palette.textBody, flexShrink: 1 },
+    ingredientAmount: { ...text.body2, color: palette.textSecondary },
+  } as const;
+}
