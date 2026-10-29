@@ -3,7 +3,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type ViewStyle,
@@ -12,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { StatusBar } from 'expo-status-bar';
 import Back from '@/assets/figma/main/9c31a.svg';
+import { Text } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 
 export function MainGradient({

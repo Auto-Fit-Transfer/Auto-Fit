@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors, spacing, typography } from '@/src/theme';
+import { useThemedStyles, type AppTheme } from '@/src/theme';
+
+import { Text } from './Text';
 
 export interface ListRowProps {
   title: string;
@@ -11,6 +13,7 @@ export interface ListRowProps {
   onPress?: () => void;
   disabled?: boolean;
   showDivider?: boolean;
+  danger?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -22,8 +25,10 @@ export function ListRow({
   onPress,
   disabled = false,
   showDivider = false,
+  danger = false,
   style,
 }: ListRowProps) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityRole={onPress ? 'button' : undefined}
@@ -40,7 +45,7 @@ export function ListRow({
     >
       {leftElement}
       <View style={styles.content}>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={[styles.title, danger && styles.danger]}>{title}</Text>
         {description ? <Text style={styles.description}>{description}</Text> : null}
       </View>
       {rightElement}
@@ -48,18 +53,21 @@ export function ListRow({
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.md,
-    minHeight: 56,
-    paddingVertical: spacing.md,
-  },
-  divider: { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
-  content: { flex: 1, gap: spacing.xs },
-  title: { ...typography.body, color: colors.textPrimary },
-  description: { ...typography.bodySmall, color: colors.textSecondary },
-  pressed: { opacity: 0.65 },
-  disabled: { opacity: 0.4 },
-});
+function createStyles({ colors, text }: AppTheme) {
+  return {
+    row: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 12,
+      minHeight: 64,
+      paddingVertical: 12,
+    },
+    divider: { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
+    content: { flex: 1, gap: 2 },
+    title: { ...text.body1, color: colors.textPrimary },
+    danger: { color: colors.danger },
+    description: { ...text.body2, color: colors.textSecondary },
+    pressed: { opacity: 0.65 },
+    disabled: { opacity: 0.4 },
+  } as const;
+}

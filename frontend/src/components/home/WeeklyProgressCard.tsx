@@ -1,8 +1,8 @@
-import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import TrendUpIcon from '@/assets/figma/main/97a4f.svg';
 import CaretRight from '@/assets/figma/main/4be55.svg';
-import { AppCard } from '@/src/components/common';
+import { AppCard, Text } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 
 interface WeeklyProgressCardProps {

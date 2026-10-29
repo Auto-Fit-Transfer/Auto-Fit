@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -20,14 +20,21 @@ import {
   type CommunityReportReason,
   type CommunityReportTarget,
 } from '@/src/api/community';
-import { AppDialog } from '@/src/components/common';
+import { AppDialog, Text } from '@/src/components/common';
 import {
   CommunityOptionsSheet,
   type CommunityOption,
 } from '@/src/components/community/CommunityOptionsSheet';
 import { NicknameDialog } from '@/src/components/community/NicknameDialog';
 import { ReportDetailDialog } from '@/src/components/community/ReportDetailDialog';
-import { colors, fontFamilies, radius, shadows, spacing } from '@/src/theme';
+import {
+  fontFamilies,
+  radius,
+  shadows,
+  spacing,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
 import { emitCommunityEvent } from './communityEvents';
 
@@ -41,6 +48,7 @@ type Confirm = {
 // Like/repost update optimistically through communityEvents so every open screen agrees.
 // Alert.alert is a no-op on web, so results are shown in a small notice banner instead.
 export function useCommunityActions() {
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const pending = useRef(new Set<string>());
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -354,16 +362,18 @@ export function useCommunityActions() {
   };
 }
 
-const styles = StyleSheet.create({
-  toast: {
-    alignSelf: 'center',
-    backgroundColor: colors.textPrimary,
-    borderRadius: radius.round,
-    maxWidth: '90%',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 10,
-    position: 'absolute',
-    zIndex: 30,
-  },
-  toastText: { color: colors.surface, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    toast: {
+      alignSelf: 'center',
+      backgroundColor: colors.textPrimary,
+      borderRadius: radius.round,
+      maxWidth: '90%',
+      paddingHorizontal: spacing.lg,
+      paddingVertical: 10,
+      position: 'absolute',
+      zIndex: 30,
+    },
+    toastText: { color: colors.elevated, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  } as const;
+}

@@ -40,10 +40,9 @@ export function PasswordAuthScreenLayout({
     <AuthPage
       description={typeof description === 'string' ? description : undefined}
       footer={footer}
-      heading={title === '비밀번호 찾기' ? '비밀번호를 잊으셨나요?' : '새 비밀번호를 설정해 주세요'}
+      heading={title === '비밀번호 찾기' ? '비밀번호를 잊으셨나요?' : '새 비밀번호를 정해 주세요'}
       mode="password"
       onBack={onBack}
-      title={title}
     >
       {children}
     </AuthPage>

@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
-import { View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { AuthButton, AuthCard, AuthPage } from './AuthRedesign';
+import { AuthButton, AuthPage } from './AuthRedesign';
 
+// Headings from the Figma sign-up screens (A3 · A5 · A6 · A7).
 const copy = {
-  basic: ['기본 정보를 알려주세요', '건강한 변화를 위한 첫걸음, 함께 시작해요!'],
-  verify: ['이메일을 인증해 주세요', '이메일 인증으로 계정을 안전하게 보호해요.'],
-  allergy: ['알레르기를 알려주세요', '더 정확한 맞춤 식단을 위한 정보예요.'],
-  goal: ['목표에 맞춰 시작해요', '나에게 맞는 운동을 위해 마지막으로 알려주세요.'],
+  basic: ['기본 정보를 알려 주세요', '로그인과 맞춤 추천에 써요.'],
+  verify: ['메일로 받은 6자리를\n입력해 주세요', ''],
+  allergy: ['피해야 하는 음식이 있나요?', '식단을 추천할 때 빼 드려요. 여러 개 고를 수 있어요.'],
+  goal: ['가장 이루고 싶은 목표는\n무엇인가요?', ''],
 } as const;
 
 export interface SignUpScreenLayoutProps {
@@ -18,23 +18,8 @@ export interface SignUpScreenLayoutProps {
   onContinue: () => void;
   children: ReactNode;
   contentOffsetY?: number;
-  ctaTop?: number;
-  alignStepCta?: boolean;
   ctaDisabled?: boolean;
   ctaLoading?: boolean;
-}
-
-export interface SignUpSectionProps {
-  top: number;
-  children: ReactNode;
-  style?: StyleProp<ViewStyle>;
-  innerStyle?: StyleProp<ViewStyle>;
-  card?: boolean;
-}
-
-export function SignUpSection({ children, style, innerStyle, card = true }: SignUpSectionProps) {
-  const content = <View style={innerStyle}>{children}</View>;
-  return card ? <AuthCard style={style}>{content}</AuthCard> : <View style={style}>{content}</View>;
 }
 
 export function SignUpScreenLayout({
@@ -69,7 +54,6 @@ export function SignUpScreenLayout({
       mode="signup"
       onBack={onBack}
       step={currentStep}
-      title="회원가입"
       totalSteps={totalSteps}
     >
       {children}

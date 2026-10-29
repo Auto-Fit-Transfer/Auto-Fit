@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -9,9 +9,17 @@ import {
   startCommunityDemoMembership,
   type CommunityMembership,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import {
+  fontFamilies,
+  radius,
+  spacing,
+  typography,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -20,6 +28,8 @@ function formatDate(value: string) {
 
 // Payments are not decided yet: this screen only offers the demo membership (no charge).
 export default function CommunityMembershipScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const actions = useCommunityActions();
@@ -114,45 +124,51 @@ export default function CommunityMembershipScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-  status: {
-    backgroundColor: colors.background,
-    borderRadius: radius.lg,
-    gap: 4,
-    padding: spacing.xl,
-  },
-  statusActive: { backgroundColor: colors.primaryLight },
-  statusTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18 },
-  statusText: { ...typography.body, color: colors.textBody },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-    marginTop: spacing.sm,
-  },
-  benefit: { ...typography.body, color: colors.textBody },
-  notice: {
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    gap: 4,
-    marginBottom: spacing.sm,
-    padding: spacing.lg,
-  },
-  noticeTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-  },
-  noticeText: { ...typography.bodySmall, color: colors.textSecondary },
-  off: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+    status: {
+      backgroundColor: colors.background,
+      borderRadius: radius.lg,
+      gap: 4,
+      padding: spacing.xl,
+    },
+    statusActive: { backgroundColor: colors.primaryLight },
+    statusTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 18,
+    },
+    statusText: { ...typography.body, color: colors.textBody },
+    sectionTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+      marginTop: spacing.sm,
+    },
+    benefit: { ...typography.body, color: colors.textBody },
+    notice: {
+      backgroundColor: colors.background,
+      borderRadius: radius.md,
+      gap: 4,
+      marginBottom: spacing.sm,
+      padding: spacing.lg,
+    },
+    noticeTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 14,
+    },
+    noticeText: { ...typography.bodySmall, color: colors.textSecondary },
+    off: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  } as const;
+}

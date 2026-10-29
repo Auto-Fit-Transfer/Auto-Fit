@@ -6,7 +6,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 
@@ -15,9 +14,17 @@ import {
   getCommunityErrorMessage,
   type CommunityClub,
 } from '@/src/api/community';
-import { AppButton } from '@/src/components/common';
+import { AppButton, Text } from '@/src/components/common';
 import { CommunityClubCard } from '@/src/components/community';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import {
+  fontFamilies,
+  radius,
+  spacing,
+  typography,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
 type Scope = 'all' | 'mine';
 
@@ -29,6 +36,8 @@ const SCOPES: { label: string; value: Scope }[] = [
 // The 클럽 tab of the community screen. Reloads when the screen comes back into view, so a
 // club created or joined elsewhere shows up.
 export function CommunityClubsPane({ bottomSpace }: { bottomSpace: number }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const [scope, setScope] = useState<Scope>('all');
   const [clubs, setClubs] = useState<CommunityClub[] | null>(null);
@@ -170,33 +179,35 @@ export function CommunityClubsPane({ bottomSpace }: { bottomSpace: number }) {
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  chips: { flexDirection: 'row', gap: spacing.xs },
-  chip: {
-    borderColor: colors.border,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-  },
-  chipActive: { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
-  chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
-  chipTextActive: { color: colors.surface },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    header: {
+      alignItems: 'center',
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+    },
+    chips: { flexDirection: 'row', gap: spacing.xs },
+    chip: {
+      borderColor: colors.border,
+      borderRadius: radius.round,
+      borderWidth: 1,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 6,
+    },
+    chipActive: { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
+    chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
+    chipTextActive: { color: colors.elevated },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  } as const;
+}

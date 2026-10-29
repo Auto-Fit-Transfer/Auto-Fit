@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -8,8 +8,16 @@ import {
   getCommunityErrorMessage,
   type CommunityAdminChallenge,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { AppButton, AppHeader, Text } from '@/src/components/common';
+import {
+  fontFamilies,
+  radius,
+  spacing,
+  typography,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
 const METRIC: Record<CommunityAdminChallenge['metric'], string> = {
   meal_log_days: '식단 기록한 날',
@@ -18,6 +26,8 @@ const METRIC: Record<CommunityAdminChallenge['metric'], string> = {
 
 // Every challenge, switched off and ended ones included. Reloads after editing.
 export default function CommunityAdminChallengesScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<CommunityAdminChallenge[] | null>(null);
@@ -97,51 +107,53 @@ export default function CommunityAdminChallengesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  header: { padding: spacing.xl, paddingBottom: spacing.sm },
-  empty: {
-    ...typography.body,
-    color: colors.textSecondary,
-    padding: spacing.xl,
-    textAlign: 'center',
-  },
-  card: {
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    gap: 4,
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.md,
-    padding: spacing.lg,
-  },
-  pressed: { backgroundColor: colors.background },
-  titleRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-  title: {
-    color: colors.textPrimary,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-  },
-  badge: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.sm,
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-    overflow: 'hidden',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  badgeOff: { backgroundColor: colors.background, color: colors.textSecondary },
-  meta: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 13 },
-  note: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    header: { padding: spacing.xl, paddingBottom: spacing.sm },
+    empty: {
+      ...typography.body,
+      color: colors.textSecondary,
+      padding: spacing.xl,
+      textAlign: 'center',
+    },
+    card: {
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      gap: 4,
+      marginHorizontal: spacing.xl,
+      marginTop: spacing.md,
+      padding: spacing.lg,
+    },
+    pressed: { backgroundColor: colors.background },
+    titleRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
+    title: {
+      color: colors.textPrimary,
+      flex: 1,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+    },
+    badge: {
+      backgroundColor: colors.primaryLight,
+      borderRadius: radius.sm,
+      color: colors.primaryPressed,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 12,
+      overflow: 'hidden',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+    },
+    badgeOff: { backgroundColor: colors.background, color: colors.textSecondary },
+    meta: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 13 },
+    note: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+  } as const;
+}

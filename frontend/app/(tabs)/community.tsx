@@ -5,8 +5,6 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -14,9 +12,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ChatIcon from '@/assets/icons/feature/ChatTeardropDots_Fill.svg';
 import PencilIcon from '@/assets/icons/feature/Pencil_Fill.svg';
-import UserIcon from '@/assets/icons/input/User.svg';
-import BellIcon from '@/assets/icons/system/Bell.svg';
 import GearIcon from '@/assets/icons/system/GearSix.svg';
+import BellIcon from '@/assets/icons/ui/bell.svg';
+import UserIcon from '@/assets/icons/ui/user.svg';
 import {
   getCommunityErrorMessage,
   getCommunityFeed,
@@ -26,7 +24,7 @@ import {
   type CommunityFeedScope,
   type CommunityPost,
 } from '@/src/api/community';
-import { AppButton, IconButton } from '@/src/components/common';
+import { AppButton, IconButton, Text } from '@/src/components/common';
 import { CommunityPostCard } from '@/src/components/community';
 import {
   BOTTOM_NAVIGATION_MIN_BOTTOM_GAP,
@@ -38,8 +36,9 @@ import {
 } from '@/src/features/community/communityEvents';
 import { CommunityChallengesPane } from '@/src/features/community/CommunityChallengesPane';
 import { CommunityClubsPane } from '@/src/features/community/CommunityClubsPane';
+import { COMMUNITY_MESSAGES_ENABLED } from '@/src/features/community/communityFeatures';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, shadows, spacing, typography } from '@/src/theme';
+import { radius, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -58,6 +57,8 @@ export default function CommunityScreen() {
   const { height: windowHeight } = useWindowDimensions();
   const actions = useCommunityActions();
   const { notify } = actions;
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const [scope, setScope] = useState<CommunityFeedScope>('all');
   // Clubs and challenges replace the feed list; the feed keeps its scope underneath.
   const [pane, setPane] = useState<'clubs' | 'challenges' | null>(null);
@@ -140,10 +141,12 @@ export default function CommunityScreen() {
         (result) => setUnread(result.unread_count),
         () => undefined,
       );
-      getCommunityUnreadMessages().then(
-        (result) => setUnreadMessages(result.unread_count),
-        () => undefined,
-      );
+      if (COMMUNITY_MESSAGES_ENABLED) {
+        getCommunityUnreadMessages().then(
+          (result) => setUnreadMessages(result.unread_count),
+          () => undefined,
+        );
+      }
     }, []),
   );
 
@@ -180,7 +183,7 @@ export default function CommunityScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <Text accessibilityRole="header" style={styles.title}>
           커뮤니티
         </Text>
@@ -188,7 +191,7 @@ export default function CommunityScreen() {
           <View>
             <IconButton
               accessibilityLabel={unread > 0 ? `알림, 읽지 않은 알림 ${unread}개` : '알림'}
-              icon={<BellIcon color={colors.textBody} height={24} width={24} />}
+              icon={<BellIcon color={colors.textPrimary} height={24} width={24} />}
               onPress={() => router.push('/community/notifications')}
               size={44}
             />
@@ -198,24 +201,28 @@ export default function CommunityScreen() {
               </View>
             ) : null}
           </View>
-          <View>
-            <IconButton
-              accessibilityLabel={
-                unreadMessages > 0 ? `메시지, 안 읽은 메시지 ${unreadMessages}개` : '메시지'
-              }
-              icon={<ChatIcon color={colors.textBody} height={24} width={24} />}
-              onPress={() => router.push('/community/messages')}
-              size={44}
-            />
-            {unreadMessages > 0 ? (
-              <View pointerEvents="none" style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadMessages > 99 ? '99+' : unreadMessages}</Text>
-              </View>
-            ) : null}
-          </View>
+          {COMMUNITY_MESSAGES_ENABLED ? (
+            <View>
+              <IconButton
+                accessibilityLabel={
+                  unreadMessages > 0 ? `메시지, 안 읽은 메시지 ${unreadMessages}개` : '메시지'
+                }
+                icon={<ChatIcon color={colors.textPrimary} height={24} width={24} />}
+                onPress={() => router.push('/community/messages')}
+                size={44}
+              />
+              {unreadMessages > 0 ? (
+                <View pointerEvents="none" style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadMessages > 99 ? '99+' : unreadMessages}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
           <IconButton
             accessibilityLabel="내 프로필"
-            icon={<UserIcon color={colors.textBody} height={24} width={24} />}
+            icon={<UserIcon color={colors.textPrimary} height={24} width={24} />}
             onPress={() =>
               router.push({ params: { userId: 'me' }, pathname: '/community/user/[userId]' })
             }
@@ -223,7 +230,7 @@ export default function CommunityScreen() {
           />
           <IconButton
             accessibilityLabel="차단한 사용자 관리"
-            icon={<GearIcon color={colors.textBody} height={24} width={24} />}
+            icon={<GearIcon color={colors.textPrimary} height={24} width={24} />}
             onPress={() => router.push('/community/blocks')}
             size={44}
           />
@@ -309,12 +316,12 @@ export default function CommunityScreen() {
           onPress={() => router.push('/community/compose')}
           style={({ pressed }) => [
             styles.compose,
-            shadows.floating,
-            { bottom: bottomSpace + spacing.lg },
+            { bottom: bottomSpace + 16 },
             pressed && styles.composePressed,
           ]}
         >
-          <PencilIcon color={colors.surface} height={26} width={26} />
+          <PencilIcon color={colors.onPrimary} height={18} width={18} />
+          <Text style={styles.composeText}>글쓰기</Text>
         </Pressable>
       )}
       {actions.elements}
@@ -322,65 +329,73 @@ export default function CommunityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
-  header: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingBottom: spacing.xs,
-    paddingLeft: spacing.xl,
-    paddingRight: spacing.sm,
-  },
-  title: { ...typography.title, color: colors.textPrimary },
-  headerActions: { flexDirection: 'row' },
-  badge: {
-    alignItems: 'center',
-    backgroundColor: colors.danger,
-    borderRadius: radius.round,
-    minWidth: 18,
-    paddingHorizontal: 4,
-    position: 'absolute',
-    right: 4,
-    top: 4,
-  },
-  badgeText: { color: colors.surface, fontFamily: fontFamilies.pretendardBold, fontSize: 11 },
-  tabs: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-  },
-  tab: {
-    alignItems: 'center',
-    borderBottomColor: 'transparent',
-    borderBottomWidth: 2,
-    flex: 1,
-    paddingVertical: spacing.md,
-  },
-  tabActive: { borderBottomColor: colors.primary },
-  tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
-  tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-  list: { flexGrow: 1 },
-  center: { flex: 1, justifyContent: 'center' },
-  message: { alignItems: 'center', gap: spacing.md, padding: spacing.xxl },
-  emptyTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 17,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  footer: { paddingVertical: spacing.lg },
-  compose: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: radius.round,
-    height: 56,
-    justifyContent: 'center',
-    position: 'absolute',
-    right: spacing.xl,
-    width: 56,
-  },
-  composePressed: { backgroundColor: colors.primaryDark },
-});
+// Figma F1: title row, underline tabs, full-width posts, and a "글쓰기" pill button.
+function createStyles({ colors, text }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    header: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      minHeight: 56,
+      paddingLeft: 20,
+      paddingRight: 8,
+    },
+    title: { ...text.title1, color: colors.textPrimary },
+    headerActions: { flexDirection: 'row' },
+    badge: {
+      alignItems: 'center',
+      backgroundColor: colors.danger,
+      borderColor: colors.background,
+      borderRadius: radius.round,
+      borderWidth: 1.5,
+      minWidth: 18,
+      paddingHorizontal: 4,
+      position: 'absolute',
+      right: 4,
+      top: 4,
+    },
+    badgeText: { ...text.captionStrong, color: colors.onPrimary, fontSize: 11, lineHeight: 15 },
+    tabs: {
+      borderBottomColor: colors.border,
+      borderBottomWidth: 1,
+      flexDirection: 'row',
+      gap: 22,
+      paddingHorizontal: 20,
+    },
+    tab: {
+      borderBottomColor: 'transparent',
+      borderBottomWidth: 2,
+      marginBottom: -1,
+      paddingVertical: 10,
+    },
+    tabActive: { borderBottomColor: colors.textPrimary },
+    tabText: { ...text.body1, color: colors.textSecondary },
+    tabTextActive: { ...text.body1Strong, color: colors.textPrimary },
+    list: { flexGrow: 1 },
+    center: { flex: 1, justifyContent: 'center' },
+    message: { alignItems: 'center', gap: 12, padding: 24 },
+    emptyTitle: { ...text.body1Strong, color: colors.textPrimary },
+    messageText: { ...text.body2, color: colors.textSecondary, textAlign: 'center' },
+    footer: { paddingVertical: 16 },
+    compose: {
+      alignItems: 'center',
+      backgroundColor: colors.primary,
+      borderRadius: radius.round,
+      elevation: 6,
+      flexDirection: 'row',
+      gap: 6,
+      paddingLeft: 16,
+      paddingRight: 20,
+      paddingVertical: 13,
+      position: 'absolute',
+      right: 20,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.16,
+      shadowRadius: 12,
+    },
+    composePressed: { backgroundColor: colors.primaryPressed },
+    composeText: { ...text.body2Strong, color: colors.onPrimary },
+  } as const;
+}

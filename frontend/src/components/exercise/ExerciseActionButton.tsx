@@ -1,8 +1,9 @@
 import { useId, type ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View, type StyleProp, type TextStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type TextStyle } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import ArrowRight from '@/assets/icons/common/ArrowRight.svg';
+import { Text } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 
 interface ExerciseActionButtonProps {

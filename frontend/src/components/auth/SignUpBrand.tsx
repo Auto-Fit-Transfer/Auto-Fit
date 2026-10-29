@@ -1,6 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import LogoIcon from '@/assets/icons/Logo_Auto-Fit.svg';
+import { Text } from '@/src/components/common';
 import { colors, typography } from '@/src/theme';
 
 export function SignUpBrand() {

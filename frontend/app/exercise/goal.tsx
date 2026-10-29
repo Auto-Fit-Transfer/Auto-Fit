@@ -1,23 +1,33 @@
 import { useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
+
+import HouseIcon from '@/assets/icons/ui/house.svg';
 import {
   getActiveExerciseGoal,
   saveExerciseGoal,
   type ExerciseGoalInput,
 } from '@/src/api/exercise';
 import { getApiErrorMessage } from '@/src/api/client';
-import { MainHeader, MainScreen, mainStyles } from '@/src/components/main/MainSurface';
-import { FormField, form } from '@/src/components/main/FormControls';
+import { AppButton, AppTextField, IconButton, Notice, Text } from '@/src/components/common';
+import { ChoiceSection } from '@/src/components/exercise/ExerciseFormParts';
+import { SubScreen } from '@/src/components/navigation';
+import { radius, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+
+// Figma E12 names for the server's goal types.
 const options = [
-  ['maintenance', '건강 유지'],
-  ['weight_loss', '체중 감량'],
-  ['muscle_gain', '근력 향상'],
-  ['endurance', '지구력'],
-  ['rehabilitation', '재활'],
+  ['muscle_gain', '근력 키우기'],
+  ['weight_loss', '체중 관리하기'],
+  ['endurance', '체력 기르기'],
+  ['maintenance', '꾸준히 운동하기'],
+  ['rehabilitation', '재활 · 회복'],
 ] as const;
+const frequencies = [1, 2, 3, 4, 5, 6, 7];
+
 export default function Goal() {
   const router = useRouter();
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const [type, setType] = useState<ExerciseGoalInput['goal_type']>('maintenance');
   const [frequency, setFrequency] = useState('');
   const [minutes, setMinutes] = useState('');
@@ -29,6 +39,7 @@ export default function Goal() {
   const [loaded, setLoaded] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [startsOn, setStartsOn] = useState<string>();
+
   useEffect(() => {
     let live = true;
     void getActiveExerciseGoal()
@@ -55,6 +66,12 @@ export default function Goal() {
       live = false;
     };
   }, [attempt]);
+
+  const edit = (apply: () => void) => {
+    apply();
+    setSaved(false);
+  };
+
   const save = async () => {
     const f = Number(frequency),
       m = Number(minutes),
@@ -70,7 +87,7 @@ export default function Goal() {
       w < 1 ||
       w > 260
     ) {
-      setError('주 횟수는 1~7회, 주 시간은 1~10,080분, 기간은 1~260주로 입력해 주세요.');
+      setError('횟수는 1~7번, 운동 시간은 1~10,080분, 기간은 1~260주로 적어 주세요.');
       return;
     }
     setSaving(true);
@@ -91,78 +108,137 @@ export default function Goal() {
       setSaving(false);
     }
   };
+
   return (
-    <MainScreen tabs={false}>
-      <MainHeader title="운동 목표 설정" height={110} back={() => router.back()} />
-      <View style={mainStyles.content}>
-        <Text style={mainStyles.sectionTitle}>나에게 맞는 주간 목표</Text>
-        <View style={form.row}>
-          {options.map(([v, label]) => (
-            <Pressable
-              accessibilityRole="button"
-              key={v}
-              onPress={() => {
-                setType(v);
-                setSaved(false);
-              }}
-              style={[form.chip, type === v && form.selected]}
-            >
-              <Text style={mainStyles.text}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
-        <FormField
-          label="일주일 운동 횟수"
-          value={frequency}
-          keyboardType="number-pad"
-          onChangeText={(v) => {
-            setFrequency(v);
-            setSaved(false);
-          }}
-          placeholder="1~7회"
-        />
-        <FormField
-          label="일주일 총 운동 시간 (분)"
-          value={minutes}
-          keyboardType="number-pad"
-          onChangeText={(v) => {
-            setMinutes(v);
-            setSaved(false);
-          }}
-        />
-        <FormField
-          label="목표 기간 (주)"
-          value={weeks}
-          keyboardType="number-pad"
-          onChangeText={(v) => {
-            setWeeks(v);
-            setSaved(false);
-          }}
-        />
-        {error ? <Text style={form.error}>{error}</Text> : null}
-        {!loaded && !loading ? (
-          <Pressable
-            accessibilityRole="button"
+    <SubScreen
+      footer={
+        !loaded && !loading ? (
+          <AppButton
             onPress={() => {
               setLoading(true);
               setAttempt((v) => v + 1);
             }}
-          >
-            <Text style={form.label}>다시 불러오기</Text>
-          </Pressable>
-        ) : null}
-        {saved ? <Text style={form.success}>운동 목표를 저장했어요.</Text> : null}
-        <Pressable
-          accessibilityRole="button"
-          disabled={loading || saving || !loaded}
-          onPress={() => void save()}
-          style={[mainStyles.button, (loading || saving || !loaded) && { opacity: 0.5 }]}
-        >
-          <Text style={mainStyles.buttonText}>
-            {loading ? '목표 불러오는 중' : saving ? '저장 중…' : '목표 저장'}
-          </Text>
-        </Pressable>
-      </View>
-    </MainScreen>
+            title="다시 불러오기"
+            variant="secondary"
+          />
+        ) : (
+          <AppButton
+            disabled={loading || !loaded}
+            loading={saving}
+            onPress={() => void save()}
+            title={loading ? '목표 불러오는 중' : '목표 저장하기'}
+          />
+        )
+      }
+      gap={28}
+      onBack={() => router.back()}
+      right={
+        <IconButton
+          accessibilityLabel="홈으로"
+          icon={<HouseIcon color={colors.textPrimary} height={24} width={24} />}
+          onPress={() => router.dismissTo('/home')}
+          size={44}
+        />
+      }
+      title="운동 목표"
+    >
+      <ChoiceSection title="무엇을 이루고 싶나요?">
+        <View style={styles.goalGrid}>
+          {options.map(([value, label]) => {
+            const selected = type === value;
+            return (
+              <Pressable
+                key={value}
+                accessibilityLabel={label}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                onPress={() => edit(() => setType(value))}
+                style={[styles.goalOption, selected && styles.goalOptionSelected]}
+              >
+                <Text style={selected ? styles.goalLabelSelected : styles.goalLabel}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </ChoiceSection>
+      <ChoiceSection title="일주일에 몇 번 할까요?">
+        <View style={styles.frequencyRow}>
+          {frequencies.map((value) => {
+            const selected = frequency === String(value);
+            return (
+              <Pressable
+                key={value}
+                accessibilityLabel={`${value}번`}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                onPress={() => edit(() => setFrequency(String(value)))}
+                style={[styles.circle, selected && styles.circleSelected]}
+              >
+                <Text style={selected ? styles.circleLabelSelected : styles.circleLabel}>
+                  {value}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Text style={styles.caption}>헬스 · 홈트 · 러닝을 모두 합쳐 세요.</Text>
+      </ChoiceSection>
+      <AppTextField
+        keyboardType="number-pad"
+        label="일주일에 운동할 시간"
+        onChangeText={(v) => edit(() => setMinutes(v.replace(/\D/g, '')))}
+        placeholder="예) 90"
+        rightElement={<Text style={styles.unit}>분</Text>}
+        value={minutes}
+      />
+      <AppTextField
+        keyboardType="number-pad"
+        label="목표 기간"
+        onChangeText={(v) => edit(() => setWeeks(v.replace(/\D/g, '')))}
+        placeholder="예) 4"
+        rightElement={<Text style={styles.unit}>주</Text>}
+        value={weeks}
+      />
+      {error ? <Notice body={error} tone="warning" /> : null}
+      {saved ? <Notice body="운동 목표를 저장했어요." /> : null}
+    </SubScreen>
   );
+}
+
+function createStyles({ colors, text, easyMode }: AppTheme) {
+  const circleSize = easyMode ? 44 : 40;
+  return {
+    goalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    goalOption: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: radius.round,
+      borderWidth: 1,
+      flexBasis: '47%',
+      flexGrow: 1,
+      justifyContent: 'center',
+      minHeight: easyMode ? 48 : 44,
+      paddingHorizontal: 12,
+    },
+    goalOptionSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    goalLabel: { ...text.body2Strong, color: colors.textBody },
+    goalLabelSelected: { ...text.body2Strong, color: colors.onPrimary },
+    frequencyRow: { flexDirection: 'row', justifyContent: 'space-between' },
+    circle: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: circleSize / 2,
+      borderWidth: 1,
+      height: circleSize,
+      justifyContent: 'center',
+      width: circleSize,
+    },
+    circleSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    circleLabel: { ...text.body1Strong, color: colors.textBody },
+    circleLabelSelected: { ...text.body1Strong, color: colors.onPrimary },
+    caption: { ...text.caption, color: colors.textSecondary },
+    unit: { ...text.body2, color: colors.textSecondary },
+  } as const;
 }

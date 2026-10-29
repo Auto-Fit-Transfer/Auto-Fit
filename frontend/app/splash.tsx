@@ -1,10 +1,11 @@
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import SplashBrand from '@/assets/icons/splash-redesign/844fc.svg';
+import { Text } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 
 const splashDuration = 3000;

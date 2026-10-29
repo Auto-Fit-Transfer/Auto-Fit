@@ -1,35 +1,30 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  Alert,
-  Dimensions,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from 'react-native';
+import { Alert, TextInput, View } from 'react-native';
 
-import EmailIcon from '@/assets/icons/auth-redesign/66005.svg';
-import NoticeIcon from '@/assets/icons/auth-redesign/e062d.svg';
-import { SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
+import EnvelopeIcon from '@/assets/icons/ui/envelope.svg';
+import { SignUpScreenLayout } from '@/src/components/auth';
+import { AppButton, noWebFocusRing, Notice, Text } from '@/src/components/common';
 import { useSignup } from '@/src/features/signup/SignupContext';
 import { getSignupAuthErrorMessage } from '@/src/features/signup/signupAuthError';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { colors, fontFamilies } from '@/src/theme';
+import { radius, scaleForEasyMode, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const verificationCodeLength = 6;
-const minimumScreenHeight = 740;
-const maximumScreenHeight = 917;
-const signUpBrandVisualHeight = 144;
-const sectionGap = 20;
+// Matches otp_expiry (600 seconds) in backend/supabase/config.toml.
+const codeLifetimeMs = 10 * 60 * 1000;
 
+function formatTimeLeft(ms: number) {
+  const seconds = Math.max(0, Math.ceil(ms / 1000));
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+// Figma A5.
 export default function SignUpStep2Screen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { draft } = useSignup();
-  const { height: windowHeight } = useWindowDimensions();
   const params = useLocalSearchParams<{ email?: string }>();
   const email = typeof params.email === 'string' ? params.email : draft.email;
   const inputRefs = useRef<(TextInput | null)[]>([]);
@@ -41,19 +36,15 @@ export default function SignUpStep2Screen() {
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isResending, setIsResending] = useState(false);
-  const screenHeight = Dimensions.get('screen').height;
-  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
-  const heightProgress = Math.max(
-    0,
-    Math.min(
-      1,
-      (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight),
-    ),
-  );
-  const verticalValue = (expanded: number, compact: number) =>
-    compact + (expanded - compact) * heightProgress;
-  const signUpBrandBottom = verticalValue(96, 74) + signUpBrandVisualHeight;
-  const confirmTop = Math.max(verticalValue(285, 238), signUpBrandBottom + sectionGap);
+  const [expiresAt, setExpiresAt] = useState(() => Date.now() + codeLifetimeMs);
+  const [now, setNow] = useState(() => Date.now());
+  const timeLeft = expiresAt - now;
+
+  useEffect(() => {
+    if (timeLeft <= 0) return undefined;
+    const timer = setTimeout(() => setNow(Date.now()), 1000);
+    return () => clearTimeout(timer);
+  }, [timeLeft]);
 
   const updateDigit = (index: number, value: string) => {
     const digit = value.replace(/\D/g, '').slice(-1);
@@ -110,8 +101,10 @@ export default function SignUpStep2Screen() {
       const { error } = await getSupabaseClient().auth.resend({ type: 'signup', email });
       if (error) throw error;
       setDigits(Array.from({ length: verificationCodeLength }, () => ''));
+      setExpiresAt(Date.now() + codeLifetimeMs);
+      setNow(Date.now());
       inputRefs.current[0]?.focus();
-      Alert.alert('인증 메일을 다시 보냈습니다', '새로 받은 인증번호 6자리를 입력해 주세요.');
+      Alert.alert('메일을 다시 보냈어요', '새로 받은 6자리를 입력해 주세요.');
     } catch (error) {
       console.error('인증 메일 재발송 실패:', error);
       Alert.alert(
@@ -133,22 +126,20 @@ export default function SignUpStep2Screen() {
       onBack={() => router.back()}
       onContinue={() => void verifyCode()}
     >
-      <SignUpSection top={confirmTop} innerStyle={styles.confirmContent}>
-        <View style={styles.emblem}>
-          <EmailIcon height={32} width={32} />
-        </View>
-        <Text style={styles.description}>
-          입력하신 이메일로 인증번호를 발송했어요.{`\n`}인증번호 6자리를 입력해 주세요.
+      <View style={styles.emailBox}>
+        <EnvelopeIcon color={colors.textSecondary} height={20} width={20} />
+        <Text numberOfLines={1} style={styles.emailText}>
+          {email}
         </Text>
-        <View style={styles.emailCard}>
-          <Text numberOfLines={1} style={styles.emailText}>
-            {email}
-          </Text>
-          <Pressable accessibilityRole="button" hitSlop={8} onPress={() => router.back()}>
-            <Text style={styles.changeEmail}>이메일 변경</Text>
-          </Pressable>
-        </View>
-        <Text style={styles.codeLabel}>인증번호</Text>
+        <AppButton
+          fullWidth={false}
+          onPress={() => router.back()}
+          size="S"
+          title="이메일 바꾸기"
+          variant="outline"
+        />
+      </View>
+      <View style={styles.codeBlock}>
         <View style={styles.codeRow}>
           {digits.map((digit, index) => (
             <TextInput
@@ -172,124 +163,68 @@ export default function SignUpStep2Screen() {
             />
           ))}
         </View>
-        <View style={styles.resendContent}>
-          <Text style={styles.resendQuestion}>이메일을 받지 못하였나요?</Text>
-          <Pressable
-            accessibilityRole="button"
-            disabled={isResending}
-            hitSlop={8}
-            onPress={() => void resendCode()}
-          >
-            <Text style={[styles.resendLink, isResending && styles.resendLinkDisabled]}>
-              {isResending ? '재발송 중...' : '인증 메일 재발송'}
-            </Text>
-          </Pressable>
-        </View>
-      </SignUpSection>
-      <SignUpSection card={false} top={0} innerStyle={styles.notice}>
-        <NoticeIcon height={24} width={24} />
-        <View style={styles.noticeCopy}>
-          <Text style={styles.noticeTitle}>메일함을 확인해 주세요</Text>
-          <Text style={styles.noticeDescription}>
-            인증 메일이 보이지 않으면{`\n`}스팸 메일함도 확인해 주세요.
+        <View style={styles.timerRow}>
+          <Text style={styles.timer}>
+            {timeLeft > 0
+              ? `남은 시간 ${formatTimeLeft(timeLeft)}`
+              : '시간이 지났어요. 다시 보내 주세요.'}
           </Text>
+          <AppButton
+            disabled={isResending}
+            fullWidth={false}
+            loading={isResending}
+            onPress={() => void resendCode()}
+            size="S"
+            title="다시 보내기"
+            variant="outline"
+          />
         </View>
-      </SignUpSection>
+      </View>
+      <Notice body="메일이 안 보이면 스팸함도 확인해 주세요." />
     </SignUpScreenLayout>
   );
 }
 
-const styles = StyleSheet.create({
-  confirmContent: { gap: 20, paddingTop: 8 },
-  emblem: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSoft,
-    borderRadius: 16,
-    height: 64,
-    justifyContent: 'center',
-    width: 64,
-  },
-  description: {
-    color: colors.dark,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 15,
-    lineHeight: 23,
-  },
-  emailCard: {
-    alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    flexDirection: 'row',
-    height: 48,
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-  },
-  emailText: {
-    color: colors.dark,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-  },
-  changeEmail: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    marginLeft: 8,
-  },
-  codeLabel: {
-    color: colors.dark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  codeRow: { flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
-  codeInput: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    color: colors.dark,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 24,
-    height: 48,
-    minWidth: 0,
-    padding: 0,
-    textAlign: 'center',
-  },
-  codeInputFocused: { borderColor: colors.primary, borderWidth: 1.5 },
-  resendContent: { alignItems: 'center', gap: 8, paddingVertical: 12 },
-  resendQuestion: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  resendLink: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  resendLinkDisabled: { opacity: 0.55 },
-  notice: {
-    backgroundColor: colors.surfaceSoft,
-    borderRadius: 12,
-    flexDirection: 'row',
-    gap: 12,
-    padding: 16,
-  },
-  noticeCopy: { flex: 1, gap: 4 },
-  noticeTitle: {
-    color: colors.dark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  noticeDescription: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-});
+function createStyles({ colors, text, easyMode }: AppTheme) {
+  // TextInput is not the shared Text, so it is enlarged here for the easy mode.
+  const codeText = easyMode ? scaleForEasyMode(text.title1) : text.title1;
+  return {
+    emailBox: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: radius.button,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 10,
+      paddingLeft: 16,
+      paddingRight: 12,
+      paddingVertical: 12,
+    },
+    emailText: { ...text.body1Strong, color: colors.textPrimary, flex: 1 },
+    codeBlock: { gap: 16 },
+    codeRow: { flexDirection: 'row', gap: 8 },
+    codeInput: {
+      ...codeText,
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: radius.button,
+      borderWidth: 1,
+      color: colors.textPrimary,
+      flex: 1,
+      height: easyMode ? 68 : 60,
+      lineHeight: undefined,
+      minWidth: 0,
+      padding: 0,
+      textAlign: 'center',
+      ...noWebFocusRing,
+    },
+    codeInputFocused: {
+      backgroundColor: colors.background,
+      borderColor: colors.primary,
+      borderWidth: 1.5,
+    },
+    timerRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+    timer: { ...text.body2, color: colors.textSecondary, flex: 1 },
+  } as const;
+}

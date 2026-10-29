@@ -1,18 +1,11 @@
-import {
-  Image,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from 'react-native';
+import { Image, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop, Text as SvgText } from 'react-native-svg';
 
 import BloodPressureFillIcon from '@/assets/figma/main/92e66.svg';
 import StarTopIcon from '@/assets/figma/main/06a58.svg';
 import StarBottomIcon from '@/assets/figma/main/9da88.svg';
 import TierArrow from '@/assets/figma/main/be565.svg';
+import { Text } from '@/src/components/common';
 import { colors, fontFamilies, radius } from '@/src/theme';
 import { getScoreRatio } from './scoreRatio';
 

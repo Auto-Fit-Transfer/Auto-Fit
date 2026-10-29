@@ -1,14 +1,10 @@
-import { type ReactNode, useCallback } from 'react';
-import { StyleSheet, View } from 'react-native';
+import type { ReactNode } from 'react';
 
-import CameraIcon from '@/assets/icons/system/Camera.svg';
-import DocumentIcon from '@/assets/icons/system/Document.svg';
-import { AppBottomSheet } from '@/src/components/common';
-import { HealthUploadOptionCard } from '@/src/features/health-data/HealthUploadOptionCard';
-import {
-  type SelectedHealthFile,
-  useHealthFilePicker,
-} from '@/src/features/health-data/useHealthFilePicker';
+import { AppBottomSheet, Text } from '@/src/components/common';
+import type { SelectedHealthFile } from '@/src/features/health-data/useHealthFilePicker';
+import { useThemedStyles, type AppTheme } from '@/src/theme';
+
+import { HealthUploadOptions } from './HealthUploadOptions';
 
 type Props = {
   children?: ReactNode;
@@ -16,66 +12,33 @@ type Props = {
   onClose: () => void;
   onSelectFile: (file: SelectedHealthFile) => Promise<void> | void;
   visible: boolean;
+  title?: string;
+  description?: string;
 };
 
+// Figma B4: the same two cards as the first upload screen (B1), in a sheet.
 export function HealthDataUploadBottomSheet({
   children,
   isBusy = false,
   onClose,
   onSelectFile,
   visible,
+  title = '다시 올리기',
+  description = '새 자료를 올리면 지금 결과 대신 새 자료로 다시 읽어요.',
 }: Props) {
-  const { isSelecting, pickDocument, takePhoto } = useHealthFilePicker();
-  const select = useCallback(
-    async (selectFile: () => Promise<SelectedHealthFile | null>) => {
-      if (isBusy) return;
-      const file = await selectFile();
-      if (file) await onSelectFile(file);
-    },
-    [isBusy, onSelectFile],
-  );
-
+  const styles = useThemedStyles(createStyles);
   return (
-    <AppBottomSheet
-      contentStyle={styles.content}
-      handleStyle={styles.handle}
-      onClose={onClose}
-      overlayStyle={styles.overlay}
-      separateAnimations
-      sheetStyle={styles.sheet}
-      visible={visible}
-    >
-      <View style={styles.options}>
-        <HealthUploadOptionCard
-          buttonLabel="카메라 열기"
-          description={['처방전, 검진 결과, 체성분', '리포트 등을 촬영하여', '업로드할 수 있어요.']}
-          disabled={isSelecting || isBusy}
-          Icon={CameraIcon}
-          onPress={() => void select(takePhoto)}
-          style={styles.optionCard}
-          title="카메라로 촬영하기"
-        />
-        <HealthUploadOptionCard
-          buttonLabel="파일 선택"
-          description={['이미지, PDF, CSV 파일을', '선택하여 여러 개의 파일을', '한 번에 업로드할 수 있어요.']}
-          disabled={isSelecting || isBusy}
-          Icon={DocumentIcon}
-          onPress={() => void select(pickDocument)}
-          secondary
-          style={styles.optionCard}
-          title="문서/파일 선택하기"
-        />
-      </View>
+    <AppBottomSheet contentStyle={styles.content} onClose={onClose} title={title} visible={visible}>
+      <Text style={styles.description}>{description}</Text>
+      <HealthUploadOptions busy={isBusy} onSelectFile={onSelectFile} />
       {children}
     </AppBottomSheet>
   );
 }
 
-const styles = StyleSheet.create({
-  content: { paddingBottom: 0, paddingHorizontal: 16, paddingTop: 36 },
-  handle: { backgroundColor: '#D9D9D9', height: 4, marginTop: 11, width: 40 },
-  optionCard: { flex: 1, maxWidth: 180, width: 'auto' },
-  options: { flexDirection: 'row', gap: 20, justifyContent: 'center', width: '100%' },
-  overlay: { backgroundColor: 'rgba(0, 0, 0, 0.45)' },
-  sheet: { borderTopLeftRadius: 22, borderTopRightRadius: 22, minHeight: 300 },
-});
+function createStyles({ colors, text }: AppTheme) {
+  return {
+    content: { gap: 20, paddingBottom: 8 },
+    description: { ...text.body2, color: colors.textSecondary },
+  } as const;
+}

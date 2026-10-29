@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   useWindowDimensions,
   View,
@@ -23,14 +22,19 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
-import CloseIcon from '@/assets/icons/common/X.svg';
 import PaperPlaneIcon from '@/assets/icons/feature/PaperPlane_Fill.svg';
 import RobotIcon from '@/assets/icons/feature/Robot_Fill.svg';
+import InfoIcon from '@/assets/icons/ui/info.svg';
+import CloseIcon from '@/assets/icons/ui/x.svg';
 import { createChat, getChatMessages, getChats, sendChatMessage } from '@/src/api/chat';
 import { getApiErrorMessage } from '@/src/api/client';
-import { CustomScrollIndicator, useCustomScrollIndicator } from '@/src/components/common';
+import {
+  CustomScrollIndicator,
+  noWebFocusRing,
+  Text,
+  useCustomScrollIndicator,
+} from '@/src/components/common';
 import {
   BOTTOM_NAVIGATION_MIN_BOTTOM_GAP,
   getBottomNavigationVisualHeight,
@@ -42,7 +46,7 @@ import {
   prefetchActiveChat,
   updateChatSessionSnapshot,
 } from '@/src/features/chat/chatSessionCache';
-import { colors, fontFamilies, radius } from '@/src/theme';
+import { radius, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import type { ChatMessage as ServerChatMessage } from '@/src/types/chat';
 
 import type { AIChatButtonAnchor } from './DraggableAIChatButton';
@@ -54,7 +58,8 @@ const referencePopupHeight = 550;
 const referencePopupNavigationGap = 48;
 const popupDuration = 360;
 const keyboardInputGap = 24;
-const welcomeMessageText = 'OO님 안녕하세요!\n건강 점수와 식단·운동 기록에 대해 물어보세요.';
+const welcomeMessageText =
+  '안녕하세요! 건강 점수나 식단 · 운동 기록에서 궁금한 게 있으면 편하게 물어보세요.';
 
 const webFixedOverlayStyle: ViewStyle | undefined =
   Platform.OS === 'web'
@@ -182,21 +187,6 @@ function formatMessageTime(timestamp: number) {
   return `${period} ${hour}:${minute}`;
 }
 
-function SendButtonGradient() {
-  return (
-    <Svg height={40} style={StyleSheet.absoluteFill} width={40}>
-      <Defs>
-        <LinearGradient id="sendGradient" x1="0" x2="1" y1="1" y2="0">
-          <Stop offset="0" stopColor={colors.primary} />
-          <Stop offset="0.5" stopColor="#42C0A6" />
-          <Stop offset="1" stopColor={colors.primary} />
-        </LinearGradient>
-      </Defs>
-      <Rect fill="url(#sendGradient)" height={40} rx={20} width={40} />
-    </Svg>
-  );
-}
-
 export function ChatPopup({
   anchor,
   navigationLayout,
@@ -204,6 +194,8 @@ export function ChatPopup({
   onRequestClose,
   visible,
 }: ChatPopupProps) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const overlayRef = useRef<View>(null);
@@ -587,32 +579,36 @@ export function ChatPopup({
             },
           ]}
         >
-          <View style={styles.topSection}>
-            <View style={styles.titleRow}>
-              <View style={styles.titleLeft}>
-                <View style={styles.titleRobotCircle}>
-                  <View style={styles.titleRobotBack} />
-                  <RobotIcon
-                    color={colors.surface}
-                    fill={colors.surface}
-                    height={45}
-                    style={styles.titleRobotIcon}
-                    width={45}
-                  />
-                </View>
-                <Text style={styles.title}>AI 건강 도우미</Text>
+          {/* Figma H1: who you are talking to, then the "for reference only" line kept on top. */}
+          <View style={styles.titleRow}>
+            <View style={styles.titleLeft}>
+              <View style={styles.avatar}>
+                <RobotIcon
+                  color={colors.primaryText}
+                  fill={colors.primaryText}
+                  height={22}
+                  width={22}
+                />
               </View>
-              <Pressable
-                accessibilityLabel="AI 채팅 닫기"
-                accessibilityRole="button"
-                hitSlop={7}
-                onPress={handleRequestClose}
-                style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
-              >
-                <CloseIcon color={colors.primary} height={17} stroke={colors.primary} width={17} />
-              </Pressable>
+              <Text accessibilityRole="header" style={styles.title}>
+                AI 건강 도우미
+              </Text>
             </View>
-            <View style={styles.divider} />
+            <Pressable
+              accessibilityLabel="AI 채팅 닫기"
+              accessibilityRole="button"
+              hitSlop={6}
+              onPress={handleRequestClose}
+              style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}
+            >
+              <CloseIcon color={colors.textPrimary} height={22} width={22} />
+            </Pressable>
+          </View>
+          <View style={styles.notice}>
+            <InfoIcon color={colors.textSecondary} height={16} width={16} />
+            <Text style={styles.noticeText}>
+              건강 판단은 참고용이에요. 증상이 있으면 병원에 문의해 주세요.
+            </Text>
           </View>
 
           <View style={styles.dialogsContainer}>
@@ -649,16 +645,15 @@ export function ChatPopup({
                 {messages.map((chatMessage) =>
                   chatMessage.role === 'assistant' ? (
                     <View key={chatMessage.id} style={styles.botRow}>
-                      <View style={styles.profileCircle}>
+                      <View style={styles.avatar}>
                         <RobotIcon
-                          color={colors.primary}
-                          fill={colors.primary}
-                          height={30}
-                          width={30}
+                          color={colors.primaryText}
+                          fill={colors.primaryText}
+                          height={22}
+                          width={22}
                         />
                       </View>
                       <View style={styles.botContents}>
-                        <Text style={styles.botName}>AI 건강 챗봇</Text>
                         <View style={styles.botBubble}>
                           <Text style={styles.messageText}>{chatMessage.text}</Text>
                         </View>
@@ -668,7 +663,9 @@ export function ChatPopup({
                   ) : (
                     <View key={chatMessage.id} style={styles.userDialog}>
                       <View style={styles.userBubble}>
-                        <Text style={styles.messageText}>{chatMessage.text}</Text>
+                        <Text style={[styles.messageText, styles.userText]}>
+                          {chatMessage.text}
+                        </Text>
                       </View>
                       <Text style={[styles.time, styles.userTime]}>
                         {formatMessageTime(chatMessage.createdAt)}
@@ -701,7 +698,7 @@ export function ChatPopup({
                 scrollToLatestMessage(false);
               }}
               onSubmitEditing={handleSend}
-              placeholder="메시지를 입력해주세요..."
+              placeholder="AI 도우미에게 물어보세요"
               placeholderTextColor={colors.textSecondary}
               returnKeyType="send"
               style={styles.input}
@@ -719,13 +716,11 @@ export function ChatPopup({
                 pressed && styles.pressed,
               ]}
             >
-              <SendButtonGradient />
               <PaperPlaneIcon
-                color={colors.surface}
-                fill={colors.surface}
-                height={22}
-                style={styles.sendIcon}
-                width={22}
+                color={colors.onPrimary}
+                fill={colors.onPrimary}
+                height={20}
+                width={20}
               />
             </Pressable>
           </View>
@@ -735,226 +730,129 @@ export function ChatPopup({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFill,
-    overflow: 'hidden',
-    zIndex: 30,
-  },
-  dim: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: '#000000',
-  },
-  popupShell: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    elevation: Platform.OS === 'android' ? 7 : 0,
-    overflow: 'hidden',
-    position: 'absolute',
-    shadowColor: '#000000',
-    shadowOffset: { height: -4, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-  },
-  popupContent: {
-    backgroundColor: colors.surface,
-    height: referencePopupHeight,
-    left: 0,
-    position: 'absolute',
-    top: 0,
-    transformOrigin: 'top left',
-    width: referencePopupWidth,
-  },
-  topSection: {
-    gap: 15,
-    paddingTop: 16,
-  },
-  titleRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  titleLeft: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  titleRobotCircle: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.xl,
-    height: 40,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 40,
-  },
-  titleRobotBack: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    bottom: 0,
-    height: 30,
-    position: 'absolute',
-    width: 33,
-  },
-  titleRobotIcon: {
-    zIndex: 1,
-  },
-  title: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 18,
-    includeFontPadding: false,
-    lineHeight: 24,
-  },
-  closeButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.primary,
-    borderRadius: 16,
-    borderWidth: 1,
-    elevation: Platform.OS === 'android' ? 1 : 0,
-    height: 30,
-    justifyContent: 'center',
-    shadowColor: colors.primaryDark,
-    shadowOffset: { height: 2, width: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2.5,
-    width: 30,
-  },
-  divider: {
-    backgroundColor: colors.border,
-    height: 2,
-    width: '100%',
-  },
-  dialogs: {
-    flex: 1,
-  },
-  dialogsContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  dialogsContent: {
-    flexGrow: 1,
-    paddingHorizontal: 16,
-    paddingTop: 20,
-  },
-  messages: {
-    gap: 15,
-  },
-  botRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 10,
-    width: '100%',
-  },
-  profileCircle: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: 18,
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
-  },
-  botContents: {
-    flex: 1,
-    gap: 4,
-  },
-  botName: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-    includeFontPadding: false,
-    lineHeight: 17,
-  },
-  botBubble: {
-    backgroundColor: '#F2F3F5',
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    borderTopLeftRadius: 4,
-    borderTopRightRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    width: '100%',
-  },
-  messageText: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    includeFontPadding: false,
-    lineHeight: 18,
-  },
-  time: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 10,
-    includeFontPadding: false,
-    lineHeight: 15,
-  },
-  userDialog: {
-    alignItems: 'flex-end',
-    width: '100%',
-  },
-  userBubble: {
-    backgroundColor: colors.primaryLight,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    width: 220,
-  },
-  userTime: {
-    textAlign: 'right',
-    width: '100%',
-  },
-  errorText: {
-    color: colors.danger,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 11,
-    includeFontPadding: false,
-    lineHeight: 15,
-    textAlign: 'center',
-  },
-  composer: {
-    alignItems: 'center',
-    backgroundColor: '#F2F3F5',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    flexDirection: 'row',
-    gap: 10,
-    height: 60,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-  },
-  input: {
-    backgroundColor: '#F2F3F5',
-    color: colors.textBody,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    height: 40,
-    includeFontPadding: false,
-    lineHeight: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  sendButton: {
-    alignItems: 'center',
-    borderRadius: 20,
-    height: 40,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 40,
-  },
-  sendButtonDisabled: {
-    opacity: 0.45,
-  },
-  sendIcon: {
-    zIndex: 1,
-  },
-  pressed: {
-    opacity: 0.72,
-  },
-});
+function createStyles({ colors, text }: AppTheme) {
+  return {
+    overlay: {
+      ...StyleSheet.absoluteFill,
+      overflow: 'hidden',
+      zIndex: 30,
+    },
+    dim: {
+      ...StyleSheet.absoluteFill,
+      backgroundColor: '#000000',
+    },
+    popupShell: {
+      backgroundColor: colors.elevated,
+      borderRadius: radius.xl,
+      elevation: Platform.OS === 'android' ? 7 : 0,
+      overflow: 'hidden',
+      position: 'absolute',
+      shadowColor: '#000000',
+      shadowOffset: { height: -4, width: 0 },
+      shadowOpacity: 0.08,
+      shadowRadius: 10,
+    },
+    popupContent: {
+      backgroundColor: colors.elevated,
+      height: referencePopupHeight,
+      left: 0,
+      position: 'absolute',
+      top: 0,
+      transformOrigin: 'top left',
+      width: referencePopupWidth,
+    },
+    titleRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      minHeight: 60,
+      paddingLeft: 16,
+      paddingRight: 8,
+    },
+    titleLeft: { alignItems: 'center', flexDirection: 'row', flexShrink: 1, gap: 10 },
+    avatar: {
+      alignItems: 'center',
+      backgroundColor: colors.primaryLight,
+      borderRadius: 16,
+      height: 32,
+      justifyContent: 'center',
+      width: 32,
+    },
+    title: { ...text.body1Strong, color: colors.textPrimary },
+    closeButton: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
+    notice: {
+      alignItems: 'flex-start',
+      backgroundColor: colors.surfaceMuted,
+      flexDirection: 'row',
+      gap: 6,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+    },
+    noticeText: { ...text.caption, color: colors.textSecondary, flex: 1 },
+    dialogs: { flex: 1 },
+    dialogsContainer: { flex: 1, position: 'relative' },
+    dialogsContent: { flexGrow: 1, paddingBottom: 16, paddingHorizontal: 16, paddingTop: 16 },
+    messages: { gap: 14 },
+    botRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 8, width: '100%' },
+    botContents: { alignItems: 'flex-start', flex: 1, gap: 4 },
+    // Theirs: a light bubble on the left. Mine: a dark bubble on the right. Only "send" is purple.
+    botBubble: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderTopLeftRadius: 4,
+      borderWidth: 1,
+      maxWidth: '100%',
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    messageText: { ...text.body2, color: colors.textPrimary },
+    time: { ...text.caption, color: colors.textSecondary },
+    userDialog: { alignItems: 'flex-end', gap: 4, width: '100%' },
+    userBubble: {
+      backgroundColor: colors.textPrimary,
+      borderRadius: 16,
+      borderTopRightRadius: 4,
+      maxWidth: '85%',
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    userText: { color: colors.background },
+    userTime: { textAlign: 'right' },
+    errorText: { ...text.caption, color: colors.danger, textAlign: 'center' },
+    composer: {
+      alignItems: 'center',
+      borderTopColor: colors.border,
+      borderTopWidth: 1,
+      flexDirection: 'row',
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    input: {
+      ...text.body2,
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 22,
+      borderWidth: 1,
+      color: colors.textPrimary,
+      flex: 1,
+      height: 44,
+      includeFontPadding: false,
+      minWidth: 0,
+      paddingHorizontal: 16,
+      paddingVertical: 0,
+      ...noWebFocusRing,
+    },
+    sendButton: {
+      alignItems: 'center',
+      backgroundColor: colors.primary,
+      borderRadius: 22,
+      height: 44,
+      justifyContent: 'center',
+      width: 44,
+    },
+    sendButtonDisabled: { opacity: 0.45 },
+    pressed: { opacity: 0.72 },
+  } as const;
+}

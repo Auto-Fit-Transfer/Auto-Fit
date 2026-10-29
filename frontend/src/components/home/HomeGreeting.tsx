@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { Text } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 
 interface HomeGreetingProps {

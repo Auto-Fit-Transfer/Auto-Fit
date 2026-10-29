@@ -1,16 +1,10 @@
 import type { ReactNode } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type TextStyle,
-  type ViewStyle,
-} from 'react-native';
+import { Pressable, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 
 import DownIcon from '@/assets/icons/common/chevrons/Down.svg';
-import { colors, radius, spacing, typography } from '@/src/theme';
+import { radius, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+
+import { Text } from './Text';
 
 export interface SelectFieldProps {
   label?: string;
@@ -44,9 +38,11 @@ export function SelectField({
   fieldStyle,
   valueStyle,
   labelStyle,
-  placeholderTextColor = colors.textDisabled,
+  placeholderTextColor,
   accessibilityLabel,
 }: SelectFieldProps) {
+  const { colors, easyMode } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const supportingText = error ?? helperText;
   return (
     <View style={style}>
@@ -59,6 +55,7 @@ export function SelectField({
         onPress={onPress}
         style={({ pressed }) => [
           styles.field,
+          easyMode && styles.fieldEasy,
           error && styles.error,
           disabled && styles.disabled,
           pressed && !disabled && styles.pressed,
@@ -71,7 +68,7 @@ export function SelectField({
           style={[
             styles.value,
             !value && styles.placeholder,
-            !value && { color: placeholderTextColor },
+            !value && { color: placeholderTextColor ?? colors.textSecondary },
             disabled && styles.disabledText,
             valueStyle,
           ]}
@@ -93,25 +90,28 @@ export function SelectField({
   );
 }
 
-const styles = StyleSheet.create({
-  label: { ...typography.label, color: colors.textBody, marginBottom: spacing.sm },
-  field: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: spacing.md,
-    height: 55,
-    paddingHorizontal: spacing.lg,
-  },
-  error: { borderColor: colors.danger },
-  disabled: { backgroundColor: colors.background },
-  pressed: { borderColor: colors.primary },
-  value: { ...typography.body, color: colors.textPrimary, flex: 1 },
-  placeholder: { color: colors.textDisabled },
-  disabledText: { color: colors.textDisabled },
-  supporting: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
-  errorText: { color: colors.danger },
-});
+function createStyles({ colors, text }: AppTheme) {
+  return {
+    label: { ...text.body2Strong, color: colors.textPrimary, marginBottom: 8 },
+    field: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: radius.button,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 8,
+      height: 52,
+      paddingHorizontal: 16,
+    },
+    fieldEasy: { height: 60 },
+    error: { borderColor: colors.danger, borderWidth: 1.5 },
+    disabled: { backgroundColor: colors.surfaceMuted },
+    pressed: { borderColor: colors.primary },
+    value: { ...text.body1, color: colors.textPrimary, flex: 1 },
+    placeholder: { color: colors.textSecondary },
+    disabledText: { color: colors.textDisabled },
+    supporting: { ...text.body2, color: colors.textSecondary, marginTop: 8 },
+    errorText: { color: colors.danger },
+  } as const;
+}

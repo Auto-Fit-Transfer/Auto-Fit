@@ -1,6 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import CheckIcon from '@/assets/icons/system/Check.svg';
+import { Text } from '@/src/components/common';
 import { colors, radius, typography } from '@/src/theme';
 
 export interface SignUpStepIndicatorProps {

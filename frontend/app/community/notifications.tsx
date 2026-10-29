@@ -1,14 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -17,10 +9,17 @@ import {
   readCommunityNotifications,
   type CommunityNotification,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
-import { colors, fontFamilies, spacing, typography } from '@/src/theme';
+import {
+  fontFamilies,
+  spacing,
+  typography,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
 function describe(item: CommunityNotification) {
   switch (item.type) {
@@ -35,7 +34,34 @@ function describe(item: CommunityNotification) {
   }
 }
 
+type Row =
+  | { kind: 'header'; key: string; label: string }
+  | { kind: 'item'; key: string; item: CommunityNotification };
+
+// Figma F5 groups the list by when it happened: 오늘 · 이번 주 · 이전.
+function groupByDay(items: CommunityNotification[]): Row[] {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const startOfWeek = new Date(startOfToday);
+  startOfWeek.setDate(startOfToday.getDate() - 6);
+  const rows: Row[] = [];
+  let current = '';
+  for (const item of items) {
+    const time = new Date(item.created_at).getTime();
+    const label =
+      time >= startOfToday.getTime() ? '오늘' : time >= startOfWeek.getTime() ? '이번 주' : '이전';
+    if (label !== current) {
+      current = label;
+      rows.push({ kind: 'header', key: `header-${label}`, label });
+    }
+    rows.push({ kind: 'item', key: item.notification_id, item });
+  }
+  return rows;
+}
+
 export default function CommunityNotificationsScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<CommunityNotification[] | null>(null);
@@ -121,8 +147,8 @@ export default function CommunityNotificationsScreen() {
       ) : (
         <FlatList
           contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + spacing.xl }}
-          data={items}
-          keyExtractor={(item) => item.notification_id}
+          data={groupByDay(items)}
+          keyExtractor={(row) => row.key}
           ListEmptyComponent={
             <View style={styles.message}>
               <Text style={styles.messageText}>
@@ -143,18 +169,22 @@ export default function CommunityNotificationsScreen() {
               tintColor={colors.primary}
             />
           }
-          renderItem={({ item }) => {
+          renderItem={({ item: row }) => {
+            if (row.kind === 'header') {
+              return <Text style={styles.groupTitle}>{row.label}</Text>;
+            }
+            const item = row.item;
             const preview = item.type === 'comment' ? item.comment_preview : item.post_preview;
             return (
               // No button role on the row: it contains the avatar button (no nested buttons on web).
               <Pressable
                 onPress={() => open(item)}
-                style={({ pressed }) => [
-                  styles.row,
-                  !item.is_read && styles.unread,
-                  pressed && styles.pressed,
-                ]}
+                style={({ pressed }) => [styles.row, pressed && styles.pressed]}
               >
+                <View
+                  accessibilityLabel={item.is_read ? undefined : '새 알림'}
+                  style={[styles.dot, !item.is_read && styles.dotUnread]}
+                />
                 <Pressable
                   accessibilityLabel={`${item.actor.nickname}님 프로필`}
                   onPress={() => openActor(item)}
@@ -168,7 +198,7 @@ export default function CommunityNotificationsScreen() {
                   </Text>
                   {preview ? (
                     <Text numberOfLines={2} style={styles.preview}>
-                      {preview}
+                      &ldquo;{preview}&rdquo;
                     </Text>
                   ) : null}
                   <Text style={styles.time}>{formatCommunityTime(item.created_at)}</Text>
@@ -182,39 +212,50 @@ export default function CommunityNotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  row: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  unread: { backgroundColor: colors.primaryLight },
-  pressed: { opacity: 0.8 },
-  body: { flex: 1, gap: 2, minWidth: 0 },
-  text: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  actor: { fontFamily: fontFamilies.pretendardBold },
-  preview: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    groupTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 15,
+      paddingBottom: spacing.xs,
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.lg,
+    },
+    row: {
+      alignItems: 'flex-start',
+      flexDirection: 'row',
+      gap: spacing.md,
+      paddingLeft: spacing.sm,
+      paddingRight: spacing.xl,
+      paddingVertical: spacing.md,
+    },
+    dot: { borderRadius: 3, height: 6, marginTop: 17, width: 6 },
+    dotUnread: { backgroundColor: colors.primary },
+    pressed: { opacity: 0.8 },
+    body: { flex: 1, gap: 2, minWidth: 0 },
+    text: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 15,
+      lineHeight: 21,
+    },
+    actor: { fontFamily: fontFamilies.pretendardBold },
+    preview: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+  } as const;
+}

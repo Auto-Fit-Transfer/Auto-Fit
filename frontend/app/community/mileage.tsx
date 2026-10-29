@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -12,9 +12,17 @@ import {
   type CommunityMileageEntry,
   type CommunityRule,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import {
+  fontFamilies,
+  radius,
+  spacing,
+  typography,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
 const REASONS: Record<CommunityMileageEntry['reason'], string> = {
   challenge: '챌린지 보상',
@@ -38,6 +46,8 @@ function describeRule(rule: CommunityRule) {
 }
 
 export default function CommunityMileageScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [summary, setSummary] = useState<CommunityMileage | null>(null);
@@ -177,62 +187,68 @@ export default function CommunityMileageScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  top: { gap: spacing.lg, paddingHorizontal: spacing.xl, paddingTop: spacing.sm },
-  balanceCard: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.lg,
-    gap: 2,
-    padding: spacing.xl,
-  },
-  balanceLabel: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-  },
-  balance: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 30 },
-  today: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
-  rules: { gap: 4 },
-  rulesTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-    marginBottom: 2,
-  },
-  rule: { ...typography.body, color: colors.textBody },
-  ruleOff: { color: colors.textSecondary, textDecorationLine: 'line-through' },
-  rulesNote: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 4 },
-  historyTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-  },
-  empty: {
-    ...typography.body,
-    color: colors.textSecondary,
-    padding: spacing.xl,
-    textAlign: 'center',
-  },
-  row: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  rowBody: { flex: 1, gap: 2 },
-  reason: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
-  time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-  amount: { color: colors.primaryDark, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  spent: { color: colors.danger },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    top: { gap: spacing.lg, paddingHorizontal: spacing.xl, paddingTop: spacing.sm },
+    balanceCard: {
+      backgroundColor: colors.primaryLight,
+      borderRadius: radius.lg,
+      gap: 2,
+      padding: spacing.xl,
+    },
+    balanceLabel: {
+      color: colors.primaryPressed,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 14,
+    },
+    balance: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 30 },
+    today: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
+    rules: { gap: 4 },
+    rulesTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+      marginBottom: 2,
+    },
+    rule: { ...typography.body, color: colors.textBody },
+    ruleOff: { color: colors.textSecondary, textDecorationLine: 'line-through' },
+    rulesNote: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 4 },
+    historyTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+    },
+    empty: {
+      ...typography.body,
+      color: colors.textSecondary,
+      padding: spacing.xl,
+      textAlign: 'center',
+    },
+    row: {
+      alignItems: 'center',
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+    },
+    rowBody: { flex: 1, gap: 2 },
+    reason: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 15,
+    },
+    time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+    amount: { color: colors.primaryPressed, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    spent: { color: colors.danger },
+  } as const;
+}

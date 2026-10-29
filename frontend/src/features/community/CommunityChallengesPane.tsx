@@ -1,14 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, View } from 'react-native';
 
 import {
   claimCommunityChallenge,
@@ -18,9 +10,18 @@ import {
   setCommunityChallengeParticipation,
   type CommunityChallenge,
 } from '@/src/api/community';
-import { AppButton } from '@/src/components/common';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { AppButton, Text } from '@/src/components/common';
+import {
+  fontFamilies,
+  radius,
+  spacing,
+  typography,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
+import { COMMUNITY_RANKING_ENABLED } from './communityFeatures';
 import { useCommunityActions } from './useCommunityActions';
 
 const METRIC_UNIT: Record<CommunityChallenge['metric'], string> = {
@@ -33,9 +34,11 @@ function shortDate(value: string) {
   return `${month}/${day}`;
 }
 
-// The 챌린지 tab: provisional challenges counted from workout and meal records, and the way
-// into the weekly ranking.
+// The 챌린지 tab: provisional challenges counted from workout and meal records, and (when the
+// ranking is switched on) the way into the weekly ranking.
 export function CommunityChallengesPane({ bottomSpace }: { bottomSpace: number }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const actions = useCommunityActions();
   const { handleError, notify } = actions;
@@ -139,17 +142,19 @@ export function CommunityChallengesPane({ bottomSpace }: { bottomSpace: number }
 
   const header = (
     <View style={styles.header}>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.push('/community/ranking')}
-        style={({ pressed }) => [styles.rankingCard, pressed && styles.pressed]}
-      >
-        <View style={styles.rankingBody}>
-          <Text style={styles.rankingTitle}>이번 주 랭킹</Text>
-          <Text style={styles.rankingText}>운동 횟수·마일리지 순위 (참여한 사람만 보여요)</Text>
-        </View>
-        <Text style={styles.chevron}>›</Text>
-      </Pressable>
+      {COMMUNITY_RANKING_ENABLED ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/community/ranking')}
+          style={({ pressed }) => [styles.rankingCard, pressed && styles.pressed]}
+        >
+          <View style={styles.rankingBody}>
+            <Text style={styles.rankingTitle}>이번 주 랭킹</Text>
+            <Text style={styles.rankingText}>운동 횟수·마일리지 순위 (참여한 사람만 보여요)</Text>
+          </View>
+          <Text style={styles.chevron}>›</Text>
+        </Pressable>
+      ) : null}
       <Text style={styles.note}>
         챌린지는 운동 완료·식단 기록으로 자동으로 쌓여요.
         {challenges?.some((item) => isProvisionalNote(item.note))
@@ -230,88 +235,94 @@ export function CommunityChallengesPane({ bottomSpace }: { bottomSpace: number }
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  header: { gap: spacing.sm, padding: spacing.xl, paddingBottom: spacing.sm },
-  rankingCard: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.lg,
-    flexDirection: 'row',
-    padding: spacing.lg,
-  },
-  pressed: { opacity: 0.8 },
-  rankingBody: { flex: 1, gap: 2 },
-  rankingTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-  },
-  rankingText: { ...typography.bodySmall, color: colors.textBody },
-  chevron: { color: colors.primaryDark, fontFamily: fontFamilies.pretendardBold, fontSize: 22 },
-  note: { ...typography.bodySmall, color: colors.textSecondary },
-  card: {
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    gap: spacing.xs,
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.md,
-    padding: spacing.lg,
-  },
-  titleRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-  title: {
-    color: colors.textPrimary,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 17,
-  },
-  phase: {
-    backgroundColor: colors.background,
-    borderRadius: radius.sm,
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-    overflow: 'hidden',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  phaseOn: { backgroundColor: colors.primaryLight, color: colors.primaryDark },
-  description: { ...typography.body, color: colors.textBody },
-  meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 13 },
-  progressTrack: {
-    backgroundColor: colors.background,
-    borderRadius: radius.round,
-    height: 8,
-    marginTop: spacing.xs,
-    overflow: 'hidden',
-  },
-  progressFill: { backgroundColor: colors.primary, borderRadius: radius.round, height: 8 },
-  progressText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
-    marginBottom: spacing.xs,
-  },
-  joinedRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  joinedText: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-  },
-  leave: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
-  done: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1 },
+    header: { gap: spacing.sm, padding: spacing.xl, paddingBottom: spacing.sm },
+    rankingCard: {
+      alignItems: 'center',
+      backgroundColor: colors.primaryLight,
+      borderRadius: radius.lg,
+      flexDirection: 'row',
+      padding: spacing.lg,
+    },
+    pressed: { opacity: 0.8 },
+    rankingBody: { flex: 1, gap: 2 },
+    rankingTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+    },
+    rankingText: { ...typography.bodySmall, color: colors.textBody },
+    chevron: {
+      color: colors.primaryPressed,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 22,
+    },
+    note: { ...typography.bodySmall, color: colors.textSecondary },
+    card: {
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      gap: spacing.xs,
+      marginHorizontal: spacing.xl,
+      marginTop: spacing.md,
+      padding: spacing.lg,
+    },
+    titleRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
+    title: {
+      color: colors.textPrimary,
+      flex: 1,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 17,
+    },
+    phase: {
+      backgroundColor: colors.background,
+      borderRadius: radius.sm,
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 12,
+      overflow: 'hidden',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+    },
+    phaseOn: { backgroundColor: colors.primaryLight, color: colors.primaryText },
+    description: { ...typography.body, color: colors.textBody },
+    meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 13 },
+    progressTrack: {
+      backgroundColor: colors.background,
+      borderRadius: radius.round,
+      height: 8,
+      marginTop: spacing.xs,
+      overflow: 'hidden',
+    },
+    progressFill: { backgroundColor: colors.primary, borderRadius: radius.round, height: 8 },
+    progressText: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 13,
+      marginBottom: spacing.xs,
+    },
+    joinedRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    joinedText: {
+      color: colors.primaryPressed,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 15,
+    },
+    leave: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
+    done: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 14,
+      textAlign: 'center',
+    },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  } as const;
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -12,10 +12,19 @@ import {
   type CommunityRankingMetric,
   type CommunityRankingScope,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
+import { COMMUNITY_RANKING_ENABLED } from '@/src/features/community/communityFeatures';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import {
+  fontFamilies,
+  radius,
+  spacing,
+  typography,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
 const METRICS: { label: string; unit: string; value: CommunityRankingMetric }[] = [
   { label: '운동 횟수', unit: '회', value: 'workout' },
@@ -27,8 +36,16 @@ function shortDate(value: string) {
   return `${month}/${day}`;
 }
 
+// While the ranking is switched off, a direct link lands on the community tab instead.
+export default function CommunityRankingRoute() {
+  if (!COMMUNITY_RANKING_ENABLED) return <Redirect href="/community" />;
+  return <CommunityRankingScreen />;
+}
+
 // Weekly ranking (Korean week, Monday to Sunday). Only people who opted in are listed.
-export default function CommunityRankingScreen() {
+function CommunityRankingScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<{ scope?: string; clubId?: string; clubName?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -213,63 +230,69 @@ export default function CommunityRankingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
-  header: { gap: spacing.sm, padding: spacing.xl, paddingBottom: spacing.md },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  chip: {
-    borderColor: colors.border,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    maxWidth: 160,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-  },
-  chipActive: { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
-  chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
-  chipTextActive: { color: colors.surface },
-  week: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
-  optIn: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.md,
-    gap: spacing.xs,
-    padding: spacing.lg,
-  },
-  optInText: { ...typography.body, color: colors.textPrimary },
-  optInButton: { color: colors.primaryDark, fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
-  optOutButton: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium },
-  note: { ...typography.bodySmall, color: colors.textSecondary },
-  row: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  rowMe: { backgroundColor: colors.primaryLight },
-  rank: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-    textAlign: 'center',
-    width: 28,
-  },
-  rankTop: { color: colors.primaryDark },
-  nickname: {
-    color: colors.textPrimary,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-  },
-  score: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    header: { gap: spacing.sm, padding: spacing.xl, paddingBottom: spacing.md },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    chip: {
+      borderColor: colors.border,
+      borderRadius: radius.round,
+      borderWidth: 1,
+      maxWidth: 160,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 6,
+    },
+    chipActive: { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
+    chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
+    chipTextActive: { color: colors.elevated },
+    week: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
+    optIn: {
+      backgroundColor: colors.primaryLight,
+      borderRadius: radius.md,
+      gap: spacing.xs,
+      padding: spacing.lg,
+    },
+    optInText: { ...typography.body, color: colors.textPrimary },
+    optInButton: {
+      color: colors.primaryPressed,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 15,
+    },
+    optOutButton: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium },
+    note: { ...typography.bodySmall, color: colors.textSecondary },
+    row: {
+      alignItems: 'center',
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: spacing.md,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+    },
+    rowMe: { backgroundColor: colors.primaryLight },
+    rank: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+      textAlign: 'center',
+      width: 28,
+    },
+    rankTop: { color: colors.primaryPressed },
+    nickname: {
+      color: colors.textPrimary,
+      flex: 1,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 15,
+    },
+    score: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  } as const;
+}

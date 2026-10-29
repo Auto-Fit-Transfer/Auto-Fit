@@ -1,20 +1,32 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { Alert, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Keyboard, View } from 'react-native';
 
-import EmailIcon from '@/assets/icons/auth-redesign/1790c.svg';
-import EmailEmblem from '@/assets/icons/auth-redesign/c08e0.svg';
-import ShieldIcon from '@/assets/icons/auth-redesign/6e53a.svg';
-import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
-import { PasswordAuthScreenLayout, PasswordAuthSection } from '@/src/components/auth';
+import EnvelopeIcon from '@/assets/icons/ui/envelope.svg';
+import { AuthPage, AuthTextField } from '@/src/components/auth/AuthRedesign';
+import { AppButton, AppCard, Notice, Text } from '@/src/components/common';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { colors, fontFamilies } from '@/src/theme';
+import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
+const resendWaitSeconds = 60;
+
+// Figma A8 (비밀번호 찾기) and, after sending, A10 (링크를 보냈어요).
 export default function ForgotPasswordScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const [email, setEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [sentAt, setSentAt] = useState<Date | null>(null);
+  const [waitLeft, setWaitLeft] = useState(0);
+
+  useEffect(() => {
+    if (waitLeft <= 0) return;
+    const timer = setTimeout(() => setWaitLeft((seconds) => seconds - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [waitLeft]);
+
   const sendResetEmail = async () => {
     if (isSending) return;
     const normalizedEmail = email.trim().toLowerCase();
@@ -29,7 +41,8 @@ export default function ForgotPasswordScreen() {
         redirectTo: Linking.createURL('auth/recovery'),
       });
       if (error) throw error;
-      Alert.alert('메일 발송을 요청했습니다', '가입된 이메일이라면 비밀번호 재설정 링크가 도착합니다.');
+      setSentAt(new Date());
+      setWaitLeft(resendWaitSeconds);
     } catch (error) {
       console.error('비밀번호 재설정 메일 요청 실패:', error);
       Alert.alert('메일을 보내지 못했습니다', '잠시 후 다시 시도해 주세요.');
@@ -38,108 +51,114 @@ export default function ForgotPasswordScreen() {
     }
   };
 
-  return (
-    <PasswordAuthScreenLayout
-      description="가입한 이메일로 비밀번호 재설정 링크를 보내드려요."
-      onBack={() => router.back()}
-      title="비밀번호 찾기"
-    >
-      <PasswordAuthSection top={0} innerStyle={styles.recoveryCard}>
-        <View style={styles.emblem}>
-          <EmailEmblem height={28} width={28} />
-        </View>
-        <AuthTextField
-          accessibilityLabel="이메일"
-          autoCapitalize="none"
-          autoComplete="email"
-          autoCorrect={false}
-          keyboardType="email-address"
-          label="이메일"
-          leftElement={<EmailIcon height={20} width={20} />}
-          onChangeText={setEmail}
-          onSubmitEditing={() => void sendResetEmail()}
-          placeholder="가입 시 입력한 이메일을 입력해 주세요"
-          returnKeyType="send"
-          textContentType="emailAddress"
-          value={email}
-        />
-        <AuthButton loading={isSending} onPress={() => void sendResetEmail()} title="인증 메일 보내기" />
-      </PasswordAuthSection>
-      <PasswordAuthSection card={false} top={0} innerStyle={styles.notice}>
-        <ShieldIcon height={24} width={24} />
-        <View style={styles.noticeText}>
-          <Text style={styles.noticeTitle}>안전하게 비밀번호를 재설정해요</Text>
-          <Text style={styles.noticeDescription}>
-            입력하신 이메일로 재설정 링크를 보내드려요.{`\n`}링크는 10분 동안 유효합니다.
-          </Text>
-        </View>
-      </PasswordAuthSection>
-      <PasswordAuthSection top={0} innerStyle={styles.help}>
-        <Text style={styles.helpTitle}>메일이 오지 않나요?</Text>
-        <Text style={styles.helpDescription}>
-          스팸 메일함을 확인하거나{`\n`}잠시 후 다시 시도해 주세요.
-        </Text>
-      </PasswordAuthSection>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.replace('/login')}
-        style={styles.backToLogin}
+  const backToLogin = (
+    <AppButton
+      onPress={() => router.replace('/login')}
+      title="로그인으로 돌아가기"
+      variant="text"
+    />
+  );
+
+  if (sentAt) {
+    const time = sentAt.toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' });
+    return (
+      <AuthPage
+        description="아래 주소로 비밀번호를 새로 정하는 링크를 보냈어요. 링크는 10분 동안 쓸 수 있어요."
+        footer={backToLogin}
+        heading="메일을 보냈어요"
+        mode="password"
+        onBack={() => setSentAt(null)}
+        topIcon={
+          <View style={styles.emblem}>
+            <EnvelopeIcon color={colors.textPrimary} height={30} width={30} />
+          </View>
+        }
       >
-        <Text style={styles.backToLoginText}>로그인으로 돌아가기</Text>
-      </Pressable>
-    </PasswordAuthScreenLayout>
+        <AppCard style={styles.sentBox}>
+          <View style={styles.sentRow}>
+            <EnvelopeIcon color={colors.textSecondary} height={20} width={20} />
+            <View style={styles.flex}>
+              <Text style={styles.sentEmail}>{email.trim().toLowerCase()}</Text>
+              <Text style={styles.sentTime}>{time}에 보냈어요</Text>
+            </View>
+          </View>
+          <View style={styles.sentActions}>
+            <AppButton
+              fullWidth={false}
+              onPress={() => setSentAt(null)}
+              style={styles.flex}
+              title="주소 바꾸기"
+              variant="outline"
+            />
+            <AppButton
+              disabled={waitLeft > 0 || isSending}
+              fullWidth={false}
+              onPress={() => void sendResetEmail()}
+              style={styles.flex}
+              title={
+                waitLeft > 0
+                  ? `다시 보내기 ${Math.floor(waitLeft / 60)}:${String(waitLeft % 60).padStart(2, '0')}`
+                  : '다시 보내기'
+              }
+              variant="outline"
+            />
+          </View>
+        </AppCard>
+        <Notice body="스팸함을 확인해 보세요." title="메일이 안 오나요?" />
+      </AuthPage>
+    );
+  }
+
+  return (
+    <AuthPage
+      description="가입한 이메일로 새 비밀번호를 정하는 링크를 보내 드려요. 링크는 10분 동안 쓸 수 있어요."
+      footer={
+        <>
+          <AppButton
+            loading={isSending}
+            onPress={() => void sendResetEmail()}
+            title="링크 보내기"
+          />
+          {backToLogin}
+        </>
+      }
+      heading="비밀번호를 잊으셨나요?"
+      mode="password"
+      onBack={() => router.back()}
+    >
+      <AuthTextField
+        accessibilityLabel="이메일"
+        autoCapitalize="none"
+        autoComplete="email"
+        autoCorrect={false}
+        keyboardType="email-address"
+        label="이메일"
+        onChangeText={setEmail}
+        onSubmitEditing={() => void sendResetEmail()}
+        placeholder="example@email.com"
+        returnKeyType="send"
+        textContentType="emailAddress"
+        value={email}
+      />
+    </AuthPage>
   );
 }
 
-const styles = StyleSheet.create({
-  recoveryCard: { gap: 20 },
-  emblem: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSoft,
-    borderRadius: 16,
-    height: 56,
-    justifyContent: 'center',
-    width: 56,
-  },
-  notice: {
-    backgroundColor: colors.surfaceSoft,
-    borderRadius: 12,
-    flexDirection: 'row',
-    gap: 12,
-    minHeight: 98,
-    padding: 16,
-  },
-  noticeText: { flex: 1, gap: 4 },
-  noticeTitle: {
-    color: colors.dark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  noticeDescription: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  help: { gap: 8 },
-  helpTitle: {
-    color: colors.dark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  helpDescription: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 15,
-    lineHeight: 23,
-  },
-  backToLogin: { alignItems: 'center', justifyContent: 'center', minHeight: 48 },
-  backToLoginText: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-});
+function createStyles({ colors, text }: AppTheme) {
+  return {
+    flex: { flex: 1 },
+    emblem: {
+      alignItems: 'center',
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 32,
+      height: 64,
+      justifyContent: 'center',
+      width: 64,
+    },
+    sentBox: { gap: 12 },
+    sentRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+    sentEmail: { ...text.body1Strong, color: colors.textPrimary },
+    sentTime: { ...text.caption, color: colors.textSecondary },
+    sentActions: { flexDirection: 'row', gap: 8 },
+  } as const;
+}

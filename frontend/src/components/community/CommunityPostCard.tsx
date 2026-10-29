@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import HeartIcon from '@/assets/icons/deco/Heart.svg';
 import HeartFillIcon from '@/assets/icons/deco/Heart_Fill.svg';
@@ -7,8 +7,9 @@ import ChatIcon from '@/assets/icons/feature/ChatCircle.svg';
 import RepeatIcon from '@/assets/icons/feature/Repeat.svg';
 import MoreIcon from '@/assets/icons/system/DotsThreeVertical.svg';
 import type { CommunityAuthor, CommunityPost } from '@/src/api/community';
+import { Text } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
-import { colors, fontFamilies, spacing } from '@/src/theme';
+import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { CommunityAvatar } from './CommunityAvatar';
 import { CommunityPostImages } from './CommunityPostImages';
@@ -34,6 +35,8 @@ export function CommunityPostCard({
   onAuthorPress,
   expanded = false,
 }: CommunityPostCardProps) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const openAuthor = onAuthorPress ? () => onAuthorPress(post.author) : undefined;
   return (
     // No button role on the card: it contains action buttons, and web forbids nested
@@ -98,11 +101,11 @@ export function CommunityPostCard({
             />
             <ActionButton
               active={post.reposted_by_me}
-              color={colors.primaryDark}
+              color={colors.primaryText}
               count={post.repost_count}
               icon={
                 <RepeatIcon
-                  color={post.reposted_by_me ? colors.primaryDark : colors.textSecondary}
+                  color={post.reposted_by_me ? colors.primaryText : colors.textSecondary}
                   height={19}
                   width={19}
                 />
@@ -146,6 +149,7 @@ function ActionButton({
   label: string;
   onPress?: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityLabel={`${label} ${count}개`}
@@ -163,47 +167,35 @@ function ActionButton({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  pressed: { backgroundColor: colors.background },
-  repostHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
-    paddingLeft: 30,
-  },
-  repostText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 12,
-  },
-  row: { flexDirection: 'row', gap: 10 },
-  body: { flex: 1, minWidth: 0 },
-  meta: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs },
-  nicknameButton: { flexShrink: 1 },
-  nickname: {
-    color: colors.textPrimary,
-    flexShrink: 1,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 15,
-  },
-  time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 13 },
-  more: { marginLeft: 'auto' },
-  content: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: 2,
-  },
-  actions: { flexDirection: 'row', gap: 36, marginTop: 10 },
-  action: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 28, minWidth: 44 },
-  count: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
-});
+// Figma F1 post: full-width rows split by an 8px gray band.
+function createStyles({ colors, text }: AppTheme) {
+  return {
+    card: {
+      backgroundColor: colors.background,
+      borderBottomColor: colors.surfaceMuted,
+      borderBottomWidth: 8,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+    },
+    pressed: { backgroundColor: colors.surface },
+    repostHeader: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 4,
+      marginBottom: 4,
+      paddingLeft: 30,
+    },
+    repostText: { ...text.captionStrong, color: colors.textSecondary },
+    row: { flexDirection: 'row', gap: 10 },
+    body: { flex: 1, minWidth: 0 },
+    meta: { alignItems: 'center', flexDirection: 'row', gap: 4 },
+    nicknameButton: { flexShrink: 1 },
+    nickname: { ...text.body2Strong, color: colors.textPrimary, flexShrink: 1 },
+    time: { ...text.caption, color: colors.textSecondary },
+    more: { marginLeft: 'auto' },
+    content: { ...text.body1, color: colors.textPrimary, marginTop: 4 },
+    actions: { flexDirection: 'row', gap: 32, marginTop: 10 },
+    action: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 28, minWidth: 44 },
+    count: { ...text.body2, color: colors.textSecondary },
+  } as const;
+}
