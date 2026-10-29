@@ -25,6 +25,8 @@ export interface MyViewProps {
   onOpenReport: () => void;
   onOpenGoal: () => void;
   onOpenExerciseSettings: () => void;
+  onOpenDietSettings: () => void;
+  onOpenDisplaySettings: () => void;
   onOpenAccount: () => void;
   onOpenNotifications: () => void;
   onLogout: () => void;
@@ -105,6 +107,11 @@ export function MyView(props: MyViewProps) {
             description: '오늘의 운동 설정으로 이동',
             onPress: props.onOpenExerciseSettings,
           },
+          {
+            title: '식단 설정',
+            description: '알레르기 · 피해야 하는 음식',
+            onPress: props.onOpenDietSettings,
+          },
         ]}
       />
 
@@ -113,6 +120,11 @@ export function MyView(props: MyViewProps) {
         rows={[
           { title: '계정 설정', onPress: props.onOpenAccount },
           { title: '알림 설정', onPress: props.onOpenNotifications },
+          {
+            title: '화면 설정',
+            description: '밝게 · 어둡게 · 간편 모드',
+            onPress: props.onOpenDisplaySettings,
+          },
           {
             title: '커뮤니티 활동',
             description: '쓴 글 · 팔로워 · 팔로잉',

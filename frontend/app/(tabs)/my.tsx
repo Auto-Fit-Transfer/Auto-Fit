@@ -5,6 +5,7 @@ import { getApiErrorMessage } from '@/src/api/client';
 import { getCommunityMileage, getCommunityProfile } from '@/src/api/community';
 import { getProfile, getProfileName } from '@/src/api/home';
 import { AppDialog } from '@/src/components/common';
+import { DietSettingsSheet } from '@/src/components/my/DietSettingsSheet';
 import { MyView, type MyViewProps } from '@/src/components/my/MyView';
 import { getSupabaseClient } from '@/src/lib/supabase';
 
@@ -24,6 +25,7 @@ export default function MyScreen() {
   const [mileage, setMileage] = useState<number | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [logoutError, setLogoutError] = useState('');
+  const [dietSettingsOpen, setDietSettingsOpen] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -83,6 +85,8 @@ export default function MyScreen() {
         onLogout={() => setConfirmLogout(true)}
         onOpenAccount={() => router.push('/account')}
         onOpenExerciseSettings={() => router.push('/exercise/condition')}
+        onOpenDietSettings={() => setDietSettingsOpen(true)}
+        onOpenDisplaySettings={() => router.push('/display-settings')}
         onOpenFollowers={() => openFollows('followers')}
         onOpenFollowing={() => openFollows('following')}
         onOpenGoal={() => router.push('/exercise/goal')}
@@ -101,6 +105,7 @@ export default function MyScreen() {
         title="로그아웃할까요?"
         visible={confirmLogout}
       />
+      <DietSettingsSheet onClose={() => setDietSettingsOpen(false)} visible={dietSettingsOpen} />
     </>
   );
 }

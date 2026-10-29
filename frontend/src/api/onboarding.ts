@@ -26,6 +26,7 @@ interface AllergyCatalogItem {
 
 interface AllergiesResponse {
   catalog?: AllergyCatalogItem[];
+  selected?: { allergy_type_id?: unknown; custom_name?: unknown }[];
 }
 
 const allergyAliases: Record<string, string[]> = {
@@ -71,7 +72,35 @@ export async function saveProfile({ name, birthDate, gender }: ProfileInput) {
   });
 }
 
+// The saved allergies as the app's own ids (milk, egg, …) plus the names typed by hand.
+export async function getAllergySelection() {
+  const response = await apiRequest<AllergiesResponse>('/api/allergies');
+  const catalog = Array.isArray(response.catalog) ? response.catalog : [];
+  const selected = Array.isArray(response.selected) ? response.selected : [];
+  const allergens: string[] = [];
+  const customNames: string[] = [];
+  for (const item of selected) {
+    if (typeof item.custom_name === 'string' && item.custom_name.trim()) {
+      customNames.push(item.custom_name.trim());
+      continue;
+    }
+    const catalogItem = catalog.find(
+      (candidate) => getCatalogId(candidate) === item.allergy_type_id,
+    );
+    const allergen = catalogItem
+      ? Object.keys(allergyAliases).find((key) => catalogMatches(catalogItem, key))
+      : undefined;
+    if (allergen && !allergens.includes(allergen)) allergens.push(allergen);
+  }
+  return { allergens, customNames };
+}
+
 export async function saveAllergies(selectedAllergens: string[], otherAllergy: string) {
+  return saveAllergySelection(selectedAllergens, otherAllergy.trim() ? [otherAllergy] : []);
+}
+
+// Replaces the saved allergies with these chips and hand-typed names.
+export async function saveAllergySelection(selectedAllergens: string[], customNames: string[]) {
   let allergyTypeIds: string[] = [];
 
   if (selectedAllergens.length > 0) {
@@ -89,12 +118,12 @@ export async function saveAllergies(selectedAllergens: string[], otherAllergy: s
     });
   }
 
-  const customName = otherAllergy.trim();
+  const names = customNames.map((name) => name.trim()).filter(Boolean);
   return apiRequest('/api/allergies', {
     method: 'PUT',
     body: JSON.stringify({
       allergy_type_ids: allergyTypeIds,
-      custom_names: customName ? [customName] : [],
+      custom_names: names,
     }),
   });
 }

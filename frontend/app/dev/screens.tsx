@@ -128,6 +128,8 @@ const screens: Record<string, () => ReactNode> = {
       onLogout={noop}
       onOpenAccount={noop}
       onOpenExerciseSettings={noop}
+      onOpenDietSettings={noop}
+      onOpenDisplaySettings={noop}
       onOpenFollowers={noop}
       onOpenFollowing={noop}
       onOpenGoal={noop}
