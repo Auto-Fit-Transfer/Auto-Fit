@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { AppBottomSheet, Text } from '@/src/components/common';
-import { colors, fontFamilies, spacing } from '@/src/theme';
+import { fontFamilies, spacing, useThemedStyles, type AppTheme } from '@/src/theme';
 
 export type CommunityOption = {
   label: string;
@@ -22,6 +22,7 @@ export function CommunityOptionsSheet({
   options,
   onClose,
 }: CommunityOptionsSheetProps) {
+  const styles = useThemedStyles(createStyles);
   return (
     <AppBottomSheet onClose={onClose} title={title} visible={visible}>
       <View style={styles.list}>
@@ -46,16 +47,18 @@ export function CommunityOptionsSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  list: { paddingBottom: spacing.sm },
-  row: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    justifyContent: 'center',
-    minHeight: 54,
-    paddingHorizontal: spacing.xs,
-  },
-  pressed: { backgroundColor: colors.primaryLight },
-  label: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
-  destructive: { color: colors.danger },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    list: { paddingBottom: spacing.sm },
+    row: {
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      justifyContent: 'center',
+      minHeight: 54,
+      paddingHorizontal: spacing.xs,
+    },
+    pressed: { backgroundColor: colors.primaryLight },
+    label: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
+    destructive: { color: colors.danger },
+  } as const;
+}

@@ -27,11 +27,21 @@ import {
 import { AppDialog, Text } from '@/src/components/common';
 import { emitCommunityEvent } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import {
+  fontFamilies,
+  radius,
+  spacing,
+  typography,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 export default function CommunityComposeScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   // Opened from a club: the post goes to that club only.
   const { clubId, clubName } = useLocalSearchParams<{ clubId?: string; clubName?: string }>();
@@ -158,7 +168,7 @@ export default function CommunityComposeScreen() {
           multiline
           onChangeText={setContent}
           placeholder="오늘의 운동, 식단, 작은 변화를 나눠 보세요"
-          placeholderTextColor={colors.textNavigator}
+          placeholderTextColor={colors.textDisabled}
           style={styles.input}
           textAlignVertical="top"
           value={content}
@@ -185,7 +195,7 @@ export default function CommunityComposeScreen() {
                 }
                 style={styles.remove}
               >
-                <CloseIcon color={colors.surface} height={14} width={14} />
+                <CloseIcon color={colors.elevated} height={14} width={14} />
               </Pressable>
             </View>
           ))}
@@ -197,7 +207,7 @@ export default function CommunityComposeScreen() {
               onPress={() => void pickPhotos()}
               style={[styles.thumbnail, styles.addPhoto]}
             >
-              <ImageIcon color={colors.primaryDark} height={26} width={26} />
+              <ImageIcon color={colors.primaryPressed} height={26} width={26} />
               <Text style={styles.addPhotoText}>
                 {photos.length}/{COMMUNITY_MAX_IMAGES}
               </Text>
@@ -235,80 +245,82 @@ export default function CommunityComposeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
-  header: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    minHeight: 56,
-    paddingHorizontal: spacing.lg,
-  },
-  cancel: { minWidth: 56, paddingVertical: spacing.sm },
-  cancelText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
-  title: {
-    ...typography.sectionTitle,
-    color: colors.textPrimary,
-    flexShrink: 1,
-    marginHorizontal: spacing.sm,
-  },
-  post: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: radius.round,
-    justifyContent: 'center',
-    minHeight: 36,
-    minWidth: 64,
-    paddingHorizontal: spacing.lg,
-  },
-  postDisabled: { backgroundColor: colors.border },
-  postPressed: { backgroundColor: colors.primaryDark },
-  postText: { color: colors.surface, fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
-  body: { gap: spacing.md, padding: spacing.lg },
-  input: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 16,
-    lineHeight: 24,
-    minHeight: 160,
-  },
-  counter: { ...typography.caption, alignSelf: 'flex-end', color: colors.textSecondary },
-  photos: { gap: spacing.sm },
-  thumbnail: {
-    backgroundColor: colors.border,
-    borderRadius: radius.md,
-    height: 84,
-    overflow: 'hidden',
-    width: 84,
-  },
-  remove: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    borderRadius: radius.round,
-    height: 22,
-    justifyContent: 'center',
-    position: 'absolute',
-    right: 4,
-    top: 4,
-    width: 22,
-  },
-  addPhoto: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    gap: 2,
-    justifyContent: 'center',
-  },
-  addPhotoText: { ...typography.label, color: colors.primaryDark },
-  notice: { ...typography.bodySmall, color: colors.textSecondary },
-  progress: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    paddingVertical: spacing.sm,
-  },
-  progressText: { ...typography.bodyEmphasis, color: colors.primaryDark },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    header: {
+      alignItems: 'center',
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      minHeight: 56,
+      paddingHorizontal: spacing.lg,
+    },
+    cancel: { minWidth: 56, paddingVertical: spacing.sm },
+    cancelText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
+    title: {
+      ...typography.sectionTitle,
+      color: colors.textPrimary,
+      flexShrink: 1,
+      marginHorizontal: spacing.sm,
+    },
+    post: {
+      alignItems: 'center',
+      backgroundColor: colors.primary,
+      borderRadius: radius.round,
+      justifyContent: 'center',
+      minHeight: 36,
+      minWidth: 64,
+      paddingHorizontal: spacing.lg,
+    },
+    postDisabled: { backgroundColor: colors.border },
+    postPressed: { backgroundColor: colors.primaryPressed },
+    postText: { color: colors.elevated, fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
+    body: { gap: spacing.md, padding: spacing.lg },
+    input: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 16,
+      lineHeight: 24,
+      minHeight: 160,
+    },
+    counter: { ...typography.caption, alignSelf: 'flex-end', color: colors.textSecondary },
+    photos: { gap: spacing.sm },
+    thumbnail: {
+      backgroundColor: colors.border,
+      borderRadius: radius.md,
+      height: 84,
+      overflow: 'hidden',
+      width: 84,
+    },
+    remove: {
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      borderRadius: radius.round,
+      height: 22,
+      justifyContent: 'center',
+      position: 'absolute',
+      right: 4,
+      top: 4,
+      width: 22,
+    },
+    addPhoto: {
+      alignItems: 'center',
+      backgroundColor: colors.primaryLight,
+      borderColor: colors.primary,
+      borderStyle: 'dashed',
+      borderWidth: 1,
+      gap: 2,
+      justifyContent: 'center',
+    },
+    addPhotoText: { ...typography.label, color: colors.primaryPressed },
+    notice: { ...typography.bodySmall, color: colors.textSecondary },
+    progress: {
+      alignItems: 'center',
+      backgroundColor: colors.primaryLight,
+      paddingVertical: spacing.sm,
+    },
+    progressText: { ...typography.bodyEmphasis, color: colors.primaryPressed },
+  } as const;
+}

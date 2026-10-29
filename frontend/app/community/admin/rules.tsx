@@ -5,7 +5,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Switch,
   TextInput,
   View,
@@ -21,7 +20,15 @@ import {
 } from '@/src/api/community';
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import {
+  fontFamilies,
+  radius,
+  spacing,
+  typography,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
 const RULES: Record<
   CommunityAdminRule['rule_key'],
@@ -41,6 +48,8 @@ const ORDER: CommunityAdminRule['rule_key'][] = [
 
 // Operators set the team's decided numbers here; saving clears the "provisional" label.
 export default function CommunityAdminRulesScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const actions = useCommunityActions();
@@ -119,6 +128,8 @@ function RuleCard({
   onSaved: (rule: CommunityAdminRule) => void;
   onError: (error: unknown) => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const meta = RULES[rule.rule_key];
   const [amount, setAmount] = useState(String(rule.amount));
   const [daily, setDaily] = useState(rule.daily_limit === null ? '' : String(rule.daily_limit));
@@ -188,7 +199,7 @@ function RuleCard({
         <Switch
           accessibilityLabel={`${meta.title} 켜기`}
           onValueChange={setEnabled}
-          thumbColor={colors.surface}
+          thumbColor={colors.elevated}
           trackColor={{ false: colors.border, true: colors.primary }}
           value={enabled}
         />
@@ -199,7 +210,7 @@ function RuleCard({
           <Switch
             accessibilityLabel={`${meta.title} 지금 이후 활동만 적립`}
             onValueChange={setRestart}
-            thumbColor={colors.surface}
+            thumbColor={colors.elevated}
             trackColor={{ false: colors.border, true: colors.primary }}
             value={restart}
           />
@@ -220,54 +231,61 @@ function RuleCard({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-  note: { ...typography.bodySmall, color: colors.textSecondary },
-  card: {
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    gap: spacing.xs,
-    padding: spacing.lg,
-  },
-  cardTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-  title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  provisional: {
-    backgroundColor: colors.dangerLight,
-    borderRadius: radius.sm,
-    color: colors.danger,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-    overflow: 'hidden',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  ruleNote: { ...typography.bodySmall, color: colors.textSecondary },
-  label: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-    marginTop: spacing.xs,
-  },
-  input: {
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 15,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-  },
-  switchRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
-  switchLabel: { ...typography.bodySmall, color: colors.textBody, flex: 1 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+    note: { ...typography.bodySmall, color: colors.textSecondary },
+    card: {
+      borderColor: colors.border,
+      borderRadius: radius.lg,
+      borderWidth: 1,
+      gap: spacing.xs,
+      padding: spacing.lg,
+    },
+    cardTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    provisional: {
+      backgroundColor: colors.dangerLight,
+      borderRadius: radius.sm,
+      color: colors.danger,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 12,
+      overflow: 'hidden',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+    },
+    ruleNote: { ...typography.bodySmall, color: colors.textSecondary },
+    label: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 14,
+      marginTop: spacing.xs,
+    },
+    input: {
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 15,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 10,
+    },
+    switchRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: spacing.md,
+      marginTop: spacing.xs,
+    },
+    switchLabel: { ...typography.bodySmall, color: colors.textBody, flex: 1 },
+  } as const;
+}

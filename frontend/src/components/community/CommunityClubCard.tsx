@@ -2,13 +2,14 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { COMMUNITY_CLUB_CATEGORIES, type CommunityClub } from '@/src/api/community';
 import { Text } from '@/src/components/common';
-import { colors, fontFamilies, radius, spacing } from '@/src/theme';
+import { fontFamilies, radius, spacing, useThemedStyles, type AppTheme } from '@/src/theme';
 
 export function communityClubCategoryLabel(category: CommunityClub['category']) {
   return COMMUNITY_CLUB_CATEGORIES.find((item) => item.value === category)?.label ?? '기타';
 }
 
 export function CommunityClubCard({ club, onPress }: { club: CommunityClub; onPress: () => void }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityLabel={`${club.name} 클럽, 회원 ${club.member_count}명`}
@@ -41,49 +42,51 @@ export function CommunityClubCard({ club, onPress }: { club: CommunityClub; onPr
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  pressed: { backgroundColor: colors.background },
-  badge: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.md,
-    height: 48,
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    width: 64,
-  },
-  badgeText: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  body: { flex: 1, gap: 2, minWidth: 0 },
-  titleRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs },
-  name: {
-    color: colors.textPrimary,
-    flexShrink: 1,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-  },
-  joined: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-  },
-  description: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 14,
-  },
-  meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    card: {
+      alignItems: 'center',
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: spacing.md,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+    },
+    pressed: { backgroundColor: colors.background },
+    badge: {
+      alignItems: 'center',
+      backgroundColor: colors.primaryLight,
+      borderRadius: radius.md,
+      height: 48,
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+      width: 64,
+    },
+    badgeText: {
+      color: colors.primaryPressed,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 12,
+      textAlign: 'center',
+    },
+    body: { flex: 1, gap: 2, minWidth: 0 },
+    titleRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs },
+    name: {
+      color: colors.textPrimary,
+      flexShrink: 1,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+    },
+    joined: {
+      color: colors.primaryPressed,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 12,
+    },
+    description: {
+      color: colors.textBody,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 14,
+    },
+    meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+  } as const;
+}

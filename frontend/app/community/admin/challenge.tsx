@@ -5,7 +5,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Switch,
   TextInput,
   View,
@@ -20,7 +19,15 @@ import {
 } from '@/src/api/community';
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import {
+  fontFamilies,
+  radius,
+  spacing,
+  typography,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
 const METRICS: { label: string; value: CommunityAdminChallenge['metric'] }[] = [
   { label: '운동한 날', value: 'workout_days' },
@@ -40,6 +47,8 @@ const daysBetween = (start: string, end: string) =>
 // New challenge without ?challengeId=, otherwise edit. When people already joined, the server
 // keeps the measured activity, goal, start and reward fixed; those inputs are shown read-only.
 export default function CommunityAdminChallengeScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { challengeId } = useLocalSearchParams<{ challengeId?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -186,7 +195,7 @@ export default function CommunityAdminChallengeScreen() {
           <Switch
             accessibilityLabel="사용자에게 보이기"
             onValueChange={setEnabled}
-            thumbColor={colors.surface}
+            thumbColor={colors.elevated}
             trackColor={{ false: colors.border, true: colors.primary }}
             value={enabled}
           />
@@ -203,49 +212,51 @@ export default function CommunityAdminChallengeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
-  form: { gap: spacing.sm, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-  lockedNote: {
-    ...typography.bodySmall,
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    color: colors.textBody,
-    padding: spacing.md,
-  },
-  label: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    marginTop: spacing.sm,
-  },
-  input: {
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 15,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-  },
-  readOnly: { backgroundColor: colors.background, color: colors.textSecondary },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  chip: {
-    borderColor: colors.border,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  chipTextActive: { color: colors.surface },
-  switchRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: spacing.sm,
-  },
-  problem: { ...typography.bodySmall, color: colors.danger },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    form: { gap: spacing.sm, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+    lockedNote: {
+      ...typography.bodySmall,
+      backgroundColor: colors.background,
+      borderRadius: radius.md,
+      color: colors.textBody,
+      padding: spacing.md,
+    },
+    label: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 15,
+      marginTop: spacing.sm,
+    },
+    input: {
+      borderColor: colors.border,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 15,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 12,
+    },
+    readOnly: { backgroundColor: colors.background, color: colors.textSecondary },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    chip: {
+      borderColor: colors.border,
+      borderRadius: radius.round,
+      borderWidth: 1,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 8,
+    },
+    chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    chipTextActive: { color: colors.elevated },
+    switchRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginVertical: spacing.sm,
+    },
+    problem: { ...typography.bodySmall, color: colors.danger },
+  } as const;
+}

@@ -1,10 +1,11 @@
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, View } from 'react-native';
 
 import type { CommunityAuthor } from '@/src/api/community';
 import { Text } from '@/src/components/common';
-import { colors, fontFamilies, radius } from '@/src/theme';
+import { fontFamilies, radius, useThemedStyles, type AppTheme } from '@/src/theme';
 
 export function CommunityAvatar({ author, size = 44 }: { author: CommunityAuthor; size?: number }) {
+  const styles = useThemedStyles(createStyles);
   const frame = { borderRadius: radius.round, height: size, width: size };
   if (author.profile_image_url) {
     return (
@@ -24,12 +25,14 @@ export function CommunityAvatar({ author, size = 44 }: { author: CommunityAuthor
   );
 }
 
-const styles = StyleSheet.create({
-  fallback: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-  },
-  image: { backgroundColor: colors.border },
-  initial: { color: colors.primaryDark, fontFamily: fontFamilies.pretendardBold },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    fallback: {
+      alignItems: 'center',
+      backgroundColor: colors.primaryLight,
+      justifyContent: 'center',
+    },
+    image: { backgroundColor: colors.border },
+    initial: { color: colors.primaryPressed, fontFamily: fontFamilies.pretendardBold },
+  } as const;
+}

@@ -19,7 +19,15 @@ import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { COMMUNITY_MESSAGES_ENABLED } from '@/src/features/community/communityFeatures';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import {
+  fontFamilies,
+  radius,
+  spacing,
+  typography,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
 // While messages are switched off, a direct link lands on the community tab instead.
 export default function CommunityMessagesRoute() {
@@ -29,6 +37,8 @@ export default function CommunityMessagesRoute() {
 
 // Conversations with at least one message, most recent first. Reloads when shown again.
 function CommunityMessagesScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<CommunityConversation[] | null>(null);
@@ -166,48 +176,50 @@ function CommunityMessagesScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  row: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  pressed: { backgroundColor: colors.background },
-  body: { flex: 1, gap: 2, minWidth: 0 },
-  top: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-  nickname: {
-    color: colors.textPrimary,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 15,
-  },
-  time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-  preview: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 14,
-  },
-  previewUnread: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
-  badge: {
-    alignItems: 'center',
-    backgroundColor: colors.danger,
-    borderRadius: radius.round,
-    minWidth: 20,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  badgeText: { color: colors.surface, fontFamily: fontFamilies.pretendardBold, fontSize: 12 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    row: {
+      alignItems: 'center',
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: spacing.md,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+    },
+    pressed: { backgroundColor: colors.background },
+    body: { flex: 1, gap: 2, minWidth: 0 },
+    top: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
+    nickname: {
+      color: colors.textPrimary,
+      flex: 1,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 15,
+    },
+    time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+    preview: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 14,
+    },
+    previewUnread: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    badge: {
+      alignItems: 'center',
+      backgroundColor: colors.danger,
+      borderRadius: radius.round,
+      minWidth: 20,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+    },
+    badgeText: { color: colors.elevated, fontFamily: fontFamilies.pretendardBold, fontSize: 12 },
+  } as const;
+}

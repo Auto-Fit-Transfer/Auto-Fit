@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import SendIcon from '@/assets/icons/feature/PaperPlane_Fill.svg';
+import MoreIcon from '@/assets/icons/system/DotsThreeVertical.svg';
 import {
   COMMUNITY_MAX_COMMENT_LENGTH,
   createCommunityComment,
@@ -30,7 +31,14 @@ import {
   subscribeCommunityEvents,
 } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import {
+  fontFamilies,
+  spacing,
+  typography,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
@@ -44,6 +52,8 @@ function mergeComments(current: CommunityComment[], incoming: CommunityComment[]
 }
 
 export default function CommunityPostScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const router = useRouter();
   const openProfile = (author: CommunityAuthor) =>
@@ -159,7 +169,20 @@ export default function CommunityPostScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.root, { paddingTop: insets.top }]}
     >
-      <AppHeader onBackPress={() => router.back()} title="게시글" />
+      <AppHeader
+        onBackPress={() => router.back()}
+        rightAction={
+          post && state === 'ready' ? (
+            <IconButton
+              accessibilityLabel="글 메뉴"
+              icon={<MoreIcon color={colors.textBody} height={22} width={22} />}
+              onPress={() => actions.openPostMenu(post)}
+              size={44}
+            />
+          ) : null
+        }
+        title="게시글"
+      />
       {state === 'loading' ? (
         <ActivityIndicator color={colors.primary} style={styles.center} />
       ) : state !== 'ready' || !post ? (
@@ -226,16 +249,17 @@ export default function CommunityPostScreen() {
               multiline
               onChangeText={setDraft}
               placeholder="댓글을 남겨 보세요"
-              placeholderTextColor={colors.textNavigator}
+              placeholderTextColor={colors.textDisabled}
               style={styles.input}
               value={draft}
             />
             <IconButton
               accessibilityLabel="댓글 보내기"
               disabled={!draft.trim() || sending}
-              icon={<SendIcon color={colors.primary} height={24} width={24} />}
+              icon={<SendIcon color={colors.primary} height={22} width={22} />}
               onPress={() => void send()}
-              size={44}
+              size={48}
+              surface
             />
           </View>
         </>
@@ -245,43 +269,49 @@ export default function CommunityPostScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
-  center: { flex: 1, justifyContent: 'center' },
-  message: { alignItems: 'center', gap: spacing.md, padding: spacing.xxl },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xs,
-  },
-  empty: {
-    ...typography.body,
-    color: colors.textSecondary,
-    paddingVertical: spacing.xxl,
-    textAlign: 'center',
-  },
-  inputBar: {
-    alignItems: 'flex-end',
-    borderTopColor: colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-  },
-  input: {
-    ...typography.body,
-    backgroundColor: colors.background,
-    borderRadius: radius.lg,
-    color: colors.textPrimary,
-    flex: 1,
-    maxHeight: 110,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 11,
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    center: { flex: 1, justifyContent: 'center' },
+    message: { alignItems: 'center', gap: spacing.md, padding: spacing.xxl },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    sectionTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 15,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.xs,
+    },
+    empty: {
+      ...typography.body,
+      color: colors.textSecondary,
+      paddingVertical: spacing.xxl,
+      textAlign: 'center',
+    },
+    inputBar: {
+      alignItems: 'flex-end',
+      backgroundColor: colors.background,
+      borderTopColor: colors.border,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.sm,
+    },
+    // Figma F2: a round field and a round send button.
+    input: {
+      ...typography.body,
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 24,
+      borderWidth: 1,
+      color: colors.textPrimary,
+      flex: 1,
+      maxHeight: 110,
+      minHeight: 48,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: 13,
+    },
+  } as const;
+}

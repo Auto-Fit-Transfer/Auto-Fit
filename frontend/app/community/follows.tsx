@@ -13,7 +13,14 @@ import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar, CommunityFollowButton } from '@/src/components/community';
 import { subscribeCommunityEvents } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, spacing, typography } from '@/src/theme';
+import {
+  fontFamilies,
+  spacing,
+  typography,
+  useAppTheme,
+  useThemedStyles,
+  type AppTheme,
+} from '@/src/theme';
 
 const TABS: { kind: CommunityFollowKind; label: string }[] = [
   { kind: 'followers', label: '팔로워' },
@@ -21,6 +28,8 @@ const TABS: { kind: CommunityFollowKind; label: string }[] = [
 ];
 
 export default function CommunityFollowsScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<{ userId: string; kind?: string; nickname?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -181,45 +190,51 @@ export default function CommunityFollowsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
-  tabs: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-  },
-  tab: {
-    alignItems: 'center',
-    borderBottomColor: 'transparent',
-    borderBottomWidth: 2,
-    flex: 1,
-    paddingVertical: spacing.md,
-  },
-  tabActive: { borderBottomColor: colors.primary },
-  tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
-  tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  row: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  person: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: spacing.md, minWidth: 0 },
-  nickname: {
-    color: colors.textPrimary,
-    flexShrink: 1,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    tabs: {
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+    },
+    tab: {
+      alignItems: 'center',
+      borderBottomColor: 'transparent',
+      borderBottomWidth: 2,
+      flex: 1,
+      paddingVertical: spacing.md,
+    },
+    tabActive: { borderBottomColor: colors.primary },
+    tabText: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 15,
+    },
+    tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    row: {
+      alignItems: 'center',
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: spacing.md,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+    },
+    person: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: spacing.md, minWidth: 0 },
+    nickname: {
+      color: colors.textPrimary,
+      flexShrink: 1,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 15,
+    },
+  } as const;
+}

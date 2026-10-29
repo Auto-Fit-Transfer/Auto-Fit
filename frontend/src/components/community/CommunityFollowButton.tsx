@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable } from 'react-native';
 
 import { Text } from '@/src/components/common';
-import { colors, fontFamilies, radius, spacing } from '@/src/theme';
+import { fontFamilies, radius, spacing, useThemedStyles, type AppTheme } from '@/src/theme';
 
 export interface CommunityFollowButtonProps {
   following: boolean;
@@ -18,6 +18,7 @@ export function CommunityFollowButton({
   onPress,
   wide = false,
 }: CommunityFollowButtonProps) {
+  const styles = useThemedStyles(createStyles);
   const label = following ? '팔로잉' : followsMe ? '맞팔로우' : '팔로우';
   return (
     <Pressable
@@ -40,20 +41,22 @@ export function CommunityFollowButton({
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    alignItems: 'center',
-    borderRadius: radius.round,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 34,
-    paddingHorizontal: spacing.lg,
-  },
-  follow: { backgroundColor: colors.primary, borderColor: colors.primary },
-  following: { backgroundColor: colors.surface, borderColor: colors.border },
-  wide: { alignSelf: 'stretch', minHeight: 42 },
-  pressed: { opacity: 0.75 },
-  text: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  followText: { color: colors.surface },
-  followingText: { color: colors.textPrimary },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    button: {
+      alignItems: 'center',
+      borderRadius: radius.round,
+      borderWidth: 1,
+      justifyContent: 'center',
+      minHeight: 34,
+      paddingHorizontal: spacing.lg,
+    },
+    follow: { backgroundColor: colors.primary, borderColor: colors.primary },
+    following: { backgroundColor: colors.elevated, borderColor: colors.border },
+    wide: { alignSelf: 'stretch', minHeight: 42 },
+    pressed: { opacity: 0.75 },
+    text: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    followText: { color: colors.elevated },
+    followingText: { color: colors.textPrimary },
+  } as const;
+}

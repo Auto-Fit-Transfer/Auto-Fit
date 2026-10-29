@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CloseIcon from '@/assets/icons/common/X.svg';
 import type { CommunityImage } from '@/src/api/community';
 import { Text } from '@/src/components/common';
-import { colors, fontFamilies, radius } from '@/src/theme';
+import { fontFamilies, radius, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const GAP = 2;
 
@@ -43,6 +43,7 @@ function gridAspectRatio(images: CommunityImage[]) {
 }
 
 export function CommunityPostImages({ images }: { images: CommunityImage[] }) {
+  const styles = useThemedStyles(createStyles);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   if (!images.length) return null;
 
@@ -102,6 +103,8 @@ function PhotoViewer({
   initialIndex: number;
   onClose: () => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
@@ -146,7 +149,7 @@ function PhotoViewer({
             onPress={onClose}
             style={styles.close}
           >
-            <CloseIcon color={colors.surface} height={24} width={24} />
+            <CloseIcon color={colors.elevated} height={24} width={24} />
           </Pressable>
         </View>
       </View>
@@ -154,27 +157,29 @@ function PhotoViewer({
   );
 }
 
-const styles = StyleSheet.create({
-  grid: { borderRadius: radius.lg, gap: GAP, marginTop: 10, overflow: 'hidden', width: '100%' },
-  group: { flex: 1, gap: GAP },
-  cell: { backgroundColor: colors.border, flex: 1, overflow: 'hidden' },
-  viewer: { backgroundColor: '#000000', flex: 1 },
-  fullImage: { flex: 1 },
-  viewerBar: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    left: 16,
-    position: 'absolute',
-    right: 16,
-  },
-  counter: { color: colors.surface, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
-  close: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    borderRadius: radius.round,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    grid: { borderRadius: radius.lg, gap: GAP, marginTop: 10, overflow: 'hidden', width: '100%' },
+    group: { flex: 1, gap: GAP },
+    cell: { backgroundColor: colors.border, flex: 1, overflow: 'hidden' },
+    viewer: { backgroundColor: '#000000', flex: 1 },
+    fullImage: { flex: 1 },
+    viewerBar: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      left: 16,
+      position: 'absolute',
+      right: 16,
+    },
+    counter: { color: colors.elevated, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
+    close: {
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.45)',
+      borderRadius: radius.round,
+      height: 40,
+      justifyContent: 'center',
+      width: 40,
+    },
+  } as const;
+}
