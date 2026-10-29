@@ -1,5 +1,5 @@
-import BackIcon from '@/assets/icons/common/chevrons/Left.svg';
-import { colors } from '@/src/theme';
+import BackIcon from '@/assets/icons/ui/caret-left.svg';
+import { useAppTheme } from '@/src/theme';
 
 import { IconButton, type IconButtonProps } from './IconButton';
 
@@ -8,15 +8,14 @@ export type BackButtonProps = Omit<IconButtonProps, 'accessibilityLabel' | 'icon
   color?: string;
 };
 
-export function BackButton({
-  accessibilityLabel = '뒤로 가기',
-  color = colors.textBody,
-  ...props
-}: BackButtonProps) {
+export function BackButton({ accessibilityLabel = '뒤로 가기', color, ...props }: BackButtonProps) {
+  const { colors, easyMode } = useAppTheme();
+  const iconSize = easyMode ? 28 : 24;
   return (
     <IconButton
       accessibilityLabel={accessibilityLabel}
-      icon={<BackIcon color={color} height={25} width={25} />}
+      icon={<BackIcon color={color ?? colors.textPrimary} height={iconSize} width={iconSize} />}
+      size={44}
       {...props}
     />
   );

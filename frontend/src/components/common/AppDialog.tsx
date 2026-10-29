@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
-import { colors, radius, shadows, spacing, typography } from '@/src/theme';
+import { radius, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { AppButton } from './AppButton';
 import { Text } from './Text';
@@ -28,6 +28,7 @@ export function AppDialog({
   destructive = false,
   children,
 }: AppDialogProps) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Modal animationType="fade" onRequestClose={onCancel} transparent visible={visible}>
       <View style={styles.overlay}>
@@ -36,7 +37,7 @@ export function AppDialog({
           onPress={onCancel}
           style={StyleSheet.absoluteFill}
         />
-        <View accessibilityViewIsModal style={[styles.dialog, shadows.floating]}>
+        <View accessibilityViewIsModal style={styles.dialog}>
           <View style={styles.content}>
             <Text accessibilityRole="header" style={styles.title}>
               {title}
@@ -48,6 +49,7 @@ export function AppDialog({
             <AppButton
               fullWidth={false}
               onPress={onCancel}
+              size="M"
               style={styles.action}
               title={cancelText}
               variant="secondary"
@@ -68,6 +70,7 @@ export function AppDialog({
               <AppButton
                 fullWidth={false}
                 onPress={onConfirm}
+                size="M"
                 style={styles.action}
                 title={confirmText}
               />
@@ -79,40 +82,44 @@ export function AppDialog({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    alignItems: 'center',
-    backgroundColor: colors.overlay,
-    flex: 1,
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  dialog: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    maxWidth: 340,
-    width: '100%',
-  },
-  content: {
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl,
-    paddingBottom: spacing.xl,
-  },
-  title: { ...typography.title, color: colors.textPrimary, textAlign: 'center' },
-  description: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  actions: { flexDirection: 'row', gap: spacing.sm, padding: spacing.lg, paddingTop: 0 },
-  action: { flex: 1, height: 48 },
-  destructiveAction: {
-    alignItems: 'center',
-    backgroundColor: colors.danger,
-    borderColor: colors.danger,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  destructiveLabel: { ...typography.button, color: colors.surface },
-  pressed: { opacity: 0.82 },
-});
+// The Figma "Dialog": white card with 24px corners, title, short body, two buttons.
+function createStyles({ colors, text }: AppTheme) {
+  return {
+    overlay: {
+      alignItems: 'center',
+      backgroundColor: colors.overlay,
+      flex: 1,
+      justifyContent: 'center',
+      padding: 20,
+    },
+    dialog: {
+      backgroundColor: colors.elevated,
+      borderRadius: radius.dialog,
+      elevation: 8,
+      maxWidth: 340,
+      paddingBottom: 20,
+      paddingHorizontal: 24,
+      paddingTop: 24,
+      shadowColor: '#000000',
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.16,
+      shadowRadius: 24,
+      width: '100%',
+    },
+    content: { gap: 8 },
+    title: { ...text.title2, color: colors.textPrimary },
+    description: { ...text.body2, color: colors.textSecondary },
+    actions: { flexDirection: 'row', gap: 8, paddingTop: 16 },
+    action: { flex: 1 },
+    destructiveAction: {
+      alignItems: 'center',
+      backgroundColor: colors.danger,
+      borderRadius: radius.button,
+      justifyContent: 'center',
+      minHeight: 44,
+      paddingHorizontal: 16,
+    },
+    destructiveLabel: { ...text.body2Strong, color: colors.onPrimary },
+    pressed: { opacity: 0.85 },
+  } as const;
+}

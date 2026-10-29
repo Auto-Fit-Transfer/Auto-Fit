@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors, spacing, typography } from '@/src/theme';
+import { useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { Text } from './Text';
 
@@ -13,6 +13,7 @@ export interface SectionHeaderProps {
 }
 
 export function SectionHeader({ title, subtitle, rightAction, style }: SectionHeaderProps) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={[styles.container, style]}>
       <View style={styles.content}>
@@ -24,9 +25,11 @@ export function SectionHeader({ title, subtitle, rightAction, style }: SectionHe
   );
 }
 
-const styles = StyleSheet.create({
-  container: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  content: { flex: 1, gap: spacing.xs },
-  title: { ...typography.sectionTitle, color: colors.textPrimary },
-  subtitle: { ...typography.bodySmall, color: colors.textSecondary },
-});
+function createStyles({ colors, text }: AppTheme) {
+  return {
+    container: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    content: { flex: 1, gap: 2 },
+    title: { ...text.body1Strong, color: colors.textPrimary },
+    subtitle: { ...text.body2, color: colors.textSecondary },
+  } as const;
+}

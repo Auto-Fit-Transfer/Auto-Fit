@@ -15,8 +15,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import CloseIcon from '@/assets/icons/common/X.svg';
-import { colors, radius, shadows, spacing, typography } from '@/src/theme';
+import CloseIcon from '@/assets/icons/ui/x.svg';
+import { radius, shadows, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { IconButton } from './IconButton';
 import { Text } from './Text';
@@ -62,6 +62,8 @@ export function AppBottomSheet({
   preserveViewportHeightWhileVisible = false,
 }: AppBottomSheetProps) {
   const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { height: windowHeight } = useWindowDimensions();
   const [isMounted, setIsMounted] = useState(visible);
   const [dimOpacity] = useState(() => new Animated.Value(0));
@@ -234,7 +236,7 @@ export function AppBottomSheet({
           </Text>
           <IconButton
             accessibilityLabel="닫기"
-            icon={<CloseIcon color={colors.textBody} height={24} width={24} />}
+            icon={<CloseIcon color={colors.textSecondary} height={24} width={24} />}
             onPress={onClose}
           />
         </View>
@@ -259,7 +261,10 @@ export function AppBottomSheet({
     styles.sheet,
     shadows.bottomSheet,
     minimumTopGap !== undefined && {
-      maxHeight: Math.max(0, layoutViewportHeight - Math.max(minimumTopGap, insets.top + spacing.sm)),
+      maxHeight: Math.max(
+        0,
+        layoutViewportHeight - Math.max(minimumTopGap, insets.top + spacing.sm),
+      ),
     },
     { paddingBottom: sheetBottomPadding },
     sheetStyle,
@@ -335,46 +340,49 @@ export function AppBottomSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: { backgroundColor: colors.overlay, flex: 1, justifyContent: 'flex-end' },
-  webOverlay: {
-    bottom: 0,
-    left: 0,
-    overflow: 'hidden',
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
-  separateOverlay: { backgroundColor: colors.transparent },
-  dimLayer: { backgroundColor: colors.overlay },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.xl,
-    borderTopRightRadius: radius.xl,
-    maxHeight: '88%',
-  },
-  handle: {
-    alignSelf: 'center',
-    backgroundColor: colors.border,
-    borderRadius: radius.round,
-    height: 5,
-    marginTop: spacing.sm,
-    width: 42,
-  },
-  header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    minHeight: 56,
-    paddingLeft: spacing.xl,
-    paddingRight: spacing.sm,
-  },
-  title: { ...typography.title, color: colors.textPrimary, flex: 1 },
-  content: { paddingHorizontal: spacing.xl, paddingVertical: spacing.lg },
-  overflowScroll: { flexGrow: 0, flexShrink: 1 },
-  footer: {
-    borderTopColor: colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-  },
-});
+// The Figma sheet: white panel with 24px top corners and a short handle.
+function createStyles({ colors, text }: AppTheme) {
+  return {
+    overlay: { backgroundColor: colors.overlay, flex: 1, justifyContent: 'flex-end' },
+    webOverlay: {
+      bottom: 0,
+      left: 0,
+      overflow: 'hidden',
+      position: 'absolute',
+      right: 0,
+      top: 0,
+    },
+    separateOverlay: { backgroundColor: colors.transparent },
+    dimLayer: { backgroundColor: colors.overlay },
+    sheet: {
+      backgroundColor: colors.elevated,
+      borderTopLeftRadius: radius.sheet,
+      borderTopRightRadius: radius.sheet,
+      maxHeight: '88%',
+    },
+    handle: {
+      alignSelf: 'center',
+      backgroundColor: colors.border,
+      borderRadius: radius.round,
+      height: 4,
+      marginTop: 12,
+      width: 40,
+    },
+    header: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      minHeight: 56,
+      paddingLeft: 20,
+      paddingRight: 8,
+    },
+    title: { ...text.title2, color: colors.textPrimary, flex: 1 },
+    content: { paddingHorizontal: 20, paddingVertical: 16 },
+    overflowScroll: { flexGrow: 0, flexShrink: 1 },
+    footer: {
+      borderTopColor: colors.border,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      paddingHorizontal: 20,
+      paddingTop: 16,
+    },
+  } as const;
+}
