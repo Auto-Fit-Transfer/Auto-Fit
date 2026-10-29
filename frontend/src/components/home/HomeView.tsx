@@ -261,7 +261,7 @@ function HomeFirstSteps({
       </View>
 
       <AppCard style={styles.tierStart}>
-        <CoreBadge height={46} width={44} />
+        <CoreBadge height={48} width={44} />
         <View style={styles.flex}>
           <Text style={styles.cardTitle}>CORE 1부터 시작해요</Text>
           <Text style={styles.muted}>오늘 할 일을 마치면 티어 점수가 쌓여요</Text>

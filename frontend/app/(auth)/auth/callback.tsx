@@ -1,13 +1,14 @@
 import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { createSupabaseSessionFromOAuthUrl } from '@/src/features/auth/socialOAuth';
 import { getPostLoginDestination } from '@/src/features/auth/postLoginDestination';
-import { colors } from '@/src/theme';
+import { useThemedStyles, type AppTheme } from '@/src/theme';
 
 export default function OAuthCallbackScreen() {
+  const styles = useThemedStyles(createStyles);
   const callbackUrl = Linking.useLinkingURL();
   const router = useRouter();
 
@@ -44,9 +45,11 @@ export default function OAuthCallbackScreen() {
   return <View style={styles.screen} />;
 }
 
-const styles = StyleSheet.create({
-  screen: {
-    backgroundColor: colors.surface,
-    flex: 1,
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    screen: {
+      backgroundColor: colors.background,
+      flex: 1,
+    },
+  } as const;
+}

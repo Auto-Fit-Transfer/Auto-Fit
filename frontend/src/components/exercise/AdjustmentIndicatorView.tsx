@@ -1,12 +1,12 @@
 import { useEffect, useId, useState, type ComponentType } from 'react';
-import { Image, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Image, useWindowDimensions, View } from 'react-native';
 import Svg, { Circle, Defs, Mask, Rect, type SvgProps } from 'react-native-svg';
 
 import ClockIcon from '@/assets/icons/input/Clock.svg';
 import CheckCircleIcon from '@/assets/icons/system/CheckCircle.svg';
 import WarningCircleIcon from '@/assets/icons/system/WarningCircle.svg';
 import { Text } from '@/src/components/common';
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const adjustmentBackground = require('@/assets/images/backgrounds/8_Adjusting.png');
 const adjustmentIllustration = require('@/assets/images/illustrations/exercise/circles/Adjusting.png');
@@ -53,6 +53,8 @@ function getAdjustmentStages(progress: number): AdjustmentStage[] {
 }
 
 export function AdjustmentIndicatorView({ progress }: { progress: number }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { height, width } = useWindowDimensions();
   const widthScale = Math.min(1, width / referenceWidth);
   const canvasHeight = Math.min(referenceHeight, height / Math.max(widthScale, 0.01));
@@ -150,7 +152,7 @@ export function AdjustmentIndicatorView({ progress }: { progress: number }) {
           </View>
 
           <View style={styles.waitNotice}>
-            <WarningCircleIcon color={colors.primaryDark} height={20} width={20} />
+            <WarningCircleIcon color={colors.primaryPressed} height={20} width={20} />
             <Text style={styles.waitNoticeText}>
               조정 과정은 시간이 조금 소요됩니다.{`\n`}잠시만 기다려주세요.
             </Text>
@@ -162,10 +164,12 @@ export function AdjustmentIndicatorView({ progress }: { progress: number }) {
 }
 
 function AdjustmentStageRow({ stage }: { stage: AdjustmentStage }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const isCompleted = stage.status === 'completed';
   const isProcessing = stage.status === 'processing';
   const color = isProcessing
-    ? colors.primaryDark
+    ? colors.primaryPressed
     : isCompleted
       ? colors.textSecondary
       : colors.textDisabled;
@@ -173,7 +177,7 @@ function AdjustmentStageRow({ stage }: { stage: AdjustmentStage }) {
   return (
     <View style={styles.stageRow}>
       {isCompleted ? (
-        <TintedIcon color={colors.primaryDark} Icon={CheckCircleIcon} size={23} />
+        <TintedIcon color={colors.primaryPressed} Icon={CheckCircleIcon} size={23} />
       ) : isProcessing ? (
         <ProcessingDots />
       ) : (
@@ -187,6 +191,7 @@ function AdjustmentStageRow({ stage }: { stage: AdjustmentStage }) {
 }
 
 function ProcessingDots() {
+  const styles = useThemedStyles(createStyles);
   const [activeDot, setActiveDot] = useState(0);
 
   useEffect(() => {
@@ -245,81 +250,83 @@ function TintedIcon({
   );
 }
 
-const styles = StyleSheet.create({
-  adjustmentIllustration: { height: 270, left: 0, position: 'absolute', top: 0, width: 270 },
-  backgroundCard: { left: 16, position: 'absolute', top: 19, width: 380 },
-  canvas: { position: 'absolute', transformOrigin: 'top left', width: referenceWidth },
-  content: { alignItems: 'center', width: referenceWidth },
-  description: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 16,
-    lineHeight: 23,
-    textAlign: 'center',
-  },
-  percentage: {
-    color: colors.primary,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 30,
-    height: 38,
-    includeFontPadding: false,
-    lineHeight: 38,
-    marginTop: -7,
-    textAlign: 'center',
-    width: 90,
-  },
-  processingDot: {
-    backgroundColor: colors.primary,
-    borderRadius: 2,
-    height: 3,
-    position: 'absolute',
-    width: 3,
-  },
-  processingDots: { height: 23, position: 'relative', width: 23 },
-  progressSvg: { left: 10, position: 'absolute', top: 6 },
-  progressVisual: { height: 270, position: 'relative', width: 270 },
-  root: { backgroundColor: colors.background, flex: 1, overflow: 'hidden' },
-  stageCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    elevation: 2,
-    height: 120,
-    justifyContent: 'space-between',
-    marginTop: 5,
-    padding: 15,
-    shadowColor: '#000000',
-    shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2.5,
-    width: 220,
-  },
-  stageRow: { alignItems: 'center', flexDirection: 'row', gap: 10, height: 23 },
-  stageText: {
-    flexShrink: 1,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 15,
-    lineHeight: 18,
-  },
-  title: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 28,
-    lineHeight: 40,
-    textAlign: 'center',
-  },
-  titleAccent: { color: colors.primaryDark },
-  titleSection: { alignItems: 'center', gap: 11, width: 228 },
-  waitNotice: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 7,
-    marginTop: 13,
-    width: 228,
-  },
-  waitNoticeText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    lineHeight: 17,
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    adjustmentIllustration: { height: 270, left: 0, position: 'absolute', top: 0, width: 270 },
+    backgroundCard: { left: 16, position: 'absolute', top: 19, width: 380 },
+    canvas: { position: 'absolute', transformOrigin: 'top left', width: referenceWidth },
+    content: { alignItems: 'center', width: referenceWidth },
+    description: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 16,
+      lineHeight: 23,
+      textAlign: 'center',
+    },
+    percentage: {
+      color: colors.primary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 30,
+      height: 38,
+      includeFontPadding: false,
+      lineHeight: 38,
+      marginTop: -7,
+      textAlign: 'center',
+      width: 90,
+    },
+    processingDot: {
+      backgroundColor: colors.primary,
+      borderRadius: 2,
+      height: 3,
+      position: 'absolute',
+      width: 3,
+    },
+    processingDots: { height: 23, position: 'relative', width: 23 },
+    progressSvg: { left: 10, position: 'absolute', top: 6 },
+    progressVisual: { height: 270, position: 'relative', width: 270 },
+    root: { backgroundColor: colors.background, flex: 1, overflow: 'hidden' },
+    stageCard: {
+      backgroundColor: colors.elevated,
+      borderRadius: 10,
+      elevation: 2,
+      height: 120,
+      justifyContent: 'space-between',
+      marginTop: 5,
+      padding: 15,
+      shadowColor: '#000000',
+      shadowOffset: { height: 0, width: 0 },
+      shadowOpacity: 0.2,
+      shadowRadius: 2.5,
+      width: 220,
+    },
+    stageRow: { alignItems: 'center', flexDirection: 'row', gap: 10, height: 23 },
+    stageText: {
+      flexShrink: 1,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 15,
+      lineHeight: 18,
+    },
+    title: {
+      color: colors.textBody,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 28,
+      lineHeight: 40,
+      textAlign: 'center',
+    },
+    titleAccent: { color: colors.primaryPressed },
+    titleSection: { alignItems: 'center', gap: 11, width: 228 },
+    waitNotice: {
+      alignItems: 'flex-start',
+      flexDirection: 'row',
+      gap: 7,
+      marginTop: 13,
+      width: 228,
+    },
+    waitNoticeText: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 14,
+      lineHeight: 17,
+    },
+  } as const;
+}

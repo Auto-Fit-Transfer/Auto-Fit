@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Modal, Pressable, TextInput, View } from 'react-native';
 
 import { Text } from '@/src/components/common';
-import { colors, radius, spacing, typography } from '@/src/theme';
+import { radius, spacing, typography, useThemedStyles, type AppTheme } from '@/src/theme';
 
 interface BirthDatePickerProps {
   maximumDate: Date;
@@ -41,6 +41,7 @@ function BirthDateDialog({
   onConfirm,
   value,
 }: Omit<BirthDatePickerProps, 'visible'>) {
+  const styles = useThemedStyles(createStyles);
   const [year, setYear] = useState(() => String(value.getFullYear()));
   const [month, setMonth] = useState(() => twoDigits(value.getMonth() + 1));
   const [day, setDay] = useState(() => twoDigits(value.getDate()));
@@ -103,47 +104,49 @@ function BirthDateDialog({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    alignItems: 'center',
-    backgroundColor: colors.overlay,
-    flex: 1,
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  dialog: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    gap: spacing.lg,
-    padding: spacing.lg,
-    width: 300,
-  },
-  title: { color: colors.textBody, fontFamily: typography.sectionTitle.fontFamily, fontSize: 16 },
-  dateFields: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
-  yearField: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    color: colors.textBody,
-    fontFamily: typography.body.fontFamily,
-    fontSize: 18,
-    padding: spacing.xs,
-    textAlign: 'center',
-    width: 78,
-  },
-  dateField: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: 1,
-    color: colors.textBody,
-    fontFamily: typography.body.fontFamily,
-    fontSize: 18,
-    padding: spacing.xs,
-    textAlign: 'center',
-    width: 48,
-  },
-  separator: { color: colors.textSecondary, fontSize: 18, marginHorizontal: 3 },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end' },
-  action: { minHeight: 40, justifyContent: 'center', paddingHorizontal: spacing.md },
-  cancel: { color: colors.textSecondary, fontFamily: typography.label.fontFamily },
-  confirm: { color: colors.primaryDark, fontFamily: typography.label.fontFamily },
-  disabled: { color: colors.textDisabled },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    overlay: {
+      alignItems: 'center',
+      backgroundColor: colors.overlay,
+      flex: 1,
+      justifyContent: 'center',
+      padding: spacing.xl,
+    },
+    dialog: {
+      backgroundColor: colors.elevated,
+      borderRadius: radius.lg,
+      gap: spacing.lg,
+      padding: spacing.lg,
+      width: 300,
+    },
+    title: { color: colors.textBody, fontFamily: typography.sectionTitle.fontFamily, fontSize: 16 },
+    dateFields: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
+    yearField: {
+      borderBottomColor: colors.border,
+      borderBottomWidth: 1,
+      color: colors.textBody,
+      fontFamily: typography.body.fontFamily,
+      fontSize: 18,
+      padding: spacing.xs,
+      textAlign: 'center',
+      width: 78,
+    },
+    dateField: {
+      borderBottomColor: colors.border,
+      borderBottomWidth: 1,
+      color: colors.textBody,
+      fontFamily: typography.body.fontFamily,
+      fontSize: 18,
+      padding: spacing.xs,
+      textAlign: 'center',
+      width: 48,
+    },
+    separator: { color: colors.textSecondary, fontSize: 18, marginHorizontal: 3 },
+    actions: { flexDirection: 'row', justifyContent: 'flex-end' },
+    action: { minHeight: 40, justifyContent: 'center', paddingHorizontal: spacing.md },
+    cancel: { color: colors.textSecondary, fontFamily: typography.label.fontFamily },
+    confirm: { color: colors.primaryPressed, fontFamily: typography.label.fontFamily },
+    disabled: { color: colors.textDisabled },
+  } as const;
+}

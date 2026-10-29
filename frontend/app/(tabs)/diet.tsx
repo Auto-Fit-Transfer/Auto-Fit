@@ -3,12 +3,10 @@ import {
   Alert,
   Animated,
   Easing,
-  Modal,
   type ImageSourcePropType,
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -17,7 +15,9 @@ import Bmr from '@/assets/icons/data/BMR.svg';
 import Fat from '@/assets/icons/data/Fat.svg';
 import Plant from '@/assets/icons/deco/Plant.svg';
 import FishSimple from '@/assets/icons/food/FishSimple.svg';
+import CheckIcon from '@/assets/icons/ui/check.svg';
 import {
+  AppBottomSheet,
   AppButton,
   Badge,
   CustomScrollIndicator,
@@ -47,7 +47,7 @@ import {
   BOTTOM_NAVIGATION_MIN_BOTTOM_GAP,
   getBottomNavigationVisualHeight,
 } from '@/src/components/navigation';
-import { colors, fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
+import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { nutritionNumber, type NutritionSummary } from '@/src/features/nutritionSummary';
 
 const breakfastImage = require('../../assets/images/illustrations/temp/Image_MealPicture_1.png');
@@ -55,7 +55,6 @@ const lunchImage = breakfastImage;
 const dinnerImage = require('../../assets/images/illustrations/temp/Image_MealPicture_2.png');
 const snackImage = require('../../assets/images/illustrations/temp/Image_MealPicture_3.png');
 
-const referenceWidth = 412;
 const dateWindowMin = -6;
 const dateWindowMax = 6;
 const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
@@ -743,6 +742,7 @@ const MealCard = memo(function MealCard({
   recommendationPending: boolean;
 }) {
   const mealStyles = useThemedStyles(createMealStyles);
+  const styles = useThemedStyles(createStyles);
   const [detailHeight, setDetailHeight] = useState(0);
   const [detailProgress] = useState(() => new Animated.Value(expanded ? 1 : 0));
   const [detailOpacity] = useState(() => new Animated.Value(expanded ? 1 : 0));
@@ -932,6 +932,8 @@ const MealCard = memo(function MealCard({
 });
 
 export default function DietScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const [today] = useState(() => {
@@ -1669,46 +1671,39 @@ export default function DietScreen() {
         </View>
       </ScrollView>
       <CustomScrollIndicator {...indicator.indicatorProps} color="rgba(79, 63, 222, 0.35)" />
-      <Modal
+      <AppBottomSheet
+        contentStyle={styles.dateList}
+        onClose={() => setShowDates(false)}
+        scrollable="when-overflow"
+        title="날짜 선택"
         visible={showDates}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowDates(false)}
       >
-        <View style={main.overlay}>
-          <View style={main.dateDialog}>
-            <Text style={styles.mealSectionTitle}>날짜 선택</Text>
-            <ScrollView>
-              {Array.from({ length: 13 }, (_, i) => i - 6).map((offset) => (
-                <Pressable
-                  accessibilityRole="button"
-                  key={offset}
-                  onPress={() => {
-                    moveSelectedDate(offset - selectedDateOffset);
-                    setShowDates(false);
-                  }}
-                  style={[
-                    main.dateOption,
-                    offset === selectedDateOffset && { backgroundColor: colors.primaryLight },
-                  ]}
-                >
-                  <Text style={main.dateSelectText}>
-                    {getDateCopy(addDays(today, offset), offset).date}
-                    {offset === 0 ? ' · 오늘' : ''}
-                  </Text>
-                </Pressable>
-              ))}
-            </ScrollView>
+        {Array.from({ length: 13 }, (_, i) => i - 6).map((offset) => {
+          const selected = offset === selectedDateOffset;
+          return (
             <Pressable
               accessibilityRole="button"
-              onPress={() => setShowDates(false)}
-              style={main.dateOption}
+              accessibilityState={{ selected }}
+              key={offset}
+              onPress={() => {
+                moveSelectedDate(offset - selectedDateOffset);
+                setShowDates(false);
+              }}
+              style={({ pressed }) => [
+                styles.dateOption,
+                selected && styles.dateOptionSelected,
+                pressed && styles.pressed,
+              ]}
             >
-              <Text style={main.dateSelectText}>닫기</Text>
+              <Text style={[styles.dateText, selected && styles.dateTextSelected]}>
+                {getDateCopy(addDays(today, offset), offset).date}
+              </Text>
+              {offset === 0 ? <Text style={styles.dateToday}>오늘</Text> : null}
+              {selected ? <CheckIcon color={colors.primaryText} height={20} width={20} /> : null}
             </Pressable>
-          </View>
-        </View>
-      </Modal>
+          );
+        })}
+      </AppBottomSheet>
       <MealRecordSheets
         initialDraft={
           recordingMealId ? mealRecordsByDate[selectedDateKey]?.[recordingMealId] : undefined
@@ -1722,511 +1717,50 @@ export default function DietScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background, overflow: 'hidden' },
-  webViewport: { height: '100%', maxHeight: '100%', minHeight: 0 },
-  webScrollViewport: { flex: 1, maxHeight: '100%', minHeight: 0 },
-  canvasSlot: { position: 'relative', width: '100%' },
-  canvas: {
-    alignSelf: 'flex-start',
-    position: 'absolute',
-    transformOrigin: 'top left',
-    width: referenceWidth,
-  },
-  screenTitle: {
-    color: '#464646',
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 15,
-    letterSpacing: 1.5,
-    lineHeight: 20,
-    textAlign: 'center',
-    width: referenceWidth,
-  },
-  hero: {
-    height: 118,
-    marginTop: 11,
-    paddingLeft: 21,
-    position: 'relative',
-  },
-  heroCopy: { zIndex: 2 },
-  strategyBadge: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: '#E8E8FF',
-    borderRadius: 20,
-    height: 20,
-    justifyContent: 'center',
-    paddingHorizontal: 7,
-  },
-  strategyBadgeText: {
-    color: '#7866F4',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 12,
-  },
-  heroTitle: {
-    color: '#464646',
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 20,
-    lineHeight: 27,
-    marginTop: 5,
-  },
-  primaryText: { color: '#7866F4' },
-  heroDescription: {
-    color: '#767676',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 9,
-  },
-  heroImage: { height: 100, position: 'absolute', right: 18, top: 6, width: 165 },
-  sectionStack: { gap: 10, marginHorizontal: 21 },
-  dateCard: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E5EAE9',
-    borderRadius: 10,
-    borderWidth: 1,
-    flexDirection: 'row',
-    height: 80,
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-  },
-  arrowButton: {
-    alignItems: 'center',
-    backgroundColor: '#E8E8FF',
-    borderRadius: 14,
-    height: 28,
-    justifyContent: 'center',
-    width: 28,
-  },
-  arrowDisabled: { opacity: 0.3 },
-  loadingContent: { opacity: 0.55 },
-  pressed: { opacity: 0.7 },
-  selectedDate: {
-    alignItems: 'center',
-    backgroundColor: '#E8E8FF',
-    borderRadius: 10,
-    gap: 5,
-    height: 70,
-    justifyContent: 'center',
-    width: 240,
-  },
-  selectedDateLabel: {
-    color: '#7866F4',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-    lineHeight: 18,
-  },
-  selectedDateValue: {
-    color: '#464646',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  selectedDateLine: {
-    backgroundColor: '#7866F4',
-    borderRadius: 1,
-    height: 2,
-    width: 35,
-  },
-  nutritionCard: {
-    padding: 0,
-    borderWidth: 0,
-    backgroundColor: 'transparent',
-  },
-  nutritionTitle: {
-    color: '#464646',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 22,
-    lineHeight: 27,
-  },
-  nutritionInner: { gap: 17, marginTop: 10, width: '100%' },
-  calorieGoal: { gap: 10 },
-  calorieGoalTop: { alignItems: 'center', flexDirection: 'row', gap: 7, width: '100%' },
-  nutritionIcon: {
-    alignItems: 'center',
-    borderRadius: 15,
-    height: 30,
-    justifyContent: 'center',
-    width: 30,
-  },
-  calorieValue: {
-    color: '#464646',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 24,
-    lineHeight: 30,
-    flex: 1,
-  },
-  calorieTarget: {
-    color: '#767676',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  calorieTrack: {
-    backgroundColor: '#E5EAE9',
-    borderRadius: 3,
-    height: 10,
-    overflow: 'hidden',
-    width: '100%',
-  },
-  calorieFill: { borderRadius: 5, height: 10 },
-  macroGoals: { gap: 10 },
-  macroGoal: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 7,
-    height: 43,
-    paddingHorizontal: 5,
-  },
-  macroCopy: { alignSelf: 'stretch', gap: 12, justifyContent: 'center' },
-  macroLabel: {
-    color: '#7866F4',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-    lineHeight: 17,
-  },
-  macroValue: {
-    color: '#464646',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-    lineHeight: 20,
-  },
-  macroTarget: {
-    color: '#767676',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 12,
-    lineHeight: 20,
-  },
-  mealSectionTitle: {
-    color: '#464646',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 22,
-    marginBottom: 1,
-    marginTop: 4,
-  },
-  mealList: { gap: 10 },
-  mealLoadMessage: {
-    color: '#767676',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    paddingVertical: 16,
-    textAlign: 'center',
-  },
-  mealErrorCard: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E5EAE9',
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 18,
-  },
-  mealErrorText: {
-    color: '#767676',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  mealRetryText: { color: '#7866F4', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  mealCard: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E5EAE9',
-    borderRadius: 10,
-    borderWidth: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    minHeight: 116,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  mealCardEaten: { borderColor: '#BAB1FF' },
-  mealCardModified: { borderColor: '#5FA0FB' },
-  mealCardSkipped: { borderColor: '#E5EAE9' },
-  mealSummary: { flexDirection: 'row', gap: 13, height: 110, width: 350 },
-  mealRight: { flex: 1, gap: 17, height: 110 },
-  mealMetadataRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  mealMetadataLeft: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: 130,
-  },
-  mealNameRow: { alignItems: 'center', flexDirection: 'row', gap: 5 },
-  mealMetadataDivider: { backgroundColor: '#E5EAE9', height: 12, width: 1 },
-  mealTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
-  mealKcal: {
-    color: '#464646',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-  },
-  statusPressable: { borderRadius: 10 },
-  statusBadge: {
-    alignItems: 'center',
-    borderRadius: 10,
-    flexDirection: 'row',
-    gap: 3,
-    height: 20,
-    justifyContent: 'center',
-    width: 75,
-  },
-  statusBadgeText: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
-  recommendedBadge: { backgroundColor: '#E8E8FF' },
-  recommendedBadgeText: { color: '#7866F4' },
-  eatenBadge: { backgroundColor: '#E8E8FF' },
-  eatenBadgeText: { color: '#7866F4' },
-  modifiedBadge: { backgroundColor: '#E2EEFF' },
-  modifiedBadgePressed: { backgroundColor: '#C9DDFF' },
-  modifiedBadgeText: { color: '#0066FF' },
-  skippedBadge: { backgroundColor: '#EAEAEA' },
-  skippedBadgeText: { color: '#767676' },
-  skippedContent: { opacity: 0.5 },
-  mealImage: { backgroundColor: '#F3F5F4', borderRadius: 10, height: 110, width: 110 },
-  mealBottomRow: { flex: 1, flexDirection: 'row' },
-  mealCopy: { flex: 1, justifyContent: 'space-between' },
-  foodsText: {
-    color: '#464646',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 17,
-    lineHeight: 21,
-    width: 200,
-  },
-  chevronArea: { alignItems: 'center', alignSelf: 'stretch', paddingTop: 10, width: 25 },
-  chevronCircle: {
-    alignItems: 'center',
-    backgroundColor: '#E8E8FF',
-    borderRadius: 12.5,
-    height: 25,
-    justifyContent: 'center',
-    width: 25,
-  },
-  expandedClip: { overflow: 'hidden' },
-  expandedMeasure: {
-    position: 'absolute',
-    left: 10,
-    right: 10,
-    top: 122,
-    opacity: 0,
-    zIndex: -1,
-  },
-  expandedContent: { gap: 12, paddingTop: 12 },
-  mealDivider: {
-    backgroundColor: '#E5EAE9',
-    height: 1,
-    width: '100%',
-  },
-  detailTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 5 },
-  detailTitle: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  intakeCard: { backgroundColor: '#FBF7F1', borderRadius: 10, gap: 10, padding: 10 },
-  intakeTitleRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  intakeTitle: { color: '#5C4D3C' },
-  intakeBadge: {
-    alignItems: 'center',
-    backgroundColor: '#EFECE7',
-    borderRadius: 10,
-    height: 20,
-    justifyContent: 'center',
-    width: 50,
-  },
-  intakeBadgeText: { color: '#767676', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  intakeItems: {
-    alignContent: 'flex-start',
-    alignItems: 'flex-start',
-    columnGap: 10,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    rowGap: 10,
-    width: '100%',
-  },
-  intakeItem: {
-    alignItems: 'flex-start',
-    backgroundColor: '#FCFBF9',
-    borderRadius: 10,
-    flexBasis: '48.4%',
-    flexGrow: 0,
-    flexShrink: 0,
-    height: 50,
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-    maxWidth: '48.4%',
-  },
-  intakeName: {
-    color: '#767676',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    lineHeight: 17,
-  },
-  intakeAmount: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 18,
-    marginTop: 2,
-    width: '100%',
-  },
-  actions: { flexDirection: 'row', justifyContent: 'space-between' },
-  actionButton: {
-    alignItems: 'center',
-    borderRadius: 5,
-    borderWidth: 0.5,
-    flexDirection: 'row',
-    gap: 4,
-    height: 32,
-    justifyContent: 'center',
-    width: 103,
-  },
-  actionWide: { width: 135 },
-  actionDisabled: { opacity: 0.42 },
-  actionEaten: { backgroundColor: '#FFFFFF', borderColor: '#7866F4' },
-  actionEatenSelected: { backgroundColor: '#E8E8FF', borderColor: '#7866F4' },
-  actionEatenPressed: { backgroundColor: '#E8E8FF', borderColor: '#7866F4' },
-  actionModified: { backgroundColor: '#FFFFFF', borderColor: '#0066FF' },
-  actionModifiedSelected: { backgroundColor: '#E2EEFF', borderColor: '#0066FF' },
-  actionModifiedPressed: { backgroundColor: '#E2EEFF', borderColor: '#0066FF' },
-  actionSkipped: { backgroundColor: '#FFFFFF', borderColor: '#727272' },
-  actionSkippedSelected: { backgroundColor: '#F4F4F4', borderColor: '#727272' },
-  actionSkippedPressed: { backgroundColor: '#F4F4F4', borderColor: '#727272' },
-  actionText: { fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  actionEatenText: { color: '#7866F4' },
-  actionModifiedText: { color: '#0066FF' },
-  actionSkippedText: { color: '#727272' },
-
-  selectedCardBorder: {
-    ...StyleSheet.absoluteFill,
-    borderRadius: 10,
-    borderWidth: 2,
-    zIndex: 10,
-  },
-  mealCardWeb: {
-    overflow: 'hidden',
-  },
-  eatenCardBorder: {
-    borderColor: '#BAB1FF',
-  },
-  modifiedCardBorder: {
-    borderColor: '#5FA0FB',
-  },
-});
-
-const main = StyleSheet.create({
-  content: { marginHorizontal: 21, marginTop: 25, gap: 15 },
-  heroImage: { position: 'absolute', width: 160, height: 130, right: 0, top: 5 },
-  heroTitle: {
-    fontFamily: fontFamilies.pretendardBold,
-    color: colors.textWhite,
-    fontSize: 24,
-    lineHeight: 27,
-    maxWidth: 220,
-  },
-  accent: { color: colors.primaryMedium },
-  heroDescription: {
-    fontSize: 14,
-    fontFamily: fontFamilies.pretendardMedium,
-    color: colors.textWhiteSecondary,
-    marginTop: 10,
-  },
-  dateControls: { marginTop: 'auto', gap: 8 },
-  today: {
-    borderWidth: 0.5,
-    borderColor: colors.primaryLight,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    flexDirection: 'row',
-    gap: 3,
-    alignItems: 'center',
-  },
-  todayText: { fontSize: 13, color: colors.primaryLight },
-  dateRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  dateArrow: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  dateText: {
-    fontSize: 16,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    color: colors.primaryMedium,
-    flexShrink: 1,
-  },
-  dateSelect: {
-    marginLeft: 'auto',
-    backgroundColor: colors.primaryLight,
-    borderRadius: 20,
-    padding: 9,
-    flexDirection: 'row',
-    gap: 5,
-    alignItems: 'center',
-  },
-  dateSelectText: {
-    fontSize: 14,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    color: colors.primary,
-  },
-  mealChips: { flexDirection: 'row', gap: 8, marginTop: 10 },
-  mealChip: {
-    flex: 1,
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: '#CACACA',
-    backgroundColor: '#FFF',
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  recordedChip: { backgroundColor: colors.primary, borderColor: colors.primary },
-  mealChipText: { fontSize: 17, color: colors.textSecondary },
-  recordedChipText: { color: '#FFF' },
-  percentage: { fontSize: 18, color: colors.primary, fontFamily: fontFamilies.pretendardMedium },
-  mealAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 10 },
-  mealTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 13,
-  },
-  mealBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: colors.primaryLight,
-  },
-  mealKcal: { fontSize: 17, color: colors.textBody, fontFamily: fontFamilies.pretendardMedium },
-  mealBottom: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  foods: {
-    flex: 1,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 18,
-    lineHeight: 24,
-    color: colors.textBody,
-  },
-  record: {
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-  },
-  recordText: { fontSize: 15, color: colors.primary },
-  overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 30 },
-  dateDialog: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, maxHeight: '75%', gap: 12 },
-  dateOption: { padding: 14, borderRadius: 10, alignItems: 'center' },
-});
+function createStyles({ colors, text }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background, overflow: 'hidden' },
+    webViewport: { height: '100%', maxHeight: '100%', minHeight: 0 },
+    webScrollViewport: { flex: 1, maxHeight: '100%', minHeight: 0 },
+    pressed: { opacity: 0.75 },
+    mealList: { gap: 10 },
+    mealLoadMessage: {
+      ...text.body2,
+      color: colors.textSecondary,
+      paddingVertical: 16,
+      textAlign: 'center',
+    },
+    mealErrorCard: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 18,
+    },
+    mealErrorText: { ...text.body2, color: colors.textSecondary, textAlign: 'center' },
+    mealRetryText: { ...text.body2Strong, color: colors.primaryText },
+    expandedClip: { overflow: 'hidden' },
+    // Lays the ingredient list out unseen at the card's inner width to know its open height.
+    expandedMeasure: { left: 16, opacity: 0, position: 'absolute', right: 16, top: 0, zIndex: -1 },
+    expandedContent: { gap: 12, paddingTop: 12 },
+    dateList: { gap: 4, paddingBottom: 8 },
+    dateOption: {
+      alignItems: 'center',
+      borderRadius: 12,
+      flexDirection: 'row',
+      gap: 8,
+      minHeight: 52,
+      paddingHorizontal: 16,
+    },
+    dateOptionSelected: { backgroundColor: colors.primaryLight },
+    dateText: { ...text.body1, color: colors.textPrimary, flex: 1 },
+    dateTextSelected: { ...text.body1Strong, color: colors.primaryText },
+    dateToday: { ...text.caption, color: colors.textSecondary },
+  } as const;
+}
 
 // Redesigned parts of the diet tab (Figma D1) that follow the theme.
 function createDietScreenStyles({ colors: palette, text }: AppTheme) {

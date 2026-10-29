@@ -1,109 +1,155 @@
 import { useRouter } from 'expo-router';
-import { Image, StyleSheet, View } from 'react-native';
-import { Text } from '@/src/components/common';
-import { MainHeader, MainScreen, mainStyles } from '@/src/components/main/MainSurface';
-import { colors, fontFamilies } from '@/src/theme';
-import DietIcon from '@/assets/figma/main/8f046.svg';
-import ExerciseIcon from '@/assets/figma/main/3a625.svg';
-import DataIcon from '@/assets/figma/main/baa81.svg';
-import CoreIcon from '@/assets/figma/main/6a991.svg';
-import BalanceIcon from '@/assets/figma/main/e036c.svg';
-import ActiveIcon from '@/assets/figma/main/6ebab.svg';
-import FitIcon from '@/assets/figma/main/2ad06.svg';
-import PeakIcon from '@/assets/figma/main/5ef63.svg';
+import { Pressable, View } from 'react-native';
 
-const roadmap = [
-  { name: 'CORE', description: '건강관리\n기반 형성', Icon: CoreIcon },
-  { name: 'BALANCE', description: '건강의 균형\n잡아가기', Icon: BalanceIcon },
-  { name: 'ACTIVE', description: '꾸준한\n실천', Icon: ActiveIcon },
-  { name: 'FIT', description: '나에게 맞는\n건강관리\n안정화', Icon: FitIcon },
-  { name: 'PEAK', description: '최상의\n건강흐름\n유지', Icon: PeakIcon },
-];
+import BarbellIcon from '@/assets/icons/ui/barbell.svg';
+import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
+import FileTextIcon from '@/assets/icons/ui/file-text.svg';
+import ForkKnifeIcon from '@/assets/icons/ui/fork-knife.svg';
+import ActiveBadge from '@/assets/tier/active.svg';
+import BalanceBadge from '@/assets/tier/balance.svg';
+import CoreBadge from '@/assets/tier/core.svg';
+import FitBadge from '@/assets/tier/fit.svg';
+import PeakBadge from '@/assets/tier/peak.svg';
+import { Notice, Text } from '@/src/components/common';
+import { ChoiceSection } from '@/src/components/exercise/ExerciseFormParts';
+import { SubScreen } from '@/src/components/navigation';
+import { radius, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
+const steps = [
+  { name: 'CORE', description: '기반 다지기', Badge: CoreBadge },
+  { name: 'BALANCE', description: '균형 잡기', Badge: BalanceBadge },
+  { name: 'ACTIVE', description: '꾸준히 실천', Badge: ActiveBadge },
+  { name: 'FIT', description: '나에게 맞춤', Badge: FitBadge },
+  { name: 'PEAK', description: '최상의 흐름', Badge: PeakBadge },
+] as const;
+
+const ways = [
+  { title: '식단 관리', body: '추천 식단대로 끼니 기록하기', Icon: ForkKnifeIcon, href: '/diet' },
+  { title: '운동 관리', body: '추천 운동 끝까지 마치기', Icon: BarbellIcon, href: '/exercise' },
+  {
+    title: '건강 데이터',
+    body: '새 검진 · 인바디 결과 올리기',
+    Icon: FileTextIcon,
+    href: '/upload',
+  },
+] as const;
+
+// Figma C4. The server does not score tiers yet, so the score, the bar to the next step and the
+// points per way wait for it. Everyone starts at CORE 1, as the home card says.
 export default function TierScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+
   return (
-    <MainScreen tabs={false}>
-      <MainHeader
-        title="내 건강 티어"
-        height={280}
-        back={() => router.back()}
-        style={{ borderBottomLeftRadius: 100, borderBottomRightRadius: 100 }}
-      >
-        <View style={{ alignItems: 'center' }}>
-          <Text style={styles.title}>건강 티어</Text>
-          <Image
-            source={require('@/assets/figma/main/e03a2.png')}
-            resizeMode="contain"
-            style={{ width: 150, height: 103, marginTop: 5 }}
-          />
-          <Text style={styles.unavailable}>티어 산정 기능을 준비하고 있어요</Text>
-        </View>
-      </MainHeader>
-      <View style={mainStyles.content}>
-        <View style={[mainStyles.card, { gap: 24 }]}>
-          <Text style={mainStyles.sectionTitle}>이번 주 이렇게 관리해보세요!</Text>
-          {[
-            {
-              title: '식단 관리',
-              text: '추천 식단 또는 목표에 맞는 식사 기록하기',
-              Icon: DietIcon,
-            },
-            { title: '운동 관리', text: '추천 운동을 꾸준히 완료하기', Icon: ExerciseIcon },
-            { title: '건강 데이터', text: '최신 측정값을 유지하고 관리하기', Icon: DataIcon },
-          ].map(({ title, text, Icon }) => (
-            <View key={title} style={styles.row}>
-              <View style={styles.icon}>
-                <Icon />
+    <SubScreen gap={28} onBack={() => router.back()} title="내 티어">
+      <View style={styles.hero}>
+        <CoreBadge height={115} width={104} />
+        <Text style={styles.heroTitle}>CORE 1</Text>
+        <Text style={styles.heroBody}>건강관리의 기반을 다지는 단계예요</Text>
+      </View>
+
+      <Notice body="티어 점수 계산을 준비하고 있어요. 준비되면 여기에서 내 점수와 다음 단계까지 남은 점수를 보여 드려요." />
+
+      <ChoiceSection title="이번 주 이렇게 올려 보세요">
+        <View style={styles.card}>
+          {ways.map(({ title, body, Icon, href }, index) => (
+            <Pressable
+              key={title}
+              accessibilityRole="button"
+              onPress={() => router.push(href)}
+              style={({ pressed }) => [
+                styles.way,
+                index > 0 && styles.divider,
+                pressed && styles.pressed,
+              ]}
+            >
+              <View style={styles.wayIcon}>
+                <Icon color={colors.textPrimary} height={20} width={20} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>{title}</Text>
-                <Text style={mainStyles.text}>{text}</Text>
+              <View style={styles.flex}>
+                <Text style={styles.wayTitle}>{title}</Text>
+                <Text style={styles.wayBody}>{body}</Text>
               </View>
-            </View>
+              <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
+            </Pressable>
           ))}
         </View>
-        <View style={[mainStyles.card, { gap: 26 }]}>
-          <Text style={mainStyles.sectionTitle}>건강 티어 로드맵</Text>
-          <View style={styles.roadmap}>
-            {roadmap.map(({ name, description, Icon }) => (
-              <View key={name} style={styles.stage}>
-                <View style={styles.stageIcon}>
-                  <Icon />
-                </View>
-                <Text style={styles.stageTitle}>{name}</Text>
-                <View style={styles.dot} />
-                <Text style={styles.stageText}>{description}</Text>
+      </ChoiceSection>
+
+      <ChoiceSection title="티어 단계">
+        <View style={[styles.card, styles.stepsCard]}>
+          <View style={styles.steps}>
+            {steps.map(({ name, description, Badge }, index) => (
+              <View key={name} style={styles.step}>
+                <Badge height={44} width={40} />
+                <Text style={styles.stepName}>{name}</Text>
+                <Text style={styles.stepBody}>{description}</Text>
+                {index === 0 ? (
+                  <View style={styles.now}>
+                    <Text style={styles.nowText}>지금</Text>
+                  </View>
+                ) : null}
               </View>
             ))}
           </View>
+          <Text style={styles.stepNote}>
+            한 단계에 1 · 2 · 3 세 칸이 있고, 3칸을 채우면 다음 단계로 올라가요. 점수는 식단 · 운동
+            · 건강 데이터 기록으로 쌓여요.
+          </Text>
         </View>
-      </View>
-    </MainScreen>
+      </ChoiceSection>
+    </SubScreen>
   );
 }
-const styles = StyleSheet.create({
-  title: { fontFamily: fontFamilies.pretendardBold, fontSize: 34, color: colors.primaryMedium },
-  unavailable: { color: colors.textWhiteSecondary, fontSize: 14, marginTop: 14 },
-  row: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  icon: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowTitle: {
-    color: colors.textBody,
-    fontSize: 16,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    marginBottom: 5,
-  },
-  roadmap: { flexDirection: 'row', justifyContent: 'space-between' },
-  stage: { flex: 1, alignItems: 'center', gap: 12 },
-  stageIcon: { height: 44, justifyContent: 'center', alignItems: 'center' },
-  stageTitle: { fontSize: 11, fontFamily: fontFamilies.pretendardSemiBold, color: colors.textBody },
-  stageText: { color: colors.textSecondary, fontSize: 12, lineHeight: 17, textAlign: 'center' },
-  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primaryMedium },
-});
+
+function createStyles({ colors, text }: AppTheme) {
+  return {
+    flex: { flex: 1, gap: 2 },
+    hero: { alignItems: 'center', gap: 4, paddingTop: 8 },
+    heroTitle: { ...text.display, color: colors.textPrimary, marginTop: 8 },
+    heroBody: { ...text.body2, color: colors.textBody, textAlign: 'center' },
+    card: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: radius.card,
+      borderWidth: 1,
+      paddingHorizontal: 16,
+    },
+    way: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 12,
+      minHeight: 72,
+      paddingVertical: 14,
+    },
+    divider: { borderTopColor: colors.border, borderTopWidth: 1 },
+    pressed: { opacity: 0.75 },
+    wayIcon: {
+      alignItems: 'center',
+      backgroundColor: colors.elevated,
+      borderColor: colors.border,
+      borderRadius: 20,
+      borderWidth: 1,
+      height: 40,
+      justifyContent: 'center',
+      width: 40,
+    },
+    wayTitle: { ...text.body1Strong, color: colors.textPrimary },
+    wayBody: { ...text.body2, color: colors.textSecondary },
+    stepsCard: { gap: 16, paddingVertical: 20 },
+    steps: { flexDirection: 'row', justifyContent: 'space-between' },
+    step: { alignItems: 'center', flex: 1, gap: 4 },
+    stepName: { ...text.captionStrong, color: colors.textPrimary, marginTop: 4 },
+    stepBody: { ...text.caption, color: colors.textSecondary, textAlign: 'center' },
+    now: {
+      backgroundColor: colors.tier.CORE.bg,
+      borderRadius: 10,
+      marginTop: 2,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    nowText: { ...text.captionStrong, color: colors.tier.CORE.fg },
+    stepNote: { ...text.body2, color: colors.textBody },
+  } as const;
+}
