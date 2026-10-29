@@ -127,6 +127,8 @@ function createStyles({ colors, text, easyMode }: AppTheme) {
       flex: 1,
       height: '100%',
       includeFontPadding: false,
+      // Lets a narrow field shrink the input so a unit on the right stays visible.
+      minWidth: 0,
       lineHeight: undefined,
       padding: 0,
       ...noWebFocusRing,
