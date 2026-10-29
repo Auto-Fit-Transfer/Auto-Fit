@@ -1,0 +1,34 @@
+name: Daily diet refresh
+
+on:
+  schedule:
+    # GitHub Actions schedules use UTC; 15:00 UTC is 00:00 Asia/Seoul.
+    - cron: "0 15 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-diet-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Refresh daily recommendations
+        env:
+          DIET_REFRESH_CRON_TOKEN: ${{ secrets.DIET_REFRESH_CRON_TOKEN }}
+          API_BASE_URL: ${{ vars.API_BASE_URL || 'https://auto-fit-api-dev.onrender.com' }}
+        run: |
+          if [[ ! "$API_BASE_URL" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?$ ]]; then
+            echo "API_BASE_URL must be an HTTPS origin" >&2
+            exit 1
+          fi
+          curl --fail-with-body --show-error --silent \
+            --retry 3 --retry-all-errors --max-time 1200 \
+            --request POST \
+            --header "X-Cron-Token: ${DIET_REFRESH_CRON_TOKEN}" \
+            "${API_BASE_URL}/internal/diet-refresh"

@@ -9,3 +9,10 @@ frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
 frontend/.DS_Store
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/.venv/
+backend/**/__pycache__/
+backend/.pytest_cache/
+*.pyc

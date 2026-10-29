@@ -1,0 +1,63 @@
+# Shared development API. No database or paid resources are provisioned here.
+services:
+  - type: web
+    name: auto-fit-api-dev
+    runtime: python
+    plan: free
+    region: singapore
+    branch: codex/render-backup-api
+    autoDeployTrigger: "off"
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT --no-server-header
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.14.7"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: CHAT_AI_ENABLED
+        sync: false
+      - key: CHAT_AI_URL
+        sync: false
+      - key: CHAT_AI_API_KEY
+        sync: false
+      - key: AI_SERVER_ENABLED
+        sync: false
+      - key: AI_SERVER_BASE_URL
+        sync: false
+      - key: AI_SERVER_API_KEY
+        sync: false
+      - key: FOOD_IMAGE_ENABLED
+        value: "false"
+      - key: FOOD_IMAGE_URL
+        value: https://lee-com.tailb6e4ed.ts.net/generate-food-image
+      - key: FOOD_IMAGE_API_KEY
+        sync: false
+      - key: FOOD_IMAGE_FORMAT
+        value: webp
+      - key: FOOD_IMAGE_TIMEOUT_SECONDS
+        value: "300"
+      - key: FOOD_IMAGE_MAX_ATTEMPTS
+        value: "2"
+      - key: BACKEND_ALLOWED_HOSTS
+        value: auto-fit-api-dev.onrender.com,localhost,127.0.0.1
+      - key: MAX_REQUEST_BODY_BYTES
+        value: "12582912"
+      - key: API_DOCS_ENABLED
+        value: "true"
+      - key: ENABLE_TEST_ENDPOINTS
+        value: "false"
+      - key: HEALTH_DOCUMENT_OCR_URL
+        value: https://211-233-193-159.sslip.io/ai/ocr
+      - key: HEALTH_DOCUMENT_OCR_TOKEN
+        sync: false
+      - key: HEALTH_DOCUMENT_OCR_MOCK_ENABLED
+        value: "false"
+      - key: DIET_REFRESH_CRON_TOKEN
+        sync: false
