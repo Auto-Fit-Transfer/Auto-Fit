@@ -147,13 +147,13 @@ def main() -> None:
     DOCS.mkdir(exist_ok=True)
     OPENAPI_PATH.write_text(json.dumps(spec, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     lines = [
-        "# Auto-Fit API 서버·응답 형식 목록 (2026-10-29)", "",
-        "이 문서는 **로컬 `front_new` 작업본**의 `backend.app.main:app`에서 생성했다. 배포된 네이버/Render 서버의 현재 응답을 확인한 결과가 아니다.", "",
+        "# Auto-Fit API 서버·응답 형식 목록 (2026-10-30)", "",
+        "이 문서는 GitHub `codex/render-backup-api` 브랜치의 `backend.app.main:app`에서 생성했다. 실제 서버별 데이터와 선택 기능은 환경변수·DB 마이그레이션 적용 상태에 따라 달라질 수 있다.", "",
         f"총 **{len(spec['paths'])}개 경로, {sum(map(len, operations.values()))}개 HTTP 동작**. 전체 JSON Schema와 필드 타입·필수 여부는 [OpenAPI 원본](api-server-openapi-20261029.json)을 확인한다.", "",
         "## 서버 역할", "",
         "| 대상 | 역할 | 현재 확인된 연결/제약 |", "|---|---|---|",
         "| 네이버 공용 API | 앱 기본 API (`https://211-233-206-193.sslip.io`) | 서버 담당자 관리. 이 작업본은 아직 반영 여부 미확인. |",
-        "| Render `auto-fit-api-dev` | 백업·개발 API (`https://auto-fit-api-dev.onrender.com`) | Dashboard의 실제 소스 브랜치는 `backend`, 현재 Live 커밋은 `51dcf00e45733ca4df5b6226057c2f5db235f8d6`이다. 로컬 `render.yaml`의 `front_new`와 다르며 새 `backend/` 파일은 아직 배포되지 않았다. |",
+        "| Render `auto-fit-api-dev` | 백업·개발 API (`https://auto-fit-api-dev.onrender.com`) | 소스 브랜치 `codex/render-backup-api`; 배포 커밋과 상태는 Render Dashboard에서 확인한다. |",
         "| Supabase | 두 API의 DB/Auth/Storage | 앱은 Supabase 로그인 토큰을 API에 전달한다. 마이그레이션 적용 상태는 별도 대조가 필요하다. |",
         "| OCR 서버 | 건강 문서 판독 | `HEALTH_DOCUMENT_OCR_URL`로 연결. 연결 실패 또는 미설정 시 운영 응답 확인 필요. |",
         "| AI 서버 | 식단·러닝 구조화 추천 | `AI_SERVER_ENABLED`/`AI_SERVER_BASE_URL`로 연결하는 선택적 외부 서버. 미설정 시 해당 기능 제한. |",
