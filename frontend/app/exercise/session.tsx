@@ -39,6 +39,7 @@ import { BackButton } from '@/src/components/common/BackButton';
 import { AdjustmentIndicatorView } from '@/src/components/exercise/AdjustmentIndicatorView';
 import { ExerciseActionButton } from '@/src/components/exercise/ExerciseActionButton';
 import { ExerciseScreenFrame } from '@/src/components/exercise/ExerciseScreenFrame';
+import { R6ExerciseSession } from '@/src/components/exercise/R6ExerciseSession';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import {
   useExerciseSession,
@@ -51,6 +52,7 @@ import {
   type ExerciseBodyPart,
 } from '@/src/features/exercise/exerciseData';
 import { useTemporaryAdjustmentProgress } from '@/src/features/exercise/useTemporaryAdjustmentProgress';
+import { loadVoiceGuideSettings, speakGuide } from '@/src/features/exercise/voiceGuide';
 import { colors, fontFamilies } from '@/src/theme';
 
 const fallbackExerciseImage = require('@/assets/images/illustrations/temp/Image_Exercise.png');
@@ -206,6 +208,16 @@ export default function ExerciseSessionScreen() {
   const hasSession = session !== null;
   const exitConfirmationVisible = session?.exitConfirmationVisible ?? false;
   const skipConfirmationVisible = session?.skipConfirmationVisible ?? false;
+  useEffect(() => {
+    if (session?.phase !== 'rest' || session.paused) return;
+    let active = true;
+    void loadVoiceGuideSettings().then((settings) => {
+      if (active && settings.announceRest) {
+        speakGuide(`쉬는 시간이에요. ${Math.ceil(session.restTotalMs / 1000)}초 쉬어 주세요.`, settings);
+      }
+    });
+    return () => { active = false; };
+  }, [session?.phase, session?.paused, session?.restTotalMs, session?.currentExerciseIndex, session?.currentSet]);
 
   const openDiscomfortRecord = useCallback(() => {
     setDiscomfortCloseAction('dismiss');
@@ -321,10 +333,9 @@ export default function ExerciseSessionScreen() {
         itemCount: completedSummary.completedCount,
         sessionId: session.sessionId,
       });
-      // Keep the completed session alive until the user explicitly submits their result record.
-      // This lets the result-record Back action return to this completion screen.
+      // Keep the completed session until the R6 result screen saves feedback.
       requestAnimationFrame(() =>
-        router.push({ pathname: '/exercise/result', params: { source: 'completion' } }),
+        router.push('/exercise/completion'),
       );
     } catch (error) {
       console.error('Exercise session completion failed:', error);
@@ -333,6 +344,43 @@ export default function ExerciseSessionScreen() {
       setIsCompleting(false);
     }
   };
+
+  if (session.phase === 'exercise') {
+    return (
+      <>
+        <R6ExerciseSession
+          exercise={currentExercise}
+          onBack={openExitConfirmation}
+          onCompleteSet={completeCurrentSet}
+          onContinue={() => undefined}
+          onSkip={openSkipConfirmation}
+          onTogglePause={togglePause}
+          session={session}
+        />
+        {session.skipConfirmationVisible ? (
+          <ConfirmationModal
+            cancelLabel="취소"
+            contentHeight={layout.contentHeight}
+            confirmLabel="건너뛰기"
+            description={'현재 운동의 진행 내용은 저장되지 않아요.\n다음 운동으로 이동할까요?'}
+            onCancel={closeSkipConfirmation}
+            onConfirm={skipCurrentExercise}
+            title="이 운동을 건너뛸까요?"
+          />
+        ) : null}
+        {session.exitConfirmationVisible ? (
+          <ConfirmationModal
+            contentHeight={layout.contentHeight}
+            confirmLabel="운동 중단"
+            description={'지금 나가면 현재 진행중인 운동이\n기록되지 않을 수 있어요.'}
+            onCancel={closeExitConfirmation}
+            onConfirm={leaveSession}
+            title="운동을 중단하시겠어요?"
+          />
+        ) : null}
+      </>
+    );
+  }
 
   let content: ReactNode;
   if (session.phase === 'rest') {

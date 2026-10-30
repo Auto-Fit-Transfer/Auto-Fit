@@ -25,6 +25,7 @@ export type HomeResponse = {
 export type Profile = {
   name?: string | null;
   nickname?: string | null;
+  bio?: string | null;
   birth_date?: string | null;
   gender?: 'male' | 'female' | 'other' | null;
   target_weight?: number | null;

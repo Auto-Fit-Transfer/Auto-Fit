@@ -25,6 +25,9 @@ export type CommunityPost = {
   author: CommunityAuthor;
   content: string | null;
   images: CommunityImage[];
+  category?: CommunityPostCategory;
+  tags?: string[];
+  activity_snapshot?: Record<string, unknown> | null;
   like_count: number;
   comment_count: number;
   repost_count: number;
@@ -52,8 +55,23 @@ export type CommunityPage<T> = {
 export type CommunityBlockedUser = CommunityAuthor & { blocked_at: string };
 
 export type CommunityFeedScope = 'all' | 'following';
+export type CommunityPostCategory = 'workout' | 'routine' | 'diet' | 'question' | 'review';
+export type CommunityPostDetails = { category: CommunityPostCategory; tags: string[]; exercise_session_id?: string | null };
+export type CommunityActivity = {
+  session_id: string;
+  completed_at: string;
+  snapshot: { name: string; duration_minutes: number; calories: number; exercises: string[] };
+};
+
+export type CommunitySearchResult = {
+  posts: CommunityPost[];
+  routines: CommunityPost[];
+  users: CommunityProfile[];
+  clubs: CommunityClub[];
+};
 
 export type CommunityProfile = CommunityAuthor & {
+  bio: string | null;
   post_count: number;
   follower_count: number;
   following_count: number;
@@ -71,7 +89,14 @@ export type CommunityFollowUser = CommunityAuthor & {
 };
 
 export type CommunityRule = {
-  rule_key: 'earn_workout' | 'earn_meal_log' | 'club_create_cost' | 'membership_demo_days';
+  rule_key:
+    | 'earn_workout'
+    | 'earn_workout_high'
+    | 'earn_streak_5'
+    | 'earn_streak_30'
+    | 'earn_meal_log'
+    | 'club_create_cost'
+    | 'membership_demo_days';
   amount: number;
   daily_limit: number | null;
   enabled: boolean;
@@ -84,10 +109,30 @@ export type CommunityMileage = {
   rules: CommunityRule[];
 };
 
+export type CommunityMileageMonthly = {
+  earned_this_month: number;
+  earned_last_month: number;
+  spent_this_month: number;
+};
+
+export type CommunityActivityItem = {
+  activity_id: string;
+  occurred_at: string;
+  detail: string | null;
+  post: CommunityPost;
+};
+
 export type CommunityMileageEntry = {
   entry_id: string;
   amount: number;
-  reason: 'workout' | 'meal_log' | 'club_create' | 'challenge';
+  reason:
+    | 'workout'
+    | 'workout_high_adjustment'
+    | 'workout_streak_5'
+    | 'workout_streak_30'
+    | 'meal_log'
+    | 'club_create'
+    | 'challenge';
   created_at: string;
 };
 
@@ -242,7 +287,7 @@ export type CommunityAdminRule = {
 
 // Rules and challenges whose note starts with this are still waiting for the team's decision.
 export const isProvisionalNote = (note: string | null | undefined) =>
-  Boolean(note?.startsWith('임시값'));
+  Boolean(note?.startsWith('임시값') || note?.startsWith('시험 기준'));
 
 export type CommunityNotification = {
   notification_id: string;
@@ -271,7 +316,7 @@ export const COMMUNITY_REPORT_REASONS: { label: string; value: CommunityReportRe
 ];
 
 export const COMMUNITY_MAX_IMAGES = 5;
-export const COMMUNITY_MAX_POST_LENGTH = 500;
+export const COMMUNITY_MAX_POST_LENGTH = 1000;
 export const COMMUNITY_MAX_COMMENT_LENGTH = 300;
 
 export type CommunityPhoto = {
@@ -293,10 +338,20 @@ const postPath = (postId: string) => `/api/community/posts/${encodeURIComponent(
 
 const userPath = (userId: string) => `/api/community/users/${encodeURIComponent(userId)}`;
 
-export function getCommunityFeed(cursor?: string | null, scope: CommunityFeedScope = 'all') {
+export function getCommunityFeed(cursor?: string | null, scope: CommunityFeedScope = 'all', category?: CommunityPostCategory | null) {
   return apiRequest<CommunityPage<CommunityPost>>(
-    `/api/community/feed${pageQuery(cursor, undefined, scope === 'all' ? {} : { scope })}`,
+    `/api/community/feed${pageQuery(cursor, undefined, { ...(scope === 'all' ? {} : { scope }), ...(category ? { category } : {}) })}`,
   );
+}
+
+export function searchCommunity(query: string) {
+  return apiRequest<CommunitySearchResult>(
+    `/api/community/search?q=${encodeURIComponent(query.trim())}`,
+  );
+}
+
+export function getMyCommunityActivities() {
+  return apiRequest<{ items: CommunityActivity[] }>('/api/community/my-activities');
 }
 
 export function getCommunityPost(postId: string) {
@@ -317,9 +372,9 @@ export async function uploadCommunityPhoto(photo: CommunityPhoto) {
   });
 }
 
-export function createCommunityPost(content: string, uploadIds: string[]) {
+export function createCommunityPost(content: string, uploadIds: string[], details?: CommunityPostDetails) {
   return apiRequest<CommunityPost>('/api/community/posts', {
-    body: JSON.stringify({ content: content.trim() || null, upload_ids: uploadIds }),
+    body: JSON.stringify({ content: content.trim() || null, upload_ids: uploadIds, ...details }),
     method: 'POST',
   });
 }
@@ -430,6 +485,34 @@ export function getCommunityMileage() {
   return apiRequest<CommunityMileage>('/api/community/mileage');
 }
 
+export function getCommunityMileageMonthly() {
+  return apiRequest<CommunityMileageMonthly>('/api/community/mileage/monthly');
+}
+
+export function getMyCommunityActivity(kind: 'comments' | 'likes', cursor?: string | null) {
+  return apiRequest<CommunityPage<CommunityActivityItem>>(
+    `/api/community/activity?kind=${kind}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+  );
+}
+
+export function getCommunityBookmarks(cursor?: string | null) {
+  return apiRequest<CommunityPage<CommunityPost>>(
+    `/api/community/bookmarks${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`,
+  );
+}
+
+export type CommunityBookmarkState = { post_id: string; bookmarked: boolean };
+
+export function getCommunityBookmarkState(postId: string) {
+  return apiRequest<CommunityBookmarkState>(`${postPath(postId)}/bookmark`);
+}
+
+export function setCommunityBookmark(postId: string, bookmarked: boolean) {
+  return apiRequest<CommunityBookmarkState>(`${postPath(postId)}/bookmark`, {
+    method: bookmarked ? 'PUT' : 'DELETE',
+  });
+}
+
 export function getCommunityMileageHistory(cursor?: string | null) {
   return apiRequest<CommunityPage<CommunityMileageEntry>>(
     `/api/community/mileage/history${pageQuery(cursor, 30)}`,
@@ -485,9 +568,9 @@ export function getCommunityClubPosts(clubId: string, cursor?: string | null) {
   return apiRequest<CommunityPage<CommunityPost>>(`${clubPath(clubId)}/posts${pageQuery(cursor)}`);
 }
 
-export function createCommunityClubPost(clubId: string, content: string, uploadIds: string[]) {
+export function createCommunityClubPost(clubId: string, content: string, uploadIds: string[], details?: CommunityPostDetails) {
   return apiRequest<CommunityPost>(`${clubPath(clubId)}/posts`, {
-    body: JSON.stringify({ content: content.trim() || null, upload_ids: uploadIds }),
+    body: JSON.stringify({ content: content.trim() || null, upload_ids: uploadIds, ...details }),
     method: 'POST',
   });
 }

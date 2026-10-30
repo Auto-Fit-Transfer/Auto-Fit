@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import CloseIcon from '@/assets/icons/common/X.svg';
 import type { CommunityImage } from '@/src/api/community';
-import { colors, fontFamilies, radius } from '@/src/theme';
+import { colors, fontFamilies, radius, spacing } from '@/src/theme';
 
 const GAP = 2;
 
@@ -42,9 +42,29 @@ function gridAspectRatio(images: CommunityImage[]) {
   return 1 / (images.length >= 4 ? 0.75 : 0.6);
 }
 
-export function CommunityPostImages({ images }: { images: CommunityImage[] }) {
+export function CommunityPostImages({ images, expanded = false }: { images: CommunityImage[]; expanded?: boolean }) {
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const { width: windowWidth } = useWindowDimensions();
   if (!images.length) return null;
+
+  if (expanded) {
+    const imageWidth = Math.max(1, Math.min(windowWidth - spacing.xl * 2, 600));
+    return <>
+      <View style={[styles.carousel, { width: imageWidth }]}>
+        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={styles.carouselScroll}
+          onMomentumScrollEnd={(event) => setCurrentIndex(Math.max(0, Math.min(images.length - 1, Math.round(event.nativeEvent.contentOffset.x / imageWidth))))}>
+          {images.map((image, index) => <Pressable key={index} accessibilityLabel={`사진 ${index + 1}/${images.length} 크게 보기`} accessibilityRole="imagebutton"
+            onPress={() => setViewerIndex(index)} style={[styles.carouselImage, { width: imageWidth }]}>
+            {image.url ? <Image resizeMode="cover" source={{ uri: image.url }} style={StyleSheet.absoluteFill} /> : null}
+          </Pressable>)}
+        </ScrollView>
+        {images.length > 1 ? <View style={styles.imageCount}><Text style={styles.imageCountText}>{currentIndex + 1}/{images.length}</Text></View> : null}
+      </View>
+      {images.length > 1 ? <View style={styles.dots}>{images.map((_, index) => <View key={index} style={[styles.dot, index === currentIndex && styles.activeDot]} />)}</View> : null}
+      {viewerIndex !== null ? <PhotoViewer images={images} initialIndex={viewerIndex} onClose={() => setViewerIndex(null)} /> : null}
+    </>;
+  }
 
   const groups = groupsFor(images.length);
   const columns = images.length === 3;
@@ -155,6 +175,14 @@ function PhotoViewer({
 }
 
 const styles = StyleSheet.create({
+  carousel: { aspectRatio: 1.45, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.background },
+  carouselScroll: { flex: 1 },
+  carouselImage: { height: '100%', backgroundColor: colors.background },
+  imageCount: { position: 'absolute', right: 10, top: 10, borderRadius: radius.round, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4 },
+  imageCountText: { color: colors.surface, fontSize: 11 },
+  dots: { flexDirection: 'row', alignSelf: 'center', gap: 5 },
+  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.border },
+  activeDot: { backgroundColor: colors.textPrimary },
   grid: { borderRadius: radius.lg, gap: GAP, marginTop: 10, overflow: 'hidden', width: '100%' },
   group: { flex: 1, gap: GAP },
   cell: { backgroundColor: colors.border, flex: 1, overflow: 'hidden' },

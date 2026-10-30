@@ -1,11 +1,14 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GoalIcon from '@/assets/figma/main/605b2.svg';
 import DietIcon from '@/assets/figma/main/2c97f.svg';
 import ExerciseIcon from '@/assets/figma/main/0360a.svg';
 import Down from '@/assets/figma/main/0369c.svg';
 import { getHome, type HomeResponse } from '@/src/api/home';
+import { getHabitTierProgress, type HabitTierProgress } from '@/src/api/tier';
 import {
   getLatestHealthAnalysis,
   getHealthAssessmentPopups,
@@ -21,18 +24,17 @@ import {
   type AnalysisSheetState,
 } from '@/src/components/analysis/TotalAnalysisBottomSheet';
 import {
-  MainGradient,
-  MainHeader,
-  MainScreen,
   mainStyles,
 } from '@/src/components/main/MainSurface';
 import { colors, fontFamilies } from '@/src/theme';
 
 export default function TotalAnalysisScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const compact = useWindowDimensions().width < 370;
   const [data, setData] = useState<AnalysisDisplayData | null>(null);
   const [home, setHome] = useState<HomeResponse | null>(null);
+  const [tier, setTier] = useState<HabitTierProgress | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
@@ -43,6 +45,12 @@ export default function TotalAnalysisScreen() {
     useCallback(() => {
       let live = true;
       setState('loading');
+      setTier(null);
+      void getHabitTierProgress().then(({ progress }) => {
+        if (live) setTier(progress);
+      }).catch(() => {
+        if (live) setTier(null);
+      });
       void getHome()
         .then((r) => {
           if (live) setHome(r);
@@ -86,38 +94,36 @@ export default function TotalAnalysisScreen() {
   };
   return (
     <>
-      <MainScreen tabs={false}>
-        <MainHeader
-          title="종합 건강 분석"
-          height={220}
-          back={() => router.back()}
-          style={{ borderBottomLeftRadius: 50, borderBottomRightRadius: 50 }}
-        >
+      <ScrollView style={s.root} contentContainerStyle={{ paddingBottom: insets.bottom + 28 }} showsVerticalScrollIndicator={false}>
+        <StatusBar style="dark" />
+        <View style={[s.header, { paddingTop: insets.top + 6 }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={() => router.back()} style={s.back}>
+            <Text style={s.backText}>‹</Text>
+          </Pressable>
+          <Text style={s.headerTitle}>종합 건강 분석</Text>
+        </View>
+        <View style={s.scoreCard}>
+          <Text style={s.scoreLabel}>나의 건강 점수</Text>
           <View style={s.scoreRow}>
-            <View style={{ flex: 1, gap: 14 }}>
-              <Text style={[s.score, compact && { fontSize: 32 }]}>
-                {score ?? '—'}점{' '}
-                <Text style={s.delta}>
-                  {delta != null ? `${delta > 0 ? '+' : ''}${delta}점` : ''}
-                </Text>
-              </Text>
-              <Pressable accessibilityRole="button" onPress={() => router.push('/tier')}>
-                <Text style={s.pending}>티어 산정 준비 중 ›</Text>
-              </Pressable>
-              <View style={s.barRow}>
-                <View style={s.track}>
-                  <View style={[s.fill, { width: `${ratio}%` }]} />
-                </View>
-                <Text style={s.total}>{total ?? '—'}</Text>
-              </View>
-            </View>
-            <Image
-              source={require('@/assets/figma/main/34a55.png')}
-              resizeMode="contain"
-              style={[s.medal, compact && { width: 100 }]}
-            />
+            <Text style={[s.score, compact && { fontSize: 34 }]}>{score ?? '—'}</Text>
+            <Text style={s.scoreTotal}> / {total ?? '—'}점</Text>
           </View>
-        </MainHeader>
+          <View style={s.barRow}>
+            <View style={s.track}><View style={[s.fill, { width: `${ratio}%` }]} /></View>
+          </View>
+          <View style={s.scoreBottom}>
+            <Text style={s.scoreMessage}>{home?.score_change.message || '건강 점수를 확인해 보세요.'}</Text>
+            {delta != null ? <Text style={s.delta}>{delta > 0 ? '+' : ''}{delta}점</Text> : null}
+          </View>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/tier')} style={s.tierLink}>
+            <View style={s.tierIcon}><Text style={s.tierIconText}>◇</Text></View>
+            <View style={s.tierCopy}>
+              <Text style={s.tierLabel}>나의 건강관리 티어</Text>
+              <Text style={s.tierDescription}>{tier ? `${tier.tier_name} ${tier.sublevel} · 활동 ${tier.points.toLocaleString()}P` : '누적 활동 티어 확인하기'}</Text>
+            </View>
+            <Text style={s.tierChevron}>›</Text>
+          </Pressable>
+        </View>
         <View style={s.content}>
           {state !== 'ready' || !data ? (
             <View style={[mainStyles.card, mainStyles.empty]}>
@@ -158,7 +164,6 @@ export default function TotalAnalysisScreen() {
                 </View>
               </View>
               <View style={s.strategy}>
-                <MainGradient top="#44416F" bottom={colors.dark} />
                 <Text style={s.strategyLabel}>✦ Auto-Fit 맞춤 제안</Text>
                 <Text style={s.strategyTitle}>{data.strategy.title}</Text>
                 <Text style={s.strategyMessage}>{data.strategy.message}</Text>
@@ -307,7 +312,7 @@ export default function TotalAnalysisScreen() {
             </>
           )}
         </View>
-      </MainScreen>
+      </ScrollView>
       <TotalAnalysisBottomSheet
         sheet={sheet}
         onClose={() => setSheet(null)}
@@ -317,21 +322,31 @@ export default function TotalAnalysisScreen() {
   );
 }
 const s = StyleSheet.create({
-  content: { alignSelf: 'stretch', marginHorizontal: 16, marginTop: 25, gap: 25 },
-  scoreRow: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  score: { fontFamily: fontFamilies.pretendardBold, fontSize: 38, color: colors.textWhite },
-  delta: { fontSize: 16, color: colors.primaryMedium },
-  pending: {
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-    color: colors.primaryMedium,
-  },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
+  header: { minHeight: 62, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
+  back: { position: 'absolute', left: 20, bottom: 7, height: 42, width: 42, justifyContent: 'center', zIndex: 1 },
+  backText: { color: '#27262D', fontSize: 32, lineHeight: 38 },
+  headerTitle: { color: '#27262D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+  content: { alignSelf: 'stretch', marginHorizontal: 20, marginTop: 20, gap: 18 },
+  scoreCard: { marginHorizontal: 20, marginTop: 20, borderRadius: 22, backgroundColor: '#F8F6FF', padding: 22, gap: 12 },
+  scoreLabel: { color: '#514770', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
+  scoreRow: { flexDirection: 'row', alignItems: 'baseline' },
+  score: { fontFamily: fontFamilies.pretendardBold, fontSize: 42, color: '#6152AB' },
+  scoreTotal: { fontFamily: fontFamilies.pretendardMedium, fontSize: 18, color: '#9D98AA' },
+  delta: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13, color: '#7564C6' },
   barRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  track: { flex: 1, height: 10, backgroundColor: '#525157', borderRadius: 5, overflow: 'hidden' },
-  fill: { height: 10, backgroundColor: colors.primaryMedium, borderRadius: 5 },
-  total: { color: colors.textWhite, fontSize: 14 },
-  medal: { width: 135, height: 130 },
-  goal: { borderRadius: 50, flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 74 },
+  track: { flex: 1, height: 9, backgroundColor: '#E5E0F6', borderRadius: 5, overflow: 'hidden' },
+  fill: { height: 9, backgroundColor: '#9B82E9', borderRadius: 5 },
+  scoreBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  scoreMessage: { color: '#878190', fontFamily: fontFamilies.pretendardRegular, fontSize: 12, flex: 1 },
+  tierLink: { marginTop: 6, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#E9E4F3', flexDirection: 'row', alignItems: 'center', gap: 10 },
+  tierIcon: { height: 36, width: 36, borderRadius: 18, backgroundColor: '#E8E1FA', alignItems: 'center', justifyContent: 'center' },
+  tierIconText: { color: '#7867BE', fontSize: 22 },
+  tierCopy: { flex: 1, gap: 2 },
+  tierLabel: { color: '#4F4862', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  tierDescription: { color: '#9C96A8', fontSize: 11 },
+  tierChevron: { color: '#7B6CB0', fontSize: 22 },
+  goal: { borderRadius: 18, flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 74, backgroundColor: '#F8F7FB' },
   goalCopy: { flex: 1, flexShrink: 1, gap: 5, minWidth: 0 },
   icon: {
     width: 40,
@@ -350,8 +365,8 @@ const s = StyleSheet.create({
   },
   strategy: {
     alignSelf: 'stretch',
-    backgroundColor: colors.dark,
-    borderRadius: 20,
+    backgroundColor: '#F8F6FF',
+    borderRadius: 18,
     gap: 12,
     minWidth: 0,
     overflow: 'hidden',
@@ -360,7 +375,7 @@ const s = StyleSheet.create({
   strategyLabel: {
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 16,
-    color: colors.primaryMedium,
+    color: '#7664C3',
   },
   strategyTitle: {
     alignSelf: 'stretch',
@@ -368,7 +383,7 @@ const s = StyleSheet.create({
     fontFamily: fontFamilies.pretendardBold,
     fontSize: 22,
     lineHeight: 29,
-    color: colors.textWhite,
+    color: '#413955',
   },
   strategyMessage: {
     alignSelf: 'stretch',
@@ -376,7 +391,7 @@ const s = StyleSheet.create({
     fontFamily: fontFamilies.pretendardMedium,
     fontSize: 14,
     lineHeight: 20,
-    color: colors.primaryLight,
+    color: '#726B80',
   },
   managementRow: { alignSelf: 'stretch', flexDirection: 'row', gap: 10, minWidth: 0 },
   managementRowCompact: { flexDirection: 'column' },
@@ -388,8 +403,8 @@ const s = StyleSheet.create({
     gap: 10,
     borderRadius: 16,
     borderWidth: 0.5,
-    borderColor: colors.primaryMedium,
-    backgroundColor: 'rgba(186,177,255,0.25)',
+    borderColor: '#E3DDF4',
+    backgroundColor: '#FFFFFF',
   },
   managementCompact: { flexBasis: 'auto', width: '100%' },
   managementHeading: {
@@ -410,7 +425,7 @@ const s = StyleSheet.create({
     paddingVertical: 2,
   },
   managementText: {
-    color: colors.textWhite,
+    color: '#5A526C',
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 14,
     lineHeight: 20,

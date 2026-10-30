@@ -71,6 +71,13 @@ export async function saveProfile({ name, birthDate, gender }: ProfileInput) {
   });
 }
 
+export function saveTargetWeight(targetWeight: number) {
+  return apiRequest('/api/profile', {
+    method: 'PATCH',
+    body: JSON.stringify({ target_weight: targetWeight }),
+  });
+}
+
 export async function saveAllergies(selectedAllergens: string[], otherAllergy: string) {
   let allergyTypeIds: string[] = [];
 

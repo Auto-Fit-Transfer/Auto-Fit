@@ -27,3 +27,12 @@ export const colors = {
   overlay: 'rgba(0, 0, 0, 0.4)',
   transparent: 'transparent',
 } as const;
+
+export const darkColors = {
+  background: '#111214',
+  surface: '#1A1C1F',
+  surfaceRaised: '#25282D',
+  border: '#363A41',
+  textPrimary: '#F5F5F7',
+  textSecondary: '#B6B8BF',
+} as const;

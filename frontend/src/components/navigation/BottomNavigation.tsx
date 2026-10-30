@@ -22,6 +22,7 @@ import CommunityActiveIcon from '@/assets/figma/main/3846e.svg';
 import MyIcon from '@/assets/figma/main/792cf.svg';
 import MyActiveIcon from '@/assets/figma/main/86e3d.svg';
 import { MainGradient } from '@/src/components/main/MainSurface';
+import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { colors, fontFamilies, shadows, spacing } from '@/src/theme';
 
 export const BOTTOM_NAVIGATION_VISUAL_HEIGHT = 70;
@@ -70,9 +71,11 @@ export function BottomNavigation({
   onNavigationLayout,
 }: BottomNavigationProps) {
   const insets = useSafeAreaInsets();
+  const { preferences } = useDisplayPreferences();
+  const simple = preferences.simple_mode_enabled;
   const { height: windowHeight } = useWindowDimensions();
   const navigationRef = useRef<View>(null);
-  const visualHeight = getBottomNavigationVisualHeight(windowHeight);
+  const visualHeight = simple ? Math.max(82, getBottomNavigationVisualHeight(windowHeight)) : getBottomNavigationVisualHeight(windowHeight);
   const itemHeight = visualHeight - 10;
   const isDiet = state.routes[state.index]?.name === 'diet';
   const measureNavigation = useCallback(() => {
@@ -143,7 +146,7 @@ export function BottomNavigation({
               ]}
             >
               <Icon />
-              <Text style={[styles.label, { color }]}>{meta.label}</Text>
+              <Text style={[styles.label, simple && styles.simpleLabel, { color }]}>{meta.label}</Text>
             </Pressable>
           );
         })}
@@ -203,5 +206,6 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     lineHeight: 15,
   },
+  simpleLabel: { fontSize: 14, lineHeight: 18 },
   pressed: { opacity: 0.7 },
 });

@@ -3,8 +3,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { SvgProps } from 'react-native-svg';
 
-import EmailIcon from '@/assets/icons/auth-redesign/1790c.svg';
-import LockIcon from '@/assets/icons/auth-redesign/6a5e9.svg';
 import EyeSlashIcon from '@/assets/icons/auth-redesign/5facc.svg';
 import EyeIcon from '@/assets/icons/input/Eye.svg';
 import GoogleIcon from '@/assets/icons/auth-redesign/1aa1b.svg';
@@ -108,7 +106,6 @@ export default function LoginScreen() {
   return (
     <AuthPage mode="login">
       <AuthCard style={styles.loginCard}>
-        <Text style={styles.cardTitle}>로그인</Text>
         <AuthTextField
           accessibilityLabel="이메일"
           autoCapitalize="none"
@@ -116,7 +113,6 @@ export default function LoginScreen() {
           autoCorrect={false}
           keyboardType="email-address"
           label="이메일"
-          leftElement={<EmailIcon height={20} width={20} />}
           onChangeText={setEmail}
           onSubmitEditing={() => passwordRef.current?.focus()}
           placeholder="이메일을 입력해 주세요"
@@ -131,7 +127,6 @@ export default function LoginScreen() {
           autoComplete="password"
           error={loginError}
           label="비밀번호"
-          leftElement={<LockIcon height={20} width={20} />}
           onChangeText={setPassword}
           onSubmitEditing={handleLogin}
           placeholder="비밀번호를 입력해 주세요"
@@ -154,18 +149,20 @@ export default function LoginScreen() {
           textContentType="password"
           value={password}
         />
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push('/password/forgot')}
-          style={styles.forgot}
-        >
-          <Text style={styles.link}>비밀번호 찾기</Text>
-        </Pressable>
         <AuthButton
           loading={activeLoginProvider === 'email'}
           onPress={handleLogin}
           title="로그인"
         />
+        <View style={styles.accountLinks}>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/password/forgot')}>
+            <Text style={styles.link}>비밀번호 찾기</Text>
+          </Pressable>
+          <Text style={styles.linkDivider}>|</Text>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/signup/step1')}>
+            <Text style={styles.link}>회원가입</Text>
+          </Pressable>
+        </View>
       </AuthCard>
       <View style={styles.divider}>
         <View style={styles.dividerLine} />
@@ -175,45 +172,36 @@ export default function LoginScreen() {
       <View style={styles.socialGroup}>
         <SocialLoginButton
           disabled={activeLoginProvider !== null}
+          icon={KakaoIcon}
+          label="Kakao로 계속하기"
+          onPress={() => void handleSocialLogin('kakao')}
+        />
+        <SocialLoginButton
+          disabled={activeLoginProvider !== null}
           google
           icon={GoogleIcon}
           label="Google로 계속하기"
           onPress={() => void handleSocialLogin('google')}
         />
-        <SocialLoginButton
-          disabled={activeLoginProvider !== null}
-          icon={KakaoIcon}
-          label="Kakao로 계속하기"
-          onPress={() => void handleSocialLogin('kakao')}
-        />
-      </View>
-      <View style={styles.signUpGuide}>
-        <Text style={styles.guideText}>계정이 없으신가요?</Text>
-        <Pressable
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={() => router.push('/signup/step1')}
-        >
-          <Text style={styles.link}>회원가입</Text>
-        </Pressable>
       </View>
     </AuthPage>
   );
 }
 
 const styles = StyleSheet.create({
-  loginCard: { gap: 12 },
-  cardTitle: {
-    color: colors.dark,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 20,
-    lineHeight: 28,
+  loginCard: { gap: 18 },
+  accountLinks: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 15,
+    justifyContent: 'center',
+    paddingTop: 3,
   },
-  forgot: { alignSelf: 'flex-end', minHeight: 22 },
+  linkDivider: { color: '#D3D3DC' },
   link: {
-    color: colors.primaryDark,
+    color: '#777780',
     fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
+    fontSize: 13,
     lineHeight: 22,
   },
   divider: { alignItems: 'center', flexDirection: 'row', gap: 12, height: 24 },
@@ -249,17 +237,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   socialSpacer: { width: 24 },
-  signUpGuide: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    justifyContent: 'center',
-    minHeight: 44,
-  },
-  guideText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-  },
   pressed: { opacity: 0.75 },
 });

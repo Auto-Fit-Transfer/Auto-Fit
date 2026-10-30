@@ -1,39 +1,52 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
   getCommunityErrorMessage,
   getCommunityMileage,
+  getCommunityMileageMonthly,
   getCommunityMileageHistory,
   isProvisionalNote,
   type CommunityMileage,
+  type CommunityMileageMonthly,
   type CommunityMileageEntry,
   type CommunityRule,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { colors, fontFamilies } from '@/src/theme';
+
+type HistoryFilter = '전체' | '적립' | '사용';
+const FILTERS: HistoryFilter[] = ['전체', '적립', '사용'];
 
 const REASONS: Record<CommunityMileageEntry['reason'], string> = {
   challenge: '챌린지 보상',
   club_create: '클럽 개설',
   meal_log: '식단 기록',
   workout: '운동 완료',
+  workout_high_adjustment: '고강도 운동 추가 적립',
+  workout_streak_5: '운동 5일 연속 달성',
+  workout_streak_30: '운동 30일 연속 달성',
 };
 
 function describeRule(rule: CommunityRule) {
-  const amount = rule.amount.toLocaleString();
   switch (rule.rule_key) {
     case 'earn_workout':
-      return `운동 완료 1회 +${amount}${rule.daily_limit !== null ? ` (하루 ${rule.daily_limit}회까지)` : ''}`;
+      return '운동 완료';
+    case 'earn_workout_high':
+      return '고강도 운동 완료일 총 적립';
+    case 'earn_streak_5':
+      return '운동 5일 연속 달성';
+    case 'earn_streak_30':
+      return '운동 30일 연속 달성';
     case 'earn_meal_log':
-      return `식단 기록 1건 +${amount}${rule.daily_limit !== null ? ` (하루 ${rule.daily_limit}건까지)` : ''}`;
+      return '식단 기록';
     case 'club_create_cost':
-      return `클럽 개설 -${amount} (유료 회원은 무료)`;
+      return '클럽 개설';
     case 'membership_demo_days':
-      return `시연용 유료 회원 ${amount}일`;
+      return '시연용 유료 회원';
   }
 }
 
@@ -41,8 +54,10 @@ export default function CommunityMileageScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [summary, setSummary] = useState<CommunityMileage | null>(null);
+  const [monthly, setMonthly] = useState<CommunityMileageMonthly | null>(null);
   const [entries, setEntries] = useState<CommunityMileageEntry[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
+  const [filter, setFilter] = useState<HistoryFilter>('전체');
   const [errorMessage, setErrorMessage] = useState<string>();
   const [refreshing, setRefreshing] = useState(false);
   const loadingMoreRef = useRef(false);
@@ -51,8 +66,11 @@ export default function CommunityMileageScreen() {
   const load = useCallback(async () => {
     try {
       const nextSummary = await getCommunityMileage();
-      const page = await getCommunityMileageHistory();
+      const [page, monthlyResult] = await Promise.all([
+        getCommunityMileageHistory(), getCommunityMileageMonthly().catch(() => null),
+      ]);
       setSummary(nextSummary);
+      setMonthly(monthlyResult);
       setEntries(page.items);
       setCursor(page.next_cursor);
       setErrorMessage(undefined);
@@ -89,14 +107,34 @@ export default function CommunityMileageScreen() {
   };
 
   // Earning first, then spending; the demo membership has its own screen.
-  const order: CommunityRule['rule_key'][] = ['earn_workout', 'earn_meal_log', 'club_create_cost'];
+  const order: CommunityRule['rule_key'][] = [
+    'earn_workout',
+    'earn_workout_high',
+    'earn_streak_5',
+    'earn_streak_30',
+    'earn_meal_log',
+  ];
   const earnRules = order.flatMap(
-    (key) => summary?.rules.filter((rule) => rule.rule_key === key) ?? [],
+    (key) => summary?.rules.filter((rule) => rule.rule_key === key && rule.enabled) ?? [],
+  );
+  const visibleEntries = entries.filter(
+    (entry) => filter === '전체' || (filter === '적립' ? entry.amount > 0 : entry.amount < 0),
   );
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <AppHeader onBackPress={() => router.back()} title="마일리지" />
+      <View style={styles.header}>
+        <Pressable
+          accessibilityLabel="뒤로"
+          accessibilityRole="button"
+          hitSlop={12}
+          onPress={() => router.back()}
+          style={styles.back}
+        >
+          <Text style={styles.backText}>‹</Text>
+        </Pressable>
+        <Text style={styles.headerTitle}>마일리지</Text>
+      </View>
       {errorMessage ? (
         <View style={styles.message}>
           <Text style={styles.messageText}>{errorMessage}</Text>
@@ -113,37 +151,67 @@ export default function CommunityMileageScreen() {
         <ActivityIndicator color={colors.primary} style={styles.message} />
       ) : (
         <FlatList
-          contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
-          data={entries}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+          data={visibleEntries}
           keyExtractor={(entry) => entry.entry_id}
           ListEmptyComponent={
             <Text style={styles.empty}>
-              아직 내역이 없어요. 운동을 완료하거나 식단을 기록하면 쌓여요.
+              {entries.length === 0 ? '아직 마일리지 내역이 없어요.' : `${filter} 내역이 없어요.`}
             </Text>
           }
           ListHeaderComponent={
             <View style={styles.top}>
               <View style={styles.balanceCard}>
                 <Text style={styles.balanceLabel}>내 마일리지</Text>
-                <Text style={styles.balance}>{summary.balance.toLocaleString()}점</Text>
-                <Text style={styles.today}>오늘 적립 +{summary.earned_today.toLocaleString()}</Text>
+                <Text style={styles.balance}>{summary.balance.toLocaleString()}P</Text>
+                <Text style={styles.balanceHelp}>운동과 식단 기록으로 쌓은 마일리지예요.</Text>
+                <View style={styles.statRow}>
+                  <View style={styles.stat}>
+                    <Text style={styles.statLabel}>이번 달 적립</Text>
+                    <Text style={styles.statValue}>{monthly ? `+${monthly.earned_this_month.toLocaleString()}P` : '—'}</Text>
+                  </View>
+                  <View style={styles.stat}>
+                    <Text style={styles.statLabel}>지난달 적립</Text>
+                    <Text style={styles.statValue}>{monthly ? `+${monthly.earned_last_month.toLocaleString()}P` : '—'}</Text>
+                  </View>
+                  <View style={styles.stat}>
+                    <Text style={styles.statLabel}>이번 달 사용</Text>
+                    <Text style={styles.statValue}>{monthly ? `-${monthly.spent_this_month.toLocaleString()}P` : '—'}</Text>
+                  </View>
+                </View>
               </View>
+              <Text style={styles.rulesTitle}>쌓는 방법</Text>
               <View style={styles.rules}>
-                <Text style={styles.rulesTitle}>쌓고 쓰는 방법</Text>
-                {earnRules.map((rule) => (
-                  <Text key={rule.rule_key} style={[styles.rule, !rule.enabled && styles.ruleOff]}>
-                    · {describeRule(rule)}
-                    {rule.enabled ? '' : ' (지금은 꺼짐)'}
-                  </Text>
+                {earnRules.map((rule, index) => (
+                  <View key={rule.rule_key}>
+                    {index > 0 ? <View style={styles.divider} /> : null}
+                    <View style={styles.ruleRow}>
+                      <Text style={styles.rule}>{describeRule(rule)}</Text>
+                      <Text style={styles.ruleAmount}>+{rule.amount.toLocaleString()}P</Text>
+                    </View>
+                  </View>
                 ))}
-                <Text style={styles.rulesNote}>
-                  {earnRules.some((rule) => isProvisionalNote(rule.note))
-                    ? '숫자는 팀에서 정하기 전 임시값이라 바뀔 수 있어요. '
-                    : ''}
-                  마일리지 화면을 열 때 운동 완료와 식단 기록을 확인해 적립해요.
-                </Text>
+                {earnRules.length === 0 ? <Text style={styles.emptyRules}>적립 규칙이 없어요.</Text> : null}
               </View>
+              {earnRules.some((rule) => isProvisionalNote(rule.note)) ? (
+                <Text style={styles.rulesNote}>적립 기준은 실사용 테스트를 거쳐 조정할 예정이에요.</Text>
+              ) : null}
               <Text style={styles.historyTitle}>내역</Text>
+              <View style={styles.filters}>
+                {FILTERS.map((option) => (
+                  <Pressable
+                    key={option}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: filter === option }}
+                    onPress={() => setFilter(option)}
+                    style={[styles.filter, filter === option && styles.filterActive]}
+                  >
+                    <Text style={[styles.filterText, filter === option && styles.filterTextActive]}>
+                      {option}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
           }
           onEndReached={() => void loadMore()}
@@ -162,12 +230,12 @@ export default function CommunityMileageScreen() {
           renderItem={({ item }) => (
             <View style={styles.row}>
               <View style={styles.rowBody}>
-                <Text style={styles.reason}>{REASONS[item.reason]}</Text>
+                <Text style={styles.reason}>{REASONS[item.reason] ?? '마일리지 변경'}</Text>
                 <Text style={styles.time}>{formatCommunityTime(item.created_at)}</Text>
               </View>
               <Text style={[styles.amount, item.amount < 0 && styles.spent]}>
                 {item.amount > 0 ? '+' : ''}
-                {item.amount.toLocaleString()}
+                {item.amount.toLocaleString()}P
               </Text>
             </View>
           )}
@@ -178,61 +246,79 @@ export default function CommunityMileageScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: '#FFFFFF', flex: 1 },
+  header: { alignItems: 'center', height: 56, justifyContent: 'center' },
+  back: { left: 22, position: 'absolute', top: 9 },
+  backText: { color: '#242428', fontFamily: fontFamilies.pretendardRegular, fontSize: 32, lineHeight: 36 },
+  headerTitle: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 17 },
   message: {
     alignItems: 'center',
     flex: 1,
-    gap: spacing.md,
+    gap: 16,
     justifyContent: 'center',
-    padding: spacing.xxl,
+    padding: 28,
   },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  top: { gap: spacing.lg, paddingHorizontal: spacing.xl, paddingTop: spacing.sm },
+  messageText: { color: colors.textSecondary, fontSize: 14, textAlign: 'center' },
+  top: { gap: 17, paddingHorizontal: 20, paddingTop: 8 },
   balanceCard: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.lg,
-    gap: 2,
-    padding: spacing.xl,
+    borderColor: '#E6E6ED',
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 18,
   },
   balanceLabel: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
+    color: '#666670',
+    fontFamily: fontFamilies.pretendardMedium,
+    fontSize: 13,
   },
-  balance: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 30 },
-  today: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
-  rules: { gap: 4 },
+  balance: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 30, marginTop: 2 },
+  balanceHelp: { color: '#767680', fontFamily: fontFamilies.pretendardRegular, fontSize: 12, marginTop: 2 },
+  statRow: { flexDirection: 'row', gap: 6, marginTop: 16 },
+  stat: { backgroundColor: '#FAFAFC', borderColor: '#ECECF1', borderRadius: 9, borderWidth: 1, flex: 1, minWidth: 0, padding: 9 },
+  statLabel: { color: '#767680', fontFamily: fontFamilies.pretendardMedium, fontSize: 11 },
+  statValue: { color: '#37333E', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13, marginTop: 4 },
+  rules: { borderColor: '#E6E6ED', borderRadius: 14, borderWidth: 1, marginTop: -6, paddingHorizontal: 14 },
   rulesTitle: {
-    color: colors.textPrimary,
+    color: '#222227',
     fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-    marginBottom: 2,
+    fontSize: 17,
   },
-  rule: { ...typography.body, color: colors.textBody },
-  ruleOff: { color: colors.textSecondary, textDecorationLine: 'line-through' },
-  rulesNote: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 4 },
+  ruleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 44 },
+  rule: { color: '#45454B', flex: 1, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
+  ruleAmount: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  divider: { backgroundColor: '#ECECF1', height: StyleSheet.hairlineWidth },
+  emptyRules: { color: '#767680', fontSize: 13, paddingVertical: 14 },
+  rulesNote: { color: '#767680', fontFamily: fontFamilies.pretendardRegular, fontSize: 11, marginTop: -9 },
   historyTitle: {
-    color: colors.textPrimary,
+    color: '#222227',
     fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
+    fontSize: 17,
+    marginTop: 6,
   },
+  filters: { flexDirection: 'row', gap: 6, marginTop: -5 },
+  filter: { alignItems: 'center', borderColor: '#E6E6ED', borderRadius: 18, borderWidth: 1, minWidth: 45, paddingHorizontal: 12, paddingVertical: 7 },
+  filterActive: { backgroundColor: '#503DD7', borderColor: '#503DD7' },
+  filterText: { color: '#767680', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+  filterTextActive: { color: '#FFFFFF' },
   empty: {
-    ...typography.body,
-    color: colors.textSecondary,
-    padding: spacing.xl,
+    color: '#767680',
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 13,
+    padding: 24,
     textAlign: 'center',
   },
   row: {
     alignItems: 'center',
-    borderBottomColor: colors.border,
+    borderBottomColor: '#EFEFF2',
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
+    marginHorizontal: 20,
+    minHeight: 60,
+    paddingVertical: 8,
   },
-  rowBody: { flex: 1, gap: 2 },
-  reason: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
-  time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-  amount: { color: colors.primaryDark, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  spent: { color: colors.danger },
+  rowBody: { flex: 1, gap: 3 },
+  reason: { color: '#34343A', fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
+  time: { color: '#93939B', fontFamily: fontFamilies.pretendardRegular, fontSize: 11 },
+  amount: { color: '#503DD7', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  spent: { color: '#666670' },
 });

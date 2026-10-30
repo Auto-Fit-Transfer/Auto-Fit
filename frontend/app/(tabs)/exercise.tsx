@@ -1,459 +1,201 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import Fire from '@/assets/figma/main/8e9a7.svg';
-import Target from '@/assets/figma/main/38132.svg';
-import Sneaker from '@/assets/figma/main/d4633.svg';
-import Calendar from '@/assets/figma/main/21ddc.svg';
-import Chevron from '@/assets/figma/main/7c632.svg';
-import Clock from '@/assets/figma/main/ec0f6.svg';
-import Barbell from '@/assets/figma/main/2ad95.svg';
-import Energy from '@/assets/figma/main/28b8d.svg';
-import Gym from '@/assets/figma/main/fca0e.svg';
-import House from '@/assets/figma/main/5e1e4.svg';
-import Run from '@/assets/figma/main/a72ff.svg';
-import Arrow from '@/assets/figma/main/ab977.svg';
-import {
-  MainHeader,
-  MainScreen,
-  MainGradient,
-  mainStyles,
-} from '@/src/components/main/MainSurface';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
-import { getProfile, getProfileName } from '@/src/api/home';
-import { colors, fontFamilies } from '@/src/theme';
+import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
+import { BOTTOM_NAVIGATION_MIN_BOTTOM_GAP, getBottomNavigationVisualHeight } from '@/src/components/navigation';
+import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
+import { darkColors, fontFamilies } from '@/src/theme';
 
-const heroImages = {
-  loading: require('@/assets/figma/main/35e60.png'),
-  'not-created': require('@/assets/figma/main/35e60.png'),
-  ready: require('@/assets/figma/main/9e211.png'),
-  completed: require('@/assets/figma/main/57a0c.png'),
-};
-const count = (value: number | null | undefined) => (value == null ? '—' : String(value));
+const purple = '#503DD7';
+const ink = '#1E1D24';
+const muted = '#777681';
+const border = '#E4E5EB';
+const value = (number: number | null | undefined, suffix = '') =>
+  number == null ? '—' : `${number}${suffix}`;
+
+function MenuRow({ title, detail, onPress }: { title: string; detail: string; onPress: () => void }) {
+  const { preferences, isDark } = useDisplayPreferences();
+  const simple = preferences.simple_mode_enabled;
+  return (
+    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.menuRow, simple && simpleStyles.menuRow]}>
+      <View style={styles.menuIcon}><Text style={styles.menuIconText}>◈</Text></View>
+      <View style={styles.menuCopy}>
+        <Text style={[styles.menuTitle, simple && simpleStyles.menuTitle, isDark && dark.text]}>{title}</Text>
+        <Text style={[styles.menuDetail, simple && simpleStyles.menuDetail]}>{detail}</Text>
+      </View>
+      <Text style={styles.chevron}>›</Text>
+    </Pressable>
+  );
+}
 
 export default function ExerciseScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  const { preferences, isDark } = useDisplayPreferences();
+  const simple = preferences.simple_mode_enabled;
+  const navigationHeight = simple
+    ? Math.max(82, getBottomNavigationVisualHeight(windowHeight))
+    : getBottomNavigationVisualHeight(windowHeight);
+  const bottomPadding = navigationHeight + Math.max(insets.bottom, BOTTOM_NAVIGATION_MIN_BOTTOM_GAP) + 24;
   const {
-    homeMetrics,
-    homeError,
-    homeLoadState,
-    latestSession,
-    refreshHome,
-    resultRecordCompleted,
-    routine,
-    status,
-    condition,
-    setCondition,
+    homeError, homeLoadState, homeMetrics, latestSession, refreshHome,
+    resultRecordCompleted, routine, status,
   } = useExerciseRoutine();
-  const [name, setName] = useState('회원');
-  useFocusEffect(
-    useCallback(() => {
-      let live = true;
-      void refreshHome();
-      void getProfile()
-        .then((r) => {
-          if (live) setName(getProfileName(r) ?? '회원');
-        })
-        .catch(() => undefined);
-      return () => {
-        live = false;
-      };
-    }, [refreshHome]),
-  );
-  const state = status ?? 'loading';
-  const current = homeMetrics.currentWeekWorkoutCount;
-  const remaining = homeMetrics.remainingGoalWorkoutCount;
-  const goal = homeMetrics.targetWorkoutCount;
-  const percentage = homeMetrics.goalAchievementRate;
-  const progress = Math.min(100, Math.max(0, percentage ?? 0));
+
+  useFocusEffect(useCallback(() => { void refreshHome(); }, [refreshHome]));
+
   const start = new Date();
   start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
-  const date = (d: Date) => `${d.getMonth() + 1}월 ${d.getDate()}일`;
-  const title =
-    state === 'completed' ? (
-      <>
-        오늘 운동을{'\n'}
-        <Text style={s.accent}>완료</Text>했어요!
-      </>
-    ) : state === 'ready' ? (
-      <>
-        오늘의 운동이{'\n'}
-        <Text style={s.accent}>준비</Text>되었어요!
-      </>
-    ) : state === 'loading' ? (
-      <>오늘의 운동을{'\n'}확인하고 있어요</>
-    ) : (
-      <>
-        {name}님, 오늘은{'\n'}
-        <Text style={s.accent}>어떤 운동</Text>을 해볼까요?
-      </>
-    );
-  const action = () => {
-    if (state === 'completed')
-      router.push(
-        resultRecordCompleted
-          ? { pathname: '/exercise/ai-report', params: { source: 'home' } }
-          : { pathname: '/exercise/result', params: { source: 'home' } },
-      );
-    else if (state === 'ready') router.push('/exercise/summary');
-    else if (state !== 'loading') router.push('/exercise/condition');
+  const day = (date: Date) => `${date.getMonth() + 1}.${String(date.getDate()).padStart(2, '0')}`;
+  const progress = Math.min(100, Math.max(0, homeMetrics.goalAchievementRate ?? 0));
+  const mainAction = () => {
+    if (status === 'completed') {
+      router.push(resultRecordCompleted ? '/exercise/ai-report' : '/exercise/completion');
+    } else if (status === 'ready') {
+      router.push('/exercise/summary');
+    } else {
+      router.push('/exercise/condition');
+    }
   };
+
   return (
-    <MainScreen>
-      <MainHeader title="운동 추천" topColor={state === 'completed' ? '#413B71' : undefined}>
-        {state === 'completed' && (
-          <Image
-            source={require('@/assets/figma/main/9ce91.png')}
-            style={s.confetti}
-            resizeMode="contain"
-          />
-        )}
-        <Image source={heroImages[state]} style={s.heroImage} resizeMode="contain" />
-        <Text style={s.heroTitle}>{title}</Text>
-        <View style={s.headerBottom}>
-          {state === 'not-created' || state === 'loading' ? (
-            <View style={s.locations}>
-              {(
-                [
-                  { value: 'gym', label: '헬스', Icon: Gym },
-                  { value: 'home', label: '홈트', Icon: House },
-                  { value: 'outdoor', label: '러닝', Icon: Run },
-                ] as const
-              ).map(({ value, label, Icon }) => (
-                <Pressable
-                  key={value}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: condition.location === value }}
-                  onPress={() => setCondition({ ...condition, location: value })}
-                  style={[s.chip, condition.location === value && s.selectedChip]}
-                >
-                  <Icon />
-                  <Text style={[s.chipText, condition.location === value && s.selectedChipText]}>
-                    {label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : (
-            <View style={s.routineBadge}>
-              <Text style={s.chipText}>
-                {state === 'completed'
-                  ? `${count(latestSession?.calories)} kcal · 운동 완료`
-                  : `${routine?.title ?? '오늘의 루틴'} · ${count(routine?.totalDurationMinutes)}분`}
-              </Text>
-            </View>
-          )}
-          <Pressable
-            accessibilityRole="button"
-            disabled={state === 'loading'}
-            onPress={action}
-            style={[s.action, state === 'loading' && { opacity: 0.6 }]}
-          >
-            <MainGradient top={colors.primaryMedium} bottom={colors.primaryDark} radius={24} />
-            <View style={s.arrow}>
-              <Arrow />
-            </View>
-            <Text style={s.actionText}>
-              {state === 'loading'
-                ? '운동 정보 확인 중'
-                : state === 'not-created'
-                  ? '오늘 운동 추천받기'
-                  : state === 'ready'
-                    ? '운동 시작하기'
-                    : '운동 결과 확인하기'}
+    <View style={[styles.root, isDark && dark.root]}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <ScrollView contentContainerStyle={[styles.content, simple && simpleStyles.content, { paddingTop: insets.top + 16, paddingBottom: bottomPadding }]} showsVerticalScrollIndicator={false}>
+        <View style={styles.titleRow}><Text style={[styles.pageTitle, simple && simpleStyles.pageTitle, isDark && dark.text]}>운동</Text><SimpleReadButton text={`오늘의 운동입니다. ${status === 'completed' ? '오늘 운동을 마쳤어요.' : routine?.title ?? '오늘의 맞춤 운동을 준비해요.'} 이번 주 운동은 ${value(homeMetrics.currentWeekWorkoutCount)}회 완료했고 목표는 ${value(homeMetrics.targetWorkoutCount)}회입니다.`} /></View>
+        <View style={[styles.card, simple && simpleStyles.card, isDark && dark.card]}>
+          <Text style={styles.eyebrow}>오늘의 운동</Text>
+          <Text style={[styles.heroTitle, simple && simpleStyles.heroTitle, isDark && dark.text]}>
+            {status === 'completed' ? '오늘 운동을 마쳤어요' : routine?.title ?? '오늘의 맞춤 운동을 준비해요'}
+          </Text>
+          <Text style={[styles.heroMeta, simple && simpleStyles.heroMeta]}>
+            {status === 'completed'
+              ? `${value(latestSession?.durationMinutes, '분')} · ${value(latestSession?.itemCount, '개 운동')} · ${value(latestSession?.calories, 'kcal')}`
+              : routine
+                ? `${value(routine.totalDurationMinutes, '분')} · ${routine.exercises.length}개 운동 · ${value(routine.estimatedCalories, 'kcal')}`
+                : '오늘의 시간과 컨디션에 맞춰 추천받으세요'}
+          </Text>
+          <Pressable accessibilityRole="button" disabled={homeLoadState === 'loading'} onPress={mainAction} style={[styles.primaryButton, simple && simpleStyles.primaryButton, homeLoadState === 'loading' && styles.disabled]}>
+            <Text style={[styles.primaryText, simple && simpleStyles.primaryText]}>
+              {homeLoadState === 'loading' ? '운동 정보 확인 중' : status === 'completed' ? '운동 결과 보기' : status === 'ready' ? '운동 시작하기' : '운동 추천받기'}
             </Text>
           </Pressable>
-        </View>
-      </MainHeader>
-      <View style={mainStyles.content}>
-        {homeError && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void refreshHome()}
-            style={mainStyles.card}
-          >
-            <Text style={mainStyles.text}>{homeError} · 다시 시도</Text>
-          </Pressable>
-        )}
-        <View style={s.section}>
-          <View style={s.heading}>
-            <Text style={s.sectionTitle}>이번 주 운동 목표</Text>
-            <Text style={s.date}>
-              {date(start)} ~ {date(end)}
-            </Text>
-          </View>
-          <View style={s.heading}>
-            <Text style={s.counter}>
-              {count(current)}
-              <Text style={s.unit}> / {count(goal)}회 완료</Text>
-            </Text>
-            <Text style={s.percent}>{percentage == null ? '—' : `${percentage}%`}</Text>
-          </View>
-          <View
-            accessibilityRole="progressbar"
-            accessibilityValue={{ min: 0, max: 100, now: progress }}
-            style={s.track}
-          >
-            <View style={[s.fill, { width: `${progress}%` }]} />
-          </View>
-          <View style={[mainStyles.card, s.stats]}>
-            <View style={s.stat}>
-              <View style={s.icon}>
-                <Fire />
-              </View>
-              <Text style={s.statLabel}>
-                최장 연속 <Text style={s.value}>{count(homeMetrics.currentWorkoutStreakDays)}</Text>
-                <Text style={s.small}>일째</Text>
-              </Text>
-            </View>
-            <View style={s.divider} />
-            <View style={s.stat}>
-              <View style={s.icon}>
-                <Target />
-              </View>
-              <Text style={s.statLabel}>
-                {remaining === 0 ? '횟수 목표 ' : '목표까지 '}
-                <Text style={s.value}>{remaining === 0 ? '달성!' : count(remaining)}</Text>
-                <Text style={s.small}>{remaining === 0 ? '' : '회 남음'}</Text>
-              </Text>
-            </View>
-          </View>
-        </View>
-        <View style={s.section}>
-          <View style={s.heading}>
-            <Text style={s.sectionTitle}>내 최근 루틴</Text>
-            <Text style={s.date}>{latestSession?.date?.slice(0, 10) ?? ''}</Text>
-          </View>
-          {routine ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() =>
-                router.push(state === 'ready' ? '/exercise/summary' : '/exercise/history')
-              }
-              style={[mainStyles.card, s.recent]}
-            >
-              <Image
-                source={
-                  routine.exercises[0]?.thumbnailUrl
-                    ? { uri: routine.exercises[0].thumbnailUrl }
-                    : require('@/assets/figma/main/29ca1.png')
-                }
-                style={s.recentImage}
-                resizeMode="cover"
-              />
-              <View style={s.recentBody}>
-                <View style={s.heading}>
-                  <Text numberOfLines={1} style={s.routineTitle}>
-                    {routine.title}
-                  </Text>
-                  <Text style={s.manage}>{state === 'ready' ? '세부 관리 ›' : '기록 보기 ›'}</Text>
-                </View>
-                <View style={s.factors}>
-                  <View style={s.factor}>
-                    <Clock />
-                    <Text style={s.small}>{count(routine.totalDurationMinutes)}분</Text>
-                  </View>
-                  <View style={s.factor}>
-                    <Barbell />
-                    <Text style={s.small}>{routine.exercises.length}종목</Text>
-                  </View>
-                  <View style={s.factor}>
-                    <Energy />
-                    <Text style={s.small}>{count(routine.estimatedCalories)}kcal</Text>
-                  </View>
-                </View>
-                <Text numberOfLines={1} style={s.exercises}>
-                  {routine.exercises.map((e) => e.name).join(', ')}
-                </Text>
-              </View>
-            </Pressable>
-          ) : (
-            <View style={[mainStyles.card, mainStyles.empty]}>
-              <Text style={mainStyles.text}>
-                {homeLoadState === 'loading'
-                  ? '운동 기록을 불러오는 중이에요.'
-                  : '아직 추천받은 루틴이 없어요.'}
-              </Text>
-            </View>
-          )}
-        </View>
-        <View style={{ gap: 5 }}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/exercise/history')}
-            style={s.menu}
-          >
-            <View style={s.menuIcon}>
-              <Sneaker />
-            </View>
-            <Text style={s.menuText}>운동 기록 확인</Text>
-            <Chevron />
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/exercise/goal')}
-            style={s.menu}
-          >
-            <View style={s.menuIcon}>
-              <Calendar />
-            </View>
-            <Text style={s.menuText}>운동 목표 설정</Text>
-            <Chevron />
+          <Pressable accessibilityRole="button" onPress={() => router.push('/exercise/condition')} style={styles.secondaryButton}>
+            <Text style={styles.secondaryText}>다시 추천받기</Text>
           </Pressable>
         </View>
-      </View>
-    </MainScreen>
+
+        {homeError ? (
+          <Pressable accessibilityRole="button" onPress={() => void refreshHome()} style={styles.errorCard}>
+            <Text style={styles.errorText}>{homeError} · 다시 시도</Text>
+          </Pressable>
+        ) : null}
+
+        <View style={[styles.card, simple && simpleStyles.card, isDark && dark.card]}>
+          <View style={styles.rowBetween}>
+            <Text style={[styles.sectionTitle, isDark && dark.text]}>이번 주 목표</Text>
+            <Text style={styles.caption}>{day(start)}–{day(end)}</Text>
+          </View>
+          <View style={styles.rowBetween}>
+            <Text style={styles.bigCount}>{value(homeMetrics.currentWeekWorkoutCount)}<Text style={styles.countUnit}> / {value(homeMetrics.targetWorkoutCount)}회</Text></Text>
+            <Text style={styles.percent}>{value(homeMetrics.goalAchievementRate, '%')}</Text>
+          </View>
+          <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: progress }} style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progress}%` }]} />
+          </View>
+          <View style={styles.progressLabels}>
+            <Text style={styles.caption}>이번 주 완료 {value(homeMetrics.currentWeekWorkoutCount, '회')}</Text>
+            <Text style={styles.caption}>목표까지 {value(homeMetrics.remainingGoalWorkoutCount, '회')}</Text>
+          </View>
+          <View style={[styles.statRow, simple && simpleStyles.statRow]}>
+            <View style={[styles.statBox, isDark && dark.card]}><Text style={styles.statLabel}>연속 운동</Text><Text style={[styles.statValue, isDark && dark.text]}>{value(homeMetrics.currentWorkoutStreakDays, '일')}</Text></View>
+            <View style={[styles.statBox, isDark && dark.card]}><Text style={styles.statLabel}>최근 운동</Text><Text style={[styles.statValue, isDark && dark.text]}>{latestSession?.date?.slice(5, 10) ?? '—'}</Text></View>
+          </View>
+        </View>
+
+        <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle, isDark && dark.text]}>최근 운동</Text>
+        <View style={[styles.card, simple && simpleStyles.card, isDark && dark.card]}>
+          <MenuRow title="운동 기록 확인" detail="완료한 운동과 운동 시간을 살펴보세요" onPress={() => router.push('/exercise/history')} />
+          <View style={styles.divider} />
+          <MenuRow title="저장한 운동" detail="추천 운동을 모으고 내 루틴을 만드세요" onPress={() => router.push('/exercise/saved-routines')} />
+          <View style={styles.divider} />
+          <MenuRow title="러닝 코스 추천" detail="지역과 거리에 맞는 코스를 찾아보세요" onPress={() => router.push('/exercise/running')} />
+          <View style={styles.divider} />
+          <MenuRow title="운동 목표 설정" detail="기간 · 근육량 · 체중 · 꾸준함" onPress={() => router.push('/exercise/goal')} />
+          <View style={styles.divider} />
+          <MenuRow title="진행 상황 보기" detail="목표와 운동 기록을 확인하세요" onPress={() => router.push('/exercise/goal-progress')} />
+          <View style={styles.divider} />
+          <MenuRow title="자세 점검" detail="스쿼트 자세 촬영을 준비하세요" onPress={() => router.push('/exercise/posture-check')} />
+          <View style={styles.divider} />
+          <MenuRow title="부위별 운동 가이드" detail="불편 부위의 가이드를 살펴보세요" onPress={() => router.push('/exercise/body-guide')} />
+        </View>
+      </ScrollView>
+    </View>
   );
 }
-const s = StyleSheet.create({
-  heroImage: { position: 'absolute', right: -13, top: -37, width: 170, height: 170 },
-  confetti: {
-    position: 'absolute',
-    width: 442,
-    height: 147,
-    top: -112,
-    left: -45,
-    transform: [{ scaleY: -1 }],
-  },
-  heroTitle: {
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 24,
-    lineHeight: 27,
-    color: colors.textWhite,
-    marginTop: 12,
-    maxWidth: 260,
-  },
-  accent: { color: colors.primaryMedium },
-  headerBottom: { marginTop: 'auto', gap: 10 },
-  locations: { flexDirection: 'row', gap: 7 },
-  chip: {
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-    borderRadius: 20,
-    paddingHorizontal: 9,
-    height: 36,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  selectedChip: { backgroundColor: colors.primaryLight },
-  chipText: {
-    color: colors.primaryLight,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-  },
-  selectedChipText: { color: colors.primary },
-  routineBadge: {
-    alignSelf: 'flex-start',
-    borderRadius: 20,
-    borderWidth: 0.5,
-    borderColor: colors.primaryLight,
-    padding: 9,
-    maxWidth: '100%',
-  },
-  action: {
-    height: 45,
-    borderRadius: 24,
-    overflow: 'hidden',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  arrow: {
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionText: { color: '#FFF', fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
-  section: { gap: 15 },
-  heading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
-  sectionTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 22, color: colors.textBody },
-  date: { fontFamily: fontFamilies.pretendardMedium, fontSize: 13, color: colors.textSecondary },
-  counter: { fontFamily: fontFamilies.pretendardBold, fontSize: 30, color: colors.primary },
-  unit: { fontFamily: fontFamilies.pretendardMedium, fontSize: 18, color: colors.textSecondary },
-  percent: { fontSize: 18, color: colors.primary, fontFamily: fontFamilies.pretendardMedium },
-  track: { height: 10, borderRadius: 5, backgroundColor: colors.border, overflow: 'hidden' },
-  fill: { height: 10, borderRadius: 5, backgroundColor: colors.primary },
-  stats: {
-    flexDirection: 'row',
-    height: 80,
-    paddingHorizontal: 10,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  stat: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  icon: {
-    width: 35,
-    height: 35,
-    borderRadius: 18,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: 14,
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    flexShrink: 1,
-  },
-  value: { fontSize: 24, color: colors.primary, fontFamily: fontFamilies.pretendardBold },
-  small: { fontSize: 13, color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium },
-  divider: { width: 1, height: 60, backgroundColor: colors.border, marginHorizontal: 10 },
-  recent: { flexDirection: 'row', paddingHorizontal: 10, gap: 10 },
-  recentImage: { width: 87, height: 87, borderRadius: 10, backgroundColor: colors.primaryLight },
-  recentBody: { flex: 1, gap: 10 },
-  routineTitle: {
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 18,
-    color: colors.textBody,
-    flex: 1,
-  },
-  manage: {
-    fontSize: 13,
-    color: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 15,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  factors: { flexDirection: 'row', justifyContent: 'space-between', gap: 4, flexWrap: 'wrap' },
-  factor: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  exercises: {
-    backgroundColor: colors.border,
-    padding: 4,
-    borderRadius: 5,
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  menu: {
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    minHeight: 65,
-    paddingHorizontal: 15,
-    flexDirection: 'row',
-    gap: 13,
-    alignItems: 'center',
-    boxShadow: '0px 0px 5px rgba(0,0,0,0.08)',
-  },
-  menuIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuText: {
-    flex: 1,
-    fontSize: 18,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    color: colors.textBody,
-  },
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#F8F8FA' },
+  titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  content: { paddingHorizontal: 20, gap: 18 },
+  pageTitle: { color: ink, fontSize: 24, fontFamily: fontFamilies.pretendardBold, marginBottom: 2 },
+  card: { backgroundColor: '#FFF', borderColor: border, borderWidth: 1, borderRadius: 16, padding: 18, gap: 12 },
+  eyebrow: { color: muted, fontSize: 13, fontFamily: fontFamilies.pretendardMedium },
+  heroTitle: { color: ink, fontSize: 20, fontFamily: fontFamilies.pretendardBold },
+  heroMeta: { color: muted, fontSize: 13, fontFamily: fontFamilies.pretendardMedium },
+  primaryButton: { backgroundColor: purple, borderRadius: 9, height: 50, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  primaryText: { color: '#FFF', fontSize: 15, fontFamily: fontFamilies.pretendardBold },
+  secondaryButton: { alignItems: 'center', paddingVertical: 8 },
+  secondaryText: { color: ink, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
+  disabled: { opacity: 0.5 },
+  errorCard: { backgroundColor: '#FFF1F0', borderRadius: 10, padding: 14 },
+  errorText: { color: '#A13A2F', fontSize: 13 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  sectionTitle: { color: ink, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  caption: { color: muted, fontSize: 12, fontFamily: fontFamilies.pretendardMedium },
+  bigCount: { color: purple, fontSize: 23, fontFamily: fontFamilies.pretendardBold },
+  countUnit: { color: muted, fontSize: 13, fontFamily: fontFamilies.pretendardMedium },
+  percent: { color: purple, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+  progressTrack: { height: 7, borderRadius: 4, backgroundColor: '#E9E8EE', overflow: 'hidden' },
+  progressFill: { height: 7, backgroundColor: purple },
+  progressLabels: { flexDirection: 'row', justifyContent: 'space-between' },
+  statRow: { flexDirection: 'row', gap: 10, paddingTop: 4 },
+  statBox: { flex: 1, borderColor: border, borderWidth: 1, borderRadius: 9, padding: 12, gap: 3 },
+  statLabel: { color: muted, fontSize: 11 },
+  statValue: { color: ink, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 50 },
+  menuIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#F0EEFC', alignItems: 'center', justifyContent: 'center' },
+  menuIconText: { color: purple, fontSize: 16 },
+  menuCopy: { flex: 1, gap: 2 },
+  menuTitle: { color: ink, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
+  menuDetail: { color: muted, fontSize: 11 },
+  chevron: { color: muted, fontSize: 20 },
+  divider: { height: 1, backgroundColor: border },
+});
+
+const simpleStyles = StyleSheet.create({
+  content: { gap: 20 },
+  pageTitle: { fontSize: 29 },
+  card: { gap: 16, padding: 20 },
+  heroTitle: { fontSize: 23 },
+  heroMeta: { fontSize: 16, lineHeight: 23 },
+  primaryButton: { minHeight: 58 },
+  primaryText: { fontSize: 18 },
+  sectionTitle: { fontSize: 20 },
+  statRow: { flexDirection: 'column' },
+  menuRow: { minHeight: 76 },
+  menuTitle: { fontSize: 17 },
+  menuDetail: { fontSize: 13, lineHeight: 19 },
+});
+
+const dark = StyleSheet.create({
+  root: { backgroundColor: darkColors.background },
+  card: { backgroundColor: darkColors.surface, borderColor: darkColors.border },
+  text: { color: darkColors.textPrimary },
 });

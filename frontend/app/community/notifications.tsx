@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
-  FlatList,
+  SectionList,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -17,7 +17,7 @@ import {
   readCommunityNotifications,
   type CommunityNotification,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { colors, fontFamilies, spacing, typography } from '@/src/theme';
@@ -41,19 +41,18 @@ export default function CommunityNotificationsScreen() {
   const [items, setItems] = useState<CommunityNotification[] | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>();
+  const [readError, setReadError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [markingRead, setMarkingRead] = useState(false);
+  const [tab, setTab] = useState<'all' | 'community'>('all');
   const loadingMoreRef = useRef(false);
 
-  // Unread rows stay highlighted for this visit; the server marks them read right away.
   const load = useCallback(async () => {
     try {
       const page = await getCommunityNotifications();
       setItems(page.items);
       setCursor(page.next_cursor);
       setErrorMessage(undefined);
-      if (page.items.some((item) => !item.is_read)) {
-        readCommunityNotifications().catch(() => undefined);
-      }
     } catch (error) {
       setErrorMessage(getCommunityErrorMessage(error));
     } finally {
@@ -100,9 +99,46 @@ export default function CommunityNotificationsScreen() {
     }
   };
 
+  const markAllRead = async () => {
+    if (markingRead || !items?.some((item) => !item.is_read)) return;
+    setMarkingRead(true);
+    try {
+      await readCommunityNotifications();
+      setItems((current) => current?.map((item) => ({ ...item, is_read: true })) ?? null);
+      setReadError('');
+    } catch (cause) {
+      setReadError(getCommunityErrorMessage(cause));
+    } finally {
+      setMarkingRead(false);
+    }
+  };
+  const sections = useMemo(() => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    const groups = [
+      { title: '오늘', data: [] as CommunityNotification[] },
+      { title: '이번 주', data: [] as CommunityNotification[] },
+      { title: '이전 알림', data: [] as CommunityNotification[] },
+    ];
+    for (const item of items ?? []) {
+      const date = new Date(item.created_at);
+      groups[Number.isNaN(date.getTime()) || date < monday ? 2 : date >= today ? 0 : 1].data.push(item);
+    }
+    return groups.filter((group) => group.data.length > 0);
+  }, [items]);
+
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <AppHeader onBackPress={() => router.back()} title="알림" />
+      <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable><Text style={styles.headerTitle}>알림</Text><View style={{ width: 24 }} /></View>
+      <View style={styles.filters}>
+        {([['all', '전체'], ['community', '커뮤니티']] as const).map(([key, label]) => <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={[styles.filter, tab === key && styles.filterSelected]}><Text style={[styles.filterText, tab === key && styles.filterTextSelected]}>{label}</Text></Pressable>)}
+        <View accessibilityLabel="챌린지·티어 알림은 준비 중" style={styles.filter}><Text style={styles.filterText}>챌린지 · 티어</Text></View>
+        <Pressable accessibilityRole="button" disabled={markingRead || !items?.some((item) => !item.is_read)} onPress={() => void markAllRead()}><Text style={styles.markRead}>모두 읽음</Text></Pressable>
+      </View>
+      <Text style={styles.availability}>현재 커뮤니티 알림을 볼 수 있어요. 챌린지·티어 알림은 준비 중입니다.</Text>
+      {readError ? <Text style={styles.readError}>{readError}</Text> : null}
       {errorMessage ? (
         <View style={styles.message}>
           <Text style={styles.messageText}>{errorMessage}</Text>
@@ -119,10 +155,11 @@ export default function CommunityNotificationsScreen() {
       ) : items === null ? (
         <ActivityIndicator color={colors.primary} style={styles.message} />
       ) : (
-        <FlatList
+        <SectionList
           contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + spacing.xl }}
-          data={items}
+          sections={sections}
           keyExtractor={(item) => item.notification_id}
+          renderSectionHeader={({ section }) => <Text style={styles.sectionTitle}>{section.title}</Text>}
           ListEmptyComponent={
             <View style={styles.message}>
               <Text style={styles.messageText}>
@@ -184,6 +221,9 @@ export default function CommunityNotificationsScreen() {
 
 const styles = StyleSheet.create({
   root: { backgroundColor: colors.surface, flex: 1 },
+  header: { height: 54, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, back: { color: '#1E1D24', fontSize: 31, lineHeight: 36 }, headerTitle: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
+  filters: { paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }, filter: { backgroundColor: '#F7F7F9', borderRadius: 20, paddingHorizontal: 11, paddingVertical: 9, borderWidth: 1, borderColor: '#E4E5EB' }, filterSelected: { backgroundColor: '#503DD7', borderColor: '#503DD7' }, filterText: { color: '#777681', fontSize: 11 }, filterTextSelected: { color: '#FFF' }, markRead: { color: '#777681', fontSize: 11, marginLeft: 5 }, sectionTitle: { color: '#1E1D24', fontSize: 13, fontFamily: fontFamilies.pretendardBold, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8 }, readError: { color: '#A13A2F', fontSize: 12, paddingHorizontal: 20 },
+  availability: { color: '#777681', fontSize: 11, paddingHorizontal: 20, paddingBottom: 8 },
   message: {
     alignItems: 'center',
     flex: 1,

@@ -3,54 +3,29 @@ import { useRouter, type Href } from 'expo-router';
 import {
   Alert,
   BackHandler,
-  Dimensions,
-  Image,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import BarbellIcon from '@/assets/icons/deco/Barbell.svg';
-import FireIcon from '@/assets/icons/deco/Fire.svg';
-import HandHeartIcon from '@/assets/icons/deco/HandHeart.svg';
-import SparkleIcon from '@/assets/icons/deco/Sparkle_Fill.svg';
-import HouseIcon from '@/assets/icons/deco/HouseLine.svg';
-import SmileyIcon from '@/assets/icons/face/Smiley.svg';
-import PlayIcon from '@/assets/icons/feature/PlayCircle_Fill.svg';
-import ClockIcon from '@/assets/icons/input/Clock.svg';
-import CheckIcon from '@/assets/icons/system/CheckCircle_Fill.svg';
-import LightbulbIcon from '@/assets/icons/system/Lightbulb.svg';
 import { getExerciseApiErrorMessage } from '@/src/api/exercise';
-import { BackButton } from '@/src/components/common/BackButton';
-import { ExerciseActionButton } from '@/src/components/exercise/ExerciseActionButton';
-import { ExerciseScreenFrame } from '@/src/components/exercise/ExerciseScreenFrame';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
-import {
-  exerciseEquipmentLabels,
-  exerciseLocationLabels,
-} from '@/src/features/exercise/exerciseData';
-import { colors, fontFamilies } from '@/src/theme';
-
-const exerciseImage = require('@/assets/images/illustrations/temp/Image_Exercise.png');
-const referenceHeight = 917;
-const minimumScreenHeight = 740;
-const expandedSecondaryCtaTop = 820;
-const compactSecondaryCtaTop = 777;
-const ctaHeight = 45;
-const ctaGap = 10;
+import { exerciseLocationLabels } from '@/src/features/exercise/exerciseData';
+import { fontFamilies } from '@/src/theme';
 
 export default function ExerciseSummaryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
-  const { condition, refreshHome, routine, startRoutine } = useExerciseRoutine();
+  const { condition, homeLoadState, refreshHome, routine, startRoutine } = useExerciseRoutine();
   const { beginSession } = useExerciseSession();
   const [isStarting, setIsStarting] = useState(false);
+  const goBack = useCallback(() => router.dismissTo('/exercise'), [router]);
+
   useEffect(() => {
     if (routine) return undefined;
     const frame = requestAnimationFrame(() => {
@@ -58,490 +33,268 @@ export default function ExerciseSummaryScreen() {
     });
     return () => cancelAnimationFrame(frame);
   }, [refreshHome, routine]);
-  const responsiveHeight =
-    Platform.OS === 'android' ? Dimensions.get('screen').height : windowHeight;
-  const heightProgress = Math.max(
-    0,
-    Math.min(1, (responsiveHeight - minimumScreenHeight) / (referenceHeight - minimumScreenHeight)),
-  );
-  const verticalValue = (expanded: number, compact: number) =>
-    compact + (expanded - compact) * heightProgress;
-  const availableWidth = windowWidth - insets.left - insets.right;
-  const dietWidthScale = Math.min(1, availableWidth / 412);
-  const frameWidthScale = Math.min(1, windowWidth / 412);
-  const dietCanvasTop = Math.max(0, insets.top + 8 - 38 * dietWidthScale);
-  const titleTop =
-    (dietCanvasTop + verticalValue(38, 30) * dietWidthScale) / Math.max(frameWidthScale, 0.01);
-  const secondaryCtaTop = verticalValue(expandedSecondaryCtaTop, compactSecondaryCtaTop);
-  const layout = {
-    conditionSummaryHeight: verticalValue(100, 90),
-    conditionSummaryTop: verticalValue(80, 70),
-    primaryCtaTop: secondaryCtaTop - ctaHeight - ctaGap,
-    programCardHeight: verticalValue(300, 280),
-    programInfoGap: verticalValue(22, 14),
-    programInnerGap: verticalValue(12, 10),
-    programCardTop: verticalValue(190, 170),
-    reasonSectionGap: verticalValue(7, 5),
-    secondaryCtaTop,
-    workoutCardHeight: 250,
-    workoutCardTop: verticalValue(500, 460),
-  };
-  const contentHeight = secondaryCtaTop + ctaHeight;
-  const backToExerciseHome = useCallback(() => router.dismissTo('/exercise'), [router]);
-
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
-
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      backToExerciseHome();
+      goBack();
       return true;
     });
-
     return () => subscription.remove();
-  }, [backToExerciseHome]);
+  }, [goBack]);
 
-  const handleStartWorkout = async () => {
+  const handleStart = async () => {
     if (!routine || isStarting) return;
     setIsStarting(true);
     try {
-      const startedSession = await startRoutine();
-      beginSession(routine, startedSession);
-      requestAnimationFrame(() => router.push('/exercise/session' as Href));
+      const started = await startRoutine();
+      beginSession(routine, started);
+      router.push('/exercise/session' as Href);
     } catch (error) {
-      console.error('Exercise session start failed:', error);
-      Alert.alert('운동 시작 실패', getExerciseApiErrorMessage(error));
+      Alert.alert('운동을 시작하지 못했어요', getExerciseApiErrorMessage(error));
     } finally {
       setIsStarting(false);
     }
   };
 
+  const duration = routine?.totalDurationMinutes ?? condition.availableMinutes;
   const summary = [
-    {
-      label: '시간',
-      value: condition.availableMinutes === null ? '미선택' : `${condition.availableMinutes}분`,
-      Icon: ClockIcon,
-    },
-    {
-      label: '장소',
-      value: condition.location ? exerciseLocationLabels[condition.location] : '미선택',
-      Icon: HouseIcon,
-    },
-    {
-      label: '장비',
-      value:
-        condition.equipment.length === 1
-          ? exerciseEquipmentLabels[condition.equipment[0]]
-          : `${condition.equipment.length}종`,
-      Icon: BarbellIcon,
-    },
-    { label: '컨디션', value: condition.condition || '미입력', Icon: SmileyIcon },
-    { label: '불편 부위', value: condition.discomfortArea || '없음', Icon: HandHeartIcon },
-  ];
+    duration === null ? null : String(duration) + '분',
+    routine?.estimatedCalories === null || routine?.estimatedCalories === undefined
+      ? null
+      : '약 ' + String(routine.estimatedCalories) + 'kcal',
+    routine?.intensity ? '강도 ' + routine.intensity : null,
+  ].filter((value): value is string => Boolean(value));
+  const conditions = [
+    condition.availableMinutes === null ? null : String(condition.availableMinutes) + '분',
+    condition.location ? exerciseLocationLabels[condition.location] : null,
+    condition.equipment.length ? condition.equipment.length + '종 기구' : '기구 없음',
+    condition.condition,
+  ].filter((value): value is string => Boolean(value));
 
   return (
-    <ExerciseScreenFrame contentHeight={contentHeight}>
-      <BackButton onPress={backToExerciseHome} style={[styles.back, { top: titleTop - 15 }]} />
-      <Text style={[styles.screenTitle, { top: titleTop }]}>오늘의 맞춤 운동</Text>
-      <View
-        style={[
-          styles.conditionSummary,
-          { height: layout.conditionSummaryHeight, top: layout.conditionSummaryTop },
-        ]}
-      >
-        {summary.map(({ Icon, label, value }, index) => (
-          <View key={label} style={styles.conditionItem}>
-            <View style={styles.conditionIcon}>
-              <Icon color={colors.primary} fill={colors.primary} height={19} width={19} />
-            </View>
-            <Text style={styles.conditionLabel}>{label}</Text>
-            <Text numberOfLines={1} style={styles.conditionValue}>
-              {value}
-            </Text>
-            {index < summary.length - 1 ? <View style={styles.conditionDivider} /> : null}
-          </View>
-        ))}
+    <View style={styles.root}>
+      <StatusBar style="dark" />
+      <View style={[styles.header, { paddingTop: insets.top + 5 }]}>
+        <Pressable
+          accessibilityLabel="뒤로 가기"
+          accessibilityRole="button"
+          onPress={goBack}
+          style={styles.back}
+        >
+          <Text style={styles.backText}>‹</Text>
+        </Pressable>
+        <Text style={styles.headerTitle}>오늘의 맞춤 운동</Text>
+        <View style={styles.headerSpacer} />
       </View>
-
-      <View
-        style={[
-          styles.programCard,
-          {
-            height: layout.programCardHeight,
-            top: layout.programCardTop,
-          },
-        ]}
-      >
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {routine ? (
-          <View style={[styles.programInner, { gap: layout.programInnerGap }]}>
-            <View style={styles.programOverview}>
-              <View style={[styles.programInfo, { gap: layout.programInfoGap }]}>
-                <View style={styles.aiBadge}>
-                  <View style={styles.aiBadgeContent}>
-                    <SparkleIcon
-                      color={colors.primaryDark}
-                      fill={colors.primaryDark}
-                      height={15}
-                      width={15}
-                    />
-                    <Text style={styles.aiBadgeText}>AI 추천 운동 프로그램</Text>
-                  </View>
-                </View>
-                <Text style={styles.programTitle}>
-                  {routine.title}
-                  {routine.subtitle ? `\n` : null}
-                  {routine.subtitle ? (
-                    <Text style={styles.programAccent}>{routine.subtitle}</Text>
-                  ) : null}
-                </Text>
-                <View style={styles.programMeta}>
-                  <View style={styles.programMetaItem}>
-                    <ClockIcon color={colors.primary} height={20} width={20} />
-                    <Text numberOfLines={1} style={styles.programMetaText}>
-                      {routine.totalDurationMinutes !== null
-                        ? `${routine.totalDurationMinutes}분`
-                        : condition.availableMinutes === null
-                          ? '시간 미선택'
-                          : `${condition.availableMinutes}분`}
-                    </Text>
-                  </View>
-                  <Text style={styles.programMetaSeparator}>·</Text>
-                  <View style={styles.programMetaItem}>
-                    <BarbellIcon color={colors.primary} fill={colors.primary} height={20} width={20} />
-                    <Text numberOfLines={1} style={styles.programMetaText}>
-                      {routine.exercises.length}개 운동
-                    </Text>
-                  </View>
-                  {routine.intensity ? (
-                    <>
-                      <Text style={styles.programMetaSeparator}>·</Text>
-                      <View style={styles.programMetaItem}>
-                        <FireIcon color={colors.primary} fill={colors.primary} height={20} width={20} />
-                        <Text numberOfLines={1} style={styles.programMetaText}>
-                          강도 {routine.intensity}
-                        </Text>
-                      </View>
-                    </>
-                  ) : null}
-                </View>
-              </View>
-              <Image resizeMode="contain" source={exerciseImage} style={styles.programImage} />
+          <>
+            <Text style={styles.heading}>{routine.title}</Text>
+            {routine.subtitle ? <Text style={styles.subtitle}>{routine.subtitle}</Text> : null}
+            <Text style={styles.meta}>{summary.join('  ·  ')}</Text>
+            <View style={styles.conditionBar}>
+              <Text numberOfLines={2} style={styles.conditionText}>
+                {conditions.join(' · ')}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() =>
+                  router.push({ pathname: '/exercise/condition', params: { source: 'summary' } })
+                }
+                style={styles.change}
+              >
+                <Text style={styles.changeText}>바꾸기</Text>
+              </Pressable>
             </View>
-            <View style={styles.divider} />
-            <View style={[styles.reasonSection, { gap: layout.reasonSectionGap }]}>
-              <View style={styles.reasonTitleRow}>
-                <LightbulbIcon color={colors.primary} height={22} width={22} />
-                <Text style={styles.reasonTitle}>추천 이유</Text>
-              </View>
-              {routine.reasons.length > 0 ? (
-                <View style={styles.reasonList}>
-                  {routine.reasons.map((reason) => (
-                    <View key={reason} style={styles.reasonRow}>
-                      <CheckIcon
-                        color={colors.primaryDark}
-                        fill={colors.primaryDark}
-                        height={17}
-                        style={styles.reasonCheck}
-                        width={17}
-                      />
-                      <Text style={styles.reasonText}>{reason}</Text>
-                    </View>
-                  ))}
-                </View>
+            <View style={styles.reasonCard}>
+              <Text style={styles.reasonTitle}>이렇게 골랐어요</Text>
+              {routine.reasons.length ? (
+                routine.reasons.map((reason, index) => (
+                  <Text key={index} style={styles.reason}>
+                    • {reason}
+                  </Text>
+                ))
               ) : (
-                <Text style={styles.emptyText}>추천 이유 정보가 없어요.</Text>
+                <Text style={styles.reason}>
+                  오늘 입력한 운동 시간과 장소, 컨디션을 바탕으로 추천했어요.
+                </Text>
               )}
             </View>
-          </View>
+            <View style={styles.listHeader}>
+              <Text style={styles.sectionTitle}>운동 {routine.exercises.length}개</Text>
+            </View>
+            <View style={styles.list}>
+              {routine.exercises.map((exercise, index) => (
+                <View
+                  key={exercise.id}
+                  style={[
+                    styles.exerciseRow,
+                    index === routine.exercises.length - 1 && styles.lastRow,
+                  ]}
+                >
+                  <View style={styles.exerciseIcon}>
+                    <Text style={styles.exerciseIconText}>◉</Text>
+                  </View>
+                  <View style={styles.exerciseCopy}>
+                    <Text style={styles.exerciseName}>{exercise.name}</Text>
+                    <Text style={styles.exercisePrescription}>
+                      {exercise.prescription || '자세한 운동 방법은 시작 후 확인해 주세요.'}
+                    </Text>
+                  </View>
+                  {exercise.name.includes('스쿼트') ? (
+                    <Pressable
+                      accessibilityLabel="스쿼트 자세 10초 촬영"
+                      accessibilityRole="button"
+                      onPress={() => router.push('/exercise/posture-capture' as Href)}
+                      style={styles.postureButton}
+                    >
+                      <Text style={styles.postureButtonText}>자세 촬영</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          </>
         ) : (
-          <View style={styles.emptyProgram}>
-            <Text style={styles.emptyText}>표시할 운동 추천 정보가 없어요.</Text>
+          <View style={styles.empty}>
+            <Text style={styles.heading}>
+              {homeLoadState === 'loading'
+                ? '추천 운동을 불러오고 있어요'
+                : '아직 추천 운동이 없어요'}
+            </Text>
+            <Text style={styles.subtitle}>
+              잠시 후에도 보이지 않으면 운동 설정부터 다시 진행해 주세요.
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/exercise/condition')}
+              style={styles.emptyAction}
+            >
+              <Text style={styles.emptyActionText}>운동 설정하기</Text>
+            </Pressable>
           </View>
         )}
+      </ScrollView>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 18) }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ busy: isStarting, disabled: !routine || isStarting }}
+          disabled={!routine || isStarting}
+          onPress={() => void handleStart()}
+          style={[styles.startButton, (!routine || isStarting) && styles.disabled]}
+        >
+          <Text style={styles.startText}>{isStarting ? '운동 시작하는 중…' : '운동 시작하기'}</Text>
+        </Pressable>
       </View>
-
-      <View
-        style={[
-          styles.workoutCard,
-          { height: layout.workoutCardHeight, top: layout.workoutCardTop },
-        ]}
-      >
-        <View style={styles.workoutHeader}>
-          <View style={styles.workoutTitleRow}>
-            <BarbellIcon color={colors.primary} fill={colors.primary} height={23} width={23} />
-            <Text style={styles.workoutTitle}>운동 리스트</Text>
-          </View>
-          <Text style={styles.workoutCount}>
-            {routine ? `${routine.exercises.length}개 운동` : '-'}
-          </Text>
-        </View>
-        <ScrollView nestedScrollEnabled showsVerticalScrollIndicator style={styles.workoutList}>
-          {routine?.exercises.map((exercise, index) => (
-            <View
-              key={exercise.id}
-              style={[
-                styles.workoutRow,
-                index === routine.exercises.length - 1 && styles.workoutRowLast,
-              ]}
-            >
-              <View style={styles.number}>
-                <Text style={styles.numberText}>{exercise.sequenceOrder ?? ''}</Text>
-              </View>
-              <View style={styles.workoutText}>
-                <Text style={styles.workoutName}>{exercise.name}</Text>
-                <Text style={styles.workoutPrescription}>{exercise.prescription}</Text>
-              </View>
-            </View>
-          ))}
-          {!routine || routine.exercises.length === 0 ? (
-            <Text style={styles.emptyText}>표시할 운동 목록이 없어요.</Text>
-          ) : null}
-        </ScrollView>
-      </View>
-      <View
-        pointerEvents={isStarting ? 'none' : 'auto'}
-        style={[styles.primaryCta, { top: layout.primaryCtaTop }, isStarting && styles.ctaLoading]}
-      >
-        <ExerciseActionButton
-          borderRadius={10}
-          gap={10}
-          gradient
-          icon={<PlayIcon color={colors.surface} fill={colors.surface} height={22} width={22} />}
-          labelStyle={styles.ctaLabel}
-          onPress={() => void handleStartWorkout()}
-          title="운동 시작하기"
-        />
-      </View>
-      <View style={[styles.secondaryCta, { top: layout.secondaryCtaTop }]}>
-        <ExerciseActionButton
-          onPress={() =>
-            router.push({ pathname: '/exercise/condition', params: { source: 'summary' } })
-          }
-          title="조건 다시 설정"
-          variant="secondary"
-        />
-      </View>
-    </ExerciseScreenFrame>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  aiBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.primaryLight,
-    borderRadius: 10,
-    height: 21,
-    justifyContent: 'center',
-    paddingHorizontal: 7,
-  },
-  aiBadgeContent: { alignItems: 'center', flexDirection: 'row', gap: 2 },
-  aiBadgeText: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 13,
-    includeFontPadding: false,
-    lineHeight: 16,
-  },
-  back: { left: 10, position: 'absolute', top: 32 },
-  conditionIcon: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: 999,
-    height: 31,
-    justifyContent: 'center',
-    width: 31,
-  },
-  conditionDivider: {
-    backgroundColor: colors.border,
-    height: 75,
-    position: 'absolute',
-    right: 0,
-    width: 1,
-  },
-  conditionItem: { alignItems: 'center', flex: 1, gap: 4, position: 'relative' },
-  conditionLabel: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 13,
-  },
-  conditionSummary: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    flexDirection: 'row',
-    height: 100,
-    left: 21,
-    paddingHorizontal: 8,
-    position: 'absolute',
-    top: 80,
-    width: 370,
-  },
-  conditionValue: {
-    color: colors.primaryDark,
+  root: { alignSelf: 'center', backgroundColor: '#FFFFFF', flex: 1, maxWidth: 412, width: '100%' },
+  header: { alignItems: 'center', flexDirection: 'row', paddingHorizontal: 19 },
+  back: { height: 44, justifyContent: 'center', width: 38 },
+  backText: { color: '#222227', fontSize: 31, lineHeight: 36 },
+  headerTitle: {
+    color: '#222227',
+    flex: 1,
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 15,
-    maxWidth: 64,
-  },
-  ctaLabel: { fontFamily: fontFamilies.pretendardMedium, fontSize: 20, lineHeight: 24 },
-  ctaLoading: { opacity: 0.7 },
-  divider: { backgroundColor: colors.border, height: 1, width: '100%' },
-  emptyProgram: { alignItems: 'center', flex: 1, justifyContent: 'center' },
-  emptyText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
     textAlign: 'center',
   },
-  number: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryDark,
-    borderRadius: 999,
-    height: 21,
-    justifyContent: 'center',
-    width: 21,
-  },
-  numberText: { color: colors.surface, fontFamily: fontFamilies.pretendardBold, fontSize: 14 },
-  primaryCta: { left: 21, position: 'absolute', top: 765, width: 370 },
-  programAccent: { color: colors.primaryDark },
-  programCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 300,
-    left: 21,
-    overflow: 'hidden',
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    position: 'absolute',
-    top: 190,
-    width: 370,
-  },
-  programImage: {
-    elevation: 0,
-    flexShrink: 0,
-    height: 120,
-    position: 'relative',
-    width: 120,
-    zIndex: 1,
-  },
-  programInfo: { elevation: 2, flexShrink: 0, position: 'relative', width: 216, zIndex: 2 },
-  programInner: { flex: 1 },
-  programMeta: {
-    alignItems: 'center',
-    color: colors.textSecondary,
-    flexDirection: 'row',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
-    includeFontPadding: false,
-    lineHeight: 16,
-  },
-  programMetaItem: { alignItems: 'center', flexDirection: 'row', gap: 5 },
-  programMetaSeparator: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
-    marginHorizontal: 5,
-  },
-  programMetaText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
-    includeFontPadding: false,
-    lineHeight: 16,
-  },
-  programOverview: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  programTitle: {
-    color: colors.textPrimary,
+  headerSpacer: { width: 38 },
+  content: { paddingBottom: 25, paddingHorizontal: 20, paddingTop: 27 },
+  heading: {
+    color: '#222227',
     fontFamily: fontFamilies.pretendardBold,
-    fontSize: 21,
-    includeFontPadding: false,
-    lineHeight: 28,
-    width: 216,
+    fontSize: 23,
+    lineHeight: 30,
   },
-  reasonList: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: 3,
-  },
-  reasonCheck: { marginTop: 0.5 },
-  reasonRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 5 },
-  reasonSection: { flex: 1 },
-  reasonText: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 14,
-    includeFontPadding: false,
-    lineHeight: 18,
-  },
-  reasonTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-    includeFontPadding: false,
-    lineHeight: 22,
-  },
-  reasonTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 3 },
-  screenTitle: {
-    alignSelf: 'center',
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 15,
-    letterSpacing: 1.5,
-    position: 'absolute',
-    top: 37,
-  },
-  secondaryCta: { left: 21, position: 'absolute', top: 820, width: 370 },
-  workoutCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 250,
-    left: 21,
-    padding: 16,
-    position: 'absolute',
-    top: 500,
-    width: 370,
-  },
-  workoutCount: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-  },
-  workoutHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  workoutList: { marginTop: 10 },
-  workoutName: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-  },
-  workoutPrescription: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    marginTop: 2,
-  },
-  workoutRow: {
+  subtitle: { color: '#777780', fontSize: 12, marginTop: 5 },
+  meta: { color: '#777780', fontSize: 12, marginTop: 10 },
+  conditionBar: {
     alignItems: 'center',
-    borderBottomColor: colors.border,
+    backgroundColor: '#FAFAFB',
+    borderColor: '#E7E7EC',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 7,
+    marginTop: 22,
+    minHeight: 48,
+    paddingHorizontal: 11,
+  },
+  conditionText: { color: '#66666F', flex: 1, fontSize: 11, lineHeight: 16 },
+  change: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E7E7EC',
+    borderRadius: 5,
+    borderWidth: 1,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+  },
+  changeText: { color: '#55555D', fontSize: 11 },
+  reasonCard: {
+    backgroundColor: '#FAFAFB',
+    borderColor: '#E7E7EC',
+    borderRadius: 9,
+    borderWidth: 1,
+    gap: 9,
+    marginTop: 15,
+    padding: 15,
+  },
+  reasonTitle: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+  reason: { color: '#66666F', fontSize: 12, lineHeight: 18 },
+  listHeader: { marginBottom: 10, marginTop: 23 },
+  sectionTitle: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+  list: { borderColor: '#E7E7EC', borderRadius: 9, borderWidth: 1, overflow: 'hidden' },
+  exerciseRow: {
+    alignItems: 'center',
+    borderBottomColor: '#EEEEF1',
     borderBottomWidth: 1,
     flexDirection: 'row',
-    minHeight: 50,
+    minHeight: 68,
+    paddingHorizontal: 10,
+  },
+  lastRow: { borderBottomWidth: 0 },
+  exerciseIcon: {
+    alignItems: 'center',
+    backgroundColor: '#F4F4F7',
+    borderRadius: 7,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  exerciseIconText: { color: '#777780', fontSize: 17 },
+  exerciseCopy: { flex: 1, gap: 4, marginLeft: 9 },
+  exerciseName: { color: '#333339', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  exercisePrescription: { color: '#9999A1', fontSize: 11 },
+  postureButton: {
+    borderColor: '#E7E7EC',
+    borderRadius: 7,
+    borderWidth: 1,
+    paddingHorizontal: 8,
     paddingVertical: 7,
   },
-  workoutRowLast: { borderBottomWidth: 0 },
-  workoutText: { marginLeft: 10 },
-  workoutTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 19,
+  postureButtonText: { color: '#503DD7', fontSize: 11, fontFamily: fontFamilies.pretendardSemiBold },
+  empty: { gap: 10, paddingTop: 40 },
+  emptyAction: {
+    alignSelf: 'flex-start',
+    borderColor: '#E7E7EC',
+    borderRadius: 7,
+    borderWidth: 1,
+    marginTop: 9,
+    padding: 9,
   },
-  workoutTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 7 },
+  emptyActionText: { color: '#503DD7', fontSize: 12 },
+  footer: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 10 },
+  startButton: {
+    alignItems: 'center',
+    backgroundColor: '#503DD7',
+    borderRadius: 8,
+    height: 49,
+    justifyContent: 'center',
+  },
+  disabled: { backgroundColor: '#DADAE1' },
+  startText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
 });

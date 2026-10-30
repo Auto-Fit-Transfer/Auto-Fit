@@ -11,23 +11,27 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ApiError } from '@/src/api/client';
 
-import ChatIcon from '@/assets/icons/feature/ChatTeardropDots_Fill.svg';
 import PencilIcon from '@/assets/icons/feature/Pencil_Fill.svg';
 import UserIcon from '@/assets/icons/input/User.svg';
 import BellIcon from '@/assets/icons/system/Bell.svg';
+import SearchIcon from '@/assets/icons/input/MagnifyingGlass.svg';
 import GearIcon from '@/assets/icons/system/GearSix.svg';
 import {
   getCommunityErrorMessage,
   getCommunityFeed,
   getCommunityUnreadCount,
-  getCommunityUnreadMessages,
   type CommunityAuthor,
   type CommunityFeedScope,
   type CommunityPost,
+  type CommunityPostCategory,
 } from '@/src/api/community';
-import { AppButton, IconButton } from '@/src/components/common';
+import { IconButton } from '@/src/components/common';
+import { R6ConnectionError } from '@/src/components/common/R6ConnectionError';
 import { CommunityPostCard } from '@/src/components/community';
+import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
+import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import {
   BOTTOM_NAVIGATION_MIN_BOTTOM_GAP,
   getBottomNavigationVisualHeight,
@@ -39,35 +43,42 @@ import {
 import { CommunityChallengesPane } from '@/src/features/community/CommunityChallengesPane';
 import { CommunityClubsPane } from '@/src/features/community/CommunityClubsPane';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, shadows, spacing, typography } from '@/src/theme';
+import { colors, darkColors, fontFamilies, radius, shadows, spacing, typography } from '@/src/theme';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
 type Tab = CommunityFeedScope | 'clubs' | 'challenges';
 
 const TABS: { label: string; value: Tab }[] = [
-  { label: '전체', value: 'all' },
+  { label: '추천', value: 'all' },
   { label: '팔로잉', value: 'following' },
   { label: '클럽', value: 'clubs' },
-  { label: '챌린지', value: 'challenges' },
+];
+const CATEGORIES: { label: string; value: CommunityPostCategory | null }[] = [
+  { label: '전체', value: null }, { label: '운동 기록', value: 'workout' },
+  { label: '루틴 공유', value: 'routine' }, { label: '식단', value: 'diet' },
+  { label: '질문', value: 'question' }, { label: '후기', value: 'review' },
 ];
 
 export default function CommunityScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { preferences, isDark } = useDisplayPreferences();
+  const simple = preferences.simple_mode_enabled;
   const { height: windowHeight } = useWindowDimensions();
   const actions = useCommunityActions();
   const { notify } = actions;
   const [scope, setScope] = useState<CommunityFeedScope>('all');
+  const [activeCategory, setActiveCategory] = useState<CommunityPostCategory | null>(null);
   // Clubs and challenges replace the feed list; the feed keeps its scope underneath.
   const [pane, setPane] = useState<'clubs' | 'challenges' | null>(null);
   const activeTab: Tab = pane ?? scope;
   const [unread, setUnread] = useState(0);
-  const [unreadMessages, setUnreadMessages] = useState(0);
   const [items, setItems] = useState<CommunityPost[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [state, setState] = useState<LoadState>('loading');
   const [errorMessage, setErrorMessage] = useState('');
+  const [errorOffline, setErrorOffline] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const loadingMoreRef = useRef(false);
@@ -82,7 +93,7 @@ export default function CommunityScreen() {
     async (inlineError: boolean) => {
       const id = ++request.current;
       try {
-        const page = await getCommunityFeed(null, scope);
+        const page = await getCommunityFeed(null, scope, scope === 'all' ? activeCategory : null);
         if (id !== request.current) return;
         setItems(page.items);
         setCursor(page.next_cursor);
@@ -91,6 +102,7 @@ export default function CommunityScreen() {
         if (id !== request.current) return;
         if (inlineError) {
           setErrorMessage(getCommunityErrorMessage(error));
+          setErrorOffline(error instanceof ApiError && error.status === 0);
           setState('error');
         } else {
           notify(getCommunityErrorMessage(error));
@@ -99,7 +111,7 @@ export default function CommunityScreen() {
         setRefreshing(false);
       }
     },
-    [notify, scope],
+    [activeCategory, notify, scope],
   );
 
   const refresh = () => {
@@ -118,7 +130,7 @@ export default function CommunityScreen() {
     setLoadingMore(true);
     const id = request.current;
     try {
-      const page = await getCommunityFeed(cursor, scope);
+      const page = await getCommunityFeed(cursor, scope, scope === 'all' ? activeCategory : null);
       if (id !== request.current) return;
       setItems((current) => {
         const seen = new Set(current.map((item) => item.feed_item_id));
@@ -131,17 +143,13 @@ export default function CommunityScreen() {
       loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [cursor, notify, scope]);
+  }, [activeCategory, cursor, notify, scope]);
 
   // The badge refreshes whenever the tab comes back into view (e.g. after reading them).
   useFocusEffect(
     useCallback(() => {
       getCommunityUnreadCount().then(
         (result) => setUnread(result.unread_count),
-        () => undefined,
-      );
-      getCommunityUnreadMessages().then(
-        (result) => setUnreadMessages(result.unread_count),
         () => undefined,
       );
     }, []),
@@ -154,6 +162,15 @@ export default function CommunityScreen() {
     setCursor(null);
     setState('loading');
     setScope(next);
+  };
+
+  const switchCategory = (category: CommunityPostCategory | null) => {
+    if (activeCategory === category) return;
+    request.current += 1;
+    setItems([]);
+    setCursor(null);
+    setState('loading');
+    setActiveCategory(category);
   };
 
   useEffect(() => {
@@ -179,12 +196,18 @@ export default function CommunityScreen() {
     router.push({ params: { userId: author.user_id }, pathname: '/community/user/[userId]' });
 
   return (
-    <View style={styles.root}>
-      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
-        <Text accessibilityRole="header" style={styles.title}>
+    <View style={[styles.root, isDark && dark.root]}>
+      <View style={[styles.header, isDark && dark.card, { paddingTop: insets.top + spacing.sm }]}>
+        <Text accessibilityRole="header" style={[styles.title, simple && simpleStyles.title, isDark && dark.text]}>
           커뮤니티
         </Text>
         <View style={styles.headerActions}>
+          <IconButton
+            accessibilityLabel="커뮤니티 검색"
+            icon={<SearchIcon color={colors.textBody} height={24} width={24} />}
+            onPress={() => router.push('/community/search')}
+            size={44}
+          />
           <View>
             <IconButton
               accessibilityLabel={unread > 0 ? `알림, 읽지 않은 알림 ${unread}개` : '알림'}
@@ -195,21 +218,6 @@ export default function CommunityScreen() {
             {unread > 0 ? (
               <View pointerEvents="none" style={styles.badge}>
                 <Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text>
-              </View>
-            ) : null}
-          </View>
-          <View>
-            <IconButton
-              accessibilityLabel={
-                unreadMessages > 0 ? `메시지, 안 읽은 메시지 ${unreadMessages}개` : '메시지'
-              }
-              icon={<ChatIcon color={colors.textBody} height={24} width={24} />}
-              onPress={() => router.push('/community/messages')}
-              size={44}
-            />
-            {unreadMessages > 0 ? (
-              <View pointerEvents="none" style={styles.badge}>
-                <Text style={styles.badgeText}>{unreadMessages > 99 ? '99+' : unreadMessages}</Text>
               </View>
             ) : null}
           </View>
@@ -229,16 +237,17 @@ export default function CommunityScreen() {
           />
         </View>
       </View>
-      <View accessibilityRole="tablist" style={styles.tabs}>
+      {simple ? <View style={[simpleStyles.readRow, isDark && dark.card]}><Text style={[simpleStyles.readHint, isDark && dark.secondary]}>추천 글과 클럽을 둘러보세요</Text><SimpleReadButton text={`커뮤니티입니다. ${activeTab === 'clubs' ? '클럽' : activeTab === 'following' ? '팔로잉' : '추천'} 탭을 보고 있어요. ${items.length}개의 글이 있습니다.`} /></View> : null}
+      <View accessibilityRole="tablist" style={[styles.tabs, isDark && dark.card]}>
         {TABS.map((item) => (
           <Pressable
             accessibilityRole="tab"
             aria-selected={item.value === activeTab}
             key={item.value}
             onPress={() => switchTab(item.value)}
-            style={[styles.tab, item.value === activeTab && styles.tabActive]}
+            style={[styles.tab, simple && simpleStyles.tab, item.value === activeTab && styles.tabActive]}
           >
-            <Text style={[styles.tabText, item.value === activeTab && styles.tabTextActive]}>
+            <Text style={[styles.tabText, simple && simpleStyles.tabText, item.value === activeTab && styles.tabTextActive, isDark && dark.text]}>
               {item.label}
             </Text>
           </Pressable>
@@ -252,15 +261,39 @@ export default function CommunityScreen() {
       ) : state === 'loading' ? (
         <ActivityIndicator color={colors.primary} style={styles.center} />
       ) : state === 'error' ? (
-        <View style={[styles.center, styles.message]}>
-          <Text style={styles.messageText}>{errorMessage}</Text>
-          <AppButton fullWidth={false} onPress={retry} title="다시 시도" />
-        </View>
+        <R6ConnectionError message={errorMessage} offline={errorOffline} onRetry={retry} />
       ) : (
         <FlatList
           contentContainerStyle={[styles.list, { paddingBottom: bottomSpace + 96 }]}
           data={items}
           keyExtractor={(item) => item.feed_item_id}
+          ListHeaderComponent={
+            scope === 'all' ? (
+              <View style={[styles.feedHeader, isDark && dark.card]}>
+                <View style={styles.categories}>
+                  {CATEGORIES.map((category) => (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: activeCategory === category.value }}
+                      onPress={() => switchCategory(category.value)}
+                      key={category.label}
+                      style={[styles.categoryChip, simple && simpleStyles.categoryChip, activeCategory === category.value && styles.categoryActive]}
+                    >
+                      <Text style={[styles.categoryText, simple && simpleStyles.categoryText, activeCategory === category.value && styles.categoryTextActive]}>{category.label}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Pressable accessibilityRole="button" onPress={() => setPane('challenges')} style={[styles.challengeCard, simple && simpleStyles.challengeCard, isDark && dark.card]}>
+                  <View style={styles.challengeIcon}><Text style={styles.challengeIconText}>♧</Text></View>
+                  <View style={styles.challengeCopy}>
+                    <Text style={[styles.challengeTitle, simple && simpleStyles.challengeTitle, isDark && dark.text]}>커뮤니티 챌린지</Text>
+                    <Text style={styles.challengeDescription}>함께 운동하며 목표에 도전해 보세요</Text>
+                  </View>
+                  <Text style={styles.challengeAction}>보기 ›</Text>
+                </Pressable>
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
             scope === 'following' ? (
               <View style={[styles.center, styles.message]}>
@@ -271,7 +304,7 @@ export default function CommunityScreen() {
               </View>
             ) : (
               <View style={[styles.center, styles.message]}>
-                <Text style={styles.emptyTitle}>아직 올라온 글이 없어요</Text>
+                <Text style={styles.emptyTitle}>{activeCategory ? '이 분류에 올라온 글이 없어요' : '아직 올라온 글이 없어요'}</Text>
                 <Text style={styles.messageText}>오늘의 운동이나 식단을 처음으로 나눠 보세요!</Text>
               </View>
             )
@@ -290,14 +323,14 @@ export default function CommunityScreen() {
             />
           }
           renderItem={({ item }) => (
-            <CommunityPostCard
+            <View style={[styles.postWrap, isDark && dark.card]}><CommunityPostCard
               onAuthorPress={openProfile}
               onLike={() => void actions.toggleLike(item)}
               onMore={() => actions.openPostMenu(item)}
               onPress={() => openPost(item)}
               onRepost={() => void actions.toggleRepost(item)}
               post={item}
-            />
+            /></View>
           )}
         />
       )}
@@ -323,18 +356,17 @@ export default function CommunityScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: '#F8F8FA', flex: 1 },
   header: {
     alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingBottom: spacing.xs,
     paddingLeft: spacing.xl,
     paddingRight: spacing.sm,
   },
-  title: { ...typography.title, color: colors.textPrimary },
+  title: { ...typography.title, color: '#222127' },
   headerActions: { flexDirection: 'row' },
   badge: {
     alignItems: 'center',
@@ -348,7 +380,8 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: colors.surface, fontFamily: fontFamilies.pretendardBold, fontSize: 11 },
   tabs: {
-    borderBottomColor: colors.border,
+    backgroundColor: '#FFFFFF',
+    borderBottomColor: '#E6E6EB',
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
   },
@@ -359,10 +392,25 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.md,
   },
-  tabActive: { borderBottomColor: colors.primary },
+  tabActive: { borderBottomColor: '#503DD7' },
   tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
-  tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-  list: { flexGrow: 1 },
+  tabTextActive: { color: '#222127', fontFamily: fontFamilies.pretendardBold },
+  list: { flexGrow: 1, gap: 10 },
+  feedHeader: { backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 14, gap: 16 },
+  categories: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  categoryChip: { borderColor: '#E6E6EB', borderWidth: 1, borderRadius: 18, paddingHorizontal: 11, paddingVertical: 7 },
+  categoryActive: { backgroundColor: '#503DD7', borderColor: '#503DD7' },
+  categoryText: { color: '#666670', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+  categoryTextActive: { color: '#FFFFFF' },
+  categoryNotice: { color: '#9998A1', fontSize: 10 },
+  challengeCard: { borderColor: '#E6E6EB', borderWidth: 1, borderRadius: 12, backgroundColor: '#FAFAFC', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  challengeIcon: { backgroundColor: '#F1EFFF', width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  challengeIconText: { color: '#503DD7', fontSize: 18 },
+  challengeCopy: { flex: 1, gap: 2 },
+  challengeTitle: { color: '#25242B', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
+  challengeDescription: { color: '#8A8992', fontSize: 10 },
+  challengeAction: { color: '#503DD7', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 11 },
+  postWrap: { backgroundColor: '#FFFFFF', borderColor: '#E6E6EB', borderTopWidth: 1, borderBottomWidth: 1 },
   center: { flex: 1, justifyContent: 'center' },
   message: { alignItems: 'center', gap: spacing.md, padding: spacing.xxl },
   emptyTitle: {
@@ -383,4 +431,23 @@ const styles = StyleSheet.create({
     width: 56,
   },
   composePressed: { backgroundColor: colors.primaryDark },
+});
+
+const simpleStyles = StyleSheet.create({
+  title: { fontSize: 26 },
+  readRow: { alignItems: 'center', backgroundColor: '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8 },
+  readHint: { color: '#777781', flex: 1, fontSize: 13 },
+  tab: { minHeight: 52 },
+  tabText: { fontSize: 17 },
+  categoryChip: { minHeight: 42, justifyContent: 'center', paddingHorizontal: 14 },
+  categoryText: { fontSize: 14 },
+  challengeCard: { minHeight: 82, padding: 16 },
+  challengeTitle: { fontSize: 17 },
+});
+
+const dark = StyleSheet.create({
+  root: { backgroundColor: darkColors.background },
+  card: { backgroundColor: darkColors.surface, borderColor: darkColors.border },
+  text: { color: darkColors.textPrimary },
+  secondary: { color: darkColors.textSecondary },
 });

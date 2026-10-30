@@ -196,3 +196,51 @@ export function getExerciseHistory(from: string, to: string) {
       encodeURIComponent(to),
   );
 }
+
+export type SavedWorkoutItem = {
+  user_workout_routine_item_id: string;
+  exercise_name: string;
+  sequence_order: number;
+  sets: number | null;
+  repetitions: number | null;
+  target_duration_seconds: number | null;
+  rest_seconds: number | null;
+  instruction: string;
+};
+
+export type SavedWorkoutRoutine = {
+  user_workout_routine_id: string;
+  source_type: 'custom' | 'recommendation';
+  source_recommendation_id: string | null;
+  name: string;
+  description: string;
+  updated_at: string;
+  items: SavedWorkoutItem[];
+};
+
+export function getSavedWorkoutRoutines() {
+  return apiRequest<{ routines: SavedWorkoutRoutine[] }>('/api/exercise/saved-routines');
+}
+
+export function saveRecommendedWorkout(recommendationId: string, name: string) {
+  return apiRequest<{ routine: SavedWorkoutRoutine }>('/api/exercise/saved-routines', {
+    method: 'POST',
+    body: JSON.stringify({ source_type: 'recommendation', source_recommendation_id: recommendationId, name }),
+  });
+}
+
+export type CustomWorkoutItemInput = {
+  exercise_name: string;
+  sets: number | null;
+  repetitions: number | null;
+  target_duration_seconds: number | null;
+  rest_seconds: number | null;
+  instruction: string;
+};
+
+export function createCustomWorkout(name: string, items: CustomWorkoutItemInput[]) {
+  return apiRequest<{ routine: SavedWorkoutRoutine }>('/api/exercise/saved-routines', {
+    method: 'POST',
+    body: JSON.stringify({ source_type: 'custom', name, items }),
+  });
+}

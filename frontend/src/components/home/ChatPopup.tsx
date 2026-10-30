@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import {
   BackHandler,
   Keyboard,
@@ -27,9 +28,9 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import CloseIcon from '@/assets/icons/common/X.svg';
 import PaperPlaneIcon from '@/assets/icons/feature/PaperPlane_Fill.svg';
-import RobotIcon from '@/assets/icons/feature/Robot_Fill.svg';
 import { createChat, getChatMessages, getChats, sendChatMessage } from '@/src/api/chat';
 import { getApiErrorMessage } from '@/src/api/client';
+import { ChatCharacterAvatar, getChatAvatarVariant } from '@/src/components/chat/ChatCharacterAvatar';
 import { CustomScrollIndicator, useCustomScrollIndicator } from '@/src/components/common';
 import {
   BOTTOM_NAVIGATION_MIN_BOTTOM_GAP,
@@ -42,6 +43,7 @@ import {
   prefetchActiveChat,
   updateChatSessionSnapshot,
 } from '@/src/features/chat/chatSessionCache';
+import { chatCharacters, chatWelcomes, displayChatAnswer, loadChatCharacter } from '@/src/features/chat/chatCharacters';
 import { colors, fontFamilies, radius } from '@/src/theme';
 import type { ChatMessage as ServerChatMessage } from '@/src/types/chat';
 
@@ -54,7 +56,7 @@ const referencePopupHeight = 550;
 const referencePopupNavigationGap = 48;
 const popupDuration = 360;
 const keyboardInputGap = 24;
-const welcomeMessageText = 'OO님 안녕하세요!\n건강 점수와 식단·운동 기록에 대해 물어보세요.';
+const welcomeMessageText = chatWelcomes.quni;
 
 const webFixedOverlayStyle: ViewStyle | undefined =
   Platform.OS === 'web'
@@ -95,6 +97,7 @@ type UiChatMessage = {
   clientMessageId?: string;
   createdAt: number;
   id: string;
+  needsMoreData?: boolean;
   role: 'assistant' | 'user';
   text: string;
 };
@@ -123,6 +126,7 @@ function mapServerMessage(message: ServerChatMessage): UiChatMessage {
     clientMessageId: message.client_message_id ?? undefined,
     createdAt: Number.isFinite(createdAt) ? createdAt : Date.now(),
     id: message.message_id,
+    needsMoreData: message.needs_more_data,
     role: message.sender_type === 'user' ? 'user' : 'assistant',
     text: message.content,
   };
@@ -204,6 +208,7 @@ export function ChatPopup({
   onRequestClose,
   visible,
 }: ChatPopupProps) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const overlayRef = useRef<View>(null);
@@ -224,6 +229,7 @@ export function ChatPopup({
   const reduceMotion = useReducedMotion();
   const progress = useSharedValue(0);
   const [chatId, setChatId] = useState<string | null>(initialChatSnapshot.chatId);
+  const [character, setCharacter] = useState<(typeof chatCharacters)[number]>(chatCharacters[0]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [inputText, setInputText] = useState('');
   const [isInitialLoading, setIsInitialLoading] = useState(false);
@@ -433,7 +439,7 @@ export function ChatPopup({
     );
 
     try {
-      const response = await sendChatMessage(chatId, text, pending.clientMessageId);
+      const response = await sendChatMessage(chatId, text, pending.clientMessageId, character.id);
       mergeChatSessionMessages(chatId, [response.user_message, response.assistant_message]);
       setMessages((current) =>
         dedupeMessages([
@@ -450,7 +456,7 @@ export function ChatPopup({
     } finally {
       setIsSending(false);
     }
-  }, [chatId, inputText, isInitialLoading, isSending]);
+  }, [character.id, chatId, inputText, isInitialLoading, isSending]);
 
   useEffect(() => {
     const duration = reduceMotion ? 1 : popupDuration;
@@ -471,6 +477,7 @@ export function ChatPopup({
     visibleRef.current = visible;
 
     if (visible && !wasVisibleRef.current) {
+      void loadChatCharacter().then(setCharacter);
       void initializeChat();
     } else if (!visible) {
       chatLoadRequestRef.current += 1;
@@ -589,19 +596,10 @@ export function ChatPopup({
         >
           <View style={styles.topSection}>
             <View style={styles.titleRow}>
-              <View style={styles.titleLeft}>
-                <View style={styles.titleRobotCircle}>
-                  <View style={styles.titleRobotBack} />
-                  <RobotIcon
-                    color={colors.surface}
-                    fill={colors.surface}
-                    height={45}
-                    style={styles.titleRobotIcon}
-                    width={45}
-                  />
-                </View>
-                <Text style={styles.title}>AI 건강 도우미</Text>
-              </View>
+              <Pressable accessibilityLabel="대화 상대 바꾸기" accessibilityRole="button" onPress={() => { onRequestClose(); router.push('/chat/characters'); }} style={styles.titleLeft}>
+                <ChatCharacterAvatar characterId={character.id} size={40} />
+                <Text style={styles.title}>{character.name} · 바꾸기</Text>
+              </Pressable>
               <Pressable
                 accessibilityLabel="AI 채팅 닫기"
                 accessibilityRole="button"
@@ -649,18 +647,11 @@ export function ChatPopup({
                 {messages.map((chatMessage) =>
                   chatMessage.role === 'assistant' ? (
                     <View key={chatMessage.id} style={styles.botRow}>
-                      <View style={styles.profileCircle}>
-                        <RobotIcon
-                          color={colors.primary}
-                          fill={colors.primary}
-                          height={30}
-                          width={30}
-                        />
-                      </View>
+                      <ChatCharacterAvatar characterId={character.id} size={36} variant={getChatAvatarVariant({ isWelcome: chatMessage.id === 'welcome', needsMoreData: chatMessage.needsMoreData })} />
                       <View style={styles.botContents}>
-                        <Text style={styles.botName}>AI 건강 챗봇</Text>
+                        <Text style={styles.botName}>{character.name}</Text>
                         <View style={styles.botBubble}>
-                          <Text style={styles.messageText}>{chatMessage.text}</Text>
+                          <Text style={styles.messageText}>{chatMessage.id === 'welcome' ? chatWelcomes[character.id] : displayChatAnswer(chatMessage.text, character.id)}</Text>
                         </View>
                         <Text style={styles.time}>{formatMessageTime(chatMessage.createdAt)}</Text>
                       </View>
@@ -780,26 +771,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
   },
-  titleRobotCircle: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.xl,
-    height: 40,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 40,
-  },
-  titleRobotBack: {
-    backgroundColor: colors.primary,
-    borderRadius: radius.md,
-    bottom: 0,
-    height: 30,
-    position: 'absolute',
-    width: 33,
-  },
-  titleRobotIcon: {
-    zIndex: 1,
-  },
   title: {
     color: colors.textBody,
     fontFamily: fontFamilies.pretendardSemiBold,
@@ -847,14 +818,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     width: '100%',
-  },
-  profileCircle: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: 18,
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
   },
   botContents: {
     flex: 1,

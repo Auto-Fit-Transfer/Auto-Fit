@@ -16,31 +16,23 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import Svg, { Circle, Defs, Line, LinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, Line, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ArrowRightIcon from '@/assets/icons/common/ArrowRight_Short.svg';
-import BackIcon from '@/assets/icons/common/chevrons/Left.svg';
-import ChevronRightIcon from '@/assets/icons/common/chevrons/Right.svg';
 import TrashIcon from '@/assets/icons/common/Trash.svg';
-import CloseIcon from '@/assets/icons/common/X.svg';
 import BmrIcon from '@/assets/icons/data/BMR.svg';
 import FatIcon from '@/assets/icons/data/Fat.svg';
 import GalleryIcon from '@/assets/icons/deco/Image.svg';
 import PlantIcon from '@/assets/icons/deco/Plant.svg';
 import FishSimpleIcon from '@/assets/icons/food/FishSimple.svg';
 import CameraIcon from '@/assets/icons/system/Camera_Fill.svg';
-import CheckCircleIcon from '@/assets/icons/system/CheckCircle.svg';
 import CheckFatIcon from '@/assets/icons/system/Check_Fat.svg';
-import ClockIcon from '@/assets/icons/input/Clock.svg';
 import LightbulbIcon from '@/assets/icons/system/Lightbulb.svg';
 import PencilIcon from '@/assets/icons/feature/Pencil_Line.svg';
 import SearchIcon from '@/assets/icons/input/MagnifyingGlass.svg';
-import WarningFillIcon from '@/assets/icons/system/WarningCircle_Fill.svg';
 import { AppBottomSheet, CustomScrollIndicator, useCustomScrollIndicator } from '@/src/components/common';
-import { useTemporaryAdjustmentProgress } from '@/src/features/exercise/useTemporaryAdjustmentProgress';
 import { colors, fontFamilies } from '@/src/theme';
-import { analyzeRecordedMealMock } from '@/src/utils/diet/analyzeRecordedMealMock';
 
 function Text(props: TextProps) {
   return <NativeText allowFontScaling={false} maxFontSizeMultiplier={1} {...props} />;
@@ -79,9 +71,8 @@ export type RecordedMealData = {
 export type MealRecordDraft = RecordedMealData;
 
 type NutrientKey = 'kcal' | 'carbs' | 'protein' | 'fat';
-type MainStep = 'photo' | 'analysis' | 'review' | 'result';
-type SheetView = MainStep | 'edit' | 'replace' | 'add';
-type AnalysisType = 'caution' | 'good';
+type MainStep = 'photo' | 'review';
+type SheetView = MainStep | 'recognition_failed' | 'edit' | 'replace' | 'add';
 
 type FoodDatabaseItem = {
   id: string;
@@ -98,14 +89,6 @@ type FoodSelection =
   | { kind: 'database'; food: FoodDatabaseItem }
   | { kind: 'custom'; name: string };
 
-type FoodShotAnalysisResult = {
-  type: AnalysisType;
-  title: string;
-  description: string;
-  sectionTitle: string;
-  reasons: string[];
-};
-
 type Props = {
   visible: boolean;
   mealId: string | null;
@@ -114,48 +97,17 @@ type Props = {
   onComplete: (draft: MealRecordDraft) => Promise<boolean>;
 };
 
-const MOCK_ANALYSIS_TYPE: AnalysisType = 'caution';
-const RESULT_LOADING_MS = 1400;
-const STEP_SHEET_HEIGHT = 620;
-const SUB_SHEET_HEIGHT = 730;
 const STEP_SHEET_BODY_HEIGHT = 500;
-const SUB_SHEET_BODY_HEIGHT = 610;
 const recognizedListViewportHeight = 140;
 const editPresetRatios = [1, 0.5, 0.7] as const;
 const nutritionKeys: NutrientKey[] = ['kcal', 'carbs', 'protein', 'fat'];
 const foodShotHeaderControlSize = 30;
-const foodShotBackIconSize = 24;
 const nutritionLabels: Record<NutrientKey, string> = {
   kcal: '칼로리',
   carbs: '탄수화물',
   protein: '단백질',
   fat: '지방',
 };
-const mockAnalysisResults: Record<AnalysisType, FoodShotAnalysisResult> = {
-  caution: {
-    type: 'caution',
-    title: '조금 주의가 필요한 식단이에요',
-    description: '탄수화물과 나트륨은 높은 편이고, 단백질은 다소 부족해 보완이 필요해요.',
-    sectionTitle: '추천 행동',
-    reasons: [
-      '김치 양이나 소스를 조금 줄여보세요.',
-      '계란 후라이나 닭가슴살을 곁들이면 더 좋아요.',
-      '채소를 곁들이면 영양 균형을 맞추는 데 도움이 돼요.',
-    ],
-  },
-  good: {
-    type: 'good',
-    title: '나에게 잘 맞는 식단이에요',
-    description: '단백질과 영양 균형이 적절하고, 현재 식단 목표에 잘 맞는 구성이에요.',
-    sectionTitle: '이렇게 판단했어요',
-    reasons: [
-      '근육 유지에 좋은 단백질이 풍부해요.',
-      '탄수화물, 단백질, 지방의 균형이 양호해요.',
-      '한 끼 식사 목표 범위에 적절한 열량이에요.',
-    ],
-  },
-};
-
 const foodDatabase: FoodDatabaseItem[] = [
   {
     id: 'db-kimchi-rice',
@@ -274,12 +226,6 @@ const databaseFoodToRecorded = (food: FoodDatabaseItem, id = `food-${Date.now()}
   isCustom: false,
 });
 
-const createRecognizedFoods = (): RecordedFood[] => [
-  databaseFoodToRecorded(foodDatabase[0], `recognized-rice-${Date.now()}`),
-  databaseFoodToRecorded(foodDatabase[4], `recognized-salad-${Date.now()}`),
-  databaseFoodToRecorded(foodDatabase[5], `recognized-soup-${Date.now()}`),
-];
-
 const createCustomFood = (name: string, id = `manual-${Date.now()}`): RecordedFood => ({
   id,
   name,
@@ -324,79 +270,6 @@ export const formatRecordedFoodAmount = (food: RecordedFood) => {
   if (food.amount <= 0) return '';
   return food.unit === '인분' ? `${food.serving}인분` : `${food.amount}${food.unit}`;
 };
-
-function FoodShotStepHeader({
-  currentStep,
-  onBack,
-  onClose,
-}: {
-  currentStep: number;
-  onBack?: () => void;
-  onClose: () => void;
-}) {
-  return (
-    <View style={styles.chrome}>
-      <View style={styles.dragHandle} />
-      <View style={styles.stepRow}>
-        {[1, 2, 3, 4].map((step, index) => (
-          <View key={step} style={styles.stepSegment}>
-            {index > 0 ? (
-              <View style={[styles.stepLine, step <= currentStep && styles.stepLineActive]} />
-            ) : null}
-            <View
-              style={[
-                styles.stepCircle,
-                step < currentStep && styles.stepCircleComplete,
-                step === currentStep && styles.stepCircleActive,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.stepText,
-                  step < currentStep && styles.stepTextComplete,
-                  step === currentStep && styles.stepTextActive,
-                ]}
-              >
-                {step < currentStep ? '✓' : step}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
-      {onBack ? (
-        <Pressable accessibilityLabel="이전" hitSlop={8} onPress={onBack} style={styles.backButton}>
-          <BackIcon color={colors.primary} height={foodShotBackIconSize} width={foodShotBackIconSize} />
-        </Pressable>
-      ) : null}
-      <Pressable accessibilityLabel="닫기" hitSlop={8} onPress={onClose} style={styles.closeButton}>
-        <CloseIcon color={colors.primary} fill={colors.primary} height={17} width={17} />
-      </Pressable>
-    </View>
-  );
-}
-
-function FoodShotSubSheetHeader({
-  onBack,
-  onClose,
-  title,
-}: {
-  onBack: () => void;
-  onClose: () => void;
-  title: string;
-}) {
-  return (
-    <View style={styles.subSheetChrome}>
-      <View style={styles.dragHandle} />
-      <Text maxFontSizeMultiplier={1} style={styles.subSheetTitle}>{title}</Text>
-      <Pressable accessibilityLabel="이전" hitSlop={8} onPress={onBack} style={styles.subSheetBackButton}>
-        <BackIcon color={colors.primary} height={foodShotBackIconSize} width={foodShotBackIconSize} />
-      </Pressable>
-      <Pressable accessibilityLabel="닫기" hitSlop={8} onPress={onClose} style={styles.subSheetCloseButton}>
-        <CloseIcon color={colors.primary} fill={colors.primary} height={17} width={17} />
-      </Pressable>
-    </View>
-  );
-}
 
 function AmountStepIcon({ operation }: { operation: 'decrease' | 'increase' }) {
   return (
@@ -478,188 +351,6 @@ function OutlineAction({
       {icon}
       <Text maxFontSizeMultiplier={1} style={styles.outlineActionText}>{label}</Text>
     </Pressable>
-  );
-}
-
-function LoadingDots() {
-  const [animations] = useState(() => [0, 1, 2].map(() => new Animated.Value(0)));
-
-  useEffect(() => {
-    const loops = animations.map((value, index) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(index * 130),
-          Animated.timing(value, {
-            duration: 260,
-            easing: Easing.out(Easing.cubic),
-            toValue: 1,
-            useNativeDriver: Platform.OS !== 'web',
-          }),
-          Animated.timing(value, {
-            duration: 260,
-            easing: Easing.in(Easing.cubic),
-            toValue: 0,
-            useNativeDriver: Platform.OS !== 'web',
-          }),
-          Animated.delay((2 - index) * 130),
-        ]),
-      ),
-    );
-    loops.forEach((loop) => loop.start());
-    return () => loops.forEach((loop) => loop.stop());
-  }, [animations]);
-
-  return (
-    <View style={styles.loadingDots}>
-      {animations.map((value, index) => (
-        <Animated.View
-          key={index}
-          style={[
-            styles.loadingDot,
-            {
-              opacity: value.interpolate({ inputRange: [0, 1], outputRange: [0.45, 1] }),
-              transform: [
-                { translateY: value.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) },
-                { scale: value.interpolate({ inputRange: [0, 1], outputRange: [0.86, 1.08] }) },
-              ],
-            },
-          ]}
-        />
-      ))}
-    </View>
-  );
-}
-
-function ProcessingDots() {
-  const [activeDot, setActiveDot] = useState(0);
-  useEffect(() => {
-    const interval = setInterval(() => setActiveDot((value) => (value + 1) % 10), 90);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <View style={styles.processingDots}>
-      {Array.from({ length: 10 }, (_, index) => {
-        const angle = (index / 10) * Math.PI * 2 - Math.PI / 2;
-        const distance = (index - activeDot + 10) % 10;
-        return (
-          <View
-            key={index}
-            style={[
-              styles.processingDot,
-              {
-                left: 9 + Math.cos(angle) * 7,
-                opacity: distance === 0 ? 1 : distance === 1 ? 0.62 : 0.2,
-                top: 9 + Math.sin(angle) * 7,
-              },
-            ]}
-          />
-        );
-      })}
-    </View>
-  );
-}
-
-function FoodAnalysisStep({ imageUri, onComplete }: { imageUri: string; onComplete: () => void }) {
-  const progress = useTemporaryAdjustmentProgress();
-  const [pulse] = useState(() => new Animated.Value(0.55));
-  const completionRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const size = 225;
-  const strokeWidth = 9;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = Math.PI * 2 * radius;
-  const percentage = Math.round(progress * 100);
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, {
-          duration: 850,
-          easing: Easing.inOut(Easing.sin),
-          toValue: 1,
-          useNativeDriver: Platform.OS !== 'web',
-        }),
-        Animated.timing(pulse, {
-          duration: 850,
-          easing: Easing.inOut(Easing.sin),
-          toValue: 0.55,
-          useNativeDriver: Platform.OS !== 'web',
-        }),
-      ]),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [pulse]);
-
-  useEffect(() => {
-    if (progress < 1 || completionRef.current) return;
-    completionRef.current = setTimeout(onComplete, 320);
-    return () => {
-      if (completionRef.current) clearTimeout(completionRef.current);
-      completionRef.current = null;
-    };
-  }, [onComplete, progress]);
-
-  const stageIndex = progress >= 1 ? 3 : progress >= 0.66 ? 2 : progress >= 0.33 ? 1 : 0;
-  const stages = ['음식 종류 인식', '칼로리 · 영양 성분 분석', '사용자 건강 데이터와 비교'];
-
-  return (
-    <View style={styles.analysisContent}>
-      <Text style={styles.screenTitle}>식단 분석중</Text>
-      <View style={styles.analysisVisual}>
-        <Image source={{ uri: imageUri }} style={styles.analysisImage} />
-        <Svg height={size} style={styles.analysisProgress} width={size}>
-          <Circle cx={size / 2} cy={size / 2} fill="none" r={radius} stroke={colors.primaryLight} strokeWidth={strokeWidth} />
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            fill="none"
-            origin={`${size / 2}, ${size / 2}`}
-            r={radius}
-            rotation="-90"
-            stroke={colors.primary}
-            strokeDasharray={`${circumference} ${circumference}`}
-            strokeDashoffset={circumference * (1 - progress)}
-            strokeLinecap="round"
-            strokeWidth={strokeWidth}
-          />
-        </Svg>
-      </View>
-      <Text style={styles.analysisPercentage}>
-        <Text style={styles.analysisPercentageNumber}>{percentage}</Text>
-        <Text style={styles.analysisPercentageUnit}>%</Text>
-      </Text>
-      <View style={styles.analysisStages}>
-        {stages.map((label, index) => {
-          const completed = index < stageIndex;
-          const processing = index === stageIndex && stageIndex < stages.length;
-          return (
-            <View key={label} style={styles.analysisStageRow}>
-              {completed ? (
-                <CheckCircleIcon color={colors.primaryDark} height={21} width={21} />
-              ) : processing ? (
-                <ProcessingDots />
-              ) : (
-                <ClockIcon color={colors.textDisabled} height={21} width={21} />
-              )}
-              <Text
-                style={[
-                  styles.analysisStageText,
-                  processing && styles.analysisStageTextActive,
-                  !completed && !processing && styles.analysisStageTextPending,
-                ]}
-              >
-                {label} {completed ? '완료' : processing ? '분석중' : '대기중'}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-      <Animated.View style={[styles.waitNotice, { opacity: pulse }]}>
-        <LightbulbIcon color={colors.primary} fill={colors.primary} height={17} width={17} />
-        <Text style={styles.waitNoticeText}>잠시만 기다려 주세요</Text>
-      </Animated.View>
-    </View>
   );
 }
 
@@ -1144,72 +835,6 @@ function RecognizedFoodList({
   );
 }
 
-function ResultStep({
-  draft,
-  isSaving,
-  onSave,
-}: {
-  draft: MealRecordDraft;
-  isSaving: boolean;
-  onSave: () => void;
-}) {
-  const result = mockAnalysisResults[MOCK_ANALYSIS_TYPE];
-  const totalKcal = draft.foods.reduce((sum, food) => sum + (food.kcal ?? 0), 0);
-  const isRecognizedMock = draft.foods.length === 3 && draft.foods.every((food) => food.id.startsWith('recognized-'));
-  const displayedKcal = isRecognizedMock ? 785 : Math.round(totalKcal);
-  const mealName = draft.foods.length > 1
-    ? `${draft.foods[0]?.name ?? '분석한 식사'} 세트`
-    : draft.foods[0]?.name ?? '분석한 식사';
-  const isGood = result.type === 'good';
-
-  return (
-    <View style={styles.resultContent}>
-      <View style={styles.resultSummaryGroup}>
-        <Text style={styles.screenTitle}>식단 분석 결과</Text>
-        <View style={styles.resultMealCard}>
-          {draft.photoUri ? <Image source={{ uri: draft.photoUri }} style={styles.resultImage} /> : null}
-          <View style={styles.resultMealCopy}>
-            <Text numberOfLines={1} style={styles.resultMealName}>{mealName}</Text>
-            <Text numberOfLines={1} style={styles.resultMeta}>{draft.foods.length}가지 음식 · {displayedKcal} kcal</Text>
-          </View>
-        </View>
-      </View>
-      <View style={[styles.resultCard, isGood ? styles.goodCard : styles.cautionCard]}>
-        {isGood ? (
-          <View style={[styles.resultIcon, styles.goodIcon]}>
-            <CheckCircleIcon color={colors.primaryDark} height={30} width={30} />
-          </View>
-        ) : (
-          <WarningFillIcon color="#FFA450" height={50} width={50} />
-        )}
-        <View style={styles.resultMessageCopy}>
-          <Text style={[styles.resultTitle, !isGood && styles.cautionText]}>{result.title}</Text>
-          <Text style={styles.resultDescription}>{result.description}</Text>
-        </View>
-      </View>
-      <View style={styles.resultRecommendationGroup}>
-        <Text style={styles.resultActionsTitle}>{result.sectionTitle}</Text>
-        <View style={styles.resultReasons}>
-          {result.reasons.map((reason, index) => (
-            <View key={reason}>
-              {index > 0 ? <View style={styles.resultReasonDivider} /> : null}
-              <View style={styles.reasonRow}>
-                <View style={styles.reasonBadge}>
-                  <Text style={styles.reasonBadgeText}>{index + 1}</Text>
-                </View>
-                <Text style={styles.reasonText}>{reason}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      </View>
-      <PrimaryButton gradient disabled={isSaving} onPress={onSave}>
-        <Text style={styles.primaryButtonText}>{isSaving ? '기록 중...' : '이 식단 기록하기'}</Text>
-      </PrimaryButton>
-    </View>
-  );
-}
-
 export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onComplete }: Props) {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -1221,11 +846,9 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
   const [replacementSelection, setReplacementSelection] = useState<FoodSelection | null>(null);
   const [addSelection, setAddSelection] = useState<FoodSelection | null>(null);
   const [addFoodDraft, setAddFoodDraft] = useState<RecordedFood | null>(null);
-  const [resultLoading, setResultLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isNutritionEditing, setIsNutritionEditing] = useState(false);
   const [nutritionContentOffset] = useState(() => new Animated.Value(0));
-  const resultTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const nutritionMacroRowRef = useRef<View>(null);
   const applyNutritionEditsRef = useRef<(() => RecordedFood | null) | null>(null);
   const keyboardTopRef = useRef<number | null>(null);
@@ -1310,14 +933,13 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
     const frame = requestAnimationFrame(() => {
       const nextDraft = initialDraft ? cloneDraft(initialDraft) : createEmptyDraft(mealId);
       setDraft(nextDraft);
-      setView(nextDraft.photoUri && nextDraft.foods.length ? 'review' : 'photo');
+      setView(nextDraft.foods.length ? 'review' : 'photo');
       setEditingFoodId(null);
       setEditFood(null);
       setSearchText('');
       setReplacementSelection(null);
       setAddSelection(null);
       setAddFoodDraft(null);
-      setResultLoading(false);
       setIsSaving(false);
       setIsNutritionEditing(false);
       isNutritionEditingRef.current = false;
@@ -1326,20 +948,10 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
     return () => cancelAnimationFrame(frame);
   }, [initialDraft, mealId, visible]);
 
-  useEffect(
-    () => () => {
-      if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
-    },
-    [],
-  );
-
   const closeAll = () => {
     Keyboard.dismiss();
     isNutritionEditingRef.current = false;
     animateNutritionOffset(0);
-    if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
-    resultTimerRef.current = null;
-    setResultLoading(false);
     onClose();
   };
 
@@ -1385,20 +997,12 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
               }
             : current,
         );
+        setView('recognition_failed');
       }
     } catch (error) {
       console.error('푸드샷 이미지 선택 실패:', error);
       Alert.alert('사진을 불러오지 못했어요', '잠시 후 다시 시도해 주세요.');
     }
-  };
-
-  const finishImageAnalysis = () => {
-    setDraft((current) =>
-      current
-        ? { ...current, foods: current.foods.length ? current.foods : createRecognizedFoods() }
-        : current,
-    );
-    setView('review');
   };
 
   const openFoodEdit = (food: RecordedFood) => {
@@ -1429,12 +1033,6 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
       current ? { ...current, foods: current.foods.filter((food) => food.id !== editingFoodId) } : current,
     );
     setView('review');
-  };
-
-  const openReplace = () => {
-    setSearchText('');
-    setReplacementSelection(null);
-    setView('replace');
   };
 
   const selectReplacement = (selection: FoodSelection) => {
@@ -1480,40 +1078,28 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
     setView('review');
   };
 
-  const showAnalysisResult = () => {
-    if (resultLoading) return;
-    setResultLoading(true);
-    resultTimerRef.current = setTimeout(() => {
-      setResultLoading(false);
-      setView('result');
-      resultTimerRef.current = null;
-    }, RESULT_LOADING_MS);
-  };
-
   const handleSaveFoodShotMeal = async () => {
     if (!draft || isSaving) return;
     setIsSaving(true);
-    const analysis = analyzeRecordedMealMock(draft.foods);
     try {
-      await onComplete(cloneDraft({ ...draft, ...analysis }));
+      await onComplete(cloneDraft(draft));
     } finally {
       setIsSaving(false);
     }
   };
 
-  const mainStep = view === 'photo' ? 1 : view === 'analysis' ? 2 : view === 'result' ? 4 : 3;
   const isSubSheet = view === 'edit' || view === 'replace' || view === 'add';
-  const subSheetTitle = view === 'edit' ? '음식 수정하기' : view === 'replace' ? '음식 변경' : '음식 추가하기';
+  const subSheetTitle = view === 'edit' ? '음식 고치기' : view === 'replace' ? '음식 변경' : '음식 추가하기';
   const onBack =
-    view === 'result'
-      ? () => setView('review')
+    view === 'recognition_failed'
+        ? () => setView('photo')
       : view === 'edit' || view === 'add'
-        ? () => setView('review')
+        ? () => setView(view === 'add' && !draft?.foods.length ? 'recognition_failed' : 'review')
         : view === 'replace'
           ? () => setView('edit')
           : undefined;
   const minimumTopGap = Math.max(22, insets.top + 4);
-  const desiredHeight = isSubSheet ? SUB_SHEET_HEIGHT : STEP_SHEET_HEIGHT;
+  const desiredHeight = foodShotViewportHeight - insets.top;
   const sheetHeight = Math.min(desiredHeight, foodShotViewportHeight - minimumTopGap);
   const isCompactSheet = sheetHeight < desiredHeight;
 
@@ -1541,15 +1127,32 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
           <OutlineAction icon={<CameraIcon color={colors.primary} fill={colors.primary} height={24} width={24} />} label="사진 촬영하기" onPress={() => void selectPhoto('camera')} />
           <OutlineAction icon={<GalleryIcon color={colors.primary} fill={colors.primary} height={24} width={24} />} label="갤러리에서 선택하기" onPress={() => void selectPhoto('gallery')} />
           {draft?.photoUri ? (
-            <PrimaryButton gradient onPress={() => setView('analysis')}>
+            <PrimaryButton onPress={() => setView('recognition_failed')}>
               <View style={styles.analyzeButtonContent}>
-                <Text maxFontSizeMultiplier={1} style={styles.primaryButtonText}>분석하기</Text>
+                <Text maxFontSizeMultiplier={1} style={styles.primaryButtonText}>음식 직접 찾기</Text>
                 <View style={styles.ctaArrowCircle}><ArrowRightIcon color={colors.primary} height={16} width={16} /></View>
               </View>
             </PrimaryButton>
-          ) : null}
+          ) : <PrimaryButton onPress={() => setView('recognition_failed')}>사진 없이 음식 입력하기</PrimaryButton>}
         </View>
       </View>
+    </View>
+  );
+
+  const renderRecognitionFallback = () => (
+    <View style={styles.r6Fallback}>
+      <View style={styles.r6FallbackIcon}><GalleryIcon color="#7D8087" height={26} width={26} /></View>
+      <Text style={styles.r6FallbackTitle}>음식을 직접 찾아주세요</Text>
+      <Text style={styles.r6FallbackDescription}>사진 자동 분석은 아직 준비 중이에요. 음식 이름을 검색해 기록할 수 있어요.</Text>
+      <FoodSearch
+        onSelect={(selection) => { chooseAddFood(selection); setView('add'); }}
+        searchText={searchText}
+        setSearchText={setSearchText}
+      />
+      <Text style={styles.r6FallbackLabel}>선택할 수 있는 음식</Text>
+      <View style={styles.r6FallbackChips}>{foodDatabase.slice(0, 8).map((food) => <Pressable key={food.id} onPress={() => { chooseAddFood({ kind: 'database', food }); setView('add'); }} style={styles.r6FallbackChip}><Text style={styles.r6FallbackChipText}>{food.name}</Text></Pressable>)}</View>
+      <View style={styles.r6FallbackSpacer} />
+      <Pressable accessibilityRole="button" onPress={() => setView('photo')} style={styles.r6RetryButton}><Text style={styles.r6RetryText}>다시 찍기</Text></Pressable>
     </View>
   );
 
@@ -1559,16 +1162,17 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
     amount: 0,
     serving: 0,
     unit: 'g',
-    kcal: draft?.foods.reduce((sum, food) => sum + (food.kcal ?? 0), 0),
-    carbs: draft?.foods.reduce((sum, food) => sum + (food.carbs ?? 0), 0),
-    protein: draft?.foods.reduce((sum, food) => sum + (food.protein ?? 0), 0),
-    fat: draft?.foods.reduce((sum, food) => sum + (food.fat ?? 0), 0),
-  }), [draft?.foods]);
+    kcal: draft?.foods.every((food) => food.kcal !== undefined) ? draft.foods.reduce((sum, food) => sum + (food.kcal ?? 0), 0) : undefined,
+    carbs: draft?.foods.every((food) => food.carbs !== undefined) ? draft.foods.reduce((sum, food) => sum + (food.carbs ?? 0), 0) : undefined,
+    protein: draft?.foods.every((food) => food.protein !== undefined) ? draft.foods.reduce((sum, food) => sum + (food.protein ?? 0), 0) : undefined,
+    fat: draft?.foods.every((food) => food.fat !== undefined) ? draft.foods.reduce((sum, food) => sum + (food.fat ?? 0), 0) : undefined,
+  }), [draft]);
 
   const renderReview = () => (
     <View style={styles.reviewContent}>
       <View style={styles.reviewFoodGroup}>
-        <Text style={styles.screenTitle}>인식된 음식 수정</Text>
+        <View style={styles.r6ReviewPhoto}>{draft?.photoUri ? <Image source={{ uri: draft.photoUri }} style={styles.r6ReviewPhotoImage} resizeMode="cover" /> : <View style={styles.r6ReviewPhotoPlaceholder}><GalleryIcon color="#93959C" height={25} width={25} /><Text style={styles.r6ReviewPhotoText}>사진 없이 기록 중</Text></View>}</View>
+        <Text style={styles.screenTitle}>음식 {draft?.foods.length ?? 0}개를 기록해요</Text>
         <RecognizedFoodList foods={draft?.foods ?? []} onAdd={openAdd} onEdit={openFoodEdit} />
       </View>
       <View style={styles.totalNutritionSection}>
@@ -1576,15 +1180,8 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
         <NutritionPanel food={aggregateFood} />
       </View>
       <View style={styles.reviewCta}>
-        <PrimaryButton gradient disabled={resultLoading || !draft?.foods.length} onPress={showAnalysisResult}>
-          {resultLoading ? (
-            <View style={styles.resultLoadingContent}><Text style={styles.primaryButtonText}>분석 중</Text><LoadingDots /></View>
-          ) : (
-            <View style={styles.analyzeButtonContent}>
-              <Text style={styles.primaryButtonText}>분석 결과 보기</Text>
-              <View style={styles.ctaArrowCircle}><ArrowRightIcon color={colors.primary} height={16} width={16} /></View>
-            </View>
-          )}
+        <PrimaryButton disabled={isSaving || !draft?.foods.length} onPress={() => void handleSaveFoodShotMeal()}>
+          {isSaving ? '기록 중…' : '이대로 기록하기'}
         </PrimaryButton>
       </View>
     </View>
@@ -1594,8 +1191,15 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
     if (!editFood) return null;
     return (
       <View style={styles.editorContent}>
+        <FoodSearch
+          onSelect={selectReplacement}
+          searchText={searchText}
+          setSearchText={setSearchText}
+        />
+        <Text style={styles.r6EditLabel}>앱에 등록된 음식</Text>
+        <View style={styles.r6EditSuggestions}><FoodRecommendationList onSelect={selectReplacement} selected={replacementSelection} /></View>
         <View style={styles.editFoodSection}>
-          <Text style={styles.sectionHeading}>음식</Text>
+          <Text style={styles.sectionHeading}>선택한 음식</Text>
           <View style={styles.selectedFoodCard}>
             <View style={styles.selectedFoodCopy}>
               <View style={styles.selectedFoodInfoRow}>
@@ -1605,10 +1209,6 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
                 ) : null}
               </View>
             </View>
-            <Pressable onPress={openReplace} style={styles.changeFoodButton}>
-              <Text style={styles.changeFoodText}>음식 변경</Text>
-              <ChevronRightIcon color={colors.primary} height={20} width={20} />
-            </Pressable>
           </View>
         </View>
         <View style={styles.editFoodDetails}>
@@ -1622,10 +1222,10 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
           />
         </View>
         <View style={styles.editorActions}>
-          <PrimaryButton onPress={saveEditedFood}>수정 완료</PrimaryButton>
+          <PrimaryButton onPress={saveEditedFood}>고치기 완료</PrimaryButton>
           <Pressable onPress={deleteEditedFood} style={styles.deleteFoodButton}>
             <TrashIcon color="#E45B5B" height={28} width={28} />
-            <Text style={styles.deleteFoodText}>이 음식 삭제하기</Text>
+            <Text style={styles.deleteFoodText}>지우기</Text>
           </Pressable>
         </View>
       </View>
@@ -1707,9 +1307,8 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
   const mainStepContent = (
     <>
       {view === 'photo' ? renderPhoto() : null}
-      {view === 'analysis' && draft.photoUri ? <FoodAnalysisStep imageUri={draft.photoUri} onComplete={finishImageAnalysis} /> : null}
+      {view === 'recognition_failed' ? renderRecognitionFallback() : null}
       {view === 'review' ? renderReview() : null}
-      {view === 'result' ? <ResultStep draft={draft} isSaving={isSaving} onSave={() => void handleSaveFoodShotMeal()} /> : null}
     </>
   );
 
@@ -1729,11 +1328,11 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
       showHandle={false}
       visible={visible}
     >
-      {isSubSheet && onBack ? (
-        <FoodShotSubSheetHeader onBack={onBack} onClose={closeAll} title={subSheetTitle} />
-      ) : (
-        <FoodShotStepHeader currentStep={mainStep} onBack={onBack} onClose={closeAll} />
-      )}
+      <View style={styles.r6Header}>
+        <Pressable accessibilityLabel="이전" onPress={onBack ?? closeAll} style={styles.r6HeaderButton}><Text style={styles.r6HeaderBack}>‹</Text></Pressable>
+        <Text style={styles.r6HeaderTitle}>{isSubSheet ? subSheetTitle : view === 'review' ? `${mealId === 'breakfast' ? '아침' : mealId === 'lunch' ? '점심' : mealId === 'dinner' ? '저녁' : '간식'} 기록` : view === 'recognition_failed' ? '음식 기록' : '음식 사진 기록'}</Text>
+        <Pressable accessibilityLabel="닫기" onPress={closeAll} style={styles.r6HeaderButton}><Text style={styles.r6HeaderClose}>×</Text></Pressable>
+      </View>
       <Animated.View
         style={[
           styles.flowBody,
@@ -1774,8 +1373,30 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
 }
 
 const styles = StyleSheet.create({
+  r6Header: { height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  r6HeaderButton: { width: 34, height: 42, alignItems: 'center', justifyContent: 'center' },
+  r6HeaderBack: { color: '#24252A', fontSize: 34, lineHeight: 38 },
+  r6HeaderClose: { color: '#44454C', fontSize: 26, lineHeight: 30 },
+  r6HeaderTitle: { color: '#24252A', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+  r6Fallback: { flex: 1, paddingTop: 18 },
+  r6FallbackIcon: { height: 38, width: 38, borderRadius: 9, backgroundColor: '#F2F3F5', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  r6FallbackTitle: { color: '#23242A', fontFamily: fontFamilies.pretendardBold, fontSize: 18, marginBottom: 6 },
+  r6FallbackDescription: { color: '#777981', fontSize: 13, lineHeight: 19, marginBottom: 18 },
+  r6FallbackLabel: { color: '#33343A', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13, marginTop: 20, marginBottom: 10 },
+  r6FallbackChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  r6FallbackChip: { borderWidth: 1, borderColor: '#E2E4E8', borderRadius: 16, paddingHorizontal: 11, paddingVertical: 7, backgroundColor: '#F8F9FA' },
+  r6FallbackChipText: { color: '#55575E', fontSize: 11 },
+  r6FallbackSpacer: { flex: 1, minHeight: 120 },
+  r6RetryButton: { backgroundColor: '#F1F2F4', minHeight: 51, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  r6RetryText: { color: '#26272E', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  r6ReviewPhoto: { minHeight: 135, borderRadius: 11, backgroundColor: '#F3F4F6', overflow: 'hidden', marginBottom: 16 },
+  r6ReviewPhotoImage: { width: '100%', height: 135 },
+  r6ReviewPhotoPlaceholder: { height: 135, alignItems: 'center', justifyContent: 'center', gap: 7 },
+  r6ReviewPhotoText: { color: '#92949B', fontSize: 11 },
+  r6EditLabel: { color: '#2E2F35', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13, marginTop: 13, marginBottom: 8 },
+  r6EditSuggestions: { height: 185, borderWidth: 1, borderColor: '#E4E6EB', borderRadius: 10, overflow: 'hidden' },
   overlay: { backgroundColor: 'rgba(0, 0, 0, 0.45)' },
-  sheet: { borderTopLeftRadius: 22, borderTopRightRadius: 22, boxSizing: 'border-box', overflow: 'hidden', paddingTop: 5 },
+  sheet: { borderTopLeftRadius: 0, borderTopRightRadius: 0, boxSizing: 'border-box', overflow: 'hidden', paddingTop: 0 },
   bottomSheetContent: { flex: 1, minHeight: 0, paddingHorizontal: 21, paddingTop: 0 },
   chrome: { alignItems: 'center', height: 46, justifyContent: 'flex-start', position: 'relative' },
   subSheetChrome: { alignItems: 'center', height: 55, justifyContent: 'flex-start', position: 'relative' },
@@ -1795,9 +1416,9 @@ const styles = StyleSheet.create({
   subSheetTitle: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 24, left: 30, lineHeight: 29, position: 'absolute', right: 30, textAlign: 'center', top: 26 },
   subSheetBackButton: { alignItems: 'center', height: foodShotHeaderControlSize, justifyContent: 'center', left: 0, position: 'absolute', top: 26, width: foodShotHeaderControlSize },
   subSheetCloseButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.primary, borderRadius: foodShotHeaderControlSize / 2, borderWidth: 1, elevation: 2, height: foodShotHeaderControlSize, justifyContent: 'center', position: 'absolute', right: 0, shadowColor: colors.primaryDark, shadowOffset: { height: 2, width: 2 }, shadowOpacity: 0.2, shadowRadius: 2.5, top: 26, width: foodShotHeaderControlSize },
-  flowBody: { minHeight: 0 },
-  stepSheetBody: { height: STEP_SHEET_BODY_HEIGHT, marginTop: 39 },
-  subSheetBody: { height: SUB_SHEET_BODY_HEIGHT, marginTop: 30 },
+  flowBody: { minHeight: 0, flex: 1 },
+  stepSheetBody: { marginTop: 8 },
+  subSheetBody: { marginTop: 8 },
   compactSheetBody: { flex: 1, height: undefined },
   innerSheetScroll: { flex: 1 },
   subSheetScrollContent: { flexGrow: 1 },

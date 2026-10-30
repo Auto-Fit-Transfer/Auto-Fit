@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ComponentType } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Alert,
@@ -12,20 +12,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import type { SvgProps } from 'react-native-svg';
-
-import BreadIcon from '@/assets/icons/auth-redesign/12bc3.svg';
-import BuckwheatIcon from '@/assets/icons/auth-redesign/3697c.svg';
-import CrabIcon from '@/assets/icons/auth-redesign/01695.svg';
-import EggsIcon from '@/assets/icons/auth-redesign/1c264.svg';
-import FishIcon from '@/assets/icons/auth-redesign/e110e.svg';
-import MilkIcon from '@/assets/icons/auth-redesign/8d42b.svg';
-import NutsIcon from '@/assets/icons/auth-redesign/266a5.svg';
-import PeachIcon from '@/assets/icons/auth-redesign/c4fd2.svg';
-import PeanutIcon from '@/assets/icons/auth-redesign/987d2.svg';
-import SesameIcon from '@/assets/icons/auth-redesign/295ae.svg';
-import ShellfishIcon from '@/assets/icons/auth-redesign/7746e.svg';
-import SoybeanIcon from '@/assets/icons/auth-redesign/73335.svg';
 import { getSignupApiErrorMessage, saveAllergies } from '@/src/api/onboarding';
 import { SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
 import { useSignup } from '@/src/features/signup/SignupContext';
@@ -35,22 +21,21 @@ import OtherIcon from '@/assets/icons/auth-redesign/00654.svg';
 interface AllergenOption {
   id: string;
   label: string;
-  icon: ComponentType<SvgProps>;
 }
 
 const allergenOptions: AllergenOption[] = [
-  { id: 'milk', label: '우유', icon: MilkIcon },
-  { id: 'egg', label: '계란', icon: EggsIcon },
-  { id: 'peanut', label: '땅콩', icon: PeanutIcon },
-  { id: 'nuts', label: '견과류', icon: NutsIcon },
-  { id: 'wheat', label: '밀(글루텐)', icon: BreadIcon },
-  { id: 'buckwheat', label: '메밀', icon: BuckwheatIcon },
-  { id: 'soybean', label: '콩(대두)', icon: SoybeanIcon },
-  { id: 'peach', label: '복숭아', icon: PeachIcon },
-  { id: 'fish', label: '생선', icon: FishIcon },
-  { id: 'crab', label: '갑각류', icon: CrabIcon },
-  { id: 'shellfish', label: '조개', icon: ShellfishIcon },
-  { id: 'sesame', label: '참깨', icon: SesameIcon },
+  { id: 'milk', label: '우유' },
+  { id: 'egg', label: '계란' },
+  { id: 'peanut', label: '땅콩' },
+  { id: 'nuts', label: '견과류' },
+  { id: 'wheat', label: '밀(글루텐)' },
+  { id: 'buckwheat', label: '메밀' },
+  { id: 'soybean', label: '콩(대두)' },
+  { id: 'peach', label: '복숭아' },
+  { id: 'fish', label: '생선' },
+  { id: 'crab', label: '갑각류' },
+  { id: 'shellfish', label: '조개' },
+  { id: 'sesame', label: '참깨' },
 ];
 
 const descriptionTop = 285;
@@ -180,30 +165,19 @@ export default function SignUpStep3Screen() {
       ctaLoading={isSaving}
       contentOffsetY={keyboardContentOffset}
       currentStep={isPostLoginOnboarding ? 2 : 3}
-      totalSteps={isPostLoginOnboarding ? 3 : 4}
+      totalSteps={isPostLoginOnboarding ? 4 : 5}
       onBack={() => router.back()}
       onContinue={() => void goNext()}
     >
       <SignUpSection top={protectedDescriptionTop} innerStyle={styles.allergyCard}>
-        <View style={styles.headingRow}>
-          <Text style={styles.sectionTitle}>알레르기 정보</Text>
-          <Text style={styles.titleAside}>복수 선택 가능</Text>
-        </View>
-        <Text style={styles.description}>
-          선택 사항이며, 나중에 프로필에서{`\n`}정보를 수정할 수 있어요.
-        </Text>
         <View style={styles.allergenGrid}>
-          {[0, 1, 2, 3].map((rowIndex) => (
-            <View key={rowIndex} style={styles.allergenRow}>
-              {allergenOptions.slice(rowIndex * 3, rowIndex * 3 + 3).map((option) => (
-                <AllergenButton
-                  key={option.id}
-                  onPress={() => toggleAllergen(option.id)}
-                  option={option}
-                  selected={selectedAllergens.includes(option.id)}
-                />
-              ))}
-            </View>
+          {allergenOptions.map((option) => (
+            <AllergenButton
+              key={option.id}
+              onPress={() => toggleAllergen(option.id)}
+              option={option}
+              selected={selectedAllergens.includes(option.id)}
+            />
           ))}
         </View>
       </SignUpSection>
@@ -241,8 +215,6 @@ function AllergenButton({
   selected: boolean;
   onPress: () => void;
 }) {
-  const AllergenIcon = option.icon;
-
   return (
     <Pressable
       accessibilityRole="checkbox"
@@ -254,12 +226,8 @@ function AllergenButton({
         pressed && styles.pressed,
       ]}
     >
-      <View style={styles.allergenIcon}>
-        <AllergenIcon />
-      </View>
       <Text style={[styles.allergenLabel, selected && styles.allergenLabelSelected]}>
         {option.label}
-        {selected ? ' · 선택' : ''}
       </Text>
     </Pressable>
   );
@@ -286,21 +254,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 23,
   },
-  allergenGrid: { gap: 8 },
-  allergenRow: { flexDirection: 'row', gap: 8 },
+  allergenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   allergenButton: {
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: 20,
     borderWidth: 1,
-    flex: 1,
-    height: 72,
+    height: 34,
     justifyContent: 'center',
-    minWidth: 0,
+    paddingHorizontal: 13,
   },
   allergenButtonSelected: { backgroundColor: colors.surfaceSoft, borderColor: colors.primary },
-  allergenIcon: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
   allergenLabel: {
     color: colors.dark,
     fontFamily: fontFamilies.pretendardRegular,

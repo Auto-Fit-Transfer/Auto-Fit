@@ -31,6 +31,9 @@ const RULES: Record<
   club_create_cost: { amountLabel: '사용 마일리지 (유료 회원은 무료)', title: '클럽 개설 비용' },
   earn_meal_log: { amountLabel: '적립 마일리지', daily: '하루 최대 건수', title: '식단 기록 1건' },
   earn_workout: { amountLabel: '적립 마일리지', daily: '하루 최대 횟수', title: '운동 완료 1회' },
+  earn_workout_high: { amountLabel: '해당 일 운동 보상 총액', title: '고강도 운동 완료일' },
+  earn_streak_5: { amountLabel: '적립 마일리지', title: '운동 5일 연속 달성' },
+  earn_streak_30: { amountLabel: '적립 마일리지', title: '운동 30일 연속 달성' },
   membership_demo_days: { amountLabel: '기간 (일)', title: '시연용 유료 회원' },
 };
 const ORDER: CommunityAdminRule['rule_key'][] = [
@@ -90,6 +93,9 @@ export default function CommunityAdminRulesScreen() {
         >
           <Text style={styles.note}>
             저장하면 모든 사용자에게 바로 적용돼요. 이미 쌓인 마일리지는 바뀌지 않아요.
+          </Text>
+          <Text style={styles.note}>
+            고강도 운동과 연속 운동 시험 규칙은 서버의 수정 기능이 연결된 뒤 이곳에서 조정할 수 있어요.
           </Text>
           {ORDER.map((key) => rules.find((rule) => rule.rule_key === key))
             .filter((rule): rule is CommunityAdminRule => Boolean(rule))

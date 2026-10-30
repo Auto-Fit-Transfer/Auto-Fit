@@ -1,0 +1,23 @@
+# EAS builds only need the Expo app. Keep backend code and database migrations
+# out of the archive uploaded to the external build service.
+.git
+.github/
+.pytest_cache/
+ai/
+backend/
+docs/
+supabase/
+README.md
+render.yaml
+
+frontend/node_modules/
+frontend/.expo/
+frontend/dist/
+frontend/web-build/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.DS_Store

@@ -1,4 +1,3 @@
-import { MainGradient } from '@/src/components/main/MainSurface';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -45,6 +44,7 @@ import {
   updateHealthDocumentOcrResult,
   uploadHealthDocument,
 } from '@/src/api/healthDocuments';
+import { awardTierActivity } from '@/src/api/tier';
 import {
   AppCard,
   BackButton,
@@ -449,23 +449,8 @@ function MetricRow({
   systolicDraft: string;
   value: string;
 }) {
-  const { Icon } = definition;
-  const iconColorProps =
-    definition.iconKind === 'fill'
-      ? {
-          fill: colors.primary,
-          color: colors.primary,
-        }
-      : {
-          stroke: colors.primary,
-          color: colors.primary,
-        };
-
   return (
     <View ref={onRowRef} style={styles.metricRow}>
-      <View style={styles.metricIconCircle}>
-        <Icon {...iconColorProps} height={24} width={24} />
-      </View>
       <View style={styles.metricMain}>
         <View style={styles.metricContent}>
           <Text style={styles.metricLabel}>{definition.label}</Text>
@@ -527,7 +512,7 @@ function MetricRow({
             ]}
           >
             <Text style={[styles.modifyButtonText, isEditing && styles.confirmButtonText]}>
-              {isEditing ? '확인' : '수정'}
+              {isEditing ? '✓' : '✎'}
             </Text>
           </Pressable>
         </View>
@@ -917,7 +902,14 @@ export default function OCRResultScreen() {
       }
 
       if (isLastResult) {
-        await Promise.all(results.map((result) => confirmHealthDocument(result.uploadedFileId)));
+        const confirmations = await Promise.all(results.map((result) => confirmHealthDocument(result.uploadedFileId)));
+        for (const confirmation of confirmations) {
+          const sourceId = confirmation.health_checkup_id ?? confirmation.body_composition_id;
+          if (sourceId) {
+            // Confirmation succeeded independently of the tier service.
+            void awardTierActivity('health_data_uploaded', sourceId).catch(() => undefined);
+          }
+        }
         savedResult = { ...savedResult, status: 'confirmed' };
         setResults((current) => current.map((result) => ({ ...result, status: 'confirmed' })));
         setMetricValues({ ...savedResult.data });
@@ -956,6 +948,19 @@ export default function OCRResultScreen() {
     Keyboard.dismiss();
   };
 
+  const handleSelectResultType = (type: OCRResultItem['type']) => {
+    if (type === currentResult.type || isSaving || isReuploading) return;
+    const targetIndex = results.findIndex((result) => result.type === type);
+    if (targetIndex < 0) return;
+    if (targetIndex === currentIndex + 1) {
+      void handleNext();
+    } else if (targetIndex === currentIndex - 1) {
+      handleBack();
+    } else {
+      Alert.alert('자료 확인 순서', '다음 또는 뒤로 버튼으로 자료를 차례대로 확인해 주세요.');
+    }
+  };
+
   const metricRows = metricDefinitions.map((definition) => (
     <MetricRow
       key={definition.key}
@@ -988,9 +993,61 @@ export default function OCRResultScreen() {
     );
   }
 
+  if (currentResult.ocrStatus === 'failed' || currentResult.status === 'failed') {
+    return (
+      <View style={styles.failureRoot}>
+        <StatusBar style="dark" />
+        <View style={[styles.failureHeader, { paddingTop: insets.top + 6 }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={handleBack} style={styles.failureBack}>
+            <Text style={styles.failureBackText}>‹</Text>
+          </Pressable>
+          <Text style={styles.failureHeaderTitle}>건강 데이터 확인</Text>
+        </View>
+        <ScrollView contentContainerStyle={styles.failureContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.failureIcon}><Text style={styles.failureIconText}>!</Text></View>
+          <Text style={styles.failureTitle}>글자를 읽지 못했어요</Text>
+          <Text style={styles.failureDescription}>
+            사진의 일부가 흐리거나 글자가 잘 보이지 않아요. 다시 촬영하거나 선명한 파일을 올려 주세요.
+          </Text>
+          <View style={styles.failureGuide}>
+            <Text style={styles.failureGuideTitle}>다시 찍을 때는</Text>
+            {[
+              '밝은 곳에서 촬영해 주세요',
+              '결과지를 평평하게 놓고 찍어 주세요',
+              '결과지 전체가 화면에 들어오게 해 주세요',
+            ].map((tip, index) => (
+              <View key={tip} style={styles.failureTipRow}>
+                <Text style={styles.failureTipNumber}>{index + 1}</Text>
+                <Text style={styles.failureTipText}>{tip}</Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+        <View style={[styles.failureFooter, { paddingBottom: Math.max(insets.bottom, 18) }]}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isReuploading || isSaving }}
+            disabled={isReuploading || isSaving}
+            onPress={() => setIsReuploadSheetOpen(true)}
+            style={styles.failureButton}
+          >
+            <Text style={styles.failureButtonText}>{isReuploading ? '업로드 중…' : '다시 올리기'}</Text>
+          </Pressable>
+        </View>
+        <HealthDataUploadBottomSheet
+          isBusy={isReuploading || isSaving}
+          onClose={() => setIsReuploadSheetOpen(false)}
+          onSelectFile={handleReuploadSelection}
+          visible={isReuploadSheetOpen}
+          variant="reupload"
+        />
+      </View>
+    );
+  }
+
   return (
     <View ref={screenViewportRef} style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar style="dark" />
       <ScrollView
         bounces={false}
         contentContainerStyle={[
@@ -1026,44 +1083,40 @@ export default function OCRResultScreen() {
               },
             ]}
           >
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 190 }}>
-              <MainGradient />
-            </View>
             <BackButton
-              color={colors.textWhite}
+              color={colors.textBody}
               onPress={handleBack}
               size={44}
               style={styles.backButton}
             />
-            <Text style={[styles.screenTitle, { color: colors.textWhite }]}>OCR 결과 확인</Text>
-            <View style={[styles.stepPosition, { top: stepIndicatorTop }]}>
-              <ResultStepIndicator current={currentIndex + 1} total={results.length} />
-            </View>
+            <Text style={styles.screenTitle}>판독 결과 확인</Text>
+            {results.length > 1 ? (
+              <View style={[styles.stepPosition, { top: stepIndicatorTop }]}>
+                <ResultStepIndicator current={currentIndex + 1} total={results.length} />
+              </View>
+            ) : null}
 
             <View style={[styles.completionSection, { top: completionTop }]}>
-              <Image
-                source={require('@/assets/figma/main/4aba6.png')}
-                style={{ width: 60, height: 60 }}
-                resizeMode="contain"
-              />
               <View style={styles.completionTexts}>
                 <Text
                   style={[
                     styles.completionTitle,
-                    { color: colors.textWhite },
                     currentResult.type === 'health_checkup' && styles.healthCompletionTitle,
                   ]}
                 >
-                  데이터 추출이 완료되었습니다!
+                  {currentResult.ocrStatus === 'completed'
+                    ? '읽어 온 수치를 확인해 주세요'
+                    : '건강 수치를 읽고 있어요'}
                 </Text>
                 <Text
                   style={[
                     styles.completionDescription,
-                    { color: colors.textWhiteSecondary },
                     currentResult.type === 'health_checkup' && styles.healthCompletionDescription,
                   ]}
                 >
-                  내용을 확인하고, 필요한 항목은 수정해주세요.
+                  {currentResult.ocrStatus === 'completed'
+                    ? '원본 자료와 비교하고 필요한 항목은 수정해 주세요.'
+                    : '판독이 끝나면 추출한 수치를 확인할 수 있어요.'}
                 </Text>
               </View>
             </View>
@@ -1074,7 +1127,6 @@ export default function OCRResultScreen() {
               style={[styles.uploadFileCard, { top: uploadFileTop }]}
             >
               <View style={styles.uploadFileContent}>
-                <Text style={styles.cardTitle}>업로드 파일</Text>
                 <View style={styles.uploadFileBottom}>
                   <View style={styles.filePreview}>
                     {hasImagePreview ? (
@@ -1105,11 +1157,32 @@ export default function OCRResultScreen() {
                     onPress={() => setIsReuploadSheetOpen(true)}
                     style={({ pressed }) => [styles.reuploadButton, pressed && styles.pressed]}
                   >
-                    <Text style={styles.reuploadText}>다시 업로드</Text>
+                    <Text style={styles.reuploadText}>다시 올리기</Text>
                   </Pressable>
                 </View>
               </View>
             </AppCard>
+
+            <View style={[styles.resultTabs, { top: extractedCardTop - 43 }]}>
+              <Pressable
+                accessibilityRole="tab"
+                accessibilityState={{ selected: currentResult.type === 'health_checkup', disabled: !results.some((result) => result.type === 'health_checkup') }}
+                disabled={!results.some((result) => result.type === 'health_checkup')}
+                onPress={() => handleSelectResultType('health_checkup')}
+                style={[styles.resultTab, currentResult.type === 'health_checkup' && styles.resultTabActive]}
+              >
+                <Text style={[styles.resultTabText, currentResult.type === 'health_checkup' && styles.resultTabTextActive]}>건강검진</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="tab"
+                accessibilityState={{ selected: currentResult.type === 'body_composition', disabled: !results.some((result) => result.type === 'body_composition') }}
+                disabled={!results.some((result) => result.type === 'body_composition')}
+                onPress={() => handleSelectResultType('body_composition')}
+                style={[styles.resultTab, currentResult.type === 'body_composition' && styles.resultTabActive]}
+              >
+                <Text style={[styles.resultTabText, currentResult.type === 'body_composition' && styles.resultTabTextActive]}>인바디</Text>
+              </Pressable>
+            </View>
 
             <AppCard
               bordered
@@ -1117,7 +1190,6 @@ export default function OCRResultScreen() {
               style={[styles.extractedCard, { height: extractedCardHeight, top: extractedCardTop }]}
             >
               <View style={styles.extractedContent}>
-                <Text style={[styles.cardTitle, styles.extractedCardTitle]}>추출된 데이터</Text>
                 <View style={styles.metricListViewport}>
                   <ScrollView
                     key={currentResult.id}
@@ -1152,9 +1224,7 @@ export default function OCRResultScreen() {
                     width={24}
                   />
                   <Text style={styles.privacyText}>
-                    추출된 데이터는 사용자 동의 없이 저장되거나 공유되지 않으며,
-                    <Text style={styles.privacyEmphasis}> 분석 및 추천 서비스 제공</Text>에만
-                    사용됩니다.
+                    인식한 수치를 원본 자료와 비교해 주세요. 틀린 값은 수정한 뒤 다음으로 진행할 수 있어요.
                   </Text>
                 </View>
               </View>
@@ -1166,14 +1236,12 @@ export default function OCRResultScreen() {
                 disabled:
                   isSaving ||
                   isReuploading ||
-                  currentResult.ocrStatus !== 'completed' ||
-                  currentResult.status === 'failed',
+                  currentResult.ocrStatus !== 'completed',
               }}
               disabled={
                 isSaving ||
                 isReuploading ||
-                currentResult.ocrStatus !== 'completed' ||
-                currentResult.status === 'failed'
+                currentResult.ocrStatus !== 'completed'
               }
               onPress={() => void handleNext()}
               onLayout={(event) => {
@@ -1185,8 +1253,7 @@ export default function OCRResultScreen() {
                 { top: nextButtonTop },
                 (isSaving ||
                   isReuploading ||
-                  currentResult.ocrStatus !== 'completed' ||
-                  currentResult.status === 'failed') &&
+                  currentResult.ocrStatus !== 'completed') &&
                   styles.nextButtonDisabled,
                 pressed && styles.pressed,
               ]}
@@ -1211,12 +1278,31 @@ export default function OCRResultScreen() {
         onClose={() => setIsReuploadSheetOpen(false)}
         onSelectFile={handleReuploadSelection}
         visible={isReuploadSheetOpen}
+        variant="reupload"
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  failureRoot: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: 412, backgroundColor: '#FFFFFF' },
+  failureHeader: { minHeight: 62, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
+  failureBack: { position: 'absolute', left: 20, bottom: 7, height: 42, width: 42, justifyContent: 'center', zIndex: 1 },
+  failureBackText: { color: '#27262D', fontSize: 32, lineHeight: 38 },
+  failureHeaderTitle: { color: '#27262D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+  failureContent: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 104, alignItems: 'center' },
+  failureIcon: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#FFF4D6', alignItems: 'center', justifyContent: 'center' },
+  failureIconText: { color: '#D79B1E', fontFamily: fontFamilies.pretendardBold, fontSize: 36 },
+  failureTitle: { marginTop: 26, color: '#27262D', fontFamily: fontFamilies.pretendardBold, fontSize: 25 },
+  failureDescription: { marginTop: 14, color: '#85858D', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 22, textAlign: 'center' },
+  failureGuide: { alignSelf: 'stretch', marginTop: 48, borderRadius: 18, borderWidth: 1, borderColor: '#E9E7ED', padding: 20, gap: 16 },
+  failureGuideTitle: { color: '#33313A', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+  failureTipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  failureTipNumber: { color: '#8F79DF', fontFamily: fontFamilies.pretendardBold, fontSize: 14, width: 17 },
+  failureTipText: { color: '#67656E', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 20, flex: 1 },
+  failureFooter: { paddingHorizontal: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F2F0F4' },
+  failureButton: { minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#9B82E9' },
+  failureButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
   loadingRoot: {
     alignItems: 'center',
     backgroundColor: colors.surface,
@@ -1310,9 +1396,7 @@ const styles = StyleSheet.create({
     color: colors.surface,
   },
   completionSection: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 14,
+    alignItems: 'flex-start',
     left: 21,
     position: 'absolute',
     top: 114,
@@ -1327,13 +1411,13 @@ const styles = StyleSheet.create({
     width: 50,
   },
   completionTexts: {
-    gap: 15,
-    width: 252,
+    gap: 8,
+    width: 370,
   },
   completionTitle: {
     color: colors.textBody,
     fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 18,
+    fontSize: 19,
     includeFontPadding: false,
     lineHeight: 22,
   },
@@ -1345,21 +1429,20 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   healthCompletionTitle: {
-    fontSize: 20,
+    fontSize: 19,
   },
   healthCompletionDescription: {
     fontSize: 14,
   },
   uploadFileCard: {
-    borderRadius: radius.md,
+    borderRadius: 12,
     left: 21,
     position: 'absolute',
     top: 204,
     width: 370,
   },
   uploadFileContent: {
-    gap: 8,
-    padding: 15,
+    padding: 12,
   },
   cardTitle: {
     color: colors.textBody,
@@ -1378,10 +1461,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radius.sm,
     borderWidth: 1,
-    height: 80,
+    height: 48,
     justifyContent: 'center',
     overflow: 'hidden',
-    width: 80,
+    width: 48,
   },
   filePreviewImage: {
     height: '100%',
@@ -1408,22 +1491,36 @@ const styles = StyleSheet.create({
   },
   reuploadButton: {
     alignItems: 'center',
-    borderColor: colors.primary,
+    borderColor: '#D8D3ED',
     borderRadius: radius.sm,
     borderWidth: 0.5,
-    height: 30,
+    height: 32,
     justifyContent: 'center',
-    width: 70,
+    width: 78,
   },
   reuploadText: {
-    color: colors.primary,
+    color: '#6551B3',
     fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
+    fontSize: 12,
     includeFontPadding: false,
     lineHeight: 17,
   },
+  resultTabs: {
+    backgroundColor: '#F6F5F8',
+    borderRadius: 9,
+    flexDirection: 'row',
+    height: 34,
+    left: 21,
+    padding: 3,
+    position: 'absolute',
+    width: 370,
+  },
+  resultTab: { alignItems: 'center', flex: 1, justifyContent: 'center' },
+  resultTabActive: { backgroundColor: '#FFFFFF', borderRadius: 7 },
+  resultTabText: { color: '#96939C', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+  resultTabTextActive: { color: '#5C50AE', fontFamily: fontFamilies.pretendardSemiBold },
   extractedCard: {
-    borderRadius: radius.md,
+    borderRadius: 13,
     height: 450,
     left: 21,
     position: 'absolute',
@@ -1431,14 +1528,14 @@ const styles = StyleSheet.create({
     width: 370,
   },
   extractedContent: {
-    gap: 12,
+    gap: 10,
     height: '100%',
     paddingBottom: 15,
     paddingHorizontal: 15,
     paddingTop: 16,
   },
   metricListContent: {
-    gap: 12,
+    gap: 0,
     paddingRight: 2,
   },
   metricList: {
@@ -1451,9 +1548,7 @@ const styles = StyleSheet.create({
     width: 341,
   },
   metricRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 7,
+    minHeight: 46,
   },
   metricIconCircle: {
     alignItems: 'center',
@@ -1465,31 +1560,32 @@ const styles = StyleSheet.create({
   },
   metricMain: {
     flex: 1,
-    gap: 5,
+    gap: 0,
   },
   metricContent: {
     alignItems: 'center',
     flexDirection: 'row',
-    minHeight: 20,
+    minHeight: 45,
   },
   metricLabel: {
     color: colors.textBody,
     fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
+    fontSize: 13,
     includeFontPadding: false,
     lineHeight: 17,
-    width: 105,
+    width: 106,
   },
   metricValue: {
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     minWidth: 0,
   },
   metricValueText: {
     color: colors.textBody,
     fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
+    fontSize: 13,
     includeFontPadding: false,
     lineHeight: 17,
   },
@@ -1531,22 +1627,19 @@ const styles = StyleSheet.create({
   metricUnit: {
     color: colors.textSecondary,
     fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
+    fontSize: 12,
     lineHeight: 17,
   },
   modifyButton: {
     alignItems: 'center',
-    borderColor: colors.primary,
-    borderRadius: radius.sm,
-    borderWidth: 0.5,
-    height: 24,
+    height: 32,
     justifyContent: 'center',
-    width: 50,
+    width: 30,
   },
   modifyButtonText: {
-    color: colors.primary,
+    color: '#8A78D3',
     fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
+    fontSize: 20,
     includeFontPadding: false,
     lineHeight: 17,
   },
@@ -1554,7 +1647,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   confirmButton: {
-    borderColor: '#1371EB',
+    backgroundColor: '#F1EDFB',
   },
   confirmButtonText: {
     color: '#1371EB',
@@ -1587,9 +1680,9 @@ const styles = StyleSheet.create({
   },
   nextButton: {
     alignItems: 'center',
-    backgroundColor: colors.primaryMedium,
-    borderRadius: radius.md,
-    height: 45,
+    backgroundColor: '#5141C9',
+    borderRadius: 8,
+    height: 52,
     justifyContent: 'center',
     left: 21,
     position: 'absolute',
@@ -1602,7 +1695,7 @@ const styles = StyleSheet.create({
   nextButtonText: {
     color: colors.surface,
     fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 20,
+    fontSize: 16,
     includeFontPadding: false,
     lineHeight: 22,
   },

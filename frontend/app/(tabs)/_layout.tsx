@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Tabs, usePathname } from 'expo-router';
+import { Tabs, usePathname, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
-import { ChatPopup, DraggableAIChatButton, type AIChatButtonAnchor } from '@/src/components/home';
+import { DraggableAIChatButton } from '@/src/components/home';
 import { BottomNavigation, type BottomNavigationLayout } from '@/src/components/navigation';
 import { prefetchActiveChat } from '@/src/features/chat/chatSessionCache';
 
 export default function TabLayout() {
+  const router = useRouter();
   const pathname = usePathname();
   const [navigationLayout, setNavigationLayout] = useState<BottomNavigationLayout>();
-  const [chatAnchor, setChatAnchor] = useState<AIChatButtonAnchor>();
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isChatClosing, setIsChatClosing] = useState(false);
   const handleNavigationLayout = useCallback((layout: BottomNavigationLayout) => {
     setNavigationLayout((current) =>
       current &&
@@ -23,16 +21,6 @@ export default function TabLayout() {
         : layout,
     );
   }, []);
-  const handleOpenChat = useCallback((anchor: AIChatButtonAnchor) => {
-    setChatAnchor(anchor);
-    setIsChatClosing(false);
-    setIsChatOpen(true);
-  }, []);
-  const handleRequestCloseChat = useCallback(() => {
-    setIsChatClosing(true);
-    setIsChatOpen(false);
-  }, []);
-  const handleChatCloseComplete = useCallback(() => setIsChatClosing(false), []);
   const isHome = pathname.endsWith('/home');
 
   useEffect(() => {
@@ -55,19 +43,10 @@ export default function TabLayout() {
         <Tabs.Screen name="community" options={{ title: '커뮤니티' }} />
         <Tabs.Screen name="my" options={{ title: '마이' }} />
       </Tabs>
-      {chatAnchor ? (
-        <ChatPopup
-          anchor={chatAnchor}
-          navigationLayout={navigationLayout}
-          onCloseComplete={handleChatCloseComplete}
-          onRequestClose={handleRequestCloseChat}
-          visible={isChatOpen}
-        />
-      ) : null}
       <DraggableAIChatButton
         navigationLayout={navigationLayout}
-        onPress={handleOpenChat}
-        visible={isHome && !isChatOpen && !isChatClosing}
+        onPress={() => router.push('/chat')}
+        visible={isHome}
       />
     </View>
   );

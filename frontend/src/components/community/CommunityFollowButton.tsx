@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
   },
   follow: { backgroundColor: colors.primary, borderColor: colors.primary },
   following: { backgroundColor: colors.surface, borderColor: colors.border },
-  wide: { alignSelf: 'stretch', minHeight: 42 },
+  wide: { alignSelf: 'stretch', borderRadius: radius.sm, minHeight: 42 },
   pressed: { opacity: 0.75 },
   text: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
   followText: { color: colors.surface },

@@ -19,7 +19,6 @@ import {
   getCommunityMileage,
   getCommunityProfile,
   getCommunityUserPosts,
-  openCommunityConversation,
   type CommunityAuthor,
   type CommunityFollowKind,
   type CommunityPost,
@@ -55,7 +54,6 @@ export default function CommunityProfileScreen() {
   const focusedOnce = useRef(false);
   // Own profile only: mileage, membership and (for moderators) the report review shortcut.
   const [mine, setMine] = useState<{ balance?: number; member?: boolean; moderator?: boolean }>({});
-  const [opening, setOpening] = useState(false);
 
   const loadMine = useCallback(async () => {
     const [mileage, membership, moderator] = await Promise.allSettled([
@@ -69,27 +67,6 @@ export default function CommunityProfileScreen() {
       moderator: moderator.status === 'fulfilled' ? moderator.value.is_moderator : undefined,
     });
   }, []);
-
-  // Opens the existing chat, or starts one when both follow each other (the server decides).
-  const openChat = async () => {
-    if (!profile || opening) return;
-    setOpening(true);
-    try {
-      const conversation = await openCommunityConversation(profile.user_id);
-      router.push({
-        params: {
-          conversationId: conversation.conversation_id,
-          nickname: profile.nickname,
-          otherId: profile.user_id,
-        },
-        pathname: '/community/chat/[conversationId]',
-      });
-    } catch (error) {
-      actions.handleError(error);
-    } finally {
-      setOpening(false);
-    }
-  };
 
   const load = useCallback(
     async (inlineError: boolean) => {
@@ -191,7 +168,7 @@ export default function CommunityProfileScreen() {
     });
 
   const header = profile ? (
-    <View style={styles.profile}>
+    <View style={[styles.profile, !profile.is_me && styles.otherProfile]}>
       <View style={styles.profileTop}>
         <CommunityAvatar author={profile} size={72} />
         <View style={styles.stats}>
@@ -216,19 +193,19 @@ export default function CommunityProfileScreen() {
           <Text style={styles.badge}>나를 팔로우해요</Text>
         ) : null}
       </View>
+      {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
       {profile.is_me ? (
         <View style={styles.myRows}>
           <MyRow
             label="마일리지"
             onPress={() => router.push('/community/mileage')}
-            value={mine.balance === undefined ? '' : `${mine.balance.toLocaleString()}점`}
+            value={mine.balance === undefined ? '' : `${mine.balance.toLocaleString()}P`}
           />
           <MyRow
             label="유료 회원"
             onPress={() => router.push('/community/membership')}
             value={mine.member === undefined ? '' : mine.member ? '이용 중' : '미가입'}
           />
-          <MyRow label="메시지" onPress={() => router.push('/community/messages')} value="" />
           {mine.moderator ? (
             <MyRow label="운영자 도구" onPress={() => router.push('/community/admin')} value="" />
           ) : null}
@@ -244,19 +221,11 @@ export default function CommunityProfileScreen() {
               wide
             />
           </View>
-          {profile.followed_by_me && profile.follows_me ? (
-            <Pressable
-              accessibilityLabel={`${profile.nickname}님에게 메시지`}
-              accessibilityRole="button"
-              disabled={opening}
-              onPress={() => void openChat()}
-              style={({ pressed }) => [styles.messageButton, pressed && styles.myRowPressed]}
-            >
-              <Text style={styles.messageButtonText}>메시지</Text>
-            </Pressable>
-          ) : null}
         </View>
       )}
+      <View style={styles.postsHeading}>
+        <Text accessibilityRole="header" style={styles.postsTitle}>게시글 {profile.post_count.toLocaleString()}</Text>
+      </View>
     </View>
   ) : null;
 
@@ -274,7 +243,7 @@ export default function CommunityProfileScreen() {
             />
           ) : null
         }
-        title={profile?.is_me ? '내 프로필' : (profile?.nickname ?? '프로필')}
+        title={profile?.is_me ? '내 프로필' : '프로필'}
       />
       {errorMessage ? (
         <View style={styles.message}>
@@ -350,7 +319,7 @@ function MyRow({ label, onPress, value }: { label: string; onPress: () => void; 
 function Stat({ label, onPress, value }: { label: string; onPress?: () => void; value: number }) {
   return (
     <Pressable
-      accessibilityLabel={`${label} ${value}명`}
+      accessibilityLabel={`${label} ${value}${label === '게시글' ? '개' : '명'}`}
       accessibilityRole={onPress ? 'button' : undefined}
       disabled={!onPress}
       onPress={onPress}
@@ -372,7 +341,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.sm,
   },
+  otherProfile: { paddingTop: spacing.lg },
   profileTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.lg },
+  bio: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 13, lineHeight: 19 },
   stats: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
   stat: { alignItems: 'center', minWidth: 56, paddingVertical: spacing.xs },
   statValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18 },
@@ -411,20 +382,8 @@ const styles = StyleSheet.create({
   myRows: { backgroundColor: colors.background, borderRadius: 12, overflow: 'hidden' },
   otherActions: { flexDirection: 'row', gap: spacing.sm },
   otherAction: { flex: 1 },
-  messageButton: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 42,
-    paddingHorizontal: spacing.xl,
-  },
-  messageButtonText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-  },
+  postsHeading: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, marginHorizontal: -spacing.xl, marginTop: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.lg },
+  postsTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
   myRow: {
     alignItems: 'center',
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-export { colors } from './colors';
+export { colors, darkColors } from './colors';
 export { fontAssets, fontFamilies } from './fonts';
 export { radius } from './radius';
 export { shadows } from './shadows';

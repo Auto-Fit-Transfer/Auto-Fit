@@ -12,7 +12,6 @@ import {
   View,
 } from 'react-native';
 
-import EmailIcon from '@/assets/icons/auth-redesign/66005.svg';
 import NoticeIcon from '@/assets/icons/auth-redesign/e062d.svg';
 import { SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
 import { useSignup } from '@/src/features/signup/SignupContext';
@@ -130,16 +129,11 @@ export default function SignUpStep2Screen() {
       ctaDisabled={digits.some((digit) => !digit)}
       ctaLoading={isVerifying}
       currentStep={2}
+      totalSteps={5}
       onBack={() => router.back()}
       onContinue={() => void verifyCode()}
     >
       <SignUpSection top={confirmTop} innerStyle={styles.confirmContent}>
-        <View style={styles.emblem}>
-          <EmailIcon height={32} width={32} />
-        </View>
-        <Text style={styles.description}>
-          입력하신 이메일로 인증번호를 발송했어요.{`\n`}인증번호 6자리를 입력해 주세요.
-        </Text>
         <View style={styles.emailCard}>
           <Text numberOfLines={1} style={styles.emailText}>
             {email}

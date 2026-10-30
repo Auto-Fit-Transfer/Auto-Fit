@@ -117,6 +117,25 @@ export function getDietRecommendationsByDate(date: string) {
   return apiRequest<DietRecommendationResponse>(`/api/diet/recommendations?${params.toString()}`);
 }
 
+export type DietRecipeSnapshot = {
+  diet_recipe_snapshot_id: string;
+  diet_meal_id: string;
+  title: string;
+  description: string;
+  servings: number | string;
+  prep_minutes: number | null;
+  ingredients: unknown[];
+  steps: unknown[];
+  generator: string;
+  created_at: string;
+};
+
+export function getDietMealRecipe(dietMealId: string) {
+  return apiRequest<{ recipe: DietRecipeSnapshot | null }>(
+    `/api/diet/meals/${encodeURIComponent(dietMealId)}/recipe`,
+  );
+}
+
 export function getDietNutritionSummary(date: string) {
   const params = new URLSearchParams({ date });
   return apiRequest<{ summary: import('@/src/features/nutritionSummary').NutritionSummary }>(

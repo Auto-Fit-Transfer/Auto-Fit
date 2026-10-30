@@ -11,6 +11,7 @@ import {
 } from 'react';
 
 import { completeExerciseSession, recordExerciseItemResult } from '@/src/api/exercise';
+import { awardTierActivity } from '@/src/api/tier';
 
 import type { StartedExerciseSession } from './ExerciseRoutineContext';
 import type { ExerciseItem, ExerciseRoutine } from './exerciseData';
@@ -569,6 +570,8 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     const pendingWrites = [...pendingWritesRef.current];
     if (pendingWrites.length > 0) await Promise.all(pendingWrites);
     await completeExerciseSession(current.sessionId);
+    // The completed session remains valid if the independent tier service is unavailable.
+    void awardTierActivity('recommended_workout_completed', current.sessionId).catch(() => undefined);
     const completedSummary = summarizeSession(current);
     completedSessionRef.current = { sessionId: current.sessionId, summary: completedSummary };
     return completedSummary;

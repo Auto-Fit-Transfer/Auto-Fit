@@ -101,7 +101,7 @@ export function prefetchActiveChat() {
         status: 'ready',
       };
       return snapshot;
-    } catch (error) {
+    } catch {
       //if (__DEV__) console.warn('[ChatPrefetch] background prefetch failed', error);
       snapshot = { ...snapshot, status: 'error' };
       return snapshot;

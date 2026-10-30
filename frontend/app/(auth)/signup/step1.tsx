@@ -1,429 +1,239 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  Dimensions,
-  Alert,
-  Keyboard,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from 'react-native';
-
-import DownIcon from '@/assets/icons/auth-redesign/27cb4.svg';
-import BirthChevronIcon from '@/assets/icons/auth-redesign/167c7.svg';
-import CalendarIcon from '@/assets/icons/auth-redesign/dc269.svg';
-import EmailIcon from '@/assets/icons/auth-redesign/1790c.svg';
-import EyeIcon from '@/assets/icons/input/Eye.svg';
-import EyeCloseIcon from '@/assets/icons/auth-redesign/5facc.svg';
-import PasswordIcon from '@/assets/icons/auth-redesign/6a5e9.svg';
-import UserIcon from '@/assets/icons/auth-redesign/5df69.svg';
-import CheckIcon from '@/assets/icons/auth-redesign/ab4c2.svg';
-import { BirthDatePicker, SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
-import { IconButton, SelectField } from '@/src/components/common';
-import { AuthTextField } from '@/src/components/auth/AuthRedesign';
+import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { getSignupApiErrorMessage, saveProfile } from '@/src/api/onboarding';
+import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
+import { BirthDatePicker, SignUpScreenLayout } from '@/src/components/auth';
+import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
 import { useSignup, type SignupGender } from '@/src/features/signup/SignupContext';
 import { getSignupAuthErrorMessage } from '@/src/features/signup/signupAuthError';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { colors, fontFamilies, typography } from '@/src/theme';
+import { fontFamilies } from '@/src/theme';
 
-type Gender = SignupGender;
-type Step1InputKey = 'email' | 'password' | 'confirm-password' | 'name';
-
-const minimumScreenHeight = 740;
-const maximumScreenHeight = 917;
-const signUpBrandVisualHeight = 144;
-const defaultBirthday = new Date();
-const keyboardSafeGap = 20;
-
-function formatBirthday(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${year}.${month}.${day}`;
-}
-
-function formatBirthDateForApi(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function parseBirthDate(value: string | null) {
-  return value ? new Date(`${value}T00:00:00`) : undefined;
-}
-
-function getValidationMessage({
-  email,
-  password,
-  confirmPassword,
-  name,
-  birthday,
-  gender,
-  agreed,
-}: {
-  email: string;
-  password: string;
-  confirmPassword: string;
-  name: string;
-  birthday?: Date;
-  gender?: Gender;
-  agreed: boolean;
-}) {
-  if (!email.trim()) return '이메일을 입력해 주세요.';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
-    return '올바른 이메일 형식을 입력해 주세요.';
-  if (!password) return '비밀번호를 입력해 주세요.';
-  if (
-    password.length < 8 ||
-    !/[a-z]/.test(password) ||
-    !/[A-Z]/.test(password) ||
-    !/\d/.test(password) ||
-    !/[^A-Za-z0-9]/.test(password)
-  ) {
-    return '비밀번호는 8자 이상이며 영문, 숫자, 특수문자를 포함해야 합니다.';
-  }
-  if (password !== confirmPassword) return '비밀번호와 비밀번호 확인이 일치하지 않습니다.';
-  if (!birthday) return '생년월일을 선택해 주세요.';
-  if (!name.trim()) return '이름을 입력해 주세요.';
-  if (!gender) return '성별을 선택해 주세요.';
-  if (!agreed) return '회원가입을 위해 약관에 동의해 주세요.';
-  return undefined;
-}
+const consentItems = [
+  { key: 'age', label: '만 14세 이상입니다', required: true },
+  { key: 'service', label: '서비스 이용약관 동의', required: true },
+  { key: 'privacy', label: '개인정보 수집 및 이용 동의', required: true },
+  { key: 'health', label: '민감정보(건강정보) 수집 및 이용 동의', required: true },
+  { key: 'marketing', label: '마케팅 알림 수신 동의', required: false },
+] as const;
+type ConsentKey = (typeof consentItems)[number]['key'];
+const formatDate = (date: Date) =>
+  [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
 
 export default function SignUpStep1Screen() {
   const router = useRouter();
   const { flow } = useLocalSearchParams<{ flow?: string }>();
+  const isPostLogin = flow === 'post-login';
   const { draft, updateDraft } = useSignup();
-  const isPostLoginOnboarding = flow === 'post-login';
-  const { height: windowHeight } = useWindowDimensions();
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
-  const confirmPasswordRef = useRef<TextInput>(null);
-  const nameRef = useRef<TextInput>(null);
-  const focusedInputRef = useRef<TextInput | null>(null);
-  const submitInFlightRef = useRef(false);
+  const inFlight = useRef(false);
+  const [name, setName] = useState(draft.name);
   const [email, setEmail] = useState(draft.email);
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [name, setName] = useState(draft.name);
-  const [birthday, setBirthday] = useState<Date | undefined>(() => parseBirthDate(draft.birthDate));
-  const [birthdayPickerVisible, setBirthdayPickerVisible] = useState(false);
-  const [gender, setGender] = useState<Gender | undefined>(() =>
-    isPostLoginOnboarding ? undefined : draft.gender,
-  );
-  const [agreed, setAgreed] = useState(false);
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
-  const [focusedInputKey, setFocusedInputKey] = useState<Step1InputKey | null>(null);
-  const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
-  const [keyboardContentOffset, setKeyboardContentOffset] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const screenHeight = Dimensions.get('screen').height;
-  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
-  const heightProgress = Math.max(
-    0,
-    Math.min(
-      1,
-      (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight),
-    ),
+  const [birthday, setBirthday] = useState<Date | undefined>(
+    draft.birthDate ? new Date(draft.birthDate + 'T00:00:00') : undefined,
   );
-  const verticalValue = (expanded: number, compact: number) =>
-    compact + (expanded - compact) * heightProgress;
-  const signUpBrandBottom = verticalValue(96, 74) + signUpBrandVisualHeight;
-  const formTop = Math.max(verticalValue(287, 230), signUpBrandBottom + 12);
+  const [birthdayPickerVisible, setBirthdayPickerVisible] = useState(false);
+  const [gender, setGender] = useState<SignupGender | undefined>(draft.gender);
+  const [consentVisible, setConsentVisible] = useState(false);
+  const [exitVisible, setExitVisible] = useState(false);
+  const [consents, setConsents] = useState<ConsentKey[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const allChecked = consents.length === consentItems.length;
+  const requiredChecked = consentItems.every(
+    (item) => !item.required || consents.includes(item.key),
+  );
 
-  useEffect(() => {
-    if (Platform.OS !== 'android') return undefined;
-
-    const keyboardDidShow = Keyboard.addListener('keyboardDidShow', (event) => {
-      setKeyboardTop(event.endCoordinates.screenY);
-    });
-    const keyboardDidHide = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardTop(null);
-      setKeyboardContentOffset(0);
-    });
-
-    return () => {
-      keyboardDidShow.remove();
-      keyboardDidHide.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (Platform.OS !== 'android' || focusedInputKey === null || keyboardTop === null) {
-      return undefined;
-    }
-
-    const frame = requestAnimationFrame(() => {
-      focusedInputRef.current?.measureInWindow((_x, y, _width, height) => {
-        const hiddenAmount = y + height - (keyboardTop - keyboardSafeGap);
-        setKeyboardContentOffset(Math.max(0, hiddenAmount));
-      });
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [focusedInputKey, keyboardTop]);
-
-  const handleInputFocus = (key: Step1InputKey, input: TextInput | null) => {
-    focusedInputRef.current = input;
-    setFocusedInputKey(key);
+  const validationMessage = () => {
+    if (!name.trim()) return '이름을 입력해 주세요.';
+    if (!isPostLogin && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
+      return '올바른 이메일을 입력해 주세요.';
+    if (
+      !isPostLogin &&
+      !(
+        password.length >= 8 &&
+        /[a-z]/.test(password) &&
+        /[A-Z]/.test(password) &&
+        /\d/.test(password) &&
+        /[^A-Za-z0-9]/.test(password)
+      )
+    )
+      return '비밀번호는 8자 이상이며 영문 대소문자, 숫자, 특수문자를 포함해야 합니다.';
+    if (!birthday) return '생년월일을 선택해 주세요.';
+    const ageLimit = new Date();
+    ageLimit.setFullYear(ageLimit.getFullYear() - 14);
+    if (birthday > ageLimit) return '만 14세 이상부터 가입할 수 있어요.';
+    if (!gender) return '성별을 선택해 주세요.';
+    return undefined;
   };
 
-  const goBack = () => {
-    if (router.canGoBack()) router.back();
-    else router.replace('/login');
-  };
-
-  const goNext = async () => {
-    if (submitInFlightRef.current) return;
-
-    const validationMessage = isPostLoginOnboarding
-      ? !birthday
-        ? '생년월일을 선택해 주세요.'
-        : !gender
-          ? '성별을 선택해 주세요.'
-          : !name.trim()
-            ? '이름을 입력해 주세요.'
-            : undefined
-      : getValidationMessage({
-          email,
-          password,
-          confirmPassword,
-          name,
-          birthday,
-          gender,
-          agreed,
-        });
-    if (validationMessage) {
-      Alert.alert('입력 정보를 확인해 주세요', validationMessage);
-      return;
-    }
-
-    const birthDate = formatBirthDateForApi(birthday!);
-    submitInFlightRef.current = true;
+  const continueFromForm = async () => {
+    const message = validationMessage();
+    if (message) return Alert.alert('입력 정보를 확인해 주세요', message);
+    if (!isPostLogin) return setConsentVisible(true);
+    if (inFlight.current || !birthday || !gender) return;
+    inFlight.current = true;
     setIsSubmitting(true);
-    Keyboard.dismiss();
-
     try {
-      if (isPostLoginOnboarding) {
-        const profileName = name.trim();
-        await saveProfile({ name: profileName, birthDate, gender: gender! });
-        updateDraft({ name: profileName, birthDate, gender: gender! });
-        router.push({ pathname: '/signup/step3', params: { flow: 'post-login' } });
-        return;
-      }
+      const birthDate = formatDate(birthday);
+      await saveProfile({ name: name.trim(), birthDate, gender });
+      updateDraft({ name: name.trim(), birthDate, gender });
+      router.push({ pathname: '/signup/step3', params: { flow: 'post-login' } });
+    } catch (error) {
+      Alert.alert('프로필 정보를 저장하지 못했습니다', getSignupApiErrorMessage(error));
+    } finally {
+      inFlight.current = false;
+      setIsSubmitting(false);
+    }
+  };
 
+  const startSignup = async () => {
+    if (inFlight.current || !birthday || !gender || !requiredChecked) return;
+    inFlight.current = true;
+    setIsSubmitting(true);
+    try {
       const normalizedEmail = email.trim().toLowerCase();
-      console.log('회원가입 요청 확인', {
-        rawEmail: email,
-        normalizedEmail,
-        emailLength: normalizedEmail.length,
-      });
-
       const { data, error } = await getSupabaseClient().auth.signUp({
         email: normalizedEmail,
         password,
       });
       if (error) throw error;
-      if (data.user && data.user.identities?.length === 0) {
+      if (data.user && data.user.identities?.length === 0)
         throw new Error('이미 가입된 이메일입니다. 로그인하거나 다른 이메일을 사용해 주세요.');
-      }
-
-      updateDraft({ email: normalizedEmail, name: name.trim(), birthDate, gender });
-
-      if (data.session) {
-        router.push('/signup/step3');
-      } else {
-        router.push({ pathname: '/signup/step2', params: { email: normalizedEmail } });
-      }
+      updateDraft({
+        email: normalizedEmail,
+        name: name.trim(),
+        birthDate: formatDate(birthday),
+        gender,
+      });
+      setConsentVisible(false);
+      router.push(
+        data.session
+          ? '/signup/step3'
+          : { pathname: '/signup/step2', params: { email: normalizedEmail } },
+      );
     } catch (error) {
-      if (isPostLoginOnboarding) {
-        console.error('소셜 로그인 프로필 저장 실패:', error);
-        Alert.alert('프로필 정보를 저장하지 못했습니다', getSignupApiErrorMessage(error));
-      } else {
-        console.error('회원가입 시작 실패:', error);
-        Alert.alert(
-          '회원가입을 시작하지 못했습니다',
-          getSignupAuthErrorMessage(error, '잠시 후 다시 시도해 주세요.'),
-        );
-      }
+      Alert.alert(
+        '회원가입을 시작하지 못했습니다',
+        getSignupAuthErrorMessage(error, '잠시 후 다시 시도해 주세요.'),
+      );
     } finally {
-      submitInFlightRef.current = false;
+      inFlight.current = false;
       setIsSubmitting(false);
     }
   };
 
-  const openBirthdayPicker = () => {
-    setBirthdayPickerVisible(true);
-  };
+  const toggleConsent = (key: ConsentKey) =>
+    setConsents((current) =>
+      current.includes(key) ? current.filter((item) => item !== key) : [...current, key],
+    );
 
   return (
     <SignUpScreenLayout
-      alignStepCta
       ctaLabel="다음"
       ctaLoading={isSubmitting}
-      contentOffsetY={keyboardContentOffset}
       currentStep={1}
-      totalSteps={isPostLoginOnboarding ? 3 : 4}
-      onBack={goBack}
-      onContinue={goNext}
+      totalSteps={isPostLogin ? 4 : 5}
+      onBack={() => (isPostLogin ? router.back() : setExitVisible(true))}
+      onContinue={() => void continueFromForm()}
     >
-      <SignUpSection innerStyle={styles.form} top={formTop}>
-        {!isPostLoginOnboarding ? (
+      <View style={styles.form}>
+        <AuthTextField
+          accessibilityLabel="이름"
+          autoComplete="name"
+          label="이름"
+          onChangeText={setName}
+          onSubmitEditing={() => emailRef.current?.focus()}
+          placeholder="이름을 입력해 주세요"
+          returnKeyType={isPostLogin ? 'done' : 'next'}
+          value={name}
+        />
+        {!isPostLogin ? (
           <>
             <AuthTextField
               ref={emailRef}
               accessibilityLabel="이메일"
-              label="이메일"
               autoCapitalize="none"
               autoComplete="email"
               autoCorrect={false}
               keyboardType="email-address"
-              leftElement={
-                <FieldIcon
-                  icon={<EmailIcon color={colors.textNavigator} height={20} width={20} />}
-                />
-              }
+              label="이메일"
               onChangeText={setEmail}
-              onFocus={() => handleInputFocus('email', emailRef.current)}
               onSubmitEditing={() => passwordRef.current?.focus()}
               placeholder="이메일을 입력해 주세요"
               returnKeyType="next"
-              style={styles.textFieldInput}
-              textContentType="emailAddress"
               value={email}
             />
             <AuthTextField
               ref={passwordRef}
               accessibilityLabel="비밀번호"
-              label="비밀번호"
               autoCapitalize="none"
               autoComplete="new-password"
-              leftElement={
-                <FieldIcon
-                  icon={<PasswordIcon color={colors.textNavigator} height={20} width={20} />}
-                />
-              }
+              label="비밀번호"
               onChangeText={setPassword}
-              onFocus={() => handleInputFocus('password', passwordRef.current)}
-              onSubmitEditing={() => confirmPasswordRef.current?.focus()}
               placeholder="비밀번호를 입력해 주세요"
-              returnKeyType="next"
-              rightElement={
-                <PasswordVisibilityButton
-                  onPress={() => setPasswordVisible((visible) => !visible)}
-                  visible={passwordVisible}
-                />
-              }
               secureTextEntry={!passwordVisible}
-              style={styles.textFieldInput}
-              textContentType="newPassword"
+              rightElement={
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={passwordVisible ? '비밀번호 숨기기' : '비밀번호 보기'}
+                  onPress={() => setPasswordVisible((current) => !current)}
+                >
+                  <Text style={styles.visibility}>{passwordVisible ? '숨기기' : '보기'}</Text>
+                </Pressable>
+              }
               value={password}
             />
-            <AuthTextField
-              ref={confirmPasswordRef}
-              accessibilityLabel="비밀번호 확인"
-              label="비밀번호 확인"
-              autoCapitalize="none"
-              autoComplete="new-password"
-              leftElement={
-                <FieldIcon
-                  icon={<PasswordIcon color={colors.textNavigator} height={20} width={20} />}
-                />
-              }
-              onChangeText={setConfirmPassword}
-              onFocus={() => handleInputFocus('confirm-password', confirmPasswordRef.current)}
-              onSubmitEditing={() => nameRef.current?.focus()}
-              placeholder="비밀번호를 다시 입력해 주세요"
-              returnKeyType="next"
-              rightElement={
-                <PasswordVisibilityButton
-                  onPress={() => setConfirmPasswordVisible((visible) => !visible)}
-                  visible={confirmPasswordVisible}
-                />
-              }
-              secureTextEntry={!confirmPasswordVisible}
-              style={styles.textFieldInput}
-              textContentType="newPassword"
-              value={confirmPassword}
-            />
+            <Text style={styles.hint}>
+              영문 대소문자, 숫자, 특수문자를 포함해 8자 이상 입력해 주세요.
+            </Text>
           </>
         ) : null}
-        <SelectField
-          accessibilityLabel="생년월일 선택"
-          fieldStyle={styles.selectField}
-          leftElement={
-            <FieldIcon
-              icon={<CalendarIcon color={colors.textNavigator} height={20} width={20} />}
-            />
-          }
-          onPress={openBirthdayPicker}
-          label="생년월일"
-          labelStyle={styles.fieldLabel}
-          placeholder="생년월일을 선택해 주세요"
-          placeholderTextColor={colors.textNavigator}
-          valueStyle={styles.selectFieldText}
-          rightElement={<BirthChevronIcon height={20} width={20} />}
-          value={birthday ? formatBirthday(birthday) : undefined}
-        />
-        <AuthTextField
-          ref={nameRef}
-          accessibilityLabel="이름"
-          label="이름"
-          autoComplete="name"
-          leftElement={
-            <FieldIcon icon={<UserIcon color={colors.textNavigator} height={20} width={20} />} />
-          }
-          onChangeText={setName}
-          onFocus={() => handleInputFocus('name', nameRef.current)}
-          placeholder="이름을 입력해 주세요"
-          returnKeyType="done"
-          style={styles.textFieldInput}
-          textContentType="name"
-          value={name}
-        />
-        <View style={styles.genderField}>
-          <Text style={styles.genderLabel}>성별</Text>
-          <View style={styles.genderActions}>
-            <GenderButton
-              label="남성"
-              onPress={() => setGender('male')}
-              selected={gender === 'male'}
-            />
-            <GenderButton
-              label="여성"
-              onPress={() => setGender('female')}
-              selected={gender === 'female'}
-            />
+        <View>
+          <Text style={styles.label}>생년월일</Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="생년월일 선택"
+            onPress={() => setBirthdayPickerVisible(true)}
+            style={styles.select}
+          >
+            <Text style={[styles.selectText, !birthday && styles.placeholder]}>
+              {birthday ? formatDate(birthday).replace(/-/g, '.') : '생년월일을 선택해 주세요'}
+            </Text>
+            <Text style={styles.chevron}>⌄</Text>
+          </Pressable>
+        </View>
+        <View>
+          <Text style={styles.label}>성별</Text>
+          <View style={styles.genderRow}>
+            {(
+              [
+                ['male', '남성'],
+                ['female', '여성'],
+              ] as const
+            ).map(([value, label]) => (
+              <Pressable
+                key={value}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: gender === value }}
+                onPress={() => setGender(value)}
+                style={[styles.gender, gender === value && styles.genderSelected]}
+              >
+                <Text style={[styles.genderText, gender === value && styles.genderTextSelected]}>
+                  {label}
+                </Text>
+              </Pressable>
+            ))}
           </View>
         </View>
-      </SignUpSection>
-      {!isPostLoginOnboarding ? (
-        <SignUpSection card={false} top={0}>
-          <Pressable
-            accessibilityLabel="모든 약관 동의"
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: agreed }}
-            onPress={() => setAgreed((value) => !value)}
-            style={({ pressed }) => [styles.termsField, pressed && styles.pressed]}
-          >
-            <View style={styles.termsLeft}>
-              <View style={[styles.checkbox, agreed && styles.checkboxSelected]}>
-                {agreed ? <CheckIcon color={colors.primaryDark} height={14} width={14} /> : null}
-              </View>
-              <Text style={styles.termsText}>모든 약관에 동의합니다</Text>
-            </View>
-            <DownIcon color={colors.textSecondary} height={20} width={20} />
-          </Pressable>
-        </SignUpSection>
-      ) : null}
+      </View>
       <BirthDatePicker
         maximumDate={new Date()}
         onCancel={() => setBirthdayPickerVisible(false)}
@@ -431,146 +241,151 @@ export default function SignUpStep1Screen() {
           setBirthday(date);
           setBirthdayPickerVisible(false);
         }}
-        value={birthday ?? defaultBirthday}
+        value={birthday ?? new Date()}
         visible={birthdayPickerVisible}
       />
+      <ConfirmDialog
+        visible={exitVisible}
+        title="가입을 그만둘까요?"
+        description="지금까지 입력한 내용은 저장되지 않아요."
+        secondaryLabel="그만두기"
+        primaryLabel="계속 가입하기"
+        onSecondary={() => {
+          setExitVisible(false);
+          router.replace('/login');
+        }}
+        onPrimary={() => setExitVisible(false)}
+      />
+      <Modal
+        animationType="slide"
+        transparent
+        visible={consentVisible}
+        onRequestClose={() => setConsentVisible(false)}
+      >
+        <View style={styles.modalRoot}>
+          <Pressable
+            accessibilityLabel="약관 동의 닫기"
+            onPress={() => setConsentVisible(false)}
+            style={styles.scrim}
+          />
+          <View style={styles.sheet}>
+            <View style={styles.handle} />
+            <Text style={styles.sheetTitle}>약관에 동의해 주세요</Text>
+            <Text style={styles.sheetDescription}>
+              필수 항목에 동의하면 회원가입을 진행할 수 있어요.
+            </Text>
+            <Pressable
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: allChecked }}
+              onPress={() => setConsents(allChecked ? [] : consentItems.map((item) => item.key))}
+              style={styles.allRow}
+            >
+              <Text style={styles.checkbox}>{allChecked ? '☑' : '□'}</Text>
+              <Text style={styles.allText}>전체 동의하기</Text>
+            </Pressable>
+            {consentItems.map((item) => (
+              <Pressable
+                key={item.key}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: consents.includes(item.key) }}
+                onPress={() => toggleConsent(item.key)}
+                style={styles.consentRow}
+              >
+                <Text style={styles.checkbox}>{consents.includes(item.key) ? '☑' : '□'}</Text>
+                <Text style={styles.consentText}>
+                  <Text style={styles.required}>{item.required ? '[필수] ' : '[선택] '}</Text>
+                  {item.label}
+                </Text>
+              </Pressable>
+            ))}
+            <AuthButton
+              disabled={!requiredChecked}
+              loading={isSubmitting}
+              onPress={() => void startSignup()}
+              title="동의하고 계속하기"
+            />
+          </View>
+        </View>
+      </Modal>
     </SignUpScreenLayout>
   );
 }
 
-function FieldIcon({ icon }: { icon: React.ReactNode }) {
-  return <View style={styles.fieldIcon}>{icon}</View>;
-}
-
-function PasswordVisibilityButton({ visible, onPress }: { visible: boolean; onPress: () => void }) {
-  return (
-    <IconButton
-      accessibilityLabel={visible ? '비밀번호 숨기기' : '비밀번호 보기'}
-      icon={
-        visible ? (
-          <EyeIcon color={colors.textNavigator} height={20} width={20} />
-        ) : (
-          <EyeCloseIcon color={colors.textNavigator} height={20} width={20} />
-        )
-      }
-      onPress={onPress}
-      size={44}
-      style={styles.eyeButton}
-    />
-  );
-}
-
-interface GenderButtonProps {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}
-
-function GenderButton({ label, selected, onPress }: GenderButtonProps) {
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.genderButton,
-        selected && styles.genderButtonSelected,
-        pressed && styles.pressed,
-      ]}
-    >
-      <Text style={[styles.genderButtonText, selected && styles.genderButtonTextSelected]}>
-        {label}
-      </Text>
-      <View style={[styles.genderRadio, selected && styles.genderRadioSelected]}>
-        {selected ? <CheckIcon height={14} width={14} /> : null}
-      </View>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  form: { gap: 12 },
-  textFieldInput: { fontSize: 15, lineHeight: 23 },
-  fieldIcon: { alignItems: 'center', height: 20, justifyContent: 'center', width: 20 },
-  eyeButton: { marginRight: -11 },
-  selectField: {
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    height: 48,
-    paddingHorizontal: 14,
+  form: { gap: 18 },
+  hint: {
+    color: '#87878F',
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 11,
+    marginTop: -12,
   },
-  selectFieldText: { fontSize: 15, lineHeight: 23 },
-  fieldLabel: {
-    color: colors.dark,
+  label: {
+    color: '#333339',
     fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 13,
     marginBottom: 6,
   },
-  genderField: { gap: 6 },
-  genderLabel: {
-    color: colors.dark,
-    fontFamily: typography.sectionTitle.fontFamily,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  genderActions: { flexDirection: 'row', gap: 8 },
-  genderButton: {
+  select: {
     alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: 12,
+    backgroundColor: '#F9F9FB',
+    borderColor: '#E6E6ED',
+    borderRadius: 8,
     borderWidth: 1,
-    flex: 1,
     flexDirection: 'row',
     height: 48,
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
   },
-  genderButtonSelected: { backgroundColor: colors.surfaceSoft, borderColor: colors.primary },
-  genderButtonText: {
-    color: colors.dark,
-    fontFamily: typography.sectionTitle.fontFamily,
-    fontSize: 15,
-  },
-  genderButtonTextSelected: { color: colors.primaryDark },
-  genderRadio: {
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 20,
-    width: 20,
-  },
-  genderRadioSelected: {
+  selectText: { color: '#222227', fontSize: 14 },
+  placeholder: { color: '#9B9BA4' },
+  chevron: { color: '#888890', fontSize: 23 },
+  genderRow: { flexDirection: 'row', gap: 8 },
+  gender: {
     alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: '#F9F9FB',
+    borderColor: '#E6E6ED',
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    height: 48,
     justifyContent: 'center',
   },
-  termsField: {
+  genderSelected: { backgroundColor: '#F3F0FF', borderColor: '#503DD7' },
+  genderText: { color: '#777780', fontSize: 14 },
+  genderTextSelected: { color: '#503DD7', fontFamily: fontFamilies.pretendardSemiBold },
+  visibility: { color: '#777780', fontSize: 12 },
+  modalRoot: { flex: 1, justifyContent: 'flex-end' },
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.42)' },
+  sheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    gap: 13,
+    paddingBottom: 35,
+    paddingHorizontal: 22,
+    paddingTop: 12,
+  },
+  handle: {
+    alignSelf: 'center',
+    backgroundColor: '#D9D9DF',
+    borderRadius: 3,
+    height: 4,
+    marginBottom: 12,
+    width: 40,
+  },
+  sheetTitle: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 22 },
+  sheetDescription: { color: '#777780', fontSize: 13, marginBottom: 8 },
+  allRow: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
+    borderBottomColor: '#ECECF1',
+    borderBottomWidth: 1,
     flexDirection: 'row',
-    height: 52,
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    gap: 10,
+    paddingBottom: 16,
   },
-  termsLeft: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  checkbox: {
-    borderColor: colors.textSecondary,
-    borderRadius: 4,
-    borderWidth: 1,
-    height: 20,
-    width: 20,
-  },
-  checkboxSelected: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-    justifyContent: 'center',
-  },
-  termsText: { color: colors.dark, fontFamily: typography.sectionTitle.fontFamily, fontSize: 15 },
-  pressed: { opacity: 0.75 },
+  allText: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
+  consentRow: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 31 },
+  consentText: { color: '#44444B', flex: 1, fontSize: 13 },
+  required: { color: '#777780' },
+  checkbox: { color: '#503DD7', fontSize: 21, width: 23 },
 });

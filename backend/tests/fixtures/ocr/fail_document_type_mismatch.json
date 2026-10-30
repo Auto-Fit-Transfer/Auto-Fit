@@ -1,0 +1,8 @@
+{
+  "document_type": null,
+  "extracted_data": null,
+  "error": {
+    "code": "DOCUMENT_TYPE_MISMATCH",
+    "message": "요청한 문서 종류(body_composition)와 실제 문서(health_checkup)가 다릅니다. 문서 종류를 다시 선택해 주세요."
+  }
+}

@@ -10,15 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import {
-  completeOnboarding,
-  getSignupApiErrorMessage,
-  saveExercisePreferences,
-  saveProfile,
-  type ExerciseGoalType,
-} from '@/src/api/onboarding';
 import { SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
-import { getPostLoginDestination } from '@/src/features/auth/postLoginDestination';
 import {
   useSignup,
   type SignupExerciseExperience,
@@ -52,20 +44,11 @@ const experienceOptions: ExperienceOption[] = [
   { id: 'advanced', label: '고급 (2년 이상)' },
 ];
 
-const exerciseGoalApiMap: Record<ExerciseGoal, ExerciseGoalType> = {
-  'fat-loss': 'weight_loss',
-  'muscle-gain': 'muscle_gain',
-  stamina: 'endurance',
-  conditioning: 'rehabilitation',
-  custom: 'other',
-};
-
 export default function SignUpStep4Screen() {
   const router = useRouter();
   const { flow } = useLocalSearchParams<{ flow?: string }>();
-  const { draft, resetDraft, updateDraft } = useSignup();
+  const { draft, updateDraft } = useSignup();
   const customGoalInputRef = useRef<TextInput>(null);
-  const completeInFlightRef = useRef(false);
   const [exerciseGoal, setExerciseGoal] = useState<ExerciseGoal>(draft.exerciseGoal);
   const [exerciseExperience, setExerciseExperience] = useState<ExerciseExperience>(
     draft.exerciseExperience,
@@ -74,7 +57,6 @@ export default function SignUpStep4Screen() {
   const [isCustomGoalFocused, setIsCustomGoalFocused] = useState(false);
   const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
   const [keyboardContentOffset, setKeyboardContentOffset] = useState(0);
-  const [isCompleting, setIsCompleting] = useState(false);
   const isPostLoginOnboarding = flow === 'post-login';
 
   useEffect(() => {
@@ -124,9 +106,7 @@ export default function SignUpStep4Screen() {
     updateDraft({ exerciseExperience: experience });
   };
 
-  const completeSignup = async () => {
-    if (completeInFlightRef.current) return;
-
+  const goNext = () => {
     const trimmedCustomGoal = customGoal.trim();
     if (exerciseGoal === 'custom' && !trimmedCustomGoal) {
       Alert.alert('운동 목표를 확인해 주세요', '기타 운동 목표를 입력해 주세요.');
@@ -136,48 +116,23 @@ export default function SignUpStep4Screen() {
       Alert.alert('운동 목표를 확인해 주세요', '운동 목표는 200자 이하로 입력해 주세요.');
       return;
     }
-    const goalType = exerciseGoalApiMap[exerciseGoal];
-    const customGoalForRequest = exerciseGoal === 'custom' ? trimmedCustomGoal : null;
-    if (!isPostLoginOnboarding && (!draft.name || !draft.birthDate)) {
-      Alert.alert('회원가입 정보가 없습니다', 'Step1부터 회원가입 정보를 다시 입력해 주세요.');
-      router.replace('/signup/step1');
-      return;
-    }
-
-    completeInFlightRef.current = true;
-    setIsCompleting(true);
     Keyboard.dismiss();
-    try {
-      updateDraft({ exerciseGoal, exerciseExperience, customGoal: trimmedCustomGoal });
-      if (!isPostLoginOnboarding) {
-        await saveProfile({
-          name: draft.name,
-          birthDate: draft.birthDate!,
-          gender: draft.gender,
-        });
-      }
-      await saveExercisePreferences(goalType, exerciseExperience, customGoalForRequest);
-      await completeOnboarding();
-      resetDraft();
-      router.replace(isPostLoginOnboarding ? await getPostLoginDestination() : '/login');
-    } catch (error) {
-      console.error('회원가입 완료 처리 실패:', error);
-      Alert.alert('회원가입을 완료하지 못했습니다', getSignupApiErrorMessage(error));
-    } finally {
-      completeInFlightRef.current = false;
-      setIsCompleting(false);
-    }
+    updateDraft({ exerciseGoal, exerciseExperience, customGoal: trimmedCustomGoal });
+    router.push(
+      isPostLoginOnboarding
+        ? { pathname: '/signup/step5', params: { flow: 'post-login' } }
+        : '/signup/step5',
+    );
   };
 
   return (
     <SignUpScreenLayout
-      ctaLabel="회원가입 완료"
-      ctaLoading={isCompleting}
+      ctaLabel="다음"
       contentOffsetY={keyboardContentOffset}
       currentStep={isPostLoginOnboarding ? 3 : 4}
-      totalSteps={isPostLoginOnboarding ? 3 : 4}
+      totalSteps={isPostLoginOnboarding ? 4 : 5}
       onBack={() => router.back()}
-      onContinue={() => void completeSignup()}
+      onContinue={goNext}
     >
       <SignUpSection top={0} innerStyle={styles.optionSection}>
         <Text style={styles.sectionTitle}>운동 목표</Text>

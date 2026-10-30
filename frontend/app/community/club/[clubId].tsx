@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import PencilIcon from '@/assets/icons/feature/Pencil_Fill.svg';
 import MoreIcon from '@/assets/icons/system/DotsThreeVertical.svg';
 import {
   deleteCommunityClub,
@@ -24,13 +23,13 @@ import {
   type CommunityPost,
 } from '@/src/api/community';
 import { AppButton, AppHeader, IconButton } from '@/src/components/common';
-import { CommunityPostCard, communityClubCategoryLabel } from '@/src/components/community';
+import { CommunityAvatar, CommunityPostCard, communityClubCategoryLabel } from '@/src/components/community';
 import {
   applyCommunityEvent,
   subscribeCommunityEvents,
 } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, shadows, spacing, typography } from '@/src/theme';
+import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 
 export default function CommunityClubScreen() {
   const { clubId } = useLocalSearchParams<{ clubId: string }>();
@@ -108,6 +107,24 @@ export default function CommunityClubScreen() {
   const toggleMembership = async () => {
     if (!club || busy) return;
     const joining = !club.is_member;
+    if (!joining) {
+      actions.askConfirm({
+        confirmText: '나가기',
+        description: `${club.name} 클럽에서 나갈까요? 다시 가입할 수 있어요.`,
+        run: async () => {
+          setBusy(true);
+          try {
+            const result = await setCommunityClubMembership(club.club_id, false);
+            setClub((current) => current && { ...current, is_member: result.joined, member_count: result.member_count });
+            notify(`${club.name}에서 나왔어요.`);
+          } finally {
+            setBusy(false);
+          }
+        },
+        title: '클럽에서 나갈까요?',
+      });
+      return;
+    }
     setBusy(true);
     try {
       const result = await setCommunityClubMembership(club.club_id, joining);
@@ -170,17 +187,40 @@ export default function CommunityClubScreen() {
 
   const header = club ? (
     <View style={styles.info}>
-      <Text style={styles.category}>{communityClubCategoryLabel(club.category)}</Text>
-      <Text style={styles.name}>{club.name}</Text>
-      {club.description ? <Text style={styles.description}>{club.description}</Text> : null}
-      <View style={styles.metaRow}>
-        <Pressable accessibilityRole="link" hitSlop={6} onPress={openMembers}>
-          <Text style={styles.memberLink}>회원 {club.member_count.toLocaleString()}명 ›</Text>
-        </Pressable>
-        <Text style={styles.meta}>
-          · 글 {club.post_count.toLocaleString()}개 · 클럽장 {club.owner.nickname}
-        </Text>
+      <View style={styles.identity}>
+        <View style={styles.categoryIcon}><Text style={styles.categoryIconText}>{communityClubCategoryLabel(club.category).slice(0, 2)}</Text></View>
+        <View style={styles.identityText}>
+          <Text style={styles.category}>{communityClubCategoryLabel(club.category)}</Text>
+          <Text style={styles.name}>{club.name}</Text>
+          <Text style={styles.meta}>회원 {club.member_count.toLocaleString()}명 · 글 {club.post_count.toLocaleString()}개</Text>
+        </View>
       </View>
+      {club.description ? <Text style={styles.description}>{club.description}</Text> : null}
+      <Pressable accessibilityRole="button" onPress={() => openProfile(club.owner)} style={styles.ownerRow}>
+        <CommunityAvatar author={club.owner} size={24} />
+        <Text style={styles.ownerLabel}>클럽장</Text>
+        <Text style={styles.ownerName}>{club.owner.nickname} ›</Text>
+      </Pressable>
+      <View style={styles.actionRow}>
+        {club.is_owner ? (
+          <View style={[styles.joinButton, styles.joined, styles.action]}><Text style={styles.joinedText}>내가 만든 클럽</Text></View>
+        ) : (
+          <Pressable
+            accessibilityLabel={club.is_member ? '클럽 나가기' : '클럽 가입하기'}
+            accessibilityRole="button"
+            disabled={busy}
+            onPress={() => void toggleMembership()}
+            style={({ pressed }) => [styles.joinButton, styles.action, club.is_member ? styles.joined : styles.join, (pressed || busy) && styles.pressed]}
+          >
+            <Text style={club.is_member ? styles.joinedText : styles.joinTextOn}>{club.is_member ? '가입함 ✓' : '클럽 가입하기'}</Text>
+          </Pressable>
+        )}
+        {club.is_member || club.is_owner ? <Pressable accessibilityRole="button" onPress={() => router.push({ params: { clubId: club.club_id, clubName: club.name }, pathname: '/community/compose' })} style={[styles.joinButton, styles.action, styles.join]}><Text style={styles.joinTextOn}>클럽에 글쓰기</Text></Pressable> : null}
+      </View>
+      <Pressable accessibilityRole="button" onPress={openMembers} style={styles.membersCard}>
+        <Text style={styles.membersCount}>회원 {club.member_count.toLocaleString()}명</Text>
+        <Text style={styles.membersLink}>전체 보기 ›</Text>
+      </Pressable>
       <Pressable
         accessibilityRole="link"
         onPress={() =>
@@ -192,24 +232,7 @@ export default function CommunityClubScreen() {
       >
         <Text style={styles.rankingLink}>이번 주 클럽 랭킹 보기 ›</Text>
       </Pressable>
-      {club.is_owner ? (
-        <Text style={styles.ownerNote}>내가 만든 클럽이에요.</Text>
-      ) : (
-        <Pressable
-          accessibilityRole="button"
-          disabled={busy}
-          onPress={() => void toggleMembership()}
-          style={({ pressed }) => [
-            styles.joinButton,
-            club.is_member ? styles.joined : styles.join,
-            (pressed || busy) && styles.pressed,
-          ]}
-        >
-          <Text style={[styles.joinText, club.is_member ? styles.joinedText : styles.joinTextOn]}>
-            {club.is_member ? '클럽 나가기' : '클럽 가입하기'}
-          </Text>
-        </Pressable>
-      )}
+      <View style={styles.feedHeading}><Text style={styles.feedTitle}>클럽 글 {club.post_count.toLocaleString()}</Text><Text style={styles.sortLabel}>최신순</Text></View>
     </View>
   ) : null;
 
@@ -227,7 +250,7 @@ export default function CommunityClubScreen() {
             />
           ) : null
         }
-        title={club?.name ?? '클럽'}
+        title="클럽"
       />
       {errorMessage ? (
         <View style={styles.message}>
@@ -238,7 +261,7 @@ export default function CommunityClubScreen() {
         <ActivityIndicator color={colors.primary} style={styles.message} />
       ) : (
         <FlatList
-          contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
           data={posts}
           keyExtractor={(item) => item.feed_item_id}
           ListEmptyComponent={
@@ -278,26 +301,6 @@ export default function CommunityClubScreen() {
           )}
         />
       )}
-      {club?.is_member ? (
-        <Pressable
-          accessibilityLabel="클럽에 글쓰기"
-          accessibilityRole="button"
-          onPress={() =>
-            router.push({
-              params: { clubId: club.club_id, clubName: club.name },
-              pathname: '/community/compose',
-            })
-          }
-          style={({ pressed }) => [
-            styles.compose,
-            shadows.floating,
-            { bottom: insets.bottom + spacing.xl },
-            pressed && styles.composePressed,
-          ]}
-        >
-          <PencilIcon color={colors.surface} height={26} width={26} />
-        </Pressable>
-      ) : null}
       {actions.elements}
     </View>
   );
@@ -308,57 +311,48 @@ const styles = StyleSheet.create({
   info: {
     borderBottomColor: colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: spacing.xs,
+    gap: spacing.md,
     paddingBottom: spacing.lg,
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.sm,
   },
-  category: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.sm,
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-    overflow: 'hidden',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  categoryIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, borderRadius: radius.md },
+  categoryIconText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 13 },
+  identityText: { flex: 1, gap: 2 },
+  category: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
   name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
   description: { ...typography.body, color: colors.textBody },
   meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 13 },
-  metaRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
-  memberLink: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 13,
-  },
+  ownerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  ownerLabel: { color: colors.textSecondary, fontSize: 12 },
+  ownerName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  actionRow: { flexDirection: 'row', gap: spacing.sm },
+  action: { flex: 1 },
+  membersCard: { minHeight: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.md, backgroundColor: colors.background, borderRadius: radius.md },
+  membersCount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  membersLink: { color: colors.textSecondary, fontSize: 12 },
+  feedHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.md },
+  feedTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
+  sortLabel: { color: colors.textSecondary, fontSize: 12 },
   rankingLink: {
     color: colors.primaryDark,
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 14,
     marginTop: 2,
   },
-  ownerNote: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
-    marginTop: spacing.sm,
-  },
   joinButton: {
     alignItems: 'center',
-    borderRadius: radius.round,
+    borderRadius: radius.sm,
     borderWidth: 1,
-    marginTop: spacing.sm,
     minHeight: 42,
     justifyContent: 'center',
   },
   join: { backgroundColor: colors.primary, borderColor: colors.primary },
-  joined: { backgroundColor: colors.surface, borderColor: colors.border },
+  joined: { backgroundColor: colors.background, borderColor: colors.background },
   pressed: { opacity: 0.75 },
-  joinText: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
-  joinTextOn: { color: colors.surface },
-  joinedText: { color: colors.textPrimary },
+  joinTextOn: { color: colors.surface, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  joinedText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   message: {
     alignItems: 'center',
     flex: 1,
@@ -368,15 +362,4 @@ const styles = StyleSheet.create({
   },
   messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
   empty: { alignItems: 'center', padding: spacing.xxl },
-  compose: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: radius.round,
-    height: 56,
-    justifyContent: 'center',
-    position: 'absolute',
-    right: spacing.xl,
-    width: 56,
-  },
-  composePressed: { backgroundColor: colors.primaryDark },
 });

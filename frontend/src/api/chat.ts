@@ -1,4 +1,5 @@
 import { apiRequest } from '@/src/api/client';
+import type { ChatCharacterId } from '@/src/features/chat/chatCharacters';
 import type {
   ChatListResponse,
   ChatMessagesResponse,
@@ -37,9 +38,10 @@ export function getChatMessages(chatId: string, before?: string, limit = 30) {
   );
 }
 
-export function sendChatMessage(chatId: string, content: string, clientMessageId: string) {
+export function sendChatMessage(chatId: string, content: string, clientMessageId: string, characterId: ChatCharacterId) {
   return apiRequest<SendChatMessageResponse>(`/api/chats/${encodeURIComponent(chatId)}/messages`, {
     body: JSON.stringify({ client_message_id: clientMessageId, content }),
+    headers: { 'X-AutoFit-Character': characterId },
     method: 'POST',
   });
 }

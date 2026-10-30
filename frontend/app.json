@@ -33,7 +33,24 @@
           "photosPermission": "식사 기록에 사진을 추가하려면 사진 보관함 접근 권한이 필요합니다."
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "스쿼트 자세를 촬영하려면 카메라 접근 권한이 필요합니다.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
+        }
+      ],
       "expo-document-picker",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "러닝 중 실제 이동 거리와 경로를 기록하려면 앱 사용 중 위치 접근이 필요합니다.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false,
+          "isAndroidForegroundServiceEnabled": false
+        }
+      ],
       "@react-native-community/datetimepicker",
       "expo-web-browser"
     ],

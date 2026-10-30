@@ -197,12 +197,12 @@ export function CommunityChallengesPane({ bottomSpace }: { bottomSpace: number }
         }
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <View style={styles.titleRow}>
+            <Pressable accessibilityRole="button" accessibilityLabel={`${item.title} 챌린지 자세히 보기`} onPress={() => router.push({ pathname: '/community/challenge/[challengeId]', params: { challengeId: item.challenge_id } })} style={styles.titleRow}>
               <Text style={styles.title}>{item.title}</Text>
               <Text style={[styles.phase, item.phase === 'ongoing' && styles.phaseOn]}>
                 {item.phase === 'ongoing' ? '진행 중' : item.phase === 'upcoming' ? '예정' : '종료'}
               </Text>
-            </View>
+            </Pressable>
             {item.description ? <Text style={styles.description}>{item.description}</Text> : null}
             <Text style={styles.meta}>
               {shortDate(item.starts_on)}~{shortDate(item.ends_on)} · 보상 +

@@ -8,7 +8,7 @@ export interface SignupDraft {
   email: string;
   name: string;
   birthDate: string | null;
-  gender: SignupGender;
+  gender: SignupGender | undefined;
   selectedAllergens: string[];
   otherAllergy: string;
   exerciseGoal: SignupExerciseGoal;
@@ -20,7 +20,7 @@ const initialSignupDraft: SignupDraft = {
   email: '',
   name: '',
   birthDate: null,
-  gender: 'male',
+  gender: undefined,
   selectedAllergens: [],
   otherAllergy: '',
   exerciseGoal: 'fat-loss',

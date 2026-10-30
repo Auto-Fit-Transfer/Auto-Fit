@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -22,7 +23,10 @@ import {
   createCommunityClubPost,
   createCommunityPost,
   getCommunityErrorCode,
+  getMyCommunityActivities,
   uploadCommunityPhoto,
+  type CommunityActivity,
+  type CommunityPostCategory,
   type CommunityPhoto,
 } from '@/src/api/community';
 import { AppDialog } from '@/src/components/common';
@@ -31,6 +35,11 @@ import { useCommunityActions } from '@/src/features/community/useCommunityAction
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+const CATEGORIES: { key: CommunityPostCategory; label: string }[] = [
+  { key: 'workout', label: '운동 기록' }, { key: 'routine', label: '루틴 공유' },
+  { key: 'diet', label: '식단' }, { key: 'question', label: '질문' },
+  { key: 'review', label: '후기' },
+];
 
 export default function CommunityComposeScreen() {
   const router = useRouter();
@@ -39,14 +48,50 @@ export default function CommunityComposeScreen() {
   const insets = useSafeAreaInsets();
   const actions = useCommunityActions();
   const [content, setContent] = useState('');
+  const [category, setCategory] = useState<CommunityPostCategory>('workout');
+  const [tagInput, setTagInput] = useState('');
   const [photos, setPhotos] = useState<CommunityPhoto[]>([]);
+  const [activities, setActivities] = useState<CommunityActivity[] | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<CommunityActivity | null>(null);
+  const [activityLoading, setActivityLoading] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const submittingRef = useRef(false);
   // Uploaded photos can be reused when only the post step fails (e.g. nickname missing).
   const uploadedIds = useRef(new Map<string, string>());
-  const hasDraft = content.trim().length > 0 || photos.length > 0;
+  const canSubmit = content.trim().length > 0 || photos.length > 0;
+  const hasDraft = canSubmit || tagInput.trim().length > 0 || selectedActivity !== null;
   const remaining = COMMUNITY_MAX_IMAGES - photos.length;
+  const draftKey = `auto-fit.community.draft.${clubId ?? 'feed'}`;
+
+  useEffect(() => {
+    let active = true;
+    void AsyncStorage.getItem(draftKey).then((raw) => {
+      if (!active || !raw) return;
+      const draft = JSON.parse(raw) as { content?: string; category?: CommunityPostCategory; tagInput?: string };
+      if (typeof draft.content === 'string') setContent((current) => current || draft.content || '');
+      if (CATEGORIES.some((item) => item.key === draft.category)) setCategory(draft.category!);
+      if (typeof draft.tagInput === 'string') setTagInput(draft.tagInput);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [draftKey]);
+
+  const saveDraft = async () => {
+    if (!content.trim()) { actions.notify('임시저장할 글 내용을 입력해 주세요.'); return; }
+    try {
+      await AsyncStorage.setItem(draftKey, JSON.stringify({ content, category, tagInput }));
+      if (photos.length > 0 || selectedActivity) actions.notify('글은 저장했어요. 사진과 운동 기록은 다시 선택해야 해요.');
+      router.back();
+    } catch { actions.notify('임시저장에 실패했어요. 다시 시도해 주세요.'); }
+  };
+
+  const loadActivities = async () => {
+    if (activities !== null) { setActivities(null); return; }
+    setActivityLoading(true);
+    try { setActivities((await getMyCommunityActivities()).items); }
+    catch (error) { actions.handleError(error); }
+    finally { setActivityLoading(false); }
+  };
 
   const pickPhotos = async () => {
     if (remaining <= 0) return;
@@ -90,7 +135,13 @@ export default function CommunityComposeScreen() {
   };
 
   const submit = async () => {
-    if (!hasDraft || submittingRef.current) return;
+    if (!canSubmit || submittingRef.current) return;
+    const tags = tagInput.split(/[,\s]+/).map((tag) => tag.replace(/^#/, '').trim()).filter(Boolean);
+    if (tags.length > 5 || tags.some((tag) => tag.length > 20) ||
+        new Set(tags.map((tag) => tag.toLowerCase())).size !== tags.length) {
+      actions.notify('태그는 중복 없이 최대 5개, 각 20자 이하로 입력해 주세요.');
+      return;
+    }
     submittingRef.current = true;
     try {
       const uploadIds: string[] = [];
@@ -105,12 +156,13 @@ export default function CommunityComposeScreen() {
       }
       setProgress('게시하는 중');
       if (clubId) {
-        const post = await createCommunityClubPost(clubId, content, uploadIds);
+        const post = await createCommunityClubPost(clubId, content, uploadIds, { category, tags, exercise_session_id: selectedActivity?.session_id });
         emitCommunityEvent({ clubId, post, type: 'clubPostCreated' });
       } else {
-        const post = await createCommunityPost(content, uploadIds);
+        const post = await createCommunityPost(content, uploadIds, { category, tags, exercise_session_id: selectedActivity?.session_id });
         emitCommunityEvent({ post, type: 'created' });
       }
+      void AsyncStorage.removeItem(draftKey).catch(() => undefined);
       router.back();
     } catch (error) {
       if (getCommunityErrorCode(error) === 'COMMUNITY_UPLOAD_INVALID') uploadedIds.current.clear();
@@ -129,43 +181,40 @@ export default function CommunityComposeScreen() {
       style={[styles.root, { paddingTop: insets.top }]}
     >
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" hitSlop={8} onPress={close} style={styles.cancel}>
-          <Text style={styles.cancelText}>취소</Text>
+        <Pressable accessibilityLabel="글쓰기 닫기" accessibilityRole="button" hitSlop={8} onPress={close} style={styles.cancel}>
+          <Text style={styles.cancelText}>×</Text>
         </Pressable>
         <Text accessibilityRole="header" numberOfLines={1} style={styles.title}>
           {clubName ? `${clubName}에 글쓰기` : '새 글'}
         </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !hasDraft || progress !== null }}
-          disabled={!hasDraft || progress !== null}
-          onPress={() => void submit()}
-          style={({ pressed }) => [
-            styles.post,
-            (!hasDraft || progress !== null) && styles.postDisabled,
-            pressed && styles.postPressed,
-          ]}
-        >
-          <Text style={styles.postText}>게시</Text>
-        </Pressable>
+        <Pressable accessibilityRole="button" onPress={() => void saveDraft()} style={styles.draftButton}><Text style={styles.draftText}>임시저장</Text></Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        <TextInput
-          accessibilityLabel="글 내용"
-          autoFocus
-          maxLength={COMMUNITY_MAX_POST_LENGTH}
-          multiline
-          onChangeText={setContent}
-          placeholder="오늘의 운동, 식단, 작은 변화를 나눠 보세요"
-          placeholderTextColor={colors.textNavigator}
-          style={styles.input}
-          textAlignVertical="top"
-          value={content}
-        />
-        <Text style={styles.counter}>
-          {content.length}/{COMMUNITY_MAX_POST_LENGTH}
-        </Text>
+        <Text style={styles.fieldLabel}>분류</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
+          {CATEGORIES.map((item) => <Pressable key={item.key} accessibilityRole="button" accessibilityState={{ selected: category === item.key }} onPress={() => setCategory(item.key)} style={[styles.categoryChip, category === item.key && styles.categorySelected]}><Text style={[styles.categoryText, category === item.key && styles.categoryTextSelected]}>{item.label}</Text></Pressable>)}
+        </ScrollView>
+        <Text style={styles.fieldLabel}>내용</Text>
+        <View style={styles.inputWrap}>
+          <TextInput
+            accessibilityLabel="글 내용"
+            maxLength={COMMUNITY_MAX_POST_LENGTH}
+            multiline
+            onChangeText={setContent}
+            placeholder="오늘의 운동, 식단, 작은 변화를 나눠 보세요"
+            placeholderTextColor={colors.textNavigator}
+            style={styles.input}
+            textAlignVertical="top"
+            value={content}
+          />
+          <Text style={styles.counter}>{content.length}/{COMMUNITY_MAX_POST_LENGTH}</Text>
+        </View>
+
+        <View style={styles.photoHeading}>
+          <Text style={styles.fieldLabel}>사진</Text>
+          <Text style={styles.fieldHint}>{photos.length}/{COMMUNITY_MAX_IMAGES} · 한 장 5MB 이하(JPG·PNG·WebP)</Text>
+        </View>
 
         <ScrollView
           contentContainerStyle={styles.photos}
@@ -205,6 +254,24 @@ export default function CommunityComposeScreen() {
           ) : null}
         </ScrollView>
 
+        <Text style={styles.fieldLabel}>태그 · 최대 5개</Text>
+        <TextInput accessibilityLabel="글 태그" value={tagInput} onChangeText={setTagInput} placeholder="#하체, #스쿼트" maxLength={130} style={styles.tagInput} />
+        <Text style={styles.fieldHint}>쉼표나 띄어쓰기로 구분해 주세요.</Text>
+
+        <View style={styles.activityHeading}>
+          <Text style={styles.fieldLabel}>운동 기록 첨부 · 선택</Text>
+          <Pressable accessibilityRole="button" onPress={() => void loadActivities()}><Text style={styles.activityLink}>{activities ? '접기' : '기록 불러오기'}</Text></Pressable>
+        </View>
+        {activityLoading ? <Text style={styles.fieldHint}>운동 기록을 불러오는 중…</Text> : null}
+        {activities?.length === 0 ? <Text style={styles.fieldHint}>완료한 운동 기록이 없어요.</Text> : null}
+        {activities?.map((activity) => <Pressable key={activity.session_id} accessibilityRole="button" accessibilityState={{ selected: selectedActivity?.session_id === activity.session_id }} onPress={() => setSelectedActivity((current) => current?.session_id === activity.session_id ? null : activity)} style={[styles.activityOption, selectedActivity?.session_id === activity.session_id && styles.activitySelected]}><Text style={styles.activityName}>{activity.snapshot.name}</Text><Text style={styles.fieldHint}>{new Date(activity.completed_at).toLocaleDateString('ko-KR')} · {activity.snapshot.duration_minutes}분 · 약 {activity.snapshot.calories}kcal</Text></Pressable>)}
+        {selectedActivity ? <Text style={styles.activityDisclosure}>선택한 운동 시간·열량·운동명이 글과 함께 공개됩니다.</Text> : null}
+
+        <View style={styles.unsupported}>
+          <Text style={styles.unsupportedTitle}>추가 글 정보</Text>
+          <Text style={styles.unsupportedText}>공개 범위 선택은 연결 중이에요. 글은 전체 공개됩니다.</Text>
+        </View>
+
         <Text style={styles.notice}>
           사진의 촬영 위치 정보는 자동으로 지워져요. 검진 결과지처럼 이름이나 개인정보가 보이는
           사진은 올리지 않도록 주의해 주세요. 커뮤니티 글은 의학적 조언이 아니에요.
@@ -216,6 +283,18 @@ export default function CommunityComposeScreen() {
           <Text style={styles.progressText}>{progress}…</Text>
         </View>
       ) : null}
+
+      <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !canSubmit || progress !== null }}
+          disabled={!canSubmit || progress !== null}
+          onPress={() => void submit()}
+          style={({ pressed }) => [styles.post, (!canSubmit || progress !== null) && styles.postDisabled, pressed && styles.postPressed]}
+        >
+          <Text style={styles.postText}>올리기</Text>
+        </Pressable>
+      </View>
 
       <AppDialog
         cancelText="계속 쓰기"
@@ -239,15 +318,15 @@ const styles = StyleSheet.create({
   root: { backgroundColor: colors.surface, flex: 1 },
   header: {
     alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     justifyContent: 'space-between',
     minHeight: 56,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.xl,
   },
-  cancel: { minWidth: 56, paddingVertical: spacing.sm },
-  cancelText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
+  cancel: { minWidth: 44, paddingVertical: spacing.sm },
+  cancelText: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 28 },
+  draftButton: { minWidth: 58, alignItems: 'flex-end', paddingVertical: spacing.sm },
+  draftText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
   title: {
     ...typography.sectionTitle,
     color: colors.textPrimary,
@@ -257,24 +336,39 @@ const styles = StyleSheet.create({
   post: {
     alignItems: 'center',
     backgroundColor: colors.primary,
-    borderRadius: radius.round,
+    borderRadius: radius.sm,
     justifyContent: 'center',
-    minHeight: 36,
-    minWidth: 64,
+    minHeight: 50,
     paddingHorizontal: spacing.lg,
   },
   postDisabled: { backgroundColor: colors.border },
   postPressed: { backgroundColor: colors.primaryDark },
   postText: { color: colors.surface, fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
-  body: { gap: spacing.md, padding: spacing.lg },
+  body: { gap: spacing.md, padding: spacing.xl },
+  categoryRow: { flexDirection: 'row', gap: 7 },
+  categoryChip: { borderColor: colors.border, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: colors.surface },
+  categorySelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  categoryText: { color: colors.textSecondary, fontSize: 12 },
+  categoryTextSelected: { color: colors.surface, fontFamily: fontFamilies.pretendardSemiBold },
+  activityHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
+  activityLink: { color: colors.primaryDark, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
+  activityOption: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, gap: 5 },
+  activitySelected: { borderColor: colors.primary, backgroundColor: colors.background },
+  activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  activityDisclosure: { color: colors.textSecondary, fontSize: 11, lineHeight: 16 },
+  tagInput: { borderColor: colors.border, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 13, minHeight: 44, color: colors.textPrimary },
+  fieldLabel: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+  fieldHint: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 11 },
+  inputWrap: { borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, padding: spacing.md },
   input: {
     color: colors.textPrimary,
     fontFamily: fontFamilies.pretendardRegular,
     fontSize: 16,
     lineHeight: 24,
-    minHeight: 160,
+    minHeight: 100,
   },
   counter: { ...typography.caption, alignSelf: 'flex-end', color: colors.textSecondary },
+  photoHeading: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   photos: { gap: spacing.sm },
   thumbnail: {
     backgroundColor: colors.border,
@@ -305,6 +399,10 @@ const styles = StyleSheet.create({
   },
   addPhotoText: { ...typography.label, color: colors.primaryDark },
   notice: { ...typography.bodySmall, color: colors.textSecondary },
+  unsupported: { backgroundColor: colors.background, borderRadius: radius.md, gap: spacing.xs, padding: spacing.md },
+  unsupportedTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  unsupportedText: { ...typography.bodySmall, color: colors.textSecondary },
+  bottom: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   progress: {
     alignItems: 'center',
     backgroundColor: colors.primaryLight,

@@ -26,6 +26,14 @@
     },
     "production": {
       "autoIncrement": true
+    },
+    "testflight": {
+      "extends": "production",
+      "distribution": "store",
+      "environment": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://auto-fit-api-dev.onrender.com"
+      }
     }
   },
   "submit": {

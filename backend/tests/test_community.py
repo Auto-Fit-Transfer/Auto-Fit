@@ -1,0 +1,910 @@
+import json
+from io import BytesIO
+
+import httpx
+import pytest
+from fastapi.testclient import TestClient
+from PIL import ExifTags, Image
+
+from backend.app import community, main
+from backend.tests.test_main import TEST_SETTINGS
+
+USER = "3388350b-2b51-4784-a258-7d7f505fa311"
+OTHER = "4cfd8a39-4b0c-4b8f-9d3c-7a7a3d0e1f22"
+POST = "20261014-0000-4000-8000-000000000001"
+POST_2 = "20261014-0000-4000-8000-000000000002"
+POST_3 = "20261014-0000-4000-8000-000000000003"
+UPLOAD_1 = "20261014-0000-4000-8000-000000000011"
+UPLOAD_2 = "20261014-0000-4000-8000-000000000012"
+COMMENT = "20261014-0000-4000-8000-000000000021"
+COMMENT_2 = "20261014-0000-4000-8000-000000000022"
+T1 = "2026-10-14T03:00:00.123456+00:00"
+T2 = "2026-10-14T02:00:00.5+00:00"
+T3 = "2026-10-14T01:00:00+00:00"
+
+
+def author(user_id=OTHER, nickname="식단러"):
+    return {"user_id": user_id, "nickname": nickname, "profile_image_url": None}
+
+
+def post_row(post_id=POST, created_at=T1, images=(), **extra):
+    return {"feed_item_id": post_id, "feed_created_at": created_at, "reposted_by": None,
+            "post_id": post_id, "author": author(), "content": "샐러드 인증", "images": list(images),
+            "like_count": 0, "comment_count": 0, "repost_count": 0, "liked_by_me": False,
+            "reposted_by_me": False, "is_mine": False, "created_at": created_at, **extra}
+
+
+def comment_row(comment_id=COMMENT, created_at=T1):
+    return {"comment_id": comment_id, "post_id": POST, "author": author(), "content": "멋져요",
+            "created_at": created_at, "is_mine": False, "can_delete": True}
+
+
+def rejection(code, status=400):
+    return httpx.Response(status, json={"code": "P0001", "message": code, "details": None, "hint": None})
+
+
+class FakeSupabase:
+    """Records every service-role request; answers like PostgREST and Supabase Storage."""
+
+    def __init__(self):
+        self.calls, self.rpc, self.uploaded, self.deleted = [], {}, {}, []
+        self.sign_status = 200
+        self.delete_status = 200
+
+    def __call__(self, request):
+        path = request.url.path
+        is_json = request.headers.get("content-type", "").startswith("application/json")
+        body = json.loads(request.content) if request.content and is_json else None
+        self.calls.append((request.method, path, body))
+        assert request.headers["apikey"] == TEST_SETTINGS.supabase_service_role_key
+        if path.startswith("/rest/v1/rpc/"):
+            result = self.rpc[path.rsplit("/", 1)[1]]
+            result = result(request, body) if callable(result) else result
+            return result if isinstance(result, httpx.Response) else httpx.Response(200, json=result)
+        if path == f"/storage/v1/object/sign/{community.BUCKET}":
+            if self.sign_status != 200:
+                return httpx.Response(self.sign_status, json={"error": "rejected"})
+            return httpx.Response(200, json=[
+                {"path": p, "signedURL": f"/object/sign/{community.BUCKET}/{p}?token=t", "error": None}
+                for p in body["paths"]])
+        if request.method == "DELETE" and path == f"/storage/v1/object/{community.BUCKET}":
+            self.deleted.extend(body["prefixes"])
+            return httpx.Response(self.delete_status, json=[])
+        if request.method == "POST" and path.startswith(f"/storage/v1/object/{community.BUCKET}/"):
+            self.uploaded[path.split(f"/{community.BUCKET}/", 1)[1]] = (
+                request.headers["content-type"], request.content)
+            return httpx.Response(200, json={"Key": path})
+        raise AssertionError(f"unexpected request {request.method} {path}")
+
+    def bodies(self, name):
+        return [body for _, path, body in self.calls if path == f"/rest/v1/rpc/{name}"]
+
+    def count(self, prefix):
+        return sum(1 for _, path, _ in self.calls if path.startswith(prefix))
+
+
+@pytest.fixture
+def supabase(monkeypatch):
+    fake = FakeSupabase()
+    original = httpx.AsyncClient
+    monkeypatch.setattr(community.httpx, "AsyncClient",
+                        lambda **kw: original(transport=httpx.MockTransport(fake), **kw))
+    main.app.dependency_overrides[main.get_current_user] = lambda: main.AuthenticatedUser(id=USER)
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    yield fake
+    main.app.dependency_overrides.pop(main.get_current_user, None)
+    main.app.dependency_overrides.pop(main.get_settings, None)
+
+
+@pytest.fixture
+def client(supabase):
+    return TestClient(main.app)
+
+
+def jpeg(size=(40, 30), **save_options):
+    output = BytesIO()
+    Image.new("RGB", size, (200, 60, 60)).save(output, "JPEG", **save_options)
+    return output.getvalue()
+
+
+def test_mileage_monthly_uses_authenticated_user(client, supabase):
+    supabase.rpc["community_mileage_monthly"] = {
+        "earned_this_month": 85, "earned_last_month": 60, "spent_this_month": 100,
+    }
+    response = client.get(f"/api/community/mileage/monthly?user_id={OTHER}")
+    assert response.status_code == 200
+    assert response.json()["spent_this_month"] == 100
+    assert supabase.bodies("community_mileage_monthly") == [{"p_user_id": USER}]
+
+
+def test_my_comment_activity_uses_owner_and_cursor(client, supabase):
+    supabase.rpc["community_my_activity"] = [
+        {"activity_id": COMMENT, "occurred_at": T1, "detail": "좋은 자세예요", "post": post_row(POST)},
+        {"activity_id": COMMENT_2, "occurred_at": T2, "detail": "화이팅", "post": post_row(POST_2, T2)},
+    ]
+    first = client.get("/api/community/activity", params={"kind": "comments", "limit": 1})
+    assert first.status_code == 200
+    assert first.json()["items"][0]["detail"] == "좋은 자세예요"
+    assert supabase.bodies("community_my_activity")[0]["p_user_id"] == USER
+    second = client.get("/api/community/activity", params={
+        "kind": "comments", "limit": 1, "cursor": first.json()["next_cursor"],
+    })
+    assert second.status_code == 200
+    assert supabase.bodies("community_my_activity")[1]["p_before_id"] == COMMENT
+    assert client.get("/api/community/activity", params={"kind": "scraps"}).status_code == 422
+
+
+def test_bookmarks_are_scoped_to_authenticated_user(client, supabase):
+    supabase.rpc["community_bookmark_state"] = {"post_id": POST, "bookmarked": False}
+    supabase.rpc["community_set_bookmark"] = lambda _request, body: {
+        "post_id": body["p_post_id"], "bookmarked": body["p_bookmarked"],
+    }
+    supabase.rpc["community_bookmark_list"] = [post_row(POST)]
+    assert client.get(f"/api/community/posts/{POST}/bookmark").json()["bookmarked"] is False
+    assert client.put(f"/api/community/posts/{POST}/bookmark").json()["bookmarked"] is True
+    assert client.delete(f"/api/community/posts/{POST}/bookmark").json()["bookmarked"] is False
+    assert client.get("/api/community/bookmarks").json()["items"][0]["post_id"] == POST
+    assert supabase.bodies("community_set_bookmark") == [
+        {"p_user_id": USER, "p_post_id": POST, "p_bookmarked": True},
+        {"p_user_id": USER, "p_post_id": POST, "p_bookmarked": False},
+    ]
+    assert supabase.bodies("community_bookmark_list")[0]["p_user_id"] == USER
+
+
+def test_feed_signs_all_photos_in_one_call_and_pages(client, supabase):
+    photos = [{"path": f"{OTHER}/a.jpg", "width": 1200, "height": 900},
+              {"path": f"{OTHER}/b.jpg", "width": 900, "height": 1200}]
+    supabase.rpc["community_timeline"] = [post_row(POST, T1, photos), post_row(POST_2, T2, photos[:1]),
+                                      post_row(POST_3, T3)]
+
+    page = client.get("/api/community/feed", params={"limit": 2})
+
+    assert page.status_code == 200
+    body = page.json()
+    assert [item["post_id"] for item in body["items"]] == [POST, POST_2]
+    assert body["items"][0]["images"] == [
+        {"url": f"https://example.supabase.co/storage/v1/object/sign/community-photos/{OTHER}/a.jpg?token=t",
+         "width": 1200, "height": 900},
+        {"url": f"https://example.supabase.co/storage/v1/object/sign/community-photos/{OTHER}/b.jpg?token=t",
+         "width": 900, "height": 1200}]
+    assert supabase.count("/storage/v1/object/sign/") == 1
+    assert supabase.bodies("community_timeline")[0] == {
+        "p_viewer": USER, "p_scope": "all", "p_user_id": None, "p_before_created_at": None,
+        "p_before_item_id": None, "p_limit": 3}
+
+    supabase.rpc["community_timeline"] = [post_row(POST_3, T3)]
+    last = client.get("/api/community/feed", params={"limit": 2, "cursor": body["next_cursor"]})
+
+    assert last.json()["next_cursor"] is None
+    assert supabase.bodies("community_timeline")[1] == {
+        "p_viewer": USER, "p_scope": "all", "p_user_id": None,
+        "p_before_created_at": "2026-10-14T02:00:00.500000+00:00", "p_before_item_id": POST_2, "p_limit": 3}
+
+
+def test_search_returns_visible_result_types_and_validates_query(client, supabase):
+    supabase.rpc["community_search_posts"] = lambda request, body: [post_row()] if not body["p_routines_only"] else []
+    supabase.rpc["community_search_users"] = [profile_row()]
+    supabase.rpc["community_search_clubs"] = [club_row()]
+    response = client.get("/api/community/search", params={"q": "  하체  ", "limit": 5})
+    assert response.status_code == 200
+    assert response.json()["posts"][0]["post_id"] == POST
+    assert response.json()["routines"] == []
+    assert response.json()["users"][0]["user_id"] == OTHER
+    assert len(response.json()["clubs"]) == 1
+    assert supabase.bodies("community_search_posts") == [
+        {"p_viewer": USER, "p_query": "하체", "p_limit": 5, "p_routines_only": False},
+        {"p_viewer": USER, "p_query": "하체", "p_limit": 5, "p_routines_only": True},
+    ]
+    before = len(supabase.calls)
+    assert client.get("/api/community/search", params={"q": "  "}).status_code == 422
+    assert len(supabase.calls) == before
+
+
+@pytest.mark.parametrize("cursor", [
+    "garbage",
+    community.encode_cursor("comments:x", T1, POST),
+    community.encode_cursor("feed", "2026-10-14T03:00:00", POST),
+    community.encode_cursor("feed", T1, "not-a-uuid"),
+])
+def test_feed_rejects_tampered_cursors(client, supabase, cursor):
+    response = client.get("/api/community/feed", params={"cursor": cursor})
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "VALIDATION_ERROR"
+    assert supabase.calls == []
+
+
+def test_feed_stays_readable_when_photo_signing_fails(client, supabase):
+    supabase.sign_status = 500
+    supabase.rpc["community_timeline"] = [post_row(images=[{"path": f"{OTHER}/a.jpg", "width": 10, "height": 10}])]
+    response = client.get("/api/community/feed")
+    assert response.status_code == 200
+    assert response.json()["items"][0]["images"] == [{"url": None, "width": 10, "height": 10}]
+
+
+@pytest.mark.parametrize("payload", [
+    {}, {"content": "   "}, {"content": "x" * 1001},
+    {"content": "안녕", "tags": ["같은태그", "같은태그"]},
+    {"content": "안녕", "tags": ["공백 태그"]},
+    {"upload_ids": [UPLOAD_1] * 2},
+    {"upload_ids": [f"20261014-0000-4000-8000-00000000003{i}" for i in range(6)]},
+    {"content": "안녕", "user_id": OTHER},
+])
+def test_create_post_validates_before_database(client, supabase, payload):
+    response = client.post("/api/community/posts", json=payload)
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "VALIDATION_ERROR"
+    assert supabase.calls == []
+
+
+def test_create_post_trims_text_and_keeps_photo_order(client, supabase):
+    supabase.rpc["community_create_post"] = post_row(is_mine=True, images=[
+        {"path": f"{USER}/2.jpg", "width": 10, "height": 20}])
+    response = client.post("/api/community/posts",
+                           json={"content": "  오늘 오운완!  ", "upload_ids": [UPLOAD_2, UPLOAD_1]})
+    assert response.status_code == 201
+    assert response.json()["images"][0]["url"].endswith(f"{USER}/2.jpg?token=t")
+    assert supabase.bodies("community_create_post") == [
+        {"p_user_id": USER, "p_content": "오늘 오운완!", "p_upload_ids": [UPLOAD_2, UPLOAD_1]}]
+
+
+def test_create_post_with_category_and_tags_uses_v2(client, supabase):
+    supabase.rpc["community_create_post_v2"] = post_row(is_mine=True, category="routine", tags=["하체"])
+    response = client.post("/api/community/posts", json={
+        "content": "오늘 하체 루틴", "category": "routine", "tags": ["하체"]})
+    assert response.status_code == 201
+    assert response.json()["category"] == "routine"
+    assert response.json()["tags"] == ["하체"]
+    assert supabase.bodies("community_create_post_v2") == [{
+        "p_user_id": USER, "p_content": "오늘 하체 루틴", "p_upload_ids": [],
+        "p_category": "routine", "p_tags": ["하체"], "p_club_id": None,
+        "p_session_id": None}]
+
+
+def test_completed_activity_can_be_selected_for_post(client, supabase):
+    supabase.rpc["community_my_activities"] = [{
+        "session_id": POST, "completed_at": T1,
+        "snapshot": {"name": "스쿼트", "duration_minutes": 30, "calories": 120, "exercises": ["스쿼트"]}}]
+    response = client.get("/api/community/my-activities")
+    assert response.status_code == 200
+    assert response.json()["items"][0]["session_id"] == POST
+    assert supabase.bodies("community_my_activities") == [{"p_user_id": USER, "p_limit": 10}]
+    supabase.rpc["community_create_post_v2"] = post_row(is_mine=True)
+    response = client.post("/api/community/posts", json={"content": "운동했어요", "exercise_session_id": POST})
+    assert response.status_code == 201
+    assert supabase.bodies("community_create_post_v2")[0]["p_session_id"] == POST
+
+
+def test_category_feed_uses_separate_cursor_scope(client, supabase):
+    supabase.rpc["community_category_timeline"] = [post_row(category="workout")]
+    response = client.get("/api/community/feed", params={"category": "workout"})
+    assert response.status_code == 200
+    assert response.json()["items"][0]["category"] == "workout"
+    assert supabase.bodies("community_category_timeline")[0]["p_category"] == "workout"
+    assert client.get("/api/community/feed", params={"category": "workout", "scope": "following"}).status_code == 422
+
+
+@pytest.mark.parametrize("code,status", [
+    ("COMMUNITY_NICKNAME_REQUIRED", 409), ("COMMUNITY_POST_NOT_FOUND", 404),
+    ("COMMUNITY_RATE_LIMITED", 429), ("COMMUNITY_UPLOAD_INVALID", 409), ("COMMUNITY_SELF_TARGET", 422),
+    ("COMMUNITY_ACCOUNT_UNAVAILABLE", 409),
+])
+def test_database_rules_become_coded_errors(client, supabase, code, status):
+    supabase.rpc["community_create_post"] = rejection(code)
+    response = client.post("/api/community/posts", json={"content": "안녕"})
+    assert response.status_code == status
+    assert response.json()["detail"] == {"code": code, "message": community.ERRORS[code][1], "fields": None}
+
+
+@pytest.mark.parametrize("status,sqlstate,message", [
+    (400, "23514", "Account deletion is in progress"),
+    (409, "23503", "Account is unavailable"),
+])
+def test_account_deletion_guard_becomes_coded_error(client, supabase, status, sqlstate, message):
+    # A write that reaches the autofit_integrity trigger during account deletion.
+    supabase.rpc["community_create_post"] = httpx.Response(status, json={"code": sqlstate, "message": message})
+    response = client.post("/api/community/posts", json={"content": "안녕"})
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "COMMUNITY_ACCOUNT_UNAVAILABLE"
+
+
+def test_unknown_database_failures_hide_details(client, supabase):
+    supabase.rpc["community_create_post"] = httpx.Response(
+        500, json={"message": 'relation "secret_table" does not exist'})
+    response = client.post("/api/community/posts", json={"content": "안녕"})
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] == "DATA_SOURCE_ERROR"
+    assert "secret_table" not in response.text
+
+    def unavailable(request, body):
+        raise httpx.ConnectError("down", request=request)
+
+    supabase.rpc["community_timeline"] = unavailable
+    assert client.get("/api/community/feed").status_code == 502
+
+
+@pytest.mark.parametrize("payload", [{"oops": 1}, [{"post_id": POST}], None])
+def test_malformed_database_responses_are_rejected(client, supabase, payload):
+    supabase.rpc["community_timeline"] = httpx.Response(200, json=payload)
+    response = client.get("/api/community/feed")
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] == "DATA_SOURCE_ERROR"
+
+
+def test_upload_removes_location_and_fixes_phone_rotation(client, supabase):
+    exif = Image.Exif()
+    exif[ExifTags.Base.Orientation] = 6  # Stored sideways; viewers rotate 90 degrees clockwise.
+    exif[ExifTags.Base.Make] = "PhoneMaker"
+    gps = exif.get_ifd(ExifTags.IFD.GPSInfo)
+    gps[ExifTags.GPS.GPSLatitudeRef] = "N"
+    gps[ExifTags.GPS.GPSLatitude] = (37.0, 33.0, 59.0)
+    original = jpeg((3000, 1000), exif=exif)
+    with Image.open(BytesIO(original)) as check:
+        assert check.getexif().get_ifd(ExifTags.IFD.GPSInfo)  # Precondition: the phone photo has GPS.
+    supabase.rpc["community_claim_stale_uploads"] = []
+    supabase.rpc["community_register_upload"] = lambda request, body: {
+        "upload_id": UPLOAD_1, "width": body["p_width"], "height": body["p_height"]}
+
+    response = client.post("/api/community/images", files={"file": ("phone.jpg", original, "image/jpeg")})
+
+    assert response.status_code == 201
+    [(path, (content_type, stored))] = supabase.uploaded.items()
+    assert path.startswith(f"{USER}/") and path.endswith(".jpg")
+    assert content_type == "image/jpeg"
+    with Image.open(BytesIO(stored)) as saved:
+        assert saved.format == "JPEG"
+        assert len(saved.getexif()) == 0
+        assert "exif" not in saved.info
+        assert saved.height == 2048 and saved.width in (682, 683)
+        size = saved.size
+    assert response.json() == {"upload_id": UPLOAD_1, "width": size[0], "height": size[1]}
+    assert supabase.bodies("community_register_upload") == [
+        {"p_user_id": USER, "p_storage_path": path, "p_width": size[0], "p_height": size[1]}]
+
+
+def test_upload_flattens_transparent_png(client, supabase):
+    output = BytesIO()
+    Image.new("RGBA", (20, 10), (0, 0, 0, 0)).save(output, "PNG")
+    supabase.rpc["community_claim_stale_uploads"] = []
+    supabase.rpc["community_register_upload"] = {"upload_id": UPLOAD_1, "width": 20, "height": 10}
+    response = client.post("/api/community/images", files={"file": ("a.png", output.getvalue(), "image/png")})
+    assert response.status_code == 201
+    [(content_type, stored)] = supabase.uploaded.values()
+    with Image.open(BytesIO(stored)) as saved:
+        assert saved.mode == "RGB" and saved.getpixel((5, 5)) == (255, 255, 255)
+
+
+@pytest.mark.parametrize("data,status,code", [
+    (b"not an image", 415, "UNSUPPORTED_IMAGE"),
+    (b"\xff\xd8\xff" + b"broken", 415, "UNSUPPORTED_IMAGE"),
+    (b"\xff\xd8\xff" + b"x" * community.MAX_UPLOAD_BYTES, 413, "FILE_TOO_LARGE"),
+], ids=["text", "broken-jpeg", "too-large"])
+def test_upload_rejects_bad_files_without_storage(client, supabase, data, status, code):
+    response = client.post("/api/community/images", files={"file": ("a.jpg", data, "image/jpeg")})
+    assert response.status_code == status
+    assert response.json()["detail"]["code"] == code
+    assert supabase.calls == []
+
+
+def test_upload_rejects_pixel_bombs(monkeypatch):
+    monkeypatch.setattr(community, "MAX_PIXELS", 100)
+    with pytest.raises(community.HTTPException) as error:
+        community.prepare_image(jpeg((20, 20)))
+    assert error.value.status_code == 415
+
+
+def test_upload_deletes_file_when_database_rejects(client, supabase):
+    supabase.rpc["community_claim_stale_uploads"] = [f"{USER}/old.jpg"]
+    supabase.rpc["community_register_upload"] = rejection("COMMUNITY_UPLOAD_LIMIT")
+    response = client.post("/api/community/images", files={"file": ("a.jpg", jpeg(), "image/jpeg")})
+    assert response.status_code == 429
+    [path] = supabase.uploaded
+    assert supabase.deleted == [f"{USER}/old.jpg", path]
+
+
+def test_upload_keeps_file_when_database_result_is_unknown(client, supabase):
+    def timeout(request, body):
+        raise httpx.ReadTimeout("slow", request=request)
+
+    supabase.rpc["community_claim_stale_uploads"] = []
+    supabase.rpc["community_register_upload"] = timeout
+    response = client.post("/api/community/images", files={"file": ("a.jpg", jpeg(), "image/jpeg")})
+    assert response.status_code == 502
+    assert len(supabase.uploaded) == 1
+    assert supabase.deleted == []
+
+
+@pytest.mark.parametrize("storage_status", [200, 500])
+def test_delete_post_removes_its_photos(client, supabase, storage_status):
+    supabase.delete_status = storage_status
+    supabase.rpc["community_delete_post"] = {"deleted": True, "image_paths": [f"{USER}/a.jpg", f"{USER}/b.jpg"]}
+    response = client.delete(f"/api/community/posts/{POST}")
+    assert response.status_code == 204
+    assert supabase.bodies("community_delete_post") == [{"p_user_id": USER, "p_post_id": POST}]
+    assert supabase.deleted == [f"{USER}/a.jpg", f"{USER}/b.jpg"]
+
+
+def test_get_post_and_toggles(client, supabase):
+    supabase.rpc["community_get_post"] = post_row(liked_by_me=True)
+    assert client.get(f"/api/community/posts/{POST}").json()["liked_by_me"] is True
+    assert client.get("/api/community/posts/not-a-uuid").status_code == 422
+
+    supabase.rpc["community_set_like"] = lambda request, body: {
+        "post_id": POST, "liked": body["p_liked"], "like_count": int(body["p_liked"])}
+    assert client.put(f"/api/community/posts/{POST}/like").json() == {"post_id": POST, "liked": True, "like_count": 1}
+    assert client.delete(f"/api/community/posts/{POST}/like").json()["liked"] is False
+    supabase.rpc["community_set_repost"] = lambda request, body: {
+        "post_id": POST, "reposted": body["p_reposted"], "repost_count": 3}
+    assert client.put(f"/api/community/posts/{POST}/repost").json()["reposted"] is True
+    assert client.delete(f"/api/community/posts/{POST}/repost").json()["reposted"] is False
+    assert [body["p_liked"] for body in supabase.bodies("community_set_like")] == [True, False]
+    assert supabase.bodies("community_set_repost")[0] == {"p_user_id": USER, "p_post_id": POST, "p_reposted": True}
+
+
+def test_comments_page_create_and_delete(client, supabase):
+    supabase.rpc["community_comments"] = [comment_row(COMMENT, T3), comment_row(COMMENT_2, T2)]
+    first = client.get(f"/api/community/posts/{POST}/comments", params={"limit": 1}).json()
+    assert [item["comment_id"] for item in first["items"]] == [COMMENT]
+
+    client.get(f"/api/community/posts/{POST}/comments", params={"limit": 1, "cursor": first["next_cursor"]})
+    assert supabase.bodies("community_comments")[1] == {
+        "p_viewer": USER, "p_post_id": POST, "p_after_created_at": "2026-10-14T01:00:00+00:00",
+        "p_after_comment_id": COMMENT, "p_limit": 2}
+    other_post = client.get(f"/api/community/posts/{POST_2}/comments", params={"cursor": first["next_cursor"]})
+    assert other_post.status_code == 422
+
+    assert client.post(f"/api/community/posts/{POST}/comments", json={"content": "   "}).status_code == 422
+    supabase.rpc["community_add_comment"] = comment_row()
+    created = client.post(f"/api/community/posts/{POST}/comments", json={"content": "  멋져요  "})
+    assert created.status_code == 201
+    assert supabase.bodies("community_add_comment") == [{"p_user_id": USER, "p_post_id": POST, "p_content": "멋져요"}]
+
+    supabase.rpc["community_delete_comment"] = {"deleted": True, "post_id": POST}
+    assert client.delete(f"/api/community/comments/{COMMENT}").status_code == 204
+
+
+def test_reports_and_blocks(client, supabase):
+    bad = client.post("/api/community/reports", json={"target_type": "post", "target_id": POST, "reason": "weird"})
+    assert bad.status_code == 422
+    supabase.rpc["community_report"] = {"reported": True}
+    report = client.post("/api/community/reports", json={
+        "target_type": "comment", "target_id": COMMENT, "reason": "abuse", "detail": "   "})
+    assert report.status_code == 201
+    assert supabase.bodies("community_report") == [{
+        "p_reporter": USER, "p_target_type": "comment", "p_target_id": COMMENT,
+        "p_reason": "abuse", "p_detail": None}]
+
+    supabase.rpc["community_set_block"] = lambda request, body: {
+        "user_id": body["p_target_user_id"], "blocked": body["p_blocked"]}
+    assert client.put(f"/api/community/blocks/{OTHER}").json() == {"user_id": OTHER, "blocked": True}
+    assert client.delete(f"/api/community/blocks/{OTHER}").json()["blocked"] is False
+    supabase.rpc["community_blocked_users"] = [{**author(), "blocked_at": T1}]
+    assert client.get("/api/community/blocks").json()[0]["nickname"] == "식단러"
+
+
+def test_community_requires_login(monkeypatch):
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    try:
+        response = TestClient(main.app).get("/api/community/feed")
+    finally:
+        main.app.dependency_overrides.pop(main.get_settings, None)
+    assert response.status_code == 401
+    assert response.json()["detail"]["code"] == "AUTH_REQUIRED"
+
+
+def profile_row(user_id=OTHER, **extra):
+    return {**author(user_id), "bio": None, "post_count": 3, "follower_count": 2, "following_count": 1, "is_me": False,
+            "followed_by_me": True, "follows_me": False, **extra}
+
+
+def test_following_feed_and_user_posts_use_their_own_cursor(client, supabase):
+    supabase.rpc["community_timeline"] = [post_row(POST, T1), post_row(POST_2, T2)]
+    first = client.get("/api/community/feed", params={"scope": "following", "limit": 1}).json()
+    assert supabase.bodies("community_timeline")[0]["p_scope"] == "following"
+    client.get("/api/community/feed", params={"scope": "following", "cursor": first["next_cursor"]})
+    assert supabase.bodies("community_timeline")[1]["p_before_item_id"] == POST
+    # A following-feed cursor cannot page the full feed or a profile.
+    assert client.get("/api/community/feed", params={"cursor": first["next_cursor"]}).status_code == 422
+    assert client.get(f"/api/community/users/{OTHER}/posts",
+                      params={"cursor": first["next_cursor"]}).status_code == 422
+    assert client.get("/api/community/feed", params={"scope": "user"}).status_code == 422
+
+    posts = client.get(f"/api/community/users/{OTHER}/posts", params={"limit": 1})
+    assert posts.status_code == 200
+    assert supabase.bodies("community_timeline")[-1] == {
+        "p_viewer": USER, "p_scope": "user", "p_user_id": OTHER, "p_before_created_at": None,
+        "p_before_item_id": None, "p_limit": 2}
+
+
+def test_profiles_and_follows(client, supabase):
+    supabase.rpc["community_profile"] = lambda request, body: profile_row(
+        body["p_user_id"], is_me=body["p_user_id"] == USER)
+    assert client.get(f"/api/community/users/{OTHER}").json() == profile_row()
+    me = client.get("/api/community/users/me").json()
+    assert me["is_me"] is True and me["user_id"] == USER
+    assert supabase.bodies("community_profile")[-1] == {"p_viewer": USER, "p_user_id": USER}
+    assert client.get("/api/community/users/not-a-user").status_code == 422
+
+    supabase.rpc["community_set_follow"] = lambda request, body: {
+        "user_id": body["p_target_user_id"], "following": body["p_following"], "follower_count": 3}
+    assert client.put(f"/api/community/follows/{OTHER}").json() == {
+        "user_id": OTHER, "following": True, "follower_count": 3}
+    assert client.delete(f"/api/community/follows/{OTHER}").json()["following"] is False
+    assert supabase.bodies("community_set_follow")[0] == {
+        "p_user_id": USER, "p_target_user_id": OTHER, "p_following": True}
+
+    supabase.rpc["community_set_follow"] = rejection("COMMUNITY_NICKNAME_REQUIRED")
+    blocked = client.put(f"/api/community/follows/{OTHER}")
+    assert blocked.status_code == 409
+    assert blocked.json()["detail"]["code"] == "COMMUNITY_NICKNAME_REQUIRED"
+    supabase.rpc["community_profile"] = rejection("COMMUNITY_USER_NOT_FOUND")
+    assert client.get(f"/api/community/users/{OTHER}").status_code == 404
+
+
+def test_follow_lists_page_by_follow_time(client, supabase):
+    rows = [{**author(USER, "나"), "followed_at": T1, "is_me": True, "followed_by_me": False},
+            {**author(), "followed_at": T2, "is_me": False, "followed_by_me": True}]
+    supabase.rpc["community_follow_list"] = rows
+    first = client.get(f"/api/community/users/{OTHER}/followers", params={"limit": 1}).json()
+    assert [item["user_id"] for item in first["items"]] == [USER]
+    client.get(f"/api/community/users/{OTHER}/followers", params={"cursor": first["next_cursor"]})
+    assert supabase.bodies("community_follow_list")[1] == {
+        "p_viewer": USER, "p_user_id": OTHER, "p_kind": "followers",
+        "p_before_created_at": "2026-10-14T03:00:00.123456+00:00", "p_before_user_id": USER, "p_limit": 21}
+    wrong_list = client.get(f"/api/community/users/{OTHER}/following", params={"cursor": first["next_cursor"]})
+    assert wrong_list.status_code == 422
+    assert client.get(f"/api/community/users/{OTHER}/following").json()["next_cursor"] is None
+
+
+def test_notifications_page_count_and_read(client, supabase):
+    rows = [{"notification_id": COMMENT, "type": "comment", "actor": author(), "post_id": POST,
+             "comment_id": COMMENT_2, "post_preview": "오운완", "comment_preview": "멋져요",
+             "created_at": T1, "is_read": False},
+            {"notification_id": COMMENT_2, "type": "follow", "actor": author(), "post_id": None,
+             "comment_id": None, "post_preview": None, "comment_preview": None,
+             "created_at": T2, "is_read": True}]
+    supabase.rpc["community_notification_list"] = rows
+    first = client.get("/api/community/notifications", params={"limit": 1}).json()
+    assert first["items"][0]["type"] == "comment"
+    client.get("/api/community/notifications", params={"cursor": first["next_cursor"]})
+    assert supabase.bodies("community_notification_list")[1] == {
+        "p_user_id": USER, "p_before_created_at": "2026-10-14T03:00:00.123456+00:00",
+        "p_before_id": COMMENT, "p_limit": 21}
+
+    supabase.rpc["community_unread_notification_count"] = {"unread_count": 4}
+    assert client.get("/api/community/notifications/unread-count").json() == {"unread_count": 4}
+    supabase.rpc["community_read_notifications"] = {"unread_count": 0}
+    assert client.post("/api/community/notifications/read").json() == {"unread_count": 0}
+    assert supabase.bodies("community_read_notifications") == [{"p_user_id": USER}]
+
+    supabase.rpc["community_notification_list"] = [{**rows[0], "type": "mention"}]
+    assert client.get("/api/community/notifications").status_code == 502
+
+
+CLUB = "20261015-0000-4000-8000-000000000031"
+CLUB_2 = "20261015-0000-4000-8000-000000000032"
+
+
+def club_row(club_id=CLUB, created_at=T1, **extra):
+    return {"club_id": club_id, "name": "아침 러닝", "description": None, "category": "running",
+            "owner": author(), "member_count": 3, "post_count": 1, "is_member": False, "is_owner": False,
+            "created_at": created_at, **extra}
+
+
+def test_mileage_syncs_and_pages_history(client, supabase):
+    rule = {"rule_key": "earn_workout", "amount": 10, "daily_limit": 1, "enabled": True,
+            "note": "임시값(팀 결정 전)"}
+    supabase.rpc["community_sync_mileage"] = {"balance": 35, "earned_today": 25, "rules": [rule]}
+    assert client.get("/api/community/mileage").json()["balance"] == 35
+    assert supabase.bodies("community_sync_mileage") == [{"p_user_id": USER}]
+
+    entries = [{"entry_id": COMMENT, "amount": -30, "reason": "club_create", "created_at": T1},
+               {"entry_id": COMMENT_2, "amount": 10, "reason": "workout", "created_at": T2}]
+    supabase.rpc["community_mileage_history"] = entries
+    first = client.get("/api/community/mileage/history", params={"limit": 1}).json()
+    assert first["items"][0]["amount"] == -30
+    client.get("/api/community/mileage/history", params={"cursor": first["next_cursor"]})
+    assert supabase.bodies("community_mileage_history")[1]["p_before_id"] == COMMENT
+    feed_cursor = client.get("/api/community/mileage/history", params={
+        "cursor": community.encode_cursor("feed", T1, POST)})
+    assert feed_cursor.status_code == 422
+
+
+def test_trial_mileage_reasons_and_admin_rules_are_readable(client, supabase):
+    rule = {"rule_key": "earn_streak_5", "amount": 10, "daily_limit": None,
+            "enabled": True, "note": "시험 기준", "starts_at": T1, "updated_at": T1}
+    supabase.rpc["community_sync_mileage"] = {
+        "balance": 10, "earned_today": 10, "rules": [rule],
+    }
+    assert client.get("/api/community/mileage").json()["rules"][0]["rule_key"] == "earn_streak_5"
+    supabase.rpc["community_mileage_history"] = [{
+        "entry_id": COMMENT, "amount": 10, "reason": "workout_streak_5", "created_at": T1,
+    }]
+    assert client.get("/api/community/mileage/history").json()["items"][0]["reason"] == "workout_streak_5"
+    supabase.rpc["community_admin_rule_list"] = [rule]
+    assert client.get("/api/community/admin/rules").json()[0]["rule_key"] == "earn_streak_5"
+    supabase.rpc["community_admin_update_rule"] = rule
+    response = client.patch("/api/community/admin/rules/earn_streak_5", json={
+        "amount": 10, "daily_limit": None, "enabled": True,
+    })
+    assert response.status_code == 200
+
+
+def test_demo_membership(client, supabase):
+    state = {"active": True, "plan": "premium", "source": "demo", "expires_at": T1,
+             "demo_available": True, "demo_days": 30}
+    supabase.rpc["community_membership"] = {**state, "active": False, "plan": None, "source": None,
+                                            "expires_at": None}
+    assert client.get("/api/community/membership").json()["active"] is False
+    supabase.rpc["community_start_demo_membership"] = state
+    assert client.post("/api/community/membership/demo").json()["source"] == "demo"
+    supabase.rpc["community_start_demo_membership"] = rejection("COMMUNITY_DEMO_UNAVAILABLE")
+    off = client.post("/api/community/membership/demo")
+    assert off.status_code == 409 and off.json()["detail"]["code"] == "COMMUNITY_DEMO_UNAVAILABLE"
+
+
+@pytest.mark.parametrize("payload", [
+    {"name": "아", "category": "running"},
+    {"name": "아침 러닝", "category": "swimming"},
+    {"name": "아침 러닝", "category": "running", "description": "x" * 301},
+    {"name": "아침 러닝", "category": "running", "owner": USER},
+])
+def test_create_club_validates_before_database(client, supabase, payload):
+    assert client.post("/api/community/clubs", json=payload).status_code == 422
+    assert supabase.calls == []
+
+
+def test_create_club_and_coded_errors(client, supabase):
+    supabase.rpc["community_create_club"] = {**club_row(is_member=True, is_owner=True),
+                                             "paid_with": "mileage", "mileage_spent": 500}
+    created = client.post("/api/community/clubs", json={
+        "name": "  아침 러닝  ", "description": "   ", "category": "running"})
+    assert created.status_code == 201
+    assert created.json()["paid_with"] == "mileage"
+    assert supabase.bodies("community_create_club") == [{
+        "p_user_id": USER, "p_name": "아침 러닝", "p_description": None, "p_category": "running"}]
+    for code, status in [("COMMUNITY_MILEAGE_NOT_ENOUGH", 409), ("COMMUNITY_MEMBERSHIP_REQUIRED", 403),
+                         ("COMMUNITY_CLUB_NAME_TAKEN", 409), ("COMMUNITY_CLUB_LIMIT", 409)]:
+        supabase.rpc["community_create_club"] = rejection(code)
+        response = client.post("/api/community/clubs", json={"name": "아침 러닝", "category": "running"})
+        assert (response.status_code, response.json()["detail"]["code"]) == (status, code)
+
+
+def test_club_list_join_and_posts(client, supabase):
+    supabase.rpc["community_club_list"] = [club_row(CLUB, T1), club_row(CLUB_2, T2)]
+    first = client.get("/api/community/clubs", params={"scope": "mine", "category": "running",
+                                                       "limit": 1}).json()
+    assert [club["club_id"] for club in first["items"]] == [CLUB]
+    client.get("/api/community/clubs", params={"scope": "mine", "category": "running",
+                                               "cursor": first["next_cursor"]})
+    assert supabase.bodies("community_club_list")[1] == {
+        "p_viewer": USER, "p_scope": "mine", "p_category": "running",
+        "p_before_created_at": "2026-10-14T03:00:00.123456+00:00", "p_before_club_id": CLUB, "p_limit": 21}
+    assert client.get("/api/community/clubs", params={"cursor": first["next_cursor"]}).status_code == 422
+
+    supabase.rpc["community_get_club"] = club_row()
+    assert client.get(f"/api/community/clubs/{CLUB}").json()["name"] == "아침 러닝"
+    supabase.rpc["community_set_club_membership"] = lambda request, body: {
+        "club_id": body["p_club_id"], "joined": body["p_joined"], "member_count": 4}
+    assert client.put(f"/api/community/clubs/{CLUB}/membership").json()["joined"] is True
+    supabase.rpc["community_set_club_membership"] = rejection("COMMUNITY_CLUB_OWNER")
+    assert client.delete(f"/api/community/clubs/{CLUB}/membership").status_code == 409
+
+    supabase.rpc["community_club_feed"] = [post_row(POST, T1), post_row(POST_2, T2)]
+    page = client.get(f"/api/community/clubs/{CLUB}/posts", params={"limit": 1}).json()
+    other_club = client.get(f"/api/community/clubs/{CLUB_2}/posts", params={"cursor": page["next_cursor"]})
+    assert other_club.status_code == 422
+    supabase.rpc["community_create_club_post"] = post_row()
+    created = client.post(f"/api/community/clubs/{CLUB}/posts", json={"content": " 같이 뛰어요 "})
+    assert created.status_code == 201
+    assert supabase.bodies("community_create_club_post") == [{
+        "p_user_id": USER, "p_club_id": CLUB, "p_content": "같이 뛰어요", "p_upload_ids": []}]
+    supabase.rpc["community_create_club_post"] = rejection("COMMUNITY_CLUB_MEMBERS_ONLY")
+    assert client.post(f"/api/community/clubs/{CLUB}/posts", json={"content": "글"}).status_code == 403
+
+
+CHALLENGE = "20261015-0000-4000-8000-000000000041"
+
+
+def challenge_row(**extra):
+    return {"challenge_id": CHALLENGE, "title": "2주 운동 습관", "description": None, "metric": "workout_days",
+            "goal": 5, "starts_on": "2026-10-15", "ends_on": "2026-10-28", "reward_mileage": 50,
+            "note": "임시값(팀 결정 전)", "phase": "ongoing", "participant_count": 3, "joined": False,
+            "progress": 2, "completed": False, "rewarded": False, "can_claim": False, **extra}
+
+
+def test_challenges_join_claim_and_errors(client, supabase):
+    supabase.rpc["community_challenge_list"] = [challenge_row()]
+    assert client.get("/api/community/challenges").json()[0]["goal"] == 5
+    supabase.rpc["community_set_challenge_participation"] = lambda request, body: challenge_row(
+        joined=body["p_joined"])
+    assert client.put(f"/api/community/challenges/{CHALLENGE}/participation").json()["joined"] is True
+    assert client.delete(f"/api/community/challenges/{CHALLENGE}/participation").json()["joined"] is False
+    assert supabase.bodies("community_set_challenge_participation")[0] == {
+        "p_user_id": USER, "p_challenge_id": CHALLENGE, "p_joined": True}
+    supabase.rpc["community_claim_challenge"] = challenge_row(joined=True, rewarded=True, completed=True)
+    assert client.post(f"/api/community/challenges/{CHALLENGE}/claim").json()["rewarded"] is True
+    for code, status in [("COMMUNITY_CHALLENGE_NOT_COMPLETED", 409), ("COMMUNITY_CHALLENGE_NOT_FOUND", 404),
+                         ("COMMUNITY_CHALLENGE_ALREADY_CLAIMED", 409)]:
+        supabase.rpc["community_claim_challenge"] = rejection(code)
+        response = client.post(f"/api/community/challenges/{CHALLENGE}/claim")
+        assert (response.status_code, response.json()["detail"]["code"]) == (status, code)
+    supabase.rpc["community_mileage_history"] = [
+        {"entry_id": COMMENT, "amount": 50, "reason": "challenge", "created_at": T1}]
+    assert client.get("/api/community/mileage/history").json()["items"][0]["reason"] == "challenge"
+
+
+def test_rankings_scope_rules_and_participation(client, supabase):
+    ranking = {"metric": "workout", "scope": "club", "week_start": "2026-10-12", "week_end": "2026-10-18",
+               "participating": True, "items": [{**author(), "rank": 1, "score": 4, "is_me": False}],
+               "me": None}
+    supabase.rpc["community_ranking"] = ranking
+    response = client.get("/api/community/rankings", params={"scope": "club", "club_id": CLUB})
+    assert response.json()["items"][0]["rank"] == 1
+    assert supabase.bodies("community_ranking") == [{
+        "p_viewer": USER, "p_metric": "workout", "p_scope": "club", "p_club_id": CLUB, "p_limit": 50}]
+    assert client.get("/api/community/rankings", params={"scope": "club"}).status_code == 422
+    assert client.get("/api/community/rankings", params={"club_id": CLUB}).status_code == 422
+    assert client.get("/api/community/rankings", params={"metric": "steps"}).status_code == 422
+    assert len(supabase.bodies("community_ranking")) == 1
+
+    supabase.rpc["community_set_ranking_participation"] = lambda request, body: {
+        "participating": body["p_participating"]}
+    assert client.put("/api/community/rankings/participation").json() == {"participating": True}
+    assert client.delete("/api/community/rankings/participation").json() == {"participating": False}
+
+
+CONVERSATION = "20261019-0000-4000-8000-000000000051"
+MESSAGE = "20261019-0000-4000-8000-000000000052"
+
+
+def test_club_edit_delete_and_members(client, supabase):
+    supabase.rpc["community_update_club"] = club_row(is_owner=True, is_member=True)
+    edited = client.patch(f"/api/community/clubs/{CLUB}", json={"name": " 새 이름 ", "category": "yoga"})
+    assert edited.status_code == 200
+    assert supabase.bodies("community_update_club") == [{
+        "p_user_id": USER, "p_club_id": CLUB, "p_name": "새 이름", "p_description": None, "p_category": "yoga"}]
+    supabase.rpc["community_update_club"] = rejection("COMMUNITY_CLUB_OWNER_ONLY")
+    assert client.patch(f"/api/community/clubs/{CLUB}", json={"name": "새 이름", "category": "yoga"}).status_code == 403
+
+    supabase.rpc["community_delete_club"] = {"deleted": True, "image_paths": [f"{OTHER}/club.jpg"]}
+    assert client.delete(f"/api/community/clubs/{CLUB}").status_code == 204
+    assert supabase.deleted == [f"{OTHER}/club.jpg"]
+
+    rows = [{**author(USER, "클럽장"), "role": "owner", "joined_at": T3, "is_me": True, "followed_by_me": False},
+            {**author(), "role": "member", "joined_at": T2, "is_me": False, "followed_by_me": True}]
+    supabase.rpc["community_club_member_list"] = rows
+    first = client.get(f"/api/community/clubs/{CLUB}/members", params={"limit": 1}).json()
+    assert first["items"][0]["role"] == "owner"
+    client.get(f"/api/community/clubs/{CLUB}/members", params={"cursor": first["next_cursor"]})
+    assert supabase.bodies("community_club_member_list")[1] == {
+        "p_viewer": USER, "p_club_id": CLUB, "p_after_joined_at": "2026-10-14T01:00:00+00:00",
+        "p_after_user_id": USER, "p_limit": 21}
+    assert client.get(f"/api/community/clubs/{CLUB_2}/members",
+                      params={"cursor": first["next_cursor"]}).status_code == 422
+
+    supabase.rpc["community_remove_club_member"] = {"club_id": CLUB, "member_count": 2}
+    assert client.delete(f"/api/community/clubs/{CLUB}/members/{OTHER}").json()["member_count"] == 2
+    assert supabase.bodies("community_remove_club_member") == [{
+        "p_user_id": USER, "p_club_id": CLUB, "p_member_user_id": OTHER}]
+    supabase.rpc["community_set_club_membership"] = rejection("COMMUNITY_CLUB_BANNED")
+    banned = client.put(f"/api/community/clubs/{CLUB}/membership")
+    assert (banned.status_code, banned.json()["detail"]["code"]) == (403, "COMMUNITY_CLUB_BANNED")
+
+
+def test_moderation_queue_and_actions(client, supabase):
+    supabase.rpc["community_moderator_status"] = {"is_moderator": True}
+    assert client.get("/api/community/moderation/status").json() == {"is_moderator": True}
+    item = {"target_type": "post", "target_id": POST, "target_user": author(), "report_count": 2,
+            "reasons": ["spam", "abuse"], "details": [{"reason": "spam", "detail": "도배"}],
+            "content_snapshot": "광고", "latest_reported_at": T1, "post_id": POST, "exists": True,
+            "hidden": False, "last_action": None, "last_action_at": None}
+    supabase.rpc["community_report_queue"] = [item]
+    assert client.get("/api/community/moderation/reports").json()[0]["report_count"] == 2
+    assert supabase.bodies("community_report_queue") == [{"p_moderator": USER, "p_status": "open", "p_limit": 100}]
+    assert client.get("/api/community/moderation/reports", params={"status": "all"}).status_code == 422
+
+    supabase.rpc["community_moderate"] = lambda request, body: {
+        "target_type": body["p_target_type"], "target_id": body["p_target_id"], "action": body["p_action"]}
+    done = client.post("/api/community/moderation/actions", json={
+        "target_type": "post", "target_id": POST, "action": "hide"})
+    assert done.json()["action"] == "hide"
+    assert client.post("/api/community/moderation/actions", json={
+        "target_type": "post", "target_id": POST, "action": "delete"}).status_code == 422
+    supabase.rpc["community_report_queue"] = rejection("COMMUNITY_FORBIDDEN")
+    assert client.get("/api/community/moderation/reports").status_code == 403
+
+
+def conversation_row(**extra):
+    return {"conversation_id": CONVERSATION, "other": author(), "last_message": {
+        "content": "안녕", "created_at": T1, "is_mine": False}, "last_message_at": T1, "unread_count": 1,
+        "can_send": True, **extra}
+
+
+def test_conversations_and_messages(client, supabase):
+    supabase.rpc["community_open_conversation"] = conversation_row(last_message=None, last_message_at=None,
+                                                                   unread_count=0)
+    opened = client.post("/api/community/conversations", json={"user_id": OTHER})
+    assert opened.json()["conversation_id"] == CONVERSATION
+    assert supabase.bodies("community_open_conversation") == [{"p_user_id": USER, "p_target_user_id": OTHER}]
+    supabase.rpc["community_open_conversation"] = rejection("COMMUNITY_DM_NOT_ALLOWED")
+    refused = client.post("/api/community/conversations", json={"user_id": OTHER})
+    assert (refused.status_code, refused.json()["detail"]["code"]) == (403, "COMMUNITY_DM_NOT_ALLOWED")
+
+    supabase.rpc["community_conversation_list"] = [conversation_row()]
+    assert client.get("/api/community/conversations").json()["items"][0]["unread_count"] == 1
+    supabase.rpc["community_unread_message_count"] = {"unread_count": 3}
+    assert client.get("/api/community/conversations/unread-count").json() == {"unread_count": 3}
+
+    message = {"message_id": MESSAGE, "conversation_id": CONVERSATION, "content": "안녕", "created_at": T1,
+               "is_mine": True}
+    supabase.rpc["community_message_list"] = [message, {**message, "message_id": COMMENT, "created_at": T2}]
+    page = client.get(f"/api/community/conversations/{CONVERSATION}/messages", params={"limit": 1}).json()
+    client.get(f"/api/community/conversations/{CONVERSATION}/messages", params={"cursor": page["next_cursor"]})
+    assert supabase.bodies("community_message_list")[1]["p_before_id"] == MESSAGE
+    assert client.post(f"/api/community/conversations/{CONVERSATION}/messages", json={"content": "  "}).status_code == 422
+    assert client.post(f"/api/community/conversations/{CONVERSATION}/messages",
+                       json={"content": "x" * 1001}).status_code == 422
+    supabase.rpc["community_send_message"] = message
+    sent = client.post(f"/api/community/conversations/{CONVERSATION}/messages", json={"content": " 안녕 "})
+    assert sent.status_code == 201
+    assert supabase.bodies("community_send_message") == [{
+        "p_user_id": USER, "p_conversation_id": CONVERSATION, "p_content": "안녕"}]
+    supabase.rpc["community_read_conversation"] = {"conversation_id": CONVERSATION, "unread_count": 0}
+    assert client.post(f"/api/community/conversations/{CONVERSATION}/read").json()["unread_count"] == 0
+    supabase.rpc["community_delete_message"] = {"deleted": True, "message_id": MESSAGE}
+    assert client.delete(f"/api/community/messages/{MESSAGE}").status_code == 204
+    supabase.rpc["community_message_list"] = rejection("COMMUNITY_CONVERSATION_NOT_FOUND")
+    assert client.get(f"/api/community/conversations/{CONVERSATION}/messages").status_code == 404
+
+
+def admin_challenge_row(**extra):
+    return {**challenge_row(), "enabled": True, "rewarded_count": 0, "locked": False, **extra}
+
+
+@pytest.mark.parametrize("payload", [
+    {"title": "짧", "metric": "workout_days", "goal": 3, "starts_on": "2026-10-19", "ends_on": "2026-10-25",
+     "reward_mileage": 30},
+    {"title": "기간보다 긴 목표", "metric": "workout_days", "goal": 8, "starts_on": "2026-10-19",
+     "ends_on": "2026-10-25", "reward_mileage": 30},
+    {"title": "거꾸로 된 기간", "metric": "workout_days", "goal": 1, "starts_on": "2026-10-25",
+     "ends_on": "2026-10-19", "reward_mileage": 30},
+    {"title": "걸음 수", "metric": "steps", "goal": 1, "starts_on": "2026-10-19", "ends_on": "2026-10-25",
+     "reward_mileage": 30},
+])
+def test_admin_challenge_validation_happens_before_database(client, supabase, payload):
+    assert client.post("/api/community/admin/challenges", json=payload).status_code == 422
+    assert supabase.calls == []
+
+
+def test_admin_challenges_and_rules(client, supabase):
+    supabase.rpc["community_admin_challenge_list"] = [admin_challenge_row(locked=True)]
+    assert client.get("/api/community/admin/challenges").json()[0]["locked"] is True
+    supabase.rpc["community_admin_save_challenge"] = admin_challenge_row()
+    payload = {"title": " 일주일 3일 운동 ", "metric": "workout_days", "goal": 3, "starts_on": "2026-10-19",
+               "ends_on": "2026-10-25", "reward_mileage": 30}
+    assert client.post("/api/community/admin/challenges", json=payload).status_code == 201
+    assert client.put(f"/api/community/admin/challenges/{CHALLENGE}", json={**payload, "enabled": False}).status_code == 200
+    bodies = supabase.bodies("community_admin_save_challenge")
+    assert bodies[0] == {"p_moderator": USER, "p_challenge_id": None, "p_title": "일주일 3일 운동",
+                         "p_description": None, "p_metric": "workout_days", "p_goal": 3,
+                         "p_starts_on": "2026-10-19", "p_ends_on": "2026-10-25", "p_reward_mileage": 30,
+                         "p_enabled": True}
+    assert (bodies[1]["p_challenge_id"], bodies[1]["p_enabled"]) == (CHALLENGE, False)
+    supabase.rpc["community_admin_save_challenge"] = rejection("COMMUNITY_CHALLENGE_LOCKED")
+    locked = client.put(f"/api/community/admin/challenges/{CHALLENGE}", json=payload)
+    assert (locked.status_code, locked.json()["detail"]["code"]) == (409, "COMMUNITY_CHALLENGE_LOCKED")
+
+    rule = {"rule_key": "earn_workout", "amount": 20, "daily_limit": 2, "enabled": True, "note": "운영자가 정함",
+            "starts_at": T1, "updated_at": T1}
+    supabase.rpc["community_admin_rule_list"] = [rule]
+    assert client.get("/api/community/admin/rules").json()[0]["amount"] == 20
+    supabase.rpc["community_admin_update_rule"] = rule
+    updated = client.patch("/api/community/admin/rules/earn_workout",
+                           json={"amount": 20, "daily_limit": 2, "enabled": True, "note": "  "})
+    assert updated.status_code == 200
+    assert supabase.bodies("community_admin_update_rule") == [{
+        "p_moderator": USER, "p_rule_key": "earn_workout", "p_amount": 20, "p_daily_limit": 2,
+        "p_enabled": True, "p_restart": False, "p_note": None}]
+    assert client.patch("/api/community/admin/rules/free_money", json={"amount": 1, "enabled": True}).status_code == 422
+    supabase.rpc["community_admin_rule_list"] = rejection("COMMUNITY_FORBIDDEN")
+    assert client.get("/api/community/admin/rules").status_code == 403
