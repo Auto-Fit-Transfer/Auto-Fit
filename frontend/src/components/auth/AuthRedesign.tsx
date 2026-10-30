@@ -225,7 +225,11 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginBottom: 6,
   },
-  fieldInput: { color: '#222227', fontSize: 14, lineHeight: 21 },
+  fieldInput: {
+    color: '#222227',
+    fontSize: Platform.OS === 'web' ? 16 : 14,
+    lineHeight: Platform.OS === 'web' ? 22 : 21,
+  },
   primaryButton: {
     alignItems: 'center',
     backgroundColor: '#503DD7',
