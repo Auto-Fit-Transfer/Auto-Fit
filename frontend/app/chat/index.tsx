@@ -123,11 +123,13 @@ export default function R6ChatScreen() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <StatusBar style="dark" />
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
-        <ChatCharacterAvatar characterId={character.id} size={28} />
-        <Text style={[styles.headerName, simple && simpleStyles.headerName]}>{character.name}</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.push('/chat/characters')} style={styles.change}><Text style={styles.changeText}>바꾸기</Text></Pressable>
+      <View style={{ paddingTop: insets.top + 8 }}>
+        <View style={styles.header}>
+          <Pressable accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
+          <ChatCharacterAvatar characterId={character.id} size={28} />
+          <Text style={[styles.headerName, simple && simpleStyles.headerName]}>{character.name}</Text>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/chat/characters')} style={styles.change}><Text style={styles.changeText}>바꾸기</Text></Pressable>
+        </View>
       </View>
       <View style={styles.disclaimer}><Text style={styles.disclaimerText}>건강 판단은 참고용이에요. 증상이 있으면 병원에 문의해 주세요.</Text></View>
 
@@ -179,7 +181,7 @@ export default function R6ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFF', flex: 1 }, header: { height: 90, paddingHorizontal: 17, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  root: { backgroundColor: '#FFF', flex: 1 }, header: { minHeight: 44, paddingHorizontal: 17, flexDirection: 'row', alignItems: 'center', gap: 9 },
   back: { color: ink, fontSize: 30, width: 22 },
   headerName: { color: ink, fontSize: 15, fontFamily: fontFamilies.pretendardBold, flex: 1 },
   change: { padding: 8 }, changeText: { color: ink, fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold },
