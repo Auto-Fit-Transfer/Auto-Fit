@@ -11,7 +11,8 @@ def test_all_diet_operations_are_grouped_in_openapi() -> None:
         if method in {"get", "post", "patch", "delete"}
     ]
 
-    assert len(diet_operations) == 18
+    assert len(diet_operations) == 19
+    assert "get" in paths["/api/diet/weekly-recommendations/{plan_id}/meals/{day}/{meal_type}/recipe"]
     assert "post" in paths["/api/diet/meal-logs/{meal_log_id}/photo"]
     assert "get" in paths["/api/diet/meals/{diet_meal_id}/recipe"]
     assert "patch" in paths["/api/diet/meals/{diet_meal_id}/feedback"]

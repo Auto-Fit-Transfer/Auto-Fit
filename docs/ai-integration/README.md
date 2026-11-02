@@ -1,6 +1,7 @@
 # AI 서버 연동 전달자료 및 구현 상태
 
-기준일: 2026-10-19. 첨부 `backend_ai_integration_spec.md`와 현재 로컬 백엔드 코드를 비교했다.
+기준일: 2026-10-19. 첨부 `backend_ai_integration_spec.md`와 당시 로컬 백엔드 코드를 비교했다.
+2026-11-02 업데이트: 주간 식단의 한 끼 Recipe API를 로컬 백엔드에 연결했다.
 사용자 결정: **하루 식단만 추출하지 않고, 7일 전체를 저장·조회한다.**
 이 문서는 로컬 구현 상태이며 원격 DB 적용·배포·실제 AI 서버 검증을 의미하지 않는다.
 
@@ -21,7 +22,7 @@
 
 - `/recommend/diet`: 최신 알레르기·목표 + 기피 음식·추가 조건·한 끼 영양 목표.
 - `/recommend/diet/replace-meal`: 동일 조건 + 대상 요일·끼니·현재 메뉴·기존 주간 메뉴 제외 목록.
-- `/recommend/diet/recipe`: 선택한 끼니의 원본 `items` + 알레르기·기피 음식. 현재 입력 builder만 구현.
+- `/recommend/diet/recipe`: 선택한 끼니의 메뉴 정보·원본 `items`·알레르기·기피 음식·관련 메뉴를 전달하고 응답을 검증한다.
 
 예시의 `metric_statuses={}`, `sido=null`, `sigungu=null`, `nearby_regions=[]`는
 현재 구현의 실제 전송값이다. `items`의 소수 수치는 반올림하지 않는다.
@@ -62,7 +63,7 @@
 | AI 공통 호출 | HTTPS `/chat` 전용, `question/user_info/chat_history` | 독립 `ai_server.py`: 구조화 endpoint allowlist, Bearer 인증, timeout, 제한된 JSON 응답 처리 |
 | 식단 생성 | 오늘 4끼, DB 메뉴와 AI 메뉴 혼합 | `/recommend/diet` 응답 7일 전체 검증·저장·조회 추가 |
 | 한 끼 재추천 | 기존 일일 `diet_meal_id`를 RPC로 교체 | 주간 식단 ID + 요일 + 식사 유형 + 버전으로 선택 슬롯만 원자적 교체 |
-| Recipe | API 없음 | 원본 `items` 보존 및 입력 builder 준비. 응답의 최상위 envelope 확인 후 공개 API 연결 필요 |
+| Recipe | API 없음 | `GET /api/diet/weekly-recommendations/{plan_id}/meals/{day}/{meal_type}/recipe` 연결. 선택한 한 끼만 AI에 요청하고 응답 상태·영양값을 검증 |
 | Chat | 대화 저장, `/chat` 호환 호출 | `/chat/orchestrate`와 `pending_action`은 미연결. 상세 action 계약 필요 |
 | 건강 분석 | 최신 확정 입력 조회·저장된 분석 조회·규칙 기반 냉장고 갱신 | AI 경로·DTO 소스 확인. 최초 분석 및 부분 갱신의 저장 매핑·연결 미구현 |
 | 운동 추천 | 내부 규칙 기반 추천과 저장 RPC | AI DTO 소스 확인. 내부 종목·세트·반복 등과의 매핑 미구현 |
@@ -100,6 +101,7 @@ JSON이 아닌 응답, 중복 JSON key, NaN/Infinity, object가 아닌 응답은
 | GET | `/api/diet/weekly-recommendations?week_start_date=2026-10-19` | 해당 주 식단. 날짜 생략 시 KST 현재 주 월요일 |
 | GET | `/api/diet/weekly-recommendations/{plan_id}` | 본인 plan ID로 조회 |
 | POST | `/api/diet/weekly-recommendations/{plan_id}/meals/{day}/{meal_type}/regenerate` | `{"expected_version": 1}`. 재조회 시 받은 버전 필요 |
+| GET | `/api/diet/weekly-recommendations/{plan_id}/meals/{day}/{meal_type}/recipe?servings=1` | 선택한 한 끼의 Recipe. `servings`는 1~20, 기본 1 |
 
 생성 요청:
 
