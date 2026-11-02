@@ -10,16 +10,21 @@ import {
   getDietMealLogs,
   getDietNutritionSummary,
   getDietRecommendationsByDate,
+  getWeeklyDietRecommendations,
+  generateWeeklyDietRecommendations,
   regenerateDietMeal,
+  regenerateWeeklyDietMeal,
   submitDietMealFeedback,
   updateDietMealFeedback,
   uploadDietMealPhoto,
   type DietActualItem,
   type DietFeedbackInput,
+  type WeeklyDietPlanResponse,
 } from '@/src/api/diet';
 import { API_BASE_URL, ApiError } from '@/src/api/client';
 import { awardTierActivity } from '@/src/api/tier';
 import { nutritionNumber, type NutritionSummary } from '@/src/features/nutritionSummary';
+import { getKstDateKey, getWeekStartDate, getWeeklyMealsForDate } from '@/src/features/diet/weeklyRecommendations';
 
 const dateWindowMin = -6;
 const dateWindowMax = 6;
@@ -242,6 +247,29 @@ function mapRecommendationMeals(result: unknown): Meal[] {
   return mappedMeals;
 }
 
+function mapWeeklyRecommendationMeals(plan: WeeklyDietPlanResponse, dateKey: string): Meal[] {
+  const dayMeals = getWeeklyMealsForDate(plan, dateKey);
+  if (!dayMeals) throw new Error('선택한 날짜의 주간 식단을 찾지 못했어요.');
+
+  return dayMeals.map(([mealId, weeklyMeal]) => ({
+    foods: weeklyMeal.menu_name,
+    id: mealId,
+    intake: weeklyMeal.items.map((item) => [item.food_name, `${item.portion_g}g`]),
+    kcal: Math.round(weeklyMeal.estimated_calories_kcal),
+    note: [
+      weeklyMeal.menu_description,
+      `구성: ${weeklyMeal.items.map((item) => `${item.food_name} ${item.portion_g}g`).join(', ')}`,
+      weeklyMeal.guidance,
+    ].filter(Boolean).join('\n'),
+    recommendationStatus: 'recommended',
+    sourceType: 'weekly',
+    tags: [],
+    title: mealPresentation[mealId],
+    usedIngredients: [],
+    variantId: `${plan.weekly_diet_plan_id}-${dateKey}-${mealId}-${plan.version}`,
+  }));
+}
+
 function mapRecommendationNutritionTargets(result: unknown): RecommendationNutritionTargets {
   if (!isApiRecord(result) || !isApiRecord(result.recommendation)) return {};
 
@@ -320,15 +348,18 @@ export default function DietScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [today] = useState(() => {
-    const date = new Date();
-    date.setHours(12, 0, 0, 0);
-    return date;
+    const [year, month, day] = getKstDateKey(new Date()).split('-').map(Number);
+    return new Date(year, month - 1, day, 12);
   });
   const [selectedDateOffset, setSelectedDateOffset] = useState(0);
   const [selectedDateKey, setSelectedDateKey] = useState(() => toDateKey(today));
   const [statusesByDate, setStatusesByDate] = useState<Record<string, Partial<MealStatuses>>>({});
   const [recordingMealId, setRecordingMealId] = useState<MealType | null>(null);
   const [recommendedMeals, setRecommendedMeals] = useState<Meal[]>([]);
+  const [weeklyPlan, setWeeklyPlan] = useState<WeeklyDietPlanResponse | null>(null);
+  const [weeklyMissing, setWeeklyMissing] = useState(false);
+  const [weeklyConflictVersion, setWeeklyConflictVersion] = useState<number | null>(null);
+  const [weeklyGenerating, setWeeklyGenerating] = useState(false);
   const [recommendationNutritionTargets, setRecommendationNutritionTargets] =
     useState<RecommendationNutritionTargets>({});
   const [recommendationError, setRecommendationError] = useState<string | null>(null);
@@ -352,6 +383,7 @@ export default function DietScreen() {
   });
   const nutritionSummaryRequestRef = useRef(0);
   const regenerateRequestMealIdsRef = useRef(new Set<MealType>());
+  const weeklyGenerationRef = useRef(false);
 
   const displayedNutritionGoals = useMemo(
     () =>
@@ -386,7 +418,7 @@ export default function DietScreen() {
     }),
     [recommendationStatuses, selectedDateKey, statusesByDate],
   );
-  const todayDateKey = toDateKey(new Date());
+  const todayDateKey = toDateKey(today);
   const feedbackEnabled = selectedDateKey === todayDateKey;
   const showRecordControls = selectedDateKey <= todayDateKey;
 
@@ -462,9 +494,38 @@ export default function DietScreen() {
         setRecommendationLoading(true);
         setRecommendedMeals([]);
         setRecommendationNutritionTargets({});
+        setWeeklyPlan(null);
+        setWeeklyMissing(false);
+        setWeeklyConflictVersion(null);
       }
 
       try {
+        try {
+          const plan = await getWeeklyDietRecommendations(getWeekStartDate(dateKey));
+          const mappedMeals = mapWeeklyRecommendationMeals(plan, dateKey);
+          if (!isMountedRef.current || requestId !== recommendationRequestRef.current) return false;
+          setWeeklyPlan(plan);
+          setRecommendationOffline(false);
+          setRecommendedMeals(mappedMeals);
+          setStatusesByDate((current) => ({ ...current, [dateKey]: {} }));
+          setMealRecordsByDate((current) => ({ ...current, [dateKey]: {} }));
+          return true;
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 409 && isApiRecord(error.detail)) {
+            const detail = error.detail;
+            if (detail.code === 'WEEKLY_DIET_CONTEXT_CHANGED' && typeof detail.version === 'number') {
+              if (!isMountedRef.current || requestId !== recommendationRequestRef.current) return false;
+              setWeeklyConflictVersion(detail.version);
+              setWeeklyMissing(true);
+              setRecommendationError(getDietApiErrorMessage(error));
+              return false;
+            }
+          }
+          if (!(error instanceof ApiError) || error.status !== 404) throw error;
+          if (!isMountedRef.current || requestId !== recommendationRequestRef.current) return false;
+          setWeeklyMissing(true);
+        }
+
         const response = await getDietRecommendationsByDate(dateKey);
         if (__DEV__) {
           const result = isApiRecord(response.result) ? response.result : undefined;
@@ -527,6 +588,49 @@ export default function DietScreen() {
     },
     [applyMealLogs],
   );
+
+  const generateWeeklyPlan = useCallback(async () => {
+    if (weeklyGenerationRef.current) return;
+    const dateKey = selectedDateKey;
+    weeklyGenerationRef.current = true;
+    setWeeklyGenerating(true);
+    try {
+      const plan = await generateWeeklyDietRecommendations(
+        getWeekStartDate(dateKey), weeklyConflictVersion ?? undefined,
+      );
+      if (!isMountedRef.current) return;
+      const activeDateKey = recommendationMealsByDateRef.current.dateKey;
+      if (activeDateKey !== dateKey) {
+        if (activeDateKey && getWeekStartDate(activeDateKey) === plan.week_start_date) {
+          void loadRecommendations(activeDateKey);
+        }
+        return;
+      }
+      const mappedMeals = mapWeeklyRecommendationMeals(plan, dateKey);
+      ++recommendationRequestRef.current;
+      recommendationMealsByDateRef.current = { dateKey, meals: [] };
+      setWeeklyPlan(plan);
+      setWeeklyMissing(false);
+      setWeeklyConflictVersion(null);
+      setRecommendedMeals(mappedMeals);
+      setRecommendationError(null);
+      setRecommendationOffline(false);
+      setRecommendationNutritionTargets({});
+      setStatusesByDate((current) => ({ ...current, [dateKey]: {} }));
+      setMealRecordsByDate((current) => ({ ...current, [dateKey]: {} }));
+      setRecommendationLoading(false);
+    } catch (error) {
+      if (isMountedRef.current) {
+        Alert.alert('주간 식단을 생성하지 못했어요', getDietApiErrorMessage(error));
+        if (error instanceof ApiError && error.status === 409) {
+          void loadRecommendations(dateKey);
+        }
+      }
+    } finally {
+      weeklyGenerationRef.current = false;
+      if (isMountedRef.current) setWeeklyGenerating(false);
+    }
+  }, [loadRecommendations, selectedDateKey, weeklyConflictVersion]);
 
   const loadNutritionSummary = useCallback(async (dateKey: string) => {
     const requestId = ++nutritionSummaryRequestRef.current;
@@ -661,10 +765,12 @@ export default function DietScreen() {
     async (mealId: MealType) => {
       const currentMeal = recommendedMeals.find((meal) => meal.id === mealId);
       const dietMealId = currentMeal?.dietMealId;
-      if (!dietMealId || regenerateRequestMealIdsRef.current.has(mealId)) return;
+      if (!currentMeal || (!dietMealId && !weeklyPlan) || regenerateRequestMealIdsRef.current.has(mealId)) return;
       const requestStartedAtDate = new Date();
       const requestId = `diet-regenerate-${mealId}-${requestStartedAtDate.getTime()}`;
-      const finalRequestUrl = `${API_BASE_URL}/api/diet/meals/${encodeURIComponent(dietMealId)}/regenerate`;
+      const finalRequestUrl = weeklyPlan
+        ? `${API_BASE_URL}/api/diet/weekly-recommendations/${weeklyPlan.weekly_diet_plan_id}/meals/${mealId}/regenerate`
+        : `${API_BASE_URL}/api/diet/meals/${encodeURIComponent(dietMealId!)}/regenerate`;
 
       if (__DEV__) {
         console.log('[Diet Regenerate] START', {
@@ -680,7 +786,26 @@ export default function DietScreen() {
       regenerateRequestMealIdsRef.current.add(mealId);
       setRegeneratingMealIds((current) => new Set(current).add(mealId));
       try {
-        const response = await regenerateDietMeal(dietMealId);
+        if (weeklyPlan) {
+          const day = weeklyPlan.result.weekly_plan.find((entry) => entry.date === selectedDateKey);
+          if (!day) throw new Error('선택한 날짜의 주간 식단을 찾지 못했어요.');
+          const updated = await regenerateWeeklyDietMeal(
+            weeklyPlan.weekly_diet_plan_id, day.day, mealId, weeklyPlan.version,
+          );
+          if (!isMountedRef.current) return;
+          const activeDateKey = recommendationMealsByDateRef.current.dateKey;
+          if (activeDateKey !== selectedDateKey) {
+            if (activeDateKey && getWeekStartDate(activeDateKey) === updated.week_start_date) {
+              void loadRecommendations(activeDateKey);
+            }
+            return;
+          }
+          setWeeklyPlan(updated);
+          setRecommendedMeals(mapWeeklyRecommendationMeals(updated, selectedDateKey));
+          return;
+        }
+
+        const response = await regenerateDietMeal(dietMealId!);
 
         const rawRegeneratedMeal = response.meal;
 
@@ -749,6 +874,9 @@ export default function DietScreen() {
         }
         if (isMountedRef.current) {
           Alert.alert('식단을 다시 추천하지 못했어요', getDietApiErrorMessage(error));
+          if (weeklyPlan && error instanceof ApiError && error.status === 409) {
+            void loadRecommendations(selectedDateKey);
+          }
         }
       } finally {
         regenerateRequestMealIdsRef.current.delete(mealId);
@@ -761,7 +889,7 @@ export default function DietScreen() {
         }
       }
     },
-    [loadRecommendations, recommendedMeals, selectedDateKey],
+    [loadRecommendations, recommendedMeals, selectedDateKey, weeklyPlan],
   );
 
   const requestAlternativeMeal = useCallback(
@@ -915,6 +1043,9 @@ export default function DietScreen() {
     const nextDateKey = toDateKey(addDays(today, nextOffset));
     recommendationMealsByDateRef.current = { dateKey: nextDateKey, meals: [] };
     setRecommendedMeals([]);
+    setWeeklyPlan(null);
+    setWeeklyMissing(false);
+    setWeeklyConflictVersion(null);
     setRecommendationError(null);
     setRecommendationOffline(false);
     setRecommendationLoading(true);
@@ -922,7 +1053,7 @@ export default function DietScreen() {
     setSelectedDateKey(nextDateKey);
   };
 
-  if (recommendationError && recommendedMeals.length === 0 && !recommendationLoading && nutritionSummary?.date !== selectedDateKey) {
+  if (recommendationError && recommendedMeals.length === 0 && !recommendationLoading && nutritionSummary?.date !== selectedDateKey && weeklyConflictVersion === null) {
     return (
       <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
         <Text style={{ color: '#25242B', fontSize: 24, fontWeight: '700', paddingHorizontal: 20, paddingTop: insets.top + 16 }}>식단</Text>
@@ -958,15 +1089,22 @@ export default function DietScreen() {
             imageUrl: meal.imageUrl,
             status: selectedStatuses[meal.id],
             canSave: feedbackEnabled && Boolean(meal.dietMealId),
+            canRegenerate: Boolean(meal.dietMealId) || weeklyPlan !== null,
+            canOpenRecipe: Boolean(meal.dietMealId),
             pending: feedbackMealIds.has(meal.id),
             regenerating: regeneratingMealIds.has(meal.id),
           };
         })}
         mealsLoading={recommendationLoading}
         mealsError={recommendationError}
+        weeklyMissing={weeklyMissing}
+        weeklyGenerating={weeklyGenerating}
+        weeklyConflict={weeklyConflictVersion !== null}
+        weeklyNotice={weeklyPlan ? '주간 추천 식단은 식사 기록과 아직 연결되지 않아 기록 기능을 사용할 수 없어요.' : null}
         onSelectDateOffset={(offset) => moveSelectedDate(offset - selectedDateOffset)}
         onRetryNutrition={() => void loadNutritionSummary(selectedDateKey)}
         onRetryMeals={() => void loadRecommendations(selectedDateKey)}
+        onGenerateWeek={() => void generateWeeklyPlan()}
         onRecord={openMealRecord}
         onStatusChange={(mealId, status) => void submitFeedback(mealId, status)}
         onAlternative={requestAlternativeMeal}
@@ -977,7 +1115,7 @@ export default function DietScreen() {
           }
         }}
         onOpenProteinGuide={() => router.push({ pathname: '/diet/protein-guide', params: { date: selectedDateKey } })}
-        showRecordControls={showRecordControls}
+        showRecordControls={showRecordControls && !weeklyPlan}
       />
       <MealRecordSheets
         initialDraft={recordingMealId ? mealRecordsByDate[selectedDateKey]?.[recordingMealId] : undefined}

@@ -25,6 +25,43 @@ export type DietRecommendationResponse = {
   result?: ApiObject | null;
 };
 
+export type WeeklyMealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+export type WeeklyDay = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
+export type WeeklyDietMeal = {
+  menu_name: string;
+  menu_description: string;
+  estimated_calories_kcal: number;
+  nutrition: { carbohydrate_g: number; protein_g: number; fat_g: number };
+  items: {
+    food_name: string;
+    portion_g: number;
+    calories_kcal: number;
+    carbohydrate_g: number;
+    protein_g: number;
+    fat_g: number;
+  }[];
+  guidance?: string | null;
+};
+
+export type WeeklyDietPlanResponse = {
+  ok: true;
+  weekly_diet_plan_id: string;
+  week_start_date: string;
+  timezone: 'Asia/Seoul';
+  version: number;
+  generator: string;
+  result: {
+    summary: string;
+    strategy: string;
+    weekly_plan: {
+      day: WeeklyDay;
+      date: string;
+      meals: Record<WeeklyMealType, WeeklyDietMeal>;
+    }[];
+  };
+};
+
 export type DietMealRegenerationResponse = {
   generator?: unknown;
   meal?: unknown;
@@ -115,6 +152,34 @@ export function getLatestDietRecommendations() {
 export function getDietRecommendationsByDate(date: string) {
   const params = new URLSearchParams({ date });
   return apiRequest<DietRecommendationResponse>(`/api/diet/recommendations?${params.toString()}`);
+}
+
+export function getWeeklyDietRecommendations(weekStartDate: string) {
+  const params = new URLSearchParams({ week_start_date: weekStartDate });
+  return apiRequest<WeeklyDietPlanResponse>(`/api/diet/weekly-recommendations?${params.toString()}`);
+}
+
+export function generateWeeklyDietRecommendations(weekStartDate: string, expectedVersion?: number) {
+  return apiRequest<WeeklyDietPlanResponse>('/api/diet/weekly-recommendations/generate', {
+    body: JSON.stringify({
+      week_start_date: weekStartDate,
+      ...(expectedVersion === undefined ? {} : { expected_version: expectedVersion }),
+    }),
+    method: 'POST',
+  });
+}
+
+export function regenerateWeeklyDietMeal(
+  planId: string,
+  day: WeeklyDay,
+  mealType: WeeklyMealType,
+  expectedVersion: number,
+) {
+  const endpoint = `/api/diet/weekly-recommendations/${encodeURIComponent(planId)}/meals/${day}/${mealType}/regenerate`;
+  return apiRequest<WeeklyDietPlanResponse>(endpoint, {
+    body: JSON.stringify({ expected_version: expectedVersion }),
+    method: 'POST',
+  });
 }
 
 export type DietRecipeSnapshot = {

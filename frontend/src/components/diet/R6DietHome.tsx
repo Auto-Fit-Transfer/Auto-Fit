@@ -15,6 +15,8 @@ export type R6Meal = {
   imageUrl?: string;
   status: 'recommended' | 'eaten' | 'modified' | 'skipped';
   canSave: boolean;
+  canRegenerate: boolean;
+  canOpenRecipe: boolean;
   pending: boolean;
   regenerating: boolean;
 };
@@ -31,9 +33,14 @@ type Props = {
   meals: R6Meal[];
   mealsLoading: boolean;
   mealsError: string | null;
+  weeklyMissing: boolean;
+  weeklyGenerating: boolean;
+  weeklyConflict: boolean;
+  weeklyNotice: string | null;
   onSelectDateOffset: (offset: number) => void;
   onRetryNutrition: () => void;
   onRetryMeals: () => void;
+  onGenerateWeek: () => void;
   onRecord: (mealId: R6Meal['id']) => void;
   onStatusChange: (mealId: R6Meal['id'], status: 'eaten' | 'skipped') => void;
   onAlternative: (mealId: R6Meal['id']) => void;
@@ -219,6 +226,23 @@ export function R6DietHome(props: Props) {
         <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle, isDark && dark.text]}>
           {props.selectedDateOffset === 0 ? '오늘 식단' : '선택한 날 식단'}
         </Text>
+        {props.weeklyMissing && !props.mealsLoading && (
+          <Pressable
+            accessibilityRole="button"
+            disabled={props.weeklyGenerating}
+            onPress={props.onGenerateWeek}
+            style={styles.stateCard}
+          >
+            <Text style={styles.retry}>
+              {props.weeklyGenerating
+                ? '7일 식단 생성 중…'
+                : props.weeklyConflict
+                  ? '이번 주 식단 다시 생성하기'
+                  : '이번 주 7일 식단 생성하기'}
+            </Text>
+          </Pressable>
+        )}
+        {props.weeklyNotice && <Text style={styles.stateText}>{props.weeklyNotice}</Text>}
         {props.mealsLoading && <Text style={styles.stateText}>식단을 불러오고 있어요.</Text>}
         {props.mealsError && (
           <Pressable onPress={props.onRetryMeals} style={styles.stateCard}>
@@ -283,14 +307,16 @@ export function R6DietHome(props: Props) {
                 <View style={styles.mealDetail}>
                   {meal.note ? <Text style={styles.detailText}>{meal.note}</Text> : null}
                   <View style={styles.mealActions}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`${meal.title} 레시피 보기`}
-                      onPress={() => props.onOpenRecipe(meal.id)}
-                      style={styles.recipeAction}
-                    >
-                      <Text style={styles.recipeActionText}>레시피 보기  ›</Text>
-                    </Pressable>
+                    {meal.canOpenRecipe && (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`${meal.title} 레시피 보기`}
+                        onPress={() => props.onOpenRecipe(meal.id)}
+                        style={styles.recipeAction}
+                      >
+                        <Text style={styles.recipeActionText}>레시피 보기  ›</Text>
+                      </Pressable>
+                    )}
                     {props.showRecordControls && (
                       <>
                         <Pressable
@@ -316,7 +342,7 @@ export function R6DietHome(props: Props) {
                         </Pressable>
                       </>
                     )}
-                    {meal.canSave && meal.status === 'recommended' && (
+                    {meal.canRegenerate && meal.status === 'recommended' && (
                       <Pressable
                         disabled={meal.regenerating}
                         onPress={() => props.onAlternative(meal.id)}
