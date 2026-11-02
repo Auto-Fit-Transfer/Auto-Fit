@@ -136,6 +136,100 @@ export function getDietMealRecipe(dietMealId: string) {
   );
 }
 
+export type WeeklyDay = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+export type WeeklyMealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+export type WeeklyNutrition = { carbohydrate_g: number; protein_g: number; fat_g: number };
+export type WeeklyFoodItem = WeeklyNutrition & { food_name: string; portion_g: number; calories_kcal: number };
+export type WeeklyMeal = {
+  menu_name: string;
+  menu_description: string;
+  estimated_calories_kcal: number;
+  nutrition: WeeklyNutrition;
+  items: WeeklyFoodItem[];
+  guidance: string | null;
+};
+export type WeeklyPlan = {
+  ok: true;
+  weekly_diet_plan_id: string;
+  week_start_date: string;
+  timezone: 'Asia/Seoul';
+  version: number;
+  result: {
+    summary: string;
+    strategy: string;
+    weekly_plan: { day: WeeklyDay; date: string; meals: Record<WeeklyMealType, WeeklyMeal> }[];
+  };
+};
+
+export function getWeeklyDiet(weekStartDate: string) {
+  return apiRequest<WeeklyPlan>(`/api/diet/weekly-recommendations?week_start_date=${encodeURIComponent(weekStartDate)}`);
+}
+
+export function generateWeeklyDiet(weekStartDate: string, expectedVersion?: number) {
+  return apiRequest<WeeklyPlan>('/api/diet/weekly-recommendations/generate', {
+    method: 'POST',
+    body: JSON.stringify({ week_start_date: weekStartDate, ...(expectedVersion ? { expected_version: expectedVersion } : {}) }),
+  });
+}
+
+export function regenerateWeeklyDietMeal(planId: string, day: WeeklyDay, mealType: WeeklyMealType, expectedVersion: number) {
+  return apiRequest<WeeklyPlan>(`/api/diet/weekly-recommendations/${encodeURIComponent(planId)}/meals/${day}/${mealType}/regenerate`, {
+    method: 'POST',
+    body: JSON.stringify({ expected_version: expectedVersion }),
+  });
+}
+
+export type WeeklyRecipeDetail = {
+  recipe_id: string | null;
+  menu_name: string | null;
+  cooking_method: string | null;
+  dish_type: string | null;
+  serving_weight: number | null;
+  servings: number;
+  estimated_duration_minutes: number | null;
+  ingredients_text: string | null;
+  ingredients: { name: string; amount_g: number | null }[] | null;
+  steps: string[];
+  step_details: { order: number; instruction: string; duration_minutes: number | null; tip: string | null }[];
+  cooking_tip: string | null;
+  image_small: string | null;
+  image_large: string | null;
+  source: string | null;
+};
+export type WeeklyRecipeItem = WeeklyFoodItem & {
+  recipe_available: boolean;
+  recipe_source: 'official_exact' | 'official_similar' | 'llm_generated' | 'unavailable';
+  official_recipe: boolean;
+  matched_recipe_name: string | null;
+  match_score: number | null;
+  safety_checked: boolean;
+  restriction_matches: string[];
+  recipe: WeeklyRecipeDetail | null;
+};
+export type WeeklyRecipe = {
+  ok: true;
+  meal: {
+    day: WeeklyDay | null;
+    meal_type: WeeklyMealType | null;
+    menu_name: string | null;
+    menu_description: string;
+    tags: string[];
+    servings: number;
+    estimated_duration_minutes: number | null;
+    estimated_calories_kcal: number;
+    nutrition: WeeklyNutrition;
+    daily_target_percentages: { calories_percent: number; carbohydrate_percent: number; protein_percent: number; fat_percent: number } | null;
+    personalization_reasons: string[];
+    allergen_notice: string[];
+    items: WeeklyRecipeItem[];
+    related_menus: { menu_name: string; day: WeeklyDay | null; meal_type: WeeklyMealType | null; estimated_calories_kcal: number | null }[];
+  };
+};
+
+export function getWeeklyDietRecipe(planId: string, day: WeeklyDay, mealType: WeeklyMealType, servings: number) {
+  return apiRequest<WeeklyRecipe>(`/api/diet/weekly-recommendations/${encodeURIComponent(planId)}/meals/${day}/${mealType}/recipe?servings=${servings}`);
+}
+
 export function getDietNutritionSummary(date: string) {
   const params = new URLSearchParams({ date });
   return apiRequest<{ summary: import('@/src/features/nutritionSummary').NutritionSummary }>(

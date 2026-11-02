@@ -39,6 +39,7 @@ type Props = {
   onAlternative: (mealId: R6Meal['id']) => void;
   onOpenRecipe: (mealId: R6Meal['id']) => void;
   onOpenProteinGuide: () => void;
+  onOpenWeekly: () => void;
   showRecordControls: boolean;
 };
 
@@ -112,6 +113,9 @@ export function R6DietHome(props: Props) {
             <Text style={styles.today}>오늘</Text>
           </Pressable>
         </View>
+        <Pressable accessibilityRole="button" onPress={props.onOpenWeekly} style={styles.weeklyButton}>
+          <Text style={styles.weeklyText}>7일 식단 보기</Text>
+        </Pressable>
         <View style={styles.weekRow}>
           {week.map(({ date, offset }) => (
             <Pressable
@@ -388,6 +392,8 @@ const styles = StyleSheet.create({
   },
   month: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15, color: '#24252A' },
   today: { color: purple, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
+  weeklyButton: { alignSelf: 'flex-start', borderWidth: 1, borderColor: purple, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 8 },
+  weeklyText: { color: purple, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 2 },
   day: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 12 },
   selectedDay: { backgroundColor: '#25232C' },

@@ -977,6 +977,7 @@ export default function DietScreen() {
           }
         }}
         onOpenProteinGuide={() => router.push({ pathname: '/diet/protein-guide', params: { date: selectedDateKey } })}
+        onOpenWeekly={() => router.push('/diet/weekly')}
         showRecordControls={showRecordControls}
       />
       <MealRecordSheets
