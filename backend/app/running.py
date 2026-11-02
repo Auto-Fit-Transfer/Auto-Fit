@@ -69,8 +69,19 @@ class FavoriteRequest(BaseModel):
     is_favorite: bool
 
 
+def _normalize_integral_floats(value: Any) -> Any:
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, dict):
+        return {key: _normalize_integral_floats(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_normalize_integral_floats(item) for item in value]
+    return value
+
+
 def _canonical(value: dict) -> bytes:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True,
+    # JavaScript serializes 7.0 as 7; sign both representations identically.
+    return json.dumps(_normalize_integral_floats(value), ensure_ascii=False, sort_keys=True,
                       separators=(",", ":"), allow_nan=False).encode()
 
 
