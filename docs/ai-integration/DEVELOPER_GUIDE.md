@@ -10,6 +10,7 @@
 > 문서와 합성 예시를 공유한 단계입니다. 주간 식단의 백엔드 로컬 구현은 완료됐으며,
 > 실제 AI 서버 통합 검증·DB 적용·서버 배포는 아직 완료되지 않았습니다.
 > 아래 OpenAPI에는 로컬 구현이 포함되므로 운영 서버의 지원 여부와 구분해 주세요.
+> 2026-11-02 업데이트: 한 끼 Recipe 공개 백엔드 API와 응답 검증을 로컬에 추가했습니다.
 
 [전달 파일](#전달-파일) · [요청 예시](#백엔드가-ai에-보내는-요청) · [응답 구조](#ai가-반환할-식단-구조) · [확인할 항목](#모델-담당자와-확인할-항목)
 
@@ -119,31 +120,14 @@ Content-Type: application/json
 
 ### 3. 선택한 끼니의 Recipe
 
-**`POST /recommend/diet/recipe`** · 입력 builder 준비 / 공개 API 미연결
+**`POST /recommend/diet/recipe`** · 백엔드가 선택한 한 끼에 대해서만 호출
 
-```json
-{
-  "items": [
-    {
-      "food_name": "현미밥",
-      "portion_g": 100.25,
-      "calories_kcal": 165.5,
-      "carbohydrate_g": 35.25,
-      "protein_g": 3.5,
-      "fat_g": 1.25
-    }
-  ],
-  "food_allergens": [
-    "땅콩"
-  ],
-  "disliked_foods": [
-    "가지"
-  ]
-}
-```
-
-선택한 끼니의 `items`를 그대로 전달합니다. 소수 수치와 항목 순서를 보존합니다.
-최상위 응답 구조와 정상·충돌·`unavailable` 예시를 확인한 뒤 연결할 예정입니다.
+요청 전체 예시는 [ai-request-examples.json](ai-request-examples.json)의 세 번째 항목입니다.
+선택한 끼니의 메뉴명·설명·안내와 음식별 `items`를 전달하며 소수 수치와 항목 순서를 보존합니다.
+저장된 일일 영양 목표가 없으므로 `daily_nutrition_target`은 보내지 않습니다.
+공개 API는 `GET /api/diet/weekly-recommendations/{plan_id}/meals/{day}/{meal_type}/recipe?servings=1`입니다.
+응답은 `{ok, generator, meal}`로 검증하고, Recipe 출처 4종과 `null` 필드를 수용합니다.
+안전하지 않은 Recipe 상세와 원본 음식 정보가 달라진 응답은 거부합니다.
 
 <details>
 <summary><strong>요청 예시 파일 사용 방법 · 펼쳐 보기</strong></summary>
@@ -231,6 +215,7 @@ jq '.requests[] | select(.path == "/recommend/diet") | .body' \
 | GET | `/api/diet/weekly-recommendations?week_start_date=2026-10-19` | 해당 주 조회 |
 | GET | `/api/diet/weekly-recommendations/{plan_id}` | plan ID로 조회 |
 | POST | `/api/diet/weekly-recommendations/{plan_id}/meals/{day}/{meal_type}/regenerate` | `{"expected_version": 1}`로 한 끼 교체 |
+| GET | `/api/diet/weekly-recommendations/{plan_id}/meals/{day}/{meal_type}/recipe?servings=1` | 선택한 한 끼의 Recipe 조회 |
 
 주 시작일은 KST 기준 월요일입니다. 기존 주 전체를 재생성할 때도 일치하는 `expected_version`을 보냅니다.
 동시 수정 또는 저장 후 알레르기·목표 변경은 409이며, 다시 조회하거나 전체 재생성이 필요합니다.

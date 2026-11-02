@@ -14,6 +14,7 @@ from backend.app.weekly_diet_contract import (
     WeeklyReply, ReplacementReply, WeeklyPlanResponse, current_week_start,
 )
 from backend.app.weekly_diet_store import WeeklyDietStore, fail, public_plan
+from backend.app.weekly_recipe_contract import RecipeReply, RecipeRequest
 
 
 def get_weekly_ai_client():
@@ -70,14 +71,37 @@ def require_current_context(row: dict, latest: dict):
         })
 
 
-def recipe_request(row: dict, day: Day, meal_type: MealType, latest: dict) -> dict:
-    """Prepare lossless recipe input; response envelope still needs AI agreement."""
+def recipe_request(row: dict, day: Day, meal_type: MealType, latest: dict,
+                   servings: int = 1) -> dict:
+    """Prepare one slot from the saved recommendation, without inferred ingredients."""
     entry = next(entry for entry in row["result"]["weekly_plan"] if entry["day"] == day)
-    return {
-        "items": entry["meals"][meal_type]["items"],
+    meal = entry["meals"][meal_type]
+    items = meal["items"]
+    related = [
+        {"menu_name": other["menu_name"], "day": other_day["day"],
+         "meal_type": other_type, "estimated_calories_kcal": other["estimated_calories_kcal"]}
+        for other_day in row["result"]["weekly_plan"]
+        for other_type, other in other_day["meals"].items()
+        if (other_day["day"], other_type) != (day, meal_type)
+    ][:10]
+    payload = {
+        "day": day, "meal_type": meal_type,
+        "menu_name": meal["menu_name"], "menu_description": meal["menu_description"],
+        "guidance": meal.get("guidance") or "", "tags": (meal.get("tags") or [])[:6],
+        "personalization_reasons": (meal.get("personalization_reasons") or [])[:5],
+        "servings": servings,
+        "related_menus": related,
+        "items": [{key: item[key] for key in (
+            "food_name", "portion_g", "calories_kcal", "carbohydrate_g", "protein_g", "fat_g"
+        )} for item in items],
         "food_allergens": latest["food_allergens"],
         "disliked_foods": row["request_context"]["disliked_foods"],
     }
+    try:
+        RecipeRequest.model_validate(payload)
+    except ValidationError:
+        fail("AI_INPUT_REJECTED", 422)
+    return payload
 
 
 def create_weekly_diet_router(get_user, get_settings, load_context):
@@ -173,5 +197,43 @@ def create_weekly_diet_router(get_user, get_settings, load_context):
             fail("WEEKLY_DIET_CONTEXT_CHANGED", 409)
         updated = await store.replace(plan_id, body.expected_version, day, meal_type, reply, context)
         return public_plan(updated)
+
+    @router.get("/{plan_id}/meals/{day}/{meal_type}/recipe", response_model=RecipeReply)
+    async def get_recipe(plan_id: UUID, day: Day, meal_type: MealType,
+                         servings: int = Query(default=1, ge=1, le=20),
+                         store=Depends(store_dependency), settings=Depends(get_settings),
+                         ai=Depends(get_weekly_ai_client)) -> dict[str, Any]:
+        row = await store.get(plan_id=plan_id)
+        if row is None:
+            fail("WEEKLY_DIET_NOT_FOUND", 404)
+        latest = await load_context(store.user_id, settings)
+        require_current_context(row, latest)
+        payload = recipe_request(row, day, meal_type, latest, servings)
+        reply = await call_ai(ai, AIEndpoint.RECIPE, payload, RecipeReply)
+        result = reply["meal"]
+        if result["day"] != day or result["meal_type"] != meal_type or result["servings"] != servings:
+            fail("AI_SLOT_MISMATCH")
+        if result["menu_name"] != payload["menu_name"] or len(result["items"]) != len(payload["items"]):
+            fail("AI_INVALID_RESPONSE")
+        if any(any(actual[key] != expected[key] for key in expected)
+               for actual, expected in zip(result["items"], payload["items"])):
+            fail("AI_INVALID_RESPONSE")
+        totals = {
+            "estimated_calories_kcal": sum(item["calories_kcal"] for item in payload["items"]),
+            **{key: sum(item[key] for item in payload["items"])
+               for key in ("carbohydrate_g", "protein_g", "fat_g")},
+        }
+        if (abs(result["estimated_calories_kcal"] - totals["estimated_calories_kcal"]) > 0.11
+                or any(abs(result["nutrition"][key] - totals[key]) > 0.11
+                       for key in ("carbohydrate_g", "protein_g", "fat_g"))
+                or result["daily_target_percentages"] is not None
+                or result["related_menus"] != payload["related_menus"]):
+            fail("AI_INVALID_RESPONSE")
+        current = await store.get(plan_id=plan_id)
+        if current is None or current["version"] != row["version"]:
+            fail("WEEKLY_DIET_VERSION_CONFLICT", 409)
+        if latest != await load_context(store.user_id, settings):
+            fail("WEEKLY_DIET_CONTEXT_CHANGED", 409)
+        return reply
 
     return router

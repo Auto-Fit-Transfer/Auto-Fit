@@ -3,7 +3,7 @@
   "info": {
     "title": "Auto-Fit API",
     "version": "0.1.0",
-    "description": "2026-10-19 current local backend contract subset. Not the AI server contract; deployment state unverified."
+    "description": "2026-11-02 current local backend contract subset. Not the AI server contract; deployment state unverified."
   },
   "paths": {
     "/api/allergies": {
@@ -374,6 +374,27 @@
               "type": "string",
               "format": "uuid",
               "title": "Chat Id"
+            }
+          },
+          {
+            "name": "X-AutoFit-Character",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "quni",
+                    "nabi",
+                    "coach"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Autofit-Character"
             }
           },
           {
@@ -1056,6 +1077,110 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/WeeklyPlanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/diet/weekly-recommendations/{plan_id}/meals/{day}/{meal_type}/recipe": {
+      "get": {
+        "tags": [
+          "Diet"
+        ],
+        "summary": "Get Recipe",
+        "operationId": "get_recipe_api_diet_weekly_recommendations__plan_id__meals__day___meal_type__recipe_get",
+        "parameters": [
+          {
+            "name": "plan_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Plan Id"
+            }
+          },
+          {
+            "name": "day",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "saturday",
+                "sunday"
+              ],
+              "type": "string",
+              "title": "Day"
+            }
+          },
+          {
+            "name": "meal_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "breakfast",
+                "lunch",
+                "dinner",
+                "snack"
+              ],
+              "type": "string",
+              "title": "Meal Type"
+            }
+          },
+          {
+            "name": "servings",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20,
+              "minimum": 1,
+              "default": 1,
+              "title": "Servings"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecipeReply"
                 }
               }
             }
@@ -2921,6 +3046,18 @@
             ],
             "title": "Nickname"
           },
+          "bio": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 50
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bio"
+          },
           "birth_date": {
             "anyOf": [
               {
@@ -3393,6 +3530,655 @@
           "result"
         ],
         "title": "WeeklyPlanResponse"
+      },
+      "RecipeReply": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok"
+          },
+          "generator": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Generator"
+          },
+          "meal": {
+            "$ref": "#/components/schemas/RecipeMeal"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ok",
+          "generator",
+          "meal"
+        ],
+        "title": "RecipeReply"
+      },
+      "RecipeMeal": {
+        "properties": {
+          "day": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday",
+                  "saturday",
+                  "sunday"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "meal_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "breakfast",
+                  "lunch",
+                  "dinner",
+                  "snack"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Type"
+          },
+          "menu_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Menu Name"
+          },
+          "menu_description": {
+            "type": "string",
+            "title": "Menu Description"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags"
+          },
+          "servings": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Servings"
+          },
+          "estimated_duration_minutes": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Duration Minutes"
+          },
+          "estimated_calories_kcal": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Estimated Calories Kcal"
+          },
+          "nutrition": {
+            "$ref": "#/components/schemas/RecipeNutrition"
+          },
+          "daily_target_percentages": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DailyTargetPercentages"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "personalization_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Personalization Reasons"
+          },
+          "allergen_notice": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Allergen Notice"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RecipeItem"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Items"
+          },
+          "related_menus": {
+            "items": {
+              "$ref": "#/components/schemas/RelatedMenu"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Related Menus"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "day",
+          "meal_type",
+          "menu_name",
+          "menu_description",
+          "tags",
+          "servings",
+          "estimated_duration_minutes",
+          "estimated_calories_kcal",
+          "nutrition",
+          "daily_target_percentages",
+          "personalization_reasons",
+          "allergen_notice",
+          "items",
+          "related_menus"
+        ],
+        "title": "RecipeMeal"
+      },
+      "DailyTargetPercentages": {
+        "properties": {
+          "calories_percent": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Calories Percent"
+          },
+          "carbohydrate_percent": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Carbohydrate Percent"
+          },
+          "protein_percent": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Protein Percent"
+          },
+          "fat_percent": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Fat Percent"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "calories_percent",
+          "carbohydrate_percent",
+          "protein_percent",
+          "fat_percent"
+        ],
+        "title": "DailyTargetPercentages"
+      },
+      "RecipeItem": {
+        "properties": {
+          "carbohydrate_g": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Carbohydrate G"
+          },
+          "protein_g": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Protein G"
+          },
+          "fat_g": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Fat G"
+          },
+          "food_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Food Name"
+          },
+          "portion_g": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Portion G"
+          },
+          "calories_kcal": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Calories Kcal"
+          },
+          "recipe_available": {
+            "type": "boolean",
+            "title": "Recipe Available"
+          },
+          "recipe_source": {
+            "type": "string",
+            "enum": [
+              "official_exact",
+              "official_similar",
+              "llm_generated",
+              "unavailable"
+            ],
+            "title": "Recipe Source"
+          },
+          "official_recipe": {
+            "type": "boolean",
+            "title": "Official Recipe"
+          },
+          "matched_recipe_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Recipe Name"
+          },
+          "match_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Match Score"
+          },
+          "safety_checked": {
+            "type": "boolean",
+            "title": "Safety Checked"
+          },
+          "restriction_matches": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Restriction Matches"
+          },
+          "recipe": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecipeDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "carbohydrate_g",
+          "protein_g",
+          "fat_g",
+          "food_name",
+          "portion_g",
+          "calories_kcal",
+          "recipe_available",
+          "recipe_source",
+          "official_recipe",
+          "matched_recipe_name",
+          "match_score",
+          "safety_checked",
+          "restriction_matches",
+          "recipe"
+        ],
+        "title": "RecipeItem"
+      },
+      "RecipeDetail": {
+        "properties": {
+          "recipe_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipe Id"
+          },
+          "menu_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Menu Name"
+          },
+          "cooking_method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cooking Method"
+          },
+          "dish_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dish Type"
+          },
+          "serving_weight": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Serving Weight"
+          },
+          "servings": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Servings"
+          },
+          "estimated_duration_minutes": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Duration Minutes"
+          },
+          "ingredients_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingredients Text"
+          },
+          "ingredients": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/RecipeIngredient"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ingredients"
+          },
+          "steps": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Steps"
+          },
+          "step_details": {
+            "items": {
+              "$ref": "#/components/schemas/RecipeStep"
+            },
+            "type": "array",
+            "title": "Step Details"
+          },
+          "cooking_tip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cooking Tip"
+          },
+          "image_small": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Small"
+          },
+          "image_large": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Large"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "recipe_id",
+          "menu_name",
+          "cooking_method",
+          "dish_type",
+          "serving_weight",
+          "servings",
+          "estimated_duration_minutes",
+          "ingredients_text",
+          "ingredients",
+          "steps",
+          "step_details",
+          "cooking_tip",
+          "image_small",
+          "image_large",
+          "source"
+        ],
+        "title": "RecipeDetail"
+      },
+      "RecipeIngredient": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Name"
+          },
+          "amount_g": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount G"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "amount_g"
+        ],
+        "title": "RecipeIngredient"
+      },
+      "RecipeStep": {
+        "properties": {
+          "order": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Order"
+          },
+          "instruction": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Instruction"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "tip": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tip"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "order",
+          "instruction",
+          "duration_minutes",
+          "tip"
+        ],
+        "title": "RecipeStep"
+      },
+      "RelatedMenu": {
+        "properties": {
+          "menu_name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Menu Name"
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday",
+                  "saturday",
+                  "sunday"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "meal_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "breakfast",
+                  "lunch",
+                  "dinner",
+                  "snack"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Type"
+          },
+          "estimated_calories_kcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Calories Kcal"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "menu_name"
+        ],
+        "title": "RelatedMenu"
       }
     },
     "securitySchemes": {

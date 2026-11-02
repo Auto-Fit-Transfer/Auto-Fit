@@ -109,8 +109,78 @@
     {
       "method": "POST",
       "path": "/recommend/diet/recipe",
-      "status": "input_builder_only",
+      "status": "implemented",
       "body": {
+        "day": "monday",
+        "meal_type": "lunch",
+        "menu_name": "monday lunch",
+        "menu_description": "합성 음식",
+        "guidance": "합성 예시",
+        "tags": [],
+        "personalization_reasons": [],
+        "servings": 1,
+        "related_menus": [
+          {
+            "menu_name": "monday breakfast",
+            "day": "monday",
+            "meal_type": "breakfast",
+            "estimated_calories_kcal": 165.5
+          },
+          {
+            "menu_name": "monday dinner",
+            "day": "monday",
+            "meal_type": "dinner",
+            "estimated_calories_kcal": 165.5
+          },
+          {
+            "menu_name": "monday snack",
+            "day": "monday",
+            "meal_type": "snack",
+            "estimated_calories_kcal": 165.5
+          },
+          {
+            "menu_name": "tuesday breakfast",
+            "day": "tuesday",
+            "meal_type": "breakfast",
+            "estimated_calories_kcal": 165.5
+          },
+          {
+            "menu_name": "tuesday lunch",
+            "day": "tuesday",
+            "meal_type": "lunch",
+            "estimated_calories_kcal": 165.5
+          },
+          {
+            "menu_name": "tuesday dinner",
+            "day": "tuesday",
+            "meal_type": "dinner",
+            "estimated_calories_kcal": 165.5
+          },
+          {
+            "menu_name": "tuesday snack",
+            "day": "tuesday",
+            "meal_type": "snack",
+            "estimated_calories_kcal": 165.5
+          },
+          {
+            "menu_name": "wednesday breakfast",
+            "day": "wednesday",
+            "meal_type": "breakfast",
+            "estimated_calories_kcal": 165.5
+          },
+          {
+            "menu_name": "wednesday lunch",
+            "day": "wednesday",
+            "meal_type": "lunch",
+            "estimated_calories_kcal": 165.5
+          },
+          {
+            "menu_name": "wednesday dinner",
+            "day": "wednesday",
+            "meal_type": "dinner",
+            "estimated_calories_kcal": 165.5
+          }
+        ],
         "items": [
           {
             "food_name": "현미밥",

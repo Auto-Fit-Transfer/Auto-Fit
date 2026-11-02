@@ -18,6 +18,7 @@ OTHER = "00000000-0000-4000-8000-000000000002"
 PLAN = "00000000-0000-4000-8000-000000000003"
 BASE = "/api/diet/weekly-recommendations"
 SLOT = f"{BASE}/{PLAN}/meals/monday/lunch/regenerate"
+RECIPE = f"{BASE}/{PLAN}/meals/monday/lunch/recipe"
 
 
 def weekly_reply():
@@ -35,6 +36,25 @@ def weekly_reply():
             } for meal_type in MEALS
         }} for day in DAYS],
         "cautions": [], "sources": [],
+    }}
+
+
+def recipe_reply(payload):
+    return {"ok": True, "generator": "auto-fit-ai", "meal": {
+        "day": payload["day"], "meal_type": payload["meal_type"],
+        "menu_name": payload["menu_name"], "menu_description": payload["menu_description"],
+        "tags": payload["tags"], "servings": payload["servings"],
+        "estimated_duration_minutes": None,
+        "estimated_calories_kcal": sum(item["calories_kcal"] for item in payload["items"]),
+        "nutrition": {key: sum(item[key] for item in payload["items"])
+                      for key in ("carbohydrate_g", "protein_g", "fat_g")},
+        "daily_target_percentages": None,
+        "personalization_reasons": [], "allergen_notice": [],
+        "items": [{**item, "recipe_available": False, "recipe_source": "unavailable",
+                   "official_recipe": False, "matched_recipe_name": None, "match_score": None,
+                   "safety_checked": True, "restriction_matches": [], "recipe": None}
+                  for item in payload["items"]],
+        "related_menus": payload["related_menus"],
     }}
 
 
@@ -64,6 +84,10 @@ def harness(monkeypatch):
                 raise state["ai_error"]
             if state.get("change_context"):
                 state["context"]["food_allergens"].append("현미")
+            if endpoint == AIEndpoint.RECIPE:
+                if state.get("change_version"):
+                    state["rows"][0]["version"] += 1
+                return deepcopy(state.get("recipe_reply") or recipe_reply(payload))
             if endpoint == AIEndpoint.REPLACE_MEAL:
                 replacement = deepcopy(state["reply"]["result"]["weekly_plan"][0]["meals"]["lunch"])
                 replacement["menu_name"] = "새 메뉴"
@@ -331,6 +355,103 @@ def test_regeneration_uses_same_quota(harness, whole_week):
     assert response.status_code == 429
     assert len(state["ai_calls"]) == 1
     assert len(state["writes"]) == 1
+
+
+def test_recipe_uses_selected_saved_slot_and_returns_validated_detail(harness):
+    client, state = harness
+    assert generate(client).status_code == 201
+    response = client.get(RECIPE, params={"servings": 2})
+    assert response.status_code == 200, response.text
+    endpoint, payload = state["ai_calls"][-1]
+    assert endpoint == AIEndpoint.RECIPE
+    assert payload["day"] == "monday" and payload["meal_type"] == "lunch"
+    assert payload["menu_name"] == "monday lunch"
+    assert payload["guidance"] == "합성 예시" and payload["servings"] == 2
+    assert payload["items"][0]["portion_g"] == 100.25
+    assert len(payload["related_menus"]) == 10
+    assert all(menu["menu_name"] != "monday lunch" for menu in payload["related_menus"])
+    assert "daily_nutrition_target" not in payload
+    assert response.json()["meal"]["daily_target_percentages"] is None
+    conflict = recipe_reply(payload)
+    conflict["meal"]["items"][0]["restriction_matches"] = ["땅콩"]
+    state["recipe_reply"] = conflict
+    blocked = client.get(RECIPE, params={"servings": 2})
+    assert blocked.status_code == 200
+    assert blocked.json()["meal"]["items"][0]["recipe"] is None
+    assert len(state["writes"]) == 1
+
+
+def test_recipe_accepts_official_and_generated_sources_and_nulls(harness):
+    client, state = harness
+    assert generate(client).status_code == 201
+    payload = api.recipe_request(state["rows"][0], "monday", "lunch", state["context"])
+    reply = recipe_reply(payload)
+    item = reply["meal"]["items"][0]
+    item.update(recipe_available=True, recipe_source="official_similar", official_recipe=True,
+                matched_recipe_name="현미밥", match_score=0.92,
+                recipe={"recipe_id": "official-1", "menu_name": "현미밥",
+                        "cooking_method": None, "dish_type": None, "serving_weight": 100.25,
+                        "servings": 1, "estimated_duration_minutes": None,
+                        "ingredients_text": "현미", "ingredients": [{"name": "현미", "amount_g": None}],
+                        "steps": ["씻습니다."], "step_details": [{"order": 1,
+                        "instruction": "씻습니다.", "duration_minutes": None, "tip": None}],
+                        "cooking_tip": None, "image_small": None, "image_large": None,
+                        "source": "식품의약품안전처 식품안전나라"})
+    state["recipe_reply"] = reply
+    assert client.get(RECIPE).status_code == 200
+    item.update(recipe_source="official_exact", match_score=1.0)
+    assert client.get(RECIPE).status_code == 200
+    item.update(recipe_source="llm_generated", official_recipe=False,
+                matched_recipe_name=None, match_score=None)
+    item["recipe"]["recipe_id"] = None
+    assert client.get(RECIPE).status_code == 200
+
+
+@pytest.mark.parametrize("mutation", ["unsafe_detail", "wrong_slot", "changed_food", "missing_field", "wrong_total", "invented_target", "invalid_similar", "extra_field"])
+def test_recipe_rejects_invalid_ai_response(harness, mutation):
+    client, state = harness
+    assert generate(client).status_code == 201
+    payload = api.recipe_request(state["rows"][0], "monday", "lunch", state["context"])
+    reply = recipe_reply(payload)
+    if mutation == "unsafe_detail":
+        reply["meal"]["items"][0]["recipe"] = {"menu_name": "위험한 레시피"}
+    elif mutation == "wrong_slot":
+        reply["meal"]["day"] = "tuesday"
+    elif mutation == "changed_food":
+        reply["meal"]["items"][0]["portion_g"] = 99.0
+    elif mutation == "wrong_total":
+        reply["meal"]["estimated_calories_kcal"] = 999.0
+    elif mutation == "invented_target":
+        reply["meal"]["daily_target_percentages"] = {key: 25.0 for key in (
+            "calories_percent", "carbohydrate_percent", "protein_percent", "fat_percent")}
+    elif mutation == "invalid_similar":
+        reply["meal"]["items"][0].update(recipe_available=True,
+            recipe_source="official_similar", official_recipe=True)
+    elif mutation == "extra_field":
+        reply["meal"]["items"][0]["unvalidated_secret"] = "unexpected"
+    else:
+        del reply["meal"]["items"][0]["recipe_source"]
+    state["recipe_reply"] = reply
+    response = client.get(RECIPE)
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] in {"AI_INVALID_RESPONSE", "AI_SLOT_MISMATCH"}
+
+
+@pytest.mark.parametrize("change", ["version", "context"])
+def test_recipe_rejects_changes_during_ai_call(harness, change):
+    client, state = harness
+    assert generate(client).status_code == 201
+    state["change_version" if change == "version" else "change_context"] = True
+    assert client.get(RECIPE).status_code == 409
+
+
+def test_recipe_requires_owner_and_valid_servings(harness):
+    client, state = harness
+    assert generate(client).status_code == 201
+    assert client.get(RECIPE, params={"servings": 21}).status_code == 422
+    state["rows"][0]["user_id"] = OTHER
+    assert client.get(RECIPE).status_code == 404
+    assert len(state["ai_calls"]) == 1
 
 
 @pytest.mark.parametrize("unresolved", [False, True])
