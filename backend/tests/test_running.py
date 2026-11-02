@@ -100,6 +100,49 @@ def test_generate_uses_saved_pace_and_saves_full_path(harness):
     assert client.get("/api/running/saved-courses?favorites_only=true").json()["courses"]
 
 
+def test_save_accepts_integral_floats_after_app_json_round_trip(harness):
+    client, state = harness
+    state["reply"]["candidates"][0]["pace_minutes_per_km"] = 7.0
+    state["reply"]["candidates"][0]["path"][0] = {"latitude": 37.0, "longitude": 127.0}
+
+    response = client.post("/api/running/routes/generate-loop", json={"start": COORD})
+    assert response.status_code == 200, response.text
+    candidate = response.json()["candidates"][0]
+    token = candidate.pop("selection_token")
+    assert isinstance(candidate["pace_minutes_per_km"], float)
+
+    # JavaScript JSON.stringify sends integral float values back as JSON integers.
+    candidate["pace_minutes_per_km"] = 7
+    candidate["path"][0]["latitude"] = 37
+    candidate["path"][0]["longitude"] = 127
+    saved = client.post("/api/running/saved-courses", json={
+        "snapshot": candidate, "selection_token": token,
+    })
+    assert saved.status_code == 201, saved.text
+    assert len(state["saved"]) == 1
+
+
+def test_detail_course_saves_after_integral_float_json_round_trip(harness):
+    client, state = harness
+    course = generated()
+    course["course_id"] = "official-123"
+    course["source"]["source_type"] = "official_gpx"
+    course["pace_minutes_per_km"] = 7.0
+    state["reply"] = {"course": course}
+
+    detail = client.get("/api/running/courses/official-123")
+    assert detail.status_code == 200, detail.text
+    snapshot = detail.json()["course"]
+    token = snapshot.pop("selection_token")
+    snapshot["pace_minutes_per_km"] = 7
+
+    saved = client.post("/api/running/saved-courses", json={
+        "snapshot": snapshot, "selection_token": token,
+    })
+    assert saved.status_code == 201, saved.text
+    assert len(state["saved"]) == 1
+
+
 def test_best_effort_requires_explicit_acceptance(harness):
     client, state = harness
     state["reply"] = {"status": "best_effort", "candidates": [generated(within=False)]}
