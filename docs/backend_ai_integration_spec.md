@@ -105,10 +105,17 @@ Content-Type: application/json
 | Field | 형식 | 설명 |
 |---|---|---|
 | `metric_statuses` | `object<string, string>` | Backend 또는 Rule Engine이 준비한 건강 지표 상태 |
-| `goal_type` | `string \| null` | 체중 감량, 근육 증가 등 사용자 목표 |
+| `health_goal` | `object \| null` | 활성 건강목표. `goal_type`, 선택적 `goal_text` 포함 |
+| `goal_type` | `string \| null` | 기존 호출자 호환용 운동 목표. `health_goal`이 있으면 후순위 |
 | `additional_input` | `string \| string[] \| null` | 개인화에 필요한 추가 조건 |
 
 `metric_statuses`에는 실제 입력으로 판정한 값만 포함한다. 제공하지 않은 건강 수치나 질환을 추정해 보내지 않는다.
+
+`health_goal.goal_type`은 `fat_loss`, `muscle_gain`, `fitness`,
+`maintenance`, `other` 중 하나다. `goal_text`는 최대 200자이며 사용자 데이터로만
+처리하고 내부 명령을 실행하지 않는다. `health_goal`이 없으면 기존 `goal_type`을
+호환 매핑하고, 두 값이 모두 없으면 건강목표 없이 기본 영양 목표를 사용한다.
+건강목표만으로 질환, 개인 필요 열량 또는 치료 효과를 추정하지 않는다.
 
 ### 식품 제한
 
@@ -159,7 +166,11 @@ Content-Type: application/json
   },
   "food_allergens": ["땅콩"],
   "disliked_foods": ["가지"],
-  "goal_type": "weight_loss",
+  "health_goal": {
+    "goal_type": "fat_loss",
+    "goal_text": null
+  },
+  "goal_type": null,
   "additional_input": "간이 강하지 않은 식단",
   "sido": "전라남도",
   "sigungu": "완도군",
@@ -249,7 +260,11 @@ Content-Type: application/json
   "current_ingredients": ["현미", "닭가슴살"],
   "food_allergens": [],
   "disliked_foods": [],
-  "goal_type": "weight_loss",
+  "health_goal": {
+    "goal_type": "fat_loss",
+    "goal_text": null
+  },
+  "goal_type": null,
   "additional_input": null,
   "sido": null,
   "sigungu": null,
@@ -595,6 +610,46 @@ Frontend 표시값과 API enum은 다음처럼 매핑한다.
 `has_discomfort=false`이면 `discomfort_areas`는 빈 배열이어야 한다. `true`인데 상세 부위를 받지 않은 화면이라면 빈 배열도 허용한다. AI Server는 피곤함 또는 불편 부위가 있으면 강도·동작 선택에 안전 조건을 우선한다.
 
 운동 방식·집중 부위·도구·운동 성향에서 `other`를 선택하면 각각 `other_training_style`, `other_focus_area`, `other_equipment`, `other_workout_style`에 사용자가 지정한 값을 함께 전달한다. 헬스·홈트 시간의 `기타`는 별도 enum이 아니라 실제 분 단위 숫자를 `available_minutes`에 전달한다.
+
+운동 추천 결과의 각 `sessions[].exercises[]`는 AI Server에 배포된
+`data/exercise_assets/exercise_asset_catalog.csv`에 존재하는 운동만 반환한다.
+OpenAI는 서버가 필터링한 `exercise_key` 후보 중 하나를 선택하며, AI Server가
+선택 결과를 다시 검증한 뒤 CSV의 영문 표준명을 조립한다.
+후보 밖의 key를 선택하면 임의 운동으로 대체하지 않고 요청을 실패 처리한다.
+
+```json
+{
+  "catalog_version": "sha256:<LF로 정규화한 CSV SHA-256>",
+  "sessions": [
+    {
+      "name": "복부 운동",
+      "exercises": [
+        {
+          "exercise_key": "ex_846f603683467e",
+          "name": "45도 바이시클 트위스트 크런치",
+          "catalog_name_en": "45 Degree Bycicle Twisting Crunch",
+          "exercise_modes": ["gym"],
+          "duration_minutes": 5,
+          "intensity": "보통",
+          "instructions": [
+            "복부에 힘을 유지하고 천천히 수행하세요."
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+AI Server는 GIF 경로나 바이너리를 반환하지 않는다. `catalog_version`은 CSV의
+CRLF와 CR 줄바꿈을 LF로 정규화한 뒤 계산한 SHA-256이다. Backend도 같은 방식으로
+버전을 확인한 뒤 `exercise_key + exercise_mode + is_primary_asset=true`로 행을 찾는다.
+같은 키의 남녀 자산이 모두 있으면 사용자 성별과 같은 자산을 우선하고, 없으면
+동일 키에서 사용 가능한 primary 자산을 사용한다. 외장 저장장치의 GIF는 Backend가
+Frontend용 URL로 제공한다. 실제 자산 루트는 `EXERCISE_GIF_ROOT` 같은 Backend
+환경변수로 관리하고 Frontend에 노출하지 않는다.
+자동 정규화가 불확실한 `mapping_status=needs_review` 행과 중복 후보는 추천에서
+제외한다.
 
 ## 운동 자세 분석
 

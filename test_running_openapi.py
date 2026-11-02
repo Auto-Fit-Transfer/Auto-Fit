@@ -18,6 +18,20 @@ def main() -> None:
     assert "get" in paths["/running/courses/recommend"]
     assert "get" in paths["/running/courses/{course_id}"]
 
+    place_parameters = {
+        parameter["name"]: parameter
+        for parameter in paths["/running/places/search"]["get"][
+            "parameters"
+        ]
+    }
+    assert place_parameters["limit"]["schema"] == {
+        "type": "integer",
+        "maximum": 20,
+        "minimum": 1,
+        "default": 10,
+        "title": "Limit",
+    }
+
     recommendation_query_names = {
         parameter["name"]
         for parameter in paths["/running/courses/recommend"]["get"][

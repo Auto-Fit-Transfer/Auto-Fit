@@ -77,12 +77,12 @@ def main() -> None:
         async def __aexit__(self, exc_type, exc, traceback):
             return None
 
-        async def search_places(self, query, center, radius_m):
+        async def search_places(self, query, center, radius_m, size=15):
             calls.append(f"places:{query}")
             response = RunningPlaceSearchResponse.model_validate(
                 examples["place_search"]["response"]
             )
-            return response.places
+            return response.places * 11
 
     original_security_settings = security_module.get_settings
     original_recommend = running_router_module.recommend_running_courses
@@ -111,13 +111,14 @@ def main() -> None:
 
             place_search = client.get(
                 "/running/places/search",
-                params=examples["place_search"]["request"],
+                params={
+                    **examples["place_search"]["request"],
+                    "limit": 2,
+                },
                 headers=headers,
             )
             assert place_search.status_code == 200
-            assert place_search.json() == examples[
-                "place_search"
-            ]["response"]
+            assert len(place_search.json()["places"]) == 2
 
             official = client.get(
                 "/running/courses/recommend",

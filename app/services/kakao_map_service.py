@@ -91,16 +91,16 @@ class KakaoMapService:
         radius_m: int | None = None,
         size: int = 15,
     ) -> list[RunningPlace]:
-        params: dict[str, str | int | float] = {
+        requested_size = max(1, min(int(size), 20))
+        common_params: dict[str, str | int | float] = {
             "query": query,
-            "size": size,
         }
 
         if center is not None:
             longitude, latitude = coordinate_to_kakao_xy(
                 center
             )
-            params.update(
+            common_params.update(
                 {
                     "x": longitude,
                     "y": latitude,
@@ -109,33 +109,57 @@ class KakaoMapService:
             )
 
             if radius_m is not None:
-                params["radius"] = radius_m
+                common_params["radius"] = radius_m
 
-        payload = await self._request_json(
-            "/v2/local/search/keyword.json",
-            params=params,
-        )
-
-        return [
-            RunningPlace(
-                place_name=str(item.get("place_name") or ""),
-                address_name=(item.get("address_name") or None),
-                road_address_name=(
-                    item.get("road_address_name") or None
-                ),
-                coordinate=kakao_xy_to_coordinate(
-                    item["x"],
-                    item["y"],
-                ),
-                distance_m=(
-                    int(item["distance"])
-                    if item.get("distance") not in (None, "")
-                    else None
-                ),
+        places: list[RunningPlace] = []
+        page = 1
+        while len(places) < requested_size:
+            page_size = min(15, requested_size - len(places))
+            payload = await self._request_json(
+                "/v2/local/search/keyword.json",
+                params={
+                    **common_params,
+                    "page": page,
+                    "size": page_size,
+                },
             )
-            for item in payload.get("documents", [])
-            if item.get("x") and item.get("y")
-        ]
+            documents = payload.get("documents", [])
+            if not isinstance(documents, list):
+                break
+
+            places.extend(
+                RunningPlace(
+                    place_name=str(item.get("place_name") or ""),
+                    address_name=(item.get("address_name") or None),
+                    road_address_name=(
+                        item.get("road_address_name") or None
+                    ),
+                    coordinate=kakao_xy_to_coordinate(
+                        item["x"],
+                        item["y"],
+                    ),
+                    distance_m=(
+                        int(item["distance"])
+                        if item.get("distance") not in (None, "")
+                        else None
+                    ),
+                )
+                for item in documents
+                if isinstance(item, dict)
+                and item.get("x")
+                and item.get("y")
+            )
+
+            metadata = payload.get("meta")
+            is_end = (
+                isinstance(metadata, dict)
+                and metadata.get("is_end") is True
+            )
+            if is_end or not documents:
+                break
+            page += 1
+
+        return places[:requested_size]
 
     async def geocode_address(
         self,
@@ -168,6 +192,12 @@ class KakaoMapService:
                 "input_coord": "WGS84",
             },
         )
+        return self.parse_region_name_payload(payload)
+
+    @staticmethod
+    def parse_region_name_payload(
+        payload: dict[str, Any],
+    ) -> str | None:
         documents = payload.get("documents", [])
         administrative = next(
             (
@@ -184,12 +214,20 @@ class KakaoMapService:
         if not isinstance(selected, dict):
             return None
 
-        return (
-            selected.get("region_2depth_name")
-            or selected.get("region_1depth_name")
-            or selected.get("address_name")
-            or None
+        region_parts = list(
+            dict.fromkeys(
+                str(value).strip()
+                for value in (
+                    selected.get("region_1depth_name"),
+                    selected.get("region_2depth_name"),
+                )
+                if value and str(value).strip()
+            )
         )
+        if region_parts:
+            return " ".join(region_parts)
+
+        return selected.get("address_name") or None
 
     async def get_walking_route(
         self,

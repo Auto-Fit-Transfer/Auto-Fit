@@ -430,7 +430,47 @@ class ExerciseRecommendationRequest(BaseModel):
 
 class ExerciseItem(BaseModel):
 
-    name: str
+    exercise_key: str = Field(
+
+        min_length=1,
+
+        max_length=100,
+
+    )
+
+
+
+    name: str = Field(
+
+        min_length=1,
+
+        max_length=200,
+
+    )
+
+
+
+    catalog_name_en: str = Field(
+
+        min_length=1,
+
+        max_length=300,
+
+    )
+
+
+
+    exercise_modes: list[
+
+        ExerciseMode
+
+    ] = Field(
+
+        min_length=1,
+
+        max_length=2,
+
+    )
 
 
 
@@ -498,6 +538,16 @@ class ExerciseSession(BaseModel):
 
 class ExerciseRecommendationResponse(BaseModel):
 
+    catalog_version: str = Field(
+
+        min_length=1,
+
+        max_length=100,
+
+    )
+
+
+
     summary: str
 
 
@@ -547,6 +597,26 @@ class ExerciseRecommendationResponse(BaseModel):
 # =========================================================
 # Diet Request
 # =========================================================
+
+
+DietHealthGoalType = Literal[
+    "fat_loss",
+    "muscle_gain",
+    "fitness",
+    "maintenance",
+    "other",
+]
+
+
+class DietHealthGoal(BaseModel):
+    """Backend가 확정한 활성 건강목표의 최소 전달 형태."""
+
+    goal_type: DietHealthGoalType
+
+    goal_text: str | None = Field(
+        default=None,
+        max_length=200,
+    )
 
 
 class DietMealTarget(BaseModel):
@@ -623,6 +693,10 @@ class DietRecommendationRequest(BaseModel):
     )
 
     goal_type: str | None = None
+
+    # 신규 Backend 건강목표 계약이다. 제공되면 기존 goal_type보다
+    # 우선하며, goal_text는 사용자 데이터로만 취급한다.
+    health_goal: DietHealthGoal | None = None
 
     additional_input: (
         str
@@ -1434,6 +1508,8 @@ class ReplaceMealRequest(BaseModel):
     )
 
     goal_type: str | None = None
+
+    health_goal: DietHealthGoal | None = None
 
     additional_input: (
         str

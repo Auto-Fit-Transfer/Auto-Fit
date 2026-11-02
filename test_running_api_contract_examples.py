@@ -21,7 +21,7 @@ def main() -> None:
     examples = json.loads(
         EXAMPLES_PATH.read_text(encoding="utf-8")
     )
-    assert examples["contract_version"] == "1.2"
+    assert examples["contract_version"] == "1.3"
     assert set(examples) == {
         "contract_version",
         "place_search",

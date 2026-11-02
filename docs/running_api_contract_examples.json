@@ -1,11 +1,12 @@
 {
-  "contract_version": "1.2",
+  "contract_version": "1.3",
   "place_search": {
     "request": {
       "query": "판교역",
       "latitude": 37.3948,
       "longitude": 127.1112,
-      "radius_m": 5000
+      "radius_m": 5000,
+      "limit": 2
     },
     "response": {
       "ok": true,

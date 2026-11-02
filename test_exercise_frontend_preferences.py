@@ -17,6 +17,7 @@ class FakeResponses:
         self.input_text = kwargs["input"]
         return SimpleNamespace(
             output_parsed=ExerciseRecommendationResponse(
+                catalog_version="selection-placeholder",
                 summary="오늘의 설정을 반영한 홈트",
                 weekly_frequency=3,
                 intensity="가벼움",

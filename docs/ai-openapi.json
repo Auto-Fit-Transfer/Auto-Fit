@@ -620,6 +620,18 @@
             }
           },
           {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 20,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          },
+          {
             "name": "latitude",
             "in": "query",
             "required": false,
@@ -2983,6 +2995,39 @@
         ],
         "title": "DietGenerateResponse"
       },
+      "DietHealthGoal": {
+        "properties": {
+          "goal_type": {
+            "type": "string",
+            "enum": [
+              "fat_loss",
+              "muscle_gain",
+              "fitness",
+              "maintenance",
+              "other"
+            ],
+            "title": "Goal Type"
+          },
+          "goal_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "goal_type"
+        ],
+        "title": "DietHealthGoal",
+        "description": "Backend가 확정한 활성 건강목표의 최소 전달 형태."
+      },
       "DietIngredient": {
         "properties": {
           "name": {
@@ -3659,6 +3704,16 @@
             ],
             "title": "Goal Type"
           },
+          "health_goal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DietHealthGoal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "additional_input": {
             "anyOf": [
               {
@@ -3929,9 +3984,36 @@
       },
       "ExerciseItem": {
         "properties": {
+          "exercise_key": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Exercise Key"
+          },
           "name": {
             "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
             "title": "Name"
+          },
+          "catalog_name_en": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Catalog Name En"
+          },
+          "exercise_modes": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "gym",
+                "home_training"
+              ]
+            },
+            "type": "array",
+            "maxItems": 2,
+            "minItems": 1,
+            "title": "Exercise Modes"
           },
           "duration_minutes": {
             "anyOf": [
@@ -3968,7 +4050,10 @@
         },
         "type": "object",
         "required": [
-          "name"
+          "exercise_key",
+          "name",
+          "catalog_name_en",
+          "exercise_modes"
         ],
         "title": "ExerciseItem"
       },
@@ -4112,6 +4197,12 @@
       },
       "ExerciseRecommendationResponse": {
         "properties": {
+          "catalog_version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Catalog Version"
+          },
           "summary": {
             "type": "string",
             "title": "Summary"
@@ -4151,6 +4242,7 @@
         },
         "type": "object",
         "required": [
+          "catalog_version",
           "summary",
           "weekly_frequency",
           "intensity"
@@ -6984,6 +7076,16 @@
               }
             ],
             "title": "Goal Type"
+          },
+          "health_goal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DietHealthGoal"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "additional_input": {
             "anyOf": [

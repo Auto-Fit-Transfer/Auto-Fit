@@ -982,19 +982,37 @@ def _matches_region_text(
         return True
 
     tokens = [
-        _normalize_region_text(token)
+        token
         for token in re.findall(
             r"[0-9A-Za-z가-힣]+",
             requested_region,
         )
         if len(_normalize_region_text(token)) >= 2
     ]
-    if len(tokens) > 1 and tokens[0].endswith(
-        ("도", "특별시", "광역시", "특별자치시")
-    ):
-        tokens = tokens[1:]
 
-    return any(token in haystack for token in reversed(tokens))
+    if not tokens:
+        return False
+
+    # A multi-level request such as "광주광역시 동구청" must keep
+    # every administrative level.  Matching only the last token would also
+    # admit 대구 동구청 and 울산 동구청.  Government-office
+    # suffixes are optional because public datasets may store either
+    # "동구" or "동구청".
+    return all(
+        any(
+            variant in haystack
+            for variant in _region_token_variants(token)
+        )
+        for token in tokens
+    )
+
+
+def _region_token_variants(token: str) -> tuple[str, ...]:
+    normalized = _normalize_region_text(token)
+    variants = [normalized]
+    if normalized.endswith(("시청", "군청", "구청", "도청")):
+        variants.append(normalized[:-1])
+    return tuple(dict.fromkeys(variants))
 
 
 async def _build_durunubi_summaries(

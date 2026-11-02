@@ -1,0 +1,193 @@
+import hashlib
+from types import SimpleNamespace
+
+import pytest
+
+from app.schemas.recommendation import (
+    ExerciseRecommendationRequest,
+)
+from app.services.exercise_catalog_service import (
+    EXERCISE_CATALOG_PATH,
+    candidates_by_key,
+    get_exercise_catalog_version,
+    select_exercise_candidates,
+)
+import app.services.exercise_recommendation_service as service
+
+
+def run_immediate(coroutine):
+    """Run a coroutine whose test doubles complete without I/O waits."""
+
+    try:
+        coroutine.send(None)
+    except StopIteration as exc:
+        return exc.value
+
+    coroutine.close()
+    raise AssertionError("test coroutine unexpectedly waited for I/O")
+
+
+def _home_request() -> ExerciseRecommendationRequest:
+    return ExerciseRecommendationRequest(
+        exercise_mode="home_training",
+        daily_condition="normal",
+        available_minutes=20,
+        preferred_training_types=[
+            "home_training",
+            "bodyweight",
+        ],
+        home_training_preferences={
+            "equipment": "none",
+            "workout_style": "quiet",
+        },
+    )
+
+
+def test_catalog_candidates_follow_request_constraints() -> None:
+    candidates = select_exercise_candidates(
+        _home_request()
+    )
+
+    assert candidates
+    assert len(candidates) <= 48
+    assert len(candidates_by_key(candidates)) == len(candidates)
+
+    for candidate in candidates:
+        assert candidate.exercise_key.startswith("ex_")
+        assert candidate.assets
+        assert set(
+            candidate.recommended_training_types
+        ).issubset({"home_training", "bodyweight"})
+        for asset in candidate.assets:
+            assert asset.exercise_mode == "home_training"
+            assert "/Home_Workout/" in asset.animation_path
+
+
+def test_catalog_version_is_cross_platform_stable() -> None:
+    source = EXERCISE_CATALOG_PATH.read_bytes()
+    normalized = source.replace(b"\r\n", b"\n").replace(
+        b"\r",
+        b"\n",
+    )
+
+    assert get_exercise_catalog_version() == (
+        "sha256:" + hashlib.sha256(normalized).hexdigest()
+    )
+
+
+def test_hydration_rejects_key_outside_candidates() -> None:
+    candidates = select_exercise_candidates(
+        _home_request()
+    )
+    selection = service._CatalogExerciseRecommendationSelection(
+        summary="catalog enforcement fixture",
+        weekly_frequency=3,
+        intensity="보통",
+        sessions=[
+            {
+                "name": "홈트",
+                "exercises": [
+                    {
+                        "exercise_key": "ex_not_in_catalog",
+                        "name": "임의 운동",
+                    }
+                ],
+            }
+        ],
+    )
+
+    with pytest.raises(RuntimeError):
+        service._hydrate_catalog_response(
+            selection,
+            candidates,
+        )
+
+
+def test_generate_hydrates_only_catalog_assets(
+    monkeypatch,
+) -> None:
+    request = _home_request()
+    candidates = select_exercise_candidates(request)
+    selected = candidates[0]
+
+    class FakeResponses:
+        def __init__(self) -> None:
+            self.input_text = ""
+
+        async def parse(self, **kwargs):
+            self.input_text = kwargs["input"]
+            return SimpleNamespace(
+                output_parsed=(
+                    service._CatalogExerciseRecommendationSelection(
+                        summary="CSV 운동만 사용",
+                        weekly_frequency=3,
+                        intensity="보통",
+                        sessions=[
+                            {
+                                "name": "홈트",
+                                "focus": "전신",
+                                "estimated_duration_minutes": 20,
+                                "exercises": [
+                                    {
+                                        "exercise_key": (
+                                            selected.exercise_key
+                                        ),
+                                        "name": "카탈로그 운동",
+                                        "duration_minutes": 5,
+                                        "intensity": "보통",
+                                        "instructions": [
+                                            "안정적으로 수행하세요."
+                                        ],
+                                    }
+                                ],
+                            }
+                        ],
+                        cautions=[],
+                        sources=[],
+                    )
+                )
+            )
+
+    class FakeClient:
+        def __init__(self) -> None:
+            self.responses = FakeResponses()
+
+    fake_client = FakeClient()
+
+    async def fake_rag_node(_state):
+        return {"rag_context": []}
+
+    monkeypatch.setattr(
+        service,
+        "_get_openai_client",
+        lambda: fake_client,
+    )
+    monkeypatch.setattr(
+        service,
+        "rag_node",
+        fake_rag_node,
+    )
+
+    result = run_immediate(
+        service.generate_exercise_recommendation(request)
+    )
+
+    exercise = result.sessions[0].exercises[0]
+    assert exercise.exercise_key == selected.exercise_key
+    assert exercise.catalog_name_en == selected.exercise_name_en
+    assert exercise.name == "카탈로그 운동"
+    assert exercise.exercise_modes == sorted(
+        {
+            asset.exercise_mode
+            for asset in selected.assets
+        }
+    )
+    assert result.catalog_version == (
+        get_exercise_catalog_version()
+    )
+    assert selected.exercise_key in (
+        fake_client.responses.input_text
+    )
+    assert "catalog_candidates" in (
+        fake_client.responses.input_text
+    )

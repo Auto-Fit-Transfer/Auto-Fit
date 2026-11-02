@@ -132,6 +132,16 @@ AI Server가 Backend DB를 직접 변경하는 단계는 없다.
 
 Frontend의 목표 시간은 코스 검색 조건으로 사용하지 않는다. Backend 또는 Frontend가 각 코스의 `estimated_duration_minutes`와 목표 시간을 비교하여 보조 정보로 표시한다. 러닝 강도 선택은 `light → easy`, `moderate → moderate`, `hard → hard`로 변환해 선택적 `desired_difficulty`로 전달할 수 있다. 이 값은 거리 허용 범위를 바꾸지 않고 같은 거리 후보의 보조 정렬에만 사용한다.
 
+### 5.1 장소 검색과 지역 범위
+
+```http
+GET /running/places/search?query=광주광역시%20동구청&limit=2
+```
+
+- `limit`은 1~20, 기본값은 10이며 AI Server는 응답 배열을 반드시 이 개수 이하로 잘라서 반환한다.
+- 코스 지역 요청이 `광주광역시 동구청`이면 광주광역시와 동구 모두 일치해야 하며, 대구광역시·울산광역시 동구 코스는 제외한다.
+- GPS 기반 추천은 Kakao의 시·도와 시·군·구를 함께 `resolved_region`에 보존한다.
+
 ## 6. 공식 코스 추천
 
 ### 6.1 요청
@@ -191,6 +201,8 @@ HTTP 오류가 아니다. Backend는 동일한 사용자 거리와 출발 좌표
 - `unavailable`
 
 두루누비가 `disabled` 또는 `unavailable`이어도 전국길 메타데이터 추천이 정상이라면 전체 요청은 성공할 수 있다.
+
+단, `official_gpx=disabled`인 경우 `official_metadata` 코스는 전체 공식 Polyline을 제공하지 않으며 상세 `path=[]`이 될 수 있다. 목록·거리·설명 추천은 정상이지만 지도 경로 표시는 별도 검증이 필요하다.
 
 ## 7. 공식 코스 상세
 

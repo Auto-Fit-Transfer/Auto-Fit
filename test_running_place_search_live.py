@@ -16,9 +16,11 @@ async def main() -> None:
                 longitude=127.1112,
             ),
             radius_m=5000,
+            size=2,
         )
 
     assert places
+    assert len(places) <= 2
     assert all(place.coordinate for place in places)
     print(
         "Kakao place search live test: OK "

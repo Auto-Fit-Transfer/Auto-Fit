@@ -1,12 +1,22 @@
 import json
 
 from openai import AsyncOpenAI
+from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 from app.graphs.nodes.rag_node import rag_node
 from app.schemas.recommendation import (
+    ExerciseItem,
     ExerciseRecommendationRequest,
     ExerciseRecommendationResponse,
+    ExerciseSession,
+    RecommendationSource,
+)
+from app.services.exercise_catalog_service import (
+    ExerciseCatalogCandidate,
+    candidates_by_key,
+    get_exercise_catalog_version,
+    select_exercise_candidates,
 )
 from app.services.exercise_context_service import (
     build_exercise_safety_tags,
@@ -38,6 +48,9 @@ SYSTEM_INSTRUCTIONS = """
 - 특정 전문 장비가 필요한 운동만으로 운동 계획을 구성하지 않는다.
 - 운동 장소 조건이 제공되면 해당 장소에서 현실적으로 수행 가능한 운동을 우선한다.
 - 검증된 RAG 근거가 없는 의학적 내용을 임의로 생성하지 않는다.
+- catalog_candidates에 없는 운동은 절대 생성하거나 추천하지 않는다.
+- 각 운동은 catalog_candidates의 exercise_key를 정확히 복사한다.
+- 운동 한글명은 선택한 catalog 운동의 의미를 바꾸지 않는 번역명으로 작성한다.
 - sources에는 실제 rag_context에 존재하는 출처만 포함한다.
 - 사용자에게 "원본 검사 수치가 없다"고 표현하지 않는다.
 - 외부 LLM 입력에는 개인정보 보호를 위해 원본 건강 수치 대신 상태 분류만 제공된 것으로 이해한다.
@@ -45,6 +58,127 @@ SYSTEM_INSTRUCTIONS = """
   "현재 AI 분석에는 상태 분류를 사용했으므로 세부 수치 평가는 의료진과 확인하세요."
   정도로 표현한다.
 """.strip()
+
+
+class _CatalogExerciseSelection(BaseModel):
+    exercise_key: str = Field(
+        min_length=1,
+        max_length=100,
+    )
+    name: str = Field(
+        min_length=1,
+        max_length=200,
+    )
+    duration_minutes: int | None = Field(
+        default=None,
+        ge=1,
+        le=300,
+    )
+    intensity: str | None = None
+    instructions: list[str] = Field(
+        default_factory=list,
+        max_length=3,
+    )
+
+
+class _CatalogExerciseSessionSelection(BaseModel):
+    name: str
+    focus: str | None = None
+    estimated_duration_minutes: int | None = Field(
+        default=None,
+        ge=1,
+        le=300,
+    )
+    exercises: list[_CatalogExerciseSelection] = Field(
+        default_factory=list,
+        max_length=4,
+    )
+
+
+class _CatalogExerciseRecommendationSelection(BaseModel):
+    summary: str
+    weekly_frequency: int = Field(
+        ge=1,
+        le=7,
+    )
+    intensity: str
+    sessions: list[
+        _CatalogExerciseSessionSelection
+    ] = Field(default_factory=list)
+    cautions: list[str] = Field(
+        default_factory=list,
+        max_length=5,
+    )
+    sources: list[RecommendationSource] = Field(
+        default_factory=list
+    )
+
+
+def _hydrate_catalog_response(
+    selection: _CatalogExerciseRecommendationSelection,
+    candidates: tuple[ExerciseCatalogCandidate, ...],
+) -> ExerciseRecommendationResponse:
+    allowed_candidates = candidates_by_key(candidates)
+    sessions: list[ExerciseSession] = []
+
+    for selected_session in selection.sessions:
+        exercises: list[ExerciseItem] = []
+
+        for selected_exercise in selected_session.exercises:
+            candidate = allowed_candidates.get(
+                selected_exercise.exercise_key
+            )
+            if candidate is None:
+                raise RuntimeError(
+                    "OpenAI selected an exercise outside the "
+                    "exercise catalog candidate set."
+                )
+
+            exercises.append(
+                ExerciseItem(
+                    exercise_key=candidate.exercise_key,
+                    name=selected_exercise.name,
+                    catalog_name_en=(
+                        candidate.exercise_name_en
+                    ),
+                    exercise_modes=sorted(
+                        {
+                            asset.exercise_mode
+                            for asset in candidate.assets
+                        }
+                    ),
+                    duration_minutes=(
+                        selected_exercise.duration_minutes
+                    ),
+                    intensity=selected_exercise.intensity,
+                    instructions=(
+                        selected_exercise.instructions
+                    ),
+                )
+            )
+
+        sessions.append(
+            ExerciseSession(
+                name=selected_session.name,
+                focus=selected_session.focus,
+                estimated_duration_minutes=(
+                    selected_session.estimated_duration_minutes
+                ),
+                exercises=exercises,
+            )
+        )
+
+    return ExerciseRecommendationResponse(
+        catalog_version=(
+            get_exercise_catalog_version()
+        ),
+        summary=selection.summary,
+        weekly_frequency=selection.weekly_frequency,
+        intensity=selection.intensity,
+        sessions=sessions,
+        cautions=selection.cautions,
+        sources=selection.sources,
+    )
 
 
 def _get_openai_client() -> AsyncOpenAI:
@@ -132,7 +266,17 @@ async def generate_exercise_recommendation(
     safety_tags = sorted(set(safety_tags))
 
     # -----------------------------------------------------
-    # 3. 기존 RAG 파이프라인 재사용
+    # 3. 공식 운동 GIF catalog 후보 필터링
+    #
+    # LLM은 이 후보의 exercise_key만 선택할 수 있다.
+    # -----------------------------------------------------
+
+    catalog_candidates = select_exercise_candidates(
+        request
+    )
+
+    # -----------------------------------------------------
+    # 4. 기존 RAG 파이프라인 재사용
     #
     # metric_statuses는 AI 서버 내부에서만 사용한다.
     # -----------------------------------------------------
@@ -154,7 +298,7 @@ async def generate_exercise_recommendation(
     )
 
     # -----------------------------------------------------
-    # 4. 외부 LLM용 RAG 데이터 최소화
+    # 5. 외부 LLM용 RAG 데이터 최소화
     # -----------------------------------------------------
 
     safe_rag_context = (
@@ -164,7 +308,7 @@ async def generate_exercise_recommendation(
     )
 
     # -----------------------------------------------------
-    # 5. OpenAI에 전달할 안전한 payload
+    # 6. OpenAI에 전달할 안전한 payload
     #
     # 중요:
     # metric_statuses 자체는 외부 LLM에 보내지 않는다.
@@ -216,10 +360,14 @@ async def generate_exercise_recommendation(
         "rag_context": (
             safe_rag_context
         ),
+        "catalog_candidates": [
+            candidate.to_prompt_dict()
+            for candidate in catalog_candidates
+        ],
     }
 
     # -----------------------------------------------------
-    # 6. OpenAI 호출
+    # 7. OpenAI 호출
     # -----------------------------------------------------
 
     client = _get_openai_client()
@@ -241,6 +389,13 @@ exercise_mode, daily_condition, 모드별 설정은 사용자가
 "오늘의 운동 설정" 화면에서 직접 선택한 값입니다.
 
 반드시 다음 규칙을 따르세요.
+
+운동 catalog 강제:
+- 모든 추천 운동은 catalog_candidates에 존재해야 합니다.
+- exercise_key는 catalog_candidates의 값을 한 글자도 바꾸지 말고 복사하세요.
+- catalog_candidates에 없는 운동을 새로 만들거나 비슷한 운동으로 바꾸지 마세요.
+- name은 선택한 exercise_name_en과 동일한 운동을 뜻하는 자연스러운 한글명으로 작성하세요.
+- 적합한 후보가 부족하더라도 catalog 밖의 운동을 추가하지 마세요.
 
 운동 방식:
 - preferred_training_types가 비어 있지 않으면 해당 운동 방식을 우선하세요.
@@ -307,7 +462,7 @@ exercise_mode, daily_condition, 모드별 설정은 사용자가
             "effort": "minimal"
         },
         text_format=(
-            ExerciseRecommendationResponse
+            _CatalogExerciseRecommendationSelection
         ),
         max_output_tokens=3000,
     )
@@ -319,4 +474,7 @@ exercise_mode, daily_condition, 모드별 설정은 사용자가
             "운동 추천 구조화 응답을 생성하지 못했습니다."
         )
 
-    return parsed
+    return _hydrate_catalog_response(
+        parsed,
+        catalog_candidates,
+    )

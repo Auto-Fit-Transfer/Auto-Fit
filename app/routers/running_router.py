@@ -58,6 +58,7 @@ router = APIRouter(
 )
 async def search_running_places(
     query: str = Query(min_length=1, max_length=100),
+    limit: int = Query(default=10, ge=1, le=20),
     latitude: float | None = Query(default=None, ge=-90, le=90),
     longitude: float | None = Query(default=None, ge=-180, le=180),
     radius_m: int | None = Query(default=None, ge=0, le=20000),
@@ -96,9 +97,10 @@ async def search_running_places(
                 query=query,
                 center=center,
                 radius_m=radius_m,
+                size=limit,
             )
 
-        return RunningPlaceSearchResponse(places=places)
+        return RunningPlaceSearchResponse(places=places[:limit])
     except KakaoMapConfigurationError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except KakaoMapProviderError as exc:

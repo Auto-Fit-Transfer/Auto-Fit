@@ -164,6 +164,40 @@ async def run_async_tests() -> None:
     assert response.courses[0].requires_route_validation is True
     assert response.courses[0].source.source_type == "official_metadata"
 
+    gwangju = make_course(
+        course_id="gwangju-donggu",
+        name="광주 동구 건강길",
+        distance_km=5.0,
+        region="광주광역시 동구",
+        start_address="광주광역시 동구 금남로",
+    )
+    daegu = make_course(
+        course_id="daegu-donggu",
+        name="대구 동구 건강길",
+        distance_km=5.0,
+        region="대구광역시 동구청",
+        start_address="대구광역시 동구 신암동",
+    )
+    ulsan = make_course(
+        course_id="ulsan-donggu",
+        name="울산 동구 건강길",
+        distance_km=5.0,
+        region="울산광역시 동구청",
+        start_address="울산광역시 동구 화정동",
+    )
+    regional_response = await recommend_running_courses(
+        request=RunningCourseRecommendationRequest(
+            region="광주광역시 동구청",
+            distance_option="5km",
+        ),
+        public_course_service=FakePublicCourseService(
+            [daegu, ulsan, gwangju]
+        ),
+    )
+    assert [
+        course.course_id for course in regional_response.courses
+    ] == ["gwangju-donggu"]
+
     no_match = await recommend_running_courses(
         request=RunningCourseRecommendationRequest(
             region="성남시",
