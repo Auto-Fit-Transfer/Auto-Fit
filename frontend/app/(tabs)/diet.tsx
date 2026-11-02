@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { R6ConnectionError } from '@/src/components/common/R6ConnectionError';
 import { MealRecordSheets, type MealRecordDraft } from '@/src/components/diet/MealRecordSheets';
 import { R6DietHome } from '@/src/components/diet/R6DietHome';
@@ -542,14 +542,14 @@ export default function DietScreen() {
     }
   }, []);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     const frame = requestAnimationFrame(() => {
       void loadRecommendations(selectedDateKey);
       void loadNutritionSummary(selectedDateKey);
       void loadMealLogs(selectedDateKey);
     });
     return () => cancelAnimationFrame(frame);
-  }, [loadMealLogs, loadNutritionSummary, loadRecommendations, selectedDateKey]);
+  }, [loadMealLogs, loadNutritionSummary, loadRecommendations, selectedDateKey]));
 
   const openMealRecord = useCallback((mealId: MealType) => {
     setRecordingMealId(mealId);
