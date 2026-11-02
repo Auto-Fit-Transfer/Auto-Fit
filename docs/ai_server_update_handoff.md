@@ -8,13 +8,13 @@
 
 | 항목 | 값 |
 |---|---|
-| 문서 버전 | 1.0 |
+| 문서 버전 | 1.1 |
 | 최초 작성일 | 2026-11-02 |
 | 최종 갱신일 | 2026-11-02 |
 | 대상 | Frontend, Backend, AI Server, 배포·인프라 담당자 |
 | AI 저장소 | `Auto-Fit-Transfer/Auto-Fit` |
 | AI 브랜치 | `ai` |
-| 원격 AI 기준 커밋 | `951ac47fd20483ff015b858d0b0e0494fab77efd` |
+| 원격 AI 기준 커밋 | `d1eae7b0ee0d399ad4ec2241f48813285ecd886e` |
 | 상세 OpenAPI | [ai-openapi.json](ai-openapi.json) |
 | Backend 연동 명세 | [backend_ai_integration_spec.md](backend_ai_integration_spec.md) |
 
@@ -839,3 +839,20 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - 테스트 결과: 동기 필터 1개와 계약·OpenAPI 2개 통과; 전체 비동기 테스트는 Windows 이벤트 루프 생성 단계의 기존 소켓 대기로 이 환경에서 완료하지 못함
 - 남은 작업: 배포 환경에서 GPS 좌표로 3km 내부·외부 실제 코스 E2E 및 모바일 빈 결과 fallback 확인
 - 알려진 제한: 공공 메타데이터 지오코딩 후보는 `RUNNING_COURSE_GEOCODE_LIMIT` 범위에서만 좌표를 확인하므로 반경 내 코스를 누락할 가능성은 있으나, 좌표 미확인 코스를 3km 이내라고 추정해 반환하지는 않음
+
+## 2026-11-02 · 28끼 공통 Recipe 상세 표시 계약 확장
+
+- 상태: 로컬 구현 완료, Backend·Frontend 연동 대기
+- 관련 커밋: 미커밋
+- 변경 목적: 주간 7일×4끼 모든 추천 메뉴에서 동일한 Recipe 상세 화면 데이터를 제공
+- 변경 API: `POST /recommend/diet/recipe`
+- 변경 파일: `app/schemas/recommendation.py`, `app/routers/recommendation_router.py`, `app/services/meal_recipe_service.py`, Recipe 계약·OpenAPI·테스트 파일
+- 기존 동작 영향: 기존 최소 요청과 official exact → similar → LLM → unavailable 순서, 영양값, 알레르기·기피 음식 검사는 유지
+- Frontend 작업: 28개 슬롯이 공통 상세 컴포넌트를 사용하고 구조화된 조리 단계와 nullable 시간을 처리
+- Backend 작업: 선택한 슬롯의 요일·식사 유형·메뉴 설명·guidance·items·일일 영양 목표·연관 메뉴를 AI Server로 전달하고 응답을 Frontend에 중계
+- AI·배포 작업: AI Server 재배포 후 runtime OpenAPI와 저장된 snapshot 일치 확인
+- 실행 테스트: 신규 상세 응답, legacy 요청 호환, Recipe Schema, 계약 예시, syntax 검사
+- 테스트 결과: 실행 가능한 관련 테스트 통과; 기존 비동기 스크립트 일부는 Windows 이벤트 루프 대기로 별도 배포 환경 재검증 필요
+- 남은 작업: Backend Recipe proxy 구현·DTO 확장, Frontend 공통 상세 화면 연결, Frontend → Backend → AI Server E2E
+- 알려진 제한: 공식 원본에 조리시간이 없으면 `estimated_duration_minutes`는 `null`; 근거 없는 시간을 생성하지 않음
+- 제외 사항: 장보기 목록 추가는 AI 계약에 포함하지 않으며 Backend/Frontend의 사용자 상태 기능으로 유지

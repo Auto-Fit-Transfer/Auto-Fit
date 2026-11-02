@@ -10,6 +10,8 @@ from pydantic import (
 
     Field,
 
+    field_validator,
+
     model_validator,
 
 )
@@ -1617,6 +1619,25 @@ class DietRecipeItemRequest(DietFoodItem):
     pass
 
 
+class DietRecipeRelatedMenu(BaseModel):
+    """같은 주간 식단에서 함께 노출할 다른 추천 메뉴."""
+
+    menu_name: str = Field(
+        min_length=1,
+        max_length=100,
+    )
+
+    day: DietDay | None = None
+
+    meal_type: DietMealType | None = None
+
+    estimated_calories_kcal: float | None = Field(
+        default=None,
+        ge=0,
+        le=3000,
+    )
+
+
 class DietRecipeRequest(BaseModel):
     """
     특정 한 끼를 구성하는 음식들의 레시피 조회 요청.
@@ -1626,6 +1647,49 @@ class DietRecipeRequest(BaseModel):
         DietRecipeItemRequest
     ] = Field(
         min_length=1,
+        max_length=10,
+    )
+
+    day: DietDay | None = None
+
+    meal_type: DietMealType | None = None
+
+    menu_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+    )
+
+    menu_description: str = Field(
+        default="",
+        max_length=300,
+    )
+
+    guidance: str = Field(
+        default="",
+        max_length=300,
+    )
+
+    tags: list[str] = Field(
+        default_factory=list,
+        max_length=6,
+    )
+
+    personalization_reasons: list[str] = Field(
+        default_factory=list,
+        max_length=5,
+    )
+
+    servings: int = Field(
+        default=1,
+        ge=1,
+        le=20,
+    )
+
+    daily_nutrition_target: DietMealTarget | None = None
+
+    related_menus: list[DietRecipeRelatedMenu] = Field(
+        default_factory=list,
         max_length=10,
     )
 
@@ -1663,6 +1727,59 @@ class DietRecipeIngredient(BaseModel):
     )
 
 
+class DietRecipeStep(BaseModel):
+    """Frontend가 순서·시간·팁을 각각 표시할 수 있는 조리 단계."""
+
+    order: int = Field(
+        ge=1,
+        le=20,
+    )
+
+    instruction: str = Field(
+        min_length=1,
+        max_length=1000,
+    )
+
+    duration_minutes: float | None = Field(
+        default=None,
+        gt=0,
+        le=1440,
+    )
+
+    tip: str | None = Field(
+        default=None,
+        max_length=500,
+    )
+
+
+class DietRecipeDailyTargetPercentages(BaseModel):
+    """저장된 일일 영양 목표 대비 선택 메뉴의 비율."""
+
+    calories_percent: float | None = Field(
+        default=None,
+        ge=0,
+        le=10000,
+    )
+
+    carbohydrate_percent: float | None = Field(
+        default=None,
+        ge=0,
+        le=10000,
+    )
+
+    protein_percent: float | None = Field(
+        default=None,
+        ge=0,
+        le=10000,
+    )
+
+    fat_percent: float | None = Field(
+        default=None,
+        ge=0,
+        le=10000,
+    )
+
+
 class DietRecipeDetail(BaseModel):
     """
     공식 레시피 또는 Auto-Fit AI 생성 레시피의 상세 정보.
@@ -1682,6 +1799,18 @@ class DietRecipeDetail(BaseModel):
         le=10000,
     )
 
+    servings: int = Field(
+        default=1,
+        ge=1,
+        le=20,
+    )
+
+    estimated_duration_minutes: float | None = Field(
+        default=None,
+        gt=0,
+        le=1440,
+    )
+
     ingredients_text: str | None = None
 
     # 공식/AI 레시피 모두 최종 응답에서는
@@ -1689,10 +1818,49 @@ class DietRecipeDetail(BaseModel):
     # ingredients_text는 공식 원문 보존용이다.
     ingredients: list[DietRecipeIngredient] | None = None
 
+    # 기존 Backend 호환 필드다. 문자열 배열 형식을 유지한다.
     steps: list[str] = Field(
         default_factory=list,
         max_length=20,
     )
+
+    @field_validator("steps", mode="before")
+    @classmethod
+    def normalize_legacy_steps(cls, value):
+        if value is None:
+            return []
+
+        return [
+            str(step.get("instruction") or "").strip()
+            if isinstance(step, dict)
+            else str(step).strip()
+            for step in value
+            if (
+                str(step.get("instruction") or "").strip()
+                if isinstance(step, dict)
+                else str(step).strip()
+            )
+        ]
+
+    step_details: list[DietRecipeStep] = Field(
+        default_factory=list,
+        max_length=20,
+    )
+
+    @model_validator(mode="after")
+    def fill_step_details(self):
+        if not self.step_details and self.steps:
+            self.step_details = [
+                DietRecipeStep(
+                    order=index,
+                    instruction=instruction,
+                )
+                for index, instruction in enumerate(
+                    self.steps,
+                    1,
+                )
+            ]
+        return self
 
     cooking_tip: str | None = None
 
@@ -1817,10 +1985,75 @@ class DietRecipeMealResult(BaseModel):
     한 끼 전체의 레시피 조회 결과.
     """
 
+    day: DietDay | None = None
+
+    meal_type: DietMealType | None = None
+
+    menu_name: str | None = Field(
+        default=None,
+        max_length=100,
+    )
+
+    menu_description: str = Field(
+        default="",
+        max_length=300,
+    )
+
+    tags: list[str] = Field(
+        default_factory=list,
+        max_length=6,
+    )
+
+    servings: int = Field(
+        default=1,
+        ge=1,
+        le=20,
+    )
+
+    estimated_duration_minutes: float | None = Field(
+        default=None,
+        gt=0,
+        le=1440,
+    )
+
+    estimated_calories_kcal: float = Field(
+        default=0,
+        ge=0,
+        le=3000,
+    )
+
+    nutrition: MealNutrition = Field(
+        default_factory=lambda: MealNutrition(
+            carbohydrate_g=0,
+            protein_g=0,
+            fat_g=0,
+        )
+    )
+
+    daily_target_percentages: (
+        DietRecipeDailyTargetPercentages
+        | None
+    ) = None
+
+    personalization_reasons: list[str] = Field(
+        default_factory=list,
+        max_length=5,
+    )
+
+    allergen_notice: list[str] = Field(
+        default_factory=list,
+        max_length=30,
+    )
+
     items: list[
         DietRecipeItemResult
     ] = Field(
         min_length=1,
+        max_length=10,
+    )
+
+    related_menus: list[DietRecipeRelatedMenu] = Field(
+        default_factory=list,
         max_length=10,
     )
 

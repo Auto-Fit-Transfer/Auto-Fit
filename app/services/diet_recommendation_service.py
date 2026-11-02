@@ -2772,6 +2772,9 @@ def _select_schedule_candidate(
         *,
         enforce_carb_limit: bool,
         enforce_side_limit: bool,
+        enforce_unique_menu: bool = True,
+        enforce_primary_limit: bool = True,
+        enforce_day_primary: bool = True,
     ) -> dict[str, Any] | None:
 
         best: dict[
@@ -2794,8 +2797,11 @@ def _select_schedule_candidate(
 
             if (
                 not menu_name
-                or menu_name
-                in used_menu_names
+                or (
+                    enforce_unique_menu
+                    and menu_name
+                    in used_menu_names
+                )
             ):
 
                 continue
@@ -2827,6 +2833,8 @@ def _select_schedule_candidate(
 
             # primary family 주간 제한
             if (
+                enforce_primary_limit
+                and
                 primary
                 and primary_counts.get(
                     primary,
@@ -2839,6 +2847,8 @@ def _select_schedule_candidate(
 
             # 같은 날 동일 primary family 금지
             if (
+                enforce_day_primary
+                and
                 primary
                 and primary
                 in day_primary_families
@@ -2930,9 +2940,63 @@ def _select_schedule_candidate(
     if best is not None:
         return best
 
+    # 4차: 안전하게 검증된 고유 메뉴가 남아 있다면
+    # primary family의 주간 상한만 완화한다.
+    # 알레르기/기피 음식/영양 필터는 후보 생성 단계에서 이미 적용됐다.
+    best = select_best(
+        enforce_carb_limit=False,
+        enforce_side_limit=False,
+        enforce_primary_limit=False,
+    )
+
+    if best is not None:
+        logger.warning(
+            "Diet schedule diversity relaxed: primary weekly limit "
+            "candidates=%d used_menus=%d",
+            len(candidates),
+            len(used_menu_names),
+        )
+        return best
+
+    # 5차: 고유 메뉴만으로 슬롯을 채울 수 없으면 검증 후보의
+    # 주간 재사용을 허용한다. 같은 날 primary 중복은 계속 막는다.
+    best = select_best(
+        enforce_carb_limit=False,
+        enforce_side_limit=False,
+        enforce_unique_menu=False,
+        enforce_primary_limit=False,
+    )
+
+    if best is not None:
+        logger.warning(
+            "Diet schedule diversity relaxed: verified menu reuse "
+            "candidates=%d used_menus=%d",
+            len(candidates),
+            len(used_menu_names),
+        )
+        return best
+
+    # 6차: 안전 후보의 primary family 종류가 하루 세 끼보다 적은
+    # 극단적인 경우에만 같은 날 family 반복도 허용한다.
+    best = select_best(
+        enforce_carb_limit=False,
+        enforce_side_limit=False,
+        enforce_unique_menu=False,
+        enforce_primary_limit=False,
+        enforce_day_primary=False,
+    )
+
+    if best is not None:
+        logger.warning(
+            "Diet schedule diversity relaxed: same-day primary reuse "
+            "candidates=%d used_menus=%d",
+            len(candidates),
+            len(used_menu_names),
+        )
+        return best
+
     raise RuntimeError(
-        "주간 식단 다양성 규칙을 유지하면서 "
-        "배치할 수 있는 검증 후보가 부족합니다."
+        "주간 식단에 배치할 이름이 있는 검증 후보가 없습니다."
     )
 
 

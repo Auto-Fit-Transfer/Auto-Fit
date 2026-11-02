@@ -12,7 +12,7 @@ from difflib import SequenceMatcher
 from typing import Any
 
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.core.config import get_settings
 from app.services.food_catalog_service import ALLERGY_KEYWORD_MAP
@@ -74,15 +74,64 @@ class GeneratedRecipeIngredient(BaseModel):
     )
 
 
+class GeneratedRecipeStep(BaseModel):
+    """LLM fallback이 생성하는 구조화된 조리 단계."""
+
+    instruction: str = Field(
+        min_length=1,
+        max_length=1000,
+    )
+
+    duration_minutes: float | None = Field(
+        default=None,
+        gt=0,
+        le=1440,
+    )
+
+    tip: str | None = Field(
+        default=None,
+        max_length=500,
+    )
+
+
 class GeneratedRecipeResponse(BaseModel):
     ingredients: list[GeneratedRecipeIngredient] = Field(
         default_factory=list,
         max_length=20,
     )
 
-    steps: list[str] = Field(
+    steps: list[GeneratedRecipeStep] = Field(
         default_factory=list,
         max_length=10,
+    )
+
+    @field_validator("steps", mode="before")
+    @classmethod
+    def normalize_legacy_steps(cls, value):
+        if value is None:
+            return []
+
+        return [
+            {
+                "instruction": step,
+                "duration_minutes": None,
+                "tip": None,
+            }
+            if isinstance(step, str)
+            else step
+            for step in value
+        ]
+
+    servings: int = Field(
+        default=1,
+        ge=1,
+        le=20,
+    )
+
+    estimated_duration_minutes: float | None = Field(
+        default=None,
+        gt=0,
+        le=1440,
     )
 
     cooking_tip: str | None = Field(
@@ -1605,11 +1654,15 @@ class MealRecipeService:
 
 13. 조리 단계는 3~8단계로 작성한다.
 
-14. 공식기관의 레시피라고 주장하지 않는다.
+14. 각 조리 단계에 현실적인 소요시간(분)과 필요한 경우 조리 팁을 작성한다.
 
-15. 질환을 치료하거나 예방한다고 표현하지 않는다.
+15. 전체 예상 조리시간과 인분 수를 작성한다.
 
-16. 한국 가정에서 이해하기 쉬운
+16. 공식기관의 레시피라고 주장하지 않는다.
+
+17. 질환을 치료하거나 예방한다고 표현하지 않는다.
+
+18. 한국 가정에서 이해하기 쉬운
     한국어로 작성한다.
 
 {retry_instruction}
@@ -1700,6 +1753,14 @@ class MealRecipeService:
                         portion_g
                     ),
 
+                    "servings": (
+                        generated.servings
+                    ),
+
+                    "estimated_duration_minutes": (
+                        generated.estimated_duration_minutes
+                    ),
+
                     "ingredients_text": None,
 
                     "ingredients": [
@@ -1708,9 +1769,23 @@ class MealRecipeService:
                         in generated.ingredients
                     ],
 
-                    "steps": (
-                        generated.steps
-                    ),
+                    # 기존 Backend가 사용하는 문자열 배열은 유지하고,
+                    # 상세 화면용 순서·시간·팁을 별도 필드로 제공한다.
+                    "steps": [
+                        step.instruction
+                        for step in generated.steps
+                    ],
+
+                    "step_details": [
+                        {
+                            "order": index,
+                            **step.model_dump(),
+                        }
+                        for index, step in enumerate(
+                            generated.steps,
+                            1,
+                        )
+                    ],
 
                     "cooking_tip": (
                         generated.cooking_tip
@@ -1868,6 +1943,14 @@ class MealRecipeService:
                     adapted_serving_weight
                 ),
 
+                "servings": 1,
+
+                "estimated_duration_minutes": (
+                    recipe.get(
+                        "estimated_duration_minutes"
+                    )
+                ),
+
                 "ingredients_text": (
                     recipe.get(
                         "ingredients_text"
@@ -1884,6 +1967,20 @@ class MealRecipeService:
                         [],
                     )
                 ),
+
+                "step_details": [
+                    {
+                        "order": index,
+                        "instruction": str(step).strip(),
+                        "duration_minutes": None,
+                        "tip": None,
+                    }
+                    for index, step in enumerate(
+                        recipe.get("steps") or [],
+                        1,
+                    )
+                    if str(step).strip()
+                ],
 
                 "cooking_tip": (
                     recipe.get(
@@ -2123,6 +2220,236 @@ class MealRecipeService:
     # 한 끼 전체 레시피 연결
     # ==================================================
 
+    @staticmethod
+    def _rounded_sum(
+        items: list[dict[str, Any]],
+        key: str,
+    ) -> float:
+        return round(
+            sum(
+                float(item.get(key) or 0)
+                for item in items
+            ),
+            2,
+        )
+
+    @staticmethod
+    def _normalize_display_strings(
+        values: list[str] | None,
+    ) -> list[str]:
+        result: list[str] = []
+        for value in values or []:
+            normalized = str(value).strip()
+            if normalized and normalized not in result:
+                result.append(normalized)
+        return result
+
+    @staticmethod
+    def _daily_target_percentages(
+        *,
+        calories_kcal: float,
+        nutrition: dict[str, float],
+        target: dict[str, Any] | None,
+    ) -> dict[str, float | None] | None:
+        if not target:
+            return None
+
+        def percentage(
+            value: float,
+            target_key: str,
+        ) -> float | None:
+            try:
+                target_value = float(target.get(target_key) or 0)
+            except (TypeError, ValueError):
+                return None
+
+            if target_value <= 0:
+                return None
+
+            return round(value / target_value * 100, 1)
+
+        return {
+            "calories_percent": percentage(
+                calories_kcal,
+                "calories_kcal",
+            ),
+            "carbohydrate_percent": percentage(
+                nutrition["carbohydrate_g"],
+                "carbohydrate_g",
+            ),
+            "protein_percent": percentage(
+                nutrition["protein_g"],
+                "protein_g",
+            ),
+            "fat_percent": percentage(
+                nutrition["fat_g"],
+                "fat_g",
+            ),
+        }
+
+    @staticmethod
+    def _allergen_notices(
+        items: list[dict[str, Any]],
+    ) -> list[str]:
+        text_parts: list[str] = []
+
+        for item in items:
+            text_parts.append(str(item.get("food_name") or ""))
+            recipe = item.get("recipe")
+            if not isinstance(recipe, dict):
+                continue
+
+            text_parts.append(str(recipe.get("ingredients_text") or ""))
+            for ingredient in recipe.get("ingredients") or []:
+                if isinstance(ingredient, dict):
+                    text_parts.append(str(ingredient.get("name") or ""))
+
+        text = " ".join(text_parts).lower()
+        tokens = {
+            token
+            for token in re.split(r"[\s_\-/(),·.]+", text)
+            if token
+        }
+        aliases = {
+            "유제품": "우유",
+            "달걀": "계란",
+            "콩": "대두",
+        }
+        notices: list[str] = []
+
+        for allergy, keywords in ALLERGY_KEYWORD_MAP.items():
+            canonical = aliases.get(allergy, allergy)
+            if canonical in notices:
+                continue
+
+            matched = any(
+                (
+                    keyword.lower() in tokens
+                    if len(keyword.strip()) <= 1
+                    else keyword.lower() in text
+                )
+                for keyword in keywords
+                if keyword.strip()
+            )
+            if matched:
+                notices.append(canonical)
+
+        return notices
+
+    @staticmethod
+    def _meal_estimated_duration(
+        items: list[dict[str, Any]],
+    ) -> float | None:
+        durations: list[float] = []
+        available_recipe_count = 0
+
+        for item in items:
+            recipe = item.get("recipe")
+            if not isinstance(recipe, dict):
+                continue
+
+            available_recipe_count += 1
+            raw_duration = recipe.get("estimated_duration_minutes")
+            try:
+                duration = float(raw_duration)
+            except (TypeError, ValueError):
+                return None
+
+            if duration <= 0:
+                return None
+            durations.append(duration)
+
+        if available_recipe_count == 0 or not durations:
+            return None
+
+        return round(sum(durations), 1)
+
+    @staticmethod
+    def _meal_tags(
+        *,
+        meal: dict[str, Any],
+        nutrition: dict[str, float],
+    ) -> list[str]:
+        tags = MealRecipeService._normalize_display_strings(
+            meal.get("tags")
+        )
+        meal_type_labels = {
+            "breakfast": "아침",
+            "lunch": "점심",
+            "dinner": "저녁",
+            "snack": "간식",
+        }
+        meal_type_tag = meal_type_labels.get(
+            str(meal.get("meal_type") or "")
+        )
+        if meal_type_tag:
+            tags.append(meal_type_tag)
+        if nutrition["protein_g"] >= 25:
+            tags.append("고단백")
+
+        return list(dict.fromkeys(tags))[:6]
+
+    def _build_meal_display_fields(
+        self,
+        meal: dict[str, Any],
+        items: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        result = meal.copy()
+        calories_kcal = self._rounded_sum(items, "calories_kcal")
+        nutrition = {
+            "carbohydrate_g": self._rounded_sum(
+                items,
+                "carbohydrate_g",
+            ),
+            "protein_g": self._rounded_sum(items, "protein_g"),
+            "fat_g": self._rounded_sum(items, "fat_g"),
+        }
+        menu_name = str(result.get("menu_name") or "").strip()
+        if not menu_name:
+            menu_name = " + ".join(
+                str(item.get("food_name") or "").strip()
+                for item in items
+                if str(item.get("food_name") or "").strip()
+            )
+
+        reasons = self._normalize_display_strings(
+            result.get("personalization_reasons")
+        )
+        guidance = str(result.get("guidance") or "").strip()
+        if guidance:
+            reasons.append(guidance)
+
+        result.update(
+            {
+                "menu_name": menu_name or None,
+                "menu_description": str(
+                    result.get("menu_description") or ""
+                ).strip(),
+                "tags": self._meal_tags(
+                    meal=result,
+                    nutrition=nutrition,
+                ),
+                "estimated_duration_minutes": (
+                    self._meal_estimated_duration(items)
+                ),
+                "estimated_calories_kcal": calories_kcal,
+                "nutrition": nutrition,
+                "daily_target_percentages": (
+                    self._daily_target_percentages(
+                        calories_kcal=calories_kcal,
+                        nutrition=nutrition,
+                        target=result.get("daily_nutrition_target"),
+                    )
+                ),
+                "personalization_reasons": list(
+                    dict.fromkeys(reasons)
+                )[:5],
+                "allergen_notice": self._allergen_notices(items),
+                "items": items,
+            }
+        )
+        return result
+
     async def enrich_meal(
         self,
         meal: dict[str, Any],
@@ -2188,10 +2515,9 @@ class MealRecipeService:
             else:
                 enriched_items.append(item_result)
 
-        result[
-            "items"
-        ] = list(
-            enriched_items
+        result = self._build_meal_display_fields(
+            meal=result,
+            items=list(enriched_items),
         )
 
         return result

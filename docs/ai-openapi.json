@@ -3254,6 +3254,65 @@
         "title": "DietNearbyRegion",
         "description": "현재 시군구에 특산물이 없을 때 사용할 근교 행정구역 정보.\n\n정확한 GPS 좌표는 AI 서버에 전달하지 않고,\nBackend에서 계산한 행정구역 + 거리만 전달한다."
       },
+      "DietRecipeDailyTargetPercentages": {
+        "properties": {
+          "calories_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calories Percent"
+          },
+          "carbohydrate_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carbohydrate Percent"
+          },
+          "protein_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protein Percent"
+          },
+          "fat_percent": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 10000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fat Percent"
+          }
+        },
+        "type": "object",
+        "title": "DietRecipeDailyTargetPercentages",
+        "description": "저장된 일일 영양 목표 대비 선택 메뉴의 비율."
+      },
       "DietRecipeDetail": {
         "properties": {
           "recipe_id": {
@@ -3313,6 +3372,26 @@
             ],
             "title": "Serving Weight"
           },
+          "servings": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Servings",
+            "default": 1
+          },
+          "estimated_duration_minutes": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1440.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Duration Minutes"
+          },
           "ingredients_text": {
             "anyOf": [
               {
@@ -3345,6 +3424,14 @@
             "type": "array",
             "maxItems": 20,
             "title": "Steps"
+          },
+          "step_details": {
+            "items": {
+              "$ref": "#/components/schemas/DietRecipeStep"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Step Details"
           },
           "cooking_tip": {
             "anyOf": [
@@ -3595,6 +3682,125 @@
       },
       "DietRecipeMealResult": {
         "properties": {
+          "day": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday",
+                  "saturday",
+                  "sunday"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "meal_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "breakfast",
+                  "lunch",
+                  "dinner",
+                  "snack"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Type"
+          },
+          "menu_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Menu Name"
+          },
+          "menu_description": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Menu Description",
+            "default": ""
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Tags"
+          },
+          "servings": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Servings",
+            "default": 1
+          },
+          "estimated_duration_minutes": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1440.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Duration Minutes"
+          },
+          "estimated_calories_kcal": {
+            "type": "number",
+            "maximum": 3000.0,
+            "minimum": 0.0,
+            "title": "Estimated Calories Kcal",
+            "default": 0
+          },
+          "nutrition": {
+            "$ref": "#/components/schemas/MealNutrition"
+          },
+          "daily_target_percentages": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DietRecipeDailyTargetPercentages"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "personalization_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Personalization Reasons"
+          },
+          "allergen_notice": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Allergen Notice"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/DietRecipeItemResult"
@@ -3603,6 +3809,14 @@
             "maxItems": 10,
             "minItems": 1,
             "title": "Items"
+          },
+          "related_menus": {
+            "items": {
+              "$ref": "#/components/schemas/DietRecipeRelatedMenu"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Related Menus"
           }
         },
         "type": "object",
@@ -3611,6 +3825,72 @@
         ],
         "title": "DietRecipeMealResult",
         "description": "한 끼 전체의 레시피 조회 결과."
+      },
+      "DietRecipeRelatedMenu": {
+        "properties": {
+          "menu_name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Menu Name"
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday",
+                  "saturday",
+                  "sunday"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "meal_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "breakfast",
+                  "lunch",
+                  "dinner",
+                  "snack"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Type"
+          },
+          "estimated_calories_kcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 3000.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Calories Kcal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "menu_name"
+        ],
+        "title": "DietRecipeRelatedMenu",
+        "description": "같은 주간 식단에서 함께 노출할 다른 추천 메뉴."
       },
       "DietRecipeRequest": {
         "properties": {
@@ -3622,6 +3902,109 @@
             "maxItems": 10,
             "minItems": 1,
             "title": "Items"
+          },
+          "day": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday",
+                  "saturday",
+                  "sunday"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day"
+          },
+          "meal_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "breakfast",
+                  "lunch",
+                  "dinner",
+                  "snack"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Type"
+          },
+          "menu_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Menu Name"
+          },
+          "menu_description": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Menu Description",
+            "default": ""
+          },
+          "guidance": {
+            "type": "string",
+            "maxLength": 300,
+            "title": "Guidance",
+            "default": ""
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 6,
+            "title": "Tags"
+          },
+          "personalization_reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Personalization Reasons"
+          },
+          "servings": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Servings",
+            "default": 1
+          },
+          "daily_nutrition_target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DietMealTarget"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "related_menus": {
+            "items": {
+              "$ref": "#/components/schemas/DietRecipeRelatedMenu"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Related Menus"
           },
           "food_allergens": {
             "items": {
@@ -3669,6 +4052,54 @@
         ],
         "title": "DietRecipeResponse",
         "description": "Backend 호환 레시피 API 응답 Wrapper."
+      },
+      "DietRecipeStep": {
+        "properties": {
+          "order": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Order"
+          },
+          "instruction": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Instruction"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1440.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          },
+          "tip": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tip"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order",
+          "instruction"
+        ],
+        "title": "DietRecipeStep",
+        "description": "Frontend가 순서·시간·팁을 각각 표시할 수 있는 조리 단계."
       },
       "DietRecommendationRequest": {
         "properties": {

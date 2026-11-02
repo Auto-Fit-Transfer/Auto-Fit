@@ -260,6 +260,25 @@ async def recommend_diet_recipe(
             # =============================================
 
             meal_payload = {
+                "day": request.day,
+                "meal_type": request.meal_type,
+                "menu_name": request.menu_name,
+                "menu_description": request.menu_description,
+                "guidance": request.guidance,
+                "tags": request.tags,
+                "personalization_reasons": (
+                    request.personalization_reasons
+                ),
+                "servings": request.servings,
+                "daily_nutrition_target": (
+                    request.daily_nutrition_target.model_dump()
+                    if request.daily_nutrition_target is not None
+                    else None
+                ),
+                "related_menus": [
+                    related.model_dump()
+                    for related in request.related_menus
+                ],
                 "items": [
                     item.model_dump()
                     for item

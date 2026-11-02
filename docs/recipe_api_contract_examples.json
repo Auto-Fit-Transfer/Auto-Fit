@@ -3,6 +3,29 @@
     "ok": true,
     "generator": "auto-fit-ai",
     "meal": {
+      "day": "monday",
+      "meal_type": "lunch",
+      "menu_name": "톳나물 두부무침",
+      "menu_description": "톳나물과 두부를 가볍게 무친 반찬입니다.",
+      "tags": ["점심"],
+      "servings": 1,
+      "estimated_duration_minutes": null,
+      "estimated_calories_kcal": 95.0,
+      "nutrition": {
+        "carbohydrate_g": 8.0,
+        "protein_g": 7.0,
+        "fat_g": 4.0
+      },
+      "daily_target_percentages": {
+        "calories_percent": 5.3,
+        "carbohydrate_percent": 4.0,
+        "protein_percent": 7.0,
+        "fat_percent": 5.7
+      },
+      "personalization_reasons": [
+        "저장된 주간 식단의 점심 메뉴를 기준으로 조회했습니다."
+      ],
+      "allergen_notice": ["대두"],
       "items": [
         {
           "food_name": "톳나물 두부무침",
@@ -24,6 +47,8 @@
             "cooking_method": "기타",
             "dish_type": "반찬",
             "serving_weight": 70.0,
+            "servings": 1,
+            "estimated_duration_minutes": null,
             "ingredients_text": "톳나물 15g, 두부 40g, 천일염 0.1g",
             "ingredients": [
               {"name": "톳나물", "amount_g": 21.0},
@@ -31,11 +56,33 @@
               {"name": "천일염", "amount_g": 0.14}
             ],
             "steps": ["톳나물을 손질한다.", "두부와 함께 무친다."],
+            "step_details": [
+              {
+                "order": 1,
+                "instruction": "톳나물을 손질한다.",
+                "duration_minutes": null,
+                "tip": null
+              },
+              {
+                "order": 2,
+                "instruction": "두부와 함께 무친다.",
+                "duration_minutes": null,
+                "tip": null
+              }
+            ],
             "cooking_tip": null,
             "image_small": null,
             "image_large": null,
             "source": "식품의약품안전처 식품안전나라"
           }
+        }
+      ],
+      "related_menus": [
+        {
+          "menu_name": "닭가슴살 구이",
+          "day": "tuesday",
+          "meal_type": "lunch",
+          "estimated_calories_kcal": 420.0
         }
       ]
     }
@@ -65,6 +112,8 @@
             "cooking_method": "기타",
             "dish_type": "반찬",
             "serving_weight": 70.0,
+            "servings": 1,
+            "estimated_duration_minutes": null,
             "ingredients_text": "톳나물 15g, 두부 40g, 천일염 0.1g",
             "ingredients": [
               {"name": "톳나물", "amount_g": 21.0},
@@ -72,6 +121,20 @@
               {"name": "천일염", "amount_g": 0.14}
             ],
             "steps": ["톳나물을 손질한다.", "두부와 함께 무친다."],
+            "step_details": [
+              {
+                "order": 1,
+                "instruction": "톳나물을 손질한다.",
+                "duration_minutes": null,
+                "tip": null
+              },
+              {
+                "order": 2,
+                "instruction": "두부와 함께 무친다.",
+                "duration_minutes": null,
+                "tip": null
+              }
+            ],
             "cooking_tip": null,
             "image_small": null,
             "image_large": null,
@@ -106,12 +169,28 @@
             "cooking_method": null,
             "dish_type": null,
             "serving_weight": 180.0,
+            "servings": 1,
+            "estimated_duration_minutes": 15.0,
             "ingredients_text": null,
             "ingredients": [
               {"name": "검증 재료", "amount_g": 120.0},
               {"name": "양념", "amount_g": 5.0}
             ],
             "steps": ["재료를 손질한다.", "충분히 익힌다."],
+            "step_details": [
+              {
+                "order": 1,
+                "instruction": "재료를 손질한다.",
+                "duration_minutes": 5.0,
+                "tip": null
+              },
+              {
+                "order": 2,
+                "instruction": "충분히 익힌다.",
+                "duration_minutes": 10.0,
+                "tip": "속까지 익었는지 확인합니다."
+              }
+            ],
             "cooking_tip": "간을 약하게 조절한다.",
             "image_small": null,
             "image_large": null,

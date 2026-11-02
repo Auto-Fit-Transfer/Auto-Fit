@@ -312,10 +312,37 @@ Backend는 응답의 `day`와 `meal_type`이 요청 대상과 같은지 확인�
 
 `POST /recommend/diet/recipe`
 
-주간 식단 또는 재추천 응답의 `meal.items`를 변형하지 않고 전달한다.
+주간 식단 또는 재추천 응답의 메뉴 정보와 `meal.items`를 변형하지 않고
+전달한다. 이 API는 28끼를 미리 일괄 생성하는 API가 아니다. 사용자가 선택한
+요일·식사 슬롯의 상세 화면을 열 때 한 끼씩 호출하며, 동일 계약을 월요일부터
+일요일까지 `breakfast`, `lunch`, `dinner`, `snack` 모든 슬롯에 적용한다.
 
 ```json
 {
+  "day": "monday",
+  "meal_type": "snack",
+  "menu_name": "그릭요거트 볼",
+  "menu_description": "블루베리와 호두를 올린 간식입니다.",
+  "guidance": "저장된 영양 목표를 기준으로 구성했습니다.",
+  "tags": ["가벼운 간식", "불 없이"],
+  "personalization_reasons": [
+    "저장된 사용자 식단 목표를 반영했습니다."
+  ],
+  "servings": 1,
+  "daily_nutrition_target": {
+    "calories_kcal": 1800.0,
+    "protein_g": 100.0,
+    "fat_g": 70.0,
+    "carbohydrate_g": 200.0
+  },
+  "related_menus": [
+    {
+      "menu_name": "닭가슴살 구이",
+      "day": "tuesday",
+      "meal_type": "lunch",
+      "estimated_calories_kcal": 420.0
+    }
+  ],
   "items": [
     {
       "food_name": "톳나물 두부무침",
@@ -335,6 +362,17 @@ Backend는 응답의 `day`와 `meal_type`이 요청 대상과 같은지 확인�
 
 | Field | 설명 |
 |---|---|
+| `meal.day`, `meal.meal_type` | 주간 식단의 요일·식사 슬롯 식별자 |
+| `meal.menu_name`, `meal.menu_description` | 상세 화면 제목과 한 줄 설명 |
+| `meal.tags` | Backend 전달 태그와 식사 유형·고단백 파생 태그 |
+| `meal.servings` | 화면 표시 인분 수 |
+| `meal.estimated_duration_minutes` | 확인 가능한 item 조리시간 합계. 근거가 없으면 `null` |
+| `meal.estimated_calories_kcal` | 선택한 한 끼 전체 열량 |
+| `meal.nutrition` | 선택한 한 끼 전체 탄수화물·단백질·지방 |
+| `meal.daily_target_percentages` | Backend가 일일 목표를 전달한 경우의 목표 대비 비율 |
+| `meal.personalization_reasons` | 저장된 추천 설명·guidance를 이용한 맞춤 이유 |
+| `meal.allergen_notice` | 실제 메뉴·레시피 재료에서 감지한 알레르기 유발 가능 항목 |
+| `meal.related_menus` | 같은 주간 식단에서 Backend가 전달한 다른 메뉴 링크 정보 |
 | `recipe_source` | `official_exact`, `official_similar`, `llm_generated`, `unavailable` |
 | `official_recipe` | 공식 레시피 여부 |
 | `matched_recipe_name` | 공식 유사 매칭 이름 |
@@ -342,9 +380,17 @@ Backend는 응답의 `day`와 `meal_type`이 요청 대상과 같은지 확인�
 | `safety_checked` | 알레르기·기피 음식 검사 수행 여부 |
 | `restriction_matches` | 제한 식품과 충돌한 항목 |
 | `recipe.ingredients` | `{name, amount_g}` 목록 |
-| `recipe.steps` | 조리 순서 |
+| `recipe.servings` | 해당 조리법 인분 수 |
+| `recipe.estimated_duration_minutes` | 출처 또는 LLM 구조화 응답에 조리시간이 있을 때만 제공 |
+| `recipe.steps` | 기존 호환용 조리 순서 문자열 배열 |
+| `recipe.step_details` | `{order, instruction, duration_minutes, tip}` 구조의 상세 조리 단계 |
 
 `amount_g`는 공식 원문 단위가 불명확하면 `null`일 수 있다. Backend와 Frontend는 임의로 값을 채우지 않는다. `portion_g`는 recipe scaling에 사용하지만 화면 표시 필수값은 아니다.
+
+장보기 목록 추가는 Backend/Frontend의 사용자 상태 변경 기능이므로 이 AI API의
+요청·응답 계약에 포함하지 않는다. Backend는 주간 식단 저장 시 각 슬롯의
+`menu_name`, `menu_description`, `guidance`, `items`를 보존해야 한다. 일일 영양
+목표 대비 비율을 표시하려면 `daily_nutrition_target`도 함께 전달한다.
 
 정상 exact/similar, LLM fallback, 제한 식품 충돌, unavailable의 전체 응답은 [Recipe API examples](recipe_api_contract_examples.json)를 사용한다.
 
