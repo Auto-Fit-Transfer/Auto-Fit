@@ -189,8 +189,8 @@ begin
   end if;
 
   v_source_type := p_meal ->> 'source_type';
-  if v_source_type is null
-     or v_source_type not in ('db_catalog', 'ai_generated') then
+  if v_source_type is not null
+     and v_source_type not in ('db_catalog', 'ai_generated') then
     raise exception 'invalid meal source_type';
   end if;
   v_used_ingredients := coalesce(p_meal -> 'used_ingredients', '[]'::jsonb);
@@ -215,6 +215,9 @@ begin
   where dm.diet_meal_id = p_diet_meal_id
     and dm.diet_recommendation_id = v_recommendation.diet_recommendation_id
   for update;
+
+  -- Keep rollout compatible with an older API instance until traffic switches.
+  v_source_type := coalesce(v_source_type, v_meal.source_type);
 
   if v_recommendation.status <> 'active' or v_meal.status <> 'recommended' then
     raise exception 'diet meal cannot be regenerated in its current state';

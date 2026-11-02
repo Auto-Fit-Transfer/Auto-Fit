@@ -1,4 +1,4 @@
-"""Scheduled entry point for KST-midnight diet recommendation refreshes."""
+"""Render Cron entry point for KST-midnight diet recommendation refreshes."""
 
 from __future__ import annotations
 
@@ -46,13 +46,20 @@ async def fetch_refresh_user_ids() -> list[str]:
                 return user_ids
 
 
-async def refresh_daily_diets() -> tuple[int, int]:
+async def refresh_daily_diets(all_ai: bool = False) -> tuple[int, int]:
     settings = get_settings()
-    user_ids, allergy_catalog, food_catalog = await asyncio.gather(
-        fetch_refresh_user_ids(),
-        fetch_allergy_catalog(settings),
-        fetch_food_catalog(settings),
-    )
+    if all_ai:
+        user_ids, allergy_catalog = await asyncio.gather(
+            fetch_refresh_user_ids(),
+            fetch_allergy_catalog(settings),
+        )
+        food_catalog: list[dict] = []
+    else:
+        user_ids, allergy_catalog, food_catalog = await asyncio.gather(
+            fetch_refresh_user_ids(),
+            fetch_allergy_catalog(settings),
+            fetch_food_catalog(settings),
+        )
     allergy_names_by_id = {
         row["allergy_type_id"]: row["name"] for row in allergy_catalog
     }
@@ -75,6 +82,7 @@ async def refresh_daily_diets() -> tuple[int, int]:
                     inventory,
                     [name for name in allergy_names if name],
                     food_catalog,
+                    all_ai=all_ai,
                 )
                 await assign_menu_images(plan["meals"], settings)
                 await generate_missing_menu_images(plan["meals"], settings)

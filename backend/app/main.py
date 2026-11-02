@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from math import ceil
+from pathlib import Path
 from typing import Annotated, Any, Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -20,7 +21,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, Res
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.exception_handlers import http_exception_handler
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -31,6 +32,7 @@ from backend.app.chat_health_scores import (
 )
 from backend.app.chat_answers import answer_question
 from backend.app.chat_exercise_info import load_exercise_types
+from backend.app.chat_intents import is_off_topic_question
 from backend.app.chat_model import get_model_config, request_model
 from backend.app.chat_records import answer_records
 from backend.app.chat_running import answer_running_course, search_running_courses
@@ -42,9 +44,11 @@ from backend.app.http_client import client_scope, SharedHttpClientMiddleware
 from backend.app.diet_timing import DietTimingMiddleware, timed_http_client
 from backend.app.diet_ai import (
     DietAIUnavailable,
+    apply_inventory_to_ai_meals,
     conflicts_allergy,
     find_used_inventory_items,
     find_used_inventory_names,
+    food_matches_inventory,
     generate_ai_meals,
     generate_regenerated_meal,
     mix_meals,
@@ -67,6 +71,7 @@ from backend.app.posture_analysis import create_posture_analysis_router
 from backend.app.saved_workout_routines import create_saved_workout_router
 from backend.app.running_sessions import create_running_sessions_router
 from backend.app.weekly_diet import create_weekly_diet_router
+from backend.app.community import create_community_router
 from backend.app.running import create_running_router
 from backend.app.meal_photos import attach_photos, create_meal_photos_router
 from backend.app.security import (
@@ -83,6 +88,7 @@ KST = ZoneInfo("Asia/Seoul")
 CHAT_REQUEST_TIMEOUT_SECONDS = 70
 DUMMY_FOOD_NAME_PREFIX = re.compile(r"^\[DUMMY[^\]]*\]\s*", re.IGNORECASE)
 FOOD_NAME_PARENTHETICAL = re.compile(r"\s*(?:\([^()]*\)|（[^（）]*）)")
+DIET_GENERATION_LOCKS: dict[tuple[str, date], asyncio.Lock] = defaultdict(asyncio.Lock)
 
 
 def without_parenthetical_details(value: str) -> str:
@@ -97,7 +103,7 @@ def without_parenthetical_details(value: str) -> str:
 def normalize_recommended_foods(
     foods: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
-    """Preserve full food names and add a parenthetical-free display name."""
+    """Return display-safe names while preserving unabridged source values."""
     normalized: list[dict[str, Any]] = []
     for food in foods:
         item = food.copy()
@@ -105,12 +111,15 @@ def normalize_recommended_foods(
         if isinstance(food_name, str):
             normalized_name = DUMMY_FOOD_NAME_PREFIX.sub("", food_name).strip()
             if normalized_name:
-                item["food_name"] = normalized_name
                 display_name = without_parenthetical_details(normalized_name)
+                item["original_food_name"] = normalized_name
+                item["food_name"] = display_name or normalized_name
                 item["display_name"] = display_name or normalized_name
         unit = item.get("unit")
         if isinstance(unit, str):
             display_unit = without_parenthetical_details(unit)
+            item["original_unit"] = unit.strip()
+            item["unit"] = display_unit or unit.strip()
             item["display_unit"] = display_unit or unit.strip()
         quantity = item.get("quantity")
         if quantity is not None:
@@ -521,6 +530,9 @@ class UsedInventoryIngredientResponse(BaseModel):
     matched_food_name: str
     quantity: float | None = None
     unit: str | None = None
+    planned_quantity: float | None = None
+    planned_unit: str | None = None
+    inventory_covers_planned_quantity: bool | None = None
 
 
 class RegenerateDietMealResponse(BaseModel):
@@ -2473,6 +2485,9 @@ async def build_daily_diet_recommendation_plan(
     allergy_names: list[str],
     food_catalog: list[dict[str, Any]],
     target_date: date | None = None,
+    all_ai: bool = False,
+    avoid_food_names: list[str] | None = None,
+    avoid_meal_food_names: list[list[str]] | None = None,
 ) -> dict[str, Any]:
     recommendation_date = target_date or datetime.now(KST).date()
     resolved_inventory = resolve_safe_inventory_items(
@@ -2485,25 +2500,39 @@ async def build_daily_diet_recommendation_plan(
         resolved_inventory, allergy_names, recommendation_date
     )
     plan["recommendation"]["recommendation_date"] = recommendation_date.isoformat()
-    ai_slots = select_ai_slots(plan["meals"], user_id, recommendation_date)
+    ai_slots = (
+        plan["meals"]
+        if all_ai
+        else select_ai_slots(plan["meals"], user_id, recommendation_date)
+    )
     ai_meals = await generate_ai_meals(
         ai_slots,
         allergy_names,
         request_model,
-        inventory_names,
+        avoid_food_names,
+        avoid_meal_food_names,
+        available_ingredients=inventory_names,
     )
-    plan["meals"] = mix_meals(
+    plan["meals"] = (
+        sorted(ai_meals, key=lambda meal: int(meal["meal_order"]))
+        if all_ai
+        else mix_meals(
+            plan["meals"],
+            ai_meals,
+            food_catalog,
+            allergy_names,
+            inventory_names,
+        )
+    )
+    plan["meals"] = apply_inventory_to_ai_meals(
         plan["meals"],
-        ai_meals,
+        resolved_inventory,
         food_catalog,
         allergy_names,
-        inventory_names,
     )
     used_inventory_names = find_used_inventory_names(
         plan["meals"], inventory_names
     )
-    if inventory_names and not used_inventory_names:
-        raise DietAIUnavailable("Diet generator did not use available inventory")
     for meal in plan["meals"]:
         meal["used_ingredients"] = find_used_inventory_items(
             [meal], resolved_inventory
@@ -2517,13 +2546,41 @@ async def build_daily_diet_recommendation_plan(
         meal.get("source_type") == "ai_generated" for meal in plan["meals"]
     )
     plan["recommendation"]["ai_reason"] = (
-        f"DB 음식 영양정보와 AI 생성 식단 {ai_count}개를 혼합했습니다. "
+        (
+            "4식을 모두 AI로 생성한 뒤 서버의 음식 카탈로그로 냉장고 재료를 반영했습니다. "
+            if food_catalog
+            else "DB 음식 카탈로그 조회 없이 4식을 모두 AI로 생성했습니다. "
+        )
         + (
             f"실제 메뉴에 반영된 냉장고 재료: {', '.join(used_inventory_names)}. "
             if used_inventory_names
-            else "사용 가능한 냉장고 재료가 없어 일반 식재료로 구성했습니다. "
+            else (
+                "냉장고 재료 중 음식 카탈로그와 일치하는 항목이 없어 "
+                "일반 식재료로 구성했습니다. "
+                if inventory_names
+                else "사용 가능한 냉장고 재료가 없어 일반 식재료로 구성했습니다. "
+            )
         )
-        + "알레르기 제외 조건을 반영했습니다."
+        + "알레르기 제외 조건은 서버에서 검증했습니다."
+        if all_ai
+        else (
+            (
+                f"DB 음식 영양정보와 AI 생성 식단 {ai_count}개를 혼합했습니다. "
+                if any(meal.get("source_type") == "db_catalog" for meal in plan["meals"])
+                else f"규칙 기반 식단과 AI 생성 식단 {ai_count}개를 혼합했습니다. "
+            )
+            + (
+                f"실제 메뉴에 반영된 냉장고 재료: {', '.join(used_inventory_names)}. "
+                if used_inventory_names
+                else (
+                    "냉장고 재료 중 음식 카탈로그와 일치하는 항목이 없어 "
+                    "일반 식재료로 구성했습니다. "
+                    if inventory_names
+                    else "사용 가능한 냉장고 재료가 없어 일반 식재료로 구성했습니다. "
+                )
+            )
+            + "알레르기 제외 조건을 반영했습니다."
+        )
     )
     plan["recommendation"]["target_calories"] = sum(
         int(meal["recommended_calories"]) for meal in plan["meals"]
@@ -2553,6 +2610,7 @@ async def fetch_diet_recommendation(
     *,
     client: httpx.AsyncClient | None = None,
     include_details: bool = True,
+    latest_date: date | None = None,
 ) -> dict[str, Any] | None:
     recommendation_params = {
         "select": (
@@ -2574,6 +2632,9 @@ async def fetch_diet_recommendation(
         )
     if recommendation_date is None:
         recommendation_params["status"] = "eq.active"
+        recommendation_params["recommendation_date"] = (
+            f"lte.{(latest_date or datetime.now(KST).date()).isoformat()}"
+        )
     else:
         recommendation_params["recommendation_date"] = f"eq.{recommendation_date.isoformat()}"
     shared_client = client
@@ -2826,6 +2887,30 @@ async def fetch_latest_diet_recommendation(
     settings: Settings,
 ) -> dict[str, Any] | None:
     return await fetch_diet_recommendation(user_id, settings)
+
+
+def representative_food_names(
+    recommendation: dict[str, Any] | None,
+) -> list[str]:
+    if not recommendation:
+        return []
+    return [
+        str(meal["foods"][0]["food_name"])
+        for meal in recommendation.get("meals") or []
+        if meal.get("foods") and meal["foods"][0].get("food_name")
+    ]
+
+
+def meal_food_name_groups(
+    *recommendations: dict[str, Any] | None,
+) -> list[list[str]]:
+    return [
+        [str(food["food_name"]) for food in meal.get("foods") or []]
+        for recommendation in recommendations
+        if recommendation
+        for meal in recommendation.get("meals") or []
+        if meal.get("foods")
+    ]
 
 
 async def regenerate_diet_meal(
@@ -3338,9 +3423,9 @@ app = FastAPI(
         {"name": "Exercise", "description": "운동 선호도, 추천, 세션, 목표 및 진행 현황"},
         {"name": "Posture Analysis", "description": "자세 분석 진행 상태 및 완료 결과"},
         {"name": "Running", "description": "러닝 코스 검색, 경로 생성, GPS 세션 및 페이스"},
-        {"name": "Community", "description": "마일리지 잔액, 적립 규칙 및 내역"},
         {"name": "Diet", "description": "식재료, 식단 추천, 영양 요약 및 식사 기록"},
         {"name": "Chat", "description": "건강 상담 채팅 및 답변·점수 미리보기"},
+        {"name": "Community", "description": "커뮤니티 피드, 사진, 좋아요, 공유, 댓글, 신고·차단"},
         {"name": "System", "description": "서버 상태 및 개발용 연동 테스트"},
     ],
     lifespan=lifespan,
@@ -3350,9 +3435,47 @@ app = FastAPI(
 )
 
 
+@app.get(
+    "/test/diet-generation",
+    response_class=FileResponse,
+    include_in_schema=False,
+)
+async def mobile_diet_generation_test() -> FileResponse:
+    return FileResponse(
+        Path(__file__).resolve().parents[2] / "mobile-diet-generation-test.html",
+        media_type="text/html; charset=utf-8",
+        headers={
+            "Cache-Control": "no-store",
+            "Content-Security-Policy": (
+                "default-src 'none'; style-src 'self'; script-src 'self'; "
+                "connect-src 'self' https://eeeqibyssajykrhvecbv.supabase.co; "
+                "frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+            ),
+        },
+    )
+
+
+@app.get("/test/diet-generation.css", response_class=FileResponse, include_in_schema=False)
+async def mobile_diet_generation_test_css() -> FileResponse:
+    return FileResponse(
+        Path(__file__).resolve().parents[2] / "mobile-diet-generation-test.css",
+        media_type="text/css; charset=utf-8",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
+@app.get("/test/diet-generation.js", response_class=FileResponse, include_in_schema=False)
+async def mobile_diet_generation_test_js() -> FileResponse:
+    return FileResponse(
+        Path(__file__).resolve().parents[2] / "mobile-diet-generation-test.js",
+        media_type="application/javascript; charset=utf-8",
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 @app.exception_handler(HTTPException)
 async def chat_http_error(request, exc):
-    if request.url.path.startswith("/api/chats") and not isinstance(exc.detail, dict):
+    if request.url.path.startswith(("/api/chats", "/api/community")) and not isinstance(exc.detail, dict):
         code = "AUTH_REQUIRED" if exc.status_code == 401 else "DATA_SOURCE_ERROR"
         message = "로그인이 필요하거나 세션이 만료되었습니다." if exc.status_code == 401 else "요청을 처리하지 못했습니다."
         return JSONResponse(status_code=exc.status_code, content={"detail": {"code": code, "message": message, "fields": None}})
@@ -3370,7 +3493,7 @@ async def chat_http_error(request, exc):
 async def chat_validation_error(request, exc):
     # Never echo question text, tokens, health data, or arbitrary input.
     fields = [".".join(map(str, error["loc"])) for error in exc.errors()]
-    if request.url.path.startswith(("/api/chats", "/api/health-documents")):
+    if request.url.path.startswith(("/api/chats", "/api/health-documents", "/api/community")):
         return JSONResponse(status_code=422, content={"detail": {
             "code": "VALIDATION_ERROR", "message": "입력값을 확인해 주세요.",
             "fields": fields,
@@ -3439,6 +3562,7 @@ app.include_router(create_analysis_summary_router(get_current_user, get_settings
 app.include_router(create_posture_analysis_router(get_current_user, get_settings))
 app.include_router(create_saved_workout_router(get_current_user, get_settings))
 app.include_router(create_running_sessions_router(get_current_user, get_settings))
+app.include_router(create_community_router(get_current_user, get_settings))
 app.include_router(
     create_health_documents_router(
         current_user_dependency=get_current_user,
@@ -3455,6 +3579,7 @@ async def health() -> dict[str, str]:
 @app.post("/internal/diet-refresh", tags=["System"], include_in_schema=False)
 async def trigger_daily_diet_refresh(
     x_cron_token: Annotated[str | None, Header()] = None,
+    x_diet_refresh_mode: Annotated[str | None, Header()] = None,
 ) -> dict[str, int | bool]:
     expected_token = os.getenv("DIET_REFRESH_CRON_TOKEN", "")
     if not expected_token:
@@ -3467,11 +3592,18 @@ async def trigger_daily_diet_refresh(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid scheduler credentials",
         )
+    if x_diet_refresh_mode not in (None, "normal", "all-ai"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid diet refresh mode",
+        )
 
     # Import lazily because the CLI entry point reuses functions from this module.
     from backend.app.diet_refresh import refresh_daily_diets
 
-    succeeded, failed = await refresh_daily_diets()
+    succeeded, failed = await refresh_daily_diets(
+        all_ai=x_diet_refresh_mode == "all-ai"
+    )
     if failed:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -4025,11 +4157,96 @@ async def generate_diet_recommendation(
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    inventory, catalog, selected, food_catalog = await asyncio.gather(
+    target_date = datetime.now(KST).date()
+    observed = await fetch_diet_recommendation(user.id, settings, target_date)
+    lock = DIET_GENERATION_LOCKS[(user.id, target_date)]
+    async with lock:
+        previous = await fetch_diet_recommendation(user.id, settings, target_date)
+        observed_id = (
+            observed["recommendation"]["diet_recommendation_id"] if observed else None
+        )
+        previous_id = (
+            previous["recommendation"]["diet_recommendation_id"] if previous else None
+        )
+        if previous_id != observed_id:
+            return {
+                "ok": True,
+                "generator": "mixed_ai_v1",
+                "reused_concurrent_result": True,
+                "result": previous,
+            }
+
+        inventory, catalog, selected, food_catalog, previous_before = await asyncio.gather(
+            fetch_food_inventory(user.id, settings),
+            fetch_allergy_catalog(settings),
+            fetch_user_allergies(user.id, settings),
+            fetch_food_catalog(settings),
+            fetch_diet_recommendation(
+                user.id, settings, None,
+                latest_date=target_date - timedelta(days=1),
+            ),
+        )
+        catalog_names = {
+            row["allergy_type_id"]: row["name"] for row in catalog
+        }
+        allergy_names = [
+            row.get("custom_name") or catalog_names.get(row.get("allergy_type_id"))
+            for row in selected
+        ]
+        try:
+            plan = await build_daily_diet_recommendation_plan(
+                user.id,
+                inventory,
+                [name for name in allergy_names if name],
+                food_catalog,
+                target_date=target_date,
+                avoid_food_names=(
+                    representative_food_names(previous)
+                    + representative_food_names(previous_before)
+                ),
+                avoid_meal_food_names=meal_food_name_groups(
+                    previous, previous_before
+                ),
+            )
+        except DietAIUnavailable as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI diet generator is temporarily unavailable",
+            ) from exc
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Food catalog cannot build a mixed diet recommendation",
+            ) from exc
+        await assign_menu_images(plan["meals"], settings)
+        await generate_missing_menu_images(plan["meals"], settings)
+        await create_diet_recommendation(user.id, plan, settings)
+        result = await fetch_diet_recommendation(user.id, settings, target_date)
+        return {
+            "ok": True,
+            "generator": "mixed_ai_v1",
+            "reused_concurrent_result": False,
+            "result": result,
+        }
+
+
+@app.post("/api/diet/recommendations/generate-preview", tags=["Diet"])
+async def preview_all_ai_diet_recommendation(
+    body: GenerateDietRecommendationRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    target_date = datetime.now(KST).date()
+    inventory, catalog, selected, food_catalog, previous, previous_before = await asyncio.gather(
         fetch_food_inventory(user.id, settings),
         fetch_allergy_catalog(settings),
         fetch_user_allergies(user.id, settings),
         fetch_food_catalog(settings),
+        fetch_diet_recommendation(user.id, settings, target_date),
+        fetch_diet_recommendation(
+            user.id, settings, None,
+            latest_date=target_date - timedelta(days=1),
+        ),
     )
     catalog_names = {
         row["allergy_type_id"]: row["name"] for row in catalog
@@ -4044,22 +4261,25 @@ async def generate_diet_recommendation(
             inventory,
             [name for name in allergy_names if name],
             food_catalog,
+            target_date=target_date,
+            all_ai=True,
+            avoid_food_names=(
+                representative_food_names(previous)
+                + representative_food_names(previous_before)
+            ),
+            avoid_meal_food_names=meal_food_name_groups(previous, previous_before),
         )
     except DietAIUnavailable as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="AI diet generator is temporarily unavailable",
         ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Food catalog cannot build a mixed diet recommendation",
-        ) from exc
-    await assign_menu_images(plan["meals"], settings)
-    await generate_missing_menu_images(plan["meals"], settings)
-    await create_diet_recommendation(user.id, plan, settings)
-    result = await fetch_latest_diet_recommendation(user.id, settings)
-    return {"ok": True, "generator": "mixed_ai_v1", "result": result}
+    return {
+        "ok": True,
+        "generator": "all_ai_preview_v1",
+        "persisted": False,
+        "result": plan,
+    }
 
 
 @app.post(

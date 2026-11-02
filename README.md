@@ -13,6 +13,8 @@ Render API를 NCP 서버로 이전하는 절차와 배포 구성은 [NCP 배포 
 전체 화면 연동은 [프론트엔드 협업용 API 안내](docs/frontend-api-handoff.md),
 [입력 필드 참조](docs/api-input-reference.md), [OpenAPI](docs/openapi.json)를 확인하세요.
 
+커뮤니티(피드·사진·좋아요·공유·댓글·신고·차단) 연동은 [커뮤니티 API 계약](docs/community-api-contract.md)을 확인하세요.
+
 홈 화면 로딩 개선용 `GET /api/home` 연동은 [홈 API 전달사항](docs/frontend-home-api-handoff.md)을 확인하세요.
 
 종합 분석의 체성분 추가 지표·판정 기준·출처 팝업 설계와 계산식은
@@ -154,7 +156,7 @@ backend/.venv/bin/python -m backend.tests.diet_live_integration \
 
 자정 자동 갱신 배포 전 `supabase/migrations/20260928082133_daily_ai_diet_refresh.sql`을 적용하고, Render 웹 서비스에 `CHAT_AI_URL`, `CHAT_AI_API_KEY`, Supabase 서버 키, `DIET_REFRESH_CRON_TOKEN`을 설정해야 합니다. GitHub Actions 저장소 secret의 `DIET_REFRESH_CRON_TOKEN`에는 웹 서비스와 동일한 값을 사용합니다.
 
-AI 한 끼 재추천을 배포할 때는 `supabase/migrations/20260929042545_update_regenerated_meal_source_type.sql`까지 대상 Supabase에 적용하고 웹 서비스의 `CHAT_AI_ENABLED=true`, `CHAT_AI_URL`, `CHAT_AI_API_KEY`를 확인해야 합니다.
+AI 한 끼 재추천을 배포할 때는 `supabase/migrations/20260929044540_update_regenerated_meal_source_type.sql`까지 대상 Supabase에 적용하고 웹 서비스의 `CHAT_AI_ENABLED=true`, `CHAT_AI_URL`, `CHAT_AI_API_KEY`를 확인해야 합니다. 외부 AI에는 사용자 ID나 냉장고 보유량 대신 필터를 통과한 재료명만 전달합니다.
 
 식단 이미지 생성 서버 연동은 `supabase/migrations/20260930090000_menu_image_dataset_matching.sql`을 적용한 뒤 `FOOD_IMAGE_ENABLED=true`, `FOOD_IMAGE_URL`, `FOOD_IMAGE_API_KEY`를 설정합니다. 생성 서버에는 계약대로 1024×1024 PNG를 요청합니다. 기본 저장 형식은 `FOOD_IMAGE_FORMAT=webp`인 512×512 WebP 변환본이며 `png`를 선택하면 원본 PNG를 저장합니다. 요청은 프로세스당 한 건씩 직렬 처리하고, 실패해도 식단은 기본 이미지 상태로 저장됩니다.
 

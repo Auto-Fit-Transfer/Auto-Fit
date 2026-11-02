@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Auto-Fit 냉장고 맞춤 식단 생성</title>
+  <link rel="stylesheet" href="/test/diet-generation.css">
+</head>
+<body>
+  <main>
+    <h1>냉장고 맞춤 식단 새로 만들기</h1>
+    <p>담당자 계정으로 로그인한 뒤 버튼을 누르면 현재 냉장고 재료를 반영한 새 식단을 만들고 운영 식단으로 저장됩니다.</p>
+    <section id="login-section">
+      <strong>테스트 계정 로그인</strong>
+      <form id="login-form">
+        <label>이메일<input id="email" type="email" autocomplete="username" required></label>
+        <label>비밀번호<input id="password" type="password" autocomplete="current-password" required></label>
+        <button type="submit">로그인</button>
+      </form>
+    </section>
+    <section id="test-section" hidden>
+      <strong>저장 식단 생성</strong>
+      <button id="generate" type="button">냉장고 맞춤 식단 새로 만들기</button>
+      <button id="logout" class="secondary" type="button">로그아웃</button>
+      <div id="status" role="status" aria-live="polite">버튼을 눌러 테스트하세요.</div>
+      <div id="summary"></div>
+      <div id="meals"></div>
+    </section>
+  </main>
+  <script src="/test/diet-generation.js" defer></script>
+</body>
+</html>

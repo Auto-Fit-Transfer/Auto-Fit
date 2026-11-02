@@ -412,7 +412,11 @@ OpenAPI에 명시된 상태 코드: 200, 422. 런타임 인증·상태·DB 오�
 
 JSON 본문: 필수, 타입: **RegenerateDietMealRequest**
 
-OpenAPI에 명시된 상태 코드: 200, 422. 런타임 인증·상태·DB 오류는 협업 안내 참고.
+성공 응답은 `generator: "ai_v1"`, `meal.source_type: "ai_generated"`와
+`used_ingredients[]`를 포함한다. 각 사용 재료에는 inventory ID, 보유량/단위,
+AI 계획량/단위 및 비교 가능한 경우의 보유량 충족 여부가 포함된다.
+
+OpenAPI에 명시된 상태 코드: 200, 422. 런타임 인증·상태·AI·DB 오류는 협업 안내 참고.
 
 ## POST /api/diet/meals/{diet_meal_id}/feedback
 

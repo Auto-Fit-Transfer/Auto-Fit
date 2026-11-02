@@ -4,7 +4,6 @@ from datetime import date
 import httpx
 
 from backend.app import main
-from backend.app.http_client import bind_request_client
 from backend.tests.test_main import TEST_SETTINGS
 
 
@@ -32,7 +31,7 @@ def test_diet_food_query_uses_persisted_order() -> None:
     asyncio.run(run())
 
 
-def test_regenerated_foods_follow_persisted_food_order() -> None:
+def test_regenerated_foods_follow_persisted_food_order(monkeypatch) -> None:
     async def run() -> None:
         async def handler(request: httpx.Request) -> httpx.Response:
             assert request.url.path.endswith("/rpc/replace_diet_meal")
@@ -44,11 +43,11 @@ def test_regenerated_foods_follow_persisted_food_order() -> None:
                 ],
             })
 
-        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            async with bind_request_client(client):
-                result = await main.regenerate_diet_meal(
-                    "owner", "meal", {"foods": []}, TEST_SETTINGS
-                )
+        client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        monkeypatch.setattr(main.httpx, "AsyncClient", lambda **kwargs: client)
+        result = await main.regenerate_diet_meal(
+            "owner", "meal", {"foods": []}, TEST_SETTINGS
+        )
 
         assert [food["food_name"] for food in result["foods"]] == [
             "소고기", "당근",

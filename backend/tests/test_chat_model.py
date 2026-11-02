@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 
 import httpx
 import pytest
@@ -88,11 +89,27 @@ def test_bad_responses_fall_back(monkeypatch, response):
     assert asyncio.run(chat_model.explain_records("질문", summary())) is None
 
 
-def test_timeout_falls_back(monkeypatch):
+def test_timeout_falls_back_without_leaking_upstream_detail(monkeypatch, caplog):
     def handler(req):
         raise httpx.ReadTimeout("private upstream detail")
     enable(monkeypatch, handler)
+    caplog.set_level(logging.WARNING, logger="uvicorn.error")
     assert asyncio.run(chat_model.explain_records("질문", summary())) is None
+    assert '"reason":"transport_timeout"' in caplog.text
+    assert '"exception_type":"ReadTimeout"' in caplog.text
+    assert "private upstream detail" not in caplog.text
+
+
+def test_upstream_status_is_logged_without_response_body(monkeypatch, caplog):
+    enable(
+        monkeypatch,
+        lambda req: httpx.Response(503, text="private upstream response"),
+    )
+    caplog.set_level(logging.WARNING, logger="uvicorn.error")
+    assert asyncio.run(chat_model.explain_records("질문", summary())) is None
+    assert '"reason":"upstream_http_error"' in caplog.text
+    assert '"upstream_status":503' in caplog.text
+    assert "private upstream response" not in caplog.text
 
 
 def test_timeout_budgets_allow_slow_model_response():

@@ -96,7 +96,7 @@ async def run(project: str, api_base: str) -> None:
                     "/api/diet/inventory",
                     headers=owner,
                     json={
-                        "name": "통합테스트 두부",
+                        "name": "두부",
                         "quantity": 1,
                         "unit": "모",
                         "purchased_on": today,
@@ -195,14 +195,15 @@ async def run(project: str, api_base: str) -> None:
                 check(
                     regenerated_payload["generator"] == "ai_v1"
                     and regenerated_meal["source_type"] == "ai_generated",
-                    "regenerated meal records its AI source",
+                    "regenerated meal is AI-generated",
                 )
                 check(
                     any(
                         item["user_food_inventory_id"] == inventory_id
+                        and item["name"] == "두부"
                         for item in regenerated_payload["used_ingredients"]
                     ),
-                    "regenerated meal reports used inventory",
+                    "regeneration reports used inventory",
                 )
                 check(
                     regenerated_meal["diet_meal_id"]

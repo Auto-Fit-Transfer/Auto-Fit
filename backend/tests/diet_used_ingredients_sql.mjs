@@ -19,6 +19,10 @@ const laterMigration = readFileSync(
   new URL('../../supabase/migrations/20260930090000_menu_image_dataset_matching.sql', import.meta.url),
   'utf8',
 );
+const rulesMigration = readFileSync(
+  new URL('../../supabase/migrations/20261023030557_accept_rules_based_diet_meals.sql', import.meta.url),
+  'utf8',
+);
 
 const owner = '00000000-0000-0000-0000-000000000001';
 const inventory = '00000000-0000-0000-0000-000000000002';
@@ -137,6 +141,49 @@ try {
     [usedIngredient('블루베리', '블루베리')],
   );
 
+  await db.exec('reset role');
+  await db.exec(rulesMigration);
+  await db.exec('set role service_role');
+  const rulesMeals = meals.map((meal, index) => ({
+    ...meal,
+    source_type: index < 2 ? 'ai_generated' : 'rules_based',
+  }));
+  await db.query(
+    'select public.create_diet_recommendation($1::uuid,$2::jsonb,$3::jsonb)',
+    [
+      owner,
+      JSON.stringify({ ...recommendation, recommendation_date: '2026-10-02' }),
+      JSON.stringify(rulesMeals),
+    ],
+  );
+  const storedRulesMeals = await db.query(
+    `select dm.source_type
+     from public.diet_meals dm
+     join public.diet_recommendations dr
+       on dr.diet_recommendation_id = dm.diet_recommendation_id
+     where dr.recommendation_date = '2026-10-02'
+     order by dm.meal_order`,
+  );
+  assert.deepEqual(
+    storedRulesMeals.rows.map((meal) => meal.source_type),
+    ['ai_generated', 'ai_generated', 'rules_based', 'rules_based'],
+  );
+  await assert.rejects(
+    db.query(
+      'select public.create_diet_recommendation($1::uuid,$2::jsonb,$3::jsonb)',
+      [
+        owner,
+        JSON.stringify({ ...recommendation, recommendation_date: '2026-10-03' }),
+        JSON.stringify([
+          ...rulesMeals.slice(0, 2),
+          { ...rulesMeals[2], source_type: 'dummy' },
+          rulesMeals[3],
+        ]),
+      ],
+    ),
+    /invalid meal source_type/,
+  );
+
   const replacement = {
     meal_type: 'breakfast',
     meal_order: 1,
@@ -159,7 +206,7 @@ try {
     [usedIngredient('딸기', '딸기')],
   );
 
-  console.log('3 diet used-ingredient snapshot SQL checks passed in isolated PGlite.');
+  console.log('5 diet used-ingredient and source-type SQL checks passed in isolated PGlite.');
 } finally {
   await db.close();
 }

@@ -5,6 +5,12 @@ on:
     # GitHub Actions schedules use UTC; 15:00 UTC is 00:00 Asia/Seoul.
     - cron: "0 15 * * *"
   workflow_dispatch:
+    inputs:
+      all_ai:
+        description: "DB 음식 카탈로그 조회 없이 4식을 모두 AI로 생성"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -21,14 +27,11 @@ jobs:
       - name: Refresh daily recommendations
         env:
           DIET_REFRESH_CRON_TOKEN: ${{ secrets.DIET_REFRESH_CRON_TOKEN }}
-          API_BASE_URL: ${{ vars.API_BASE_URL || 'https://auto-fit-api-dev.onrender.com' }}
+          DIET_REFRESH_MODE: ${{ inputs.all_ai && 'all-ai' || 'normal' }}
         run: |
-          if [[ ! "$API_BASE_URL" =~ ^https://[A-Za-z0-9.-]+(:[0-9]+)?$ ]]; then
-            echo "API_BASE_URL must be an HTTPS origin" >&2
-            exit 1
-          fi
           curl --fail-with-body --show-error --silent \
             --retry 3 --retry-all-errors --max-time 1200 \
             --request POST \
             --header "X-Cron-Token: ${DIET_REFRESH_CRON_TOKEN}" \
-            "${API_BASE_URL}/internal/diet-refresh"
+            --header "X-Diet-Refresh-Mode: ${DIET_REFRESH_MODE}" \
+            https://auto-fit-api-dev.onrender.com/internal/diet-refresh

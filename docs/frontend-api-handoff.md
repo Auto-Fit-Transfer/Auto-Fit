@@ -239,12 +239,8 @@ PATCH는 변경할 필드를 하나 이상 보내며, 생략한 필드는 유지
 result.recommendation: diet_recommendation_id, recommendation_date, target_calories,
 target_carbohydrates, target_protein, target_fat, recommendation_summary, ai_reason, status.
 result.meals[]: diet_meal_id, meal_type, meal_order, recommended_calories, recommendation_note,
-image_storage_path, image_url, status, foods[], feedback, used_ingredients[]. `image_url`은 공개 Supabase Storage URL이며
+image_storage_path, image_url, status, foods[], feedback. `image_url`은 공개 Supabase Storage URL이며
 추천 식단 카드의 이미지 소스로 바로 사용할 수 있다.
-`used_ingredients[]`는 식단 생성 또는 한 끼 재추천 시점에 추천 음식과 냉장고 재료를
-매칭해 저장한 스냅샷이다. 이후 재료를 소진·수정·삭제해도 날짜별 화면은 당시 사용한
-재료의 `name` 목록을 그대로 복원한다. 스냅샷 도입 전 레코드는 현재 사용 가능한 재료와
-다시 매칭하는 호환 로직을 사용하므로, 이미 삭제된 과거 재료는 복원되지 않을 수 있다.
 `feedback`은 아직 피드백이 없으면 null이며, 있으면 diet_feedback_id, diet_meal_id,
 meal_log_id, feedback_type, actual_food_name, feedback_note, recorded_at을 포함한다. 카드 상태는
 `feedback.feedback_type`을 우선 사용하고 null이면 아직 선택하지 않은 상태로 복원한다.
@@ -253,19 +249,22 @@ meal_log_id, feedback_type, actual_food_name, feedback_note, recorded_at을 포�
 없다는 뜻이며, 향후 이미지 모델 작업 큐를 시작하는 기준으로 사용한다.
 백엔드가 `foods[].food_name`을 정규화해 기존 사진과 자동 매칭하므로 프론트는 음식 이름과
 사진을 개별 매핑하지 않는다. `image_url`만 사용하고 값이 없으면 기본 이미지를 표시한다.
-foods[]: food_name, display_name, quantity, unit, display_unit, calories, carbohydrates, protein,
-fat 등. 카드에는 괄호 부가정보를 제거한 `display_name`을 사용한다. 사용자가 카드를 펼치면
-foods[] 전체를 순회해 `display_name + quantity + display_unit` 형식으로 재료와 분량을 표시한다.
-원문 확인이 필요한 상세 데이터에는 괄호 내용을 보존한 `food_name`, `unit`을 사용한다.
-일일 식단 생성은 `mixed_ai_v1`이며 하루 4끼 중 2~3끼가 `ai_generated`, 나머지가
-`db_catalog`다.
+foods[]: food_name, display_name, original_food_name, quantity, unit, display_unit,
+original_unit, calories, carbohydrates, protein, fat 등. 기존 클라이언트가 쓰는 `food_name`과
+`unit`은 괄호 부가정보를 제거한 표시값이며, 원문은 `original_food_name`, `original_unit`에 보존된다.
+일일 식단 생성은 DB catalog와 AI 생성 결과를 혼합한다. 한 끼 재추천은 `generator=ai_v1`,
+`meal.source_type=ai_generated`를 반환하며 외부 AI에는 알레르기 필터를 통과한 냉장고 재료명만
+전달한다. 사용자 ID, inventory ID, 보유 수량·단위, 유통기한은 서버 밖으로 보내지 않는다.
 날짜별 조회는 KST 기준 해당 날짜에 마지막으로 생성된 추천을 반환한다. 한 끼 재추천은
 기존 `diet_meal_id`, `meal_type`, `meal_order`를 유지한 채 음식 목록을 교체하며, 완료·변경·건너뜀
-상태의 식사는 409다. 단건 생성기는 `ai_v1`이고 성공한 식사는 `source_type=ai_generated`로
-저장한다. `used_ingredients[]`에는 `user_food_inventory_id`, `name`, `matched_food_name`,
-`quantity`, `unit`이 들어간다. AI가 비활성·실패하거나 사용 가능한 냉장고 재료를 결과에
-반영하지 못하면 503이며 규칙 기반 결과로 자동 대체하지 않는다. `menu_image_key`는 이미지
-캐시 키이므로 AI/DB 생성 출처 판단에는 `generator`와 `source_type`을 사용한다.
+상태의 식사는 409다. AI 결과를 만들 수 없거나 냉장고 재료가 반영되지 않으면 503이다.
+`used_ingredients[]`에는 inventory ID와 보유량(`quantity`, `unit`), AI 계획량
+(`planned_quantity`, `planned_unit`) 및 단위 비교가 가능한 경우의 보유량 충족 여부가 포함된다.
+날짜별·최근 추천 조회의 각 `meals[]`에는 식단 생성 또는 재추천 시점에 저장한
+`used_ingredients[]` 스냅샷이 포함된다. 이후 재료를 소진·수정·삭제하거나 `먹었어요` 처리 후
+화면을 다시 열어도 당시 활용 재료가 유지된다. 스냅샷 도입 전 레코드는 현재 사용 가능한
+재료와 추천 음식을 다시 매칭하는 호환 로직을 사용한다.
+DB 반영에는 `replace_diet_meal` RPC가 필요하다.
 
 영양 요약의 `summary`에는 날짜, 추천 존재 여부, 알 수 없는 영양 항목 여부와 칼로리·탄수화물·
 단백질·지방의 `consumed`, `target`, `unit`이 포함된다. 목표는 해당 날짜 최신 추천에서,

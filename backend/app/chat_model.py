@@ -2,12 +2,17 @@
 
 import asyncio
 import json
+import logging
 import os
 from dataclasses import dataclass, field
+from time import perf_counter
 from urllib.parse import urlsplit
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+
+
+logger = logging.getLogger("uvicorn.error")
 
 
 @dataclass(frozen=True)
@@ -90,6 +95,18 @@ async def request_model(question_with_context: str) -> str | None:
     config = get_model_config()
     if config is None:
         return None
+    started = perf_counter()
+
+    def log_result(outcome: str, reason: str, **details: object) -> None:
+        payload = {
+            "outcome": outcome,
+            "reason": reason,
+            "elapsed_ms": round((perf_counter() - started) * 1000, 2),
+            **details,
+        }
+        log = logger.info if outcome == "success" else logger.warning
+        log("[ai-model] %s", json.dumps(payload, separators=(",", ":")))
+
     try:
         # Hard wall-clock budget as well as socket timeouts; never retry a paid call.
         async with asyncio.timeout(MODEL_WALL_TIMEOUT_SECONDS):
@@ -107,8 +124,35 @@ async def request_model(question_with_context: str) -> str | None:
                     async for chunk in response.aiter_bytes():
                         data.extend(chunk)
                         if len(data) > 65536:
+                            log_result("failure", "response_too_large")
                             return None
-                    return ModelReply.model_validate_json(bytes(data)).answer
-    except (httpx.HTTPError, TimeoutError, ValidationError):
-        # Do not log response bodies, questions, health records or credentials.
+                    answer = ModelReply.model_validate_json(bytes(data)).answer
+                    log_result("success", "completed")
+                    return answer
+    except httpx.HTTPStatusError as exc:
+        log_result(
+            "failure",
+            "upstream_http_error",
+            upstream_status=exc.response.status_code,
+        )
+        return None
+    except httpx.TimeoutException as exc:
+        log_result(
+            "failure",
+            "transport_timeout",
+            exception_type=type(exc).__name__,
+        )
+        return None
+    except TimeoutError:
+        log_result("failure", "wall_timeout")
+        return None
+    except httpx.HTTPError as exc:
+        log_result(
+            "failure",
+            "transport_error",
+            exception_type=type(exc).__name__,
+        )
+        return None
+    except ValidationError:
+        log_result("failure", "invalid_response_schema")
         return None

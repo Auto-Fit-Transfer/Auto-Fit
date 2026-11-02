@@ -22,33 +22,49 @@ def test_health() -> None:
     assert response.json() == {"status": "ok"}
 
 
-def test_recommended_food_names_preserve_details_and_add_display_names() -> None:
+def test_recommended_food_names_hide_parenthetical_details_and_preserve_source() -> None:
     foods = main.normalize_recommended_foods([
         {"food_name": "닭가슴살 샐러드 (저염 소스)", "quantity": 1, "unit": "개(중간)"},
         {"food_name": "현미밥(잡곡 30%)", "quantity": 100, "unit": "g"},
-        {"food_name": "두부（구이）", "quantity": 1, "unit": "개"},
         {"food_name": "연어 샐러드(소스(별도))", "quantity": 120, "unit": "g"},
     ])
 
-    assert [food["display_name"] for food in foods] == [
-        "닭가슴살 샐러드",
-        "현미밥",
-        "두부",
-        "연어 샐러드",
-    ]
     assert [food["food_name"] for food in foods] == [
-        "닭가슴살 샐러드 (저염 소스)",
-        "현미밥(잡곡 30%)",
-        "두부（구이）",
-        "연어 샐러드(소스(별도))",
+        "닭가슴살 샐러드", "현미밥", "연어 샐러드",
     ]
-    assert [food["display_unit"] for food in foods] == ["개", "g", "개", "g"]
+    assert [food["unit"] for food in foods] == ["개", "g", "g"]
+    assert foods[0]["original_food_name"] == "닭가슴살 샐러드 (저염 소스)"
+    assert foods[0]["original_unit"] == "개(중간)"
+
+
+def test_mobile_diet_generation_test_page() -> None:
+    client = TestClient(main.app)
+    response = client.get("/test/diet-generation")
+
+    assert response.status_code == 200
+    assert "냉장고 맞춤 식단 새로 만들기" in response.text
+    assert "운영 식단으로 저장됩니다" in response.text
+    assert 'src="/test/diet-generation.js"' in response.text
+    assert response.headers["cache-control"] == "no-store"
+    assert "script-src 'self'" in response.headers["content-security-policy"]
+    assert "https://eeeqibyssajykrhvecbv.supabase.co" in response.headers[
+        "content-security-policy"
+    ]
+    assert client.get("/test/diet-generation.css").status_code == 200
+    script = client.get("/test/diet-generation.js")
+    assert script.status_code == 200
+    assert "'/api/diet/recommendations/generate'" in script.text
+    assert "/api/diet/recommendations/generate-preview" not in script.text
+    assert "DB 저장: 완료" in script.text
+    assert "formatFoodQuantity(food.quantity,food.unit)" in script.text
+    assert "Math.round(numericQuantity)" in script.text
 
 
 def test_daily_diet_refresh_requires_configured_token(monkeypatch) -> None:
     monkeypatch.delenv("DIET_REFRESH_CRON_TOKEN", raising=False)
 
-    response = TestClient(main.app).post("/internal/diet-refresh")
+    client = TestClient(main.app)
+    response = client.post("/internal/diet-refresh")
 
     assert response.status_code == 503
 
@@ -56,7 +72,8 @@ def test_daily_diet_refresh_requires_configured_token(monkeypatch) -> None:
 def test_daily_diet_refresh_rejects_invalid_token(monkeypatch) -> None:
     monkeypatch.setenv("DIET_REFRESH_CRON_TOKEN", "expected-token")
 
-    response = TestClient(main.app).post(
+    client = TestClient(main.app)
+    response = client.post(
         "/internal/diet-refresh",
         headers={"X-Cron-Token": "wrong-token"},
     )
@@ -69,18 +86,148 @@ def test_daily_diet_refresh_runs_with_valid_token(monkeypatch) -> None:
 
     monkeypatch.setenv("DIET_REFRESH_CRON_TOKEN", "expected-token")
 
-    async def fake_refresh() -> tuple[int, int]:
+    async def fake_refresh(all_ai: bool = False) -> tuple[int, int]:
+        assert all_ai is False
         return 12, 0
 
     monkeypatch.setattr(diet_refresh, "refresh_daily_diets", fake_refresh)
 
-    response = TestClient(main.app).post(
+    client = TestClient(main.app)
+    response = client.post(
         "/internal/diet-refresh",
         headers={"X-Cron-Token": "expected-token"},
     )
 
     assert response.status_code == 200
     assert response.json() == {"ok": True, "succeeded": 12, "failed": 0}
+
+
+def test_daily_diet_refresh_all_ai_mode_is_explicit(monkeypatch) -> None:
+    from backend.app import diet_refresh
+
+    monkeypatch.setenv("DIET_REFRESH_CRON_TOKEN", "expected-token")
+
+    async def fake_refresh(all_ai: bool = False) -> tuple[int, int]:
+        assert all_ai is True
+        return 12, 0
+
+    monkeypatch.setattr(diet_refresh, "refresh_daily_diets", fake_refresh)
+
+    response = TestClient(main.app).post(
+        "/internal/diet-refresh",
+        headers={
+            "X-Cron-Token": "expected-token",
+            "X-Diet-Refresh-Mode": "all-ai",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True, "succeeded": 12, "failed": 0}
+
+
+def test_all_ai_plan_uses_every_slot_without_catalog_mix(monkeypatch) -> None:
+    async def fake_generate(
+        slots,
+        allergy_names,
+        request_model,
+        avoid_food_names=None,
+        avoid_meal_food_names=None,
+        available_ingredients=None,
+    ):
+        assert len(slots) == 4
+        return [
+            {
+                **slot,
+                "source_type": "ai_generated",
+                "recommendation_note": "AI 검증 추천",
+                "foods": [
+                    {
+                        "food_name": f"생성 검증 {slot['meal_order']}",
+                        "quantity": 100,
+                        "unit": "g",
+                        "calories": slot["recommended_calories"],
+                        "carbohydrates": 40,
+                        "protein": 20,
+                        "fat": 10,
+                    }
+                ],
+            }
+            for slot in slots
+        ]
+
+    monkeypatch.setattr(main, "generate_ai_meals", fake_generate)
+
+    plan = asyncio.run(
+        main.build_daily_diet_recommendation_plan(
+            "user-1",
+            [],
+            [],
+            [],
+            target_date=date(2026, 9, 29),
+            all_ai=True,
+        )
+    )
+
+    assert len(plan["meals"]) == 4
+    assert {meal["source_type"] for meal in plan["meals"]} == {"ai_generated"}
+    assert "DB 음식 카탈로그 조회 없이" in plan["recommendation"]["ai_reason"]
+
+
+def test_daily_plan_uses_two_inventory_aware_ai_meals_when_catalog_empty(
+    monkeypatch,
+) -> None:
+    async def fake_generate(
+        slots,
+        allergy_names,
+        request_model,
+        avoid_food_names=None,
+        avoid_meal_food_names=None,
+        available_ingredients=None,
+    ):
+        assert len(slots) == 2
+        assert available_ingredients == ["브로콜리"]
+        return [
+            {
+                **slot,
+                "source_type": "ai_generated",
+                "recommendation_note": "냉장고 브로콜리 활용",
+                "foods": [
+                    {
+                        "food_name": f"브로콜리 식단 {slot['meal_order']}",
+                        "quantity": 100,
+                        "unit": "g",
+                        "calories": slot["recommended_calories"],
+                        "carbohydrates": 40,
+                        "protein": 20,
+                        "fat": 10,
+                    }
+                ],
+            }
+            for slot in slots
+        ]
+
+    monkeypatch.setattr(main, "generate_ai_meals", fake_generate)
+
+    plan = asyncio.run(
+        main.build_daily_diet_recommendation_plan(
+            "user-fridge",
+            [{"custom_name": "브로콜리", "quantity": 1, "is_available": True}],
+            [],
+            [],
+            target_date=date(2026, 9, 29),
+        )
+    )
+
+    assert len(plan["meals"]) == 4
+    assert [meal["source_type"] for meal in plan["meals"]].count("ai_generated") == 2
+    assert [meal["source_type"] for meal in plan["meals"]].count("rules_based") == 2
+    assert all(
+        main.find_used_inventory_names([meal], ["브로콜리"])
+        for meal in plan["meals"]
+        if meal["source_type"] == "ai_generated"
+    )
+    assert "규칙 기반 식단과 AI 생성 식단 2개" in plan["recommendation"]["ai_reason"]
+    assert "실제 메뉴에 반영된 냉장고 재료: 브로콜리" in plan["recommendation"]["ai_reason"]
 
 
 def test_roundtrip_returns_message_and_profile(monkeypatch) -> None:
@@ -1739,56 +1886,83 @@ def test_diet_plan_marks_only_inventory_that_is_present_in_actual_meals() -> Non
     assert "실제 메뉴에 반영된 냉장고 재료: 브로콜리" in result["recommendation"]["ai_reason"]
 
 
-def test_daily_diet_plan_uses_inventory_in_final_mixed_meals(monkeypatch) -> None:
-    async def fake_model(prompt: str) -> str:
-        payload = json.loads(prompt.rsplit("\n", 1)[-1])
-        return json.dumps(
+def test_daily_diet_plan_uses_catalog_linked_inventory_in_final_meals(
+    monkeypatch,
+) -> None:
+    async def fake_generate(
+        slots,
+        allergy_names,
+        request_model,
+        *args,
+        available_ingredients=None,
+    ):
+        assert available_ingredients == ["브로콜리"]
+        return [
             {
-                "meals": [
-                    {
-                        "meal_type": slot["meal_type"],
-                        "meal_order": slot["meal_order"],
-                        "recommendation_note": "냉장고 활용 AI 추천",
-                        "foods": [{
-                            "food_name": "브로콜리 볶음",
-                            "quantity": 200,
-                            "unit": "g",
-                            "calories": slot["target_calories"],
-                            "carbohydrates": 30,
-                            "protein": 15,
-                            "fat": 8,
-                        }],
-                    }
-                    for slot in payload["slots"]
-                ]
-            },
-            ensure_ascii=False,
-        )
+                **slot,
+                "source_type": "ai_generated",
+                "recommendation_note": "AI 추천",
+                "foods": [{
+                    "food_name": f"AI 메뉴 {slot['meal_order']}",
+                    "quantity": 100,
+                    "unit": "g",
+                    "calories": slot["recommended_calories"],
+                    "carbohydrates": 40,
+                    "protein": 20,
+                    "fat": 10,
+                }],
+            }
+            for slot in slots
+        ]
 
-    monkeypatch.setattr(main, "request_model", fake_model)
+    monkeypatch.setattr(main, "generate_ai_meals", fake_generate)
     result = asyncio.run(
         main.build_daily_diet_recommendation_plan(
-            "user-1",
-            [{"custom_name": "브로콜리", "quantity": "1", "is_available": True}],
-            [],
+            "user-fridge",
             [{
-                "food_item_id": "food-1",
-                "name": "현미밥",
-                "serving_size": 100,
-                "serving_unit": "g",
-                "calories": 200,
-                "carbohydrates": 40,
-                "protein": 4,
-                "fat": 1,
-                "source_type": "reference",
+                "food_item_id": "food-broccoli",
+                "custom_name": None,
+                "quantity": "1",
+                "is_available": True,
             }],
-            date(2026, 9, 29),
+            [],
+            [
+                {
+                    "food_item_id": "food-rice",
+                    "name": "가나다 현미밥",
+                    "serving_size": 100,
+                    "serving_unit": "g",
+                    "calories": 200,
+                    "carbohydrates": 40,
+                    "protein": 4,
+                    "fat": 1,
+                },
+                {
+                    "food_item_id": "food-broccoli",
+                    "name": "브로콜리",
+                    "serving_size": 100,
+                    "serving_unit": "g",
+                    "calories": 35,
+                    "carbohydrates": 7,
+                    "protein": 3,
+                    "fat": 0,
+                },
+            ],
+            target_date=date(2026, 9, 29),
         )
     )
 
     assert main.find_used_inventory_names(result["meals"], ["브로콜리"]) == ["브로콜리"]
     assert "실제 메뉴에 반영된 냉장고 재료: 브로콜리" in result["recommendation"]["ai_reason"]
-    assert any("냉장고 사용: 브로콜리" in meal["recommendation_note"] for meal in result["meals"])
+    assert any(
+        "냉장고 사용: 브로콜리" in meal["recommendation_note"]
+        for meal in result["meals"]
+    )
+    assert any(
+        meal["source_type"] == "ai_generated"
+        and main.find_used_inventory_names([meal], ["브로콜리"])
+        for meal in result["meals"]
+    )
     assert any(
         ingredient["name"] == "브로콜리"
         for meal in result["meals"]
@@ -1796,54 +1970,73 @@ def test_daily_diet_plan_uses_inventory_in_final_mixed_meals(monkeypatch) -> Non
     )
 
 
-def test_daily_diet_plan_resolves_catalog_linked_inventory(monkeypatch) -> None:
-    async def fake_model(prompt: str) -> str:
-        payload = json.loads(prompt.rsplit("\n", 1)[-1])
-        return json.dumps(
+def test_all_ai_diet_plan_applies_catalog_linked_inventory_server_side(
+    monkeypatch,
+) -> None:
+    async def fake_generate(
+        slots,
+        allergy_names,
+        request_model,
+        *args,
+        available_ingredients=None,
+    ):
+        assert available_ingredients == ["브로콜리"]
+        return [
             {
-                "meals": [
-                    {
-                        "meal_type": slot["meal_type"],
-                        "meal_order": slot["meal_order"],
-                        "recommendation_note": "연결 재료 활용",
-                        "foods": [{
-                            "food_name": "두부 샐러드",
-                            "quantity": 200,
-                            "unit": "g",
-                            "calories": slot["target_calories"],
-                            "carbohydrates": 20,
-                            "protein": 25,
-                            "fat": 10,
-                        }],
-                    }
-                    for slot in payload["slots"]
-                ]
-            },
-            ensure_ascii=False,
-        )
+                **slot,
+                "source_type": "ai_generated",
+                "recommendation_note": "AI 추천",
+                "foods": [{
+                    "food_name": f"AI 메뉴 {slot['meal_order']}",
+                    "quantity": 100,
+                    "unit": "g",
+                    "calories": slot["recommended_calories"],
+                    "carbohydrates": 40,
+                    "protein": 20,
+                    "fat": 10,
+                }],
+            }
+            for slot in slots
+        ]
 
-    monkeypatch.setattr(main, "request_model", fake_model)
+    monkeypatch.setattr(main, "generate_ai_meals", fake_generate)
     result = asyncio.run(
         main.build_daily_diet_recommendation_plan(
-            "user-2",
-            [{"food_item_id": "food-tofu", "custom_name": None, "quantity": "1", "is_available": True}],
+            "user-fridge",
+            [{
+                "food_item_id": "food-broccoli",
+                "custom_name": None,
+                "quantity": "80",
+                "unit": "g",
+                "is_available": True,
+            }],
             [],
             [{
-                "food_item_id": "food-tofu",
-                "name": "두부",
+                "food_item_id": "food-broccoli",
+                "name": "브로콜리",
                 "serving_size": 100,
                 "serving_unit": "g",
-                "calories": 100,
-                "carbohydrates": 5,
-                "protein": 10,
-                "fat": 5,
-                "source_type": "reference",
+                "calories": 35,
+                "carbohydrates": 7,
+                "protein": 3,
+                "fat": 0,
             }],
-            date(2026, 9, 29),
+            target_date=date(2026, 9, 29),
+            all_ai=True,
         )
     )
 
-    assert "실제 메뉴에 반영된 냉장고 재료: 두부" in result["recommendation"]["ai_reason"]
+    used_meals = [
+        meal for meal in result["meals"]
+        if main.find_used_inventory_names([meal], ["브로콜리"])
+    ]
+    assert used_meals
+    used_food = next(
+        food for food in used_meals[0]["foods"]
+        if main.food_matches_inventory(food["food_name"], ["브로콜리"])
+    )
+    assert used_food["quantity"] == 80
+    assert "실제 메뉴에 반영된 냉장고 재료: 브로콜리" in result["recommendation"]["ai_reason"]
 
 
 def test_extract_menu_tags_normalizes_food_names() -> None:
@@ -2058,6 +2251,60 @@ def test_fetch_diet_recommendation_filters_user_and_date(monkeypatch) -> None:
     assert result is None
 
 
+def test_fetch_latest_diet_recommendation_excludes_future_dummy_rows(
+    monkeypatch,
+) -> None:
+    original = httpx.AsyncClient
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
+        assert request.url.path == "/rest/v1/diet_recommendations"
+        assert request.url.params["user_id"] == "eq.authenticated-user"
+        today = main.datetime.now(main.KST).date().isoformat()
+        assert request.url.params["recommendation_date"] == f"lte.{today}"
+        assert request.url.params["status"] == "eq.active"
+        return httpx.Response(200, json=[])
+
+    monkeypatch.setattr(
+        main.httpx,
+        "AsyncClient",
+        lambda **kwargs: original(
+            transport=httpx.MockTransport(handler),
+            **kwargs,
+        ),
+    )
+
+    result = main.asyncio.run(
+        main.fetch_latest_diet_recommendation(
+            "authenticated-user",
+            TEST_SETTINGS,
+        )
+    )
+
+    assert result is None
+
+
+def test_fetch_latest_diet_recommendation_accepts_historical_cutoff(
+    monkeypatch,
+) -> None:
+    original = httpx.AsyncClient
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params["recommendation_date"] == "lte.2026-09-28"
+        assert request.url.params["status"] == "eq.active"
+        return httpx.Response(200, json=[])
+
+    monkeypatch.setattr(
+        main.httpx, "AsyncClient",
+        lambda **kwargs: original(transport=httpx.MockTransport(handler), **kwargs),
+    )
+    result = main.asyncio.run(main.fetch_diet_recommendation(
+        "authenticated-user", TEST_SETTINGS,
+        latest_date=main.date(2026, 9, 28),
+    ))
+    assert result is None
+
+
 def test_get_diet_recommendation_by_date_uses_authenticated_user(
     monkeypatch,
 ) -> None:
@@ -2113,11 +2360,24 @@ def test_generate_diet_recommendation_uses_user_data(monkeypatch) -> None:
     async def fake_food_catalog(settings):
         return [{"food_item_id": "food-1", "name": "현미밥", "calories": 200}]
 
-    async def fake_daily_plan(user_id, inventory, allergy_names, food_catalog, target_date=None):
+    async def fake_daily_plan(
+        user_id,
+        inventory,
+        allergy_names,
+        food_catalog,
+        target_date=None,
+        all_ai=False,
+        avoid_food_names=None,
+        avoid_meal_food_names=None,
+    ):
         assert user_id == "authenticated-user"
         assert inventory == [{"custom_name": "브로콜리"}]
         assert allergy_names == ["우유"]
         assert food_catalog[0]["name"] == "현미밥"
+        assert target_date == main.datetime.now(main.KST).date()
+        assert all_ai is False
+        assert avoid_food_names == ["이전 식단", "어제 식단"]
+        assert avoid_meal_food_names == [["이전 식단"], ["어제 식단"]]
         plan = main.build_diet_recommendation_plan(inventory, allergy_names)
         for index, meal in enumerate(plan["meals"]):
             meal["source_type"] = "ai_generated" if index < 2 else "db_catalog"
@@ -2140,7 +2400,28 @@ def test_generate_diet_recommendation_uses_user_data(monkeypatch) -> None:
         assert settings == TEST_SETTINGS
         return {"completed": 0, "failed": 0, "skipped": len(meals)}
 
-    async def fake_latest(user_id, settings):
+    fetch_calls = 0
+
+    async def fake_fetch(user_id, settings, recommendation_date=None, **kwargs):
+        nonlocal fetch_calls
+        assert user_id == "authenticated-user"
+        fetch_calls += 1
+        if fetch_calls in (1, 2):
+            assert recommendation_date == main.datetime.now(main.KST).date()
+            return {
+                "recommendation": {"diet_recommendation_id": "previous"},
+                "meals": [
+                    {"foods": [{"food_name": "이전 식단"}]},
+                ],
+            }
+        if fetch_calls == 3:
+            assert recommendation_date is None
+            assert kwargs["latest_date"] == main.datetime.now(main.KST).date() - main.timedelta(days=1)
+            return {
+                "recommendation": {"diet_recommendation_id": "previous-day"},
+                "meals": [{"foods": [{"food_name": "어제 식단"}]}],
+            }
+        assert recommendation_date == main.datetime.now(main.KST).date()
         return {"recommendation": {"diet_recommendation_id": "recommendation-1"}}
 
     main.app.dependency_overrides[main.get_current_user] = fake_user
@@ -2153,13 +2434,128 @@ def test_generate_diet_recommendation_uses_user_data(monkeypatch) -> None:
     monkeypatch.setattr(main, "assign_menu_images", fake_assign)
     monkeypatch.setattr(main, "generate_missing_menu_images", fake_generate_images)
     monkeypatch.setattr(main, "create_diet_recommendation", fake_create)
-    monkeypatch.setattr(main, "fetch_latest_diet_recommendation", fake_latest)
+    monkeypatch.setattr(main, "fetch_diet_recommendation", fake_fetch)
     try:
         response = TestClient(main.app).post(
             "/api/diet/recommendations/generate", json={}
         )
         assert response.status_code == 200
         assert response.json()["generator"] == "mixed_ai_v1"
+        assert fetch_calls == 4
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_generate_diet_recommendation_reuses_concurrent_result(monkeypatch) -> None:
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    calls = 0
+
+    async def fake_fetch(user_id, settings, recommendation_date=None, **kwargs):
+        nonlocal calls
+        calls += 1
+        recommendation_id = "old" if calls == 1 else "new"
+        return {
+            "recommendation": {
+                "diet_recommendation_id": recommendation_id,
+                "recommendation_date": "2026-09-29",
+            },
+            "meals": [],
+        }
+
+    async def reject_generation(*args, **kwargs):
+        raise AssertionError("a concurrent result must skip paid AI generation")
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "fetch_diet_recommendation", fake_fetch)
+    monkeypatch.setattr(main, "build_daily_diet_recommendation_plan", reject_generation)
+    try:
+        response = TestClient(main.app).post(
+            "/api/diet/recommendations/generate", json={}
+        )
+        assert response.status_code == 200
+        assert response.json()["reused_concurrent_result"] is True
+        assert response.json()["result"]["recommendation"]["diet_recommendation_id"] == "new"
+        assert calls == 2
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_preview_all_ai_diet_uses_catalog_without_persistence(monkeypatch) -> None:
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_inventory(user_id, settings):
+        return [{"custom_name": "브로콜리"}]
+
+    async def fake_catalog(settings):
+        return [{"allergy_type_id": "allergy-1", "name": "우유"}]
+
+    async def fake_allergies(user_id, settings):
+        return [{"allergy_type_id": "allergy-1", "custom_name": None}]
+
+    async def fake_food_catalog(settings):
+        return [{"food_item_id": "food-1", "name": "브로콜리", "calories": 35}]
+
+    async def fake_daily_plan(
+        user_id,
+        inventory,
+        allergy_names,
+        food_catalog,
+        target_date=None,
+        all_ai=False,
+        avoid_food_names=None,
+        avoid_meal_food_names=None,
+    ):
+        assert user_id == "authenticated-user"
+        assert inventory == [{"custom_name": "브로콜리"}]
+        assert allergy_names == ["우유"]
+        assert food_catalog == [
+            {"food_item_id": "food-1", "name": "브로콜리", "calories": 35}
+        ]
+        assert all_ai is True
+        assert avoid_food_names == []
+        assert avoid_meal_food_names == []
+        return {
+            "recommendation": {"recommendation_date": "2026-09-29"},
+            "meals": [
+                {
+                    "meal_type": meal_type,
+                    "meal_order": index,
+                    "source_type": "ai_generated",
+                    "foods": [{"food_name": f"생성 식단 {index}"}],
+                }
+                for index, meal_type in enumerate(
+                    ["breakfast", "lunch", "dinner", "snack"], start=1
+                )
+            ],
+        }
+
+    async def reject_persistence(*args, **kwargs):
+        raise AssertionError("preview must not persist a recommendation")
+
+    async def fake_fetch(user_id, settings, recommendation_date=None, **kwargs):
+        return None
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "fetch_food_inventory", fake_inventory)
+    monkeypatch.setattr(main, "fetch_allergy_catalog", fake_catalog)
+    monkeypatch.setattr(main, "fetch_user_allergies", fake_allergies)
+    monkeypatch.setattr(main, "fetch_food_catalog", fake_food_catalog)
+    monkeypatch.setattr(main, "fetch_diet_recommendation", fake_fetch)
+    monkeypatch.setattr(main, "build_daily_diet_recommendation_plan", fake_daily_plan)
+    monkeypatch.setattr(main, "create_diet_recommendation", reject_persistence)
+    try:
+        response = TestClient(main.app).post(
+            "/api/diet/recommendations/generate-preview", json={}
+        )
+        assert response.status_code == 200
+        assert response.json()["generator"] == "all_ai_preview_v1"
+        assert response.json()["persisted"] is False
+        assert len(response.json()["result"]["meals"]) == 4
     finally:
         main.app.dependency_overrides.clear()
 
@@ -2217,8 +2613,8 @@ def test_regenerate_diet_meal_calls_owner_scoped_rpc(monkeypatch) -> None:
             200,
             json={
                 "diet_meal_id": "meal-1",
-                "image_storage_path": "menus/07.png",
                 "source_type": "ai_generated",
+                "image_storage_path": "menus/07.png",
                 "foods": [{**replacement["foods"][0], "quantity": 197.92}],
             },
         )
@@ -2282,6 +2678,7 @@ def test_regenerate_recommended_diet_meal_uses_authenticated_user(
                 "quantity": 1,
                 "unit": "모",
                 "is_available": True,
+                "expires_on": None,
             }
         ]
 
@@ -2293,9 +2690,10 @@ def test_regenerate_recommended_diet_meal_uses_authenticated_user(
         return []
 
     async def fake_food_catalog(settings):
+        assert settings == TEST_SETTINGS
         return []
 
-    async def fake_generate(current, allergies, model, inventory_names):
+    async def fake_generate(current, allergies, request_model, inventory_names):
         assert current["meal_type"] == "lunch"
         assert allergies == []
         assert inventory_names == ["두부"]
@@ -2303,7 +2701,7 @@ def test_regenerate_recommended_diet_meal_uses_authenticated_user(
             "meal_type": "lunch",
             "meal_order": 2,
             "recommended_calories": 480,
-            "recommendation_note": "AI 재추천",
+            "recommendation_note": "냉장고 두부를 활용한 새 점심",
             "source_type": "ai_generated",
             "foods": [
                 {
@@ -2311,9 +2709,9 @@ def test_regenerate_recommended_diet_meal_uses_authenticated_user(
                     "quantity": 200,
                     "unit": "g",
                     "calories": 480,
-                    "carbohydrates": 20,
+                    "carbohydrates": 30,
                     "protein": 35,
-                    "fat": 25,
+                    "fat": 20,
                 }
             ],
         }
@@ -2324,13 +2722,8 @@ def test_regenerate_recommended_diet_meal_uses_authenticated_user(
         assert replacement["meal_type"] == "lunch"
         assert replacement["source_type"] == "ai_generated"
         assert replacement["foods"][0]["food_name"] == "두부 스테이크"
-        assert replacement["used_ingredients"] == [{
-            "user_food_inventory_id": "inventory-1",
-            "name": "두부",
-            "matched_food_name": "두부 스테이크",
-            "quantity": 1,
-            "unit": "모",
-        }]
+        assert replacement["used_ingredients"][0]["name"] == "두부"
+        assert replacement["used_ingredients"][0]["matched_food_name"] == "두부 스테이크"
         return {"diet_meal_id": received_id, **replacement}
 
     async def fake_assign(meals, settings):
@@ -2363,16 +2756,20 @@ def test_regenerate_recommended_diet_meal_uses_authenticated_user(
             json={},
         )
         assert response.status_code == 200
-        assert response.json()["generator"] == "ai_v1"
-        assert response.json()["meal"]["diet_meal_id"] == meal_id
-        assert response.json()["meal"]["source_type"] == "ai_generated"
-        assert response.json()["used_ingredients"] == [
+        payload = response.json()
+        assert payload["generator"] == "ai_v1"
+        assert payload["meal"]["diet_meal_id"] == meal_id
+        assert payload["meal"]["source_type"] == "ai_generated"
+        assert payload["used_ingredients"] == [
             {
                 "user_food_inventory_id": "inventory-1",
                 "name": "두부",
                 "matched_food_name": "두부 스테이크",
-                "quantity": 1,
+                "quantity": 1.0,
                 "unit": "모",
+                "planned_quantity": 200.0,
+                "planned_unit": "g",
+                "inventory_covers_planned_quantity": None,
             }
         ]
     finally:
@@ -2380,15 +2777,16 @@ def test_regenerate_recommended_diet_meal_uses_authenticated_user(
 
 
 def test_regenerate_openapi_exposes_inventory_usage_contract() -> None:
-    operation = main.app.openapi()["paths"][
+    schema = main.app.openapi()
+    operation = schema["paths"][
         "/api/diet/meals/{diet_meal_id}/regenerate"
     ]["post"]
+
     response_schema = operation["responses"]["200"]["content"][
         "application/json"
     ]["schema"]
-
     assert response_schema["$ref"].endswith("/RegenerateDietMealResponse")
-    used_schema = main.app.openapi()["components"]["schemas"][
+    used_schema = schema["components"]["schemas"][
         "UsedInventoryIngredientResponse"
     ]
     assert {
@@ -2397,7 +2795,10 @@ def test_regenerate_openapi_exposes_inventory_usage_contract() -> None:
         "matched_food_name",
         "quantity",
         "unit",
-    } <= used_schema["properties"].keys()
+        "planned_quantity",
+        "planned_unit",
+        "inventory_covers_planned_quantity",
+    } <= set(used_schema["properties"])
 
 
 def test_regenerate_recommended_diet_meal_rejects_finished_meal(
