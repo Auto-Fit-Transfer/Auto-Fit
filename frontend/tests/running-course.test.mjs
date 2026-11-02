@@ -1,6 +1,29 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canPreviewRoute, routePoints, routePolyline } from '../src/features/running/courseRoute.ts';
+import { canPreviewRoute, previewRouteInput, routePoints, routePolyline } from '../src/features/running/courseRoute.ts';
+import { kakaoMapHtml } from '../src/features/running/kakaoMap.ts';
+
+test('kakao map page encodes the key and draws only numeric route points', () => {
+  const html = kakaoMapHtml('a&b key', [
+    { latitude: 35.1, longitude: 126.8 },
+    { latitude: '</script>', longitude: 126.82 },
+  ]);
+  assert.match(html, /appkey=a%26b%20key&autoload=false/);
+  assert.match(html, /\[\[35\.1,126\.8\],\[null,126\.82\]\]/);
+  assert.equal(html.match(/<\/script>/g).length, 3);
+});
+
+test('official course points are previewed from their nested coordinates', () => {
+  const start = { name: '출발', address: '광주', coordinate: { latitude: 35.1, longitude: 126.8 } };
+  const end = { name: '도착', address: '광주', coordinate: { latitude: 35.12, longitude: 126.82 } };
+  assert.deepEqual(previewRouteInput({ start, end, waypoints: ['들판', { latitude: 35.11, longitude: 126.81 }] }), {
+    start: { latitude: 35.1, longitude: 126.8 },
+    end: { latitude: 35.12, longitude: 126.82 },
+    waypoints: [{ latitude: 35.11, longitude: 126.81 }],
+  });
+  assert.equal(canPreviewRoute({ start, end: { name: '도착', coordinate: null } }), false);
+  assert.equal(canPreviewRoute({ start, end: { name: '도착', coordinate: { latitude: 999, longitude: 126.82 } } }), false);
+});
 
 test('route diagram uses only real valid coordinates and preserves endpoints', () => {
   const course = {

@@ -14,9 +14,22 @@ export function routePoints(course: RunningCourse): RunningCoordinate[] {
   return course.path.filter(validCoordinate);
 }
 
+// Official courses nest coordinates as { name, address, coordinate }; named waypoints have none.
+export function pointCoordinate(value: unknown): RunningCoordinate | null {
+  const point = validCoordinate(value) ? value : (value as { coordinate?: unknown } | null | undefined)?.coordinate;
+  return validCoordinate(point) ? { latitude: point.latitude, longitude: point.longitude } : null;
+}
+
+export function previewRouteInput(course: RunningCourse) {
+  const start = pointCoordinate(course.start);
+  const end = pointCoordinate(course.end);
+  if (!start || !end) return null;
+  const waypoints = (course.waypoints ?? []).map(pointCoordinate).filter((point) => point !== null);
+  return { start, end, waypoints };
+}
+
 export function canPreviewRoute(course: RunningCourse) {
-  return validCoordinate(course.start) && validCoordinate(course.end)
-    && (!course.waypoints || course.waypoints.every(validCoordinate));
+  return previewRouteInput(course) !== null;
 }
 
 export function routePolyline(

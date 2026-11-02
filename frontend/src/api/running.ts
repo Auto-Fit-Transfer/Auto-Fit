@@ -29,9 +29,9 @@ export type RunningCourse = {
   source?: { source_type?: string; provider?: string };
   source_type?: string;
   path?: RunningCoordinate[];
-  start?: RunningCoordinate;
-  end?: RunningCoordinate;
-  waypoints?: RunningCoordinate[];
+  start?: RunningCoordinate | RunningCoursePoint;
+  end?: RunningCoordinate | RunningCoursePoint;
+  waypoints?: (RunningCoordinate | RunningCoursePoint | string)[];
   requires_route_validation?: boolean;
   route_validated?: boolean;
   within_tolerance?: boolean;
@@ -39,6 +39,7 @@ export type RunningCourse = {
   thumbnail_url?: string;
 };
 export type RunningCoordinate = { latitude: number; longitude: number };
+export type RunningCoursePoint = { name?: string; address?: string; coordinate?: RunningCoordinate | null };
 export type RunningSavedCourse = {
   running_saved_course_id: string;
   course_name: string;
