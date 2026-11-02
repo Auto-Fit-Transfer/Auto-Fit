@@ -48,7 +48,7 @@ Authorization: Bearer <AI_SERVER_API_KEY>
 Content-Type: application/json
 ```
 
-`POST /food-analysis/analyze`만 이미지 파일 전송을 위해 `multipart/form-data`를 사용한다. 나머지 현재 운영 후보 endpoint는 JSON을 사용한다.
+`POST /food-analysis/analyze`와 `POST /posture-analysis/analyze`는 파일 전송을 위해 `multipart/form-data`를 사용한다. 나머지 현재 운영 후보 endpoint는 JSON을 사용한다.
 
 `AI_SERVER_API_KEY`는 Frontend에 전달하지 않고 Backend와 AI Server 환경변수에만 보관한다. Frontend가 AI Server를 직접 호출하지 않는다.
 
@@ -86,6 +86,7 @@ Content-Type: application/json
 | 2 | `POST /health-analysis` | 건강검진, 체성분, 목표, 냉장고 context | 종합 분석과 냉장고 맞춤 제안 | Backend |
 | 2 | `POST /health-analysis/diet-refresh` | 기존 건강 입력과 최신 냉장고 context | 식단 제안 영역만 갱신 | Backend |
 | 2 | `POST /recommend/exercise` | 건강 상태와 운동 선호 | AI 기반 운동 추천 | Backend |
+| 2 | `POST /posture-analysis/analyze` | 작업 UUID, 측면 스쿼트 영상 | 회차별 관절 좌표·각도·점수·교정사항 | Backend |
 | 2 | `GET /running/places/search` | 주소·장소명, 선택적 중심 좌표·반경 | 출발지 후보와 WGS84 좌표 | 저장하지 않음 |
 | 2 | `GET /running/courses/recommend` | 지역 또는 GPS, 거리 옵션, 사용자 페이스 | 공식 코스 후보와 거리·근접도·검증 상태 | Backend 선택 저장 |
 | 2 | `GET /running/courses/{course_id}` | 공식 코스 ID, 사용자 페이스 | 코스 상세와 출발·도착 위치 | Backend 선택 저장 |
@@ -594,6 +595,12 @@ Frontend 표시값과 API enum은 다음처럼 매핑한다.
 `has_discomfort=false`이면 `discomfort_areas`는 빈 배열이어야 한다. `true`인데 상세 부위를 받지 않은 화면이라면 빈 배열도 허용한다. AI Server는 피곤함 또는 불편 부위가 있으면 강도·동작 선택에 안전 조건을 우선한다.
 
 운동 방식·집중 부위·도구·운동 성향에서 `other`를 선택하면 각각 `other_training_style`, `other_focus_area`, `other_equipment`, `other_workout_style`에 사용자가 지정한 값을 함께 전달한다. 헬스·홈트 시간의 `기타`는 별도 enum이 아니라 실제 분 단위 숫자를 `available_minutes`에 전달한다.
+
+## 운동 자세 분석
+
+Backend가 전달한 운동 자세 출력 형식은 `app/schemas/posture_analysis.py`의 `PostureAnalysisProgress`와 `PostureAnalysisResult`로 검증한다. AI Server는 `POST /posture-analysis/analyze`에서 Backend가 생성한 작업 UUID와 측면 스쿼트 영상을 multipart로 받아 MediaPipe Pose Landmarker Full과 `squat-rules-v1` 규칙으로 최종 결과를 동기식 반환한다.
+
+현재 지원 범위는 `exercise_code=squat`, `camera_view=side`, MP4/MOV/WEBM/AVI, 기본 50MB·60초다. 원본과 임시 영상은 저장하지 않으며 요청 처리용 임시 파일도 성공·실패 후 즉시 삭제한다. 품질 부족·완료 회차 미검출은 `422`, 모델/런타임 미설정은 `503`이다. 작업 상태 저장과 비동기 진행 조회 방식은 Backend와 추가 합의가 필요하다. 전체 요청과 필드 정책은 [운동 자세 분석 Backend 계약](posture_analysis_backend_contract.md)을 따른다.
 
 ## 러닝 코스 추천
 

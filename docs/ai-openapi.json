@@ -1079,6 +1079,53 @@
         }
       }
     },
+    "/posture-analysis/analyze": {
+      "post": {
+        "tags": [
+          "posture-analysis"
+        ],
+        "summary": "Analyze Posture Video",
+        "description": "영상을 저장하지 않고 측면 스쿼트 자세를 분석한다.",
+        "operationId": "analyze_posture_video_posture_analysis_analyze_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_analyze_posture_video_posture_analysis_analyze_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostureAnalysisResult"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/recommend/exercise": {
       "post": {
         "tags": [
@@ -2007,6 +2054,37 @@
           "image"
         ],
         "title": "Body_analyze_food_image_food_analysis_analyze_post"
+      },
+      "Body_analyze_posture_video_posture_analysis_analyze_post": {
+        "properties": {
+          "video": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "Video",
+            "description": "전신이 보이는 측면 스쿼트 영상"
+          },
+          "posture_analysis_job_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Posture Analysis Job Id"
+          },
+          "exercise_code": {
+            "type": "string",
+            "title": "Exercise Code",
+            "default": "squat"
+          },
+          "camera_view": {
+            "type": "string",
+            "title": "Camera View",
+            "default": "side"
+          }
+        },
+        "type": "object",
+        "required": [
+          "video",
+          "posture_analysis_job_id"
+        ],
+        "title": "Body_analyze_posture_video_posture_analysis_analyze_post"
       },
       "ChatContext": {
         "properties": {
@@ -6123,6 +6201,419 @@
           "fat_g"
         ],
         "title": "NutritionTargetInput"
+      },
+      "PostureAnalysisResult": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.0",
+            "title": "Schema Version"
+          },
+          "posture_analysis_job_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Posture Analysis Job Id"
+          },
+          "exercise_code": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Exercise Code"
+          },
+          "camera_view": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Camera View"
+          },
+          "model_version": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Model Version"
+          },
+          "assessment": {
+            "$ref": "#/components/schemas/PostureAssessment"
+          },
+          "repetitions": {
+            "items": {
+              "$ref": "#/components/schemas/PostureRepetition"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Repetitions"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/PostureFinding"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "routine_suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/PostureRoutineSuggestion"
+            },
+            "type": "array",
+            "title": "Routine Suggestions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_version",
+          "posture_analysis_job_id",
+          "exercise_code",
+          "camera_view",
+          "model_version",
+          "assessment",
+          "repetitions",
+          "findings",
+          "routine_suggestions"
+        ],
+        "title": "PostureAnalysisResult"
+      },
+      "PostureAngle": {
+        "properties": {
+          "angle_code": {
+            "type": "string",
+            "enum": [
+              "torso_lean",
+              "knee_flexion",
+              "hip_flexion",
+              "ankle_dorsiflexion"
+            ],
+            "title": "Angle Code"
+          },
+          "measured_degrees": {
+            "type": "number",
+            "title": "Measured Degrees"
+          },
+          "target_min_degrees": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Min Degrees"
+          },
+          "target_max_degrees": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Max Degrees"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "angle_code",
+          "measured_degrees"
+        ],
+        "title": "PostureAngle"
+      },
+      "PostureAssessment": {
+        "properties": {
+          "overall_score": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Overall Score"
+          },
+          "passing_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passing Score"
+          },
+          "repetition_count": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Repetition Count"
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Summary"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "overall_score",
+          "repetition_count",
+          "summary"
+        ],
+        "title": "PostureAssessment"
+      },
+      "PostureFinding": {
+        "properties": {
+          "display_order": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Display Order"
+          },
+          "finding_type": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Finding Type"
+          },
+          "finding_code": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Finding Code"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Title"
+          },
+          "explanation": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Explanation"
+          },
+          "repetition_start": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repetition Start"
+          },
+          "repetition_end": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repetition End"
+          },
+          "guidance_steps": {
+            "items": {
+              "$ref": "#/components/schemas/PostureGuidanceStep"
+            },
+            "type": "array",
+            "title": "Guidance Steps"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "display_order",
+          "finding_type",
+          "finding_code",
+          "title",
+          "explanation",
+          "guidance_steps"
+        ],
+        "title": "PostureFinding"
+      },
+      "PostureGuidanceStep": {
+        "properties": {
+          "sequence_order": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Sequence Order"
+          },
+          "instruction": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Instruction"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "sequence_order",
+          "instruction"
+        ],
+        "title": "PostureGuidanceStep"
+      },
+      "PostureKeypoint": {
+        "properties": {
+          "joint_code": {
+            "type": "string",
+            "enum": [
+              "head",
+              "neck",
+              "left_shoulder",
+              "right_shoulder",
+              "left_elbow",
+              "right_elbow",
+              "left_wrist",
+              "right_wrist",
+              "left_hip",
+              "right_hip",
+              "left_knee",
+              "right_knee",
+              "left_ankle",
+              "right_ankle",
+              "left_heel",
+              "right_heel",
+              "left_foot_index",
+              "right_foot_index"
+            ],
+            "title": "Joint Code"
+          },
+          "x_normalized": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "X Normalized"
+          },
+          "y_normalized": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y Normalized"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "joint_code",
+          "x_normalized",
+          "y_normalized",
+          "confidence"
+        ],
+        "title": "PostureKeypoint"
+      },
+      "PostureRepetition": {
+        "properties": {
+          "repetition_number": {
+            "type": "integer",
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Repetition Number"
+          },
+          "start_offset_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start Offset Ms"
+          },
+          "keyframe_offset_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Keyframe Offset Ms"
+          },
+          "end_offset_ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "End Offset Ms"
+          },
+          "score": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score"
+          },
+          "keypoints": {
+            "items": {
+              "$ref": "#/components/schemas/PostureKeypoint"
+            },
+            "type": "array",
+            "maxItems": 18,
+            "minItems": 1,
+            "title": "Keypoints"
+          },
+          "angles": {
+            "items": {
+              "$ref": "#/components/schemas/PostureAngle"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Angles"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "repetition_number",
+          "start_offset_ms",
+          "keyframe_offset_ms",
+          "end_offset_ms",
+          "score",
+          "keypoints",
+          "angles"
+        ],
+        "title": "PostureRepetition"
+      },
+      "PostureRoutineSuggestion": {
+        "properties": {
+          "display_order": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Display Order"
+          },
+          "finding_display_order": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Finding Display Order"
+          },
+          "exercise_name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Exercise Name"
+          },
+          "prescription": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Prescription"
+          },
+          "target_sets": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Target Sets"
+          },
+          "target_repetitions": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Target Repetitions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "display_order",
+          "finding_display_order",
+          "exercise_name",
+          "prescription",
+          "target_sets",
+          "target_repetitions"
+        ],
+        "title": "PostureRoutineSuggestion"
       },
       "PreviousHealthScoreInput": {
         "properties": {

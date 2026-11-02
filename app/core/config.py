@@ -229,6 +229,44 @@ class Settings(BaseSettings):
         le=3,
     )
 
+    # MediaPipe 기반 운동 자세 분석
+    posture_model_path: str = (
+        "app/models/pose_landmarker_full.task"
+    )
+    posture_model_version: str = (
+        "mediapipe-pose-landmarker-full+squat-rules-v1"
+    )
+    posture_video_max_bytes: int = Field(
+        default=50_000_000,
+        ge=1_000_000,
+        le=200_000_000,
+    )
+    posture_video_max_seconds: float = Field(
+        default=60.0,
+        gt=0,
+        le=180.0,
+    )
+    posture_target_fps: float = Field(
+        default=15.0,
+        ge=5.0,
+        le=30.0,
+    )
+    posture_min_landmark_confidence: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+    )
+    posture_min_pose_coverage: float = Field(
+        default=0.6,
+        gt=0.0,
+        le=1.0,
+    )
+    posture_max_concurrent_analyses: int = Field(
+        default=2,
+        ge=1,
+        le=8,
+    )
+
     # Backend -> AI Server 인증
     ai_server_api_key: str | None = None
 

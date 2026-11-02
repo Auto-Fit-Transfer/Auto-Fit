@@ -7,6 +7,9 @@ from app.routers.food_image_router import router as food_image_router
 from app.routers.health_router import router as health_router
 from app.routers.rag_router import router as rag_router
 from app.routers.running_router import router as running_router
+from app.routers.posture_analysis_router import (
+    router as posture_analysis_router,
+)
 
 from app.routers.recommendation_router import (
     router as recommendation_router,
@@ -33,6 +36,7 @@ app.include_router(body_router)
 app.include_router(analysis_router)
 app.include_router(rag_router)
 app.include_router(running_router)
+app.include_router(posture_analysis_router)
 app.include_router(
     recommendation_router
 )
