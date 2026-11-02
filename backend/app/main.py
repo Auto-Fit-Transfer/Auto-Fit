@@ -924,6 +924,8 @@ def build_exercise_recommendation_plan(
     preferences: dict[str, Any],
     context: dict[str, Any],
     profile: dict[str, Any] | None = None,
+    *,
+    previous_items: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     goal = preferences["goal_type"]
     experience = preferences["experience_level"]
@@ -945,24 +947,106 @@ def build_exercise_recommendation_plan(
 
     if goal == "muscle_gain":
         if equipment.intersection({"machine", "dumbbell"}):
-            main_type, main_name = "웨이트 트레이닝", "전신 웨이트 트레이닝"
+            main_type = "웨이트 트레이닝"
+            main_names = (
+                "전신 웨이트 트레이닝",
+                "저중량 전신 웨이트 트레이닝",
+                "상·하체 교대 웨이트 트레이닝",
+            )
+            main_guidance = (
+                "전신 동작을 고르게 수행하세요.",
+                "평소보다 낮은 중량으로 자세를 확인하며 수행하세요.",
+                "상체와 하체 동작을 번갈아 수행하세요.",
+            )
         else:
-            main_type, main_name = "스쿼트", "맨몸 스쿼트"
+            main_type = "스쿼트"
+            main_names = ("맨몸 스쿼트", "느린 맨몸 스쿼트", "발 간격 조절 맨몸 스쿼트")
+            main_guidance = (
+                "발을 어깨 너비로 두고 천천히 앉았다 일어나세요.",
+                "내려가는 동작을 천천히 하며 자세를 유지하세요.",
+                "발 간격을 편한 범위에서 조절하며 수행하세요.",
+            )
         main_execution = "count_based"
         main_sets = 3 if intensity != "low" else 2
         main_repetitions = 12 if intensity != "low" else 8
     elif goal == "rehabilitation":
-        main_type, main_name = "요가", "저강도 회복 요가"
+        main_type = "요가"
+        main_names = ("저강도 회복 요가", "호흡 중심 회복 요가", "부드러운 전신 요가")
+        main_guidance = (
+            "무리 없는 범위에서 자세를 천천히 이어가세요.",
+            "호흡을 일정하게 유지하며 가벼운 자세를 이어가세요.",
+            "전신을 부드럽게 움직이며 자세를 이어가세요.",
+        )
         main_execution = "time_based"
         main_sets = main_repetitions = None
     elif goal == "endurance" and intensity != "low":
-        main_type, main_name = "달리기", "가벼운 지속 달리기"
+        main_type = "달리기"
+        main_names = ("가벼운 지속 달리기", "완급 조절 달리기", "편안한 페이스 달리기")
+        main_guidance = (
+            "대화할 수 있는 속도로 일정하게 달리세요.",
+            "편안한 속도와 조금 빠른 속도를 번갈아 유지하세요.",
+            "호흡이 안정적인 속도를 찾아 유지하세요.",
+        )
         main_execution = "time_based"
         main_sets = main_repetitions = None
     else:
-        main_type, main_name = "걷기", "빠르게 걷기"
+        main_type = "걷기"
+        main_names = (
+            ("편안한 속도 걷기", "평지 지속 걷기", "가벼운 리듬 걷기")
+            if intensity == "low"
+            else ("빠르게 걷기", "속도 변화 걷기", "일정한 속도 걷기")
+        )
+        main_guidance = (
+            (
+                "무리 없는 속도로 걸으세요.",
+                "경사가 없는 평지에서 일정한 속도로 걸으세요.",
+                "편안한 속도와 느린 속도를 번갈아 걸으세요.",
+            )
+            if intensity == "low"
+            else (
+                "팔을 자연스럽게 흔들며 빠르게 걸으세요.",
+                "빠른 걸음과 보통 걸음을 번갈아 걸으세요.",
+                "호흡을 유지할 수 있는 속도로 일정하게 걸으세요.",
+            )
+        )
         main_execution = "time_based"
         main_sets = main_repetitions = None
+
+    previous_main_name = (
+        previous_items[1].get("exercise_name")
+        if previous_items and len(previous_items) > 1
+        else None
+    )
+    main_index = (
+        (main_names.index(previous_main_name) + 1) % len(main_names)
+        if previous_main_name in main_names
+        else 0
+    )
+    main_name = main_names[main_index]
+    warmup_names = (
+        "전신 워밍업 스트레칭",
+        "관절 가동성 스트레칭",
+        "가벼운 준비 스트레칭",
+    )
+    cooldown_names = (
+        "마무리 스트레칭",
+        "호흡 정리 스트레칭",
+        "전신 이완 스트레칭",
+    )
+    warmup_guidance = (
+        "통증이 없는 범위에서 천천히 관절과 근육을 풀어주세요.",
+        "목과 어깨, 골반과 발목을 편한 범위에서 부드럽게 움직이세요.",
+        "호흡을 유지하며 전신을 가볍게 움직여 준비하세요.",
+    )
+    cooldown_guidance = (
+        "호흡을 고르며 사용한 근육을 부드럽게 이완하세요.",
+        "호흡을 천천히 고르며 움직임을 마무리하세요.",
+        "사용한 부위를 편한 범위에서 천천히 이완하세요.",
+    )
+    main_instruction = (
+        f"{main_guidance[main_index]} "
+        "불편함이나 어지러움이 생기면 즉시 강도를 낮추거나 중단하세요."
+    )
 
     warmup_minutes = max(1, min(5, available_minutes // 6))
     cooldown_minutes = max(1, min(5, available_minutes // 6))
@@ -972,13 +1056,13 @@ def build_exercise_recommendation_plan(
     items = [
         {
             "exercise_type_name": "스트레칭",
-            "exercise_name": "전신 워밍업 스트레칭",
+            "exercise_name": warmup_names[main_index],
             "duration_minutes": warmup_minutes,
             "sets": None,
             "repetitions": None,
             "calories_burned": max(1, warmup_minutes * 2),
             "intensity": "low",
-            "instruction": "통증이 없는 범위에서 천천히 관절과 근육을 풀어주세요.",
+            "instruction": warmup_guidance[main_index],
             "execution_type": "time_based",
             "target_duration_seconds": warmup_minutes * 60,
             "target_weight_kg": None,
@@ -992,7 +1076,7 @@ def build_exercise_recommendation_plan(
             "repetitions": main_repetitions,
             "calories_burned": max(1, estimated_calories - warmup_minutes * 2 - cooldown_minutes * 2),
             "intensity": intensity,
-            "instruction": "불편함이나 어지러움이 생기면 즉시 강도를 낮추거나 중단하세요.",
+            "instruction": main_instruction,
             "execution_type": main_execution,
             "target_duration_seconds": main_minutes * 60 if main_execution == "time_based" else None,
             "target_weight_kg": None,
@@ -1000,13 +1084,13 @@ def build_exercise_recommendation_plan(
         },
         {
             "exercise_type_name": "스트레칭",
-            "exercise_name": "마무리 스트레칭",
+            "exercise_name": cooldown_names[main_index],
             "duration_minutes": cooldown_minutes,
             "sets": None,
             "repetitions": None,
             "calories_burned": max(1, cooldown_minutes * 2),
             "intensity": "low",
-            "instruction": "호흡을 고르며 사용한 근육을 부드럽게 이완하세요.",
+            "instruction": cooldown_guidance[main_index],
             "execution_type": "time_based",
             "target_duration_seconds": cooldown_minutes * 60,
             "target_weight_kg": None,
@@ -1016,7 +1100,7 @@ def build_exercise_recommendation_plan(
 
     goal_labels = {
         "weight_loss": "체지방 감량",
-        "muscle_gain": "근육량 증가",
+        "muscle_gain": "근력량 증가",
         "endurance": "체력 향상",
         "maintenance": "건강 유지",
         "rehabilitation": "컨디셔닝 / 기능 회복",
@@ -1024,11 +1108,13 @@ def build_exercise_recommendation_plan(
     }
     return {
         "recommendation": {
-            "recommendation_date": datetime.now(KST).date().isoformat(),
+            "recommendation_date": date.today().isoformat(),
             "goal": goal,
             "total_duration_minutes": available_minutes,
             "intensity": intensity,
-            "recommendation_summary": f"{goal_labels[goal]} 목표를 위한 {available_minutes}분 루틴",
+            "recommendation_summary": (
+                f"{goal_labels[goal]} 목표를 위한 {available_minutes}분 루틴 · {main_name}"
+            ),
             "ai_reason": (
                 "기본 프로필의 활동 수준, 운동 목표, 경험 수준, 사용 가능 시간과 "
                 "장비, 현재 컨디션 및 불편 부위를 반영한 규칙 기반 테스트 추천입니다."
@@ -1086,7 +1172,11 @@ async def prepare_exercise_routine(
     if not generate:
         return {"missing": [], "generated": False, "result": None}
 
-    plan = build_exercise_recommendation_plan(preferences, context, profile)
+    previous = await fetch_latest_exercise_recommendation(user_id, settings)
+    plan = build_exercise_recommendation_plan(
+        preferences, context, profile,
+        previous_items=previous["items"] if previous else None,
+    )
     result = await create_exercise_recommendation(
         user_id,
         context["exercise_recommendation_context_id"],

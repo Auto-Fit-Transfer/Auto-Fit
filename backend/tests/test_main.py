@@ -708,6 +708,31 @@ def test_build_exercise_recommendation_plan_uses_profile_activity_level() -> Non
     assert "활동 수준" in plan["recommendation"]["ai_reason"]
 
 
+def test_build_exercise_recommendation_plan_rotates_after_previous_recommendation() -> None:
+    preferences = {"goal_type": "maintenance", "experience_level": "beginner"}
+    context = {
+        "available_minutes": 30,
+        "available_equipment": [],
+        "condition_level": "좋음",
+        "discomfort_areas": [],
+    }
+
+    first = main.build_exercise_recommendation_plan(preferences, context)
+    second = main.build_exercise_recommendation_plan(
+        preferences, context, previous_items=first["items"]
+    )
+    third = main.build_exercise_recommendation_plan(
+        preferences, context, previous_items=second["items"]
+    )
+
+    assert [item["exercise_name"] for item in first["items"]] != [
+        item["exercise_name"] for item in second["items"]
+    ]
+    assert [item["exercise_name"] for item in second["items"]] != [
+        item["exercise_name"] for item in third["items"]
+    ]
+
+
 def test_generate_exercise_recommendation_uses_authenticated_user(monkeypatch) -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="authenticated-user")
@@ -730,6 +755,10 @@ def test_generate_exercise_recommendation_uses_authenticated_user(monkeypatch) -
             "discomfort_areas": [],
         }
 
+    async def fake_previous(user_id: str, settings: main.Settings):
+        assert user_id == "authenticated-user"
+        return {"items": [{}, {"exercise_name": "편안한 속도 걷기"}]}
+
     async def fake_create(
         user_id: str,
         context_id: str,
@@ -740,6 +769,7 @@ def test_generate_exercise_recommendation_uses_authenticated_user(monkeypatch) -
         assert context_id == "context-123"
         assert plan["recommendation"]["goal"] == "maintenance"
         assert plan["recommendation"]["intensity"] == "low"
+        assert plan["items"][1]["exercise_name"] == "평지 지속 걷기"
         assert settings == TEST_SETTINGS
         return {"recommendation": {"user_id": user_id}, "items": plan["items"]}
 
@@ -748,6 +778,7 @@ def test_generate_exercise_recommendation_uses_authenticated_user(monkeypatch) -
     monkeypatch.setattr(main, "fetch_exercise_preferences", fake_preferences)
     monkeypatch.setattr(main, "fetch_profile", fake_profile)
     monkeypatch.setattr(main, "fetch_latest_unlinked_exercise_context", fake_context)
+    monkeypatch.setattr(main, "fetch_latest_exercise_recommendation", fake_previous)
     monkeypatch.setattr(main, "create_exercise_recommendation", fake_create)
 
     try:
