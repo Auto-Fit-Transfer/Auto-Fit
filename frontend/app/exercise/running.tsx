@@ -5,6 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveRunningSession, getRunningApiErrorMessage, getRunningRecommendations, getSavedRunningCourses, startFreeRun, type RunningCourse, type RunningDistanceOption, type RunningSavedCourse, type RunningSession } from '@/src/api/running';
+import { coursesWithRenderablePaths, hasRenderablePath } from '@/src/features/running/courseRoute';
 import { fontFamilies } from '@/src/theme';
 
 const purple = '#503DD7';
@@ -31,7 +32,7 @@ export default function RunningRecommendations() {
       if (active) setActiveSession(result.session);
     }).catch(() => {});
     void getSavedRunningCourses().then((result) => {
-      if (active) setSavedCourses(result.courses ?? []);
+      if (active) setSavedCourses((result.courses ?? []).filter((saved) => hasRenderablePath(saved.snapshot)));
     }).catch(() => {});
     return () => { active = false; };
   }, []));
@@ -42,9 +43,10 @@ export default function RunningRecommendations() {
     setMessage('');
     try {
       const result = await getRunningRecommendations(region.trim(), distance);
-      setCourses(result.courses ?? []);
+      const mappedCourses = coursesWithRenderablePaths(result.courses ?? []);
+      setCourses(mappedCourses);
       if (result.status === 'generation_required') setMessage('이 조건에 맞는 공식 코스가 없어요. 자동 코스 생성은 출발 위치 선택 기능을 연결한 뒤 사용할 수 있어요.');
-      else if (!result.courses?.length) setMessage('추천 가능한 코스를 찾지 못했어요. 다른 지역이나 거리를 선택해 주세요.');
+      else if (!mappedCourses.length) setMessage('경로가 있는 코스를 찾지 못했어요. 다른 지역이나 거리를 선택해 주세요.');
     } catch (cause) {
       setMessage(getRunningApiErrorMessage(cause));
     } finally {

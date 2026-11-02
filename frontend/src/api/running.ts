@@ -28,7 +28,7 @@ export type RunningCourse = {
   selection_token?: string;
   source?: { source_type?: string; provider?: string };
   source_type?: string;
-  path?: RunningCoordinate[];
+  path?: RunningCoordinate[] | null;
   start?: RunningCoordinate | RunningCoursePoint;
   end?: RunningCoordinate | RunningCoursePoint;
   waypoints?: (RunningCoordinate | RunningCoursePoint | string)[];

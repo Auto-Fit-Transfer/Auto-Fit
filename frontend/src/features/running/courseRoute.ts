@@ -14,6 +14,14 @@ export function routePoints(course: RunningCourse): RunningCoordinate[] {
   return course.path.filter(validCoordinate);
 }
 
+export function hasRenderablePath(course: RunningCourse): boolean {
+  return routePoints(course).length >= 2;
+}
+
+export function coursesWithRenderablePaths(courses: RunningCourse[]): RunningCourse[] {
+  return courses.filter(hasRenderablePath);
+}
+
 // Official courses nest coordinates as { name, address, coordinate }; named waypoints have none.
 export function pointCoordinate(value: unknown): RunningCoordinate | null {
   const point = validCoordinate(value) ? value : (value as { coordinate?: unknown } | null | undefined)?.coordinate;

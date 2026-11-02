@@ -150,7 +150,7 @@ export default function RunningCourseScreen() {
         <Text style={s.courseTitle}>{nameOf(course)}</Text>
         {course.description ? <Text style={s.body}>{course.description}</Text> : null}
         <View style={s.tags}>{course.region ? <Text style={s.tag}>{course.region}</Text> : null}<Text style={s.tag}>{sourceOf(course) === 'auto_generated' ? '생성 코스' : '공식 코스'}</Text></View>
-        <RouteDiagram course={course} preview={preview} />
+        {path.length >= 2 ? <RouteDiagram course={course} preview={preview} /> : null}
         <View style={s.metrics}>
           <View style={s.metric}><Text style={s.metricLabel}>거리</Text><Text style={s.metricValue}>{typeof distanceKm === 'number' ? `${Math.round(distanceKm * 10) / 10}km` : '—'}</Text></View>
           <View style={s.metric}><Text style={s.metricLabel}>예상 시간</Text><Text style={s.metricValue}>{typeof course.estimated_duration_minutes === 'number' ? `약 ${course.estimated_duration_minutes}분` : '—'}</Text></View>

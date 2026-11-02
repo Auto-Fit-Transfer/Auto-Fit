@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canPreviewRoute, previewRouteInput, routePoints, routePolyline } from '../src/features/running/courseRoute.ts';
+import { canPreviewRoute, coursesWithRenderablePaths, previewRouteInput, routePoints, routePolyline } from '../src/features/running/courseRoute.ts';
 import { kakaoMapHtml } from '../src/features/running/kakaoMap.ts';
 
 test('kakao map page encodes the key and draws only numeric route points', () => {
@@ -48,4 +48,19 @@ test('route diagram uses only real valid coordinates and preserves endpoints', (
   const plannedLine = routePolyline(planned, 320, 180, [...planned, ...actual]);
   const actualLine = routePolyline(actual, 320, 180, [...planned, ...actual]);
   assert.equal(plannedLine.split(' ')[0], actualLine.split(' ')[0]);
+});
+
+test('recommendations omit courses without at least two usable path points', () => {
+  const valid = { course_id: 'valid', path: [
+    { latitude: 37.5, longitude: 127 },
+    { latitude: 37.51, longitude: 127.01 },
+  ] };
+  const courses = [
+    { course_id: 'null', path: null },
+    { course_id: 'missing' },
+    { course_id: 'short', path: [{ latitude: 37.5, longitude: 127 }] },
+    { course_id: 'invalid', path: [valid.path[0], { latitude: 999, longitude: 127.01 }] },
+    valid,
+  ];
+  assert.deepEqual(coursesWithRenderablePaths(courses), [valid]);
 });
