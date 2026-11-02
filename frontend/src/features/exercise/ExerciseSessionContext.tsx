@@ -12,6 +12,7 @@ import {
 
 import { completeExerciseSession, recordExerciseItemResult } from '@/src/api/exercise';
 import { awardTierActivity } from '@/src/api/tier';
+import { mergeAdjustedExercises } from './exerciseAdjustment';
 
 import type { StartedExerciseSession } from './ExerciseRoutineContext';
 import type { ExerciseItem, ExerciseRoutine } from './exerciseData';
@@ -51,6 +52,7 @@ export type ExerciseSessionResult = {
 };
 
 export type ExerciseSessionState = {
+  adjustmentPending: boolean;
   countSpeed: ExerciseCountSpeed;
   currentExerciseIndex: number;
   currentRep: number;
@@ -81,6 +83,7 @@ type ExerciseSessionSummary = {
 
 type ExerciseSessionContextValue = {
   addRestSeconds: (seconds: number) => void;
+  applyAdjustedItems: (sessionId: string, adjustedItems: unknown[]) => void;
   beginSession: (routine: ExerciseRoutine, startedSession: StartedExerciseSession) => void;
   clearSession: () => void;
   closeExitConfirmation: () => void;
@@ -88,10 +91,12 @@ type ExerciseSessionContextValue = {
   completeCurrentSet: () => void;
   completeSession: () => Promise<ExerciseSessionSummary>;
   currentExercise: ExerciseSessionExercise | null;
+  flushPendingResults: () => Promise<void>;
   goToNextExercise: () => void;
   openExitConfirmation: () => void;
   openSkipConfirmation: () => void;
   session: ExerciseSessionState | null;
+  setAdjustmentPending: (sessionId: string, pending: boolean) => void;
   skipRest: () => void;
   skipCurrentExercise: () => void;
   summary: ExerciseSessionSummary;
@@ -102,6 +107,8 @@ type ExerciseSessionContextValue = {
 
 type ExerciseSessionAction =
   | { type: 'add-rest'; milliseconds: number }
+  | { type: 'apply-adjustment'; sessionId: string; adjustedItems: unknown[] }
+  | { type: 'set-adjustment-pending'; sessionId: string; pending: boolean; now: number }
   | { type: 'close-exit'; now: number }
   | { type: 'close-skip'; now: number }
   | { type: 'complete-set'; now: number }
@@ -259,8 +266,26 @@ function reducer(state: ExerciseSessionState, action: ExerciseSessionAction): Ex
   const exercise = state.exercises[state.currentExerciseIndex];
 
   switch (action.type) {
+    case 'set-adjustment-pending':
+      if (state.sessionId !== action.sessionId) return state;
+      return {
+        ...state,
+        adjustmentPending: action.pending,
+        lastTickAt: action.pending || state.paused ? null : action.now,
+      };
+    case 'apply-adjustment':
+      if (state.sessionId !== action.sessionId) return state;
+      return {
+        ...state,
+        exercises: mergeAdjustedExercises(
+          state.exercises,
+          state.currentExerciseIndex,
+          action.adjustedItems,
+        ),
+      };
     case 'tick': {
       if (
+        state.adjustmentPending ||
         state.paused ||
         state.exitConfirmationVisible ||
         state.skipConfirmationVisible ||
@@ -483,6 +508,7 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
       durationMinutes: Math.max(0, Math.round(result.elapsedSeconds / 60)),
       performedRepetitions: result.performedRepetitions,
       performedWeightKg: result.performedWeightKg,
+      skipReason: result.skipped ? '사용자가 운동을 건너뜀' : null,
       skipped: result.skipped,
     })
       .then(() => undefined)
@@ -503,8 +529,16 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     for (const result of sessionResults) queueResult(result);
   }, [queueResult, sessionResults]);
 
+  const flushPendingResults = useCallback(async () => {
+    const current = sessionRef.current;
+    if (!current) return;
+    for (const result of current.results) queueResult(result);
+    await Promise.all([...pendingWritesRef.current]);
+  }, [queueResult]);
+
   const timerRunning = Boolean(
     session &&
+    !session.adjustmentPending &&
     !session.paused &&
     !session.exitConfirmationVisible &&
     !session.skipConfirmationVisible &&
@@ -530,6 +564,7 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
       completedSessionRef.current = null;
       const now = Date.now();
       setSession({
+        adjustmentPending: false,
         countSpeed: 'normal',
         currentExerciseIndex: 0,
         currentRep: 0,
@@ -566,16 +601,16 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     if (completedSessionRef.current?.sessionId === current.sessionId) {
       return completedSessionRef.current.summary;
     }
-    for (const result of current.results) queueResult(result);
-    const pendingWrites = [...pendingWritesRef.current];
-    if (pendingWrites.length > 0) await Promise.all(pendingWrites);
+    await flushPendingResults();
     await completeExerciseSession(current.sessionId);
     // The completed session remains valid if the independent tier service is unavailable.
-    void awardTierActivity('recommended_workout_completed', current.sessionId).catch(() => undefined);
+    void awardTierActivity('recommended_workout_completed', current.sessionId).catch(
+      () => undefined,
+    );
     const completedSummary = summarizeSession(current);
     completedSessionRef.current = { sessionId: current.sessionId, summary: completedSummary };
     return completedSummary;
-  }, [queueResult]);
+  }, [flushPendingResults]);
 
   const currentExercise = session
     ? (session.exercises[session.currentExerciseIndex] ?? null)
@@ -586,6 +621,8 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     () => ({
       addRestSeconds: (seconds) =>
         dispatch({ milliseconds: Math.max(0, seconds) * 1000, type: 'add-rest' }),
+      applyAdjustedItems: (sessionId, adjustedItems) =>
+        dispatch({ adjustedItems, sessionId, type: 'apply-adjustment' }),
       beginSession,
       clearSession,
       closeExitConfirmation: () => dispatch({ now: Date.now(), type: 'close-exit' }),
@@ -593,18 +630,30 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
       completeCurrentSet: () => dispatch({ now: Date.now(), type: 'complete-set' }),
       completeSession,
       currentExercise,
+      flushPendingResults,
       cycleCountSpeed: () => dispatch({ type: 'cycle-speed' }),
       goToNextExercise: () => dispatch({ now: Date.now(), type: 'next-exercise' }),
       openExitConfirmation: () => dispatch({ type: 'open-exit' }),
       openSkipConfirmation: () => dispatch({ type: 'open-skip' }),
       session,
+      setAdjustmentPending: (sessionId, pending) =>
+        dispatch({ now: Date.now(), pending, sessionId, type: 'set-adjustment-pending' }),
       skipRest: () => dispatch({ now: Date.now(), type: 'finish-rest' }),
       skipCurrentExercise: () => dispatch({ now: Date.now(), type: 'skip-exercise' }),
       summary,
       toggleGuide: () => dispatch({ type: 'toggle-guide' }),
       togglePause: () => dispatch({ now: Date.now(), type: 'toggle-pause' }),
     }),
-    [beginSession, clearSession, completeSession, currentExercise, dispatch, session, summary],
+    [
+      beginSession,
+      clearSession,
+      completeSession,
+      currentExercise,
+      dispatch,
+      flushPendingResults,
+      session,
+      summary,
+    ],
   );
 
   return (

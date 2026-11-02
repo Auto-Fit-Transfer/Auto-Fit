@@ -34,7 +34,7 @@ import WarningIcon from '@/assets/icons/system/WarningCircle.svg';
 import PauseIcon from '@/assets/icons/feature/Pause_Fill.svg';
 import PencilIcon from '@/assets/icons/feature/Pencil_Line.svg';
 import PlayIcon from '@/assets/icons/feature/Play_Fill.svg';
-import { getExerciseApiErrorMessage } from '@/src/api/exercise';
+import { getExerciseApiErrorMessage, recordExerciseDiscomfort } from '@/src/api/exercise';
 import { BackButton } from '@/src/components/common/BackButton';
 import { AdjustmentIndicatorView } from '@/src/components/exercise/AdjustmentIndicatorView';
 import { ExerciseActionButton } from '@/src/components/exercise/ExerciseActionButton';
@@ -152,6 +152,7 @@ export default function ExerciseSessionScreen() {
   const { markRoutineCompleted, resultRecordCompleted } = useExerciseRoutine();
   const {
     addRestSeconds,
+    applyAdjustedItems,
     clearSession,
     closeExitConfirmation,
     closeSkipConfirmation,
@@ -159,10 +160,12 @@ export default function ExerciseSessionScreen() {
     completeSession,
     currentExercise,
     cycleCountSpeed,
+    flushPendingResults,
     goToNextExercise,
     openExitConfirmation,
     openSkipConfirmation,
     session,
+    setAdjustmentPending,
     skipRest,
     skipCurrentExercise,
     summary,
@@ -173,9 +176,10 @@ export default function ExerciseSessionScreen() {
   const [discomfortRecordVisible, setDiscomfortRecordVisible] = useState(false);
   const [discomfortRecordClosing, setDiscomfortRecordClosing] = useState(false);
   const [adjustmentOverlayVisible, setAdjustmentOverlayVisible] = useState(false);
+  const [isAdjustmentSubmitting, setIsAdjustmentSubmitting] = useState(false);
   const [discomfortCloseAction, setDiscomfortCloseAction] =
     useState<DiscomfortCloseAction>('dismiss');
-  const adjustmentDraftRef = useRef<DiscomfortFeedbackDraft | null>(null);
+  const adjustmentRequestInFlight = useRef(false);
   const responsiveHeight =
     Platform.OS === 'android' ? Dimensions.get('screen').height : windowHeight;
   const heightProgress = Math.max(
@@ -213,17 +217,29 @@ export default function ExerciseSessionScreen() {
     let active = true;
     void loadVoiceGuideSettings().then((settings) => {
       if (active && settings.announceRest) {
-        speakGuide(`쉬는 시간이에요. ${Math.ceil(session.restTotalMs / 1000)}초 쉬어 주세요.`, settings);
+        speakGuide(
+          `쉬는 시간이에요. ${Math.ceil(session.restTotalMs / 1000)}초 쉬어 주세요.`,
+          settings,
+        );
       }
     });
-    return () => { active = false; };
-  }, [session?.phase, session?.paused, session?.restTotalMs, session?.currentExerciseIndex, session?.currentSet]);
+    return () => {
+      active = false;
+    };
+  }, [
+    session?.phase,
+    session?.paused,
+    session?.restTotalMs,
+    session?.currentExerciseIndex,
+    session?.currentSet,
+  ]);
 
   const openDiscomfortRecord = useCallback(() => {
+    if (session) setAdjustmentPending(session.sessionId, true);
     setDiscomfortCloseAction('dismiss');
     setDiscomfortRecordClosing(false);
     setDiscomfortRecordVisible(true);
-  }, []);
+  }, [session, setAdjustmentPending]);
 
   const closeDiscomfortRecord = useCallback(
     (action: DiscomfortCloseAction = 'dismiss') => {
@@ -235,11 +251,40 @@ export default function ExerciseSessionScreen() {
   );
 
   const requestAdjustment = useCallback(
-    (draft: DiscomfortFeedbackDraft) => {
-      adjustmentDraftRef.current = draft;
-      setAdjustmentOverlayVisible(true);
+    async (draft: DiscomfortFeedbackDraft) => {
+      if (!session || !currentExercise || adjustmentRequestInFlight.current) return;
+      adjustmentRequestInFlight.current = true;
+      setIsAdjustmentSubmitting(true);
+      try {
+        await flushPendingResults();
+        const response = await recordExerciseDiscomfort(session.sessionId, {
+          actionTaken: 'adjust',
+          bodyAreas: draft.painArea.trim() ? [draft.painArea.trim()] : [],
+          detail: draft.otherDescription.trim() || null,
+          exerciseItemId: currentExercise.id,
+          severity: draft.feedbackLevel,
+          symptomType: draft.feedbackType,
+        });
+        const adjustedItems = response.result?.adjusted_items;
+        if (!Array.isArray(adjustedItems)) {
+          throw new Error('조정된 운동 정보를 확인할 수 없어요.');
+        }
+        if (adjustedItems.length === 0) {
+          closeDiscomfortRecord();
+          Alert.alert('불편 상태 기록 완료', '조정할 남은 운동은 없어요.');
+          return;
+        }
+        applyAdjustedItems(session.sessionId, adjustedItems);
+        setAdjustmentOverlayVisible(true);
+      } catch (error) {
+        console.error('Exercise adjustment failed:', error);
+        Alert.alert('운동 조정 실패', getExerciseApiErrorMessage(error));
+      } finally {
+        adjustmentRequestInFlight.current = false;
+        setIsAdjustmentSubmitting(false);
+      }
     },
-    [],
+    [applyAdjustedItems, closeDiscomfortRecord, currentExercise, flushPendingResults, session],
   );
 
   const handleDiscomfortRecordClosed = useCallback(() => {
@@ -247,8 +292,9 @@ export default function ExerciseSessionScreen() {
     setDiscomfortRecordVisible(false);
     setDiscomfortRecordClosing(false);
     setDiscomfortCloseAction('dismiss');
+    if (session) setAdjustmentPending(session.sessionId, false);
     if (shouldEndWorkout) openExitConfirmation();
-  }, [discomfortCloseAction, openExitConfirmation]);
+  }, [discomfortCloseAction, openExitConfirmation, session, setAdjustmentPending]);
 
   const handleAdjustmentOverlayCovered = useCallback(() => {
     setDiscomfortRecordVisible(false);
@@ -257,11 +303,9 @@ export default function ExerciseSessionScreen() {
   }, []);
 
   const handleAdjustmentOverlayFinished = useCallback(() => {
-    // TODO: Replace this TEMP simulation completion with the adjustment API response,
-    // then update the remaining exercises in ExerciseSessionContext before revealing the session.
-    adjustmentDraftRef.current = null;
     setAdjustmentOverlayVisible(false);
-  }, []);
+    if (session) setAdjustmentPending(session.sessionId, false);
+  }, [session, setAdjustmentPending]);
 
   useEffect(() => {
     if (session || resultRecordCompleted) return undefined;
@@ -334,9 +378,7 @@ export default function ExerciseSessionScreen() {
         sessionId: session.sessionId,
       });
       // Keep the completed session until the R6 result screen saves feedback.
-      requestAnimationFrame(() =>
-        router.push('/exercise/completion'),
-      );
+      requestAnimationFrame(() => router.push('/exercise/completion'));
     } catch (error) {
       console.error('Exercise session completion failed:', error);
       Alert.alert('운동 결과 저장 실패', getExerciseApiErrorMessage(error));
@@ -446,6 +488,7 @@ export default function ExerciseSessionScreen() {
       {discomfortRecordVisible ? (
         <DiscomfortRecordModal
           isClosing={discomfortRecordClosing}
+          isSubmitting={isAdjustmentSubmitting}
           onClose={closeDiscomfortRecord}
           onClosed={handleDiscomfortRecordClosed}
           onRequestAdjust={requestAdjustment}
@@ -579,9 +622,7 @@ function ExerciseContent({
     layout.tipTop - layout.countToTipMinGap - measuredRepProgressHeight,
   );
   const handleRepProgressLayout = useCallback((height: number) => {
-    setRepProgressHeight((previousHeight) =>
-      previousHeight === height ? previousHeight : height,
-    );
+    setRepProgressHeight((previousHeight) => (previousHeight === height ? previousHeight : height));
   }, []);
 
   return (
@@ -1174,12 +1215,14 @@ function AdjustmentIndicatorOverlay({
 
 function DiscomfortRecordModal({
   isClosing,
+  isSubmitting,
   onClose,
   onClosed,
   onRequestAdjust,
   onRequestEnd,
 }: {
   isClosing: boolean;
+  isSubmitting: boolean;
   onClose: () => void;
   onClosed: () => void;
   onRequestAdjust: (draft: DiscomfortFeedbackDraft) => void;
@@ -1512,7 +1555,10 @@ function DiscomfortRecordModal({
                 </Text>
               </View>
             </View>
-            <View style={styles.discomfortSubmitButton}>
+            <View
+              pointerEvents={isSubmitting ? 'none' : 'auto'}
+              style={[styles.discomfortSubmitButton, isSubmitting && { opacity: 0.6 }]}
+            >
               <ExerciseActionButton
                 borderRadius={50}
                 gap={10}
@@ -1525,7 +1571,13 @@ function DiscomfortRecordModal({
                 labelStyle={styles.discomfortSubmitText}
                 maxFontSizeMultiplier={1}
                 onPress={submitFeedback}
-                title={followUpChoice === 'adjust' ? '조정된 운동 확인하기' : '종료하기'}
+                title={
+                  isSubmitting
+                    ? '운동 조정 중...'
+                    : followUpChoice === 'adjust'
+                      ? '조정된 운동 확인하기'
+                      : '종료하기'
+                }
               />
             </View>
           </Animated.View>

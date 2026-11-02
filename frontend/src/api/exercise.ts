@@ -30,6 +30,15 @@ export type ExerciseItemResultInput = {
   skipped: boolean;
 };
 
+export type ExerciseDiscomfortInput = {
+  actionTaken: 'adjust' | 'continue' | 'stop';
+  bodyAreas: string[];
+  detail: string | null;
+  exerciseItemId: string | null;
+  severity: number | null;
+  symptomType: 'pain' | 'fatigue' | 'dizziness' | 'breathing' | 'other';
+};
+
 export type ExerciseSessionFeedbackInput = {
   note: string | null;
   perceivedDifficulty: number;
@@ -138,6 +147,23 @@ export function recordExerciseItemResult(
   );
 }
 
+export function recordExerciseDiscomfort(sessionId: string, input: ExerciseDiscomfortInput) {
+  return apiRequest<{ result: { adjusted_items: unknown[] } }>(
+    `/api/exercise/sessions/${encodeURIComponent(sessionId)}/discomfort`,
+    {
+      body: JSON.stringify({
+        action_taken: input.actionTaken,
+        body_areas: input.bodyAreas,
+        detail: input.detail,
+        exercise_item_id: input.exerciseItemId,
+        severity: input.severity,
+        symptom_type: input.symptomType,
+      }),
+      method: 'POST',
+    },
+  );
+}
+
 export function completeExerciseSession(sessionId: string) {
   return apiRequest<ExerciseApiResponse>(
     `/api/exercise/sessions/${encodeURIComponent(sessionId)}/complete`,
@@ -225,7 +251,11 @@ export function getSavedWorkoutRoutines() {
 export function saveRecommendedWorkout(recommendationId: string, name: string) {
   return apiRequest<{ routine: SavedWorkoutRoutine }>('/api/exercise/saved-routines', {
     method: 'POST',
-    body: JSON.stringify({ source_type: 'recommendation', source_recommendation_id: recommendationId, name }),
+    body: JSON.stringify({
+      source_type: 'recommendation',
+      source_recommendation_id: recommendationId,
+      name,
+    }),
   });
 }
 
