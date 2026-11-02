@@ -32,7 +32,7 @@
       "distribution": "store",
       "environment": "preview",
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://auto-fit-api-dev.onrender.com",
+        "EXPO_PUBLIC_API_BASE_URL": "https://211-233-206-193.sslip.io",
         "EXPO_USE_PRECOMPILED_MODULES": "0"
       }
     }
