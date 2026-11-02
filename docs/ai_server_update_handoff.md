@@ -823,3 +823,19 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - 테스트 결과: 관련 자동 테스트 6개 통과
 - 남은 작업: 네이버 AI Server 재배포 후 Backend가 실제 호출하는 E2E, 실제 모바일 지도 표시 확인
 - 알려진 제한: `official_gpx=disabled`이면 메타데이터 추천은 가능하지만 전체 공식 `path`는 보장되지 않음
+
+## 2026-11-02 · GPS 기반 러닝 코스 3km 반경 제한
+
+- 상태: 로컬 구현 완료, AI Server 재배포 대기
+- 관련 커밋: `f9bdea1` 이후 로컬 변경 미커밋
+- 변경 목적: GPS 기반 추천에서 사용자와 지나치게 먼 코스가 노출되지 않도록 코스 출발지 접근 거리를 제한
+- 변경 API: `GET /running/courses/recommend`, 간접적으로 `POST /running/session/recommend`
+- 변경 파일: `app/core/config.py`, `app/services/running_route_service.py`, `.env.example`, 러닝 계약·테스트 파일
+- 기존 동작 영향: GPS가 있으면 출발지가 직선거리 3km 이내이고 좌표가 확인된 코스만 반환하며, GPS 없는 지역명 검색·코스 길이 ±10% 정책·가까운 순 정렬은 유지
+- Frontend 작업: 추천 요청에 사용자 동의를 받은 WGS84 `latitude`, `longitude`를 함께 전달하고 빈 목록의 `generation_required`를 자동 순환 코스 생성 전이로 처리
+- Backend 작업: 기존 GPS query proxy 유지, 별도 DTO 변경 없음
+- AI·배포 작업: 기본값은 코드에 포함되며 필요하면 `RUNNING_COURSE_GPS_RADIUS_KM=3`을 명시한 뒤 재배포
+- 실행 테스트: 3km 내부·경계 포함, 초과·좌표 미확인 제외, GPS 없는 검색 유지, 계약 예제·OpenAPI 검사
+- 테스트 결과: 동기 필터 1개와 계약·OpenAPI 2개 통과; 전체 비동기 테스트는 Windows 이벤트 루프 생성 단계의 기존 소켓 대기로 이 환경에서 완료하지 못함
+- 남은 작업: 배포 환경에서 GPS 좌표로 3km 내부·외부 실제 코스 E2E 및 모바일 빈 결과 fallback 확인
+- 알려진 제한: 공공 메타데이터 지오코딩 후보는 `RUNNING_COURSE_GEOCODE_LIMIT` 범위에서만 좌표를 확인하므로 반경 내 코스를 누락할 가능성은 있으나, 좌표 미확인 코스를 3km 이내라고 추정해 반환하지는 않음

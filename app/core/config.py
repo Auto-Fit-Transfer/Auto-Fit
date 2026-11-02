@@ -197,6 +197,11 @@ class Settings(BaseSettings):
         ge=1,
         le=50,
     )
+    running_course_gps_radius_km: float = Field(
+        default=3.0,
+        gt=0,
+        le=50.0,
+    )
     running_durunubi_enabled: bool = False
     running_durunubi_cache_ttl_seconds: float = Field(
         default=21600.0,

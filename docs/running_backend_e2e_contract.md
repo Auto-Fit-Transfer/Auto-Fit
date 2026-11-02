@@ -163,6 +163,8 @@ GET /running/courses/recommend?region=성남시&distance_option=5km&latitude=37.
 
 GPS만 전달하면 AI Server가 Kakao 행정구역 API로 `resolved_region`을 계산한다.
 
+GPS 좌표가 포함된 추천은 코스 출발지가 사용자 위치에서 직선거리 3km 이내인 코스만 반환한다. 출발지 좌표를 확인할 수 없는 코스와 반경을 초과한 코스는 제외한다. `region`만 전달하고 GPS를 생략한 지역 검색은 기존과 같이 행정구역과 코스 거리 조건만 적용한다. 운영 기본값은 `RUNNING_COURSE_GPS_RADIUS_KM=3`이다.
+
 ### 6.2 `status=matched`
 
 `courses`가 하나 이상 존재한다. Backend와 Frontend는 `source.source_type`에 따라 처리한다.

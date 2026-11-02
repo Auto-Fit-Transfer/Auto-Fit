@@ -570,13 +570,18 @@ async def recommend_running_courses(
             )
             for course in public_candidates
         ]
+        public_summaries = _filter_courses_within_gps_radius(
+            courses=public_summaries,
+            current_location=current_location,
+            radius_km=settings.running_course_gps_radius_km,
+        )
 
         data_sources = [
             RunningCourseDataSourceStatus(
                 source_type="official_metadata",
                 state="available",
                 message=(
-                    f"{len(public_candidates)} matching course(s) from "
+                    f"{len(public_summaries)} matching course(s) from "
                     "the nationwide official metadata catalog."
                 ),
             )
@@ -630,6 +635,11 @@ async def recommend_running_courses(
                     pace_source=pace_source,
                     minimum_km=minimum_km,
                     maximum_km=maximum_km,
+                )
+                gpx_summaries = _filter_courses_within_gps_radius(
+                    courses=gpx_summaries,
+                    current_location=current_location,
+                    radius_km=settings.running_course_gps_radius_km,
                 )
                 message = (
                     f"{len(gpx_summaries)} matching course(s) with "
@@ -694,7 +704,15 @@ async def recommend_running_courses(
                 if matched
                 else (
                     "No official course matched the requested region and "
-                    "distance range. Generate a route from the user's "
+                    "distance range"
+                    + (
+                        " within "
+                        f"{settings.running_course_gps_radius_km:g} km "
+                        "of the user's current GPS location"
+                        if current_location is not None
+                        else ""
+                    )
+                    + ". Generate a route from the user's "
                     "selected start point instead."
                 )
             ),
@@ -1289,6 +1307,22 @@ def _difficulty_from_distance(distance_km: float) -> str:
     if distance_km <= 10.5:
         return "moderate"
     return "hard"
+
+
+def _filter_courses_within_gps_radius(
+    courses: list[RunningCourseSummary],
+    current_location: GeoCoordinate | None,
+    radius_km: float,
+) -> list[RunningCourseSummary]:
+    if current_location is None:
+        return courses
+
+    return [
+        course
+        for course in courses
+        if course.distance_to_user_km is not None
+        and course.distance_to_user_km <= radius_km
+    ]
 
 
 def _recommendation_sort_key(

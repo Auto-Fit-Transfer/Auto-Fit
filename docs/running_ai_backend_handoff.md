@@ -31,6 +31,7 @@
 - `GET /running/places/search`는 `limit` 1~20을 받으며 기본값은 10이다. 응답 `places`는 요청한 `limit`을 초과하지 않는다.
 - `광주광역시 동구청`처럼 상·하위 행정구역이 함께 오면 모든 단계가 일치해야 한다. `동구청` 하나만 같다는 이유로 대구·울산 코스를 반환하지 않는다.
 - GPS로 행정구역을 해결할 때도 `region_1depth_name`(시·도)과 `region_2depth_name`(시·군·구)를 함께 보존한다.
+- GPS 좌표가 포함된 공식 코스 추천은 코스 출발지가 사용자 위치에서 직선거리 3km 이내인 결과만 반환한다. 출발지 좌표를 확인할 수 없거나 3km를 초과하는 코스는 제외한다. 지역명만 전달한 검색에는 이 반경 제한을 적용하지 않는다.
 - `data_sources.official_gpx=disabled`이면 공식 메타데이터 목록 추천은 가능하지만, 해당 코스의 전체 공식 Polyline은 보장하지 않는다. `official_metadata` 상세의 `path=[]`와 `requires_route_validation=true`를 정상 상태로 처리한다.
 - 지도에 공식 전체 경로를 표시하려면 `RUNNING_DURUNUBI_ENABLED=true`로 검증된 GPX를 활성화하거나, 메타데이터 출발·도착·경유지 좌표를 확정한 후 `/running/routes/preview`로 Kakao 보행 경로를 따로 검증한다. 후자는 지자체 원본 코스와 동일하다고 표시하면 안 된다.
 

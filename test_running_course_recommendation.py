@@ -1,5 +1,6 @@
 import asyncio
 import sys
+from types import SimpleNamespace
 
 from pydantic import ValidationError
 
@@ -12,6 +13,7 @@ from app.services.public_running_course_service import (
     PublicRunningCourseService,
 )
 from app.services.running_route_service import (
+    _filter_courses_within_gps_radius,
     get_running_course_detail,
     recommend_running_courses,
 )
@@ -122,8 +124,15 @@ async def run_async_tests() -> None:
         region="서울특별시 송파구",
         start_address="타지역 주소",
     )
+    unknown_location = make_course(
+        course_id="unknown-location",
+        name="좌표 미확인 건강길",
+        distance_km=5.1,
+        region="경기도 성남시",
+        start_address="좌표 미확인 주소",
+    )
     public_service = FakePublicCourseService(
-        [far, wrong_region, near]
+        [far, wrong_region, near, unknown_location]
     )
     kakao_service = FakeKakaoMapService(
         {
@@ -156,9 +165,9 @@ async def run_async_tests() -> None:
     assert response.distance_max_km == 5.5
     assert [course.course_id for course in response.courses] == [
         "near",
-        "far",
     ]
     assert response.courses[0].distance_to_user_km is not None
+    assert response.courses[0].distance_to_user_km <= 3.0
     assert response.courses[0].pace_source == "user"
     assert response.courses[0].estimated_duration_minutes == 31.2
     assert response.courses[0].requires_route_validation is True
@@ -312,6 +321,45 @@ def main() -> None:
 
 def test_running_course_recommendation() -> None:
     main()
+
+
+def test_gps_radius_filter() -> None:
+    inside = SimpleNamespace(
+        course_id="inside",
+        distance_to_user_km=2.999,
+    )
+    boundary = SimpleNamespace(
+        course_id="boundary",
+        distance_to_user_km=3.0,
+    )
+    outside = SimpleNamespace(
+        course_id="outside",
+        distance_to_user_km=3.001,
+    )
+    unknown = SimpleNamespace(
+        course_id="unknown",
+        distance_to_user_km=None,
+    )
+    courses = [inside, boundary, outside, unknown]
+
+    filtered = _filter_courses_within_gps_radius(
+        courses=courses,
+        current_location=GeoCoordinate(
+            latitude=37.3948,
+            longitude=127.1112,
+        ),
+        radius_km=3.0,
+    )
+    assert [course.course_id for course in filtered] == [
+        "inside",
+        "boundary",
+    ]
+
+    assert _filter_courses_within_gps_radius(
+        courses=courses,
+        current_location=None,
+        radius_km=3.0,
+    ) == courses
 
 
 if __name__ == "__main__":
