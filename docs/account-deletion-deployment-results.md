@@ -49,3 +49,24 @@ backend/.venv/bin/python -m backend.tests.account_deletion_live \
 
 api-base 생략 시 로컬 ASGI 경로와 실제 Supabase를 연결한다. 원격 API 대상은
 위 개발 서버만 허용하며 키·비밀번호·토큰·개인 경로·응답 본문을 출력하지 않는다.
+
+## 테스트 화면 연결 검증
+
+`g.html`과 `diet-ui-test.html`에 회원탈퇴 확인 창과 현재 로그인 계정의
+DELETE /api/account 호출을 연결했다. 확인 전 취소, 처리 중 중복 요청 차단,
+실패 후 재시도, 성공 후 세션·화면 자료 정리를 적용했다. 삭제 결과가 불명확하면
+자료 입력 화면을 잠그고 재시도를 안내한다.
+
+Playwright에서 두 화면의 키보드 초점, 취소, 중복 요청, 502 후 재시도,
+로그아웃 및 320·768·1024·1440px 확인 창을 검증했다. 별도 시나리오로
+401, 연결 실패, 토큰 없음, 서버 삭제 성공 후 로컬 정리 실패 안내도 통과했다.
+모든 브라우저 요청은 합성 응답으로 대체해 실제 계정을 삭제하지 않았다.
+
+```bash
+backend/.venv/bin/python /Users/gimhyeonho/.codex/skills/webapp-testing/scripts/with_server.py \
+  --server 'backend/.venv/bin/python -m http.server 3000 --bind 127.0.0.1' \
+  --port 3000 -- backend/.venv/bin/python -m backend.tests.account_deletion_ui_check
+```
+
+이 변경은 저장소의 테스트 HTML 화면에 적용한 로컬 변경이며, 실제 앱 화면의
+수정·배포 결과는 아니다. 실제 앱 프론트엔드 저장소는 아직 확인되지 않았다.

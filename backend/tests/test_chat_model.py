@@ -95,6 +95,12 @@ def test_timeout_falls_back(monkeypatch):
     assert asyncio.run(chat_model.explain_records("질문", summary())) is None
 
 
+def test_timeout_budgets_allow_slow_model_response():
+    assert chat_model.MODEL_HTTP_TIMEOUT_SECONDS >= 60
+    assert chat_model.MODEL_WALL_TIMEOUT_SECONDS > chat_model.MODEL_HTTP_TIMEOUT_SECONDS
+    assert main.CHAT_REQUEST_TIMEOUT_SECONDS > chat_model.MODEL_WALL_TIMEOUT_SECONDS
+
+
 def test_db_error_never_calls_model(monkeypatch):
     async def unavailable(*args):
         raise RuntimeError("DB unavailable")

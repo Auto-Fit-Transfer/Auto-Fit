@@ -3,11 +3,13 @@ from __future__ import annotations
 import os
 import asyncio
 import hashlib
+import re
+import secrets
 from collections import defaultdict
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from math import ceil
 from typing import Annotated, Any, Literal
 from uuid import UUID
@@ -29,18 +31,43 @@ from backend.app.chat_health_scores import (
 )
 from backend.app.chat_answers import answer_question
 from backend.app.chat_exercise_info import load_exercise_types
-from backend.app.chat_intents import is_off_topic_question
-from backend.app.chat_model import get_model_config
+from backend.app.chat_model import get_model_config, request_model
 from backend.app.chat_records import answer_records
+from backend.app.chat_running import answer_running_course, search_running_courses
+from backend.app.chat_service import ServiceQuery
+from backend.app.chat_actions import answer_record_action
 from backend.app.chat_storage import ChatStore, fail as chat_fail
 from backend.app.chat_rate_limit import ChatRateLimiter
-from backend.app.http_client import client_scope
+from backend.app.http_client import client_scope, SharedHttpClientMiddleware
 from backend.app.diet_timing import DietTimingMiddleware, timed_http_client
+from backend.app.diet_ai import (
+    DietAIUnavailable,
+    conflicts_allergy,
+    find_used_inventory_items,
+    find_used_inventory_names,
+    generate_ai_meals,
+    generate_regenerated_meal,
+    mix_meals,
+    select_ai_slots,
+)
+from backend.app.food_image_generation import (
+    generate_missing_menu_images,
+    get_food_image_settings,
+)
 from backend.app.home import HomeResponse, build_home_response
 from backend.app.health_documents import create_health_documents_router
 from backend.app.account_deletion import create_account_deletion_router
+from backend.app.community_mileage import create_community_mileage_router
+from backend.app.user_settings import create_user_settings_router
+from backend.app.health_report import create_health_report_router
+from backend.app.habit_tier import create_habit_tier_router
 from backend.app.analysis_popups import create_analysis_popups_router
 from backend.app.analysis_summary import create_analysis_summary_router
+from backend.app.posture_analysis import create_posture_analysis_router
+from backend.app.saved_workout_routines import create_saved_workout_router
+from backend.app.running_sessions import create_running_sessions_router
+from backend.app.weekly_diet import create_weekly_diet_router
+from backend.app.running import create_running_router
 from backend.app.meal_photos import attach_photos, create_meal_photos_router
 from backend.app.security import (
     BlockedPathMiddleware,
@@ -53,6 +80,45 @@ from backend.app.security import (
 
 
 KST = ZoneInfo("Asia/Seoul")
+CHAT_REQUEST_TIMEOUT_SECONDS = 70
+DUMMY_FOOD_NAME_PREFIX = re.compile(r"^\[DUMMY[^\]]*\]\s*", re.IGNORECASE)
+FOOD_NAME_PARENTHETICAL = re.compile(r"\s*(?:\([^()]*\)|（[^（）]*）)")
+
+
+def without_parenthetical_details(value: str) -> str:
+    display_value = value.strip()
+    previous_value = None
+    while display_value != previous_value:
+        previous_value = display_value
+        display_value = FOOD_NAME_PARENTHETICAL.sub("", display_value)
+    return " ".join(display_value.split())
+
+
+def normalize_recommended_foods(
+    foods: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Preserve full food names and add a parenthetical-free display name."""
+    normalized: list[dict[str, Any]] = []
+    for food in foods:
+        item = food.copy()
+        food_name = item.get("food_name")
+        if isinstance(food_name, str):
+            normalized_name = DUMMY_FOOD_NAME_PREFIX.sub("", food_name).strip()
+            if normalized_name:
+                item["food_name"] = normalized_name
+                display_name = without_parenthetical_details(normalized_name)
+                item["display_name"] = display_name or normalized_name
+        unit = item.get("unit")
+        if isinstance(unit, str):
+            display_unit = without_parenthetical_details(unit)
+            item["display_unit"] = display_unit or unit.strip()
+        quantity = item.get("quantity")
+        if quantity is not None:
+            item["quantity"] = int(
+                Decimal(str(quantity)).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+            )
+        normalized.append(item)
+    return normalized
 
 
 @dataclass(frozen=True)
@@ -449,6 +515,21 @@ class RegenerateDietMealRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class UsedInventoryIngredientResponse(BaseModel):
+    user_food_inventory_id: str | None = None
+    name: str
+    matched_food_name: str
+    quantity: float | None = None
+    unit: str | None = None
+
+
+class RegenerateDietMealResponse(BaseModel):
+    ok: Literal[True]
+    generator: Literal["ai_v1"]
+    meal: dict[str, Any]
+    used_ingredients: list[UsedInventoryIngredientResponse]
+
+
 class MealLogItemRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -583,7 +664,7 @@ async def update_profile(
         "user_id": f"eq.{user_id}",
     }
 
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.patch(
             f"{settings.supabase_url}/rest/v1/profiles",
             headers=service_headers(settings, return_representation=True),
@@ -612,7 +693,7 @@ async def fetch_allergy_catalog(settings: Settings) -> list[dict[str, Any]]:
         "is_active": "eq.true",
         "order": "name.asc",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.get(
             f"{settings.supabase_url}/rest/v1/allergy_types",
             headers=service_headers(settings),
@@ -636,7 +717,7 @@ async def fetch_user_allergies(
         "user_id": f"eq.{user_id}",
         "order": "created_at.asc",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.get(
             f"{settings.supabase_url}/rest/v1/user_allergies",
             headers=service_headers(settings),
@@ -661,7 +742,7 @@ async def replace_user_allergies(
         "p_allergy_type_ids": [str(value) for value in selection.allergy_type_ids],
         "p_custom_names": selection.custom_names,
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.post(
             f"{settings.supabase_url}/rest/v1/rpc/replace_user_allergies",
             headers=service_headers(settings),
@@ -690,7 +771,7 @@ async def fetch_exercise_preferences(
         "user_id": f"eq.{user_id}",
         "limit": "1",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.get(
             f"{settings.supabase_url}/rest/v1/user_exercise_profiles",
             headers=service_headers(settings),
@@ -721,7 +802,7 @@ async def upsert_exercise_preferences(
         ),
     }
     payload = {"user_id": user_id, **preferences.model_dump()}
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.post(
             f"{settings.supabase_url}/rest/v1/user_exercise_profiles",
             headers=headers,
@@ -757,7 +838,7 @@ async def fetch_latest_exercise_context(
         "order": "created_at.desc",
         "limit": "1",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.get(
             f"{settings.supabase_url}/rest/v1/exercise_recommendation_contexts",
             headers=service_headers(settings),
@@ -786,7 +867,7 @@ async def create_exercise_context(
         ),
     }
     payload = {"user_id": user_id, **context.model_dump()}
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.post(
             f"{settings.supabase_url}/rest/v1/exercise_recommendation_contexts",
             headers=service_headers(settings, return_representation=True),
@@ -823,7 +904,7 @@ async def fetch_latest_unlinked_exercise_context(
         "order": "created_at.desc",
         "limit": "1",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.get(
             f"{settings.supabase_url}/rest/v1/exercise_recommendation_contexts",
             headers=service_headers(settings),
@@ -843,6 +924,8 @@ def build_exercise_recommendation_plan(
     preferences: dict[str, Any],
     context: dict[str, Any],
     profile: dict[str, Any] | None = None,
+    *,
+    previous_items: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     goal = preferences["goal_type"]
     experience = preferences["experience_level"]
@@ -864,24 +947,106 @@ def build_exercise_recommendation_plan(
 
     if goal == "muscle_gain":
         if equipment.intersection({"machine", "dumbbell"}):
-            main_type, main_name = "웨이트 트레이닝", "전신 웨이트 트레이닝"
+            main_type = "웨이트 트레이닝"
+            main_names = (
+                "전신 웨이트 트레이닝",
+                "저중량 전신 웨이트 트레이닝",
+                "상·하체 교대 웨이트 트레이닝",
+            )
+            main_guidance = (
+                "전신 동작을 고르게 수행하세요.",
+                "평소보다 낮은 중량으로 자세를 확인하며 수행하세요.",
+                "상체와 하체 동작을 번갈아 수행하세요.",
+            )
         else:
-            main_type, main_name = "스쿼트", "맨몸 스쿼트"
+            main_type = "스쿼트"
+            main_names = ("맨몸 스쿼트", "느린 맨몸 스쿼트", "발 간격 조절 맨몸 스쿼트")
+            main_guidance = (
+                "발을 어깨 너비로 두고 천천히 앉았다 일어나세요.",
+                "내려가는 동작을 천천히 하며 자세를 유지하세요.",
+                "발 간격을 편한 범위에서 조절하며 수행하세요.",
+            )
         main_execution = "count_based"
         main_sets = 3 if intensity != "low" else 2
         main_repetitions = 12 if intensity != "low" else 8
     elif goal == "rehabilitation":
-        main_type, main_name = "요가", "저강도 회복 요가"
+        main_type = "요가"
+        main_names = ("저강도 회복 요가", "호흡 중심 회복 요가", "부드러운 전신 요가")
+        main_guidance = (
+            "무리 없는 범위에서 자세를 천천히 이어가세요.",
+            "호흡을 일정하게 유지하며 가벼운 자세를 이어가세요.",
+            "전신을 부드럽게 움직이며 자세를 이어가세요.",
+        )
         main_execution = "time_based"
         main_sets = main_repetitions = None
     elif goal == "endurance" and intensity != "low":
-        main_type, main_name = "달리기", "가벼운 지속 달리기"
+        main_type = "달리기"
+        main_names = ("가벼운 지속 달리기", "완급 조절 달리기", "편안한 페이스 달리기")
+        main_guidance = (
+            "대화할 수 있는 속도로 일정하게 달리세요.",
+            "편안한 속도와 조금 빠른 속도를 번갈아 유지하세요.",
+            "호흡이 안정적인 속도를 찾아 유지하세요.",
+        )
         main_execution = "time_based"
         main_sets = main_repetitions = None
     else:
-        main_type, main_name = "걷기", "빠르게 걷기"
+        main_type = "걷기"
+        main_names = (
+            ("편안한 속도 걷기", "평지 지속 걷기", "가벼운 리듬 걷기")
+            if intensity == "low"
+            else ("빠르게 걷기", "속도 변화 걷기", "일정한 속도 걷기")
+        )
+        main_guidance = (
+            (
+                "무리 없는 속도로 걸으세요.",
+                "경사가 없는 평지에서 일정한 속도로 걸으세요.",
+                "편안한 속도와 느린 속도를 번갈아 걸으세요.",
+            )
+            if intensity == "low"
+            else (
+                "팔을 자연스럽게 흔들며 빠르게 걸으세요.",
+                "빠른 걸음과 보통 걸음을 번갈아 걸으세요.",
+                "호흡을 유지할 수 있는 속도로 일정하게 걸으세요.",
+            )
+        )
         main_execution = "time_based"
         main_sets = main_repetitions = None
+
+    previous_main_name = (
+        previous_items[1].get("exercise_name")
+        if previous_items and len(previous_items) > 1
+        else None
+    )
+    main_index = (
+        (main_names.index(previous_main_name) + 1) % len(main_names)
+        if previous_main_name in main_names
+        else 0
+    )
+    main_name = main_names[main_index]
+    warmup_names = (
+        "전신 워밍업 스트레칭",
+        "관절 가동성 스트레칭",
+        "가벼운 준비 스트레칭",
+    )
+    cooldown_names = (
+        "마무리 스트레칭",
+        "호흡 정리 스트레칭",
+        "전신 이완 스트레칭",
+    )
+    warmup_guidance = (
+        "통증이 없는 범위에서 천천히 관절과 근육을 풀어주세요.",
+        "목과 어깨, 골반과 발목을 편한 범위에서 부드럽게 움직이세요.",
+        "호흡을 유지하며 전신을 가볍게 움직여 준비하세요.",
+    )
+    cooldown_guidance = (
+        "호흡을 고르며 사용한 근육을 부드럽게 이완하세요.",
+        "호흡을 천천히 고르며 움직임을 마무리하세요.",
+        "사용한 부위를 편한 범위에서 천천히 이완하세요.",
+    )
+    main_instruction = (
+        f"{main_guidance[main_index]} "
+        "불편함이나 어지러움이 생기면 즉시 강도를 낮추거나 중단하세요."
+    )
 
     warmup_minutes = max(1, min(5, available_minutes // 6))
     cooldown_minutes = max(1, min(5, available_minutes // 6))
@@ -891,13 +1056,13 @@ def build_exercise_recommendation_plan(
     items = [
         {
             "exercise_type_name": "스트레칭",
-            "exercise_name": "전신 워밍업 스트레칭",
+            "exercise_name": warmup_names[main_index],
             "duration_minutes": warmup_minutes,
             "sets": None,
             "repetitions": None,
             "calories_burned": max(1, warmup_minutes * 2),
             "intensity": "low",
-            "instruction": "통증이 없는 범위에서 천천히 관절과 근육을 풀어주세요.",
+            "instruction": warmup_guidance[main_index],
             "execution_type": "time_based",
             "target_duration_seconds": warmup_minutes * 60,
             "target_weight_kg": None,
@@ -911,7 +1076,7 @@ def build_exercise_recommendation_plan(
             "repetitions": main_repetitions,
             "calories_burned": max(1, estimated_calories - warmup_minutes * 2 - cooldown_minutes * 2),
             "intensity": intensity,
-            "instruction": "불편함이나 어지러움이 생기면 즉시 강도를 낮추거나 중단하세요.",
+            "instruction": main_instruction,
             "execution_type": main_execution,
             "target_duration_seconds": main_minutes * 60 if main_execution == "time_based" else None,
             "target_weight_kg": None,
@@ -919,13 +1084,13 @@ def build_exercise_recommendation_plan(
         },
         {
             "exercise_type_name": "스트레칭",
-            "exercise_name": "마무리 스트레칭",
+            "exercise_name": cooldown_names[main_index],
             "duration_minutes": cooldown_minutes,
             "sets": None,
             "repetitions": None,
             "calories_burned": max(1, cooldown_minutes * 2),
             "intensity": "low",
-            "instruction": "호흡을 고르며 사용한 근육을 부드럽게 이완하세요.",
+            "instruction": cooldown_guidance[main_index],
             "execution_type": "time_based",
             "target_duration_seconds": cooldown_minutes * 60,
             "target_weight_kg": None,
@@ -935,7 +1100,7 @@ def build_exercise_recommendation_plan(
 
     goal_labels = {
         "weight_loss": "체지방 감량",
-        "muscle_gain": "근력량 증가",
+        "muscle_gain": "근육량 증가",
         "endurance": "체력 향상",
         "maintenance": "건강 유지",
         "rehabilitation": "컨디셔닝 / 기능 회복",
@@ -943,11 +1108,13 @@ def build_exercise_recommendation_plan(
     }
     return {
         "recommendation": {
-            "recommendation_date": date.today().isoformat(),
+            "recommendation_date": datetime.now(KST).date().isoformat(),
             "goal": goal,
             "total_duration_minutes": available_minutes,
             "intensity": intensity,
-            "recommendation_summary": f"{goal_labels[goal]} 목표를 위한 {available_minutes}분 루틴",
+            "recommendation_summary": (
+                f"{goal_labels[goal]} 목표를 위한 {available_minutes}분 루틴 · {main_name}"
+            ),
             "ai_reason": (
                 "기본 프로필의 활동 수준, 운동 목표, 경험 수준, 사용 가능 시간과 "
                 "장비, 현재 컨디션 및 불편 부위를 반영한 규칙 기반 테스트 추천입니다."
@@ -971,7 +1138,7 @@ async def create_exercise_recommendation(
         "p_recommendation": plan["recommendation"],
         "p_items": plan["items"],
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.post(
             f"{settings.supabase_url}/rest/v1/rpc/create_exercise_recommendation",
             headers=service_headers(settings),
@@ -1005,7 +1172,11 @@ async def prepare_exercise_routine(
     if not generate:
         return {"missing": [], "generated": False, "result": None}
 
-    plan = build_exercise_recommendation_plan(preferences, context, profile)
+    previous = await fetch_latest_exercise_recommendation(user_id, settings)
+    plan = build_exercise_recommendation_plan(
+        preferences, context, profile,
+        previous_items=previous["items"] if previous else None,
+    )
     result = await create_exercise_recommendation(
         user_id,
         context["exercise_recommendation_context_id"],
@@ -1029,7 +1200,7 @@ async def fetch_latest_exercise_recommendation(
         "order": "recommendation_date.desc,created_at.desc",
         "limit": "1",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         recommendation_response = await client.get(
             f"{settings.supabase_url}/rest/v1/exercise_recommendations",
             headers=service_headers(settings),
@@ -1056,7 +1227,7 @@ async def fetch_latest_exercise_recommendation(
         "exercise_recommendation_id": f"eq.{recommendation['exercise_recommendation_id']}",
         "order": "sequence_order.asc",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         item_response = await client.get(
             f"{settings.supabase_url}/rest/v1/exercise_items",
             headers=service_headers(settings),
@@ -1076,7 +1247,7 @@ async def call_exercise_session_rpc(
     payload: dict[str, Any],
     settings: Settings,
 ) -> dict[str, Any]:
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.post(
             f"{settings.supabase_url}/rest/v1/rpc/{name}",
             headers=service_headers(settings),
@@ -1106,7 +1277,7 @@ async def fetch_latest_exercise_session(
         "order": "started_at.desc",
         "limit": "1",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         session_response = await client.get(
             f"{settings.supabase_url}/rest/v1/exercise_sessions",
             headers=service_headers(settings),
@@ -1133,7 +1304,7 @@ async def fetch_latest_exercise_session(
         "exercise_session_id": f"eq.{session['exercise_session_id']}",
         "order": "performed_at.asc",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         log_response = await client.get(
             f"{settings.supabase_url}/rest/v1/exercise_logs",
             headers=service_headers(settings),
@@ -1162,7 +1333,7 @@ async def fetch_exercise_discomfort_logs(
         "exercise_session_id": f"eq.{session_id}",
         "order": "occurred_at.desc",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.get(
             f"{settings.supabase_url}/rest/v1/exercise_discomfort_logs",
             headers=service_headers(settings),
@@ -1211,7 +1382,7 @@ async def fetch_exercise_session_feedback(
         "exercise_session_id": f"eq.{session_id}",
         "limit": "1",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.get(
             f"{settings.supabase_url}/rest/v1/exercise_session_feedback",
             headers=service_headers(settings),
@@ -1253,7 +1424,7 @@ async def fetch_exercise_session_result(
         "exercise_session_id": f"eq.{session_id}",
         "order": "performed_at.asc",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         session_response = await client.get(
             f"{settings.supabase_url}/rest/v1/exercise_sessions",
             headers=service_headers(settings),
@@ -1300,7 +1471,7 @@ async def fetch_active_exercise_goal(
         "order": "starts_on.desc,updated_at.desc",
         "limit": "1",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.get(
             f"{settings.supabase_url}/rest/v1/exercise_goals",
             headers=service_headers(settings),
@@ -1324,7 +1495,7 @@ async def save_active_exercise_goal(
         "p_user_id": user_id,
         **{f"p_{key}": value for key, value in body.model_dump(mode="json").items()},
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.post(
             f"{settings.supabase_url}/rest/v1/rpc/save_exercise_goal",
             headers=service_headers(settings),
@@ -1382,21 +1553,23 @@ async def fetch_exercise_history(
         ),
         "user_id": f"eq.{user_id}",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
-        session_response = await client.get(
-            f"{settings.supabase_url}/rest/v1/exercise_sessions",
-            headers=service_headers(settings),
-            params=session_params,
-        )
-        log_response = await client.get(
-            f"{settings.supabase_url}/rest/v1/exercise_logs",
-            headers=service_headers(settings),
-            params=log_params,
-        )
-        feedback_response = await client.get(
-            f"{settings.supabase_url}/rest/v1/exercise_session_feedback",
-            headers=service_headers(settings),
-            params=feedback_params,
+    async with client_scope() as client:
+        session_response, log_response, feedback_response = await asyncio.gather(
+            client.get(
+                f"{settings.supabase_url}/rest/v1/exercise_sessions",
+                headers=service_headers(settings),
+                params=session_params,
+            ),
+            client.get(
+                f"{settings.supabase_url}/rest/v1/exercise_logs",
+                headers=service_headers(settings),
+                params=log_params,
+            ),
+            client.get(
+                f"{settings.supabase_url}/rest/v1/exercise_session_feedback",
+                headers=service_headers(settings),
+                params=feedback_params,
+            ),
         )
     if not all(
         response.is_success
@@ -1434,7 +1607,7 @@ async def fetch_completed_exercise_sessions(
 ) -> list[dict[str, Any]]:
     page_size = 1000
     sessions: list[dict[str, Any]] = []
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         while True:
             response = await client.get(
                 f"{settings.supabase_url}/rest/v1/exercise_sessions",
@@ -1523,22 +1696,24 @@ async def fetch_exercise_category_map(
     )
     if not item_ids:
         return {}
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
-        item_response = await client.get(
-            f"{settings.supabase_url}/rest/v1/exercise_items",
-            headers=service_headers(settings),
-            params={
-                "select": "exercise_item_id,exercise_type_id",
-                "exercise_item_id": f"in.({','.join(item_ids)})",
-            },
-        )
-        type_response = await client.get(
-            f"{settings.supabase_url}/rest/v1/exercise_types",
-            headers=service_headers(settings),
-            params={
-                "select": "exercise_type_id,category",
-                "is_active": "eq.true",
-            },
+    async with client_scope() as client:
+        item_response, type_response = await asyncio.gather(
+            client.get(
+                f"{settings.supabase_url}/rest/v1/exercise_items",
+                headers=service_headers(settings),
+                params={
+                    "select": "exercise_item_id,exercise_type_id",
+                    "exercise_item_id": f"in.({','.join(item_ids)})",
+                },
+            ),
+            client.get(
+                f"{settings.supabase_url}/rest/v1/exercise_types",
+                headers=service_headers(settings),
+                params={
+                    "select": "exercise_type_id,category",
+                    "is_active": "eq.true",
+                },
+            ),
         )
     if not item_response.is_success or not type_response.is_success:
         raise HTTPException(
@@ -1685,7 +1860,7 @@ async def fetch_food_inventory(
         "is_available": "eq.true",
         "order": "expires_on.asc.nullslast,created_at.asc",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.get(
             f"{settings.supabase_url}/rest/v1/user_food_inventory",
             headers=service_headers(settings),
@@ -1706,7 +1881,7 @@ async def create_food_inventory_item(
 ) -> dict[str, Any]:
     freshness = "unknown"
     if body.expires_on:
-        remaining_days = (body.expires_on - date.today()).days
+        remaining_days = (body.expires_on - datetime.now(KST).date()).days
         freshness = (
             "expired"
             if remaining_days < 0
@@ -1731,7 +1906,7 @@ async def create_food_inventory_item(
             "created_at,updated_at"
         )
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.post(
             f"{settings.supabase_url}/rest/v1/user_food_inventory",
             headers=service_headers(settings, return_representation=True),
@@ -1767,6 +1942,32 @@ def inventory_freshness(
     return "fresh"
 
 
+def usable_food_inventory(
+    inventory: list[dict[str, Any]],
+    reference_date: date | None = None,
+) -> list[dict[str, Any]]:
+    """Return only inventory that can be used by a recommendation today."""
+    today = reference_date or datetime.now(KST).date()
+    usable: list[dict[str, Any]] = []
+    for row in inventory:
+        if row.get("is_available") is False:
+            continue
+        quantity = row.get("quantity")
+        if quantity is not None and Decimal(str(quantity)) <= 0:
+            continue
+        expires_on = row.get("expires_on")
+        if isinstance(expires_on, str):
+            try:
+                expires_on = date.fromisoformat(expires_on)
+            except ValueError:
+                continue
+        freshness = inventory_freshness(expires_on, today)
+        if freshness == "expired":
+            continue
+        usable.append({**row, "expires_on": expires_on, "freshness_status": freshness})
+    return usable
+
+
 async def update_food_inventory_item(
     user_id: str,
     inventory_id: str,
@@ -1788,7 +1989,7 @@ async def update_food_inventory_item(
             "created_at,updated_at"
         ),
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.patch(
             f"{settings.supabase_url}/rest/v1/user_food_inventory",
             headers=service_headers(settings, return_representation=True),
@@ -1825,7 +2026,7 @@ async def delete_food_inventory_item(
         "is_available": "eq.true",
         "select": "user_food_inventory_id",
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.patch(
             f"{settings.supabase_url}/rest/v1/user_food_inventory",
             headers=service_headers(settings, return_representation=True),
@@ -1842,7 +2043,9 @@ async def delete_food_inventory_item(
 def build_diet_recommendation_plan(
     inventory: list[dict[str, Any]],
     allergy_names: list[str] | None = None,
+    reference_date: date | None = None,
 ) -> dict[str, Any]:
+    inventory = usable_food_inventory(inventory, reference_date)
     inventory_names = [
         row["custom_name"] for row in inventory if row.get("custom_name")
     ]
@@ -1956,6 +2159,22 @@ def build_diet_recommendation_plan(
             int(food["calories"]) for food in safe_foods
         )
 
+    normalized_inventory = {
+        "".join(name.split()).casefold(): name for name in inventory_names
+    }
+    used_inventory_names: list[str] = []
+    for meal in meals:
+        matched = []
+        for food in meal["foods"]:
+            food_key = "".join(food["food_name"].split()).casefold()
+            for inventory_key, inventory_name in normalized_inventory.items():
+                if inventory_key == food_key or inventory_key in food_key or food_key in inventory_key:
+                    matched.append(inventory_name)
+                    if inventory_name not in used_inventory_names:
+                        used_inventory_names.append(inventory_name)
+        if matched:
+            meal["recommendation_note"] += f" · 냉장고 사용: {', '.join(dict.fromkeys(matched))}"
+
     allergy_note = (
         f" 알레르기 제외 식재료: {', '.join(dict.fromkeys(excluded_foods))}."
         if excluded_foods
@@ -1963,7 +2182,7 @@ def build_diet_recommendation_plan(
     )
     return {
         "recommendation": {
-            "recommendation_date": date.today().isoformat(),
+            "recommendation_date": datetime.now(KST).date().isoformat(),
             "target_calories": 1650,
             "target_carbohydrates": 210,
             "target_protein": 85,
@@ -1971,7 +2190,9 @@ def build_diet_recommendation_plan(
             "recommendation_summary": "체지방 감량 목표를 위한 균형 식단",
             "ai_reason": (
                 "운동 목표, 사용 가능한 냉장고 재료와 알레르기 정보를 반영한 "
-                f"규칙 기반 테스트 식단입니다.{allergy_note}"
+                "규칙 기반 테스트 식단입니다."
+                + (f" 실제 메뉴에 반영된 냉장고 재료: {', '.join(used_inventory_names)}." if used_inventory_names else "")
+                + allergy_note
             ),
         },
         "meals": meals,
@@ -2055,13 +2276,24 @@ def build_menu_image_key(food_tags: list[str]) -> str:
 def select_cached_menu_image(
     food_tags: list[str],
     images: list[dict[str, Any]],
+    *,
+    meal_type: str | None = None,
+    food_names: list[str] | None = None,
 ) -> dict[str, Any] | None:
     requested = set(food_tags)
     requested_proteins = requested & MENU_PROTEIN_TAGS
     requested_carbs = requested & MENU_CARB_TAGS
+    requested_foods = {
+        "".join(character for character in name.casefold() if character.isalnum())
+        for name in (food_names or [])
+        if name.strip()
+    }
     ranked: list[tuple[int, str, dict[str, Any]]] = []
     for image in images:
         if image.get("generation_status") != "completed" or not image.get("storage_path"):
+            continue
+        metadata = image.get("metadata") if isinstance(image.get("metadata"), dict) else {}
+        if metadata.get("quality_status") not in (None, "approved"):
             continue
         candidate = set(image.get("food_tags") or [])
         candidate_proteins = candidate & MENU_PROTEIN_TAGS
@@ -2075,6 +2307,19 @@ def select_cached_menu_image(
             40 if tag in MENU_PROTEIN_TAGS else 30 if tag in MENU_CARB_TAGS else 10
             for tag in overlap
         )
+        candidate_meal_type = image.get("meal_type") or metadata.get("meal_type")
+        if meal_type and candidate_meal_type == meal_type:
+            score += 10
+        candidate_foods = {
+            "".join(
+                character
+                for character in str(food.get("food_name") or "").casefold()
+                if character.isalnum()
+            )
+            for food in metadata.get("foods", [])
+            if isinstance(food, dict) and food.get("food_name")
+        }
+        score += 10 * len(requested_foods & candidate_foods)
         if score >= 50:
             ranked.append((score, str(image.get("image_key") or ""), image))
     return max(ranked, default=(0, "", None), key=lambda item: (item[0], item[1]))[2]
@@ -2084,24 +2329,32 @@ async def assign_menu_images(
     meals: list[dict[str, Any]],
     settings: Settings,
 ) -> None:
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
-        response = await client.get(
-            f"{settings.supabase_url}/rest/v1/menu_images",
-            headers=service_headers(settings),
-            params={
-                "select": (
-                    "image_key,menu_name,food_tags,storage_path,source_type,"
-                    "generation_status"
-                ),
-                "limit": "500",
-            },
-        )
-    if not response.is_success:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Supabase menu image catalog query failed",
-        )
-    catalog = response.json()
+    catalog: list[dict[str, Any]] = []
+    page_size = 1000
+    async with client_scope() as client:
+        while True:
+            response = await client.get(
+                f"{settings.supabase_url}/rest/v1/menu_images",
+                headers=service_headers(settings),
+                params={
+                    "select": (
+                        "image_key,menu_name,food_tags,storage_path,source_type,"
+                        "generation_status,meal_type,metadata"
+                    ),
+                    "order": "image_key.asc",
+                    "limit": str(page_size),
+                    "offset": str(len(catalog)),
+                },
+            )
+            if not response.is_success:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Supabase menu image catalog query failed",
+                )
+            page = response.json()
+            catalog.extend(page)
+            if len(page) < page_size:
+                break
     by_key = {image["image_key"]: image for image in catalog}
 
     for meal in meals:
@@ -2109,10 +2362,16 @@ async def assign_menu_images(
             str(food.get("food_name") or "") for food in meal.get("foods") or []
         ]
         food_tags = extract_menu_tags(food_names)
+        meal["food_tags"] = food_tags
         image_key = build_menu_image_key(food_tags)
-        image = by_key.get(image_key) or select_cached_menu_image(food_tags, catalog)
+        image = by_key.get(image_key) or select_cached_menu_image(
+            food_tags,
+            catalog,
+            meal_type=meal.get("meal_type"),
+            food_names=food_names,
+        )
         if image is None:
-            async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+            async with client_scope() as client:
                 claim_response = await client.post(
                     f"{settings.supabase_url}/rest/v1/rpc/claim_menu_image",
                     headers=service_headers(settings),
@@ -2120,6 +2379,7 @@ async def assign_menu_images(
                         "p_image_key": image_key,
                         "p_menu_name": ", ".join(food_names),
                         "p_food_tags": food_tags,
+                        "p_meal_type": meal.get("meal_type"),
                     },
                 )
             if not claim_response.is_success:
@@ -2145,7 +2405,7 @@ async def create_diet_recommendation(
     plan: dict[str, Any],
     settings: Settings,
 ) -> dict[str, Any]:
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.post(
             f"{settings.supabase_url}/rest/v1/rpc/create_diet_recommendation",
             headers=service_headers(settings),
@@ -2161,6 +2421,129 @@ async def create_diet_recommendation(
             detail="Supabase diet recommendation creation failed",
         )
     return response.json()
+
+
+async def fetch_food_catalog(settings: Settings) -> list[dict[str, Any]]:
+    async with client_scope() as client:
+        response = await client.get(
+            f"{settings.supabase_url}/rest/v1/food_items",
+            headers=service_headers(settings),
+            params={
+                "select": (
+                    "food_item_id,name,serving_size,serving_unit,calories,"
+                    "carbohydrates,protein,fat,source_type"
+                ),
+                "order": "name.asc",
+                "source_type": "neq.dummy",
+                "limit": "500",
+            },
+        )
+    if not response.is_success:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Supabase food catalog query failed",
+        )
+    return response.json()
+
+
+def resolve_safe_inventory_items(
+    inventory: list[dict[str, Any]],
+    food_catalog: list[dict[str, Any]],
+    allergy_names: list[str],
+    reference_date: date | None = None,
+) -> list[dict[str, Any]]:
+    catalog_names_by_id = {
+        str(row.get("food_item_id")): str(row["name"])
+        for row in food_catalog
+        if row.get("food_item_id") and row.get("name")
+    }
+    resolved: list[dict[str, Any]] = []
+    for row in usable_food_inventory(inventory, reference_date):
+        name = row.get("custom_name") or catalog_names_by_id.get(
+            str(row.get("food_item_id"))
+        )
+        if name and not conflicts_allergy(str(name), allergy_names):
+            resolved.append({**row, "custom_name": str(name)})
+    return resolved
+
+
+async def build_daily_diet_recommendation_plan(
+    user_id: str,
+    inventory: list[dict[str, Any]],
+    allergy_names: list[str],
+    food_catalog: list[dict[str, Any]],
+    target_date: date | None = None,
+) -> dict[str, Any]:
+    recommendation_date = target_date or datetime.now(KST).date()
+    resolved_inventory = resolve_safe_inventory_items(
+        inventory, food_catalog, allergy_names, recommendation_date
+    )
+    inventory_names = list(
+        dict.fromkeys(row["custom_name"] for row in resolved_inventory)
+    )
+    plan = build_diet_recommendation_plan(
+        resolved_inventory, allergy_names, recommendation_date
+    )
+    plan["recommendation"]["recommendation_date"] = recommendation_date.isoformat()
+    ai_slots = select_ai_slots(plan["meals"], user_id, recommendation_date)
+    ai_meals = await generate_ai_meals(
+        ai_slots,
+        allergy_names,
+        request_model,
+        inventory_names,
+    )
+    plan["meals"] = mix_meals(
+        plan["meals"],
+        ai_meals,
+        food_catalog,
+        allergy_names,
+        inventory_names,
+    )
+    used_inventory_names = find_used_inventory_names(
+        plan["meals"], inventory_names
+    )
+    if inventory_names and not used_inventory_names:
+        raise DietAIUnavailable("Diet generator did not use available inventory")
+    for meal in plan["meals"]:
+        meal["used_ingredients"] = find_used_inventory_items(
+            [meal], resolved_inventory
+        )
+        if meal["used_ingredients"]:
+            meal["recommendation_note"] += (
+                " · 냉장고 사용: "
+                + ", ".join(item["name"] for item in meal["used_ingredients"])
+            )
+    ai_count = sum(
+        meal.get("source_type") == "ai_generated" for meal in plan["meals"]
+    )
+    plan["recommendation"]["ai_reason"] = (
+        f"DB 음식 영양정보와 AI 생성 식단 {ai_count}개를 혼합했습니다. "
+        + (
+            f"실제 메뉴에 반영된 냉장고 재료: {', '.join(used_inventory_names)}. "
+            if used_inventory_names
+            else "사용 가능한 냉장고 재료가 없어 일반 식재료로 구성했습니다. "
+        )
+        + "알레르기 제외 조건을 반영했습니다."
+    )
+    plan["recommendation"]["target_calories"] = sum(
+        int(meal["recommended_calories"]) for meal in plan["meals"]
+    )
+    plan["recommendation"]["target_carbohydrates"] = sum(
+        int(food.get("carbohydrates") or 0)
+        for meal in plan["meals"]
+        for food in meal["foods"]
+    )
+    plan["recommendation"]["target_protein"] = sum(
+        int(food.get("protein") or 0)
+        for meal in plan["meals"]
+        for food in meal["foods"]
+    )
+    plan["recommendation"]["target_fat"] = sum(
+        int(food.get("fat") or 0)
+        for meal in plan["meals"]
+        for food in meal["foods"]
+    )
+    return plan
 
 
 async def fetch_diet_recommendation(
@@ -2215,7 +2598,7 @@ async def fetch_diet_recommendation(
         "select": (
             "diet_meal_id,diet_recommendation_id,meal_type,meal_order,"
             "recommended_calories,recommendation_note,image_storage_path,"
-            "menu_image_key,status,created_at"
+            "menu_image_key,source_type,status,used_ingredients,created_at"
         ),
         "diet_recommendation_id": f"eq.{recommendation['diet_recommendation_id']}",
         "order": "meal_order.asc",
@@ -2247,7 +2630,7 @@ async def fetch_diet_recommendation(
                         "quantity,unit,calories,carbohydrates,protein,fat"
                     ),
                     "diet_meal_id": f"in.({','.join(meal_ids)})",
-                    "order": "created_at.asc",
+                    "order": "food_order.asc,diet_meal_food_id.asc",
                 },
             )
         if not food_response.is_success:
@@ -2256,11 +2639,16 @@ async def fetch_diet_recommendation(
                 detail="Supabase diet meal food query failed",
             )
         for food in food_response.json():
-            foods_by_meal[food["diet_meal_id"]].append(food)
+            foods_by_meal[food["diet_meal_id"]].extend(
+                normalize_recommended_foods([food])
+            )
     menu_image_keys = sorted(
         {meal["menu_image_key"] for meal in meals if meal.get("menu_image_key")}
     )
     cached_images: dict[str, dict[str, Any]] = {}
+    feedback_by_meal: dict[str, dict[str, Any]] = {}
+    inventory_for_usage: list[dict[str, Any]] = []
+
     async def load_images():
         if not menu_image_keys:
             return
@@ -2282,8 +2670,103 @@ async def fetch_diet_recommendation(
             image["image_key"]: image for image in image_response.json()
         })
 
-    # Wait for both probes even on failure so no child outlives the request/client.
-    results = await asyncio.gather(load_foods(), load_images(), return_exceptions=True)
+    async def load_feedback():
+        if not meal_ids:
+            return
+        async with timed_http_client("feedback", shared_client) as client:
+            feedback_response = await client.get(
+                f"{settings.supabase_url}/rest/v1/diet_feedback",
+                headers=service_headers(settings),
+                params={
+                    "select": (
+                        "diet_feedback_id,diet_meal_id,meal_log_id,feedback_type,"
+                        "actual_food_name,feedback_note,recorded_at"
+                    ),
+                    "user_id": f"eq.{user_id}",
+                    "diet_meal_id": f"in.({','.join(meal_ids)})",
+                },
+            )
+        if not feedback_response.is_success:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Supabase diet feedback query failed",
+            )
+        feedback_by_meal.update({
+            feedback["diet_meal_id"]: feedback
+            for feedback in feedback_response.json()
+        })
+
+    async def load_inventory_usage():
+        if all(meal.get("used_ingredients") is not None for meal in meals):
+            return
+        async with timed_http_client("inventory_usage", shared_client) as client:
+            inventory_response = await client.get(
+                f"{settings.supabase_url}/rest/v1/user_food_inventory",
+                headers=service_headers(settings),
+                params={
+                    "select": (
+                        "user_food_inventory_id,food_item_id,custom_name,quantity,"
+                        "unit,purchased_on,expires_on,is_available"
+                    ),
+                    "user_id": f"eq.{user_id}",
+                    "is_available": "eq.true",
+                    "order": "created_at.asc,user_food_inventory_id.asc",
+                    "limit": "500",
+                },
+            )
+        if not inventory_response.is_success:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Supabase food inventory query failed",
+            )
+        usage_date = recommendation_date
+        if usage_date is None and recommendation.get("recommendation_date"):
+            usage_date = date.fromisoformat(str(recommendation["recommendation_date"]))
+        inventory_rows = usable_food_inventory(
+            inventory_response.json(), usage_date
+        )
+        linked_food_ids = sorted({
+            str(item["food_item_id"])
+            for item in inventory_rows
+            if not item.get("custom_name") and item.get("food_item_id")
+        })
+        catalog_names: dict[str, str] = {}
+        if linked_food_ids:
+            async with timed_http_client("inventory_usage", shared_client) as client:
+                catalog_response = await client.get(
+                    f"{settings.supabase_url}/rest/v1/food_items",
+                    headers=service_headers(settings),
+                    params={
+                        "select": "food_item_id,name",
+                        "food_item_id": f"in.({','.join(linked_food_ids)})",
+                        "limit": "500",
+                    },
+                )
+            if not catalog_response.is_success:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Supabase food catalog query failed",
+                )
+            catalog_names = {
+                str(food["food_item_id"]): str(food["name"])
+                for food in catalog_response.json()
+                if food.get("food_item_id") and food.get("name")
+            }
+        for inventory_item in inventory_rows:
+            name = inventory_item.get("custom_name") or catalog_names.get(
+                str(inventory_item.get("food_item_id"))
+            )
+            if name:
+                inventory_for_usage.append({
+                    **inventory_item,
+                    "custom_name": str(name),
+                })
+
+    # Wait for all probes even on failure so no child outlives the request/client.
+    results = await asyncio.gather(
+        load_foods(), load_images(), load_feedback(), load_inventory_usage(),
+        return_exceptions=True,
+    )
     for result in results:
         if isinstance(result, BaseException):
             raise result
@@ -2320,7 +2803,19 @@ async def fetch_diet_recommendation(
     return {
         "recommendation": recommendation,
         "meals": [
-            {**meal, "foods": foods_by_meal[meal["diet_meal_id"]]}
+            {
+                **meal,
+                "foods": foods_by_meal[meal["diet_meal_id"]],
+                "feedback": feedback_by_meal.get(meal["diet_meal_id"]),
+                "used_ingredients": (
+                    meal["used_ingredients"]
+                    if meal.get("used_ingredients") is not None
+                    else find_used_inventory_items(
+                        [{"foods": foods_by_meal[meal["diet_meal_id"]]}],
+                        inventory_for_usage,
+                    )
+                ),
+            }
             for meal in meals
         ],
     }
@@ -2339,7 +2834,7 @@ async def regenerate_diet_meal(
     meal: dict[str, Any],
     settings: Settings,
 ) -> dict[str, Any]:
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.post(
             f"{settings.supabase_url}/rest/v1/rpc/replace_diet_meal",
             headers=service_headers(settings),
@@ -2360,6 +2855,17 @@ async def regenerate_diet_meal(
             detail="Supabase diet meal regeneration failed",
         )
     regenerated = response.json()
+    persisted_foods = regenerated.get("foods") or []
+    persisted_foods.sort(
+        key=lambda food: (
+            food.get("food_order") is None,
+            food.get("food_order") or 0,
+            str(food.get("diet_meal_food_id") or ""),
+        )
+    )
+    for food in persisted_foods:
+        food.pop("food_order", None)
+    regenerated["foods"] = normalize_recommended_foods(persisted_foods)
     image_storage_path = regenerated.get("image_storage_path")
     regenerated["image_url"] = (
         f"{settings.supabase_url}/storage/v1/object/public/menu-images/"
@@ -2375,7 +2881,7 @@ async def fetch_diet_meal_context(
     diet_meal_id: str,
     settings: Settings,
 ) -> dict[str, Any]:
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         meal_response = await client.get(
             f"{settings.supabase_url}/rest/v1/diet_meals",
             headers=service_headers(settings),
@@ -2383,7 +2889,7 @@ async def fetch_diet_meal_context(
                 "select": (
                     "diet_meal_id,diet_recommendation_id,meal_type,meal_order,"
                     "recommended_calories,recommendation_note,image_storage_path,"
-                    "menu_image_key,status"
+                    "menu_image_key,source_type,status"
                 ),
                 "diet_meal_id": f"eq.{diet_meal_id}",
                 "limit": "1",
@@ -2398,7 +2904,7 @@ async def fetch_diet_meal_context(
     if not meals:
         raise HTTPException(status_code=404, detail="Diet meal not found")
     meal = meals[0]
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         recommendation_response = await client.get(
             f"{settings.supabase_url}/rest/v1/diet_recommendations",
             headers=service_headers(settings),
@@ -2417,7 +2923,7 @@ async def fetch_diet_meal_context(
     recommendations = recommendation_response.json()
     if not recommendations:
         raise HTTPException(status_code=404, detail="Diet meal not found")
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         food_response = await client.get(
             f"{settings.supabase_url}/rest/v1/diet_meal_foods",
             headers=service_headers(settings),
@@ -2427,7 +2933,7 @@ async def fetch_diet_meal_context(
                     "quantity,unit,calories,carbohydrates,protein,fat"
                 ),
                 "diet_meal_id": f"eq.{diet_meal_id}",
-                "order": "created_at.asc,diet_meal_food_id.asc",
+                "order": "food_order.asc,diet_meal_food_id.asc",
             },
         )
     if not food_response.is_success:
@@ -2436,7 +2942,10 @@ async def fetch_diet_meal_context(
             detail="Supabase diet meal food query failed",
         )
     return {
-        "meal": {**meal, "foods": food_response.json()},
+        "meal": {
+            **meal,
+            "foods": normalize_recommended_foods(food_response.json()),
+        },
         "recommendation": recommendations[0],
     }
 
@@ -2485,7 +2994,11 @@ def build_regenerated_meal(
     scaled_foods: list[dict[str, Any]] = []
     for food in alternative["foods"]:
         scaled = food.copy()
-        scaled["quantity"] = round(float(food["quantity"]) * ratio, 2)
+        scaled["quantity"] = int(
+            (Decimal(str(food["quantity"])) * Decimal(str(ratio))).quantize(
+                Decimal("1"), rounding=ROUND_HALF_UP
+            )
+        )
         for nutrient in ("calories", "carbohydrates", "protein", "fat"):
             value = food.get(nutrient)
             scaled[nutrient] = (
@@ -2512,7 +3025,7 @@ async def update_recommended_meal(
     body: DietMealFeedbackUpdateRequest,
     settings: Settings,
 ) -> dict[str, Any]:
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.post(
             f"{settings.supabase_url}/rest/v1/rpc/update_recommended_meal",
             headers=service_headers(settings),
@@ -2556,7 +3069,7 @@ async def record_recommended_meal(
             item.model_dump(mode="json") for item in body.actual_items
         ],
     }
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         response = await client.post(
             f"{settings.supabase_url}/rest/v1/rpc/record_recommended_meal",
             headers=service_headers(settings),
@@ -2805,6 +3318,7 @@ def build_exercise_session_analysis(result: dict[str, Any]) -> dict[str, Any]:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_model_config()  # Fail early on invalid opt-in configuration; no network call.
+    get_food_image_settings()  # Validate optional generator config without calling it.
     async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
         app.state.supabase_http_client = client
         try:
@@ -2822,6 +3336,9 @@ app = FastAPI(
         {"name": "Health Analysis", "description": "종합 건강 분석 결과, 지표, 판정 기준 및 출처"},
         {"name": "health-documents", "description": "건강검진·인바디 파일 업로드, 동기 OCR, 결과 수정 및 확정 저장"},
         {"name": "Exercise", "description": "운동 선호도, 추천, 세션, 목표 및 진행 현황"},
+        {"name": "Posture Analysis", "description": "자세 분석 진행 상태 및 완료 결과"},
+        {"name": "Running", "description": "러닝 코스 검색, 경로 생성, GPS 세션 및 페이스"},
+        {"name": "Community", "description": "마일리지 잔액, 적립 규칙 및 내역"},
         {"name": "Diet", "description": "식재료, 식단 추천, 영양 요약 및 식사 기록"},
         {"name": "Chat", "description": "건강 상담 채팅 및 답변·점수 미리보기"},
         {"name": "System", "description": "서버 상태 및 개발용 연동 테스트"},
@@ -2888,10 +3405,40 @@ app.add_middleware(
 )
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(DietTimingMiddleware)
+app.add_middleware(SharedHttpClientMiddleware)
+async def load_weekly_diet_context(user_id: str, settings: Settings) -> dict:
+    """Use stored restrictions; never infer missing diagnoses or health statuses."""
+    catalog, selected, preferences = await asyncio.gather(
+        fetch_allergy_catalog(settings), fetch_user_allergies(user_id, settings),
+        fetch_exercise_preferences(user_id, settings),
+    )
+    names = {row["allergy_type_id"]: row["name"] for row in catalog}
+    allergens = []
+    for row in selected:
+        name = row.get("custom_name") or names.get(row.get("allergy_type_id"))
+        if not isinstance(name, str) or not name.strip():
+            raise HTTPException(502, detail="Stored allergy could not be resolved")
+        allergens.append(name.strip())
+    return {
+        "food_allergens": sorted(set(allergens)),
+        "goal_type": preferences.get("goal_type") if preferences else None,
+        "metric_statuses": {},
+    }
+
+
+app.include_router(create_weekly_diet_router(get_current_user, get_settings, load_weekly_diet_context))
+app.include_router(create_running_router(get_current_user, get_settings))
 app.include_router(create_meal_photos_router(get_current_user, get_settings))
 app.include_router(create_account_deletion_router(get_current_user, get_settings))
+app.include_router(create_community_mileage_router(get_current_user, get_settings))
+app.include_router(create_user_settings_router(get_current_user, get_settings))
+app.include_router(create_health_report_router(get_current_user, get_settings))
+app.include_router(create_habit_tier_router(get_current_user, get_settings))
 app.include_router(create_analysis_popups_router(get_current_user, get_settings))
 app.include_router(create_analysis_summary_router(get_current_user, get_settings))
+app.include_router(create_posture_analysis_router(get_current_user, get_settings))
+app.include_router(create_saved_workout_router(get_current_user, get_settings))
+app.include_router(create_running_sessions_router(get_current_user, get_settings))
 app.include_router(
     create_health_documents_router(
         current_user_dependency=get_current_user,
@@ -2903,6 +3450,38 @@ app.include_router(
 @app.get("/health", tags=["System"])
 async def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.post("/internal/diet-refresh", tags=["System"], include_in_schema=False)
+async def trigger_daily_diet_refresh(
+    x_cron_token: Annotated[str | None, Header()] = None,
+) -> dict[str, int | bool]:
+    expected_token = os.getenv("DIET_REFRESH_CRON_TOKEN", "")
+    if not expected_token:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Diet refresh scheduler is not configured",
+        )
+    if not x_cron_token or not secrets.compare_digest(x_cron_token, expected_token):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid scheduler credentials",
+        )
+
+    # Import lazily because the CLI entry point reuses functions from this module.
+    from backend.app.diet_refresh import refresh_daily_diets
+
+    succeeded, failed = await refresh_daily_diets()
+    if failed:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "message": "One or more diet refreshes failed",
+                "succeeded": succeeded,
+                "failed": failed,
+            },
+        )
+    return {"ok": True, "succeeded": succeeded, "failed": failed}
 
 
 @app.post("/api/test/roundtrip", tags=["System"])
@@ -2969,8 +3548,10 @@ async def get_allergies(
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    catalog = await fetch_allergy_catalog(settings)
-    selected = await fetch_user_allergies(user.id, settings)
+    catalog, selected = await asyncio.gather(
+        fetch_allergy_catalog(settings),
+        fetch_user_allergies(user.id, settings),
+    )
     return {"catalog": catalog, "selected": selected}
 
 
@@ -3016,6 +3597,15 @@ async def complete_onboarding(
             detail={
                 "message": "Required profile fields are missing",
                 "fields": missing_fields,
+            },
+        )
+
+    if not await fetch_exercise_preferences(user.id, settings):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": "Required exercise preferences are missing",
+                "fields": ["exercise_preferences"],
             },
         )
 
@@ -3302,8 +3892,10 @@ async def get_exercise_progress(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     from_date, to_date = exercise_progress_range(period)
-    goal = await fetch_active_exercise_goal(user.id, settings)
-    history = await fetch_exercise_history(user.id, from_date, to_date, settings)
+    goal, history = await asyncio.gather(
+        fetch_active_exercise_goal(user.id, settings),
+        fetch_exercise_history(user.id, from_date, to_date, settings),
+    )
     category_map = await fetch_exercise_category_map(history, settings)
     return {
         "progress": build_exercise_progress(
@@ -3433,9 +4025,12 @@ async def generate_diet_recommendation(
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    inventory = await fetch_food_inventory(user.id, settings)
-    catalog = await fetch_allergy_catalog(settings)
-    selected = await fetch_user_allergies(user.id, settings)
+    inventory, catalog, selected, food_catalog = await asyncio.gather(
+        fetch_food_inventory(user.id, settings),
+        fetch_allergy_catalog(settings),
+        fetch_user_allergies(user.id, settings),
+        fetch_food_catalog(settings),
+    )
     catalog_names = {
         row["allergy_type_id"]: row["name"] for row in catalog
     }
@@ -3443,23 +4038,41 @@ async def generate_diet_recommendation(
         row.get("custom_name") or catalog_names.get(row.get("allergy_type_id"))
         for row in selected
     ]
-    plan = build_diet_recommendation_plan(
-        inventory,
-        [name for name in allergy_names if name],
-    )
+    try:
+        plan = await build_daily_diet_recommendation_plan(
+            user.id,
+            inventory,
+            [name for name in allergy_names if name],
+            food_catalog,
+        )
+    except DietAIUnavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI diet generator is temporarily unavailable",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Food catalog cannot build a mixed diet recommendation",
+        ) from exc
     await assign_menu_images(plan["meals"], settings)
+    await generate_missing_menu_images(plan["meals"], settings)
     await create_diet_recommendation(user.id, plan, settings)
     result = await fetch_latest_diet_recommendation(user.id, settings)
-    return {"ok": True, "generator": "rules_v1", "result": result}
+    return {"ok": True, "generator": "mixed_ai_v1", "result": result}
 
 
-@app.post("/api/diet/meals/{diet_meal_id}/regenerate", tags=["Diet"])
+@app.post(
+    "/api/diet/meals/{diet_meal_id}/regenerate",
+    tags=["Diet"],
+    response_model=RegenerateDietMealResponse,
+)
 async def regenerate_recommended_diet_meal(
     diet_meal_id: UUID,
     body: RegenerateDietMealRequest,
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
-) -> dict[str, Any]:
+) -> RegenerateDietMealResponse:
     context = await fetch_diet_meal_context(user.id, str(diet_meal_id), settings)
     if (
         context["recommendation"].get("status") != "active"
@@ -3470,9 +4083,12 @@ async def regenerate_recommended_diet_meal(
             detail="Diet meal cannot be regenerated in its current state",
         )
 
-    inventory = await fetch_food_inventory(user.id, settings)
-    catalog = await fetch_allergy_catalog(settings)
-    selected = await fetch_user_allergies(user.id, settings)
+    inventory, catalog, selected, food_catalog = await asyncio.gather(
+        fetch_food_inventory(user.id, settings),
+        fetch_allergy_catalog(settings),
+        fetch_user_allergies(user.id, settings),
+        fetch_food_catalog(settings),
+    )
     catalog_names = {
         row["allergy_type_id"]: row["name"] for row in catalog
     }
@@ -3480,19 +4096,36 @@ async def regenerate_recommended_diet_meal(
         row.get("custom_name") or catalog_names.get(row.get("allergy_type_id"))
         for row in selected
     ]
+    allergy_names = [name for name in allergy_names if name]
+    resolved_inventory = resolve_safe_inventory_items(
+        inventory, food_catalog, allergy_names
+    )
+    inventory_names = list(
+        dict.fromkeys(row["custom_name"] for row in resolved_inventory)
+    )
     try:
-        replacement = build_regenerated_meal(
+        replacement = await generate_regenerated_meal(
             context["meal"],
-            inventory,
-            [name for name in allergy_names if name],
+            allergy_names,
+            request_model,
+            inventory_names,
         )
-    except ValueError as exc:
+        used_ingredients = find_used_inventory_items(
+            [replacement], resolved_inventory
+        )
+        if resolved_inventory and not used_ingredients:
+            raise DietAIUnavailable(
+                "AI diet generator did not use available inventory"
+            )
+        replacement["used_ingredients"] = used_ingredients
+    except DietAIUnavailable as exc:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="No alternative diet meal is available",
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI diet generator is temporarily unavailable",
         ) from exc
 
     await assign_menu_images([replacement], settings)
+    await generate_missing_menu_images([replacement], settings)
     meal = await regenerate_diet_meal(
         user.id,
         str(diet_meal_id),
@@ -3504,7 +4137,12 @@ async def regenerate_recommended_diet_meal(
     meal["image_generation_required"] = replacement.get(
         "image_generation_required", False
     )
-    return {"ok": True, "generator": "rules_v1", "meal": meal}
+    return RegenerateDietMealResponse(
+        ok=True,
+        generator="ai_v1",
+        meal=meal,
+        used_ingredients=used_ingredients,
+    )
 
 
 @app.post("/api/diet/meals/{diet_meal_id}/feedback", tags=["Diet"])
@@ -3590,9 +4228,89 @@ async def preview_health_score_answer(
     return {"answer": build_score_answer(rows, body.mode, body.explain, items)}
 
 
+CHAT_READ_PATHS = frozenset({
+    "/api/community/mileage", "/api/community/mileage/history", "/api/tier/progress",
+    "/api/running/saved-courses", "/api/running/sessions/history",
+    "/api/running/sessions/active", "/api/running/pace", "/api/allergies",
+    "/api/diet/inventory", "/api/diet/nutrition-summary", "/api/diet/meal-logs",
+    "/api/diet/weekly-recommendations", "/api/diet/recommendations/latest",
+    "/api/diet/recommendations",
+    "/api/exercise/saved-routines", "/api/exercise/history",
+    "/api/exercise/progress", "/api/exercise/goals/active",
+    "/api/exercise/recommendations/latest", "/api/exercise/summary",
+    "/api/health-report", "/api/health-documents",
+    "/api/health-assessments/latest", "/api/profile",
+    "/api/health/goals/active", "/api/app/preferences",
+    "/api/home",
+})
+
+
+async def read_chat_service(request: Request, query: ServiceQuery) -> dict | None:
+    """Reuse authenticated GET routes; the model and user cannot choose a path."""
+    if query.path not in CHAT_READ_PATHS or (
+        query.secondary_path is not None and query.secondary_path not in CHAT_READ_PATHS
+    ):
+        raise ValueError("Chat service read is not allowlisted")
+    authorization = request.headers.get("authorization", "")
+    try:
+        transport = httpx.ASGITransport(app=request.app)
+        async with httpx.AsyncClient(transport=transport, base_url=str(request.base_url),
+                                     timeout=30) as client:
+            headers = {"Authorization": authorization} if authorization else {}
+            result = await client.get(query.path, params=dict(query.params), headers=headers)
+            secondary = (await client.get(query.secondary_path, headers=headers)
+                         if query.secondary_path else None)
+        if result.status_code == 404:
+            return None
+        if result.is_error or len(result.content) > 512_000 or (
+            secondary is not None and (secondary.is_error or len(secondary.content) > 512_000)
+        ):
+            chat_fail("DATA_SOURCE_ERROR")
+        data = result.json()
+        if not isinstance(data, dict):
+            chat_fail("DATA_SOURCE_ERROR")
+        if secondary is not None:
+            secondary_data = secondary.json()
+            if not isinstance(secondary_data, dict):
+                chat_fail("DATA_SOURCE_ERROR")
+            return {"home": data, "report": secondary_data}
+        return data
+    except (httpx.HTTPError, ValueError):
+        chat_fail("DATA_SOURCE_ERROR")
+
+
+async def execute_chat_record_action(request: Request, proposal: dict) -> bool:
+    """Only fixed owner-checked routes can be reached after chat confirmation."""
+    record_id = str(UUID(proposal["id"]))
+    kind, operation = proposal["kind"], proposal["operation"]
+    if kind == "food_inventory":
+        path = f"/api/diet/inventory/{record_id}"
+        method = "DELETE" if operation == "delete" else "PATCH"
+        body = {"quantity": proposal["quantity"]} if operation == "update_quantity" else None
+    elif kind == "health_documents" and operation == "delete":
+        path, method, body = f"/api/health-documents/{record_id}", "DELETE", None
+    else:
+        raise ValueError("Chat action is not allowlisted")
+    authorization = request.headers.get("authorization", "")
+    try:
+        transport = httpx.ASGITransport(app=request.app)
+        async with httpx.AsyncClient(transport=transport, base_url=str(request.base_url),
+                                     timeout=40) as client:
+            result = await client.request(method, path, json=body,
+                                          headers={"Authorization": authorization} if authorization else {})
+        if result.status_code == 404:
+            return False
+        if result.is_error:
+            chat_fail("DATA_SOURCE_ERROR")
+        return True
+    except httpx.HTTPError:
+        chat_fail("DATA_SOURCE_ERROR")
+
+
 @app.post("/api/chats/answer-preview", tags=["Chat"])
 async def preview_chat_answer(
     body: ChatAnswerPreviewRequest,
+    request: Request,
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
     limiter: ChatRateLimiter = Depends(get_chat_access),
@@ -3615,6 +4333,12 @@ async def preview_chat_answer(
     async def preview_routine():
         return await prepare_exercise_routine(user.id, settings, generate=False)
 
+    async def lookup_running_courses(region, distance):
+        return await search_running_courses(region, distance, settings, user.id)
+
+    async def read_service(query: ServiceQuery):
+        return await read_chat_service(request, query)
+
     return {"answer": await answer_question(
         body.content,
         load_scores,
@@ -3622,6 +4346,9 @@ async def preview_chat_answer(
         load_catalog,
         prepare_routine=preview_routine,
         load_score_items=load_score_items,
+        lookup_running_courses=lookup_running_courses,
+        read_service=read_service,
+        allow_general=True,
     )}
 
 
@@ -3664,7 +4391,7 @@ async def list_chat_messages(
 
 @app.post("/api/chats/{chat_id}/messages", status_code=201, tags=["Chat"])
 async def send_chat_message(
-    chat_id: UUID, body: ChatMessageRequest, response: Response,
+    chat_id: UUID, body: ChatMessageRequest, response: Response, request: Request,
     store: ChatStore = Depends(get_chat_store),
     limiter: ChatRateLimiter = Depends(get_chat_access),
     settings: Settings = Depends(get_settings),
@@ -3679,7 +4406,7 @@ async def send_chat_message(
         return await fetch_assessment_items(store.url, store.headers, rows)
 
     try:
-        async with asyncio.timeout(30):
+        async with asyncio.timeout(CHAT_REQUEST_TIMEOUT_SECONDS):
             result = await store.exchange(chat_id, body.client_message_id, body.content)
             if result is None:
                 await limiter.check("answers")
@@ -3691,17 +4418,40 @@ async def send_chat_message(
                         store.user_id, settings, generate=True
                     )
 
-                allow_general = False
-                if is_off_topic_question(body.content):
-                    allow_general = not await store.has_general_ai_answer(chat_id)
-                answer = await answer_question(
+                async def lookup_running_courses(region, distance):
+                    return await search_running_courses(region, distance, settings, store.user_id)
+
+                async def read_service(query: ServiceQuery):
+                    return await read_chat_service(request, query)
+
+                action_answer = None
+                region_reply = re.fullmatch(r"[가-힣]{2,20}(?:동|구|시|군|읍|면)", body.content.strip())
+                if region_reply or re.search(r"(?<!\d)\d+\s*번", body.content) or body.content.strip() in {
+                    "확인", "확인해줘", "네 확인", "네, 확인", "취소", "아니", "아니요",
+                }:
+                    history = await store.messages(chat_id, 1, None)
+                    previous = history["messages"][-1] if history["messages"] else None
+                    previous = previous if previous and previous["sender_type"] == "assistant" else None
+
+                    async def execute_action(proposal):
+                        return await execute_chat_record_action(request, proposal)
+
+                    if region_reply and previous and "running_region" in (previous.get("required_data") or []):
+                        action_answer = await answer_running_course(
+                            f"{body.content} 러닝 코스", lookup_running_courses,
+                        )
+                    else:
+                        action_answer = await answer_record_action(body.content, previous, execute_action)
+                answer = action_answer or await answer_question(
                     body.content,
                     load_scores,
                     load_records,
                     load_catalog,
-                    allow_general,
+                    True,
                     generate_routine,
                     load_score_items,
+                    lookup_running_courses,
+                    read_service,
                 )
                 result = await store.exchange(chat_id, body.client_message_id, body.content, answer)
     except TimeoutError:

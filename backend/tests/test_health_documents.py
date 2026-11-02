@@ -143,9 +143,110 @@ def test_document_query_is_owner_scoped(monkeypatch) -> None:
 def test_health_document_routes_are_in_openapi() -> None:
     paths = main.app.openapi()["paths"]
     assert set(paths["/api/health-documents"]) == {"post", "get"}
-    assert set(paths["/api/health-documents/{uploaded_file_id}"]) == {"get"}
+    assert set(paths["/api/health-documents/{uploaded_file_id}"]) == {"get", "delete"}
     assert set(paths["/api/health-documents/{uploaded_file_id}/ocr-result"]) == {"patch"}
     assert set(paths["/api/health-documents/{uploaded_file_id}/confirm"]) == {"post"}
+
+
+def test_delete_document_removes_storage_before_database_and_returns_deleted_ids(monkeypatch) -> None:
+    calls = []
+
+    async def fetch(uploaded_file_id, user_id, settings):
+        assert str(uploaded_file_id) == FILE_ID
+        assert user_id == USER_ID
+        return {"file": {
+            "storage_path": f"{USER_ID}/2026/09/{FILE_ID}.pdf",
+            "processing_status": "manually_confirmed",
+        }}
+
+    class Client:
+        def __init__(self, **kwargs):
+            assert kwargs["trust_env"] is False
+
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+
+        async def delete(self, url, *, headers):
+            calls.append(("storage", url, None))
+            return httpx.Response(200)
+
+        async def post(self, url, *, headers, json):
+            calls.append(("database", url, json))
+            return httpx.Response(200, json={
+                "uploaded_file_id": FILE_ID,
+                "document_type": "health_checkup",
+                "health_checkup_id": "20260916-0000-4000-8000-000000000003",
+                "body_composition_id": None,
+            })
+
+    monkeypatch.setattr(health_documents, "_fetch_document", fetch)
+    monkeypatch.setattr(health_documents.httpx, "AsyncClient", Client)
+    override_dependencies()
+    try:
+        response = TestClient(main.app).delete(f"/api/health-documents/{FILE_ID}")
+    finally:
+        main.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "uploaded_file_id": FILE_ID,
+        "document_type": "health_checkup",
+        "status": "deleted",
+        "health_checkup_id": "20260916-0000-4000-8000-000000000003",
+        "body_composition_id": None,
+    }
+    assert [call[0] for call in calls] == ["storage", "database"]
+    assert calls[1][2] == {"p_uploaded_file_id": FILE_ID, "p_user_id": USER_ID}
+
+
+def test_delete_document_keeps_database_when_storage_deletion_fails(monkeypatch) -> None:
+    async def fetch(*args):
+        return {"file": {
+            "storage_path": f"{USER_ID}/2026/09/{FILE_ID}.pdf",
+            "processing_status": "manually_confirmed",
+        }}
+
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def delete(self, *args, **kwargs): return httpx.Response(500)
+        async def post(self, *args, **kwargs):
+            pytest.fail("database deletion must not run after storage deletion failure")
+
+    monkeypatch.setattr(health_documents, "_fetch_document", fetch)
+    monkeypatch.setattr(health_documents.httpx, "AsyncClient", Client)
+    override_dependencies()
+    try:
+        response = TestClient(main.app).delete(f"/api/health-documents/{FILE_ID}")
+    finally:
+        main.app.dependency_overrides.clear()
+
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] == "DATA_SOURCE_ERROR"
+
+
+def test_delete_document_rejects_unconfirmed_document_before_storage(monkeypatch) -> None:
+    async def fetch(*args):
+        return {"file": {
+            "storage_path": f"{USER_ID}/2026/09/{FILE_ID}.pdf",
+            "processing_status": "awaiting_review",
+        }}
+
+    class Client:
+        def __init__(self, **kwargs):
+            pytest.fail("unconfirmed deletion must not call storage or database")
+
+    monkeypatch.setattr(health_documents, "_fetch_document", fetch)
+    monkeypatch.setattr(health_documents.httpx, "AsyncClient", Client)
+    override_dependencies()
+    try:
+        response = TestClient(main.app).delete(f"/api/health-documents/{FILE_ID}")
+    finally:
+        main.app.dependency_overrides.clear()
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "DOCUMENT_NOT_CONFIRMED"
 
 
 def test_ocr_update_endpoint_rejects_client_identity(monkeypatch) -> None:
@@ -264,7 +365,7 @@ def test_confirm_is_idempotent_when_health_data_already_exists(monkeypatch) -> N
             if url.endswith("/upload_files"):
                 return httpx.Response(
                     200,
-                    json=[{"uploaded_file_id": FILE_ID, "document_type": "body_composition"}],
+                    json=[{"uploaded_file_id": FILE_ID, "document_type": "body_composition", "processing_status": "manually_confirmed"}],
                 )
             if url.endswith("/ocr_results"):
                 return httpx.Response(
@@ -294,6 +395,52 @@ def test_confirm_is_idempotent_when_health_data_already_exists(monkeypatch) -> N
     assert result["already_confirmed"] is True
     assert result["health_data"]["body_composition_id"] == "existing"
     assert post_called is False
+
+
+def test_confirm_retry_repairs_file_status_after_measurement_was_created(monkeypatch) -> None:
+    patched = []
+
+    class FakeClient:
+        def __init__(self, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, traceback):
+            return None
+
+        async def get(self, url, headers, params):
+            if url.endswith("/upload_files"):
+                return httpx.Response(200, json=[{
+                    "uploaded_file_id": FILE_ID, "document_type": "body_composition",
+                    "processing_status": "awaiting_review",
+                }])
+            if url.endswith("/ocr_results"):
+                return httpx.Response(200, json=[{
+                    "status": "completed",
+                    "extracted_data": {"measured_at": "2026-09-16T09:00:00+09:00"},
+                }])
+            return httpx.Response(200, json=[{
+                "body_composition_id": "existing", "uploaded_file_id": FILE_ID,
+            }])
+
+        async def patch(self, url, headers, params, json):
+            patched.append((params, json))
+            return httpx.Response(200, json=[{"uploaded_file_id": FILE_ID, **json}])
+
+        async def post(self, *args, **kwargs):
+            raise AssertionError("retry must not create a second measurement")
+
+    monkeypatch.setattr(health_documents.httpx, "AsyncClient", FakeClient)
+    result = asyncio.run(health_documents._confirm_document(FILE_ID, USER_ID, TEST_SETTINGS))
+    assert result["already_confirmed"] is True
+    assert result["file"]["processing_status"] == "manually_confirmed"
+    assert patched == [(
+        {"uploaded_file_id": f"eq.{FILE_ID}", "user_id": f"eq.{USER_ID}",
+         "select": "uploaded_file_id,upload_status,processing_status"},
+        {"upload_status": "completed", "processing_status": "manually_confirmed"},
+    )]
 
 
 def test_ocr_missing_configuration_is_failed_not_completed(monkeypatch):

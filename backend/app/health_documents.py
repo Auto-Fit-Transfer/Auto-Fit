@@ -168,12 +168,20 @@ class ConfirmationResponse(BaseModel):
     health_data: dict[str, Any] = Field(description="저장된 DB 레코드; 생성 ID는 최상위 필드 사용")
 
 
+class DocumentDeletionResponse(BaseModel):
+    uploaded_file_id: UUID
+    document_type: DocumentType
+    status: Literal["deleted"]
+    health_checkup_id: UUID | None = None
+    body_composition_id: UUID | None = None
+
+
 DOCUMENT_ERRORS = {
     code: {"model": DocumentError, "description": description}
     for code, description in {
         401: "AUTH_REQUIRED: 인증 실패 또는 세션 만료",
         404: "DOCUMENT_NOT_FOUND: 문서 없음 또는 다른 사용자 소유",
-        409: "DOCUMENT_CONFIRMED / OCR_NOT_READY / OCR_REVIEW_REQUIRED: 확정 문서 수정, OCR 미완료 또는 필수 검수값 미확인",
+        409: "DOCUMENT_CONFIRMED / DOCUMENT_NOT_CONFIRMED / OCR_NOT_READY / OCR_REVIEW_REQUIRED: 문서 상태 충돌",
         413: "FILE_TOO_LARGE: 최대 10 MiB",
         415: "UNSUPPORTED_FILE_TYPE: PDF/PNG/JPEG/HEIC만 허용",
         422: "VALIDATION_ERROR / UNKNOWN_DOCUMENT / UNSUPPORTED_DOCUMENT / DOCUMENT_TYPE_MISMATCH / NO_FIELDS_FOUND / CORRUPTED_FILE: 입력 오류 또는 문서 종류 판별 불가",
@@ -598,6 +606,48 @@ async def _delete_upload_row(uploaded_file_id: UUID, settings: Any) -> None:
         )
 
 
+async def _delete_document(
+    uploaded_file_id: UUID,
+    user_id: str,
+    settings: Any,
+) -> dict[str, Any]:
+    document = await _fetch_document(uploaded_file_id, user_id, settings)
+    file_record = document["file"]
+    if file_record.get("processing_status") != "manually_confirmed":
+        raise HTTPException(status_code=409, detail={
+            "code": "DOCUMENT_NOT_CONFIRMED",
+            "message": "Only confirmed health documents can be deleted",
+            "fields": None,
+        })
+    storage_path = file_record["storage_path"]
+    headers = _service_headers(settings)
+
+    # Storage is not part of the Postgres transaction. Remove it first so a
+    # database failure remains retryable without leaving sensitive file bytes.
+    async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
+        storage_response = await client.delete(
+            f"{settings.supabase_url}/storage/v1/object/{HEALTH_DOCUMENT_BUCKET}/{storage_path}",
+            headers=headers,
+        )
+        if not storage_response.is_success and storage_response.status_code != 404:
+            raise HTTPException(status_code=502, detail="Health document storage deletion failed")
+
+        delete_response = await client.post(
+            f"{settings.supabase_url}/rest/v1/rpc/delete_health_document",
+            headers=headers,
+            json={"p_uploaded_file_id": str(uploaded_file_id), "p_user_id": user_id},
+        )
+    if not delete_response.is_success:
+        raise HTTPException(status_code=502, detail="Health document database deletion failed")
+    try:
+        deleted = delete_response.json()
+    except ValueError:
+        raise HTTPException(status_code=502, detail="Health document deletion returned an invalid response") from None
+    if not isinstance(deleted, dict) or deleted.get("uploaded_file_id") != str(uploaded_file_id):
+        raise HTTPException(status_code=502, detail="Health document deletion returned an invalid response")
+    return {**deleted, "status": "deleted"}
+
+
 async def _create_document(
     *,
     file: UploadFile,
@@ -768,6 +818,9 @@ async def _confirm_document(
         raise HTTPException(status_code=502, detail="Health data lookup failed")
     existing = existing_response.json()
     if existing:
+        if file_record.get("processing_status") != "manually_confirmed":
+            await _mark_document_confirmed(uploaded_file_id, user_id, settings)
+            file_record = {**file_record, "upload_status": "completed", "processing_status": "manually_confirmed"}
         return {"file": file_record, "health_data": existing[0], "already_confirmed": True}
 
     payload = {
@@ -788,8 +841,17 @@ async def _confirm_document(
     if not create_response.is_success or not create_response.json():
         raise HTTPException(status_code=502, detail="Confirmed health data creation failed")
 
+    await _mark_document_confirmed(uploaded_file_id, user_id, settings)
+    return {
+        "file": {**file_record, "upload_status": "completed", "processing_status": "manually_confirmed"},
+        "health_data": create_response.json()[0],
+        "already_confirmed": False,
+    }
+
+
+async def _mark_document_confirmed(uploaded_file_id: UUID, user_id: str, settings: Any) -> None:
     async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
-        status_response = await client.patch(
+        response = await client.patch(
             f"{settings.supabase_url}/rest/v1/upload_files",
             headers=_service_headers(settings, return_representation=True),
             params={
@@ -799,13 +861,8 @@ async def _confirm_document(
             },
             json={"upload_status": "completed", "processing_status": "manually_confirmed"},
         )
-    if not status_response.is_success:
+    if not response.is_success or not response.json():
         raise HTTPException(status_code=502, detail="Health document status update failed")
-    return {
-        "file": {**file_record, "upload_status": "completed", "processing_status": "manually_confirmed"},
-        "health_data": create_response.json()[0],
-        "already_confirmed": False,
-    }
 
 
 class HealthDocumentRoute(APIRoute):
@@ -861,6 +918,22 @@ def create_health_documents_router(
         settings: Any = Depends(settings_dependency),
     ) -> dict[str, Any]:
         return _document_response(await _fetch_document(uploaded_file_id, user.id, settings))
+
+    @router.delete(
+        "/{uploaded_file_id}",
+        response_model=DocumentDeletionResponse,
+        responses=DOCUMENT_ERRORS,
+        description=(
+            "로그인 사용자가 소유한 confirmed 건강 문서를 영구 삭제합니다. 원본 파일, OCR 결과, confirm으로 생성된 "
+            "health_checkups/body_compositions 레코드와 이를 참조하는 파생 분석 데이터도 함께 삭제합니다."
+        ),
+    )
+    async def delete_health_document(
+        uploaded_file_id: UUID,
+        user: Any = Depends(current_user_dependency),
+        settings: Any = Depends(settings_dependency),
+    ) -> dict[str, Any]:
+        return await _delete_document(uploaded_file_id, user.id, settings)
 
     @router.patch("/{uploaded_file_id}/ocr-result", response_model=DocumentResponse, responses=DOCUMENT_ERRORS)
     async def update_health_document_result(

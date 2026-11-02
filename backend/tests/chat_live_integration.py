@@ -13,6 +13,7 @@ import httpx
 from dotenv import dotenv_values
 
 from backend.app import main
+from backend.tests.live_test_cleanup import cleanup_user_defaults
 
 
 async def run(
@@ -42,7 +43,7 @@ async def run(
             tokens = []
             for _ in range(2):
                 email = f"autofit-chat-test-{uuid4().hex}@example.invalid"
-                password = secrets.token_urlsafe(32)
+                password = "Af9!" + secrets.token_urlsafe(32)
                 response = await remote.post("/auth/v1/admin/users", headers=admin_headers, json={
                     "email": email, "password": password, "email_confirm": True,
                     "app_metadata": {"autofit_integration_test": True},
@@ -180,16 +181,16 @@ async def run(
                         "target_weight": 65,
                     })
                     check(profile.status_code == 200, "save presentation profile")
-                    onboarding = await api.post(
-                        "/api/onboarding/complete", headers=owner, json={}
-                    )
-                    check(onboarding.status_code == 200, "complete presentation onboarding")
                     preferences = await api.put(
                         "/api/exercise/preferences",
                         headers=owner,
                         json={"goal_type": "maintenance", "experience_level": "beginner"},
                     )
                     check(preferences.status_code == 200, "save exercise preferences")
+                    onboarding = await api.post(
+                        "/api/onboarding/complete", headers=owner, json={}
+                    )
+                    check(onboarding.status_code == 200, "complete presentation onboarding")
                     context = await api.post(
                         "/api/exercise/recommendation-contexts",
                         headers=owner,
@@ -328,6 +329,11 @@ async def run(
                         f"remaining:health_assessment_items:{assessment_id}"
                     )
             for user_id in created_users:
+                # Remove item/session children before exercise_items and sessions.
+                for table in ("exercise_discomfort_logs", "exercise_session_feedback", "exercise_logs"):
+                    response = await remote.delete(f"/rest/v1/{table}", headers=admin_headers, params={"user_id": f"eq.{user_id}"})
+                    if response.status_code not in (200, 204):
+                        cleanup_errors.append(f"{table}:{user_id}")
                 for recommendation_id in created_recommendations:
                     response = await remote.delete(
                         "/rest/v1/exercise_items",
@@ -354,7 +360,7 @@ async def run(
                     "exercise_discomfort_logs", "exercise_session_feedback",
                     "exercise_logs", "exercise_sessions",
                     "exercise_recommendation_contexts", "exercise_recommendations",
-                    "user_exercise_profiles", "health_assessments", "profiles",
+                    "user_exercise_profiles", "health_assessments",
                 ):
                     response = await remote.delete(f"/rest/v1/{table}", headers=admin_headers, params={"user_id":f"eq.{user_id}"})
                     if response.status_code not in (200,204):
@@ -362,6 +368,7 @@ async def run(
                     verify = await remote.get(f"/rest/v1/{table}", headers=admin_headers, params={"user_id":f"eq.{user_id}", "select":"user_id", "limit":1})
                     if verify.status_code != 200 or verify.json() != []:
                         cleanup_errors.append(f"remaining:{table}:{user_id}")
+                cleanup_errors.extend(await cleanup_user_defaults(remote, admin_headers, user_id))
                 response = await remote.delete(f"/auth/v1/admin/users/{user_id}", headers=admin_headers)
                 if response.status_code not in (200,204):
                     cleanup_errors.append(f"auth:{user_id}")

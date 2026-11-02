@@ -2,6 +2,12 @@
 
 프론트엔드는 Supabase Auth만 직접 사용하고, 애플리케이션 데이터는 FastAPI를 통해 접근합니다.
 
+Render API를 NCP 서버로 이전하는 절차와 배포 구성은 [NCP 배포 안내](deploy/ncp/README.md)를 참고하세요.
+
+7일 식단 생성·조회·재추천의 로컬 구현과 모델 개발자 전달자료는
+[AI 서버 연동 전달자료](docs/ai-integration/README.md)를 확인하세요.
+신규 주간 API는 별도 migration과 `AI_SERVER_*` 설정이 필요합니다.
+
 챗봇 프론트엔드 연동 규격은 [챗봇 API 계약](docs/chat-api-contract.md)을 기준으로 합니다.
 
 전체 화면 연동은 [프론트엔드 협업용 API 안내](docs/frontend-api-handoff.md),
@@ -12,6 +18,7 @@
 종합 분석의 체성분 추가 지표·판정 기준·출처 팝업 설계와 계산식은
 [종합 분석 팝업 명세](docs/total-analysis-popup-spec.md)를 확인하세요.
 팝업 API 조회·응답 매핑은 [종합 분석 팝업 API](docs/analysis-popup-api-contract.md)를 확인하세요.
+메인 화면의 저장된 개인화 결과 조회는 [종합 건강 분석 메인 API](docs/main-analysis-api-contract.md)를 확인하세요.
 
 ## 로컬 OAuth 및 DB 왕복 테스트
 
@@ -90,6 +97,8 @@ backend/.venv/bin/python -m backend.tests.diet_live_integration \
 - `GET /api/health-documents/{uploaded_file_id}`: 본인 업로드 파일 메타데이터와 임시 OCR 결과 조회
 - `PATCH /api/health-documents/{uploaded_file_id}/ocr-result`: 추출값 수동 입력·수정
 - `POST /api/health-documents/{uploaded_file_id}/confirm`: 검토값을 건강검진 또는 체성분 데이터로 확정 저장
+- `GET /api/health-assessments/input`: 확정된 최신 건강검진 OCR 값·인바디·사용 가능한 냉장고 재료·알레르기를 통합 분석 입력으로 조회
+- `POST /api/health-assessments/{assessment_id}/diet-personalization/refresh`: 기존 건강 분석은 유지하고 현재 냉장고·알레르기 스냅샷과 맞춤 제안을 저장
 - `GET /api/exercise/preferences`: 본인의 운동 목표와 경험 수준 조회
 - `PUT /api/exercise/preferences`: 본인의 운동 목표와 경험 수준 저장 또는 갱신
 - `GET /api/exercise/recommendation-contexts/latest`: 본인의 최근 운동 추천 입력 조건 조회
@@ -114,12 +123,13 @@ backend/.venv/bin/python -m backend.tests.diet_live_integration \
 - `POST /api/diet/inventory`: 본인의 냉장고 재료·수량·구매일·유통기한 추가
 - `PATCH /api/diet/inventory/{inventory_id}`: 본인의 냉장고 재료 일부 필드 수정
 - `DELETE /api/diet/inventory/{inventory_id}`: 본인의 냉장고 재료를 멱등하게 소프트 삭제
-- `POST /api/diet/recommendations/generate`: 냉장고 재료와 알레르기를 반영해 오늘 식단 추천 생성
+- `POST /api/diet/recommendations/generate`: DB 음식과 AI 생성 식단 2~3개를 혼합해 오늘 식단 추천 생성
 - `GET /api/diet/recommendations?date=YYYY-MM-DD`: KST 날짜별 최신 식단 추천 조회
 - `GET /api/diet/recommendations/latest`: 최근 활성 식단과 끼니별 추천 음식 조회
 - `GET /api/diet/nutrition-summary?date=YYYY-MM-DD`: KST 날짜별 영양 목표와 실제 섭취량 조회
 - `POST /api/diet/meals/{diet_meal_id}/regenerate`: 추천 식단의 선택한 한 끼만 재추천
 - `POST /api/diet/meals/{diet_meal_id}/feedback`: 추천 식사를 먹음·변경·건너뜀으로 기록
+- `PATCH /api/diet/meals/{diet_meal_id}/feedback`: 기존 추천 식사 피드백 수정
 - `GET /api/diet/meal-logs?from_date=YYYY-MM-DD&to_date=YYYY-MM-DD`: 최대 367일 범위의 식사 기록 조회
 
 `PATCH /api/profile`은 클라이언트가 보낸 `user_id`를 허용하지 않습니다. 서버가 검증한 Supabase 사용자 ID만 쿼리 조건으로 사용합니다.
@@ -140,6 +150,31 @@ backend/.venv/bin/python -m backend.tests.diet_live_integration \
 
 운동 목표 저장 RPC는 다른 종류의 기존 활성 목표를 `cancelled`로 전환해 이력을 보존하고, 동일 종류의 활성 목표는 갱신합니다. 외래키 없이 사용자 ID와 상태 인덱스, 백엔드의 JWT 사용자 검증으로 소유권을 관리합니다. 현재 운동 로그에는 신체 부위 기준값이 없으므로 진행 현황은 임의의 부위 값을 만들지 않고 `exercise_types.category` 기준 운동 카테고리 분포를 반환합니다.
 
-식단 추천은 냉장고 재료와 등록된 알레르기를 조회한 뒤 `create_diet_recommendation` RPC에서 추천·끼니·음식 항목을 한 트랜잭션으로 저장합니다. 한 끼 재추천은 `replace_diet_meal` RPC가 기존 식사 ID와 순서를 유지하며 음식 항목을 원자적으로 교체합니다. 추천 식사 기록도 `record_recommended_meal` RPC에서 식사 로그·음식 항목·피드백·추천 상태를 함께 처리합니다. 외래키는 사용하지 않으며 사용자 소유권 검증과 고유 인덱스로 중복 기록을 막습니다. 현재 추천의 `rules_v1`은 데이터 왕복 검증용으로, 의료적 식단 진단이나 처방을 제공하지 않습니다.
+식단 추천은 냉장고 재료와 등록된 알레르기를 조회한 뒤 `create_diet_recommendation` RPC에서 추천·끼니·음식 항목을 한 트랜잭션으로 저장합니다. 하루 4끼 중 2~3끼는 검증된 AI 응답으로, 나머지는 `food_items` DB 영양정보로 생성하며 `diet_meals.source_type`에 출처를 남깁니다. AI가 비활성화되거나 잘못된 JSON·슬롯·알레르기 식품을 반환하면 기존 DB 식단으로 조용히 대체하지 않고 생성에 실패시켜 AI 포함 조건을 보장합니다. GitHub Actions는 매일 `15:00 UTC`(KST 자정)에 Render 웹 서비스의 보호된 내부 엔드포인트를 호출해 `profiles`에 존재하는 전체 사용자의 당일 추천을 갱신합니다. 생성 시 KST 기준으로 유통기한이 지났거나 수량이 0이거나 사용 불가인 재료를 제외합니다. 한 끼 재추천도 같은 AI 어댑터에 냉장고 재료를 전달하며, 성공 시 `generator=ai_v1`, `source_type=ai_generated`, 실제 매칭된 `used_ingredients`를 반환합니다. `replace_diet_meal` RPC는 기존 식사 ID와 순서를 유지하면서 음식 항목과 출처를 원자적으로 교체합니다. 추천 식사 기록도 `record_recommended_meal` RPC에서 식사 로그·음식 항목·피드백·추천 상태를 함께 처리합니다.
 
-한 끼 재추천을 배포할 때는 `supabase/migrations/20260916042556_replace_diet_meal.sql`이 대상 Supabase에 적용되어 있어야 합니다. 연결된 개발 Supabase에는 적용 완료했습니다.
+자정 자동 갱신 배포 전 `supabase/migrations/20260928082133_daily_ai_diet_refresh.sql`을 적용하고, Render 웹 서비스에 `CHAT_AI_URL`, `CHAT_AI_API_KEY`, Supabase 서버 키, `DIET_REFRESH_CRON_TOKEN`을 설정해야 합니다. GitHub Actions 저장소 secret의 `DIET_REFRESH_CRON_TOKEN`에는 웹 서비스와 동일한 값을 사용합니다.
+
+AI 한 끼 재추천을 배포할 때는 `supabase/migrations/20260929042545_update_regenerated_meal_source_type.sql`까지 대상 Supabase에 적용하고 웹 서비스의 `CHAT_AI_ENABLED=true`, `CHAT_AI_URL`, `CHAT_AI_API_KEY`를 확인해야 합니다.
+
+식단 이미지 생성 서버 연동은 `supabase/migrations/20260930090000_menu_image_dataset_matching.sql`을 적용한 뒤 `FOOD_IMAGE_ENABLED=true`, `FOOD_IMAGE_URL`, `FOOD_IMAGE_API_KEY`를 설정합니다. 생성 서버에는 계약대로 1024×1024 PNG를 요청합니다. 기본 저장 형식은 `FOOD_IMAGE_FORMAT=webp`인 512×512 WebP 변환본이며 `png`를 선택하면 원본 PNG를 저장합니다. 요청은 프로세스당 한 건씩 직렬 처리하고, 실패해도 식단은 기본 이미지 상태로 저장됩니다.
+
+건강 평가의 냉장고 맞춤 제안 갱신 API를 배포할 때는 `supabase/migrations/20260928044131_refresh_health_assessment_personalization.sql`을 먼저 적용해야 합니다. 이 RPC는 브라우저 역할의 실행 권한을 제거하고 백엔드 `service_role`에서만 호출합니다.
+# 계정 영구 삭제
+
+인증된 사용자 자신의 영구 탈퇴는 `DELETE /api/account`에 Supabase 로그인
+Bearer 토큰을 전달합니다. 성공 응답은 `204 No Content`입니다. 물리 FK 없이
+DB 트리거가 프로필·설정·업무 자료·간접 자식을 정리하며, API가 먼저 Storage의
+사용자 파일을 삭제합니다. 공용 기준 자료는 유지됩니다.
+
+`supabase/migrations/20260917021925_cascade_account_deletion.sql` 적용과
+이 API 경로를 포함한 백엔드 배포가 모두 필요합니다. 파일이 남아 있으면
+Auth 관리자 화면/API의 직접 계정 삭제는 거부됩니다. 탈퇴 API가 `502`로
+실패하면 삭제 중 쓰기 차단을 유지하며 같은 사용자로 다시 요청해야 합니다.
+이미 삭제한 파일은 복구하지 않습니다. 세부 동작과 검증은
+[계정 삭제 및 무결성 기록](docs/notification-settings-cleanup.md)을 참고하세요.
+
+실제 Supabase 연동 검증은 현재 실행의 테스트 계정·파일만 생성하고 삭제합니다:
+
+```bash
+backend/.venv/bin/python -m backend.tests.account_deletion_live
+```

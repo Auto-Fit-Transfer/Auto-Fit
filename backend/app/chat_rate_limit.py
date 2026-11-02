@@ -2,6 +2,7 @@
 import httpx
 from fastapi import HTTPException
 from backend.app.chat_storage import fail
+from backend.app.http_client import client_scope
 
 
 class ChatRateLimiter:
@@ -12,7 +13,7 @@ class ChatRateLimiter:
         if bucket not in {"requests", "answers"}:
             raise ValueError("Unknown chat quota")
         try:
-            async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+            async with client_scope() as client:
                 response = await client.post(
                     f"{self.url}/rest/v1/rpc/consume_chat_rate_limit",
                     headers=self.headers,

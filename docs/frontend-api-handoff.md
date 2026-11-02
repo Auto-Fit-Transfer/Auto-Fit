@@ -1,8 +1,9 @@
 # Auto-Fit 프론트엔드 협업용 전체 API 안내
 
-기준일: 2026-09-17. 근거: `backend/app/main.py`, 라우터·챗봇 모듈, 저장소 SQL, 기존 검증 기록.
-현재 FastAPI operation은 **53개**다. 아래 목록은 구현된 코드 기준이며 서버 배포 완료 목록은 아니다.
+기준일: 2026-09-28. 근거: `backend/app/main.py`, 라우터·챗봇 모듈, 저장소 SQL, 기존 검증 기록.
+현재 FastAPI operation은 **59개**다. 아래 목록은 구현된 코드 기준이며 서버 배포 완료 목록은 아니다.
 종합 분석 팝업의 신규 조회 2개는 [팝업 API 계약](analysis-popup-api-contract.md)을 확인한다.
+메인 종합 분석 결과 조회는 [메인 API 계약](main-analysis-api-contract.md)을 확인한다.
 
 ## 공유 파일
 
@@ -56,7 +57,7 @@ POST라고 모두 201은 아니다. 코드가 지정한 성공 코드를 표에 
 - 생년월일 미래 날짜 거부. 이름 1~50자, 닉네임 최대 30자, 목표 체중 20~500.
 - 알레르기 PUT은 전체 선택 교체다. 체크된 전체 ID를 보내고 선택 해제는 빈 배열로 보낸다.
 - 카탈로그 선택 최대 12개, 기타 이름 최대 5개(각 1~50자), 중복 정리.
-- 온보딩은 name/birth_date/gender가 필요하며 누락 시 409와 fields 반환. 이미 완료됐으면 already_completed=true.
+- 온보딩 완료 전 name/birth_date/gender와 운동 목표·경험(`user_exercise_profiles`)이 필요하다. 누락 시 409와 `fields`를 반환하며 운동 설정 누락은 `exercise_preferences`로 표시한다. 알레르기는 선택 사항이다. 약관은 아직 작성되지 않아 현재 완료 조건에 포함하지 않는다. 이미 완료됐으면 `already_completed=true`.
 - 로그인 후 `GET /api/profile`로 현재 사용자의 가입 완료 여부와 기본 정보를 조회한다.
 - 프로필 응답 주요 필드: user_id, name, nickname, birth_date, gender, target_weight, activity_level, onboarding_completed_at, updated_at. 같은 응답의 exercise_preferences는 연결된 운동 목표·경험 수준이며 미설정 시 null이다.
 
@@ -221,8 +222,9 @@ summary는 완료 상태 세션을 기준으로 최근 7일(오늘 포함 7일)�
 | GET | `/api/diet/recommendations/latest` | 없음 | `result` 또는 null | 200 |
 | GET | `/api/diet/nutrition-summary?date=YYYY-MM-DD` | `date` 필수 | `summary` | 200 |
 | POST | `/api/diet/recommendations/generate` | `{}` | `ok, generator, result` | 200 |
-| POST | `/api/diet/meals/{diet_meal_id}/regenerate` | `{}` | `ok, generator, meal` | 200 |
+| POST | `/api/diet/meals/{diet_meal_id}/regenerate` | `{}` | `ok, generator, meal, used_ingredients[]` | 200 |
 | POST | `/api/diet/meals/{diet_meal_id}/feedback` | DietMealFeedbackRequest | `ok, result.feedback, result.meal_log` | 200 |
+| PATCH | `/api/diet/meals/{diet_meal_id}/feedback` | DietMealFeedbackUpdateRequest | `ok, result.feedback, result.meal_log` | 200 |
 | GET | `/api/diet/meal-logs` | query: `from_date, to_date` 필수 | `period, count, logs[]` | 200 |
 
 재료 추가 예:
@@ -237,18 +239,33 @@ PATCH는 변경할 필드를 하나 이상 보내며, 생략한 필드는 유지
 result.recommendation: diet_recommendation_id, recommendation_date, target_calories,
 target_carbohydrates, target_protein, target_fat, recommendation_summary, ai_reason, status.
 result.meals[]: diet_meal_id, meal_type, meal_order, recommended_calories, recommendation_note,
-image_storage_path, image_url, status, foods[]. `image_url`은 공개 Supabase Storage URL이며
+image_storage_path, image_url, status, foods[], feedback, used_ingredients[]. `image_url`은 공개 Supabase Storage URL이며
 추천 식단 카드의 이미지 소스로 바로 사용할 수 있다.
+`used_ingredients[]`는 식단 생성 또는 한 끼 재추천 시점에 추천 음식과 냉장고 재료를
+매칭해 저장한 스냅샷이다. 이후 재료를 소진·수정·삭제해도 날짜별 화면은 당시 사용한
+재료의 `name` 목록을 그대로 복원한다. 스냅샷 도입 전 레코드는 현재 사용 가능한 재료와
+다시 매칭하는 호환 로직을 사용하므로, 이미 삭제된 과거 재료는 복원되지 않을 수 있다.
+`feedback`은 아직 피드백이 없으면 null이며, 있으면 diet_feedback_id, diet_meal_id,
+meal_log_id, feedback_type, actual_food_name, feedback_note, recorded_at을 포함한다. 카드 상태는
+`feedback.feedback_type`을 우선 사용하고 null이면 아직 선택하지 않은 상태로 복원한다.
 `menu_image_key`, `image_source`, `image_generation_status`, `image_generation_required`는
 이미지 캐시 상태를 나타낸다. `image_generation_required=true`이면 캐시에 완성된 이미지가
 없다는 뜻이며, 향후 이미지 모델 작업 큐를 시작하는 기준으로 사용한다.
 백엔드가 `foods[].food_name`을 정규화해 기존 사진과 자동 매칭하므로 프론트는 음식 이름과
 사진을 개별 매핑하지 않는다. `image_url`만 사용하고 값이 없으면 기본 이미지를 표시한다.
-foods[]: food_name, quantity, unit, calories, carbohydrates, protein, fat 등.
-식단 생성도 현재 rules_v1이며 팀원 모델과 연결된 것으로 가정하면 안 된다.
+foods[]: food_name, display_name, quantity, unit, display_unit, calories, carbohydrates, protein,
+fat 등. 카드에는 괄호 부가정보를 제거한 `display_name`을 사용한다. 사용자가 카드를 펼치면
+foods[] 전체를 순회해 `display_name + quantity + display_unit` 형식으로 재료와 분량을 표시한다.
+원문 확인이 필요한 상세 데이터에는 괄호 내용을 보존한 `food_name`, `unit`을 사용한다.
+일일 식단 생성은 `mixed_ai_v1`이며 하루 4끼 중 2~3끼가 `ai_generated`, 나머지가
+`db_catalog`다.
 날짜별 조회는 KST 기준 해당 날짜에 마지막으로 생성된 추천을 반환한다. 한 끼 재추천은
 기존 `diet_meal_id`, `meal_type`, `meal_order`를 유지한 채 음식 목록을 교체하며, 완료·변경·건너뜀
-상태의 식사는 409다. 현재 생성기는 `rules_v1`이고 DB 반영에는 `replace_diet_meal` RPC가 필요하다.
+상태의 식사는 409다. 단건 생성기는 `ai_v1`이고 성공한 식사는 `source_type=ai_generated`로
+저장한다. `used_ingredients[]`에는 `user_food_inventory_id`, `name`, `matched_food_name`,
+`quantity`, `unit`이 들어간다. AI가 비활성·실패하거나 사용 가능한 냉장고 재료를 결과에
+반영하지 못하면 503이며 규칙 기반 결과로 자동 대체하지 않는다. `menu_image_key`는 이미지
+캐시 키이므로 AI/DB 생성 출처 판단에는 `generator`와 `source_type`을 사용한다.
 
 영양 요약의 `summary`에는 날짜, 추천 존재 여부, 알 수 없는 영양 항목 여부와 칼로리·탄수화물·
 단백질·지방의 `consumed`, `target`, `unit`이 포함된다. 목표는 해당 날짜 최신 추천에서,
@@ -272,7 +289,7 @@ feedback_type: eaten/different_food/skipped. different_food만 actual_items 1~20
 logs[]는 각 식사에 items[]를 포함한다. skipped의 result.meal_log는 null일 수 있다.
 이 API는 diet_meal_id와 연결된 기록이다. 추천 식단과 무관한 독립 식사 등록 API는 아직 없다.
 
-## 7. 건강 문서 업로드·검토·목록 (5개)
+## 7. 건강 문서 업로드·검토·목록 (6개)
 
 파일만 전송하면 서버가 문서 종류를 판별하고 응답의 `document_type`에 따라 화면을 분기한다. 실제 OCR 연결 후 판별 불가 시 저장 없이 422 `UNKNOWN_DOCUMENT`/`UNSUPPORTED_DOCUMENT`를 반환한다. URL이 없는 임시 모드는 종류 판별 없이 PDF/이미지 모두 고정 샘플을 반환한다. 종류 생략 시 기본 건강검진 샘플이며 서버 HEALTH_DOCUMENT_OCR_MOCK_DOCUMENT_TYPE=body_composition 설정으로 체성분 샘플도 테스트한다. 실제 판별은 OCR 서버 연결 후 수행한다. 상세 타입·단위·상태·오류·재업로드 계약은 [건강 문서 API](health-documents-api.md)를 참고한다.
 
@@ -283,6 +300,8 @@ logs[]는 각 식사에 items[]를 포함한다. skipped의 result.meal_log는 n
 | GET | `/api/health-documents/{uploaded_file_id}` | 경로 UUID | `uploaded_file_id, document_type, file_name, original_file_name, uploaded_at, ocr_status, status, extracted_data, error` | 200 |
 | PATCH | `/api/health-documents/{uploaded_file_id}/ocr-result` | `extracted_data` | `uploaded_file_id, document_type, file_name, original_file_name, uploaded_at, ocr_status, status, extracted_data, error` | 200 |
 | POST | `/api/health-documents/{uploaded_file_id}/confirm` | 본문 없음 | `uploaded_file_id, document_type, status, health_checkup_id, body_composition_id, already_confirmed` | 200 |
+| GET | `/api/health-assessments/input` | 없음 | `ready, missing[], health_checkup, body_composition, diet_context` | 200 |
+| POST | `/api/health-assessments/{assessment_id}/diet-personalization/refresh` | 본문 없음 | 갱신된 `MainAnalysisResponse` | 200 |
 
 - 응답의 `document_type`: 서버가 결정한 `health_checkup` 또는 `body_composition` (`inbody`가 아님). 업로드·재업로드 요청에서는 생략한다.
 - `DocumentPickerAsset.name`을 `original_file_name`으로 보내고 응답의 `original_file_name`을 표시한다. DB에 보존하며 기존 원본명이 없는 행은 file_name으로 대체한다.
@@ -290,6 +309,8 @@ logs[]는 각 식사에 items[]를 포함한다. skipped의 result.meal_log는 n
 - PATCH는 보낸 필드만 변경하며 null은 값을 비운다. 확정 문서 수정은 409다.
 - 확정 전 건강검진은 `checkup_date`, 인바디는 timezone을 포함한 `measured_at`이 필수다.
 - confirm은 같은 파일로 반복 호출해도 기존 건강 데이터를 반환한다.
+- 건강검진과 인바디를 각각 confirm한 뒤 `/api/health-assessments/input`을 호출한다. 둘 다 있으면 `ready=true`; 하나라도 없으면 200과 함께 `ready=false`, `missing[]`을 반환한다.
+- 통합 입력은 로그인 사용자의 최신 확정 레코드만 조회하며 `raw_data`, `user_id`는 노출하지 않는다.
 - 파일은 private Storage 버킷에 저장하며 현재 다운로드 URL은 제공하지 않는다.
 
 ```bash
@@ -356,7 +377,7 @@ curl -X POST "$API_BASE/api/health-documents" \
 | 수행 중 불편함 | POST discomfort → 반환 session/adjusted_items로 남은 화면 갱신 |
 | 운동 목표·기록 | GET/PUT goals/active, 기간을 선택해 GET history/progress |
 | 식단 | GET/PATCH/DELETE inventory → GET recommendations?date=... 또는 POST generate → 필요 시 POST meals/{id}/regenerate → POST feedback → GET nutrition-summary/meal-logs |
-| 건강 데이터 업로드 | POST health-documents → PATCH ocr-result → POST confirm |
+| 건강 데이터 업로드·분석 입력 | 문서별 POST health-documents → PATCH ocr-result → POST confirm → 두 문서 확정 후 GET health-assessments/input |
 | 챗봇 재진입 | GET chats?status=active&limit=1 → 없으면 POST chats → GET messages |
 | 챗봇 질문 | UUID 생성 → POST messages → assistant_message 표시 → 실패 시 같은 UUID로 재시도 |
 
@@ -386,7 +407,7 @@ curl -X POST "$API_BASE/api/health-documents" \
 | 마이페이지 초기 표시 | GET profile 전용 조회 없음 |
 | 프로필 사진·키·현재 체중·선호 운동 편집 | 현재 PATCH profile 필드로 모두 지원되지 않음 |
 | 건강 문서 실제 OCR 자동 인식 | 업로드·수동 검토·확정 API는 있으나 OCR 엔진 연동 없음 |
-| 건강 데이터 상세·삭제, 종합 건강 분석 | 전용 API 없음. 챗봇 건강 점수 조회와 별도 |
+| 건강 데이터 상세·삭제, 최초 종합 건강 분석 생성 | 통합 분석 입력 조회와 기존 평가의 냉장고 개인화 갱신 저장은 구현됨. 상세·삭제 및 최초 건강 평가·모델 분석 생성 API는 없음. 메인 조회는 저장된 `raw_result.total_analysis`를 우선 사용하고, 없으면 평가 당시 목표·확정 판정이 충분한 경우 제한된 임시 문구를 생성 |
 | 월간 건강 리포트·인바디 변화 | 전용 API 없음. 운동 progress와 별도 |
 | 냉장고 재료 다중 삭제 | 단건 PATCH/DELETE만 있으며 bulk API는 없음 |
 | 음식 검색·사진 인식·독립 식사 추가·수정 | 전용 API 없음 |

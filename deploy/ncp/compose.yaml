@@ -1,0 +1,39 @@
+services:
+  api:
+    build:
+      context: ../../backend
+      dockerfile: ../deploy/ncp/Dockerfile
+    env_file: ./api.env
+    environment:
+      BACKEND_ALLOWED_HOSTS: "${API_DOMAIN:?Set API_DOMAIN in .env},localhost,127.0.0.1"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"
+      interval: 30s
+      timeout: 6s
+      start_period: 30s
+      retries: 3
+
+  caddy:
+    image: caddy:2
+    environment:
+      API_DOMAIN: "${API_DOMAIN:?Set API_DOMAIN in .env}"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

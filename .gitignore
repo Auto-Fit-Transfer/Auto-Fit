@@ -1,4 +1,7 @@
 backend/.env
+backend/.env.save
 backend/.venv/
 __pycache__/
 .pytest_cache/
+deploy/ncp/.env
+deploy/ncp/api.env

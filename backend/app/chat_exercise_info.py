@@ -2,6 +2,7 @@
 import httpx
 from backend.app.chat_model import exercise_information
 from backend.app.chat_storage import fail
+from backend.app.http_client import client_scope
 
 TOPICS = {
     '하체': ('하체', '스쿼트', '런지', '레그', '카프'),
@@ -28,7 +29,7 @@ def needs_safety_guidance(content):
 
 async def load_exercise_types(url, headers):
     try:
-        async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+        async with client_scope() as client:
             r = await client.get(url+'/rest/v1/exercise_types', headers=headers,
                 params={'select':'name,category', 'is_active':'eq.true', 'order':'name.asc,exercise_type_id.asc', 'limit':'101'})
     except httpx.HTTPError:

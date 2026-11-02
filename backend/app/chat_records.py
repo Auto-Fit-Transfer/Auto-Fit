@@ -10,6 +10,7 @@ import httpx
 from pydantic import BaseModel, Field, ValidationError
 
 from backend.app.chat_storage import fail
+from backend.app.http_client import client_scope
 
 KST = ZoneInfo("Asia/Seoul")
 
@@ -85,7 +86,7 @@ async def answer_records(intent, period, url, headers, user_id):
         answer.update(content=message, response_source="need_more_data", needs_more_data=True, required_data=[required])
         return answer
 
-    async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+    async with client_scope() as client:
         if intent == "exercise_history":
             rows = await read_rows(client, url, headers, "exercise_sessions", {
                 "select": "exercise_session_id,started_at,total_duration_seconds,total_calories_burned,completed_item_count",

@@ -19,6 +19,7 @@ import httpx
 from dotenv import dotenv_values
 
 from backend.app import main
+from backend.tests.live_test_cleanup import cleanup_user_defaults
 
 
 APPROVED_API_BASE = "https://auto-fit-api-dev.onrender.com"
@@ -61,7 +62,7 @@ async def run(project: str, api_base: str) -> None:
         try:
             for _ in range(2):
                 email = f"autofit-diet-test-{uuid4().hex}@example.invalid"
-                password = secrets.token_urlsafe(32)
+                password = "Af9!" + secrets.token_urlsafe(32)
                 created = await remote.post(
                     "/auth/v1/admin/users",
                     headers=admin_headers,
@@ -189,7 +190,20 @@ async def run(project: str, api_base: str) -> None:
                     json={},
                 )
                 check(regenerated.status_code == 200, "regenerate one diet meal")
-                regenerated_meal = regenerated.json()["meal"]
+                regenerated_payload = regenerated.json()
+                regenerated_meal = regenerated_payload["meal"]
+                check(
+                    regenerated_payload["generator"] == "ai_v1"
+                    and regenerated_meal["source_type"] == "ai_generated",
+                    "regenerated meal records its AI source",
+                )
+                check(
+                    any(
+                        item["user_food_inventory_id"] == inventory_id
+                        for item in regenerated_payload["used_ingredients"]
+                    ),
+                    "regenerated meal reports used inventory",
+                )
                 check(
                     regenerated_meal["diet_meal_id"]
                     == original_meal["diet_meal_id"],
@@ -384,7 +398,7 @@ async def run(project: str, api_base: str) -> None:
                         f"diet_meals:{current_recommendation_id}"
                     )
             for user_id in created_users:
-                for table in ("diet_recommendations", "profiles"):
+                for table in ("diet_recommendations",):
                     response = await remote.delete(
                         f"/rest/v1/{table}",
                         headers=admin_headers,
@@ -402,6 +416,8 @@ async def run(project: str, api_base: str) -> None:
                 )
                 if signed_out.status_code not in (200, 204):
                     cleanup_errors.append(f"logout:{user_id}")
+            for user_id in created_users:
+                cleanup_errors.extend(await cleanup_user_defaults(remote, admin_headers, user_id))
                 deleted_user = await remote.delete(
                     f"/auth/v1/admin/users/{user_id}", headers=admin_headers
                 )

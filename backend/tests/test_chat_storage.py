@@ -1,6 +1,7 @@
 import asyncio
 from unittest.mock import AsyncMock
 from uuid import uuid4
+from datetime import UTC, datetime
 
 import httpx
 import pytest
@@ -91,6 +92,89 @@ def test_persisted_routine_request_generates_and_stores_answer(client, monkeypat
     assert len(calls) == 2
     assert calls[1]["intent"] == "exercise_routine_generation"
     assert calls[1]["evidence"][0]["exercise_recommendation_id"] == "recommendation-1"
+
+
+def test_chat_record_delete_requires_a_separate_confirmation(client, monkeypatch):
+    record_id = str(uuid4())
+    state = {"last": None, "answers": []}
+    executed = []
+
+    async def exchange(self, chat_id, client_id, content, answer=None):
+        if answer is None:
+            return None
+        state["answers"].append(answer)
+        state["last"] = {**answer, "sender_type": "assistant",
+                         "created_at": datetime.now(UTC).isoformat()}
+        return {"is_replay": False, "assistant_message": answer}
+
+    async def messages(self, chat_id, limit, before):
+        assert self.user_id == "owner" and limit == 1
+        return {"messages": [state["last"]] if state["last"] else []}
+
+    async def read(request, query):
+        assert query.path == "/api/diet/inventory"
+        return {"inventory": [{"user_food_inventory_id": record_id,
+                               "custom_name": "사과", "quantity": 2}]}
+
+    async def execute(request, proposal):
+        executed.append(proposal)
+        return True
+
+    monkeypatch.setattr(ChatStore, "exchange", exchange)
+    monkeypatch.setattr(ChatStore, "messages", messages)
+    monkeypatch.setattr(main, "read_chat_service", read)
+    monkeypatch.setattr(main, "execute_chat_record_action", execute)
+
+    def send(content):
+        return client.post(f"/api/chats/{CHAT}/messages", json={
+            "client_message_id": str(uuid4()), "content": content,
+        })
+
+    listed = send("내 냉장고 재료")
+    assert listed.status_code == 201
+    assert state["answers"][-1]["evidence"][1]["id"] == record_id
+    staged = send("1번 삭제해줘")
+    assert staged.status_code == 201
+    assert state["answers"][-1]["intent"] == "record_action_confirmation"
+    assert executed == []
+    confirmed = send("확인")
+    assert confirmed.status_code == 201
+    assert state["answers"][-1]["intent"] == "record_action_completed"
+    assert len(executed) == 1 and executed[0]["id"] == record_id
+
+
+def test_running_location_followup_uses_previous_question(client, monkeypatch):
+    state = {"last": None}
+
+    async def exchange(self, chat_id, client_id, content, answer=None):
+        if answer is None:
+            return None
+        state["last"] = {**answer, "sender_type": "assistant",
+                         "created_at": datetime.now(UTC).isoformat()}
+        return {"is_replay": False, "assistant_message": answer}
+
+    async def messages(self, chat_id, limit, before):
+        return {"messages": [state["last"]] if state["last"] else []}
+
+    async def lookup(region, distance, settings, user_id):
+        assert (region, distance, user_id) == ("풍암동", "5km", "owner")
+        return ([{"name": "풍암호수공원", "region_name": region}], "general_ai")
+
+    monkeypatch.setattr(ChatStore, "exchange", exchange)
+    monkeypatch.setattr(ChatStore, "messages", messages)
+    monkeypatch.setattr(main, "search_running_courses", lookup)
+
+    def send(content):
+        return client.post(f"/api/chats/{CHAT}/messages", json={
+            "client_message_id": str(uuid4()), "content": content,
+        })
+
+    asked = send("러닝 코스 알려줘")
+    assert asked.status_code == 201
+    assert state["last"]["required_data"] == ["running_region"]
+    answer = send("풍암동")
+    assert answer.status_code == 201
+    assert "풍암호수공원" in state["last"]["content"]
 
 
 @pytest.mark.parametrize("body", [{}, {"status": None}, {"status": "closed"}, {"title": " "}, {"user_id": "victim"}])

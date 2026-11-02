@@ -2,6 +2,13 @@
 
 작성일: 2026-09-22 · 상태: 프론트엔드·기획·건강 기준 담당자 검토용 초안
 
+## 2026-09-22 화면 표시 확정 사항
+
+1. **핵심 분석 지표 카드와 `분석 기준 및 출처 보기`의 주요 지표 판정 기준 목록**은 모두 메인 API의 `key_metric_keys[]`만 사용한다. 첨부 시안의 합성 사례에서는 체지방률·골격근량·공복혈당 3개다. 팝업 API의 `metrics[]` 전체를 반복 표시하지 않는다. 목록 순서는 `key_metric_keys[]` 순서를 따른다.
+2. **`체성분 관련 추가 지표` 팝업**은 추천 근거의 `evidence_metric_keys[]`로 해당 지표의 값·판정을 조회한다. 제목 `체성분 관련 추가 지표`와 설명 `핵심 지표와 함께 참고한 보조 수치에요`는 사용자 조건이나 API 응답에 따라 바뀌지 않는 고정 UI 문구다. 백엔드 분석 문구로 생성하지 않는다.
+
+`PopupResponse.metrics[]`는 판정 기준 목록과 추가 지표 팝업이 함께 참조하는 전체 데이터다. 백엔드에서 3개로 필터링하면 BMI·체중·체지방량 같은 보조 수치를 표시할 수 없으므로, 화면별 키 배열로 필터링한다.
+
 ## 먼저 합의할 화면
 
 원격 `frontend` 브랜치의 `frontend/app/(health-data)/total-analysis.tsx`는 현재 문구와 판정이 고정된 화면이다. 이 화면에는 `headline`, `summary`, `goal`, `strategy`에 대응할 수 있는 영역이 있지만, 요청된 **핵심 지표 3개·추천 이유 아코디언·최종 추천 방향·세 팝업** 구성은 그대로 존재하지 않는다. `frontend/src/features/health-data/totalAnalysis.ts`의 목 데이터 타입도 현재 [메인 API 계약](main-analysis-api-contract.md)과 다르다. 이 화면을 새 시안으로 개편할지, 별도 화면을 사용할지 먼저 확정해야 한다.
@@ -28,7 +35,8 @@
 | 핵심 분석 지표 | `key_metric_keys[]` | 같은 `assessment_id`의 `metrics[]`와 키로 연결. 최대 3개 |
 | 추천 이유 아코디언 | `recommendation_reasons[]` | 제목·설명·`evidence_metric_keys[]`를 서버 순서대로 표시 |
 | 최종 추천 방향 | `final_direction.from`, `final_direction.to` | 두 문구를 그대로 표시 |
-| 기준·출처 팝업 | 메인 응답의 `assessment_id` | `GET /api/health-assessments/{assessment_id}/popups`로 조회 |
+| 기준·출처 팝업 | 메인 응답의 `assessment_id`, `key_metric_keys[]` | 같은 평가의 팝업 API를 조회하고 주요 지표 판정 기준에는 핵심 키만 표시 |
+| 체성분 관련 추가 지표 팝업 | `recommendation_reasons[i].evidence_metric_keys[]` | 같은 팝업 API의 `metrics[]`에서 근거 키를 찾고, 제목·설명은 위 고정 문구 사용 |
 
 ## 추천 문구 시안
 
@@ -69,7 +77,7 @@
 
 1. 상단 제목과 분석 요약으로 이번 평가의 핵심 메시지를 보여준다.
 2. 평가 당시 목표와 맞춤 제언을 나란히 비교한다.
-3. `key_metric_keys` 순서대로 최대 3개 지표를 표시하고, 각 지표에서 실제 판정 기준 팝업으로 이동한다.
+3. `key_metric_keys` 순서대로 최대 3개 핵심 지표를 카드와 주요 지표 판정 기준 목록에 똑같이 표시한다. 각 지표에서 실제 판정 기준 팝업으로 이동한다.
 4. 추천 이유 아코디언에서 문구와 근거 지표를 함께 보여준다. `evidence_metric_keys`가 비어 있으면 추가 지표 버튼은 표시하지 않는다.
 5. 최종 추천 방향과 출처 보기를 마지막에 둔다. 팝업은 메인 응답과 동일한 `assessment_id`로 조회한다.
 

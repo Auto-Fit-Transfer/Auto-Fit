@@ -8,6 +8,8 @@ from uuid import UUID
 import httpx
 from fastapi import HTTPException
 
+from backend.app.http_client import client_scope
+
 CHAT_FIELDS = "chat_id,title,status,created_at,updated_at"
 MESSAGE_FIELDS = "message_id,chat_id,sender_type,content,intent,response_source,needs_more_data,evidence,required_data,created_at"
 
@@ -58,7 +60,7 @@ class ChatStore:
 
     async def request(self, method, path, *, params=None, body=None):
         try:
-            async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+            async with client_scope() as client:
                 response = await client.request(
                     method, f"{self.url}/rest/v1/{path}",
                     headers={**self.headers, "Prefer": "return=representation"},

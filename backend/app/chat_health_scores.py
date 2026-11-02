@@ -75,7 +75,7 @@ async def fetch_assessment_items(
         return {}
     allowed_ids = set(assessment_ids)
     try:
-        async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
+        async with client_scope() as client:
             response = await client.get(
                 f"{url}/rest/v1/health_assessment_items",
                 headers=headers,

@@ -24,6 +24,8 @@ def diet_client(monkeypatch):
             "/rest/v1/diet_recommendations": [{"diet_recommendation_id": "private-rec"}],
             "/rest/v1/diet_meals": [{"diet_meal_id": "private-meal", "menu_image_key": "private-key"}],
             "/rest/v1/diet_meal_foods": [],
+            "/rest/v1/diet_feedback": [],
+            "/rest/v1/user_food_inventory": [],
             "/rest/v1/menu_images": [],
             "/rest/v1/meal_logs": [{"meal_log_id": "private-log", "photo_storage_path": "private-user/photo.png"}],
             "/rest/v1/meal_log_items": [],
@@ -53,7 +55,7 @@ def timing_records(caplog):
 
 
 @pytest.mark.parametrize("route,expected", [
-    ("/api/diet/recommendations?date=2026-09-16", {"auth", "recommendation", "meals", "foods", "menu_images"}),
+    ("/api/diet/recommendations?date=2026-09-16", {"auth", "recommendation", "meals", "foods", "menu_images", "feedback", "inventory_usage"}),
     ("/api/diet/meal-logs?from_date=2026-09-16&to_date=2026-09-16", {"auth", "meal_logs", "meal_log_items", "meal_photos"}),
     ("/api/diet/nutrition-summary?date=2026-09-16", {"auth", "recommendation", "meal_logs", "meal_log_items"}),
 ])

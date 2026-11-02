@@ -115,6 +115,30 @@ HTTP 오류는 아래 형태입니다. 입력값이나 OCR 원문을 오류에 �
 
 문서 종류가 결정된 이후 추출 오류는 저장된 문서를 조회할 수 있도록 HTTP 201/200 응답의 `ocr_status=failed`, `error`로 전달합니다. 코드: `OCR_NOT_CONFIGURED`(처리 서버 설정 없음 및 샘플 모드 비활성), `OCR_FAILED`(처리 서버 실패/타임아웃), `DOCUMENT_TYPE_MISMATCH`(종류 불일치), `EXTRACTION_FAILED`(추출 데이터 없음 또는 스키마 검증 실패).
 
+## 삭제
+
+`DELETE /api/health-documents/{uploaded_file_id}` (요청 body 없음)
+
+로그인 사용자가 소유한 confirmed 상태의 건강검진·체성분 문서를 영구 삭제합니다. 원본 Storage 객체와 OCR 결과뿐 아니라 confirm 시 생성된 `health_checkups` 또는 `body_compositions` 레코드도 함께 삭제합니다. 해당 건강 데이터를 참조해 생성된 종합 분석과 그 하위 데이터도 참조 무결성을 위해 함께 삭제됩니다. 성공 후 프론트는 `GET /api/health-documents?status=confirmed`를 다시 호출해 목록과 개수를 갱신하면 됩니다.
+
+성공은 HTTP 200입니다.
+
+```json
+{
+  "uploaded_file_id": "20260916-0000-4000-8000-000000000002",
+  "document_type": "health_checkup",
+  "status": "deleted",
+  "health_checkup_id": "20260916-0000-4000-8000-000000000003",
+  "body_composition_id": null
+}
+```
+
+체성분 문서는 `body_composition_id`가 채워지고 `health_checkup_id`는 null입니다. 존재하지 않거나 다른 사용자 소유인 ID는 HTTP 404 `DOCUMENT_NOT_FOUND`, confirmed 상태가 아니면 HTTP 409 `DOCUMENT_NOT_CONFIRMED`, Storage 또는 DB 삭제 실패는 HTTP 502 `DATA_SOURCE_ERROR`입니다. 실패 응답은 공통 오류 형식입니다.
+
+```json
+{"detail":{"code":"DOCUMENT_NOT_FOUND","message":"Health document was not found","fields":null}}
+```
+
 ## 서버 OCR 연결 설정
 
 `HEALTH_DOCUMENT_OCR_URL`은 신뢰할 수 있는 내부 OCR 어댑터의 URL입니다. 선택 설정 `HEALTH_DOCUMENT_OCR_TOKEN`은 이 서버에만 Bearer 토큰으로 전달합니다. Supabase 키나 사용자 인증 토큰은 전달하지 않습니다. 서버는 원본 파일을 multipart로 전송하며 최대 60초 대기합니다. 자동 판별 요청에는 document_type을 보내지 않고 판별·추출을 한 번에 요청합니다. 기존 명시적 지정 요청에만 document_type을 전달합니다. unknown/unsupported 문서는 어댑터가 422를 반환하거나 document_type=unknown/unsupported를 반환해야 합니다. 별도 판별 실패 시 클라이언트에 422를 반환하며 임의 종류로 대체하지 않습니다. 어댑터는 다음 JSON을 반환해야 합니다.

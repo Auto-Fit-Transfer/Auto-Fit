@@ -41,6 +41,8 @@ class ModelReply(BaseModel):
 
 METRICS = {"exercise_sessions", "exercise_minutes", "exercise_calories",
            "meal_count", "meal_calories"}
+MODEL_HTTP_TIMEOUT_SECONDS = 60
+MODEL_WALL_TIMEOUT_SECONDS = 65
 
 
 async def explain_records(question: str, answer: dict) -> str | None:
@@ -90,8 +92,12 @@ async def request_model(question_with_context: str) -> str | None:
         return None
     try:
         # Hard wall-clock budget as well as socket timeouts; never retry a paid call.
-        async with asyncio.timeout(10):
-            async with httpx.AsyncClient(timeout=8, follow_redirects=False, trust_env=False) as client:
+        async with asyncio.timeout(MODEL_WALL_TIMEOUT_SECONDS):
+            async with httpx.AsyncClient(
+                timeout=MODEL_HTTP_TIMEOUT_SECONDS,
+                follow_redirects=False,
+                trust_env=False,
+            ) as client:
                 async with client.stream("POST", config.url,
                         headers={"Authorization": f"Bearer {config.api_key}"},
                         json={"question": question_with_context,

@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from dotenv import dotenv_values
 from backend.app import main
+from backend.tests.live_test_cleanup import cleanup_user_defaults
 
 PROJECT = "eeeqibyssajykrhvecbv"
 API_BASE = "https://auto-fit-api-dev.onrender.com"
@@ -38,7 +39,7 @@ async def run(local: bool) -> None:
     async with httpx.AsyncClient(base_url=settings.supabase_url, timeout=30, trust_env=False) as db:
         try:
             for _ in range(2):
-                email, password = f"autofit-photo-test-{uuid4().hex}@example.invalid", secrets.token_urlsafe(32)
+                email, password = f"autofit-photo-test-{uuid4().hex}@example.invalid", "Af9!" + secrets.token_urlsafe(32)
                 created = await db.post('/auth/v1/admin/users', headers=admin,
                                        json={"email": email, "password": password, "email_confirm": True,
                                              "app_metadata": {"autofit_integration_test": True}})
@@ -100,6 +101,7 @@ async def run(local: bool) -> None:
                 await db.post('/auth/v1/logout?scope=global', headers={"apikey": settings.supabase_publishable_key,
                               "Authorization": f"Bearer {token}"})
             for user_id in user_ids:
+                errors.extend(await cleanup_user_defaults(db, admin, user_id))
                 removed = await db.delete(f'/auth/v1/admin/users/{user_id}', headers=admin)
                 if not removed.is_success:
                     errors.append('test user cleanup')

@@ -109,6 +109,10 @@ GET /api/diet/recommendations?date=2026-09-16
   반환한다.
 - 과거 화면 재현을 위해 추천 상태가 `active`, `completed`, `cancelled`인지와 관계없이
   가장 최근 버전을 조회한다.
+- 각 끼니의 `used_ingredients[]`는 추천 생성 또는 재추천 당시 저장한 냉장고 재료
+  스냅샷을 반환한다. 이후 현재 재고가 소진·수정·삭제되어도 과거 사용 재료는 유지된다.
+- 스냅샷 도입 전 기존 끼니는 현재 사용 가능한 냉장고 재료와 음식명을 다시 매칭하는
+  호환 로직을 사용한다.
 - 추천이 없는 날짜는 `200`과 `{"result":null}`을 반환한다.
 - 응답의 `result` 구조는 기존 `/recommendations/latest`와 동일하다.
 
@@ -130,6 +134,9 @@ Content-Type: application/json
 - 기존 `diet_meal_id`를 유지하고 음식 항목만 한 트랜잭션으로 교체한다.
 - 새 식단은 기존 메뉴와 완전히 동일할 수 없으며 대표 음식이 달라야 한다.
 - 새 식단의 열량은 기존 `recommended_calories`의 ±15% 범위를 목표로 한다.
+- 사용 가능한 냉장고 재료가 있으면 재료명을 AI 입력의 `available_ingredients`로 전달하고,
+  결과 음식명에서 실제 사용 여부를 다시 검증한다.
+- 검증된 사용 재료는 해당 끼니의 `used_ingredients` 스냅샷으로 원자적으로 저장한다.
 - 일일 영양 목표 값은 한 끼 재추천으로 변경하지 않는다.
 
 성공 시 `200`과 갱신된 한 끼 전체를 반환한다.
@@ -137,22 +144,34 @@ Content-Type: application/json
 ```json
 {
   "ok": true,
-  "generator": "rules_v1",
+  "generator": "ai_v1",
   "meal": {
     "diet_meal_id": "00000000-0000-0000-0000-000000000000",
     "meal_type": "lunch",
     "meal_order": 2,
     "recommended_calories": 520,
     "recommendation_note": "냉장고 재료를 반영한 다른 점심 식단",
+    "source_type": "ai_generated",
     "status": "recommended",
     "foods": []
-  }
+  },
+  "used_ingredients": [
+    {
+      "user_food_inventory_id": "00000000-0000-0000-0000-000000000000",
+      "name": "두부",
+      "matched_food_name": "두부구이",
+      "quantity": 1,
+      "unit": "모"
+    }
+  ]
 }
 ```
 
-현재 조건에서 다른 메뉴를 만들 수 없으면 `409`로 응답한다. DB 교체는 전용
+AI가 비활성·응답 실패·계약 위반 상태이거나 사용 가능한 냉장고 재료를 결과에 반영하지
+못하면 fallback 결과로 위장하지 않고 `503`으로 응답한다. DB 교체는 전용
 `replace_diet_meal` RPC에서 수행하며, 부분 삭제나 부분 삽입이 남지 않도록 원자적으로
-처리한다. 함수는 `security invoker`로 만들고 `PUBLIC`, `anon`, `authenticated`의 실행
+처리하고 `source_type`도 함께 갱신한다. 함수는 `security invoker`로 만들고
+`PUBLIC`, `anon`, `authenticated`의 실행
 권한을 회수한 뒤 `service_role`에만 실행 권한을 부여한다. 함수 내부에서도 JWT에서
 확정된 `p_user_id`와 추천 소유권을 조건으로 확인한다.
 

@@ -1,5 +1,7 @@
 """Read-only, owner-scoped popup data for an existing health assessment."""
 
+import asyncio
+
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from datetime import UTC, datetime
 from typing import Any, Callable, Literal
@@ -9,6 +11,8 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, Field, ValidationError
+
+from backend.app.http_client import client_scope
 
 VERSION = "1.0.0"
 CRITERIA_VERSION = "verified-2026-09-17"
@@ -331,10 +335,15 @@ async def fetch_popup_data(assessment_id: UUID | None, user_id: str, settings: A
     headers = {"apikey": key}
     if not key.startswith("sb_secret_"):
         headers["Authorization"] = f"Bearer {key}"
-    async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
+    async with client_scope() as client:
         async def row(table: str, params: dict) -> dict | None:
             try:
-                response = await client.get(f"{settings.supabase_url}/rest/v1/{table}", headers=headers, params={"user_id": f"eq.{user_id}", "limit": "1", **params})
+                response = await client.get(
+                    f"{settings.supabase_url}/rest/v1/{table}",
+                    headers=headers,
+                    params={"user_id": f"eq.{user_id}", "limit": "1", **params},
+                    timeout=15,
+                )
                 response.raise_for_status()
                 rows = response.json()
                 if not isinstance(rows, list) or any(not isinstance(r, dict) for r in rows):
@@ -354,11 +363,17 @@ async def fetch_popup_data(assessment_id: UUID | None, user_id: str, settings: A
             assessment = AssessmentRecord.model_validate(assessment).model_dump(mode="json")
         except ValidationError:
             raise HTTPException(502, detail="건강 평가 자료 형식을 확인할 수 없습니다.") from None
-        body, checkup = None, None
-        if assessment.get("body_composition_id"):
-            body = await row("body_compositions", {"select": "measured_at,height_cm,weight_kg,bmi,body_fat_mass_kg,body_fat_percentage,skeletal_muscle_mass_kg", "body_composition_id": f"eq.{assessment['body_composition_id']}"})
-        if assessment.get("health_checkup_id"):
-            checkup = await row("health_checkups", {"select": "checkup_date,fasting_glucose,systolic_bp,diastolic_bp", "health_checkup_id": f"eq.{assessment['health_checkup_id']}"})
+        async def body_row() -> dict | None:
+            if not assessment.get("body_composition_id"):
+                return None
+            return await row("body_compositions", {"select": "measured_at,height_cm,weight_kg,bmi,body_fat_mass_kg,body_fat_percentage,skeletal_muscle_mass_kg", "body_composition_id": f"eq.{assessment['body_composition_id']}"})
+
+        async def checkup_row() -> dict | None:
+            if not assessment.get("health_checkup_id"):
+                return None
+            return await row("health_checkups", {"select": "checkup_date,fasting_glucose,systolic_bp,diastolic_bp", "health_checkup_id": f"eq.{assessment['health_checkup_id']}"})
+
+        body, checkup = await asyncio.gather(body_row(), checkup_row())
         # A dangling or cross-owner link must not expose snapshot health values either.
         if (assessment.get("body_composition_id") and body is None) or (assessment.get("health_checkup_id") and checkup is None):
             raise HTTPException(404, detail="연결된 건강 자료를 찾을 수 없습니다.")

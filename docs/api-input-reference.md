@@ -1,10 +1,25 @@
 # Auto-Fit 전체 API 입력 필드 참조
 
-기존 자동 추출 목록: 2026-09-16. 현재 로컬 OpenAPI는 2026-09-17 기준 총 53개 operation이다. 아래 신규 팝업 입력을 추가했으며 기존 업로드·식단 사진 입력은 해당 API 계약을 함께 참고한다. 실제 서버 배포 상태를 보증하지 않는다.
+기존 자동 추출 목록: 2026-09-16. 현재 로컬 OpenAPI는 총 60개 operation이다. 아래 종합 분석 조회·냉장고 개인화 갱신 입력을 추가했으며 기존 업로드·식단 사진 입력은 해당 API 계약을 함께 참고한다. 실제 서버 배포 상태를 보증하지 않는다.
 
 인증·호출 순서·응답 형태·추가 검증은 [프론트엔드 협업 안내](frontend-api-handoff.md), 원본은 [openapi.json](openapi.json)을 참고한다.
 
 주의: 코드가 일반 Header로 인증을 받으므로 OpenAPI의 Authorization optional 표시는 인증 면제를 뜻하지 않는다. /health 외 모든 API에는 유효한 Bearer 토큰이 필요하다. 응답 스키마의 object는 아직 구체적인 응답 타입이 없음을 뜻한다.
+
+## GET /api/health-assessments/input
+
+인증 헤더 `Authorization: Bearer <token>` 필수. 요청 본문·쿼리 없음.
+확정 저장된 본인의 최신 건강검진·인바디·사용 가능한 냉장고 재료·알레르기를 한 번에 반환한다. `ready`는 두 건강 자료가 모두 있을 때만 true이며, 없는 자료는 `missing`에 `health_checkup` 또는 `body_composition`으로 표시한다. `diet_context`에는 KST 기준으로 만료·수량 0·사용 불가 재료를 제외한 스냅샷 입력이 들어간다. `user_id`, `raw_data`는 반환하지 않는다. 상태 코드: 200, 401, 502.
+
+## POST /api/health-assessments/{assessment_id}/diet-personalization/refresh
+
+경로의 `assessment_id`와 인증 헤더가 필수이며 요청 본문은 없다. 기존 건강 분석은 유지하고 현재 냉장고·알레르기를 평가 스냅샷에 저장한 뒤 맞춤 제안을 갱신한다. 응답은 `MainAnalysisResponse`. 상태 코드: 200, 401, 404, 409, 422, 502.
+
+## GET /api/health-assessments/latest
+
+인증 헤더 `Authorization: Bearer <token>` 필수. 요청 본문·쿼리 없음.
+응답은 `MainAnalysisResponse`. 상태 코드: 200, 401, 404, 502.
+[저장값 우선순위·임시 문구 생성 조건·응답 계약](main-analysis-api-contract.md) 참고.
 
 ## GET /api/health-assessments/latest/popups
 
@@ -349,6 +364,9 @@ OpenAPI에 명시된 상태 코드: 204, 422. 런타임 인증·상태·DB 오�
 
 요청 본문 없음.
 
+응답의 `result.meals[].feedback`은 피드백이 없으면 null이며, 있으면
+`feedback_type`(`eaten`, `different_food`, `skipped`)과 관련 피드백 정보를 포함합니다.
+
 OpenAPI에 명시된 상태 코드: 200, 422. 런타임 인증·상태·DB 오류는 협업 안내 참고.
 
 ## GET /api/diet/recommendations/latest
@@ -358,6 +376,9 @@ OpenAPI에 명시된 상태 코드: 200, 422. 런타임 인증·상태·DB 오�
 | header | authorization | 아니오 | string 또는 null | — |
 
 요청 본문 없음.
+
+응답의 `result.meals[].feedback`은 피드백이 없으면 null이며, 있으면
+`feedback_type`(`eaten`, `different_food`, `skipped`)과 관련 피드백 정보를 포함합니다.
 
 OpenAPI에 명시된 상태 코드: 200, 422. 런타임 인증·상태·DB 오류는 협업 안내 참고.
 
@@ -401,6 +422,17 @@ OpenAPI에 명시된 상태 코드: 200, 422. 런타임 인증·상태·DB 오�
 | header | authorization | 아니오 | string 또는 null | — |
 
 JSON 본문: 필수, 타입: **DietMealFeedbackRequest**
+
+OpenAPI에 명시된 상태 코드: 200, 422. 런타임 인증·상태·DB 오류는 협업 안내 참고.
+
+## PATCH /api/diet/meals/{diet_meal_id}/feedback
+
+| 위치 | 이름 | 필수 | 타입 | 조건 |
+|---|---|---|---|---|
+| path | diet_meal_id | 예 | string (uuid) | — |
+| header | authorization | 아니오 | string 또는 null | — |
+
+JSON 본문: 필수, 타입: **DietMealFeedbackUpdateRequest**
 
 OpenAPI에 명시된 상태 코드: 200, 422. 런타임 인증·상태·DB 오류는 협업 안내 참고.
 

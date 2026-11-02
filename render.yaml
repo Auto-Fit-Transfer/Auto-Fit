@@ -21,6 +21,30 @@ services:
         sync: false
       - key: FRONTEND_ORIGIN
         sync: false
+      - key: CHAT_AI_ENABLED
+        sync: false
+      - key: CHAT_AI_URL
+        sync: false
+      - key: CHAT_AI_API_KEY
+        sync: false
+      - key: AI_SERVER_ENABLED
+        sync: false
+      - key: AI_SERVER_BASE_URL
+        sync: false
+      - key: AI_SERVER_API_KEY
+        sync: false
+      - key: FOOD_IMAGE_ENABLED
+        value: "false"
+      - key: FOOD_IMAGE_URL
+        value: https://lee-com.tailb6e4ed.ts.net/generate-food-image
+      - key: FOOD_IMAGE_API_KEY
+        sync: false
+      - key: FOOD_IMAGE_FORMAT
+        value: webp
+      - key: FOOD_IMAGE_TIMEOUT_SECONDS
+        value: "300"
+      - key: FOOD_IMAGE_MAX_ATTEMPTS
+        value: "2"
       - key: BACKEND_ALLOWED_HOSTS
         value: auto-fit-api-dev.onrender.com,localhost,127.0.0.1
       - key: MAX_REQUEST_BODY_BYTES
@@ -35,3 +59,5 @@ services:
         sync: false
       - key: HEALTH_DOCUMENT_OCR_MOCK_ENABLED
         value: "false"
+      - key: DIET_REFRESH_CRON_TOKEN
+        sync: false

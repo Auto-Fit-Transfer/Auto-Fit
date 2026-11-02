@@ -1,0 +1,97 @@
+{
+  "_meta": {
+    "date": "2026-10-19",
+    "synthetic": true,
+    "description": "Current backend DTO examples; NOT new AI endpoint fixtures or live DB records. Health IDs stay in backend; do not forward this response verbatim to AI."
+  },
+  "diet_generate_request": {},
+  "diet_regenerate_request": {},
+  "chat_message_request": {
+    "content": "오늘 식단을 알려줘",
+    "client_message_id": "00000000-0000-4000-8000-000000000004"
+  },
+  "health_input_response": {
+    "ready": true,
+    "missing": [],
+    "health_checkup": {
+      "health_checkup_id": "00000000-0000-4000-8000-000000000001",
+      "checkup_date": "2026-10-19",
+      "height_cm": "170",
+      "weight_kg": "70",
+      "bmi": "24.22",
+      "systolic_bp": 120,
+      "diastolic_bp": 80,
+      "fasting_glucose": "90",
+      "total_cholesterol": null,
+      "hdl_cholesterol": null,
+      "ldl_cholesterol": null,
+      "triglycerides": null,
+      "ast": null,
+      "alt": null,
+      "gamma_gtp": null,
+      "hemoglobin": null,
+      "creatinine": null,
+      "institution_name": null,
+      "checkup_type": null
+    },
+    "body_composition": {
+      "body_composition_id": "00000000-0000-4000-8000-000000000002",
+      "measured_at": "2026-10-19T09:00:00+09:00",
+      "height_cm": "170",
+      "weight_kg": "70",
+      "skeletal_muscle_mass_kg": "30.5",
+      "body_fat_mass_kg": "14",
+      "body_fat_percentage": "20",
+      "bmi": null,
+      "basal_metabolic_rate": "1550",
+      "visceral_fat_level": null,
+      "body_water_percentage": null,
+      "body_water_liters": null,
+      "protein_percentage": null,
+      "device_name": null
+    },
+    "diet_context": {
+      "captured_at": "2026-10-19T10:00:00+09:00",
+      "inventory": [
+        {
+          "inventory_item_id": "00000000-0000-4000-8000-000000000003",
+          "name": "브로콜리",
+          "quantity": "200",
+          "unit": "g",
+          "purchased_on": "2026-10-18",
+          "expires_on": "2026-10-21",
+          "freshness_status": "fresh"
+        }
+      ],
+      "allergies": [
+        "땅콩"
+      ]
+    }
+  },
+  "legacy_chat_request_shape": {
+    "question": "합성 테스트 질문",
+    "user_info": {},
+    "chat_history": []
+  },
+  "legacy_diet_model_answer_json": {
+    "meals": [
+      {
+        "meal_type": "lunch",
+        "meal_order": 2,
+        "recommendation_note": "합성 계약 테스트 식단",
+        "foods": [
+          {
+            "food_name": "브로콜리 비빔밥",
+            "quantity": 300,
+            "unit": "g",
+            "calories": 400,
+            "carbohydrates": 60,
+            "protein": 18,
+            "fat": 10
+          }
+        ]
+      }
+    ]
+  },
+  "legacy_diet_model_answer_note": "JSON normally returned inside legacy /chat answer string; NOT /recommend/diet or public backend response."
+}

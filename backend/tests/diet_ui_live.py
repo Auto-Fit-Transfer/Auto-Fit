@@ -13,6 +13,7 @@ printed.
 """
 
 import argparse
+import re
 import secrets
 import time
 from datetime import date, timedelta
@@ -50,7 +51,7 @@ def run(project: str, screenshot: Path) -> None:
     )
     admin_headers = main.service_headers(settings)
     email = f"autofit-diet-ui-{uuid4().hex}@example.invalid"
-    password = secrets.token_urlsafe(32)
+    password = "Af9!" + secrets.token_urlsafe(32)
     user_id: str | None = None
     cleanup_token: str | None = None
     cleanup_errors: list[str] = []
@@ -166,8 +167,15 @@ def run(project: str, screenshot: Path) -> None:
                     regenerate_response.value.status == 200,
                     "receive successful one-meal regeneration response",
                 )
+                regenerate_payload = regenerate_response.value.json()
+                check(
+                    regenerate_payload["generator"] == "ai_v1"
+                    and regenerate_payload["meal"]["source_type"] == "ai_generated"
+                    and bool(regenerate_payload["used_ingredients"]),
+                    "show AI source and used inventory for regenerated meal",
+                )
                 expect(page.locator("#notice")).to_have_text(
-                    "화면을 최신 데이터로 갱신했습니다."
+                    re.compile(r"^AI 재추천 완료 · 냉장고 사용: .+")
                 )
                 expect(meals).to_have_count(4)
                 check(
