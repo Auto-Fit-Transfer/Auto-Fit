@@ -733,6 +733,32 @@ def test_build_exercise_recommendation_plan_rotates_after_previous_recommendatio
     ]
 
 
+def test_build_exercise_recommendation_plan_uses_kst_date_and_muscle_goal_label(
+    monkeypatch,
+) -> None:
+    from datetime import datetime
+
+    class FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            assert tz == main.KST
+            return cls(2026, 11, 3, 0, 30, tzinfo=tz)
+
+    monkeypatch.setattr(main, "datetime", FrozenDatetime)
+    plan = main.build_exercise_recommendation_plan(
+        {"goal_type": "muscle_gain", "experience_level": "beginner"},
+        {
+            "available_minutes": 30,
+            "available_equipment": [],
+            "condition_level": "좋음",
+            "discomfort_areas": [],
+        },
+    )
+
+    assert plan["recommendation"]["recommendation_date"] == "2026-11-03"
+    assert "근육량 증가" in plan["recommendation"]["recommendation_summary"]
+
+
 def test_generate_exercise_recommendation_uses_authenticated_user(monkeypatch) -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="authenticated-user")

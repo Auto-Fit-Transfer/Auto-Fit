@@ -1100,7 +1100,7 @@ def build_exercise_recommendation_plan(
 
     goal_labels = {
         "weight_loss": "체지방 감량",
-        "muscle_gain": "근력량 증가",
+        "muscle_gain": "근육량 증가",
         "endurance": "체력 향상",
         "maintenance": "건강 유지",
         "rehabilitation": "컨디셔닝 / 기능 회복",
@@ -1108,7 +1108,7 @@ def build_exercise_recommendation_plan(
     }
     return {
         "recommendation": {
-            "recommendation_date": date.today().isoformat(),
+            "recommendation_date": datetime.now(KST).date().isoformat(),
             "goal": goal,
             "total_duration_minutes": available_minutes,
             "intensity": intensity,
