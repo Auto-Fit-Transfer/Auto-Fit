@@ -48,6 +48,7 @@ from backend.app.diet_ai import (
     generate_regenerated_meal,
     mix_meals,
     select_ai_slots,
+    usable_catalog_foods,
 )
 from backend.app.food_image_generation import (
     generate_missing_menu_images,
@@ -2516,8 +2517,12 @@ async def build_daily_diet_recommendation_plan(
     ai_count = sum(
         meal.get("source_type") == "ai_generated" for meal in plan["meals"]
     )
+    if usable_catalog_foods(food_catalog, allergy_names):
+        source_reason = f"DB 음식 영양정보와 AI 생성 식단 {ai_count}개를 혼합했습니다. "
+    else:
+        source_reason = f"규칙 기반 식단과 AI 생성 식단 {ai_count}개를 혼합했습니다. "
     plan["recommendation"]["ai_reason"] = (
-        f"DB 음식 영양정보와 AI 생성 식단 {ai_count}개를 혼합했습니다. "
+        source_reason
         + (
             f"실제 메뉴에 반영된 냉장고 재료: {', '.join(used_inventory_names)}. "
             if used_inventory_names

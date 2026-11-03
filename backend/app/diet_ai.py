@@ -297,19 +297,7 @@ def build_catalog_meals(
     allergy_names: list[str] | None = None,
     inventory_names: list[str] | None = None,
 ) -> list[dict[str, Any]]:
-    usable = [
-        row
-        for row in food_catalog
-        if row.get("name")
-        and str(row.get("source_type") or "").strip().casefold()
-        not in EXCLUDED_CATALOG_SOURCE_TYPES
-        and not any(
-            marker in str(row["name"]).casefold()
-            for marker in EXCLUDED_CATALOG_NAME_MARKERS
-        )
-        and Decimal(str(row.get("calories") or 0)) > 0
-        and not conflicts_allergy(row["name"], allergy_names or [])
-    ]
+    usable = usable_catalog_foods(food_catalog, allergy_names)
     if not usable:
         raise ValueError("No usable DB food catalog entries are available")
     usable.sort(
@@ -344,6 +332,25 @@ def build_catalog_meals(
     return results
 
 
+def usable_catalog_foods(
+    food_catalog: list[dict[str, Any]],
+    allergy_names: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    return [
+        row
+        for row in food_catalog
+        if row.get("name")
+        and str(row.get("source_type") or "").strip().casefold()
+        not in EXCLUDED_CATALOG_SOURCE_TYPES
+        and not any(
+            marker in str(row["name"]).casefold()
+            for marker in EXCLUDED_CATALOG_NAME_MARKERS
+        )
+        and Decimal(str(row.get("calories") or 0)) > 0
+        and not conflicts_allergy(row["name"], allergy_names or [])
+    ]
+
+
 def mix_meals(
     base_meals: list[dict[str, Any]],
     ai_meals: list[dict[str, Any]],
@@ -359,11 +366,17 @@ def mix_meals(
         for meal in base_meals
         if (meal["meal_type"], int(meal["meal_order"])) not in ai_by_slot
     ]
-    db_by_slot = {
-        (meal["meal_type"], int(meal["meal_order"])): meal
-        for meal in build_catalog_meals(
+    if usable_catalog_foods(food_catalog, allergy_names):
+        catalog_slots = build_catalog_meals(
             db_slots, food_catalog, allergy_names, inventory_names
         )
+    else:
+        catalog_slots = [
+            {**meal, "source_type": "rules_based"} for meal in db_slots
+        ]
+    db_by_slot = {
+        (meal["meal_type"], int(meal["meal_order"])): meal
+        for meal in catalog_slots
     }
     mixed = [
         ai_by_slot.get((meal["meal_type"], int(meal["meal_order"])))

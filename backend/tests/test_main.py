@@ -83,6 +83,29 @@ def test_daily_diet_refresh_runs_with_valid_token(monkeypatch) -> None:
     assert response.json() == {"ok": True, "succeeded": 12, "failed": 0}
 
 
+def test_daily_plan_uses_rules_based_remainder_when_catalog_is_only_dummy(monkeypatch) -> None:
+    async def fake_generate(slots, allergy_names, model, inventory_names):
+        return [{
+            **slot, "source_type": "ai_generated", "recommendation_note": "AI 추천",
+            "foods": [{"food_name": f"AI 식단 {slot['meal_order']}", "quantity": 100,
+                       "unit": "g", "calories": slot["recommended_calories"],
+                       "carbohydrates": 40, "protein": 20, "fat": 10}],
+        } for slot in slots]
+
+    monkeypatch.setattr(main, "generate_ai_meals", fake_generate)
+    plan = asyncio.run(main.build_daily_diet_recommendation_plan(
+        "user-1", [], [],
+        [{"name": "[DUMMY] 현미밥", "source_type": "dummy", "calories": 200}],
+        target_date=date(2026, 11, 3),
+    ))
+
+    sources = [meal["source_type"] for meal in plan["meals"]]
+    assert len(sources) == 4
+    assert sources.count("ai_generated") in (2, 3)
+    assert sources.count("rules_based") == 4 - sources.count("ai_generated")
+    assert "DB 음식 영양정보" not in plan["recommendation"]["ai_reason"]
+
+
 def test_roundtrip_returns_message_and_profile(monkeypatch) -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="user-123", email="user@example.com")
