@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getExerciseApiErrorMessage } from '@/src/api/exercise';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
-import { exerciseLocationLabels } from '@/src/features/exercise/exerciseData';
+import { exerciseIntensityLabels, exerciseLocationLabels } from '@/src/features/exercise/exerciseData';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
@@ -62,7 +62,7 @@ export default function ExerciseSummaryScreen() {
     routine?.estimatedCalories === null || routine?.estimatedCalories === undefined
       ? null
       : '약 ' + String(routine.estimatedCalories) + 'kcal',
-    routine?.intensity ? '강도 ' + routine.intensity : null,
+    routine?.intensity ? '강도 ' + (exerciseIntensityLabels[routine.intensity] ?? routine.intensity) : null,
   ].filter((value): value is string => Boolean(value));
   const conditions = [
     condition.availableMinutes === null ? null : String(condition.availableMinutes) + '분',

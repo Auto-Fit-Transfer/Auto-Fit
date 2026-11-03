@@ -48,7 +48,7 @@ export default function StartMoveScreen() {
           style={[s.heroImage, { top: 52 + extra }]}
         />
         <Text style={[s.headline, { top: 224 + extra, fontSize: compact ? 20 : 24 }]}>
-          나에게 맞는 <Text style={{ color: colors.primaryMedium }}>관리</Text>를 시작해볼까요?
+          나에게 맞는 <Text style={{ color: '#BAB1FF' }}>관리</Text>를 시작해볼까요?
         </Text>
         <Text style={[s.heroDescription, { top: 267 + extra }]}>
           분석된 건강 정보를 바탕으로{'\n'}원하는 관리 방법을 선택해 주세요.

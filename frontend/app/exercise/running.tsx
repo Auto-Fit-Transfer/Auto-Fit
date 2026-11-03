@@ -5,7 +5,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View }
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveRunningSession, getRunningApiErrorMessage, getRunningRecommendations, getSavedRunningCourses, startFreeRun, type RunningCourse, type RunningDistanceOption, type RunningSavedCourse, type RunningSession } from '@/src/api/running';
-import { coursesWithRenderablePaths, hasRenderablePath } from '@/src/features/running/courseRoute';
+import { courseDifficultyLabel, coursesWithRenderablePaths, hasRenderablePath } from '@/src/features/running/courseRoute';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
@@ -128,7 +128,7 @@ export default function RunningRecommendations() {
       {courses.length > 0 ? <Text style={styles.sectionTitle}>추천 코스 {courses.length}개</Text> : null}
       {courses.map((course, index) => <Pressable accessibilityRole="button" accessibilityLabel={`${nameOf(course)} 코스 자세히 보기`} onPress={() => router.push({ pathname: '/exercise/running-course', params: { courseId: course.course_id } })} key={course.course_id || String(index)} style={styles.card}>
         <Text style={styles.courseTitle}>{nameOf(course)}</Text>
-        <Text style={styles.meta}>{[course.region, typeof course.distance_km === 'number' ? `${course.distance_km}km` : null, typeof course.estimated_duration_minutes === 'number' ? `약 ${course.estimated_duration_minutes}분` : null, course.difficulty].filter(Boolean).join(' · ')}</Text>
+        <Text style={styles.meta}>{[course.region, typeof course.distance_km === 'number' ? `${course.distance_km}km` : null, typeof course.estimated_duration_minutes === 'number' ? `약 ${course.estimated_duration_minutes}분` : null, courseDifficultyLabel(course.difficulty)].filter(Boolean).join(' · ')}</Text>
         {course.description ? <Text style={styles.body}>{course.description}</Text> : null}
         <Text style={styles.courseLink}>코스 보기 · 경로 확인 · 저장  ›</Text>
       </Pressable>)}

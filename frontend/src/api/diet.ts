@@ -1,6 +1,8 @@
 import { ApiError, apiRequest, getApiErrorMessage } from '@/src/api/client';
 import { Platform } from 'react-native';
 
+import { weeklyDietErrorMessage } from '@/src/features/diet/weeklyDietErrors';
+
 type ApiObject = Record<string, unknown>;
 
 export type DietFeedbackType = 'different_food' | 'eaten' | 'skipped';
@@ -319,6 +321,8 @@ export function getDietMealLogs(fromDate: string, toDate: string) {
 
 export function getDietApiErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
+    const message = weeklyDietErrorMessage(error.detail);
+    if (message) return message;
     switch (error.status) {
       case 0:
         return '네트워크 연결을 확인한 뒤 다시 시도해 주세요.';

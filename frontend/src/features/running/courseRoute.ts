@@ -33,11 +33,24 @@ export function previewRouteInput(course: RunningCourse) {
   const end = pointCoordinate(course.end);
   if (!start || !end) return null;
   const waypoints = (course.waypoints ?? []).map(pointCoordinate).filter((point) => point !== null);
+  // Routing past a waypoint with no coordinate would draw a different course under the official name.
+  if (waypoints.length !== (course.waypoints?.length ?? 0)) return null;
   return { start, end, waypoints };
 }
 
 export function canPreviewRoute(course: RunningCourse) {
   return previewRouteInput(course) !== null;
+}
+
+const courseDifficultyLabels: Record<string, string> = {
+  easy: '쉬움',
+  moderate: '보통',
+  hard: '어려움',
+};
+
+// 'unknown' and values outside the contract show nothing rather than an English code.
+export function courseDifficultyLabel(value: unknown): string | null {
+  return typeof value === 'string' ? courseDifficultyLabels[value] ?? null : null;
 }
 
 export function routePolyline(

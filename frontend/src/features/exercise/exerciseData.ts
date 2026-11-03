@@ -59,6 +59,12 @@ export const initialExerciseCondition: ExerciseCondition = {
   discomfortArea: '',
 };
 
+export const exerciseIntensityLabels: Record<string, string> = {
+  low: '낮음',
+  moderate: '보통',
+  high: '높음',
+};
+
 export const exerciseLocationLabels: Record<ExerciseLocation, string> = {
   gym: '헬스장',
   home: '집',

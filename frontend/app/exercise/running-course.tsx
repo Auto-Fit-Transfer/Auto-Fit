@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { getRunningApiErrorMessage, getRunningCourseDetail, getSavedRunningCourses, previewRunningRoute, saveRunningCourse, startSavedCourseRun, type RunningCourse, type RunningRoutePreview } from '@/src/api/running';
 import { KakaoRouteMap } from '@/src/components/exercise/KakaoRouteMap';
-import { canPreviewRoute, previewRouteInput, routePoints, routePolyline } from '@/src/features/running/courseRoute';
+import { canPreviewRoute, courseDifficultyLabel, previewRouteInput, routePoints, routePolyline } from '@/src/features/running/courseRoute';
 import { KAKAO_MAP_JS_KEY } from '@/src/features/running/kakaoMap';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
@@ -156,9 +156,9 @@ export default function RunningCourseScreen() {
         <View style={s.metrics}>
           <View style={s.metric}><Text style={s.metricLabel}>거리</Text><Text style={s.metricValue}>{typeof distanceKm === 'number' ? `${Math.round(distanceKm * 10) / 10}km` : '—'}</Text></View>
           <View style={s.metric}><Text style={s.metricLabel}>예상 시간</Text><Text style={s.metricValue}>{typeof course.estimated_duration_minutes === 'number' ? `약 ${course.estimated_duration_minutes}분` : '—'}</Text></View>
-          <View style={s.metric}><Text style={s.metricLabel}>난이도</Text><Text style={s.metricValue}>{course.difficulty || '—'}</Text></View>
+          <View style={s.metric}><Text style={s.metricLabel}>난이도</Text><Text style={s.metricValue}>{courseDifficultyLabel(course.difficulty) || '—'}</Text></View>
         </View>
-        {validationNeeded ? <View style={s.notice}><Text style={s.body}>{canPreviewRoute(course) ? `경로를 검증하지 못했어요. ${previewError || '잠시 후 다시 시도해 주세요.'}` : '이 코스의 출발·도착 좌표가 없어 경로를 검증할 수 없어요.'}</Text></View> : null}
+        {validationNeeded ? <View style={s.notice}><Text style={s.body}>{canPreviewRoute(course) ? `경로를 검증하지 못했어요. ${previewError || '잠시 후 다시 시도해 주세요.'}` : '이 코스는 좌표 정보가 부족해 경로를 검증할 수 없어요.'}</Text></View> : null}
         {pathMissing ? <View style={s.notice}><Text style={s.body}>경로 좌표가 없어 이 코스를 저장할 수 없어요.</Text></View> : null}
         {distanceAcceptanceNeeded ? <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: acceptDistanceError }} onPress={() => setAcceptDistanceError((value) => !value)} style={s.notice}><Text style={s.body}>{acceptDistanceError ? '☑' : '□'}  요청한 거리와 실제 코스가 {course.distance_error_percent ?? '다소'}% 차이 나는 것을 확인했어요.</Text></Pressable> : null}
         {error && course ? <Text style={s.error}>{error}</Text> : null}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canPreviewRoute, coursesWithRenderablePaths, previewRouteInput, routePoints, routePolyline } from '../src/features/running/courseRoute.ts';
+import { canPreviewRoute, courseDifficultyLabel, coursesWithRenderablePaths, previewRouteInput, routePoints, routePolyline } from '../src/features/running/courseRoute.ts';
 import { kakaoMapHtml } from '../src/features/running/kakaoMap.ts';
 
 test('kakao map page encodes the key and draws only numeric route points', () => {
@@ -16,11 +16,12 @@ test('kakao map page encodes the key and draws only numeric route points', () =>
 test('official course points are previewed from their nested coordinates', () => {
   const start = { name: '출발', address: '광주', coordinate: { latitude: 35.1, longitude: 126.8 } };
   const end = { name: '도착', address: '광주', coordinate: { latitude: 35.12, longitude: 126.82 } };
-  assert.deepEqual(previewRouteInput({ start, end, waypoints: ['들판', { latitude: 35.11, longitude: 126.81 }] }), {
+  assert.deepEqual(previewRouteInput({ start, end, waypoints: [{ coordinate: { latitude: 35.11, longitude: 126.81 } }] }), {
     start: { latitude: 35.1, longitude: 126.8 },
     end: { latitude: 35.12, longitude: 126.82 },
     waypoints: [{ latitude: 35.11, longitude: 126.81 }],
   });
+  assert.equal(previewRouteInput({ start, end, waypoints: ['들판', { latitude: 35.11, longitude: 126.81 }] }), null);
   assert.equal(canPreviewRoute({ start, end: { name: '도착', coordinate: null } }), false);
   assert.equal(canPreviewRoute({ start, end: { name: '도착', coordinate: { latitude: 999, longitude: 126.82 } } }), false);
 });
@@ -63,4 +64,10 @@ test('recommendations omit courses without at least two usable path points', () 
     valid,
   ];
   assert.deepEqual(coursesWithRenderablePaths(courses), [valid]);
+});
+
+test('course difficulty shows Korean words and hides unknown codes', () => {
+  assert.equal(courseDifficultyLabel('moderate'), '보통');
+  assert.equal(courseDifficultyLabel('unknown'), null);
+  assert.equal(courseDifficultyLabel(undefined), null);
 });

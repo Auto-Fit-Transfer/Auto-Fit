@@ -143,7 +143,10 @@ function formatPrescription(
   const parts: string[] = [];
   if (item.executionType === 'time_based') {
     if (item.durationMinutes !== null) parts.push(`${item.durationMinutes}분`);
-    if (item.targetDurationSeconds !== null) parts.push(`목표 ${item.targetDurationSeconds}초`);
+    // Minutes already say the same target; seconds only help when they are all we have.
+    if (item.durationMinutes === null && item.targetDurationSeconds !== null) {
+      parts.push(`목표 ${item.targetDurationSeconds}초`);
+    }
   } else {
     if (item.repetitions !== null) parts.push(`${item.repetitions}회`);
     if (item.sets !== null) parts.push(`${item.sets}세트`);
