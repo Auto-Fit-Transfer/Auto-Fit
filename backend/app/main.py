@@ -51,6 +51,8 @@ from backend.app.diet_ai import (
     select_ai_slots,
     usable_catalog_foods,
 )
+from backend.app.ai_server import AIEndpoint, AIServerClient, AIServerError, get_ai_server_config
+from backend.app.exercise_ai import ExerciseAIError, build_plan as build_ai_exercise_plan, build_request as build_ai_exercise_request
 from backend.app.food_image_generation import (
     generate_missing_menu_images,
     get_food_image_settings,
@@ -1178,18 +1180,46 @@ async def prepare_exercise_routine(
     if not generate:
         return {"missing": [], "generated": False, "result": None}
 
-    previous = await fetch_latest_exercise_recommendation(user_id, settings)
-    plan = build_exercise_recommendation_plan(
-        preferences, context, profile,
-        previous_items=previous["items"] if previous else None,
-    )
+    exercise_ai_enabled = os.getenv("EXERCISE_AI_ENABLED", "false")
+    if exercise_ai_enabled not in {"true", "false"}:
+        raise HTTPException(503, detail={"code": "AI_CONFIGURATION_ERROR"})
+    if exercise_ai_enabled == "true":
+        try:
+            config = get_ai_server_config()
+        except ValueError:
+            raise HTTPException(503, detail={"code": "AI_CONFIGURATION_ERROR"}) from None
+        if config is None:
+            raise HTTPException(503, detail={"code": "AI_DISABLED"})
+        try:
+            ai_response = await AIServerClient(config).post(
+                AIEndpoint.EXERCISE, build_ai_exercise_request(preferences, context)
+            )
+        except AIServerError as exc:
+            error_status = 503 if exc.code in {
+                "AI_UNAVAILABLE", "AI_TIMEOUT", "AI_CONNECTION_ERROR"
+            } else 502
+            raise HTTPException(error_status, detail={"code": exc.code}) from None
+        try:
+            plan = build_ai_exercise_plan(
+                ai_response, preferences, context, datetime.now(KST).date().isoformat()
+            )
+        except ExerciseAIError:
+            raise HTTPException(502, detail={"code": "AI_EXERCISE_INVALID_RESPONSE"}) from None
+        generator = "auto-fit-ai"
+    else:
+        previous = await fetch_latest_exercise_recommendation(user_id, settings)
+        plan = build_exercise_recommendation_plan(
+            preferences, context, profile,
+            previous_items=previous["items"] if previous else None,
+        )
+        generator = "rules_v1"
     result = await create_exercise_recommendation(
         user_id,
         context["exercise_recommendation_context_id"],
         plan,
         settings,
     )
-    return {"missing": [], "generated": True, "result": result}
+    return {"missing": [], "generated": True, "generator": generator, "result": result}
 
 
 async def fetch_latest_exercise_recommendation(
@@ -3688,7 +3718,7 @@ async def generate_exercise_recommendation(
             status_code=status.HTTP_409_CONFLICT,
             detail="A new exercise recommendation context is required",
         )
-    return {"ok": True, "generator": "rules_v1", "result": outcome["result"]}
+    return {"ok": True, "generator": outcome.get("generator", "rules_v1"), "result": outcome["result"]}
 
 
 @app.post("/api/exercise/sessions/start", tags=["Exercise"])

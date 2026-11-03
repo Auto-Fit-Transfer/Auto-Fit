@@ -33,6 +33,8 @@ services:
         sync: false
       - key: AI_SERVER_API_KEY
         sync: false
+      - key: EXERCISE_AI_ENABLED
+        value: "false"
       - key: FOOD_IMAGE_ENABLED
         value: "false"
       - key: FOOD_IMAGE_URL
