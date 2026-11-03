@@ -49,6 +49,10 @@ const mealLabels: { id: R6Meal['id']; title: string }[] = [
   { id: 'dinner', title: '저녁' },
   { id: 'snack', title: '간식' },
 ];
+const viewTabs: { id: 'daily' | 'weekly'; label: string }[] = [
+  { id: 'daily', label: '일간' },
+  { id: 'weekly', label: '주간' },
+];
 const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
 
 function dateAtOffset(today: Date, offset: number) {
@@ -75,6 +79,7 @@ export function R6DietHome(props: Props) {
   const simple = preferences.simple_mode_enabled;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<R6Meal['id'] | null>(null);
+  const [view, setView] = useState<'daily' | 'weekly'>('daily');
   const canRecordPhoto = props.meals.some((meal) => meal.canSave);
   const selectedDate = dateAtOffset(props.today, props.selectedDateOffset);
   const week = useMemo(() => {
@@ -103,14 +108,29 @@ export function R6DietHome(props: Props) {
       >
         <View style={styles.titleRow}>
           <Text style={[styles.title, simple && simpleStyles.title, isDark && dark.text]}>식단</Text>
-          <SimpleReadButton text={`7일 식단과 식사 기록을 확인할 수 있어요. ${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 먹은 양은 ${number(energy?.current)}킬로칼로리입니다.`} />
+          <SimpleReadButton text={view === 'weekly' ? '7일 식단을 확인할 수 있어요.' : `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 식단입니다. 먹은 양은 ${number(energy?.current)}킬로칼로리입니다.`} />
         </View>
+        <View accessibilityRole="tablist" style={[styles.viewTabs, isDark && dark.card]}>
+          {viewTabs.map((tab) => (
+            <Pressable
+              accessibilityRole="tab"
+              aria-selected={tab.id === view}
+              key={tab.id}
+              onPress={() => setView(tab.id)}
+              style={[styles.viewTab, tab.id === view && styles.viewTabActive]}
+            >
+              <Text style={[styles.viewTabText, simple && simpleStyles.viewTabText, tab.id === view && styles.viewTabTextActive]}>
+                {tab.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        {view === 'weekly' ? (
         <View style={[styles.weeklyContent, isDark && styles.weeklyDarkSurface]}>
           <WeeklyDietContent />
         </View>
-        <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle, isDark && dark.text]}>
-          식사 기록
-        </Text>
+        ) : (
+        <>
         <View style={styles.monthRow}>
           <Text style={[styles.month, isDark && dark.text]}>
             {selectedDate.getFullYear()}년 {selectedDate.getMonth() + 1}월
@@ -224,7 +244,7 @@ export function R6DietHome(props: Props) {
         )}
 
         <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle, isDark && dark.text]}>
-          {props.selectedDateOffset === 0 ? '오늘의 일일 식단 기록' : '선택한 날의 일일 식단 기록'}
+          {props.selectedDateOffset === 0 ? '오늘 식단' : '선택한 날 식단'}
         </Text>
         {props.mealsLoading && <Text style={styles.stateText}>식단을 불러오고 있어요.</Text>}
         {props.mealsError && (
@@ -235,7 +255,7 @@ export function R6DietHome(props: Props) {
         )}
         {!props.mealsLoading && !props.mealsError && props.meals.length === 0 && (
           <View style={styles.stateCard}>
-            <Text style={styles.stateText}>이 날짜에 기록할 수 있는 일일 식단이 없어요.</Text>
+            <Text style={styles.stateText}>이 날짜에 추천된 식단이 없어요.</Text>
           </View>
         )}
         {props.meals.map((meal) => {
@@ -340,6 +360,8 @@ export function R6DietHome(props: Props) {
             </View>
           );
         })}
+        </>
+        )}
       </ScrollView>
       <Modal
         animationType="fade"
@@ -386,6 +408,20 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20 },
   titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   title: { fontFamily: fontFamilies.pretendardBold, fontSize: 23, color: '#1C1D22' },
+  viewTabs: {
+    flexDirection: 'row',
+    gap: 4,
+    marginTop: 16,
+    padding: 4,
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  viewTab: { alignItems: 'center', borderRadius: 7, flex: 1, minHeight: 40, justifyContent: 'center' },
+  viewTabActive: { backgroundColor: purple },
+  viewTabText: { color: '#6F7380', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
+  viewTabTextActive: { color: '#FFFFFF' },
   weeklyContent: { marginTop: 18 },
   weeklyDarkSurface: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12 },
   monthRow: {
@@ -558,6 +594,7 @@ const styles = StyleSheet.create({
 });
 
 const simpleStyles = StyleSheet.create({
+  viewTabText: { fontSize: 19 },
   title: { fontSize: 29 },
   card: { padding: 20 },
   energyValue: { fontSize: 25 },

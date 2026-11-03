@@ -57,24 +57,31 @@ export default function WeeklyRecipeScreen() {
   const [loadedKey, setLoadedKey] = useState('');
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
-  const requestKey = `${planId}:${day}:${mealType}:${servings}:${retry}`;
+  const [requestServings, setRequestServings] = useState(1);
+  const requestKey = `${planId}:${day}:${mealType}:${requestServings}:${retry}`;
   const loading = loadedKey !== requestKey;
+
+  // Each request can call the AI, so wait until the +/− presses stop.
+  useEffect(() => {
+    const timer = setTimeout(() => setRequestServings(servings), 600);
+    return () => clearTimeout(timer);
+  }, [servings]);
 
   useEffect(() => {
     if (!planId || !day || !mealType) return;
     let active = true;
-    void getWeeklyDietRecipe(planId, day, mealType, servings).then((result) => {
+    void getWeeklyDietRecipe(planId, day, mealType, requestServings).then((result) => {
       if (active) { setData(result); setError(''); }
     }).catch((cause: unknown) => {
       if (active) { setData(null); setError(getDietApiErrorMessage(cause)); }
     }).finally(() => { if (active) setLoadedKey(requestKey); });
     return () => { active = false; };
-  }, [planId, day, mealType, servings, requestKey]);
+  }, [planId, day, mealType, requestServings, requestKey]);
 
   const meal = data?.meal;
   return <View style={s.root}><ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 40 }]}>
     <View style={s.header}><Pressable accessibilityRole="button" accessibilityLabel="주간 식단으로 돌아가기" onPress={() => router.back()} style={s.back}><Text style={s.backText}>‹</Text></Pressable><Text style={s.headerTitle}>주간 식단 레시피</Text></View>
-    {!planId || !day || !mealType ? <Text style={s.muted}>주간 식단에서 레시피를 다시 열어 주세요.</Text> : loading ? <View style={s.loading}><ActivityIndicator color="#503DE1" /><Text style={s.muted}>음식별 조리법을 찾고 있어요. 잠시만 기다려 주세요.</Text></View> : error ? <View style={s.error}><Text style={s.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.source}>다시 시도</Text></Pressable></View> : meal ? <>
+    {!planId || !day || !mealType ? <Text style={s.muted}>주간 식단에서 레시피를 다시 열어 주세요.</Text> : loading ? <View style={s.loading}><ActivityIndicator color="#503DE1" /><Text style={s.muted}>음식별 조리법을 찾고 있어요. 시간이 꽤 걸릴 수 있어요.</Text></View> : error ? <View style={s.error}><Text style={s.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.source}>다시 시도</Text></Pressable></View> : meal ? <>
       <Text style={s.source}>{dayNames[day]}요일 · {mealNames[mealType]}</Text>
       <Text style={s.title}>{meal.menu_name || '추천 메뉴'}</Text>
       {Boolean(meal.menu_description) && <Text style={s.body}>{meal.menu_description}</Text>}

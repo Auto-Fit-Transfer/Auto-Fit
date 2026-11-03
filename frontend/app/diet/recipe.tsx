@@ -44,19 +44,12 @@ function readIngredients(recipe: DietRecipeSnapshot | null, foods: Food[]): Ingr
   return recipe.ingredients.flatMap((value) => {
     const item = record(value);
     const name = item ? string(item.name) || string(item.food_name) || string(item.ingredient) : string(value);
-    return name ? [{ name, amount: item ? measure(item.quantity ?? item.amount, item.unit) : '' }] : [];
+    const amount = !item ? '' : item.amount_g != null ? measure(item.amount_g, 'g') : measure(item.quantity ?? item.amount, item.unit);
+    return name ? [{ name, amount }] : [];
   });
 }
 
-function readSteps(recipe: DietRecipeSnapshot | null, foods: Food[]): Step[] {
-  if (!recipe && foods.some((food) => /그릭\s*요거트/.test(food.name))) {
-    const toppings = foods.filter((food) => !/그릭\s*요거트/.test(food.name));
-    return [
-      { title: '그릭요거트를 넓은 그릇에 펴 담아요.', detail: '숟가락 뒷면으로 가운데를 살짝 눌러 두면 토핑이 잘 올라가요.', minutes: 1 },
-      ...toppings.filter((food) => /블루베리|딸기|과일/.test(food.name)).map((food) => ({ title: food.name + '를 씻고 물기를 닦아요.', detail: '물기가 남아 있으면 요거트가 묽어질 수 있어요.', minutes: 1 })),
-      ...(toppings.length ? [{ title: toppings.map((food) => food.name).join(' · ') + '를 올려 마무리해요.', detail: '추천된 분량을 확인해 주세요.', minutes: 1 }] : []),
-    ];
-  }
+function readSteps(recipe: DietRecipeSnapshot | null): Step[] {
   if (!Array.isArray(recipe?.steps)) return [];
   return recipe.steps.flatMap((value) => {
     const item = record(value);
@@ -130,15 +123,14 @@ export default function RecipeScreen() {
 
   const foods = useMemo(() => readFoods(meal), [meal]);
   const ingredients = useMemo(() => readIngredients(recipe, foods), [recipe, foods]);
-  const steps = useMemo(() => readSteps(recipe, foods), [recipe, foods]);
+  const steps = useMemo(() => readSteps(recipe), [recipe]);
   const total = (key: 'carbohydrates' | 'protein' | 'fat') => foods.length && foods.every((food) => food[key] != null)
     ? foods.reduce((sum, food) => sum + (food[key] ?? 0), 0) : null;
   const carbs = total('carbohydrates');
   const protein = total('protein');
   const fat = total('fat');
   const kcal = number(meal?.recommended_calories ?? meal?.calories);
-  const isYogurt = /그릭\s*요거트/.test(recipe?.title ?? '') || foods.some((food) => /그릭\s*요거트/.test(food.name));
-  const title = string(recipe?.title) || (isYogurt ? '그릭요거트 볼' : foods.length === 1 ? foods[0].name : '추천 식단 레시피');
+  const title = string(recipe?.title) || (foods.length === 1 ? foods[0].name : '추천 식단 레시피');
   const prep = number(recipe?.prep_minutes);
   const servings = number(recipe?.servings);
   const note = string(meal?.recommendation_note);
@@ -175,8 +167,8 @@ export default function RecipeScreen() {
     <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 10, paddingBottom: insets.bottom + 32 }]}>
       <View style={s.header}><Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={back} style={s.backHit}><Text style={s.back}>‹</Text></Pressable><Text style={s.headerTitle}>레시피</Text><SimpleReadButton text={title + '. ' + description + '. 재료 ' + ingredients.length + '가지, 만드는 순서 ' + steps.length + '단계.'} /></View>
-      {invalid ? <Text style={s.secondary}>식단에서 레시피를 다시 열어 주세요.</Text> : loading ? <ActivityIndicator color={purple} style={s.loading} /> : error ? <View style={s.card}><Text style={s.secondary}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.link}>다시 시도</Text></Pressable></View> : <>
-        <View style={s.tags}><Text style={s.tag}>{string(meal?.meal_type) === 'dinner' ? '저녁' : string(meal?.meal_type) === 'breakfast' ? '아침' : string(meal?.meal_type) === 'lunch' ? '점심' : '간식'}</Text>{isYogurt && foods.every((food) => /그릭\s*요거트|블루베리|딸기|과일|호두|견과|그래놀라|꿀/.test(food.name)) && <Text style={s.tag}>불 없이</Text>}{protein != null && <Text style={s.tag}>단백질 {Math.round(protein)}g</Text>}</View>
+      {invalid ? <Text style={s.secondary}>식단에서 레시피를 다시 열어 주세요.</Text> : loading ? <View style={s.loading}><ActivityIndicator color={purple} /><Text style={s.secondary}>레시피를 준비하고 있어요. 처음 열 때는 시간이 걸릴 수 있어요.</Text></View> : error ? <View style={s.card}><Text style={s.secondary}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.link}>다시 시도</Text></Pressable></View> : <>
+        <View style={s.tags}><Text style={s.tag}>{string(meal?.meal_type) === 'dinner' ? '저녁' : string(meal?.meal_type) === 'breakfast' ? '아침' : string(meal?.meal_type) === 'lunch' ? '점심' : '간식'}</Text>{protein != null && <Text style={s.tag}>단백질 {Math.round(protein)}g</Text>}</View>
         <Text style={s.title}>{title}</Text>
         <View style={s.meta}><Text style={s.metaText}>◷  {prep == null ? '시간 정보 없음' : '약 ' + prep + '분'}</Text><Text style={s.metaText}>♨  {kcal == null ? '열량 정보 없음' : Math.round(kcal) + 'kcal'}</Text><Text style={s.metaText}>♙  {servings == null ? '1인분 기준' : servings + '인분'}</Text></View>
         <Text style={s.description}>{description}</Text>
@@ -207,7 +199,7 @@ export default function RecipeScreen() {
 
 const purple = '#503DE1';
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, gap: 16 }, loading: { marginTop: 32 },
+  root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, gap: 16 }, loading: { alignItems: 'center', gap: 10, marginTop: 32 },
   header: { height: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }, backHit: { width: 44, height: 44, justifyContent: 'center' }, back: { color: '#1B1B22', fontSize: 34, lineHeight: 38 }, headerTitle: { position: 'absolute', left: 54, right: 54, textAlign: 'center', color: '#1B1B22', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }, tag: { overflow: 'hidden', backgroundColor: '#F2F3F5', color: '#60616B', paddingHorizontal: 9, paddingVertical: 5, borderRadius: 6, fontSize: 12 },
   title: { color: '#1B1B22', fontSize: 25, fontFamily: fontFamilies.pretendardBold }, meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 }, metaText: { color: '#555660', fontSize: 14 }, description: { color: '#454650', fontSize: 15, lineHeight: 24 },
