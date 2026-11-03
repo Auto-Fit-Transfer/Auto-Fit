@@ -1,6 +1,7 @@
 import asyncio
 import httpx
 import json
+import pytest
 from datetime import date
 from fastapi.testclient import TestClient
 
@@ -711,7 +712,7 @@ def test_exercise_context_save_uses_authenticated_user_id(monkeypatch) -> None:
         assert context.available_minutes == 60
         assert context.location == "gym"
         assert context.available_equipment == ["machine", "mat"]
-        assert context.condition_level == "normal"
+        assert context.condition_level == "보통"
         assert context.discomfort_areas == ["허리"]
         assert context.condition_note is None
         return {"user_id": user_id, **context.model_dump()}
@@ -728,7 +729,7 @@ def test_exercise_context_save_uses_authenticated_user_id(monkeypatch) -> None:
                 "available_minutes": 60,
                 "location": "gym",
                 "available_equipment": ["machine", "mat", "machine"],
-                "condition_level": " normal ",
+                "condition_level": " 보통 ",
                 "discomfort_areas": [" 허리 ", "허리"],
                 "condition_note": "   ",
             },
@@ -754,7 +755,7 @@ def test_exercise_context_rejects_client_supplied_user_id() -> None:
                 "available_minutes": 30,
                 "location": "home",
                 "available_equipment": [],
-                "condition_level": "good",
+                "condition_level": "좋음",
                 "discomfort_areas": [],
                 "user_id": "another-user",
             },
@@ -779,7 +780,7 @@ def test_exercise_context_rejects_unknown_equipment_and_blank_area() -> None:
                 "available_minutes": 30,
                 "location": "home",
                 "available_equipment": ["treadmill"],
-                "condition_level": "good",
+                "condition_level": "좋음",
                 "discomfort_areas": [],
             },
         )
@@ -789,7 +790,7 @@ def test_exercise_context_rejects_unknown_equipment_and_blank_area() -> None:
                 "available_minutes": 30,
                 "location": "home",
                 "available_equipment": [],
-                "condition_level": "good",
+                "condition_level": "좋음",
                 "discomfort_areas": ["   "],
             },
         )
@@ -797,6 +798,21 @@ def test_exercise_context_rejects_unknown_equipment_and_blank_area() -> None:
         assert blank_area.status_code == 422
     finally:
         main.app.dependency_overrides.clear()
+
+
+@pytest.mark.parametrize("field,value", [
+    ("available_minutes", 50),
+    ("condition_level", "good"),
+    ("discomfort_areas", ["허리", "무릎"]),
+])
+def test_exercise_context_rejects_values_outside_screen_contract(field, value):
+    payload = {
+        "available_minutes": 30, "location": "home", "available_equipment": ["mat"],
+        "condition_level": "좋음", "discomfort_areas": [],
+    }
+    payload[field] = value
+    with pytest.raises(ValueError):
+        main.ExerciseRecommendationContextRequest.model_validate(payload)
 
 
 def test_latest_exercise_context_uses_authenticated_user_id(monkeypatch) -> None:
