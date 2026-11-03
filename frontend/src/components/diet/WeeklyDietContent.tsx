@@ -64,14 +64,14 @@ export function WeeklyDietContent({ showHeader = false }: { showHeader?: boolean
     return () => { active = false; };
   }, [requestKey]));
 
-  const generate = async (expectedVersion?: number) => {
+  const generate = async () => {
     if (requestBusy.current) return;
     requestBusy.current = true;
     setPending('generate');
     setError('');
     setMealError(null);
     try {
-      setPlan(await generateWeeklyDiet(start, expectedVersion));
+      setPlan(await generateWeeklyDiet(start));
     } catch (cause) {
       setError(getDietApiErrorMessage(cause));
       if (cause instanceof ApiError && cause.status === 409) setReload((value) => value + 1);
@@ -104,7 +104,6 @@ export function WeeklyDietContent({ showHeader = false }: { showHeader?: boolean
     {loading && !shownPlan ? <ActivityIndicator color="#503DE1" style={s.loading} /> : shownPlan ? <>
       {Boolean(shownPlan.result.summary) && <Text style={s.summary}>{shownPlan.result.summary}</Text>}
       {Boolean(shownPlan.result.strategy) && <Text style={s.muted}>{shownPlan.result.strategy}</Text>}
-      <Pressable accessibilityRole="button" disabled={Boolean(pending)} onPress={() => Alert.alert('7일 식단 다시 만들기', '현재 주간 식단 28개 메뉴가 모두 바뀝니다.', [{ text: '취소', style: 'cancel' }, { text: '다시 만들기', onPress: () => void generate(shownPlan.version) }])} style={s.outline}><Text style={s.outlineText}>{pending === 'generate' ? '생성 중…' : '이번 주 전체 다시 만들기'}</Text></Pressable>
       {shownPlan.result.weekly_plan.map((entry) => <View key={entry.day} style={s.daySection}>
         <Text style={s.dayTitle}>{days[entry.day]}요일 <Text style={s.date}>{entry.date}</Text></Text>
         {meals.map(({ key, label }) => {
