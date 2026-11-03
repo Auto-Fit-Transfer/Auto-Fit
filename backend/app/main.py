@@ -39,6 +39,7 @@ from backend.app.chat_persona import ChatCharacterId, apply_chat_persona
 from backend.app.chat_rate_limit import ChatRateLimiter
 from backend.app.http_client import client_scope, SharedHttpClientMiddleware
 from backend.app.diet_timing import DietTimingMiddleware, timed_http_client
+from backend.app.diet_recipe import daily_recipe_request, daily_source_fingerprint, snapshot_fields
 from backend.app.diet_ai import (
     DietAIUnavailable,
     conflicts_allergy,
@@ -65,7 +66,11 @@ from backend.app.analysis_summary import create_analysis_summary_router
 from backend.app.posture_analysis import create_posture_analysis_router
 from backend.app.saved_workout_routines import create_saved_workout_router
 from backend.app.running_sessions import create_running_sessions_router
-from backend.app.weekly_diet import create_weekly_diet_router
+from backend.app.weekly_diet import (
+    call_ai, create_weekly_diet_router, get_weekly_ai_client, validate_recipe_reply,
+)
+from backend.app.ai_server import AIEndpoint
+from backend.app.weekly_recipe_contract import RecipeReply
 from backend.app.running import create_running_router
 from backend.app.meal_photos import attach_photos, create_meal_photos_router
 from backend.app.security import (
@@ -3998,25 +4003,109 @@ async def get_diet_meal_recipe(
     settings: Settings = Depends(get_settings),
     request: Request = None,
 ) -> dict[str, Any]:
-    """Read only a recipe snapshot owned by the authenticated user."""
+    """Generate and save an owned daily meal's recipe on first read."""
+    context = await fetch_diet_meal_context(user.id, str(diet_meal_id), settings)
+    latest = await load_weekly_diet_context(user.id, settings)
+    payload = daily_recipe_request(context, latest["food_allergens"])
+    fingerprint = daily_source_fingerprint(payload)
     client = getattr(request.app.state, "supabase_http_client", None) if request else None
+
+    async def read_snapshot() -> dict | None:
+        async with timed_http_client("recipe", client) as http_client:
+            response = await http_client.get(
+                f"{settings.supabase_url}/rest/v1/diet_recipe_snapshots",
+                headers=service_headers(settings),
+                params={
+                    "select": "diet_recipe_snapshot_id,diet_meal_id,title,description,servings,prep_minutes,ingredients,steps,generator,created_at,source_fingerprint",
+                    "user_id": f"eq.{user.id}",
+                    "diet_meal_id": f"eq.{diet_meal_id}",
+                    "limit": "1",
+                },
+            )
+        if not response.is_success:
+            raise HTTPException(502, detail="Supabase diet recipe query failed")
+        try:
+            rows = response.json()
+        except ValueError:
+            rows = None
+        if not isinstance(rows, list) or len(rows) > 1:
+            raise HTTPException(502, detail="Invalid diet recipe response")
+        return rows[0] if rows else None
+
+    existing = await read_snapshot()
+    if existing and existing.get("source_fingerprint") == fingerprint:
+        return {"recipe": _public_diet_recipe(existing)}
+
+    ai = get_weekly_ai_client()
+    await ChatRateLimiter(
+        settings.supabase_url, service_headers(settings), user.id
+    ).check("answers")
+    reply = await call_ai(ai, AIEndpoint.RECIPE, payload, RecipeReply)
+    validate_recipe_reply(payload, reply)
+    current_context = await fetch_diet_meal_context(user.id, str(diet_meal_id), settings)
+    current_latest = await load_weekly_diet_context(user.id, settings)
+    if daily_source_fingerprint(
+        daily_recipe_request(current_context, current_latest["food_allergens"])
+    ) != fingerprint:
+        raise HTTPException(409, detail="Diet meal changed while generating its recipe")
+
+    snapshot_data = {
+        "source_fingerprint": fingerprint,
+        **snapshot_fields(reply),
+    }
     async with timed_http_client("recipe", client) as http_client:
-        response = await http_client.get(
-            f"{settings.supabase_url}/rest/v1/diet_recipe_snapshots",
-            headers=service_headers(settings),
-            params={
-                "select": "diet_recipe_snapshot_id,diet_meal_id,title,description,servings,prep_minutes,ingredients,steps,generator,created_at",
-                "user_id": f"eq.{user.id}",
-                "diet_meal_id": f"eq.{diet_meal_id}",
-                "limit": "1",
-            },
-        )
+        if existing:
+            params = {"user_id": f"eq.{user.id}", "select": "*"}
+            params["diet_recipe_snapshot_id"] = f"eq.{existing['diet_recipe_snapshot_id']}"
+            old_fingerprint = existing.get("source_fingerprint")
+            params["source_fingerprint"] = (
+                f"eq.{old_fingerprint}" if old_fingerprint else "is.null"
+            )
+            response = await http_client.patch(
+                f"{settings.supabase_url}/rest/v1/diet_recipe_snapshots",
+                headers=service_headers(settings, return_representation=True),
+                params=params,
+                json=snapshot_data,
+            )
+        else:
+            response = await http_client.post(
+                f"{settings.supabase_url}/rest/v1/diet_recipe_snapshots",
+                headers=service_headers(settings, return_representation=True),
+                params={"select": "*"},
+                json={"user_id": user.id, "diet_meal_id": str(diet_meal_id), **snapshot_data},
+            )
     if not response.is_success:
-        raise HTTPException(status_code=502, detail="Supabase diet recipe query failed")
-    rows = response.json()
-    if not isinstance(rows, list):
-        raise HTTPException(status_code=502, detail="Invalid diet recipe response")
-    return {"recipe": rows[0] if rows else None}
+        try:
+            error = response.json()
+        except ValueError:
+            error = None
+        if not isinstance(error, dict) or error.get("code") != "23505":
+            raise HTTPException(502, detail="Supabase diet recipe save failed")
+        saved = await read_snapshot()
+        if saved and saved.get("source_fingerprint") == fingerprint:
+            return {"recipe": _public_diet_recipe(saved)}
+        raise HTTPException(409, detail="Diet recipe changed while saving")
+    try:
+        saved_rows = response.json()
+    except ValueError:
+        saved_rows = None
+    if not isinstance(saved_rows, list) or len(saved_rows) > 1:
+        raise HTTPException(502, detail="Invalid diet recipe save response")
+    if not saved_rows:
+        saved = await read_snapshot()
+        if saved and saved.get("source_fingerprint") == fingerprint:
+            return {"recipe": _public_diet_recipe(saved)}
+        raise HTTPException(409, detail="Diet recipe changed while saving")
+    return {"recipe": _public_diet_recipe(saved_rows[0])}
+
+
+def _public_diet_recipe(row: dict) -> dict | None:
+    if not row.get("ingredients") and not row.get("steps"):
+        return None
+    return {key: row.get(key) for key in (
+        "diet_recipe_snapshot_id", "diet_meal_id", "title", "description", "servings",
+        "prep_minutes", "ingredients", "steps", "generator", "created_at",
+    )}
 
 
 @app.get("/api/diet/nutrition-summary", tags=["Diet"])

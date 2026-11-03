@@ -104,6 +104,29 @@ def recipe_request(row: dict, day: Day, meal_type: MealType, latest: dict,
     return payload
 
 
+def validate_recipe_reply(payload: dict, reply: dict) -> None:
+    result = reply["meal"]
+    if (result["day"] != payload["day"] or result["meal_type"] != payload["meal_type"]
+            or result["servings"] != payload["servings"]):
+        fail("AI_SLOT_MISMATCH")
+    if result["menu_name"] != payload["menu_name"] or len(result["items"]) != len(payload["items"]):
+        fail("AI_INVALID_RESPONSE")
+    if any(any(actual[key] != expected[key] for key in expected)
+           for actual, expected in zip(result["items"], payload["items"])):
+        fail("AI_INVALID_RESPONSE")
+    totals = {
+        "estimated_calories_kcal": sum(item["calories_kcal"] for item in payload["items"]),
+        **{key: sum(item[key] for item in payload["items"])
+           for key in ("carbohydrate_g", "protein_g", "fat_g")},
+    }
+    if (abs(result["estimated_calories_kcal"] - totals["estimated_calories_kcal"]) > 0.11
+            or any(abs(result["nutrition"][key] - totals[key]) > 0.11
+                   for key in ("carbohydrate_g", "protein_g", "fat_g"))
+            or result["daily_target_percentages"] is not None
+            or result["related_menus"] != payload["related_menus"]):
+        fail("AI_INVALID_RESPONSE")
+
+
 def create_weekly_diet_router(get_user, get_settings, load_context):
     router = APIRouter(prefix="/api/diet/weekly-recommendations", tags=["Diet"])
 
@@ -210,25 +233,7 @@ def create_weekly_diet_router(get_user, get_settings, load_context):
         require_current_context(row, latest)
         payload = recipe_request(row, day, meal_type, latest, servings)
         reply = await call_ai(ai, AIEndpoint.RECIPE, payload, RecipeReply)
-        result = reply["meal"]
-        if result["day"] != day or result["meal_type"] != meal_type or result["servings"] != servings:
-            fail("AI_SLOT_MISMATCH")
-        if result["menu_name"] != payload["menu_name"] or len(result["items"]) != len(payload["items"]):
-            fail("AI_INVALID_RESPONSE")
-        if any(any(actual[key] != expected[key] for key in expected)
-               for actual, expected in zip(result["items"], payload["items"])):
-            fail("AI_INVALID_RESPONSE")
-        totals = {
-            "estimated_calories_kcal": sum(item["calories_kcal"] for item in payload["items"]),
-            **{key: sum(item[key] for item in payload["items"])
-               for key in ("carbohydrate_g", "protein_g", "fat_g")},
-        }
-        if (abs(result["estimated_calories_kcal"] - totals["estimated_calories_kcal"]) > 0.11
-                or any(abs(result["nutrition"][key] - totals[key]) > 0.11
-                       for key in ("carbohydrate_g", "protein_g", "fat_g"))
-                or result["daily_target_percentages"] is not None
-                or result["related_menus"] != payload["related_menus"]):
-            fail("AI_INVALID_RESPONSE")
+        validate_recipe_reply(payload, reply)
         current = await store.get(plan_id=plan_id)
         if current is None or current["version"] != row["version"]:
             fail("WEEKLY_DIET_VERSION_CONFLICT", 409)
