@@ -60,7 +60,7 @@ def recipe_reply(payload):
 
 @pytest.fixture
 def harness(monkeypatch):
-    state = {"rows": [], "writes": [], "ai_calls": [], "context_calls": [],
+    state = {"rows": [], "recipes": [], "writes": [], "ai_calls": [], "context_calls": [],
              "reply": weekly_reply(), "context": {"food_allergens": ["땅콩"],
              "goal_type": "weight_loss", "metric_statuses": {}}}
 
@@ -102,6 +102,13 @@ def harness(monkeypatch):
         assert request.url.host == "db.example.invalid"
         if request.method == "GET":
             assert request.url.params["user_id"] == f"eq.{OWNER}"
+            if request.url.path.endswith("diet_recipe_snapshots"):
+                rows = [row for row in state["recipes"] if all(
+                    request.url.params[key] == f"eq.{row[key]}"
+                    for key in ("user_id", "weekly_diet_plan_id", "weekly_plan_version",
+                                "plan_day", "meal_type", "servings")
+                )]
+                return httpx.Response(200, json=rows[:1])
             rows = [row for row in state["rows"] if row["user_id"] == OWNER]
             for param, key in [("weekly_diet_plan_id", "weekly_diet_plan_id"), ("week_start_date", "week_start_date")]:
                 if param in request.url.params:
@@ -114,6 +121,13 @@ def harness(monkeypatch):
             state["quota_calls"] = state.get("quota_calls", 0) + 1
             return httpx.Response(200, json={"allowed": not state.get("rate_limited", False), "retry_after": 30})
         state["writes"].append((request.url.path, body))
+        if request.url.path.endswith("diet_recipe_snapshots"):
+            if any(all(row[key] == body[key] for key in (
+                "weekly_diet_plan_id", "weekly_plan_version", "plan_day", "meal_type", "servings"
+            )) for row in state["recipes"]):
+                return httpx.Response(409, json={"code": "23505"})
+            state["recipes"].append(body)
+            return httpx.Response(201, json=[body])
         if request.url.path.endswith("refresh_weekly_diet_plan"):
             assert body["p_user_id"] == OWNER
             row = state["rows"][0]
@@ -149,6 +163,7 @@ def harness(monkeypatch):
     app = FastAPI()
     app.include_router(api.create_weekly_diet_router(get_user, settings, load_context))
     app.dependency_overrides[api.get_weekly_ai_client] = FakeAI
+    monkeypatch.setattr(api, "get_weekly_ai_client", FakeAI)
     with TestClient(app, headers={"Authorization": "Bearer test-owner"}) as client:
         yield client, state
 
@@ -372,13 +387,39 @@ def test_recipe_uses_selected_saved_slot_and_returns_validated_detail(harness):
     assert all(menu["menu_name"] != "monday lunch" for menu in payload["related_menus"])
     assert "daily_nutrition_target" not in payload
     assert response.json()["meal"]["daily_target_percentages"] is None
-    conflict = recipe_reply(payload)
-    conflict["meal"]["items"][0]["restriction_matches"] = ["땅콩"]
-    state["recipe_reply"] = conflict
-    blocked = client.get(RECIPE, params={"servings": 2})
-    assert blocked.status_code == 200
-    assert blocked.json()["meal"]["items"][0]["recipe"] is None
-    assert len(state["writes"]) == 1
+    assert state["recipes"][0]["recipe_response"] == response.json()
+    assert client.get(RECIPE, params={"servings": 2}).json() == response.json()
+    assert len(state["ai_calls"]) == 2
+    assert len(state["writes"]) == 2
+
+
+def test_recipe_cache_is_separate_for_servings_and_plan_versions(harness):
+    client, state = harness
+    assert generate(client).status_code == 201
+    first = client.get(RECIPE)
+    second = client.get(RECIPE, params={"servings": 2})
+    assert first.status_code == second.status_code == 200
+    assert len(state["recipes"]) == 2
+    assert {row["servings"] for row in state["recipes"]} == {1, 2}
+    assert client.get(RECIPE).json() == first.json()
+    assert len(state["ai_calls"]) == 3  # one plan and two recipe generations
+    state["rows"][0]["version"] += 1
+    assert client.get(RECIPE).status_code == 200
+    assert len(state["recipes"]) == 3
+    assert state["recipes"][-1]["weekly_plan_version"] == 2
+    assert len(state["ai_calls"]) == 4
+
+
+def test_cached_recipe_does_not_require_live_ai(monkeypatch, harness):
+    client, state = harness
+    assert generate(client).status_code == 201
+    first = client.get(RECIPE)
+    assert first.status_code == 200
+    monkeypatch.setattr(api, "get_weekly_ai_client", lambda: (_ for _ in ()).throw(AssertionError("AI called")))
+    assert client.get(RECIPE).json() == first.json()
+    assert state["recipes"][0]["ingredients"] == []
+    assert state["recipes"][0]["steps"] == []
+    assert len(state["ai_calls"]) == 2
 
 
 def test_recipe_accepts_official_and_generated_sources_and_nulls(harness):
@@ -399,8 +440,10 @@ def test_recipe_accepts_official_and_generated_sources_and_nulls(harness):
                         "source": "식품의약품안전처 식품안전나라"})
     state["recipe_reply"] = reply
     assert client.get(RECIPE).status_code == 200
+    state["recipes"].clear()
     item.update(recipe_source="official_exact", match_score=1.0)
     assert client.get(RECIPE).status_code == 200
+    state["recipes"].clear()
     item.update(recipe_source="llm_generated", official_recipe=False,
                 matched_recipe_name=None, match_score=None)
     item["recipe"]["recipe_id"] = None

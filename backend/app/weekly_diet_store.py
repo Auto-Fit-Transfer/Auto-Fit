@@ -84,6 +84,58 @@ class WeeklyDietStore:
             fail("WEEKLY_DIET_STORAGE_ERROR")
         return self.validate(rows[0]) if rows else None
 
+    async def get_recipe(self, plan_id: UUID, version: int, day: str,
+                         meal_type: str, servings: int):
+        rows = await self.request("GET", "diet_recipe_snapshots", params={
+            "select": "recipe_response", "user_id": f"eq.{self.user_id}",
+            "weekly_diet_plan_id": f"eq.{plan_id}",
+            "weekly_plan_version": f"eq.{version}", "plan_day": f"eq.{day}",
+            "meal_type": f"eq.{meal_type}", "servings": f"eq.{servings}",
+            "limit": "1",
+        })
+        if not isinstance(rows, list) or len(rows) > 1:
+            fail("WEEKLY_DIET_STORAGE_ERROR")
+        if rows and rows[0].get("recipe_response") is None:
+            fail("WEEKLY_DIET_STORAGE_ERROR")
+        return rows[0]["recipe_response"] if rows else None
+
+    async def save_recipe(self, plan_id: UUID, version: int, day: str,
+                          meal_type: str, reply: dict):
+        meal = reply["meal"]
+        details = [(item["food_name"], item["recipe"])
+                   for item in meal["items"] if item["recipe"] is not None]
+        body = {
+            "user_id": self.user_id, "weekly_diet_plan_id": str(plan_id),
+            "weekly_plan_version": version, "plan_day": day,
+            "meal_type": meal_type, "title": meal["menu_name"][:120],
+            "description": meal["menu_description"][:2000],
+            "servings": meal["servings"],
+            "prep_minutes": (round(meal["estimated_duration_minutes"])
+                             if meal["estimated_duration_minutes"] is not None else None),
+            "ingredients": [
+                {"name": ingredient["name"], "amount_g": ingredient.get("amount_g")}
+                for _, recipe in details for ingredient in (recipe.get("ingredients") or [])
+            ][:50],
+            "steps": [
+                f"{food_name}: {step}"
+                for food_name, recipe in details for step in recipe["steps"]
+            ][:50],
+            "generator": reply["generator"][:80], "recipe_response": reply,
+        }
+        try:
+            rows = await self.request("POST", "diet_recipe_snapshots", body=body)
+        except HTTPException as exc:
+            if not isinstance(exc.detail, dict) or exc.detail.get("code") != "WEEKLY_DIET_EXISTS":
+                raise
+            # A concurrent request saved this exact slot and serving count first.
+            cached = await self.get_recipe(plan_id, version, day, meal_type, meal["servings"])
+            if cached is None:
+                fail("WEEKLY_DIET_STORAGE_ERROR")
+            return cached
+        if not isinstance(rows, list) or len(rows) != 1:
+            fail("WEEKLY_DIET_STORAGE_ERROR")
+        return reply
+
     async def create(self, week_start: date, reply: dict, context: dict):
         rows = await self.request("POST", "weekly_diet_plans", body={
             "user_id": self.user_id, "week_start_date": week_start.isoformat(),
