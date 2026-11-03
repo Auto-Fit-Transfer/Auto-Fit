@@ -90,7 +90,7 @@ def test_build_request_preserves_multiple_equipment_and_optional_condition():
 
 
 @pytest.mark.parametrize("condition, expected", [
-    ("좋음", "good"), ("보통", "normal"), ("피곤해요", "tired"), ("안 좋아요", "tired"),
+    ("좋음", "good"), ("보통", "normal"), ("피곤해요", "tired"), ("안 좋아요", "poor"),
 ])
 def test_build_request_preserves_each_condition(condition, expected):
     request = build_request(PREFERENCES, {**CONTEXT, "condition_level": condition})

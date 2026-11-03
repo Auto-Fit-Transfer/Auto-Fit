@@ -155,7 +155,7 @@ def build_request(preferences: dict[str, Any], context: dict[str, Any]) -> dict[
         "metric_statuses": {},
         "preferred_training_types": [],
         "daily_condition": {
-            "좋음": "good", "보통": "normal", "피곤해요": "tired", "안 좋아요": "tired",
+            "좋음": "good", "보통": "normal", "피곤해요": "tired", "안 좋아요": "poor",
         }[request["condition_level"]],
         "has_discomfort": bool(request["discomfort_areas"]),
     })
