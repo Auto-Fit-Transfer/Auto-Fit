@@ -3482,16 +3482,8 @@ async def trigger_daily_diet_refresh(
     from backend.app.diet_refresh import refresh_daily_diets
 
     succeeded, failed = await refresh_daily_diets()
-    if failed:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail={
-                "message": "One or more diet refreshes failed",
-                "succeeded": succeeded,
-                "failed": failed,
-            },
-        )
-    return {"ok": True, "succeeded": succeeded, "failed": failed}
+    # The run finished, so a 5xx would only make the scheduler repeat it. The body reports failures.
+    return {"ok": failed == 0, "succeeded": succeeded, "failed": failed}
 
 
 @app.post("/api/test/roundtrip", tags=["System"])

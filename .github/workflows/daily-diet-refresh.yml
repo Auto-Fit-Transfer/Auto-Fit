@@ -27,8 +27,11 @@ jobs:
             echo "API_BASE_URL must be an HTTPS origin" >&2
             exit 1
           fi
-          curl --fail-with-body --show-error --silent \
-            --retry 3 --retry-all-errors --max-time 1200 \
+          response=$(curl --fail-with-body --show-error --silent \
+            --retry 2 --retry-connrefused --retry-delay 60 --max-time 1200 \
             --request POST \
             --header "X-Cron-Token: ${DIET_REFRESH_CRON_TOKEN}" \
-            "${API_BASE_URL}/internal/diet-refresh"
+            "${API_BASE_URL}/internal/diet-refresh")
+          echo "$response"
+          # Partial failures show as a failed run without calling the paid generator again.
+          [ "$(jq -r .failed <<<"$response")" = "0" ]

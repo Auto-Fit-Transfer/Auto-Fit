@@ -83,6 +83,25 @@ def test_daily_diet_refresh_runs_with_valid_token(monkeypatch) -> None:
     assert response.json() == {"ok": True, "succeeded": 12, "failed": 0}
 
 
+def test_daily_diet_refresh_reports_partial_failure_without_a_retryable_status(monkeypatch) -> None:
+    from backend.app import diet_refresh
+
+    monkeypatch.setenv("DIET_REFRESH_CRON_TOKEN", "expected-token")
+
+    async def fake_refresh() -> tuple[int, int]:
+        return 20, 2
+
+    monkeypatch.setattr(diet_refresh, "refresh_daily_diets", fake_refresh)
+
+    response = TestClient(main.app).post(
+        "/internal/diet-refresh",
+        headers={"X-Cron-Token": "expected-token"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": False, "succeeded": 20, "failed": 2}
+
+
 def test_daily_plan_uses_rules_based_remainder_when_catalog_is_only_dummy(monkeypatch) -> None:
     async def fake_generate(slots, allergy_names, model, inventory_names):
         return [{
