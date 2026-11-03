@@ -31,12 +31,16 @@ class OfficialRecipeCircuitOpenError(RuntimeError):
     """공식 Recipe API circuit가 복구 대기 중임을 나타낸다."""
 
 
+class OfficialRecipeRequestError(RuntimeError):
+    """인증키가 포함된 원본 URL을 노출하지 않는 공식 API 오류."""
+
+
 # =========================================================
 # 식품안전나라 레시피 API 설정
 # =========================================================
 
 FOOD_SAFETY_RECIPE_BASE_URL = (
-    "http://openapi.foodsafetykorea.go.kr/api"
+    "https://openapi.foodsafetykorea.go.kr/api"
 )
 
 RECIPE_SERVICE_ID = "COOKRCP01"
@@ -246,7 +250,10 @@ class RecipeService:
                     self._record_request_failure(
                         circuit_failure=retryable,
                     )
-                    raise
+                    raise OfficialRecipeRequestError(
+                        "식품안전나라 레시피 API가 "
+                        f"HTTP {status_code}로 응답했습니다."
+                    ) from None
 
                 self._record_retry()
 
@@ -261,21 +268,26 @@ class RecipeService:
             except (
                 httpx.RequestError,
                 ValueError,
-            ):
+            ) as exc:
+                error_type = type(exc).__name__
+
                 if attempt >= self.REQUEST_MAX_ATTEMPTS:
                     self._record_request_failure(
                         circuit_failure=True,
                     )
-                    raise
+                    raise OfficialRecipeRequestError(
+                        "식품안전나라 레시피 API 요청에 "
+                        f"실패했습니다. ({error_type})"
+                    ) from None
 
                 self._record_retry()
 
                 logger.warning(
                     "Official recipe API request failed temporarily "
-                    "(%s/%s).",
+                    "(%s/%s, error_type=%s).",
                     attempt,
                     self.REQUEST_MAX_ATTEMPTS,
-                    exc_info=True,
+                    error_type,
                 )
 
             await asyncio.sleep(

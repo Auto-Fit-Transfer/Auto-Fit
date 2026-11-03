@@ -11,7 +11,9 @@ import httpx
 
 from app.services.meal_recipe_service import MealRecipeService
 from app.services.recipe_service import (
+    FOOD_SAFETY_RECIPE_BASE_URL,
     OfficialRecipeCircuitOpenError,
+    OfficialRecipeRequestError,
     RecipeService,
 )
 
@@ -256,6 +258,30 @@ async def test_official_api_retry() -> None:
         raise RuntimeError(f"공식 API 통계가 잘못되었습니다: {stats}")
 
 
+async def test_official_api_uses_https_and_redacts_key() -> None:
+    if not FOOD_SAFETY_RECIPE_BASE_URL.startswith("https://"):
+        raise RuntimeError("공식 Recipe API가 HTTPS를 사용하지 않습니다.")
+
+    RecipeService.reset_operational_state()
+    client = CircuitClient()
+    service = RecipeService(client=client)
+    service.REQUEST_MAX_ATTEMPTS = 1
+
+    secret_marker = "must-not-appear-in-error"
+    request_url = (
+        f"{FOOD_SAFETY_RECIPE_BASE_URL}/"
+        f"{secret_marker}/COOKRCP01/json/1/1"
+    )
+
+    try:
+        await service._request_json(request_url)
+    except OfficialRecipeRequestError as exc:
+        if secret_marker in str(exc):
+            raise RuntimeError("공식 API Key가 예외 메시지에 노출됐습니다.")
+    else:
+        raise RuntimeError("공식 API 실패가 정상 응답으로 처리됐습니다.")
+
+
 class CircuitClient:
     def __init__(self) -> None:
         self.call_count = 0
@@ -288,7 +314,7 @@ async def test_official_api_circuit_breaker() -> None:
     for _ in range(2):
         try:
             await service._request_json("https://example.test/recipe")
-        except httpx.ConnectError:
+        except OfficialRecipeRequestError:
             pass
         else:
             raise RuntimeError("공식 API 실패가 정상 응답으로 처리되었습니다.")
@@ -331,6 +357,7 @@ async def main() -> None:
     await test_cache_ttl_and_size_limit()
     await test_official_failure_uses_llm_fallback()
     await test_official_api_retry()
+    await test_official_api_uses_https_and_redacts_key()
     await test_official_api_circuit_breaker()
     print("Meal Recipe 복원력 테스트: OK")
 

@@ -153,6 +153,10 @@ class MealRecipeService:
     # ==================================================
 
     OFFICIAL_SIMILARITY_THRESHOLD = 0.82
+    OFFICIAL_SEARCH_QUERY_LIMIT = 3
+    ALLOWED_OFFICIAL_SIMILAR_SUFFIXES = frozenset({
+        "무침",
+    })
     RECIPE_CACHE_TTL_SECONDS = 30 * 60
     RECIPE_CACHE_MAX_ENTRIES = 512
 
@@ -1199,6 +1203,71 @@ class MealRecipeService:
         ).ratio()
 
     # ==================================================
+    # 공식 유사 Recipe 이름 적합성 검사
+    #
+    # 문자 유사도는 후보 순위 계산에만 사용한다.
+    # 다른 주재료나 음식 종류가 앞뒤에 붙은 후보를
+    # 단순 포함 관계만으로 같은 음식으로 인정하지 않는다.
+    # ==================================================
+
+    def is_acceptable_official_name_match(
+        self,
+        source_name: str,
+        recipe_name: str,
+    ) -> bool:
+        source = self.normalize_for_compare(
+            source_name
+        )
+        target = self.normalize_for_compare(
+            recipe_name
+        )
+
+        if not source or not target:
+            return False
+
+        if source == target:
+            return True
+
+        source_components = [
+            self.normalize_for_compare(component)
+            for component in self.normalize_food_name(
+                source_name
+            ).split()
+            if self.normalize_for_compare(component)
+        ]
+
+        # 단일 음식명에 다른 재료나 음식 종류가 붙은 후보는
+        # 같은 Recipe로 확정할 근거가 부족하므로 사용하지 않는다.
+        if len(source_components) < 2:
+            return False
+
+        compact_source = "".join(
+            source_components
+        )
+
+        # 접두 재료 또는 구성요소 순서 변경을 허용하지 않는다.
+        if not target.startswith(compact_source):
+            return False
+
+        suffix = target[
+            len(compact_source):
+        ]
+
+        if (
+            suffix
+            not in self.ALLOWED_OFFICIAL_SIMILAR_SUFFIXES
+        ):
+            return False
+
+        # 현재 공식 데이터로 검증한 표현 차이는
+        # 나물 복합 음식의 "무침" 접미사뿐이다.
+        # 검증 사례가 추가되기 전까지 범위를 넓히지 않는다.
+        return any(
+            component.endswith("나물")
+            for component in source_components
+        )
+
+    # ==================================================
     # 알레르기 키워드 확장
     # ==================================================
 
@@ -1365,6 +1434,12 @@ class MealRecipeService:
             if not recipe_name:
                 continue
 
+            if not self.is_acceptable_official_name_match(
+                source_name=food_name,
+                recipe_name=recipe_name,
+            ):
+                continue
+
             score = (
                 self.calculate_name_similarity(
                     source_name=food_name,
@@ -1384,6 +1459,49 @@ class MealRecipeService:
                 4,
             ),
         )
+
+    def _build_official_match_result(
+        self,
+        food_name: str,
+        recipes: list[dict[str, Any]],
+        allergies: list[str] | None,
+        disliked_foods: list[str] | None,
+    ) -> dict[str, Any] | None:
+        (
+            best_recipe,
+            similarity,
+        ) = self.select_best_official_recipe(
+            food_name=food_name,
+            recipes=recipes,
+            allergies=allergies,
+            disliked_foods=disliked_foods,
+        )
+
+        if best_recipe is None:
+            return None
+
+        original_name = self.normalize_for_compare(
+            food_name
+        )
+        recipe_name = self.normalize_for_compare(
+            best_recipe.get("menu_name")
+        )
+
+        if original_name == recipe_name:
+            return {
+                "match_type": "official_exact",
+                "similarity": 1.0,
+                "recipe": best_recipe,
+            }
+
+        if similarity >= self.OFFICIAL_SIMILARITY_THRESHOLD:
+            return {
+                "match_type": "official_similar",
+                "similarity": similarity,
+                "recipe": best_recipe,
+            }
+
+        return None
 
     # ==================================================
     # 공식 레시피 검색
@@ -1418,24 +1536,18 @@ class MealRecipeService:
         # 여러 검색어로 공식 레시피 검색
         # ==================================================
 
-        for query in queries:
+        for query in queries[
+            :self.OFFICIAL_SEARCH_QUERY_LIMIT
+        ]:
 
-            try:
-
-                recipes = (
-                    await self.recipe_service
-                    .search_recipes_by_name(
-                        menu_name=query,
-                        start_idx=1,
-                        end_idx=100,
-                    )
+            recipes = (
+                await self.recipe_service
+                .search_recipes_by_name(
+                    menu_name=query,
+                    start_idx=1,
+                    end_idx=100,
                 )
-
-            except Exception:
-
-                # 공식 API 장애 시에도
-                # LLM fallback까지 진행할 수 있도록 계속
-                continue
+            )
 
             for recipe in recipes:
 
@@ -1462,81 +1574,19 @@ class MealRecipeService:
                     recipe
                 )
 
-        if not collected_recipes:
-            return None
-
-        (
-            best_recipe,
-            similarity,
-        ) = (
-            self.select_best_official_recipe(
-                food_name=food_name,
-                recipes=collected_recipes,
-                allergies=allergies,
-                disliked_foods=disliked_foods,
-            )
-        )
-
-        if best_recipe is None:
-            return None
-
-        original_name = (
-            self.normalize_for_compare(
-                food_name
-            )
-        )
-
-        recipe_name = (
-            self.normalize_for_compare(
-                best_recipe.get(
-                    "menu_name"
+            match_result = (
+                self._build_official_match_result(
+                    food_name=food_name,
+                    recipes=collected_recipes,
+                    allergies=allergies,
+                    disliked_foods=disliked_foods,
                 )
             )
-        )
 
-        # ==================================================
-        # 정확 공식 레시피
-        # ==================================================
-
-        if (
-            original_name
-            == recipe_name
-        ):
-
-            return {
-                "match_type": (
-                    "official_exact"
-                ),
-
-                "similarity": 1.0,
-
-                "recipe": (
-                    best_recipe
-                ),
-            }
-
-        # ==================================================
-        # 유사 공식 레시피
-        # ==================================================
-
-        if (
-            similarity
-            >= self.OFFICIAL_SIMILARITY_THRESHOLD
-        ):
-
-            return {
-                "match_type": (
-                    "official_similar"
-                ),
-
-                "similarity": (
-                    similarity
-                ),
-
-                "recipe": (
-                    best_recipe
-                ),
-            }
+            # 가장 구체적인 전체 음식명부터 검색하므로
+            # 검증된 후보가 나오면 추가 공식 API 호출을 중단한다.
+            if match_result is not None:
+                return match_result
 
         return None
 

@@ -27,6 +27,7 @@ class FakeRecipeService:
         recipes: list[dict],
     ) -> None:
         self.recipes = recipes
+        self.queries: list[str] = []
 
     async def search_recipes_by_name(
         self,
@@ -34,7 +35,8 @@ class FakeRecipeService:
         start_idx: int = 1,
         end_idx: int = 100,
     ) -> list[dict]:
-        del menu_name, start_idx, end_idx
+        del start_idx, end_idx
+        self.queries.append(menu_name)
         return self.recipes
 
 
@@ -164,6 +166,15 @@ async def test_official_similar_pipeline() -> None:
             f"잘못된 공식 match score: {official['similarity']}"
         )
 
+    if service.recipe_service.queries != [
+        "톳나물 두부"
+    ]:
+        raise RuntimeError(
+            "검증된 공식 유사 Recipe 이후에도 "
+            "불필요한 API 검색이 계속됐습니다: "
+            f"{service.recipe_service.queries}"
+        )
+
     result = service.build_official_recipe_result(
         official,
         target_portion_g=70.0,
@@ -186,6 +197,124 @@ async def test_official_similar_pipeline() -> None:
         raise RuntimeError(
             "공식 recipe portion scaling이 잘못되었습니다."
         )
+
+
+async def test_official_exact_pipeline() -> None:
+    service = make_service()
+    service.recipe_service = FakeRecipeService(
+        [
+            {
+                "recipe_id": "exact-brown-rice",
+                "menu_name": "현미밥",
+                "ingredients_text": "현미 100g, 물 120g",
+                "steps": ["현미밥을 짓는다."],
+            },
+            {
+                "recipe_id": "unsafe-radish-brown-rice",
+                "menu_name": "무 현미밥",
+                "ingredients_text": "현미 100g, 무 30g",
+                "steps": ["무 현미밥을 짓는다."],
+            },
+        ]
+    )
+
+    official = await service.find_official_recipe(
+        food_name="현미밥",
+        allergies=[],
+        disliked_foods=[],
+    )
+
+    if official is None:
+        raise RuntimeError("공식 exact Recipe를 찾지 못했습니다.")
+
+    if official["match_type"] != "official_exact":
+        raise RuntimeError(
+            f"공식 exact 판정이 손상됐습니다: {official}"
+        )
+
+    if official["recipe"]["menu_name"] != "현미밥":
+        raise RuntimeError(
+            "접두 재료가 추가된 후보가 exact보다 우선됐습니다."
+        )
+
+    if service.recipe_service.queries != ["현미밥"]:
+        raise RuntimeError(
+            "공식 exact 이후 불필요한 검색이 계속됐습니다: "
+            f"{service.recipe_service.queries}"
+        )
+
+
+async def test_unsafe_containment_matches_are_rejected() -> None:
+    cases = [
+        (
+            "그릭요거트",
+            "당근&그릭요거트 케이크",
+            "당근 50g, 그릭요거트 100g",
+        ),
+        (
+            "현미밥",
+            "무 현미밥",
+            "현미 100g, 무 30g",
+        ),
+        (
+            "비빔밥",
+            "채소비빔밥",
+            "쌀 100g, 채소 50g, 바지락 20g",
+        ),
+        (
+            "김치찌개",
+            "완자김치찌개",
+            "김치 100g, 완자 50g",
+        ),
+        (
+            "된장찌개",
+            "부대된장찌개",
+            "된장 20g, 햄 50g",
+        ),
+        (
+            "닭가슴살 샐러드",
+            "퀴노아닭가슴살샐러드",
+            "닭가슴살 100g, 퀴노아 30g",
+        ),
+        (
+            "닭가슴살 샐러드",
+            "닭가슴살샐러드무침",
+            "닭가슴살 100g, 채소 50g",
+        ),
+    ]
+
+    for source_name, recipe_name, ingredients_text in cases:
+        service = make_service()
+        service.recipe_service = FakeRecipeService(
+            [
+                {
+                    "recipe_id": recipe_name,
+                    "menu_name": recipe_name,
+                    "ingredients_text": ingredients_text,
+                    "steps": ["조리한다."],
+                }
+            ]
+        )
+
+        official = await service.find_official_recipe(
+            food_name=source_name,
+            allergies=[],
+            disliked_foods=[],
+        )
+
+        if official is not None:
+            raise RuntimeError(
+                "다른 음식이 공식 유사 Recipe로 연결됐습니다: "
+                f"{source_name} -> {recipe_name}"
+            )
+
+        if len(service.recipe_service.queries) > (
+            service.OFFICIAL_SEARCH_QUERY_LIMIT
+        ):
+            raise RuntimeError(
+                "공식 Recipe 검색 횟수 제한을 초과했습니다: "
+                f"{service.recipe_service.queries}"
+            )
 
 
 async def test_cache_separates_portions() -> None:
@@ -349,6 +478,8 @@ async def test_llm_safety_retry_and_structure() -> None:
 async def main() -> None:
     test_similarity_and_official_ingredients()
     await test_official_similar_pipeline()
+    await test_official_exact_pipeline()
+    await test_unsafe_containment_matches_are_rejected()
     await test_cache_separates_portions()
     await test_llm_safety_retry_and_structure()
     print(
