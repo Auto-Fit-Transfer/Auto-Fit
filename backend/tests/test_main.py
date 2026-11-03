@@ -22,6 +22,25 @@ def test_health() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_daily_allergy_resolution_fails_closed() -> None:
+    catalog = [{"allergy_type_id": "milk", "name": "우유"}]
+    selected = [
+        {"allergy_type_id": "milk", "custom_name": None},
+        {"allergy_type_id": "milk", "custom_name": None},
+        {"allergy_type_id": None, "custom_name": " 땅콩 "},
+    ]
+    assert main.resolve_daily_allergy_names(selected, catalog) == ["우유", "땅콩"]
+    try:
+        main.resolve_daily_allergy_names(
+            [{"allergy_type_id": "missing", "custom_name": None}], catalog,
+        )
+    except main.HTTPException as exc:
+        assert exc.status_code == 502
+        assert exc.detail == "Stored allergy could not be resolved"
+    else:
+        raise AssertionError("unresolved stored allergy must block diet generation")
+
+
 def test_recommended_food_names_preserve_details_and_add_display_names() -> None:
     foods = main.normalize_recommended_foods([
         {"food_name": "닭가슴살 샐러드 (저염 소스)", "quantity": 1, "unit": "개(중간)"},

@@ -117,3 +117,39 @@ def test_active_diet_lookup_is_limited_to_the_target_date(monkeypatch) -> None:
     assert url.endswith("/rest/v1/diet_recommendations")
     assert params["recommendation_date"] == "eq.2026-11-03"
     assert params["status"] == "eq.active"
+
+
+def test_refresh_does_not_save_plan_with_unresolved_allergy(monkeypatch, caplog) -> None:
+    async def users():
+        return ["user-1"]
+
+    async def existing(target_date):
+        return set()
+
+    async def catalog(settings):
+        return []
+
+    async def foods(settings):
+        return []
+
+    async def inventory(user_id, settings):
+        return []
+
+    async def allergies(user_id, settings):
+        return [{"allergy_type_id": "missing", "custom_name": None}]
+
+    async def forbidden(*args, **kwargs):
+        raise AssertionError("unresolved allergy must not create a plan")
+
+    monkeypatch.setattr(diet_refresh, "fetch_refresh_user_ids", users)
+    monkeypatch.setattr(diet_refresh, "fetch_user_ids_with_active_diet", existing)
+    monkeypatch.setattr(diet_refresh, "get_settings", lambda: object())
+    monkeypatch.setattr(diet_refresh, "fetch_allergy_catalog", catalog)
+    monkeypatch.setattr(diet_refresh, "fetch_food_catalog", foods)
+    monkeypatch.setattr(diet_refresh, "fetch_food_inventory", inventory)
+    monkeypatch.setattr(diet_refresh, "fetch_user_allergies", allergies)
+    monkeypatch.setattr(diet_refresh, "build_daily_diet_recommendation_plan", forbidden)
+    monkeypatch.setattr(diet_refresh, "create_diet_recommendation", forbidden)
+    assert asyncio.run(diet_refresh.refresh_daily_diets()) == (0, 1)
+    assert "reason=allergy_unresolved" in caplog.text
+    assert "missing" not in caplog.text

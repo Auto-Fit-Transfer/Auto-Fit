@@ -29,6 +29,10 @@ EXCLUDED_CATALOG_NAME_MARKERS = ("[dummy",)
 class DietAIUnavailable(RuntimeError):
     """Raised when a valid AI meal set cannot be produced."""
 
+    def __init__(self, message: str, *, reason: str = "unavailable") -> None:
+        super().__init__(message)
+        self.reason = reason
+
 
 class DietAIRetryableResponse(DietAIUnavailable):
     """A rejected format or calorie answer that a second request can fix."""
@@ -212,10 +216,13 @@ async def generate_ai_meals(
     excluded_representative_foods: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Request only de-identified menu context and strictly validate the response."""
+    food_allergens = list(
+        dict.fromkeys(name.strip() for name in allergy_names if name.strip())
+    )
     safe_inventory_names = [
         name
         for name in (inventory_names or [])
-        if name.strip() and not conflicts_allergy(name, allergy_names)
+        if name.strip() and not conflicts_allergy(name, food_allergens)
     ][:30]
     slot_contract = [
         {
@@ -227,6 +234,7 @@ async def generate_ai_meals(
     ]
     payload = {
         "slots": slot_contract,
+        "food_allergens": food_allergens,
         "available_ingredients": safe_inventory_names,
         "excluded_representative_foods": excluded_representative_foods or [],
     }
@@ -240,7 +248,9 @@ async def generate_ai_meals(
         "생성하세요. available_ingredients는 사용 가능한 냉장고 재료입니다. "
         + inventory_instruction
         + "excluded_representative_foods에 있는 음식은 각 식사의 첫 번째 음식으로 사용하지 마세요. "
-        + "우유·대두·견과류·생선 등 주요 알레르기 식품은 포함하지 마세요. 각 슬롯마다 "
+        + "food_allergens는 사용자에게 금지된 식품 목록입니다. 목록의 식품과 파생 식품을 "
+        + "모든 foods[].food_name에서 제외하세요. 목록이 비어 있으면 사용자 알레르기를 "
+        + "추측하지 마세요. 각 슬롯마다 "
         "서로 다른 음식 2~4개를 제안하고 목표 열량의 ±15%를 맞추세요. 응답은 설명이나 "
         "마크다운 없이 정확히 {\"meals\":[...]} JSON만 반환하세요. 각 meal에는 meal_type, "
         "meal_order, recommendation_note, foods가 필요하고, 각 food에는 food_name, quantity "
@@ -253,13 +263,13 @@ async def generate_ai_meals(
             raise DietAIUnavailable("AI diet generator is disabled or unavailable")
         try:
             meals = _validated_ai_meals(
-                raw, slots, allergy_names, excluded_representative_foods
+                raw, slots, food_allergens, excluded_representative_foods
             )
         except DietAIRetryableResponse as exc:
             if attempt == AI_RESPONSE_ATTEMPTS:
-                logger.warning("Diet AI retry result: failed extra_calls=1 reason=%s", exc)
+                logger.warning("Diet AI retry result: failed extra_calls=1 reason=%s", exc.reason)
                 raise
-            logger.warning("Diet AI response rejected, retrying once: %s", exc)
+            logger.warning("Diet AI response rejected, retrying once: reason=%s", exc.reason)
             continue
         if attempt > 1:
             logger.warning("Diet AI retry result: accepted extra_calls=1")
@@ -278,18 +288,24 @@ def _validated_ai_meals(
             _without_ignored_meal_fields(_extract_json_object(raw))
         )
     except (json.JSONDecodeError, ValueError, ValidationError) as exc:
-        raise DietAIRetryableResponse("AI diet generator returned invalid structured data") from exc
+        raise DietAIRetryableResponse(
+            "AI diet generator returned invalid structured data", reason="format_invalid"
+        ) from exc
 
     expected = {(meal["meal_type"], int(meal["meal_order"])) for meal in slots}
     actual = {(meal.meal_type, meal.meal_order) for meal in generated.meals}
     if actual != expected or len(actual) != len(generated.meals):
-        raise DietAIRetryableResponse("AI diet generator changed or duplicated meal slots")
+        raise DietAIRetryableResponse(
+            "AI diet generator changed or duplicated meal slots", reason="slot_mismatch"
+        )
     if any(
         conflicts_allergy(food.food_name, allergy_names)
         for meal in generated.meals
         for food in meal.foods
     ):
-        raise DietAIUnavailable("AI diet generator returned an excluded allergen")
+        raise DietAIUnavailable(
+            "AI diet generator returned an excluded allergen", reason="allergy_conflict"
+        )
     excluded_representatives = {
         normalize_food_name(name)
         for name in (excluded_representative_foods or [])
@@ -299,7 +315,10 @@ def _validated_ai_meals(
         normalize_food_name(meal.foods[0].food_name) in excluded_representatives
         for meal in generated.meals
     ):
-        raise DietAIUnavailable("AI diet generator repeated the current representative food")
+        raise DietAIUnavailable(
+            "AI diet generator repeated the current representative food",
+            reason="representative_repeated",
+        )
 
     target_by_slot = {
         (meal["meal_type"], int(meal["meal_order"])): int(
@@ -313,7 +332,9 @@ def _validated_ai_meals(
         value["recommended_calories"] = sum(food["calories"] for food in value["foods"])
         target = target_by_slot[(meal.meal_type, meal.meal_order)]
         if not target * 0.85 <= value["recommended_calories"] <= target * 1.15:
-            raise DietAIRetryableResponse("AI diet generator missed the calorie target")
+            raise DietAIRetryableResponse(
+                "AI diet generator missed the calorie target", reason="calorie_target"
+            )
         value["source_type"] = "ai_generated"
         results.append(value)
     return results

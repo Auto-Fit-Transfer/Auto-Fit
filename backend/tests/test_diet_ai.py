@@ -73,6 +73,28 @@ def test_generate_ai_meals_accepts_only_requested_slots() -> None:
     assert all(meal["recommended_calories"] == 400 for meal in meals)
 
 
+def test_generate_ai_meals_passes_normalized_allergens_without_identity() -> None:
+    slots = BASE_MEALS[:1]
+
+    async def fake_model(prompt: str) -> str:
+        payload = json.loads(prompt.split("\n")[-1])
+        assert payload["food_allergens"] == ["우유", "땅콩"]
+        assert "user_id" not in prompt
+        assert "우유" not in payload["available_ingredients"]
+        return json.dumps({"meals": [{
+            "meal_type": "breakfast", "meal_order": 1,
+            "recommendation_note": "추천", "foods": [{
+                "food_name": "채소 비빔밥", "quantity": 300, "unit": "g",
+                "calories": 400, "carbohydrates": 60, "protein": 18, "fat": 10,
+            }],
+        }]}, ensure_ascii=False)
+
+    meals = asyncio.run(generate_ai_meals(
+        slots, [" 우유 ", "우유", "땅콩"], fake_model, ["우유", "브로콜리"],
+    ))
+    assert len(meals) == 1
+
+
 def test_generate_ai_meals_passes_deidentified_inventory_to_model() -> None:
     slots = BASE_MEALS[:2]
 
@@ -329,10 +351,11 @@ def test_ignored_total_calories_needs_no_second_paid_request() -> None:
 def test_other_unknown_meal_field_is_still_rejected_after_one_retry() -> None:
     fake_model, calls = _requester(_answer(surprise=1), _answer(surprise=1))
 
-    with pytest.raises(DietAIUnavailable, match="invalid structured data"):
+    with pytest.raises(DietAIUnavailable, match="invalid structured data") as error:
         asyncio.run(generate_ai_meals(BASE_MEALS[:1], [], fake_model))
 
     assert len(calls) == 2
+    assert error.value.reason == "format_invalid"
 
 
 def test_zero_quantity_is_never_accepted() -> None:
@@ -357,11 +380,12 @@ def test_repeated_calorie_miss_stops_at_two_requests(caplog) -> None:
     fake_model, calls = _requester(_answer(calories=900), _answer(calories=900))
 
     with caplog.at_level("WARNING", logger="uvicorn.error"):
-        with pytest.raises(DietAIUnavailable, match="missed the calorie target"):
+        with pytest.raises(DietAIUnavailable, match="missed the calorie target") as error:
             asyncio.run(generate_ai_meals(BASE_MEALS[:1], [], fake_model))
 
     assert len(calls) == 2
-    assert "retry result: failed extra_calls=1" in caplog.text
+    assert error.value.reason == "calorie_target"
+    assert "retry result: failed extra_calls=1 reason=calorie_target" in caplog.text
 
 
 def test_recovered_retry_is_recorded_for_cost_checks(caplog) -> None:
@@ -377,7 +401,8 @@ def test_recovered_retry_is_recorded_for_cost_checks(caplog) -> None:
 def test_allergen_answer_is_blocked_without_a_retry() -> None:
     fake_model, calls = _requester(_answer(name="우유 비빔밥"))
 
-    with pytest.raises(DietAIUnavailable, match="excluded allergen"):
+    with pytest.raises(DietAIUnavailable, match="excluded allergen") as error:
         asyncio.run(generate_ai_meals(BASE_MEALS[:1], ["우유"], fake_model))
 
     assert len(calls) == 1
+    assert error.value.reason == "allergy_conflict"
