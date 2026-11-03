@@ -348,6 +348,7 @@ class GenerateExerciseRecommendationRequest(BaseModel):
 
 
 class StartExerciseSessionRequest(BaseModel):
+    plan_session_id: UUID | None = None
     model_config = ConfigDict(extra="forbid")
 
 
@@ -1236,7 +1237,7 @@ async def fetch_latest_exercise_recommendation(
         "select": (
             "exercise_recommendation_id,user_id,recommendation_date,goal,"
             "total_duration_minutes,intensity,recommendation_summary,ai_reason,"
-            "status,created_at"
+            "generator,catalog_version,status,created_at"
         ),
         "user_id": f"eq.{user_id}",
         "order": "recommendation_date.desc,created_at.desc",
@@ -1262,7 +1263,8 @@ async def fetch_latest_exercise_recommendation(
     item_params = {
         "select": (
             "exercise_item_id,exercise_recommendation_id,exercise_type_id,"
-            "exercise_name,sequence_order,duration_minutes,sets,repetitions,"
+            "plan_session_id,exercise_key,exercise_name,sequence_order,"
+            "duration_minutes,sets,repetitions,"
             "calories_burned,intensity,instruction,execution_type,"
             "target_duration_seconds,target_weight_kg,rest_seconds"
         ),
@@ -1281,7 +1283,69 @@ async def fetch_latest_exercise_recommendation(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Supabase exercise item query failed",
         )
-    return {"recommendation": recommendation, "items": item_response.json()}
+    if recommendation.get("generator") != "auto-fit-ai":
+        return {"recommendation": recommendation, "items": item_response.json(), "plan_sessions": []}
+
+    plan_params = {
+        "select": (
+            "exercise_plan_session_id,exercise_recommendation_id,session_index,"
+            "scheduled_date,name,focus,duration_minutes"
+        ),
+        "exercise_recommendation_id": f"eq.{recommendation['exercise_recommendation_id']}",
+        "order": "session_index.asc",
+    }
+    async with client_scope() as client:
+        plan_response = await client.get(
+            f"{settings.supabase_url}/rest/v1/exercise_plan_sessions",
+            headers=service_headers(settings),
+            params=plan_params,
+        )
+    if not plan_response.is_success:
+        raise HTTPException(502, detail="Supabase exercise plan session query failed")
+
+    session_params = {
+        "select": "plan_session_id,status,started_at",
+        "user_id": f"eq.{user_id}",
+        "exercise_recommendation_id": f"eq.{recommendation['exercise_recommendation_id']}",
+        "order": "started_at.asc",
+    }
+    async with client_scope() as client:
+        session_response = await client.get(
+            f"{settings.supabase_url}/rest/v1/exercise_sessions",
+            headers=service_headers(settings),
+            params=session_params,
+        )
+    if not session_response.is_success:
+        raise HTTPException(502, detail="Supabase exercise plan status query failed")
+    statuses = {row["plan_session_id"]: row["status"] for row in session_response.json()
+                if row.get("plan_session_id")}
+    return {
+        "recommendation": recommendation,
+        "items": item_response.json(),
+        "plan_sessions": [
+            {**plan, "status": statuses.get(plan["exercise_plan_session_id"], "planned")}
+            for plan in plan_response.json()
+        ],
+    }
+
+
+async def fetch_exercise_context_for_recommendation(
+    user_id: str, recommendation_id: str, settings: Settings,
+) -> dict[str, Any]:
+    async with client_scope() as client:
+        response = await client.get(
+            f"{settings.supabase_url}/rest/v1/exercise_recommendation_contexts",
+            headers=service_headers(settings),
+            params={
+                "select": "location",
+                "user_id": f"eq.{user_id}",
+                "exercise_recommendation_id": f"eq.{recommendation_id}",
+                "limit": "1",
+            },
+        )
+    if not response.is_success or not response.json():
+        raise HTTPException(502, detail="Supabase exercise context query failed")
+    return response.json()[0]
 
 
 async def call_exercise_session_rpc(
@@ -1311,6 +1375,7 @@ async def fetch_latest_exercise_session(
     session_params = {
         "select": (
             "exercise_session_id,user_id,exercise_recommendation_id,status,"
+            "plan_session_id,"
             "started_at,completed_at,planned_item_count,completed_item_count,"
             "skipped_item_count,total_duration_seconds,total_calories_burned,"
             "completion_rate,created_at,updated_at"
@@ -3828,7 +3893,8 @@ async def get_latest_exercise_recommendation(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     result = await fetch_latest_exercise_recommendation(user.id, settings)
-    return {"result": result}
+    return {"generator": result["recommendation"].get("generator") if result else None,
+            "result": result}
 
 
 @app.post("/api/exercise/recommendations/generate", tags=["Exercise"])
@@ -3863,14 +3929,29 @@ async def start_exercise_session(
             status_code=status.HTTP_409_CONFLICT,
             detail="An active exercise recommendation is required",
         )
-    result = await call_exercise_session_rpc(
-        "start_exercise_session",
-        {
-            "p_user_id": user.id,
-            "p_recommendation_id": latest["recommendation"]["exercise_recommendation_id"],
-        },
-        settings,
-    )
+    payload = {
+        "p_user_id": user.id,
+        "p_recommendation_id": latest["recommendation"]["exercise_recommendation_id"],
+    }
+    if latest["recommendation"].get("generator") == "auto-fit-ai":
+        plan_sessions = latest.get("plan_sessions") or []
+        requested_id = str(body.plan_session_id) if body.plan_session_id else None
+        selected = next(
+            (plan for plan in plan_sessions if plan["exercise_plan_session_id"] == requested_id),
+            None,
+        ) if requested_id else next(
+            (plan for plan in plan_sessions if plan["status"] not in {"completed", "skipped"}),
+            None,
+        )
+        if not selected:
+            raise HTTPException(409, detail="An available exercise plan session is required")
+        payload["p_plan_session_id"] = selected["exercise_plan_session_id"]
+        rpc_name = "start_exercise_plan_session"
+    else:
+        if body.plan_session_id:
+            raise HTTPException(409, detail="This recommendation has no planned sessions")
+        rpc_name = "start_exercise_session"
+    result = await call_exercise_session_rpc(rpc_name, payload, settings)
     return {"ok": True, "result": result}
 
 
