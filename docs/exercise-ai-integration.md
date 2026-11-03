@@ -31,13 +31,13 @@ AI 출력이 선택한 장비와 맞지 않으면 추천 생성에 실패한다.
 1. 별도 AI 서버에 [공용 GitHub `ai` 브랜치](https://github.com/Auto-Fit-Transfer/Auto-Fit/tree/2f9f9801dec72bed210102b57b1e9f239b475229)의 운동 API와 CSV 카탈로그가 배포됐는지 확인한다. 공개 `/openapi.json`에 `POST /recommend/exercise`가 있어야 한다.
 2. `supabase/migrations/20261103072835_store_ai_exercise_recommendations.sql`과 `20261103072839_exercise_ai_weekly_sessions.sql`을 순서대로 적용한다. Auto-Fit 운영 프로젝트에는 2026-11-03에 두 버전이 이미 적용됐다. 기존 추천은 `generator=rules_v1`을 유지한다.
 3. 카탈로그 CSV를 포함한 백엔드를 배포한다. 현재 CSV 해시는 `sha256:5e231250283742da2deee4e36da0308fb635409999ee8f6a29ff49274c5d97a1`이다. AI 서버의 `catalog_version`이 다르면 저장하지 않는다.
-4. 백엔드 서버 전용 환경에 `AI_SERVER_BASE_URL`(별도 AI 서버의 HTTPS origin), `AI_SERVER_API_KEY`, `AI_SERVER_ENABLED=true`, `EXERCISE_AI_ENABLED=true`를 설정한다. GIF 객체를 공개 HTTPS에 업로드한 뒤 `EXERCISE_GIF_BASE_URL`도 설정한다. 앱 공용 API 주소 `https://211-233-206-193.sslip.io`는 AI 서버 주소가 아니다.
+4. 백엔드 서버 전용 환경에 `AI_SERVER_BASE_URL=https://ai.211-233-193-159.sslip.io`, `AI_SERVER_API_KEY`, `AI_SERVER_ENABLED=true`를 설정한다. 시험 중에는 `EXERCISE_AI_ENABLED=false`와 `EXERCISE_AI_TEST_USER_IDS=<테스트 계정 UUID>`로 해당 계정만 AI를 사용하게 한다. 전체 공개 시 테스트 UUID 변수를 제거하고 `EXERCISE_AI_ENABLED=true`로 바꾼다. GIF 객체를 공개 HTTPS에 업로드한 뒤 `EXERCISE_GIF_BASE_URL`도 설정한다. 앱 공용 API 주소 `https://211-233-206-193.sslip.io`는 AI 서버 주소가 아니다.
 5. 날짜별 계획을 표시하는 모바일 앱을 배포한다. 합성 계정으로 생성 → 최신 조회 → 첫 세션 시작·완료 → 다음 예정일의 세션 시작을 확인한다. 응답 `generator`는 `auto-fit-ai`여야 한다.
 
 ## 남은 검증과 범위
 
-- 로컬 PostgreSQL 호환 엔진에서 AI·기존 규칙 저장, 날짜별 세션 시작·항목 분리·완료·미래 날짜 제한을 확인했다. 운영 기준 `6439380` 위에 운동 변경만 다시 올린 Backend 브랜치의 테스트 882개, 모바일 단위 테스트 16개와 TypeScript 타입 검사가 통과했다. 운영 DB에서는 새 테이블의 RLS, 컬럼, 마이그레이션 기록을 확인했다. 운영 백엔드에서 규칙 기반 추천을 실제 생성한 검증은 아직 없다.
-- 실제 AI 서버 주소와 인증 설정이 없어 라이브 생성·저장 시험은 아직 실행하지 못했다.
+- 로컬 PostgreSQL 호환 엔진에서 AI·기존 규칙 저장, 날짜별 세션 시작·항목 분리·완료·미래 날짜 제한을 확인했다. 운영 기준 `6439380` 위에 운동 변경과 테스트 계정 허용목록을 올린 Backend 브랜치의 테스트 883개, 모바일 단위 테스트 16개와 TypeScript 타입 검사가 통과했다. 운영 DB에서는 새 테이블의 RLS, 컬럼, 마이그레이션 기록을 확인했다. 운영 담당자는 규칙 기반 추천 생성·최신 조회 200을 보고했으며 시작·완료와 식단 생성은 아직 확인하지 않았다.
+- AI 서버 주소와 운동 API는 확인했지만 서버 간 키에 접근할 수 없어 라이브 AI 생성·저장 시험은 아직 실행하지 못했다. PR #8은 `ai` 브랜치에 병합됐으며 AI 서버 재배포는 별도로 확인해야 한다.
 - GIF 자산의 공개 HTTPS 배포와 실제 AI 서버에 새 요청 Schema를 반영한 뒤
   라이브 계약을 확인해야 한다. AI 요청 계약은 원격 `ai` 브랜치에 있고,
   모바일 GIF 표시 코드는 별도 PR로 올라갔다. Backend 요청과 AI 입력 모델의

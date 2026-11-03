@@ -218,8 +218,29 @@ def test_gif_url_is_exposed_only_for_existing_https_object(monkeypatch):
     assert second["items"][0]["demo_gif_url"] is None
 
 
-def test_generate_api_calls_ai_and_saves_validated_items(monkeypatch):
+def test_exercise_ai_pilot_only_allows_listed_user(monkeypatch):
+    pilot_id = "10000000-0000-4000-8000-000000000001"
+    other_id = "10000000-0000-4000-8000-000000000002"
+    monkeypatch.setenv("EXERCISE_AI_ENABLED", "false")
+    monkeypatch.setenv("EXERCISE_AI_TEST_USER_IDS", f" {pilot_id}, {other_id} ")
+    assert main.exercise_ai_enabled_for_user(pilot_id)
+    assert main.exercise_ai_enabled_for_user(other_id)
+    assert not main.exercise_ai_enabled_for_user("10000000-0000-4000-8000-000000000003")
+
     monkeypatch.setenv("EXERCISE_AI_ENABLED", "true")
+    assert not main.exercise_ai_enabled_for_user("10000000-0000-4000-8000-000000000003")
+    monkeypatch.setenv("EXERCISE_AI_TEST_USER_IDS", "")
+    assert not main.exercise_ai_enabled_for_user(pilot_id)
+    monkeypatch.setenv("EXERCISE_AI_TEST_USER_IDS", "invalid-uuid")
+    assert not main.exercise_ai_enabled_for_user(pilot_id)
+    monkeypatch.delenv("EXERCISE_AI_TEST_USER_IDS")
+    assert main.exercise_ai_enabled_for_user(pilot_id)
+
+
+def test_generate_api_calls_ai_and_saves_validated_items(monkeypatch):
+    pilot_id = "10000000-0000-4000-8000-000000000001"
+    monkeypatch.setenv("EXERCISE_AI_ENABLED", "false")
+    monkeypatch.setenv("EXERCISE_AI_TEST_USER_IDS", pilot_id)
     monkeypatch.setenv("AI_SERVER_ENABLED", "true")
     monkeypatch.setenv("AI_SERVER_BASE_URL", "https://ai.example.invalid")
     monkeypatch.setenv("AI_SERVER_API_KEY", "synthetic-test-key-" + "x" * 32)
@@ -241,7 +262,7 @@ def test_generate_api_calls_ai_and_saves_validated_items(monkeypatch):
         config, transport=httpx.MockTransport(handler)))
 
     async def fake_user():
-        return main.AuthenticatedUser(id="authenticated-user")
+        return main.AuthenticatedUser(id=pilot_id)
 
     async def fake_profile(_user_id, _settings):
         return {"activity_level": "light"}
@@ -254,7 +275,7 @@ def test_generate_api_calls_ai_and_saves_validated_items(monkeypatch):
 
     async def fake_create(user_id, context_id, plan, _settings):
         saved.append(plan)
-        assert user_id == "authenticated-user"
+        assert user_id == pilot_id
         assert context_id == "context-123"
         return {"recommendation": plan["recommendation"], "items": plan["items"]}
 

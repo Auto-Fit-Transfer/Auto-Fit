@@ -1198,6 +1198,24 @@ async def attach_exercise_gif_urls(
     return result
 
 
+def exercise_ai_enabled_for_user(user_id: str) -> bool:
+    """Limit pilot AI generation to authenticated users named by the server."""
+    enabled = os.getenv("EXERCISE_AI_ENABLED", "false")
+    if enabled not in {"true", "false"}:
+        raise HTTPException(503, detail={"code": "AI_CONFIGURATION_ERROR"})
+
+    # A present pilot variable takes precedence, including an empty value.
+    # This keeps a misconfigured rollout on the existing rules path.
+    pilot_ids = os.getenv("EXERCISE_AI_TEST_USER_IDS")
+    if pilot_ids is None:
+        return enabled == "true"
+    try:
+        allowed = {UUID(value.strip()) for value in pilot_ids.split(",") if value.strip()}
+        return UUID(user_id) in allowed
+    except ValueError:
+        return False
+
+
 async def prepare_exercise_routine(
     user_id: str,
     settings: Settings,
@@ -1217,10 +1235,7 @@ async def prepare_exercise_routine(
     if not generate:
         return {"missing": [], "generated": False, "result": None}
 
-    exercise_ai_enabled = os.getenv("EXERCISE_AI_ENABLED", "false")
-    if exercise_ai_enabled not in {"true", "false"}:
-        raise HTTPException(503, detail={"code": "AI_CONFIGURATION_ERROR"})
-    if exercise_ai_enabled == "true":
+    if exercise_ai_enabled_for_user(user_id):
         try:
             config = get_ai_server_config()
         except ValueError:

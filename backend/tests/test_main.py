@@ -818,19 +818,25 @@ def test_build_exercise_recommendation_plan_uses_kst_date_and_muscle_goal_label(
 
 
 def test_generate_exercise_recommendation_uses_authenticated_user(monkeypatch) -> None:
+    other_id = "10000000-0000-4000-8000-000000000002"
+    monkeypatch.setenv("EXERCISE_AI_ENABLED", "false")
+    monkeypatch.setenv(
+        "EXERCISE_AI_TEST_USER_IDS", "10000000-0000-4000-8000-000000000001"
+    )
+
     async def fake_user() -> main.AuthenticatedUser:
-        return main.AuthenticatedUser(id="authenticated-user")
+        return main.AuthenticatedUser(id=other_id)
 
     async def fake_preferences(user_id: str, settings: main.Settings):
-        assert user_id == "authenticated-user"
+        assert user_id == other_id
         return {"goal_type": "maintenance", "experience_level": "beginner"}
 
     async def fake_profile(user_id: str, settings: main.Settings):
-        assert user_id == "authenticated-user"
+        assert user_id == other_id
         return {"user_id": user_id, "activity_level": "light"}
 
     async def fake_context(user_id: str, settings: main.Settings):
-        assert user_id == "authenticated-user"
+        assert user_id == other_id
         return {
             "exercise_recommendation_context_id": "context-123",
             "available_minutes": 30,
@@ -840,7 +846,7 @@ def test_generate_exercise_recommendation_uses_authenticated_user(monkeypatch) -
         }
 
     async def fake_previous(user_id: str, settings: main.Settings):
-        assert user_id == "authenticated-user"
+        assert user_id == other_id
         return {"items": [{}, {"exercise_name": "편안한 속도 걷기"}]}
 
     async def fake_create(
@@ -849,7 +855,7 @@ def test_generate_exercise_recommendation_uses_authenticated_user(monkeypatch) -
         plan: dict,
         settings: main.Settings,
     ):
-        assert user_id == "authenticated-user"
+        assert user_id == other_id
         assert context_id == "context-123"
         assert plan["recommendation"]["goal"] == "maintenance"
         assert plan["recommendation"]["intensity"] == "low"
