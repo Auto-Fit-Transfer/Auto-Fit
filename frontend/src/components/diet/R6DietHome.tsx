@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { darkColors, fontFamilies } from '@/src/theme';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
+import { WeeklyDietContent } from '@/src/components/diet/WeeklyDietContent';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 
 export type R6Meal = {
@@ -39,7 +40,6 @@ type Props = {
   onAlternative: (mealId: R6Meal['id']) => void;
   onOpenRecipe: (mealId: R6Meal['id']) => void;
   onOpenProteinGuide: () => void;
-  onOpenWeekly: () => void;
   showRecordControls: boolean;
 };
 
@@ -103,8 +103,14 @@ export function R6DietHome(props: Props) {
       >
         <View style={styles.titleRow}>
           <Text style={[styles.title, simple && simpleStyles.title, isDark && dark.text]}>식단</Text>
-          <SimpleReadButton text={`${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 식단입니다. 먹은 양은 ${number(energy?.current)}킬로칼로리입니다. ${props.meals.length ? `식단 ${props.meals.length}개를 확인해 보세요.` : '등록된 식단이 없습니다.'}`} />
+          <SimpleReadButton text={`7일 식단과 식사 기록을 확인할 수 있어요. ${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 먹은 양은 ${number(energy?.current)}킬로칼로리입니다.`} />
         </View>
+        <View style={[styles.weeklyContent, isDark && styles.weeklyDarkSurface]}>
+          <WeeklyDietContent />
+        </View>
+        <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle, isDark && dark.text]}>
+          식사 기록
+        </Text>
         <View style={styles.monthRow}>
           <Text style={[styles.month, isDark && dark.text]}>
             {selectedDate.getFullYear()}년 {selectedDate.getMonth() + 1}월
@@ -113,9 +119,6 @@ export function R6DietHome(props: Props) {
             <Text style={styles.today}>오늘</Text>
           </Pressable>
         </View>
-        <Pressable accessibilityRole="button" onPress={props.onOpenWeekly} style={styles.weeklyButton}>
-          <Text style={styles.weeklyText}>7일 식단 보기</Text>
-        </Pressable>
         <View style={styles.weekRow}>
           {week.map(({ date, offset }) => (
             <Pressable
@@ -221,7 +224,7 @@ export function R6DietHome(props: Props) {
         )}
 
         <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle, isDark && dark.text]}>
-          {props.selectedDateOffset === 0 ? '오늘 식단' : '선택한 날 식단'}
+          {props.selectedDateOffset === 0 ? '오늘의 일일 식단 기록' : '선택한 날의 일일 식단 기록'}
         </Text>
         {props.mealsLoading && <Text style={styles.stateText}>식단을 불러오고 있어요.</Text>}
         {props.mealsError && (
@@ -232,7 +235,7 @@ export function R6DietHome(props: Props) {
         )}
         {!props.mealsLoading && !props.mealsError && props.meals.length === 0 && (
           <View style={styles.stateCard}>
-            <Text style={styles.stateText}>이 날짜에 추천된 식단이 없어요.</Text>
+            <Text style={styles.stateText}>이 날짜에 기록할 수 있는 일일 식단이 없어요.</Text>
           </View>
         )}
         {props.meals.map((meal) => {
@@ -383,6 +386,8 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20 },
   titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   title: { fontFamily: fontFamilies.pretendardBold, fontSize: 23, color: '#1C1D22' },
+  weeklyContent: { marginTop: 18 },
+  weeklyDarkSurface: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12 },
   monthRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -392,8 +397,6 @@ const styles = StyleSheet.create({
   },
   month: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15, color: '#24252A' },
   today: { color: purple, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
-  weeklyButton: { alignSelf: 'flex-start', borderWidth: 1, borderColor: purple, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 8 },
-  weeklyText: { color: purple, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
   weekRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 2 },
   day: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 12 },
   selectedDay: { backgroundColor: '#25232C' },

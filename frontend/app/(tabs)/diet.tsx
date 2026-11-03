@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Alert, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { R6ConnectionError } from '@/src/components/common/R6ConnectionError';
 import { MealRecordSheets, type MealRecordDraft } from '@/src/components/diet/MealRecordSheets';
 import { R6DietHome } from '@/src/components/diet/R6DietHome';
 import {
@@ -318,7 +316,6 @@ function mapLogDraft(log: ApiRecord, mealId: MealType): MealRecordDraft | undefi
 
 export default function DietScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [today] = useState(() => {
     const date = new Date();
     date.setHours(12, 0, 0, 0);
@@ -332,7 +329,6 @@ export default function DietScreen() {
   const [recommendationNutritionTargets, setRecommendationNutritionTargets] =
     useState<RecommendationNutritionTargets>({});
   const [recommendationError, setRecommendationError] = useState<string | null>(null);
-  const [recommendationOffline, setRecommendationOffline] = useState(false);
   const [nutritionSummary, setNutritionSummary] = useState<NutritionSummary | null>(null);
   const [nutritionError, setNutritionError] = useState<string | null>(null);
   const [recommendationLoading, setRecommendationLoading] = useState(true);
@@ -507,7 +503,6 @@ export default function DietScreen() {
         if (!isMountedRef.current || requestId !== recommendationRequestRef.current) return false;
 
         setRecommendedMeals(mappedMeals);
-        setRecommendationOffline(false);
         setRecommendationNutritionTargets(mappedNutritionTargets);
         recommendationMealsByDateRef.current = { dateKey, meals: mappedMeals };
         const mealLogEntries = mealLogEntriesByDateRef.current.get(dateKey);
@@ -517,7 +512,6 @@ export default function DietScreen() {
         if (!isMountedRef.current || requestId !== recommendationRequestRef.current) return false;
         const message = getDietApiErrorMessage(error);
         setRecommendationError(message);
-        setRecommendationOffline(error instanceof ApiError && error.status === 0);
         return false;
       } finally {
         if (isMountedRef.current && requestId === recommendationRequestRef.current) {
@@ -916,24 +910,10 @@ export default function DietScreen() {
     recommendationMealsByDateRef.current = { dateKey: nextDateKey, meals: [] };
     setRecommendedMeals([]);
     setRecommendationError(null);
-    setRecommendationOffline(false);
     setRecommendationLoading(true);
     setSelectedDateOffset(nextOffset);
     setSelectedDateKey(nextDateKey);
   };
-
-  if (recommendationError && recommendedMeals.length === 0 && !recommendationLoading && nutritionSummary?.date !== selectedDateKey) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
-        <Text style={{ color: '#25242B', fontSize: 24, fontWeight: '700', paddingHorizontal: 20, paddingTop: insets.top + 16 }}>식단</Text>
-        <R6ConnectionError
-          message={recommendationError}
-          offline={recommendationOffline}
-          onRetry={() => { void loadRecommendations(selectedDateKey); void loadNutritionSummary(selectedDateKey); }}
-        />
-      </View>
-    );
-  }
 
   return (
     <View style={{ flex: 1 }}>
@@ -977,7 +957,6 @@ export default function DietScreen() {
           }
         }}
         onOpenProteinGuide={() => router.push({ pathname: '/diet/protein-guide', params: { date: selectedDateKey } })}
-        onOpenWeekly={() => router.push('/diet/weekly')}
         showRecordControls={showRecordControls}
       />
       <MealRecordSheets
