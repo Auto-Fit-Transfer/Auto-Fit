@@ -91,20 +91,78 @@ def test_backend_contract_filters_multiple_gym_equipment() -> None:
     assert matched_rows
     assert all(
         row.asset.exercise_mode == "gym"
-        and (
-            row.gym_training_style == "machine"
-            or "dumbbell" in row.equipment_detail
-            or bool(
-                set(row.equipment_detail)
-                & {
-                    "machine",
-                    "smith_machine",
-                    "cable",
-                    "cardio_machine",
-                }
-            )
-        )
+        and row.gym_training_style in {"", "any", "machine", "free_weight"}
         for row in matched_rows
+    )
+
+
+def test_every_backend_equipment_combination_has_compatible_candidates() -> None:
+    equipment = ["machine", "band", "dumbbell", "mat", "other"]
+    rows_by_key: dict[str, list] = {}
+    for row in load_exercise_catalog():
+        rows_by_key.setdefault(row.exercise_key, []).append(row)
+
+    for location in ("gym", "home", "outdoor", "other"):
+        for mask in range(1 << len(equipment)):
+            selected = {
+                name for index, name in enumerate(equipment)
+                if mask & (1 << index)
+            }
+            request = ExerciseRecommendationRequest(
+                available_minutes=45,
+                location=location,
+                available_equipment=sorted(selected),
+                condition_level="보통",
+            )
+            candidates = select_exercise_candidates(request)
+            assert candidates, (location, selected)
+            for candidate in candidates:
+                all_rows = rows_by_key[candidate.exercise_key]
+                if location == "gym":
+                    styles = {
+                        row.gym_training_style for row in all_rows
+                        if row.asset.exercise_mode == "gym"
+                    }
+                    allowed = {"", "any"}
+                    if "machine" in selected:
+                        allowed.add("machine")
+                    if "dumbbell" in selected:
+                        allowed.add("free_weight")
+                    assert not styles.isdisjoint(allowed), (
+                        location, selected, candidate.exercise_key
+                    )
+                else:
+                    home_equipment = {
+                        row.home_equipment for row in all_rows
+                        if row.asset.exercise_mode == "home_training"
+                    }
+                    allowed = {"", "none"}
+                    if "band" in selected:
+                        allowed.add("band")
+                    if "dumbbell" in selected:
+                        allowed.add("dumbbell")
+                    if location == "home" and "other" in selected:
+                        allowed.add("other")
+                    assert not home_equipment.isdisjoint(allowed), (
+                        location, selected, candidate.exercise_key
+                    )
+
+
+def test_equipment_selection_order_does_not_change_candidates() -> None:
+    first = ExerciseRecommendationRequest(
+        available_minutes=45,
+        location="gym",
+        available_equipment=["machine", "dumbbell"],
+        condition_level="보통",
+    )
+    reversed_order = ExerciseRecommendationRequest(
+        available_minutes=45,
+        location="gym",
+        available_equipment=["dumbbell", "machine"],
+        condition_level="보통",
+    )
+    assert select_exercise_candidates(first) == select_exercise_candidates(
+        reversed_order
     )
 
 

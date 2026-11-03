@@ -275,18 +275,23 @@ def _matches_available_equipment(
     selected = set(available_equipment)
     details = set(row.equipment_detail)
 
-    # Backend가 빈 배열을 명시하면 특정 장비가 없는 것으로 본다.
-    # 화면의 mat 값도 현재 계약상 맨몸을 뜻한다.
+    # 맨몸 운동은 선택한 장비와 무관하게 수행할 수 있다.
     bodyweight_allowed = not details and (
-        row.home_equipment in {"", "none"}
-        or row.gym_training_style in {"", "any"}
+        (
+            row.asset.exercise_mode == "home_training"
+            and row.home_equipment in {"", "none"}
+        )
+        or (
+            row.asset.exercise_mode == "gym"
+            and row.gym_training_style in {"", "any"}
+        )
     )
 
-    if not selected:
-        return bodyweight_allowed
-
-    if "mat" in selected and bodyweight_allowed:
+    if bodyweight_allowed:
         return True
+
+    if not selected:
+        return False
 
     if "machine" in selected and (
         row.gym_training_style == "machine"
@@ -322,6 +327,33 @@ def _matches_request(
     mode = _inferred_mode(request)
     if mode is not None and row.asset.exercise_mode != mode:
         return False
+
+    # Backend의 저장 전 검증은 equipment_detail 대신 mode별 장비 분류를
+    # 사용한다. 후보가 생성 후 거부되지 않도록 동일한 허용 집합을 적용한다.
+    if "available_equipment" in request.model_fields_set:
+        selected = set(request.available_equipment)
+        if mode == "gym":
+            allowed = {"", "any"}
+            if "machine" in selected:
+                allowed.add("machine")
+            if "dumbbell" in selected:
+                allowed.add("free_weight")
+            if row.gym_training_style not in allowed:
+                return False
+        elif mode == "home_training":
+            allowed = {"", "none"}
+            if "band" in selected:
+                allowed.add("band")
+            if "dumbbell" in selected:
+                allowed.add("dumbbell")
+            if (
+                (request.location or "").strip().lower()
+                in {"home", "indoor", "집", "실내"}
+                and "other" in selected
+            ):
+                allowed.add("other")
+            if row.home_equipment not in allowed:
+                return False
 
     if (
         request.preferred_training_types
@@ -379,6 +411,9 @@ def _matches_request(
 def _request_signature(
     request: ExerciseRecommendationRequest,
 ) -> str:
+    request = request.model_copy(update={
+        "available_equipment": sorted(set(request.available_equipment)),
+    })
     return request.model_dump_json(
         exclude_none=True,
         exclude_unset=False,
