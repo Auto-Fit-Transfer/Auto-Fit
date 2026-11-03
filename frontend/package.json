@@ -6,6 +6,7 @@
     "test": "node --test tests/*.test.mjs",
     "check:preview-env": "node --env-file-if-exists=.env scripts/check-preview-env.mjs",
     "eas-build-pre-install": "node scripts/check-preview-env.mjs",
+    "eas-build-post-install": "node scripts/patch-expo-swift-compiler.mjs",
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
