@@ -28,20 +28,20 @@ AI 출력이 선택한 장비와 맞지 않으면 추천 생성에 실패한다.
 
 ## 활성화 순서
 
-1. 별도 AI 서버에 [공용 GitHub `ai` 브랜치](https://github.com/Auto-Fit-Transfer/Auto-Fit/tree/c8a2fcdc3db1c2b2b783c0a4001ce131ccc9c2e6)의 운동 API와 CSV 카탈로그가 배포됐는지 확인한다. 공개 `/openapi.json`에 `POST /recommend/exercise`가 있어야 한다.
-2. `supabase/migrations/20261103065233_store_ai_exercise_recommendations.sql`과 주간 세션 마이그레이션 `20261103070538_exercise_ai_weekly_sessions.sql`을 순서대로 적용한다. 기존 추천은 `generator=rules_v1`을 유지한다.
+1. 별도 AI 서버에 [공용 GitHub `ai` 브랜치](https://github.com/Auto-Fit-Transfer/Auto-Fit/tree/2f9f9801dec72bed210102b57b1e9f239b475229)의 운동 API와 CSV 카탈로그가 배포됐는지 확인한다. 공개 `/openapi.json`에 `POST /recommend/exercise`가 있어야 한다.
+2. `supabase/migrations/20261103065233_store_ai_exercise_recommendations.sql`과 주간 세션 마이그레이션 `20261103070538_exercise_ai_weekly_sessions.sql`을 순서대로 적용한다. Auto-Fit 운영 프로젝트에는 2026-11-03에 각각 `20261103072835`, `20261103072839` 버전으로 적용됐다. 기존 추천은 `generator=rules_v1`을 유지한다.
 3. 카탈로그 CSV를 포함한 백엔드를 배포한다. 현재 CSV 해시는 `sha256:5e231250283742da2deee4e36da0308fb635409999ee8f6a29ff49274c5d97a1`이다. AI 서버의 `catalog_version`이 다르면 저장하지 않는다.
 4. 백엔드 서버 전용 환경에 `AI_SERVER_BASE_URL`(별도 AI 서버의 HTTPS origin), `AI_SERVER_API_KEY`, `AI_SERVER_ENABLED=true`, `EXERCISE_AI_ENABLED=true`를 설정한다. GIF 객체를 공개 HTTPS에 업로드한 뒤 `EXERCISE_GIF_BASE_URL`도 설정한다. 앱 공용 API 주소 `https://211-233-206-193.sslip.io`는 AI 서버 주소가 아니다.
 5. 날짜별 계획을 표시하는 모바일 앱을 배포한다. 합성 계정으로 생성 → 최신 조회 → 첫 세션 시작·완료 → 다음 예정일의 세션 시작을 확인한다. 응답 `generator`는 `auto-fit-ai`여야 한다.
 
 ## 남은 검증과 범위
 
-- 로컬 PostgreSQL 호환 엔진에서 AI·기존 규칙 저장, 날짜별 세션 시작·항목 분리·완료·미래 날짜 제한을 확인했다. 현재 백엔드 테스트 920개, 모바일 단위 테스트 16개와 TypeScript 타입 검사가 통과했다. 운영 DB 적용은 별도 확인이 필요하다.
+- 로컬 PostgreSQL 호환 엔진에서 AI·기존 규칙 저장, 날짜별 세션 시작·항목 분리·완료·미래 날짜 제한을 확인했다. 분리된 Backend 브랜치의 테스트 884개, 모바일 단위 테스트 16개와 TypeScript 타입 검사가 통과했다. 운영 DB에서는 새 테이블의 RLS, 컬럼, 마이그레이션 기록을 확인했다.
 - 실제 AI 서버 주소와 인증 설정이 없어 라이브 생성·저장 시험은 아직 실행하지 못했다.
-- DB 마이그레이션은 파일로만 준비했다. 운영 DB에 적용하지 않았다.
 - GIF 자산의 공개 HTTPS 배포와 실제 AI 서버에 새 요청 Schema를 반영한 뒤
-  라이브 계약을 확인해야 한다. AI 서버와 모바일 GIF 표시 코드는 별도 로컬
-  작업 브랜치에 준비됐고 Backend와의 요청·응답 교차 검사는 통과했다.
+  라이브 계약을 확인해야 한다. AI 요청 계약은 원격 `ai` 브랜치에 있고,
+  모바일 GIF 표시 코드는 별도 PR로 올라갔다. Backend 요청과 AI 입력 모델의
+  네 가지 컨디션 값 교차 검사는 통과했다.
   반복 운동 제외, 세트·반복 처방,
   헬스 집중 부위·홈트 성향 입력은 별도 계약과 화면 작업이 필요하다.
 - AI 응답에는 열량이 없어 운동 완료 화면의 열량은 0으로 집계된다. 운동 종류는
