@@ -16,9 +16,10 @@ class FakeResponses:
     def __init__(self, responses: list[SimpleNamespace]) -> None:
         self.responses = list(responses)
         self.calls = 0
+        self.inputs = []
 
     async def parse(self, **kwargs) -> SimpleNamespace:
-        del kwargs
+        self.inputs.append(kwargs)
         response = self.responses[self.calls]
         self.calls += 1
         return response
@@ -68,16 +69,23 @@ async def test_unparsed_response_records_metadata_without_recipe_text() -> None:
     after = MealRecipeService.get_operational_stats()["cache"]["llm_unparsed_responses"]
 
     assert client.calls == 2
+    assert all(call["reasoning"] == {"effort": "minimal"} for call in client.inputs)
+    assert all(call["max_output_tokens"] == 1200 for call in client.inputs)
     assert result["recipe_source"] == "unavailable"
     assert after - before == 2
     messages = warning_texts(warning)
     assert len(messages) == 2
-    assert all("max_output_tokens" in message and "1200" in message for message in messages)
+    assert all("incomplete_details={'reason': 'max_output_tokens'}" in message
+               and "status=incomplete" in message and "1200" in message
+               for message in messages)
     assert all("두부구이" not in message for message in messages)
 
 
 async def test_safety_rejection_records_count_without_allergen_name() -> None:
-    rejected = SimpleNamespace(output_parsed=recipe_with_ingredient("우유"))
+    rejected = SimpleNamespace(
+        output_parsed=recipe_with_ingredient("우유"),
+        status="completed", incomplete_details=None,
+    )
     service, client = make_service([rejected, rejected])
     before = MealRecipeService.get_operational_stats()["cache"]["llm_safety_rejections"]
     with patch.object(recipe_module.logger, "warning") as warning:
@@ -90,7 +98,8 @@ async def test_safety_rejection_records_count_without_allergen_name() -> None:
     assert after - before == 2
     messages = warning_texts(warning)
     assert len(messages) == 2
-    assert all("restriction_count=" in message for message in messages)
+    assert all("restriction_count=" in message and "status=completed" in message
+               and "incomplete_details=None" in message for message in messages)
     assert all("우유" not in message for message in messages)
 
 

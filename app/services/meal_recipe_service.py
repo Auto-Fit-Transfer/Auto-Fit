@@ -1680,6 +1680,8 @@ class MealRecipeService:
 
                         input=prompt,
 
+                        reasoning={"effort": "minimal"},
+
                         text_format=(
                             GeneratedRecipeResponse
                         ),
@@ -1696,6 +1698,12 @@ class MealRecipeService:
                 )
                 continue
 
+            response_status = getattr(response, "status", None)
+            incomplete = getattr(response, "incomplete_details", None)
+            incomplete_details = (
+                {"reason": getattr(incomplete, "reason", None)}
+                if incomplete is not None else None
+            )
             generated = (
                 response.output_parsed
             )
@@ -1710,15 +1718,11 @@ class MealRecipeService:
                 )
                 logger.warning(
                     "LLM recipe response has no parsed output "
-                    "(attempt %s/2, status=%s, incomplete_reason=%s, "
+                    "(attempt %s/2, status=%s, incomplete_details=%s, "
                     "output_tokens=%s, reasoning_tokens=%s).",
                     attempt,
-                    getattr(response, "status", None),
-                    getattr(
-                        getattr(response, "incomplete_details", None),
-                        "reason",
-                        None,
-                    ),
+                    response_status,
+                    incomplete_details,
                     getattr(usage, "output_tokens", None),
                     getattr(output_details, "reasoning_tokens", None),
                 )
@@ -1742,8 +1746,11 @@ class MealRecipeService:
                 )
                 logger.warning(
                     "LLM recipe rejected by safety check "
-                    "(attempt %s/2, restriction_count=%s).",
+                    "(attempt %s/2, status=%s, incomplete_details=%s, "
+                    "restriction_count=%s).",
                     attempt,
+                    response_status,
+                    incomplete_details,
                     len(violations),
                 )
 
