@@ -21,6 +21,24 @@ EXERCISE_CATALOG_PATH = (
 
 CATALOG_CANDIDATE_LIMIT = 48
 
+_MACHINE_EQUIPMENT_DETAILS = {
+    "machine",
+    "smith_machine",
+    "cable",
+    "cardio_machine",
+}
+
+_DIRECT_EQUIPMENT_DETAILS = {
+    "band": {"band"},
+    "dumbbell": {"dumbbell"},
+}
+
+_KNOWN_EQUIPMENT_DETAILS = (
+    _MACHINE_EQUIPMENT_DETAILS
+    | _DIRECT_EQUIPMENT_DETAILS["band"]
+    | _DIRECT_EQUIPMENT_DETAILS["dumbbell"]
+)
+
 REQUIRED_COLUMNS = {
     "asset_id",
     "exercise_key",
@@ -240,7 +258,61 @@ def _inferred_mode(
         return "gym"
     if location in {"home", "indoor", "집", "실내"}:
         return "home_training"
+    if location in {"outdoor", "other", "야외", "기타"}:
+        # 현재 구매 GIF catalog에는 outdoor 전용 mode가 없다.
+        # 고정식 헬스장 기구를 노출하지 않도록 휴대 가능한
+        # home_training catalog를 안전한 공통 후보로 사용한다.
+        return "home_training"
     return None
+
+
+def _matches_available_equipment(
+    row: ExerciseCatalogRow,
+    available_equipment: list[str],
+) -> bool:
+    """Backend의 복수 장비 선택을 catalog 한 행에 적용한다."""
+
+    selected = set(available_equipment)
+    details = set(row.equipment_detail)
+
+    # Backend가 빈 배열을 명시하면 특정 장비가 없는 것으로 본다.
+    # 화면의 mat 값도 현재 계약상 맨몸을 뜻한다.
+    bodyweight_allowed = not details and (
+        row.home_equipment in {"", "none"}
+        or row.gym_training_style in {"", "any"}
+    )
+
+    if not selected:
+        return bodyweight_allowed
+
+    if "mat" in selected and bodyweight_allowed:
+        return True
+
+    if "machine" in selected and (
+        row.gym_training_style == "machine"
+        or bool(details & _MACHINE_EQUIPMENT_DETAILS)
+    ):
+        return True
+
+    for equipment, accepted_details in (
+        _DIRECT_EQUIPMENT_DETAILS.items()
+    ):
+        if equipment not in selected:
+            continue
+        if (
+            row.home_equipment == equipment
+            or bool(details & accepted_details)
+        ):
+            return True
+
+    if "other" in selected and (
+        row.home_equipment == "other"
+        or row.gym_training_style == "other"
+        or bool(details - _KNOWN_EQUIPMENT_DETAILS)
+    ):
+        return True
+
+    return False
 
 
 def _matches_request(
@@ -255,6 +327,15 @@ def _matches_request(
         request.preferred_training_types
         and row.recommended_training_type
         not in request.preferred_training_types
+    ):
+        return False
+
+    if (
+        "available_equipment" in request.model_fields_set
+        and not _matches_available_equipment(
+            row,
+            request.available_equipment,
+        )
     ):
         return False
 

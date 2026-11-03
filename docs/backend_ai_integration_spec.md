@@ -601,38 +601,55 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
 
 ## 오늘의 운동 설정
 
-Frontend의 헬스·홈트 선택값은 기존 `POST /recommend/exercise`에 전달한다. 기존 요청 필드는 그대로 유효하며, `exercise_mode`를 보내는 신규 요청만 해당 모드의 상세 설정을 함께 보내야 한다.
+Frontend에서 저장한 오늘의 운동 조건은 Backend가 `POST /recommend/exercise`에 전달한다. `available_equipment`는 복수 선택 배열이며 누락하면 장비 조건을 추천 후보에 반영할 수 없다.
 
-### 헬스 요청
+### 표준 요청
 
 ```json
 {
   "metric_statuses": {},
-  "goal_type": "weight_loss",
+  "goal_type": "muscle_gain",
   "experience_level": "beginner",
-  "available_minutes": 30,
+  "available_minutes": 60,
   "location": "gym",
-  "preferred_training_types": ["weight_training"],
-  "exercise_mode": "gym",
-  "daily_condition": "good",
-  "has_discomfort": false,
-  "discomfort_areas": [],
-  "gym_preferences": {
-    "training_style": "machine",
-    "focus_area": "upper_body"
-  }
+  "available_equipment": ["machine", "dumbbell"],
+  "condition_level": "보통",
+  "discomfort_areas": ["오른쪽 무릎"],
+  "condition_note": null
 }
 ```
 
-### 홈트 요청
+표준 필드 계약은 다음과 같다.
+
+| 필드 | 값 |
+|---|---|
+| `available_minutes` | `30`, `45`, `60`, `90`, `120` |
+| `location` | `gym`, `home`, `outdoor`, `other` |
+| `available_equipment` | `machine`, `band`, `dumbbell`, `mat`, `other`의 배열 |
+| `condition_level` | `좋음`, `보통`, `피곤해요`, `안 좋아요` |
+| `discomfort_areas` | 미선택 시 `[]`, 선택 시 문자열 배열 |
+| `condition_note` | 추가 설명 또는 `null` |
+
+AI Server는 컨디션을 내부 안전 상태로 다음처럼 정규화한다.
+
+| `condition_level` | 내부 값 |
+|---|---|
+| `좋음` | `good` |
+| `보통` | `normal` |
+| `피곤해요` | `tired` |
+| `안 좋아요` | `poor` |
+
+`discomfort_areas`가 비어 있지 않으면 AI Server가 `has_discomfort=true`로 처리한다. `mat`는 현재 화면 계약에서 맨몸을 뜻하므로 CSV의 무장비 후보로 연결한다. 빈 `available_equipment` 배열을 명시하면 특정 장비가 필요하지 않은 후보만 사용한다.
+
+`outdoor`와 `other`는 현재 구매 GIF catalog에 전용 mode가 없으므로, 고정식 헬스장 장비를 가정하지 않는 `home_training` 자산 중 전달된 장비로 가능한 후보를 사용한다.
+
+### 이전 요청 호환
+
+다음 기존 필드는 당분간 계속 수용한다.
 
 ```json
 {
-  "metric_statuses": {},
-  "goal_type": "general_fitness",
-  "experience_level": "beginner",
-  "available_minutes": 15,
-  "location": "home",
+  "available_minutes": 30,
   "preferred_training_types": ["home_training", "bodyweight"],
   "exercise_mode": "home_training",
   "daily_condition": "normal",
@@ -645,19 +662,7 @@ Frontend의 헬스·홈트 선택값은 기존 `POST /recommend/exercise`에 전
 }
 ```
 
-Frontend 표시값과 API enum은 다음처럼 매핑한다.
-
-| 화면 | 표시값 | API 값 |
-|---|---|---|
-| 공통 컨디션 | 좋음 / 보통 / 피곤 | `good` / `normal` / `tired` |
-| 헬스 운동 방식 | 머신 / 프리웨이트 / 상관없음 / 기타 | `machine` / `free_weight` / `any` / `other` |
-| 헬스 집중 부위 | 상체 / 하체 / 전신 / 기타 | `upper_body` / `lower_body` / `full_body` / `other` |
-| 홈트 도구 | 장비 없이 / 밴드 / 덤벨 / 기타 | `none` / `band` / `dumbbell` / `other` |
-| 홈트 성향 | 조용한 운동 / 땀 나는 운동 / 기타 | `quiet` / `sweaty` / `other` |
-
-`has_discomfort=false`이면 `discomfort_areas`는 빈 배열이어야 한다. `true`인데 상세 부위를 받지 않은 화면이라면 빈 배열도 허용한다. AI Server는 피곤함 또는 불편 부위가 있으면 강도·동작 선택에 안전 조건을 우선한다.
-
-운동 방식·집중 부위·도구·운동 성향에서 `other`를 선택하면 각각 `other_training_style`, `other_focus_area`, `other_equipment`, `other_workout_style`에 사용자가 지정한 값을 함께 전달한다. 헬스·홈트 시간의 `기타`는 별도 enum이 아니라 실제 분 단위 숫자를 `available_minutes`에 전달한다.
+이전 요청에서 `has_discomfort=false`와 비어 있지 않은 `discomfort_areas`를 동시에 보내는 모순된 요청은 거부한다. 표준 Backend 요청은 `has_discomfort`를 생략하고 배열 존재 여부로 판정한다. 표준 값과 이전 값이 동시에 제공되면서 서로 충돌하면 요청을 거부한다.
 
 운동 추천 결과의 각 `sessions[].exercises[]`는 AI Server에 배포된
 `data/exercise_assets/exercise_asset_catalog.csv`에 존재하는 운동만 반환한다.

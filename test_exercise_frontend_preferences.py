@@ -47,19 +47,12 @@ def run_immediate(coroutine):
 
 async def run_service_test() -> None:
     request = ExerciseRecommendationRequest(
-        exercise_mode="home_training",
-        daily_condition="tired",
-        available_minutes=15,
-        has_discomfort=True,
-        discomfort_areas=["knee"],
-        home_training_preferences={
-            "equipment": "none",
-            "workout_style": "quiet",
-        },
-        preferred_training_types=[
-            "home_training",
-            "bodyweight",
-        ],
+        available_minutes=30,
+        location="home",
+        available_equipment=["mat"],
+        condition_level="피곤해요",
+        discomfort_areas=["오른쪽 무릎"],
+        condition_note="평소보다 피곤함",
     )
     fake_client = FakeClient()
 
@@ -80,14 +73,19 @@ async def run_service_test() -> None:
         service.rag_node = original_rag_node
 
     assert response.summary == "오늘의 설정을 반영한 홈트"
-    assert '"exercise_mode": "home_training"' in (
+    assert '"location": "home"' in (
         fake_client.responses.input_text
     )
     assert '"daily_condition": "tired"' in (
         fake_client.responses.input_text
     )
-    assert '"equipment": "none"' in fake_client.responses.input_text
-    assert '"workout_style": "quiet"' in (
+    assert '"available_equipment": ["mat"]' in (
+        fake_client.responses.input_text
+    )
+    assert '"condition_level": "피곤해요"' in (
+        fake_client.responses.input_text
+    )
+    assert '"condition_note": "평소보다 피곤함"' in (
         fake_client.responses.input_text
     )
     assert '"recovery_priority"' in fake_client.responses.input_text
@@ -95,6 +93,35 @@ async def run_service_test() -> None:
 
 
 def main() -> None:
+    backend_request = ExerciseRecommendationRequest(
+        available_minutes=60,
+        location="gym",
+        available_equipment=[
+            "machine",
+            "dumbbell",
+            "machine",
+        ],
+        condition_level="보통",
+        discomfort_areas=["오른쪽 무릎"],
+        condition_note=None,
+    )
+    assert backend_request.available_equipment == [
+        "machine",
+        "dumbbell",
+    ]
+    assert backend_request.daily_condition == "normal"
+    assert backend_request.has_discomfort is True
+
+    poor_request = ExerciseRecommendationRequest(
+        available_minutes=30,
+        location="other",
+        available_equipment=[],
+        condition_level="안 좋아요",
+        discomfort_areas=[],
+    )
+    assert poor_request.daily_condition == "poor"
+    assert poor_request.has_discomfort is False
+
     gym_request = ExerciseRecommendationRequest(
         exercise_mode="gym",
         daily_condition="good",
@@ -157,11 +184,37 @@ def main() -> None:
     try:
         ExerciseRecommendationRequest(
             discomfort_areas=["knee"],
+            has_discomfort=False,
         )
     except ValidationError:
         pass
     else:
         raise AssertionError("discomfort validation did not run")
+
+    try:
+        ExerciseRecommendationRequest(
+            available_minutes=30,
+            location="gym",
+            available_equipment=["barbell"],
+            condition_level="좋음",
+        )
+    except ValidationError:
+        pass
+    else:
+        raise AssertionError("equipment enum validation did not run")
+
+    try:
+        ExerciseRecommendationRequest(
+            available_minutes=30,
+            location="gym",
+            available_equipment=["machine"],
+            condition_level="좋음",
+            unexpected_field="not-allowed",
+        )
+    except ValidationError:
+        pass
+    else:
+        raise AssertionError("extra field validation did not run")
 
     run_immediate(run_service_test())
     print("exercise frontend preference tests: OK")

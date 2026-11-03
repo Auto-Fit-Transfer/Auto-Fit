@@ -4592,6 +4592,21 @@
             ],
             "title": "Location"
           },
+          "available_equipment": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "machine",
+                "band",
+                "dumbbell",
+                "mat",
+                "other"
+              ]
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Available Equipment"
+          },
           "preferred_training_types": {
             "items": {
               "type": "string",
@@ -4629,7 +4644,8 @@
                 "enum": [
                   "good",
                   "normal",
-                  "tired"
+                  "tired",
+                  "poor"
                 ]
               },
               {
@@ -4637,6 +4653,35 @@
               }
             ],
             "title": "Daily Condition"
+          },
+          "condition_level": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "좋음",
+                  "보통",
+                  "피곤해요",
+                  "안 좋아요"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition Level"
+          },
+          "condition_note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition Note"
           },
           "has_discomfort": {
             "type": "boolean",
@@ -4672,6 +4717,7 @@
             ]
           }
         },
+        "additionalProperties": false,
         "type": "object",
         "title": "ExerciseRecommendationRequest"
       },

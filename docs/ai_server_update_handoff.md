@@ -922,3 +922,21 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - 테스트 결과: 관련 pytest 16개, Chat resilience·FastAPI integration, Diet fallback·cache/singleflight·item 보존·한 끼 재추천 스크립트 통과
 - 남은 작업: 로컬 서버가 없어 미실행한 live 주간 식단 E2E, Backend 전환 후 기존 88건 재검증과 워커별 운영 사용량 확인
 - 알려진 제한: health 지표는 프로세스 메모리 기반이며 재시작 시 초기화됨. usage는 최종 청구서가 아니라 OpenAI 응답 관측값임
+
+## 2026-11-03 · Backend 오늘 운동 설정 계약 수용
+
+- 상태: 로컬 구현·결정론적 검증 완료, Backend 변환 코드 배포 및 E2E 대기
+- 관련 커밋: 미커밋
+- 변경 목적: Backend가 저장하는 시간·장소·복수 장비·한글 컨디션·불편 부위를 운동 추천 후보와 OpenAI 입력에 누락 없이 반영
+- 변경 API: `POST /recommend/exercise` 요청에 `available_equipment`, `condition_level`, `condition_note` 추가; 기존 요청 필드는 호환 유지
+- 변경 파일: `app/schemas/recommendation.py`, `app/services/exercise_catalog_service.py`, `app/services/exercise_recommendation_service.py`, `docs/ai-openapi.json`, `docs/backend_ai_integration_spec.md`, 운동 계약 테스트
+- 기존 동작 영향: CSV에 있는 `auto_mapped` primary 운동만 추천하고 후보 밖 `exercise_key`를 거부하는 정책과 `catalog_version` 반환 유지
+- 컨디션 정규화: `좋음→good`, `보통→normal`, `피곤해요→tired`, `안 좋아요→poor`; 불편 부위 배열이 있으면 `has_discomfort=true` 자동 판정
+- 장비 정책: Backend 복수 장비를 OR 조건으로 필터링; `mat`와 명시적 빈 배열은 무장비 후보, `machine`은 머신·케이블·스미스·유산소 머신 상세 장비를 포함
+- 장소 정책: `gym`은 헬스장 자산, `home`·`outdoor`·`other`는 현재 catalog 한계상 고정식 헬스장 장비를 가정하지 않는 `home_training` 자산 사용
+- Frontend 작업: 없음. 기존 오늘 운동 설정값을 Backend에 저장하는 흐름 유지
+- Backend 작업: AI 요청 변환에서 `available_equipment`를 누락하지 않고 저장된 최신 context를 기준으로 `/recommend/exercise` 호출; `exercise_key`와 `catalog_version` 검증·저장
+- 실행 테스트: Python syntax compile, Backend 요청 Schema 정규화, legacy 화면 설정 호환, 복수 장비·mat·야외·빈 장비 catalog 필터, 후보 밖 key 거부, OpenAPI snapshot 계약
+- 테스트 결과: 운동·Backend AI 계약 pytest `12 passed`, 기존 운동 화면 설정 스크립트 통과
+- 남은 작업: 원격 Backend에 `exercise_ai.py` 반영 후 실제 요청·응답 DTO 대조, Frontend → Backend → AI Server E2E, Backend GIF URL 매핑
+- Backend 상세 인계: [backend_exercise_ai_request_contract_2026-11-03.md](backend_exercise_ai_request_contract_2026-11-03.md)

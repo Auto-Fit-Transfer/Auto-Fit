@@ -241,4 +241,3 @@ python -m pytest backend/tests/test_chat_model.py -q
 
 - 알레르기는 Backend가 인증된 사용자 데이터에서 조회하므로 식단 생성 요청마다 Frontend가 임의 문자열로 다시 보낼 필요는 없습니다.
 - 사용자가 알레르기를 수정한 경우 저장 완료 후 식단을 새로 생성하도록 UX를 연결합니다.
-

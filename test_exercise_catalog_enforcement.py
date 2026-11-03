@@ -8,8 +8,10 @@ from app.schemas.recommendation import (
 )
 from app.services.exercise_catalog_service import (
     EXERCISE_CATALOG_PATH,
+    _matches_request,
     candidates_by_key,
     get_exercise_catalog_version,
+    load_exercise_catalog,
     select_exercise_candidates,
 )
 import app.services.exercise_recommendation_service as service
@@ -61,6 +63,108 @@ def test_catalog_candidates_follow_request_constraints() -> None:
         for asset in candidate.assets:
             assert asset.exercise_mode == "home_training"
             assert "/Home_Workout/" in asset.animation_path
+
+
+def test_backend_contract_filters_multiple_gym_equipment() -> None:
+    request = ExerciseRecommendationRequest(
+        available_minutes=60,
+        location="gym",
+        available_equipment=["machine", "dumbbell"],
+        condition_level="보통",
+        discomfort_areas=["오른쪽 무릎"],
+    )
+
+    candidates = select_exercise_candidates(request)
+    candidate_keys = {
+        candidate.exercise_key for candidate in candidates
+    }
+    matched_rows = [
+        row
+        for row in load_exercise_catalog()
+        if row.exercise_key in candidate_keys
+        and _matches_request(row, request)
+    ]
+
+    assert candidates
+    assert request.daily_condition == "normal"
+    assert request.has_discomfort is True
+    assert matched_rows
+    assert all(
+        row.asset.exercise_mode == "gym"
+        and (
+            row.gym_training_style == "machine"
+            or "dumbbell" in row.equipment_detail
+            or bool(
+                set(row.equipment_detail)
+                & {
+                    "machine",
+                    "smith_machine",
+                    "cable",
+                    "cardio_machine",
+                }
+            )
+        )
+        for row in matched_rows
+    )
+
+
+@pytest.mark.parametrize("location", ["home", "outdoor", "other"])
+def test_mat_contract_uses_portable_bodyweight_candidates(
+    location: str,
+) -> None:
+    request = ExerciseRecommendationRequest(
+        available_minutes=30,
+        location=location,
+        available_equipment=["mat"],
+        condition_level="좋음",
+        discomfort_areas=[],
+    )
+
+    candidates = select_exercise_candidates(request)
+    candidate_keys = {
+        candidate.exercise_key for candidate in candidates
+    }
+    matched_rows = [
+        row
+        for row in load_exercise_catalog()
+        if row.exercise_key in candidate_keys
+        and _matches_request(row, request)
+    ]
+
+    assert candidates
+    assert matched_rows
+    assert all(
+        row.asset.exercise_mode == "home_training"
+        and not row.equipment_detail
+        and row.home_equipment == "none"
+        for row in matched_rows
+    )
+
+
+def test_explicit_empty_equipment_uses_no_equipment_candidates() -> None:
+    request = ExerciseRecommendationRequest(
+        available_minutes=30,
+        location="home",
+        available_equipment=[],
+        condition_level="안 좋아요",
+        discomfort_areas=[],
+    )
+
+    candidates = select_exercise_candidates(request)
+    candidate_keys = {
+        candidate.exercise_key for candidate in candidates
+    }
+    matched_rows = [
+        row
+        for row in load_exercise_catalog()
+        if row.exercise_key in candidate_keys
+        and _matches_request(row, request)
+    ]
+
+    assert candidates
+    assert request.daily_condition == "poor"
+    assert matched_rows
+    assert all(not row.equipment_detail for row in matched_rows)
 
 
 def test_catalog_version_is_cross_platform_stable() -> None:

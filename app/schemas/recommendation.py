@@ -74,7 +74,48 @@ ExerciseDailyCondition = Literal[
 
     "tired",
 
+    "poor",
+
 ]
+
+
+ExerciseBackendConditionLevel = Literal[
+
+    "좋음",
+
+    "보통",
+
+    "피곤해요",
+
+    "안 좋아요",
+
+]
+
+
+ExerciseAvailableEquipment = Literal[
+
+    "machine",
+
+    "band",
+
+    "dumbbell",
+
+    "mat",
+
+    "other",
+
+]
+
+
+BACKEND_CONDITION_LEVEL_MAP: dict[
+    ExerciseBackendConditionLevel,
+    ExerciseDailyCondition,
+] = {
+    "좋음": "good",
+    "보통": "normal",
+    "피곤해요": "tired",
+    "안 좋아요": "poor",
+}
 
 
 GymTrainingStyle = Literal[
@@ -250,6 +291,14 @@ class HomeTrainingPreferences(BaseModel):
 
 class ExerciseRecommendationRequest(BaseModel):
 
+    model_config = ConfigDict(
+
+        extra="forbid",
+
+        str_strip_whitespace=True,
+
+    )
+
     metric_statuses: dict[str, str] = Field(
 
         default_factory=dict
@@ -280,6 +329,23 @@ class ExerciseRecommendationRequest(BaseModel):
 
 
 
+    # Backend의 오늘 운동 설정에서 전달하는 복수 선택 장비다.
+    # mat는 현재 화면에서 "맨몸"을 의미하며 catalog 단계에서
+    # 무장비 운동으로 정규화한다.
+    available_equipment: list[
+
+        ExerciseAvailableEquipment
+
+    ] = Field(
+
+        default_factory=list,
+
+        max_length=5,
+
+    )
+
+
+
     preferred_training_types: list[
 
         ExerciseTrainingType
@@ -299,6 +365,22 @@ class ExerciseRecommendationRequest(BaseModel):
 
 
     daily_condition: ExerciseDailyCondition | None = None
+
+
+
+    # Backend가 저장하는 한글 화면 값이다. 내부 추천 로직에서는
+    # daily_condition으로 정규화하여 기존 안전 정책을 재사용한다.
+    condition_level: ExerciseBackendConditionLevel | None = None
+
+
+
+    condition_note: str | None = Field(
+
+        default=None,
+
+        max_length=500,
+
+    )
 
 
 
@@ -330,9 +412,59 @@ class ExerciseRecommendationRequest(BaseModel):
 
 
 
+    @field_validator(
+
+        "available_equipment"
+
+    )
+
+    @classmethod
+
+    def deduplicate_available_equipment(
+
+        cls,
+
+        value: list[ExerciseAvailableEquipment],
+
+    ) -> list[ExerciseAvailableEquipment]:
+
+        return list(dict.fromkeys(value))
+
+
+
     @model_validator(mode="after")
 
     def validate_frontend_preferences(self):
+
+        if self.condition_level is not None:
+
+            normalized_condition = (
+
+                BACKEND_CONDITION_LEVEL_MAP[
+
+                    self.condition_level
+
+                ]
+
+            )
+
+            if (
+
+                self.daily_condition is not None
+
+                and self.daily_condition
+
+                != normalized_condition
+
+            ):
+
+                raise ValueError(
+
+                    "condition_level and daily_condition conflict"
+
+                )
+
+            self.daily_condition = normalized_condition
 
         if self.exercise_mode is not None:
 
@@ -354,13 +486,29 @@ class ExerciseRecommendationRequest(BaseModel):
 
 
 
-        if not self.has_discomfort and self.discomfort_areas:
+        if self.discomfort_areas:
 
-            raise ValueError(
+            # 신규 Backend 계약은 has_discomfort를 보내지 않고
+            # discomfort_areas의 존재 여부로 상태를 표현한다.
+            # 기존 호출자가 명시적으로 false와 목록을 함께 보내는
+            # 모순된 요청은 계속 거부한다.
+            if (
 
-                "discomfort_areas requires has_discomfort=true"
+                "has_discomfort" in self.model_fields_set
 
-            )
+                and not self.has_discomfort
+
+            ):
+
+                raise ValueError(
+
+                    "discomfort_areas conflicts with "
+
+                    "has_discomfort=false"
+
+                )
+
+            self.has_discomfort = True
 
 
 
