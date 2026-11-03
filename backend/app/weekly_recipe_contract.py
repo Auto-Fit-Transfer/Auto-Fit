@@ -10,6 +10,13 @@ from backend.app.weekly_diet_contract import AIData, Day, FoodItem, MealType, Nu
 RecipeSource = Literal["official_exact", "official_similar", "llm_generated", "unavailable"]
 
 
+def has_unavailable_recipe(reply: dict) -> bool:
+    return any(
+        item.get("recipe_source") == "unavailable"
+        for item in reply.get("meal", {}).get("items", [])
+    )
+
+
 class RecipeData(AIData):
     model_config = ConfigDict(strict=True, extra="forbid", allow_inf_nan=False)
 

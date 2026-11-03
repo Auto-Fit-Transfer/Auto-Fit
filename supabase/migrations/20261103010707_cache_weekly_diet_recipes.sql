@@ -1,15 +1,16 @@
 -- Keep the validated AI reply for each weekly plan version, slot and serving count.
 alter table public.diet_recipe_snapshots
-  add column recipe_response jsonb;
+  add column if not exists recipe_response jsonb;
+
+alter table public.diet_recipe_snapshots
+  drop constraint if exists diet_recipe_snapshots_response_check;
 
 alter table public.diet_recipe_snapshots
   add constraint diet_recipe_snapshots_response_check check (
-    recipe_response is null or
-    (weekly_diet_plan_id is not null and jsonb_typeof(recipe_response) = 'object')
+    recipe_response is null or jsonb_typeof(recipe_response) = 'object'
   );
 
--- A safe AI response may report every recipe as unavailable. Cache that result
--- without inventing ingredients or cooking steps.
+-- A generated recipe can have cooking steps without structured ingredients.
 alter table public.diet_recipe_snapshots
   drop constraint diet_recipe_snapshots_ingredients_check,
   drop constraint diet_recipe_snapshots_steps_check;
@@ -35,3 +36,5 @@ create unique index uq_diet_recipe_weekly_slot_version
   on public.diet_recipe_snapshots
     (weekly_diet_plan_id, weekly_plan_version, plan_day, meal_type, servings)
   where weekly_diet_plan_id is not null;
+
+grant update on public.diet_recipe_snapshots to service_role;

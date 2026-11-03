@@ -14,7 +14,7 @@ from backend.app.weekly_diet_contract import (
     WeeklyReply, ReplacementReply, WeeklyPlanResponse, current_week_start,
 )
 from backend.app.weekly_diet_store import WeeklyDietStore, fail, public_plan
-from backend.app.weekly_recipe_contract import RecipeReply, RecipeRequest
+from backend.app.weekly_recipe_contract import RecipeReply, RecipeRequest, has_unavailable_recipe
 
 
 def get_weekly_ai_client():
@@ -240,7 +240,7 @@ def create_weekly_diet_router(get_user, get_settings, load_context):
         require_current_context(row, latest)
         payload = recipe_request(row, day, meal_type, latest, servings)
         cached = await store.get_recipe(plan_id, row["version"], day, meal_type, servings)
-        if cached is not None:
+        if cached is not None and not has_unavailable_recipe(cached):
             try:
                 RecipeReply.model_validate(cached)
             except ValidationError:
@@ -251,6 +251,8 @@ def create_weekly_diet_router(get_user, get_settings, load_context):
         reply = await call_ai(get_weekly_ai_client(), AIEndpoint.RECIPE, payload, RecipeReply)
         validate_recipe_reply(payload, reply)
         await require_recipe_current(store, plan_id, row["version"], latest, load_context, settings)
+        if has_unavailable_recipe(reply):
+            return reply
         saved = await store.save_recipe(plan_id, row["version"], day, meal_type, reply)
         validate_recipe_reply(payload, saved)
         return saved

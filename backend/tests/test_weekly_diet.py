@@ -50,12 +50,27 @@ def recipe_reply(payload):
                       for key in ("carbohydrate_g", "protein_g", "fat_g")},
         "daily_target_percentages": None,
         "personalization_reasons": [], "allergen_notice": [],
-        "items": [{**item, "recipe_available": False, "recipe_source": "unavailable",
+        "items": [{**item, "recipe_available": True, "recipe_source": "llm_generated",
                    "official_recipe": False, "matched_recipe_name": None, "match_score": None,
-                   "safety_checked": True, "restriction_matches": [], "recipe": None}
+                   "safety_checked": True, "restriction_matches": [], "recipe": {
+                       "recipe_id": None, "menu_name": item["food_name"],
+                       "cooking_method": None, "dish_type": None,
+                       "serving_weight": item["portion_g"], "servings": payload["servings"],
+                       "estimated_duration_minutes": None,
+                       "ingredients_text": "현미", "ingredients": [{"name": "현미", "amount_g": None}],
+                       "steps": ["씻습니다."], "step_details": [], "cooking_tip": None,
+                       "image_small": None, "image_large": None, "source": None,
+                   }}
                   for item in payload["items"]],
         "related_menus": payload["related_menus"],
     }}
+
+
+def unavailable_recipe_reply(payload):
+    reply = recipe_reply(payload)
+    for item in reply["meal"]["items"]:
+        item.update(recipe_available=False, recipe_source="unavailable", recipe=None)
+    return reply
 
 
 @pytest.fixture
@@ -122,6 +137,15 @@ def harness(monkeypatch):
             return httpx.Response(200, json={"allowed": not state.get("rate_limited", False), "retry_after": 30})
         state["writes"].append((request.url.path, body))
         if request.url.path.endswith("diet_recipe_snapshots"):
+            if request.method == "PATCH":
+                rows = [row for row in state["recipes"] if all(
+                    request.url.params[key] == f"eq.{row[key]}"
+                    for key in ("user_id", "weekly_diet_plan_id", "weekly_plan_version",
+                                "plan_day", "meal_type", "servings")
+                )]
+                for row in rows:
+                    row.update(body)
+                return httpx.Response(200, json=rows)
             if any(all(row[key] == body[key] for key in (
                 "weekly_diet_plan_id", "weekly_plan_version", "plan_day", "meal_type", "servings"
             )) for row in state["recipes"]):
@@ -417,9 +441,43 @@ def test_cached_recipe_does_not_require_live_ai(monkeypatch, harness):
     assert first.status_code == 200
     monkeypatch.setattr(api, "get_weekly_ai_client", lambda: (_ for _ in ()).throw(AssertionError("AI called")))
     assert client.get(RECIPE).json() == first.json()
-    assert state["recipes"][0]["ingredients"] == []
-    assert state["recipes"][0]["steps"] == []
+    assert state["recipes"][0]["ingredients"] == [{"name": "현미", "amount_g": None}]
+    assert state["recipes"][0]["steps"] == ["현미밥: 씻습니다."]
     assert len(state["ai_calls"]) == 2
+
+
+def test_unavailable_recipe_is_not_cached_and_recovers(harness):
+    client, state = harness
+    assert generate(client).status_code == 201
+    payload = api.recipe_request(state["rows"][0], "monday", "lunch", state["context"])
+    state["recipe_reply"] = unavailable_recipe_reply(payload)
+    first = client.get(RECIPE)
+    second = client.get(RECIPE)
+    assert first.status_code == second.status_code == 200
+    assert first.json()["meal"]["items"][0]["recipe_source"] == "unavailable"
+    assert state["recipes"] == []
+    assert len(state["ai_calls"]) == 3
+    state["recipe_reply"] = recipe_reply(payload)
+    recovered = client.get(RECIPE)
+    assert recovered.status_code == 200
+    assert state["recipes"][0]["recipe_response"] == recovered.json()
+    assert len(state["ai_calls"]) == 4
+
+
+def test_cached_unavailable_recipe_is_regenerated_and_replaced(harness):
+    client, state = harness
+    assert generate(client).status_code == 201
+    assert client.get(RECIPE).status_code == 200
+    payload = api.recipe_request(state["rows"][0], "monday", "lunch", state["context"])
+    state["recipes"][0]["recipe_response"] = unavailable_recipe_reply(payload)
+    recovered = client.get(RECIPE)
+    assert recovered.status_code == 200
+    assert recovered.json()["meal"]["items"][0]["recipe_source"] == "llm_generated"
+    assert state["recipes"][0]["recipe_response"] == recovered.json()
+    assert len(state["ai_calls"]) == 3
+    assert len(state["recipes"]) == 1
+    assert client.get(RECIPE).json() == recovered.json()
+    assert len(state["ai_calls"]) == 3
 
 
 def test_recipe_accepts_official_and_generated_sources_and_nulls(harness):

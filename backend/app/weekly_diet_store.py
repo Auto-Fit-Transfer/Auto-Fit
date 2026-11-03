@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from backend.app.http_client import client_scope
 from backend.app.chat_rate_limit import ChatRateLimiter
 from backend.app.weekly_diet_contract import DietRequestContext, WeeklyResult, WeeklyGenerateRequest, dated_result
+from backend.app.weekly_recipe_contract import has_unavailable_recipe
 
 
 FIELDS = "weekly_diet_plan_id,user_id,week_start_date,generator,result,request_context,last_replacement,version,created_at,updated_at"
@@ -131,6 +132,17 @@ class WeeklyDietStore:
             cached = await self.get_recipe(plan_id, version, day, meal_type, meal["servings"])
             if cached is None:
                 fail("WEEKLY_DIET_STORAGE_ERROR")
+            if has_unavailable_recipe(cached):
+                rows = await self.request("PATCH", "diet_recipe_snapshots", params={
+                    "user_id": f"eq.{self.user_id}",
+                    "weekly_diet_plan_id": f"eq.{plan_id}",
+                    "weekly_plan_version": f"eq.{version}",
+                    "plan_day": f"eq.{day}", "meal_type": f"eq.{meal_type}",
+                    "servings": f"eq.{meal['servings']}",
+                }, body=body)
+                if not isinstance(rows, list) or len(rows) != 1:
+                    fail("WEEKLY_DIET_STORAGE_ERROR")
+                return reply
             return cached
         if not isinstance(rows, list) or len(rows) != 1:
             fail("WEEKLY_DIET_STORAGE_ERROR")
