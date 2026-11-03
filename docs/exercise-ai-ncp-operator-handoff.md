@@ -41,7 +41,7 @@ NCP 공식 문서: [Boto3 엔드포인트·업로드](https://guide.ncloud-docs.
 1. 실제 AI 서버의 HTTPS origin과 서버 간 Bearer 키를 확인한다. 공용 Backend API `https://211-233-206-193.sslip.io`는 AI 서버 주소가 아니다.
 2. AI 서버에 `POST /recommend/exercise`, CSV 카탈로그, [PR #8](https://github.com/Auto-Fit-Transfer/Auto-Fit/pull/8)의 장비 필터 수정이 반영됐는지 확인한다. 공개 `/openapi.json`에서 경로를 확인하고, 서버 응답의 `catalog_version`이 `sha256:5e231250283742da2deee4e36da0308fb635409999ee8f6a29ff49274c5d97a1`인지 점검한다.
 3. 현재 NCP Backend가 실제로 사용하는 소스 브랜치·커밋·배포 방식을 먼저 확인한다. `6439380`을 부모로 한 [새 운동 Backend 브랜치](https://github.com/Auto-Fit-Transfer/Auto-Fit/tree/codex/exercise-ai-on-6439380)의 변경만 해당 배포 소스에 반영한다. 오래된 PR #7이나 `backend` 브랜치를 배포하지 않는다. DB migration은 이미 적용됐으므로 다시 실행하지 않는다.
-4. 배포 직후에는 `EXERCISE_AI_ENABLED=false`를 유지한다. `/health`, OpenAPI, 기존 규칙 기반 운동 추천, 기존 식단·인증 API를 확인한다. GIF 기본 URL과 `AI_SERVER_BASE_URL`, `AI_SERVER_API_KEY`, `AI_SERVER_ENABLED`를 서버 전용 환경에만 넣는다.
+4. 배포 직후에는 `EXERCISE_AI_ENABLED=false`를 유지한다. 합성 테스트 계정으로 규칙 추천을 생성해 `generator=rules_v1`을 확인하고, 운동 세션 시작 → 항목 완료 → 세션 완료 → 최신 조회까지 끝낸다. 같은 계정으로 식단 생성·최신 조회도 확인한다. 기존 화면·인증 API와 배포 후 5xx를 확인한 다음에만 AI 시험으로 넘어간다. GIF 기본 URL과 `AI_SERVER_BASE_URL`, `AI_SERVER_API_KEY`, `AI_SERVER_ENABLED`를 서버 전용 환경에만 넣는다.
 5. AI 서버에 PR #8을 포함한 커밋이 실제 배포됐는지 먼저 확인한다. 시험 중에는 `EXERCISE_AI_ENABLED=false`를 유지하고, 서버 전용 `EXERCISE_AI_TEST_USER_IDS`에 합성 테스트 계정 UUID만 설정한다. 이 변수가 존재하면 전체 사용자 플래그보다 우선하므로 다른 계정은 `rules_v1`을 유지한다. 추천 생성 → 날짜별 세션 조회 → 첫 세션 시작·완료 → 다음 예정일 제한 → GIF URL 응답과 앱 표시를 확인한다. 테스트 계정의 응답 `generator`는 `auto-fit-ai`여야 한다. 실패 시 테스트 UUID 변수를 제거한다. 전체 공개 시에는 테스트 UUID 변수를 **제거**한 뒤 `EXERCISE_AI_ENABLED=true`로 전환한다.
 6. [모바일 PR #6](https://github.com/Auto-Fit-Transfer/Auto-Fit/pull/6)은 다음 앱 빌드에 포함한다. GIF URL이 없을 때 기존 썸네일 표시가 유지되는지 실기기에서 확인한다.
 
