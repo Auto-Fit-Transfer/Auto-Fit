@@ -140,7 +140,7 @@ export function CommunityChallengesPane({ bottomSpace }: { bottomSpace: number }
   const header = (
     <View style={styles.header}>
       {COMMUNITY_RANKING_ENABLED ? (
-        <Pressable
+        <Pressable hitSlop={16}
           accessibilityRole="button"
           onPress={() => router.push('/community/ranking')}
           style={({ pressed }) => [styles.rankingCard, pressed && styles.pressed]}
@@ -253,6 +253,7 @@ const styles = StyleSheet.create({
   chevron: { color: colors.primaryDark, fontFamily: fontFamilies.pretendardBold, fontSize: 22 },
   note: { ...typography.bodySmall, color: colors.textSecondary },
   card: {
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.lg,
     borderWidth: 1,

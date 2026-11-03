@@ -35,7 +35,7 @@ export default function ChatCharactersScreen() {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 8, paddingBottom: 18 }]}>
         <View style={s.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={() => router.back()}><Text style={s.back}>‹</Text></Pressable>
+          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={() => router.back()}><Text style={s.back}>‹</Text></Pressable>
           <Text style={s.headerTitle}>대화 상대 고르기</Text><View style={s.spacer} />
         </View>
         <Text style={s.title}>누구와 이야기할까요?</Text>
@@ -71,19 +71,19 @@ export default function ChatCharactersScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { backgroundColor: '#FFF', flex: 1 }, content: { paddingHorizontal: 20, gap: 18 },
+  root: { backgroundColor: '#F4F5F7', flex: 1 }, content: { paddingHorizontal: 20, gap: 18 },
   header: { height: 44, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   back: { fontSize: 32, color: '#25242B', width: 30 }, headerTitle: { color: '#25242B', fontSize: 15, fontFamily: fontFamilies.pretendardBold },
   spacer: { width: 30 }, title: { color: '#25242B', fontSize: 22, fontFamily: fontFamilies.pretendardBold },
   description: { color: '#777681', fontSize: 13, lineHeight: 20, marginTop: -8 },
-  list: { gap: 10 }, card: { minHeight: 84, borderWidth: 1, borderColor: '#E3E4EA', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FAFAFC' },
-  selectedCard: { borderColor: '#503DD7', borderWidth: 1.5 },
+  list: { gap: 10 }, card: { minHeight: 84, borderWidth: 1, borderColor: '#E3E4EA', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F4F5F7' },
+  selectedCard: { borderColor: '#5246C6', borderWidth: 1.5 },
   copy: { flex: 1, gap: 4 }, name: { color: '#25242B', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
   role: { color: '#777681', fontSize: 10, fontFamily: fontFamilies.pretendardRegular },
   cardDescription: { color: '#777681', fontSize: 11, lineHeight: 16 },
   radio: { width: 21, height: 21, borderRadius: 11, borderWidth: 1, borderColor: '#C4C5CB', alignItems: 'center', justifyContent: 'center' },
-  radioSelected: { borderColor: '#503DD7', backgroundColor: '#503DD7' }, check: { color: '#FFF', fontSize: 12 },
-  bottom: { borderTopWidth: 1, borderTopColor: '#E8E8ED', paddingHorizontal: 20, paddingTop: 12, backgroundColor: '#FFF' },
-  primaryButton: { backgroundColor: '#503DD7', borderRadius: 9, height: 50, alignItems: 'center', justifyContent: 'center' },
+  radioSelected: { borderColor: '#5246C6', backgroundColor: '#5246C6' }, check: { color: '#FFF', fontSize: 12 },
+  bottom: { borderTopWidth: 1, borderTopColor: '#E8E8ED', paddingHorizontal: 20, paddingTop: 12, backgroundColor: '#F4F5F7' },
+  primaryButton: { backgroundColor: '#5246C6', borderRadius: 9, height: 50, alignItems: 'center', justifyContent: 'center' },
   primaryText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 },
 });

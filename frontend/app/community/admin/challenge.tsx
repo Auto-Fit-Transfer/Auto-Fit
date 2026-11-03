@@ -204,11 +204,11 @@ export default function CommunityAdminChallengeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   form: { gap: spacing.sm, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   lockedNote: {
     ...typography.bodySmall,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     color: colors.textBody,
     padding: spacing.md,
@@ -220,6 +220,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   input: {
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -229,18 +230,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
   },
-  readOnly: { backgroundColor: colors.background, color: colors.textSecondary },
+  readOnly: { backgroundColor: colors.surface, color: colors.textSecondary },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   chip: {
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.round,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
   },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  chipTextActive: { color: colors.surface },
+  chipTextActive: { color: colors.primary },
   switchRow: {
     alignItems: 'center',
     flexDirection: 'row',

@@ -76,6 +76,13 @@ const webInnerScrollStyle =
 const loadingResult: OCRResultItem = {
   apiData: {},
   data: {
+    hdlCholesterol: '',
+    ldlCholesterol: '',
+    triglycerides: '',
+    ast: '',
+    alt: '',
+    gammaGtp: '',
+    creatinine: '',
     bloodPressure: '',
     bmi: '',
     checkupDate: '',
@@ -223,6 +230,69 @@ const healthMetricDefinitions: HealthMetricDefinition[] = [
     key: 'hemoglobin',
     label: '혈색소',
     unit: 'g/dL',
+  },
+  {
+    Icon: CholesterolIcon,
+    iconKind: 'stroke',
+    inputKind: 'integer',
+    keyboardType: 'numeric',
+    key: 'hdlCholesterol',
+    label: 'HDL 콜레스테롤',
+    unit: 'mg/dL',
+  },
+  {
+    Icon: CholesterolIcon,
+    iconKind: 'stroke',
+    inputKind: 'integer',
+    keyboardType: 'numeric',
+    key: 'ldlCholesterol',
+    label: 'LDL 콜레스테롤',
+    unit: 'mg/dL',
+  },
+  {
+    Icon: CholesterolIcon,
+    iconKind: 'stroke',
+    inputKind: 'integer',
+    keyboardType: 'numeric',
+    key: 'triglycerides',
+    label: '중성지방',
+    unit: 'mg/dL',
+  },
+  {
+    Icon: CholesterolIcon,
+    iconKind: 'stroke',
+    inputKind: 'integer',
+    keyboardType: 'numeric',
+    key: 'ast',
+    label: 'AST',
+    unit: 'U/L',
+  },
+  {
+    Icon: CholesterolIcon,
+    iconKind: 'stroke',
+    inputKind: 'integer',
+    keyboardType: 'numeric',
+    key: 'alt',
+    label: 'ALT',
+    unit: 'U/L',
+  },
+  {
+    Icon: CholesterolIcon,
+    iconKind: 'stroke',
+    inputKind: 'integer',
+    keyboardType: 'numeric',
+    key: 'gammaGtp',
+    label: '감마지티피',
+    unit: 'U/L',
+  },
+  {
+    Icon: CholesterolIcon,
+    iconKind: 'stroke',
+    inputKind: 'decimal',
+    keyboardType: 'decimal-pad',
+    key: 'creatinine',
+    label: '크레아티닌',
+    unit: 'mg/dL',
   },
 ];
 
@@ -380,6 +450,13 @@ function buildExtractedDataUpdate(
       systolic_bp: toNullableInteger(systolic),
       total_cholesterol: nullableText(values.totalCholesterol),
       weight_kg: nullableText(values.weight),
+      hdl_cholesterol: nullableText(values.hdlCholesterol),
+      ldl_cholesterol: nullableText(values.ldlCholesterol),
+      triglycerides: nullableText(values.triglycerides),
+      ast: nullableText(values.ast),
+      alt: nullableText(values.alt),
+      gamma_gtp: nullableText(values.gammaGtp),
+      creatinine: nullableText(values.creatinine),
     };
   }
 
@@ -998,7 +1075,7 @@ export default function OCRResultScreen() {
       <View style={styles.failureRoot}>
         <StatusBar style="dark" />
         <View style={[styles.failureHeader, { paddingTop: insets.top + 6 }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={handleBack} style={styles.failureBack}>
+          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={handleBack} style={styles.failureBack}>
             <Text style={styles.failureBackText}>‹</Text>
           </Pressable>
           <Text style={styles.failureHeaderTitle}>건강 데이터 확인</Text>
@@ -1295,13 +1372,13 @@ const styles = StyleSheet.create({
   failureIconText: { color: '#D79B1E', fontFamily: fontFamilies.pretendardBold, fontSize: 36 },
   failureTitle: { marginTop: 26, color: '#27262D', fontFamily: fontFamilies.pretendardBold, fontSize: 25 },
   failureDescription: { marginTop: 14, color: '#85858D', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 22, textAlign: 'center' },
-  failureGuide: { alignSelf: 'stretch', marginTop: 48, borderRadius: 18, borderWidth: 1, borderColor: '#E9E7ED', padding: 20, gap: 16 },
+  failureGuide: { backgroundColor: colors.surface, alignSelf: 'stretch', marginTop: 48, borderRadius: 18, borderWidth: 1, borderColor: '#E9E7ED', padding: 20, gap: 16 },
   failureGuideTitle: { color: '#33313A', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
   failureTipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  failureTipNumber: { color: '#8F79DF', fontFamily: fontFamilies.pretendardBold, fontSize: 14, width: 17 },
+  failureTipNumber: { color: '#5246C6', fontFamily: fontFamilies.pretendardBold, fontSize: 14, width: 17 },
   failureTipText: { color: '#67656E', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 20, flex: 1 },
   failureFooter: { paddingHorizontal: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F2F0F4' },
-  failureButton: { minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#9B82E9' },
+  failureButton: { minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#5246C6' },
   failureButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
   loadingRoot: {
     alignItems: 'center',
@@ -1310,7 +1387,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   root: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     flex: 1,
     overflow: 'hidden',
   },
@@ -1373,6 +1450,7 @@ const styles = StyleSheet.create({
     width: 37.6,
   },
   step: {
+    backgroundColor: colors.surface,
     alignItems: 'center',
     borderColor: colors.textDisabled,
     borderRadius: radius.round,
@@ -1457,6 +1535,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   filePreview: {
+    backgroundColor: colors.surface,
     alignItems: 'center',
     borderColor: colors.border,
     borderRadius: radius.sm,
@@ -1499,7 +1578,7 @@ const styles = StyleSheet.create({
     width: 78,
   },
   reuploadText: {
-    color: '#6551B3',
+    color: '#5246C6',
     fontFamily: fontFamilies.pretendardMedium,
     fontSize: 12,
     includeFontPadding: false,
@@ -1518,7 +1597,7 @@ const styles = StyleSheet.create({
   resultTab: { alignItems: 'center', flex: 1, justifyContent: 'center' },
   resultTabActive: { backgroundColor: '#FFFFFF', borderRadius: 7 },
   resultTabText: { color: '#96939C', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  resultTabTextActive: { color: '#5C50AE', fontFamily: fontFamilies.pretendardSemiBold },
+  resultTabTextActive: { color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold },
   extractedCard: {
     borderRadius: 13,
     height: 450,
@@ -1637,7 +1716,7 @@ const styles = StyleSheet.create({
     width: 30,
   },
   modifyButtonText: {
-    color: '#8A78D3',
+    color: '#5246C6',
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 20,
     includeFontPadding: false,
@@ -1647,7 +1726,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   confirmButton: {
-    backgroundColor: '#F1EDFB',
+    backgroundColor: '#F1F0F9',
   },
   confirmButtonText: {
     color: '#1371EB',
@@ -1680,7 +1759,7 @@ const styles = StyleSheet.create({
   },
   nextButton: {
     alignItems: 'center',
-    backgroundColor: '#5141C9',
+    backgroundColor: '#5246C6',
     borderRadius: 8,
     height: 52,
     justifyContent: 'center',

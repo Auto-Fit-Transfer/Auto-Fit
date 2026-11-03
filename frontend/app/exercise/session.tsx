@@ -2194,6 +2194,7 @@ const styles = StyleSheet.create({
   },
   modalButtons: { flexDirection: 'row', gap: 10, width: '100%' },
   modalCancelButton: {
+    backgroundColor: colors.surface,
     alignItems: 'center',
     borderColor: '#D9D9D9',
     borderRadius: 12,

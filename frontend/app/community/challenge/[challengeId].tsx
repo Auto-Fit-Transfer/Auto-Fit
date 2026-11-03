@@ -7,7 +7,7 @@ import { claimCommunityChallenge, getCommunityChallenges, getCommunityErrorMessa
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const purple = '#503DD7';
+const purple = '#5246C6';
 const metricLabel: Record<CommunityChallenge['metric'], string> = {
   workout_days: '운동한 날', meal_log_days: '식단 기록한 날',
 };
@@ -79,7 +79,7 @@ export default function ChallengeDetail() {
   return <View style={s.root}>
     <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
-      <View style={s.header}><Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={s.back}>‹</Text></Pressable><Text style={s.title}>챌린지</Text><View style={{ width: 24 }} /></View>
+      <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={s.back}>‹</Text></Pressable><Text style={s.title}>챌린지</Text><View style={{ width: 24 }} /></View>
       {loading ? <ActivityIndicator color={purple} /> : null}
       {error && !challenge ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); void load(); }} style={s.card}><Text style={s.error}>{error} · 다시 시도</Text></Pressable> : null}
       {challenge ? <>
@@ -109,7 +109,7 @@ export default function ChallengeDetail() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8F8FA' }, content: { paddingHorizontal: 20, gap: 17 },
+  root: { flex: 1, backgroundColor: '#F4F5F7' }, content: { paddingHorizontal: 20, gap: 17 },
   header: { height: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, back: { fontSize: 32, lineHeight: 36, color: '#1E1D24' }, title: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
   phase: { alignSelf: 'flex-start', color: '#24835E', backgroundColor: '#E8F6EF', borderRadius: 7, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 6, fontSize: 11, marginTop: 10 },
   hero: { color: '#1E1D24', fontSize: 24, fontFamily: fontFamilies.pretendardBold }, body: { color: '#55545F', fontSize: 13, lineHeight: 20 }, caption: { color: '#777681', fontSize: 11, lineHeight: 16 },

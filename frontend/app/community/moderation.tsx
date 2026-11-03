@@ -250,7 +250,7 @@ function ActionButton({
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   tabs: {
     borderBottomColor: colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -273,6 +273,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
   },
   card: {
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -302,7 +303,7 @@ const styles = StyleSheet.create({
   reasons: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
   snapshot: {
     ...typography.body,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     color: colors.textPrimary,
     padding: spacing.md,
@@ -324,6 +325,7 @@ const styles = StyleSheet.create({
     marginRight: 'auto',
   },
   button: {
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.round,
     borderWidth: 1,

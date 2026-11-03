@@ -830,7 +830,7 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   botBubble: {
-    backgroundColor: '#F2F3F5',
+    backgroundColor: '#EDEFF2',
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
     borderTopLeftRadius: 4,
@@ -881,7 +881,7 @@ const styles = StyleSheet.create({
   },
   composer: {
     alignItems: 'center',
-    backgroundColor: '#F2F3F5',
+    backgroundColor: '#EDEFF2',
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     flexDirection: 'row',
@@ -891,7 +891,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   input: {
-    backgroundColor: '#F2F3F5',
+    backgroundColor: '#EDEFF2',
     color: colors.textBody,
     flex: 1,
     fontFamily: fontFamilies.pretendardRegular,

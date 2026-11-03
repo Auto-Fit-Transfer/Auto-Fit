@@ -291,7 +291,7 @@ export default function CommunityPostScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   readRow: { alignItems: 'flex-end', paddingHorizontal: spacing.xl, paddingVertical: spacing.xs },
   center: { flex: 1, justifyContent: 'center' },
   message: { alignItems: 'center', gap: spacing.md, padding: spacing.xxl },
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   },
   commentsHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xs },
   sortLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-  bookmarkButton: { alignSelf: 'flex-end', borderColor: colors.border, borderRadius: 8, borderWidth: 1, marginHorizontal: spacing.xl, marginTop: spacing.sm, paddingHorizontal: 13, paddingVertical: 8 },
+  bookmarkButton: { backgroundColor: colors.surface, alignSelf: 'flex-end', borderColor: colors.border, borderRadius: 8, borderWidth: 1, marginHorizontal: spacing.xl, marginTop: spacing.sm, paddingHorizontal: 13, paddingVertical: 8 },
   bookmarkText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
   empty: {
     ...typography.body,
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
   },
   input: {
     ...typography.body,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     color: colors.textPrimary,
     flex: 1,

@@ -35,7 +35,7 @@ export default function CommunityAdminScreen() {
           운영자로 지정된 계정만 쓸 수 있어요. 바꾼 내용은 모든 사용자에게 바로 적용돼요.
         </Text>
         {TOOLS.map((tool) => (
-          <Pressable
+          <Pressable hitSlop={16}
             accessibilityRole="button"
             key={tool.title}
             onPress={() => router.push(tool.href)}
@@ -54,10 +54,11 @@ export default function CommunityAdminScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   note: { ...typography.bodySmall, color: colors.textSecondary },
   card: {
+    backgroundColor: colors.surface,
     alignItems: 'center',
     borderColor: colors.border,
     borderRadius: radius.lg,

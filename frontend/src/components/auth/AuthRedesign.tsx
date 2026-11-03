@@ -167,7 +167,7 @@ export function AuthButton({
 }
 
 const styles = StyleSheet.create({
-  root: { alignSelf: 'center', backgroundColor: '#FFFFFF', flex: 1, maxWidth: 412, width: '100%' },
+  root: { alignSelf: 'center', backgroundColor: '#F4F5F7', flex: 1, maxWidth: 412, width: '100%' },
   loginHeader: { minHeight: 100, paddingHorizontal: 24 },
   wordmark: {
     color: '#17171B',
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     fontSize: 34,
     letterSpacing: -1.7,
   },
-  wordmarkAccent: { color: '#503DD7' },
+  wordmarkAccent: { color: '#5246C6' },
   header: { paddingHorizontal: 20 },
   navigation: { alignItems: 'center', flexDirection: 'row', height: 42 },
   backButton: { alignItems: 'flex-start', height: 42, justifyContent: 'center', width: 40 },
@@ -208,10 +208,10 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { flexGrow: 1, gap: 18, paddingHorizontal: 20, paddingTop: 20 },
   loginContent: { paddingHorizontal: 24, paddingTop: 9 },
-  footer: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 10 },
+  footer: { backgroundColor: '#F4F5F7', paddingHorizontal: 20, paddingTop: 10 },
   card: { gap: 12 },
   field: {
-    backgroundColor: '#F9F9FB',
+    backgroundColor: '#F4F5F7',
     borderColor: '#E6E6ED',
     borderRadius: 8,
     height: 48,
@@ -231,7 +231,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: 'center',
-    backgroundColor: '#503DD7',
+    backgroundColor: '#5246C6',
     borderRadius: 8,
     height: 50,
     justifyContent: 'center',

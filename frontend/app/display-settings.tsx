@@ -48,7 +48,7 @@ export default function DisplaySettingsScreen() {
       style={[styles.root, isDark && dark.root]}
     >
       <View style={styles.header}>
-        <Pressable accessibilityLabel="뒤로" accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
+        <Pressable hitSlop={16} accessibilityLabel="뒤로" accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
           <Text style={[styles.backText, isDark && dark.text]}>‹</Text>
         </Pressable>
         <Text style={[styles.title, isDark && dark.text]}>화면 설정</Text>
@@ -73,7 +73,7 @@ export default function DisplaySettingsScreen() {
       </View>
       {saveError ? <Text accessibilityRole="alert" style={styles.error}>{saveError}</Text> : null}
       {serverSynced === false ? <Text style={[styles.note, isDark && dark.secondary]}>기기에 저장됐어요. 서버 연결 후 동기화할 예정이에요.</Text> : null}
-      <Text style={[styles.note, isDark && dark.secondary]}>기기 설정대로를 고르면 휴대폰의 화면 모드를 따릅니다. 일부 세부 화면의 다크 색상은 적용 중이에요.</Text>
+      <Text style={[styles.note, isDark && dark.secondary]}>기기 설정대로를 고르면 휴대폰의 화면 모드를 따라요.</Text>
       <Text style={[styles.sectionTitle, isDark && dark.text, simple && simpleStyles.sectionTitle]}>글자 크기</Text>
       <View style={[styles.fontCard, isDark && dark.card]}>
         <View style={styles.fontSliderRow}>
@@ -101,7 +101,7 @@ export default function DisplaySettingsScreen() {
           <Text style={[styles.fontPreviewText, isDark && dark.text, { fontSize: 13 + preferences.font_size_step * 1.5 }]}>오늘 저녁은 그릭요거트 볼 어때요? 단백질 25g을 채울 수 있어요.</Text>
         </View>
       </View>
-      <Text style={[styles.note, isDark && dark.secondary]}>글자 크기는 저장됩니다. 전체 화면 적용은 가독성 확인 후 이어집니다.</Text>
+      <Text style={[styles.note, isDark && dark.secondary]}>글자 크기는 일부 화면부터 적용돼요.</Text>
       <Text style={[styles.sectionTitle, isDark && dark.text, simple && simpleStyles.sectionTitle]}>간편 모드</Text>
       <View style={[styles.simpleCard, isDark && dark.card]}>
         <View style={styles.simpleIntro}>
@@ -145,7 +145,7 @@ export default function DisplaySettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
+  root: { backgroundColor: '#F4F5F7', flex: 1 },
   content: { gap: 16, paddingHorizontal: 20 },
   header: { alignItems: 'center', height: 48, justifyContent: 'center', marginBottom: 10 },
   headerRead: { position: 'absolute', right: 0, top: 0 },
@@ -154,44 +154,44 @@ const styles = StyleSheet.create({
   title: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 17 },
   sectionTitle: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
   modes: { flexDirection: 'row', gap: 8 },
-  mode: { alignItems: 'center', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, flex: 1, gap: 8, padding: 10 },
-  selectedMode: { borderColor: '#503DD7', borderWidth: 2, padding: 9 },
+  mode: { backgroundColor: '#FFFFFF', alignItems: 'center', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, flex: 1, gap: 8, padding: 10 },
+  selectedMode: { borderColor: '#5246C6', borderWidth: 2, padding: 9 },
   phone: { borderColor: '#D0D0D7', borderRadius: 8, borderWidth: 1, height: 78, padding: 9, width: 49 },
   phoneBar: { backgroundColor: '#33333B', borderRadius: 2, height: 5, marginBottom: 10, width: 26 },
-  darkPhoneBar: { backgroundColor: '#F3F3F8' },
+  darkPhoneBar: { backgroundColor: '#EDEFF2' },
   phoneLine: { backgroundColor: '#C9C9D2', borderRadius: 2, height: 5, marginBottom: 6, width: 27 },
   darkPhoneLine: { backgroundColor: '#5B5B67' },
   modeLabel: { color: '#45454B', fontFamily: fontFamilies.pretendardMedium, fontSize: 11 },
   radio: { borderColor: '#C5C5CD', borderRadius: 8, borderWidth: 1, height: 16, width: 16 },
-  radioSelected: { alignItems: 'center', borderColor: '#503DD7', justifyContent: 'center' },
-  radioDot: { backgroundColor: '#503DD7', borderRadius: 4, height: 8, width: 8 },
+  radioSelected: { alignItems: 'center', borderColor: '#5246C6', justifyContent: 'center' },
+  radioDot: { backgroundColor: '#5246C6', borderRadius: 4, height: 8, width: 8 },
   note: { color: '#83838C', fontFamily: fontFamilies.pretendardRegular, fontSize: 12, lineHeight: 18 },
   confirmContent: { gap: 16, paddingBottom: 12 },
-  confirmButton: { alignItems: 'center', backgroundColor: '#503DD7', borderRadius: 10, padding: 15 },
+  confirmButton: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 10, padding: 15 },
   confirmButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold },
   error: { color: '#B34141', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  fontCard: { borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, gap: 12, padding: 18 },
+  fontCard: { backgroundColor: '#FFFFFF', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, gap: 12, padding: 18 },
   fontSliderRow: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 34 },
   fontSample: { color: '#222227', fontSize: 12 },
   fontSampleLarge: { color: '#222227', fontSize: 22 },
   fontTrack: { backgroundColor: '#D9D9E0', borderRadius: 2, flex: 1, height: 4, justifyContent: 'center', marginHorizontal: 10 },
-  fontProgress: { backgroundColor: '#503DD7', borderRadius: 2, height: 4 },
+  fontProgress: { backgroundColor: '#5246C6', borderRadius: 2, height: 4 },
   fontStop: { backgroundColor: '#D9D9E0', borderRadius: 12, height: 24, marginLeft: -12, position: 'absolute', width: 24, borderWidth: 9, borderColor: 'transparent' },
-  fontStopSelected: { backgroundColor: '#FFFFFF', borderColor: '#503DD7', borderWidth: 2 },
+  fontStopSelected: { backgroundColor: '#FFFFFF', borderColor: '#5246C6', borderWidth: 2 },
   fontScaleLabels: { flexDirection: 'row', justifyContent: 'space-between' },
   fontPreview: { backgroundColor: '#FFFFFF', borderColor: '#E6E6ED', borderRadius: 10, borderWidth: 1, gap: 6, padding: 13 },
   fontPreviewCaption: { color: '#777781', fontSize: 12 },
   fontPreviewText: { color: '#222227', fontFamily: fontFamilies.pretendardRegular, lineHeight: 26 },
-  simpleCard: { backgroundColor: '#F8F8FB', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, gap: 16, padding: 15 },
+  simpleCard: { backgroundColor: '#F4F5F7', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, gap: 16, padding: 15 },
   simpleIntro: { alignItems: 'center', flexDirection: 'row', gap: 14 },
   simplePreview: { backgroundColor: '#FFFFFF', borderColor: '#E4E4EC', borderRadius: 7, borderWidth: 1, gap: 7, height: 74, padding: 9, width: 52 },
-  simplePreviewBar: { backgroundColor: '#4C3CDB', borderRadius: 2, height: 7, width: 23 },
+  simplePreviewBar: { backgroundColor: '#5246C6', borderRadius: 2, height: 7, width: 23 },
   simplePreviewLine: { backgroundColor: '#DADAE2', borderRadius: 2, height: 5, width: 30 },
   simpleCopy: { flex: 1, gap: 5 },
   simpleTitle: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   simpleDescription: { color: '#777781', fontFamily: fontFamilies.pretendardRegular, fontSize: 11, lineHeight: 16 },
-  simpleState: { color: '#503DD7', fontFamily: fontFamilies.pretendardMedium, fontSize: 10 },
-  simpleAction: { alignItems: 'center', backgroundColor: '#EFEFF2', borderRadius: 9, minHeight: 48, justifyContent: 'center' },
+  simpleState: { color: '#5246C6', fontFamily: fontFamilies.pretendardMedium, fontSize: 10 },
+  simpleAction: { alignItems: 'center', backgroundColor: '#EDEFF2', borderRadius: 9, minHeight: 48, justifyContent: 'center' },
   simpleActionText: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
   confirmFooter: { gap: 8 },
   cancelButton: { alignItems: 'center', minHeight: 48, justifyContent: 'center' },

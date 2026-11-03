@@ -136,7 +136,7 @@ export default function ProfileScreen() {
                   onChangeText={(nickname) => edit({ nickname })}
                   style={styles.input}
                 />
-                <Text style={styles.helper}>2~30자 · 현재 서버에서 지원하는 길이</Text>
+                <Text style={styles.helper}>2~30자로 입력해 주세요</Text>
               </View>
               <View style={styles.field}>
                 <Text style={styles.label}>자기소개 <Text style={styles.optional}>선택</Text></Text>
@@ -230,7 +230,7 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface },
+  screen: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 22 },
   header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { width: 32, minHeight: 32, justifyContent: 'center' },
@@ -244,20 +244,20 @@ const styles = StyleSheet.create({
   input: { minHeight: 52, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, justifyContent: 'center', fontSize: 15, color: colors.textPrimary, backgroundColor: colors.surface },
   inputText: { fontSize: 15, color: colors.textPrimary },
   helper: { fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
-  unavailable: { backgroundColor: colors.background, justifyContent: 'center' },
+  unavailable: { backgroundColor: colors.surface, justifyContent: 'center' },
   genderRow: { flexDirection: 'row', gap: 9 },
-  gender: { flex: 1, height: 45, borderWidth: 1, borderColor: colors.border, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  gender: { backgroundColor: colors.surface, flex: 1, height: 45, borderWidth: 1, borderColor: colors.border, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   genderSelected: { borderColor: colors.primaryDark, backgroundColor: colors.surfaceSoft },
   genderText: { fontSize: 14, color: colors.textSecondary },
   genderTextSelected: { color: colors.primaryDark, fontFamily: fontFamilies.pretendardSemiBold },
-  healthLink: { minHeight: 60, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 10, gap: 4 },
+  healthLink: { backgroundColor: colors.surface, minHeight: 60, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 10, gap: 4 },
   healthLinkText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
   message: { color: colors.textSecondary, marginTop: 30 },
   error: { color: colors.danger, marginTop: 18 },
   success: { color: colors.success, marginTop: 18 },
   retry: { paddingVertical: 14 },
   retryText: { color: colors.primaryDark },
-  footer: { borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: 22, paddingTop: 12 },
+  footer: { borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.background, paddingHorizontal: 22, paddingTop: 12 },
   save: { height: 54, borderRadius: 10, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
   saveDisabled: { opacity: 0.45 },
   saveText: { fontFamily: fontFamilies.pretendardSemiBold, color: colors.surface, fontSize: 16 },

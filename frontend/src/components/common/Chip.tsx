@@ -48,10 +48,10 @@ function createStyles({ colors, text }: AppTheme) {
       justifyContent: 'center',
       paddingHorizontal: 16,
     },
-    selected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    selected: { backgroundColor: colors.primaryLight, borderColor: colors.primaryText },
     disabled: { opacity: 0.4 },
     pressed: { opacity: 0.8 },
     label: { ...text.body2Strong, color: colors.textBody },
-    selectedLabel: { color: colors.onPrimary },
+    selectedLabel: { color: colors.primaryText },
   } as const;
 }

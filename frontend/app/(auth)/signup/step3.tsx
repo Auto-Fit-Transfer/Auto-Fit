@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
   },
   otherField: {
     alignItems: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,

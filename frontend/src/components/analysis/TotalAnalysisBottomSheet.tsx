@@ -494,6 +494,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.pretendardMedium,
   },
   currentCard: {
+    backgroundColor: colors.surface,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
@@ -579,6 +580,7 @@ const styles = StyleSheet.create({
   },
   rangeList: { gap: 8 },
   rangeRow: {
+    backgroundColor: colors.surface,
     height: 45,
     borderWidth: 1,
     borderRadius: 10,
@@ -628,6 +630,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.pretendardSemiBold,
   },
   referenceDetailCard: {
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 16,

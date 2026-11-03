@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
   },
   emailCard: {
     alignItems: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     flexDirection: 'row',
     height: 48,

@@ -57,6 +57,7 @@ const styles = StyleSheet.create({
     width: 37.6,
   },
   step: {
+    backgroundColor: colors.surface,
     alignItems: 'center',
     borderColor: colors.textDisabled,
     borderRadius: radius.round,

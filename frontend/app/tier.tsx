@@ -69,7 +69,7 @@ export default function TierScreen() {
     <View style={styles.root}>
       <StatusBar style="dark" />
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
-        <Pressable accessibilityLabel="뒤로 가기" accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
+        <Pressable hitSlop={16} accessibilityLabel="뒤로 가기" accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
           <Text style={styles.backText}>‹</Text>
         </Pressable>
         <Text style={styles.headerTitle}>내 티어</Text>
@@ -117,7 +117,7 @@ export default function TierScreen() {
             { title: '운동 관리', description: '나에게 맞는 운동을 꾸준히 실천해요', Icon: ExerciseIcon, path: '/exercise' as const },
             { title: '건강 데이터', description: '최신 건강검진·인바디 자료를 관리해요', Icon: DataIcon, path: '/health-data-management' as const },
           ].map(({ title, description, Icon, path }) => (
-            <Pressable key={title} accessibilityRole="button" onPress={() => router.push(path)} style={[styles.mission, simple && simpleStyles.mission]}>
+            <Pressable hitSlop={16} key={title} accessibilityRole="button" onPress={() => router.push(path)} style={[styles.mission, simple && simpleStyles.mission]}>
               <View style={styles.missionIcon}><Icon /></View>
               <View style={styles.missionCopy}>
                 <Text style={[styles.missionTitle, simple && simpleStyles.missionTitle]}>{title}</Text>
@@ -145,7 +145,7 @@ export default function TierScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
+  root: { backgroundColor: '#F4F5F7', flex: 1 },
   header: { alignItems: 'center', justifyContent: 'center', minHeight: 62, paddingHorizontal: 20 },
   read: { position: 'absolute', right: 20, bottom: 7 },
   back: { bottom: 7, height: 42, justifyContent: 'center', left: 20, position: 'absolute', width: 42, zIndex: 1 },
@@ -153,34 +153,34 @@ const styles = StyleSheet.create({
   headerTitle: { color: '#27262D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
   content: { alignSelf: 'center', maxWidth: 412, paddingHorizontal: 20, width: '100%' },
   hero: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 28 },
-  heroIcon: { alignItems: 'center', backgroundColor: '#F3F0FF', borderRadius: 42, height: 84, justifyContent: 'center', width: 84 },
+  heroIcon: { alignItems: 'center', backgroundColor: '#F1F0F9', borderRadius: 42, height: 84, justifyContent: 'center', width: 84 },
   heroTitle: { color: '#322D43', fontFamily: fontFamilies.pretendardBold, fontSize: 23, marginTop: 17 },
   heroDescription: { color: '#98939F', fontSize: 12, lineHeight: 19, marginTop: 8, textAlign: 'center' },
   tierError: { backgroundColor: '#FFF4F4', borderRadius: 9, marginTop: 18, padding: 12 },
   tierErrorText: { color: '#B34141', fontSize: 12 },
-  pointsCard: { borderColor: '#E9E6F1', borderRadius: 17, borderWidth: 1, gap: 12, marginTop: 25, padding: 17 },
-  scoreCard: { borderColor: '#E9E6F1', borderRadius: 17, borderWidth: 1, gap: 12, marginTop: 30, padding: 17 },
+  pointsCard: { backgroundColor: '#FFFFFF', borderColor: '#E4E5EB', borderRadius: 17, borderWidth: 1, gap: 12, marginTop: 25, padding: 17 },
+  scoreCard: { backgroundColor: '#FFFFFF', borderColor: '#E4E5EB', borderRadius: 17, borderWidth: 1, gap: 12, marginTop: 30, padding: 17 },
   scoreHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   scoreLabel: { color: '#696472', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
-  scoreValue: { color: '#6551D2', fontFamily: fontFamilies.pretendardBold, fontSize: 21 },
+  scoreValue: { color: '#5246C6', fontFamily: fontFamilies.pretendardBold, fontSize: 21 },
   scoreTotal: { color: '#9A96A2', fontFamily: fontFamilies.pretendardRegular, fontSize: 11 },
-  track: { backgroundColor: '#EAE5F8', borderRadius: 4, height: 7, overflow: 'hidden' },
-  fill: { backgroundColor: '#7762DB', borderRadius: 4, height: 7 },
+  track: { backgroundColor: '#E3E6EB', borderRadius: 4, height: 7, overflow: 'hidden' },
+  fill: { backgroundColor: '#5246C6', borderRadius: 4, height: 7 },
   scoreNote: { color: '#96919E', fontSize: 11, lineHeight: 17 },
   sectionTitle: { color: '#333039', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 17, marginBottom: 11, marginTop: 29 },
-  missions: { borderColor: '#EAE9EE', borderRadius: 15, borderWidth: 1, overflow: 'hidden' },
+  missions: { backgroundColor: '#FFFFFF', borderColor: '#EAE9EE', borderRadius: 15, borderWidth: 1, overflow: 'hidden' },
   mission: { alignItems: 'center', borderBottomColor: '#F1F0F4', borderBottomWidth: 1, flexDirection: 'row', gap: 12, minHeight: 67, paddingHorizontal: 13 },
-  missionIcon: { alignItems: 'center', backgroundColor: '#F3F0FD', borderRadius: 11, height: 38, justifyContent: 'center', width: 38 },
+  missionIcon: { alignItems: 'center', backgroundColor: '#F1F0F9', borderRadius: 11, height: 38, justifyContent: 'center', width: 38 },
   missionCopy: { flex: 1, gap: 4 },
   missionTitle: { color: '#3C3844', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   missionDescription: { color: '#9A96A1', fontSize: 10 },
   chevron: { color: '#9A96A1', fontSize: 22 },
   roadmapNote: { color: '#9995A0', fontSize: 11, marginTop: -3 },
   roadmap: { gap: 9, paddingBottom: 8, paddingTop: 14 },
-  stage: { alignItems: 'center', backgroundColor: '#F8F7FB', borderRadius: 13, minHeight: 123, padding: 12, width: 112 },
-  currentStage: { borderColor: '#7866F4', borderWidth: 2 },
+  stage: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 13, minHeight: 123, padding: 12, width: 112 },
+  currentStage: { borderColor: '#5246C6', borderWidth: 2 },
   stageIcon: { alignItems: 'center', height: 49, justifyContent: 'center' },
-  stageTitle: { color: '#6555B7', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12, marginTop: 3 },
+  stageTitle: { color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12, marginTop: 3 },
   stageDescription: { color: '#938F9B', fontSize: 10, marginTop: 5, textAlign: 'center' },
 });
 

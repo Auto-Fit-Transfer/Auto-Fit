@@ -16,7 +16,7 @@ import UserActiveIcon from '@/assets/icons/ui/user-fill.svg';
 import { Text } from '@/src/components/common';
 import { AppThemeProvider, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
-// The Figma tab bar: a floating dark pill; the open tab is a purple pill inside it.
+// A floating dark pill; the open tab is a lighter pill inside it, so no purple shows on every screen.
 export const BOTTOM_NAVIGATION_VISUAL_HEIGHT = 66;
 export const BOTTOM_NAVIGATION_MIN_BOTTOM_GAP = 8;
 const minimumBottomNavigationVisualHeight = 60;
@@ -201,7 +201,7 @@ function createStyles({ colors, text }: AppTheme) {
       justifyContent: 'center',
       minWidth: 0,
     },
-    itemActive: { backgroundColor: colors.primary },
+    itemActive: { backgroundColor: 'rgba(255, 255, 255, 0.16)' },
     label: { ...text.tab, color: colors.onPrimary, includeFontPadding: false },
     labelActive: { ...text.tabActive, color: colors.onPrimary, includeFontPadding: false },
     // Figma's easy tab bar uses 14px labels; Text enlarges 11px to exactly that.

@@ -58,9 +58,9 @@ export function HealthScore({
             y1="24.5"
             y2="317"
           >
-            <Stop offset="0.2" stopColor="#7866F4" stopOpacity={1} />
-            <Stop offset="0.499892" stopColor="#BAB1FF" stopOpacity={1} />
-            <Stop offset="0.8" stopColor="#7866F4" stopOpacity={1} />
+            <Stop offset="0.2" stopColor="#5246C6" stopOpacity={1} />
+            <Stop offset="0.499892" stopColor="#A9A4DC" stopOpacity={1} />
+            <Stop offset="0.8" stopColor="#5246C6" stopOpacity={1} />
           </LinearGradient>
         </Defs>
         <Circle
@@ -68,7 +68,7 @@ export function HealthScore({
           cy={graphCenter}
           fill="none"
           r={graphRadius}
-          stroke="#E3E3FD"
+          stroke="#F1F0F9"
           strokeWidth={23}
         />
         {score !== null ? (
@@ -96,9 +96,9 @@ export function HealthScore({
         <Svg height={70} viewBox="0 0 94 70" width={94}>
           <Defs>
             <LinearGradient id="score-text-gradient" x1="74" x2="18" y1="5" y2="68">
-              <Stop offset="0.2" stopColor="#7866F4" />
-              <Stop offset="0.5" stopColor="#BAB1FF" />
-              <Stop offset="0.8" stopColor="#7866F4" />
+              <Stop offset="0.2" stopColor="#5246C6" />
+              <Stop offset="0.5" stopColor="#A9A4DC" />
+              <Stop offset="0.8" stopColor="#5246C6" />
             </LinearGradient>
           </Defs>
           <SvgText
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   },
   healthIconCircle: {
     alignItems: 'center',
-    backgroundColor: '#E3E3FD',
+    backgroundColor: '#F1F0F9',
     borderRadius: radius.round,
     height: 60,
     justifyContent: 'center',
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     width: 178,
   },
   totalScore: {
-    color: '#BAB1FF',
+    color: '#A9A4DC',
     fontFamily: fontFamilies.pretendardRegular,
     fontSize: 25,
     includeFontPadding: false,
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     alignItems: 'center',
-    backgroundColor: '#E3E3FD',
+    backgroundColor: '#F1F0F9',
     borderRadius: radius.round,
     height: 40,
     justifyContent: 'center',

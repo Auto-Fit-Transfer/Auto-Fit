@@ -246,7 +246,7 @@ export default function CommunityMileageScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
+  root: { backgroundColor: '#F4F5F7', flex: 1 },
   header: { alignItems: 'center', height: 56, justifyContent: 'center' },
   back: { left: 22, position: 'absolute', top: 9 },
   backText: { color: '#242428', fontFamily: fontFamilies.pretendardRegular, fontSize: 32, lineHeight: 36 },
@@ -261,6 +261,7 @@ const styles = StyleSheet.create({
   messageText: { color: colors.textSecondary, fontSize: 14, textAlign: 'center' },
   top: { gap: 17, paddingHorizontal: 20, paddingTop: 8 },
   balanceCard: {
+    backgroundColor: colors.surface,
     borderColor: '#E6E6ED',
     borderRadius: 16,
     borderWidth: 1,
@@ -274,10 +275,10 @@ const styles = StyleSheet.create({
   balance: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 30, marginTop: 2 },
   balanceHelp: { color: '#767680', fontFamily: fontFamilies.pretendardRegular, fontSize: 12, marginTop: 2 },
   statRow: { flexDirection: 'row', gap: 6, marginTop: 16 },
-  stat: { backgroundColor: '#FAFAFC', borderColor: '#ECECF1', borderRadius: 9, borderWidth: 1, flex: 1, minWidth: 0, padding: 9 },
+  stat: { backgroundColor: '#F4F5F7', borderColor: '#ECECF1', borderRadius: 9, borderWidth: 1, flex: 1, minWidth: 0, padding: 9 },
   statLabel: { color: '#767680', fontFamily: fontFamilies.pretendardMedium, fontSize: 11 },
   statValue: { color: '#37333E', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13, marginTop: 4 },
-  rules: { borderColor: '#E6E6ED', borderRadius: 14, borderWidth: 1, marginTop: -6, paddingHorizontal: 14 },
+  rules: { backgroundColor: colors.surface, borderColor: '#E6E6ED', borderRadius: 14, borderWidth: 1, marginTop: -6, paddingHorizontal: 14 },
   rulesTitle: {
     color: '#222227',
     fontFamily: fontFamilies.pretendardBold,
@@ -296,10 +297,10 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   filters: { flexDirection: 'row', gap: 6, marginTop: -5 },
-  filter: { alignItems: 'center', borderColor: '#E6E6ED', borderRadius: 18, borderWidth: 1, minWidth: 45, paddingHorizontal: 12, paddingVertical: 7 },
-  filterActive: { backgroundColor: '#503DD7', borderColor: '#503DD7' },
+  filter: { backgroundColor: colors.surface, alignItems: 'center', borderColor: '#E6E6ED', borderRadius: 18, borderWidth: 1, minWidth: 45, paddingHorizontal: 12, paddingVertical: 7 },
+  filterActive: { backgroundColor: '#F1F0F9', borderColor: '#5246C6' },
   filterText: { color: '#767680', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  filterTextActive: { color: '#FFFFFF' },
+  filterTextActive: { color: '#5246C6' },
   empty: {
     color: '#767680',
     fontFamily: fontFamilies.pretendardRegular,
@@ -319,6 +320,6 @@ const styles = StyleSheet.create({
   rowBody: { flex: 1, gap: 3 },
   reason: { color: '#34343A', fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
   time: { color: '#93939B', fontFamily: fontFamilies.pretendardRegular, fontSize: 11 },
-  amount: { color: '#503DD7', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  amount: { color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   spent: { color: '#666670' },
 });

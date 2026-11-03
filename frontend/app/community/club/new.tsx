@@ -128,10 +128,10 @@ export default function CommunityNewClubScreen() {
               </Text>
             ) : null}
             {isProvisionalNote(costRule?.note) ? (
-              <Text style={styles.costNote}>개설 규칙은 팀에서 정하기 전 임시값이에요.</Text>
+              <Text style={styles.costNote}>개설 조건은 바뀔 수 있어요.</Text>
             ) : null}
             {membership?.active ? null : (
-              <Pressable
+              <Pressable hitSlop={16}
                 accessibilityRole="link"
                 onPress={() => router.push('/community/membership')}
               >
@@ -195,7 +195,7 @@ export default function CommunityNewClubScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   form: { gap: spacing.sm, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   cost: {
     backgroundColor: colors.primaryLight,
@@ -225,6 +225,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   input: {
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -237,13 +238,14 @@ const styles = StyleSheet.create({
   multiline: { minHeight: 110, marginBottom: spacing.lg },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   chip: {
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.round,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
   },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  chipTextActive: { color: colors.surface },
+  chipTextActive: { color: colors.primary },
 });

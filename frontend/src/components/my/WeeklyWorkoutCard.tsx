@@ -77,20 +77,20 @@ export function WeeklyWorkoutCard() {
 }
 
 const styles = StyleSheet.create({
-  card: { borderColor: '#E6E6ED', borderRadius: 14, borderWidth: 1, gap: 11, padding: 16 },
+  card: { backgroundColor: '#FFFFFF', borderColor: '#E6E6ED', borderRadius: 14, borderWidth: 1, gap: 11, padding: 16 },
   label: { color: '#777781', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
   valueRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   value: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
   unit: { color: '#777781', fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-  percent: { color: '#503DD7', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
+  percent: { color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
   track: { backgroundColor: '#E8E9ED', borderRadius: 4, height: 6, overflow: 'hidden' },
-  fill: { backgroundColor: '#503DD7', height: 6 },
+  fill: { backgroundColor: '#5246C6', height: 6 },
   chart: { alignItems: 'flex-end', flexDirection: 'row', height: 86 },
   column: { alignItems: 'center', flex: 1, gap: 4 },
   barValue: { color: '#777781', fontSize: 9, height: 12 },
   bar: { backgroundColor: '#222227', borderRadius: 4, width: 17 },
   day: { color: '#777781', fontSize: 10 },
-  hint: { backgroundColor: '#F5F5F7', borderRadius: 8, color: '#777781', fontSize: 11, lineHeight: 16, padding: 10 },
+  hint: { backgroundColor: '#EDEFF2', borderRadius: 8, color: '#777781', fontSize: 11, lineHeight: 16, padding: 10 },
 });
 
 const simpleStyles = StyleSheet.create({

@@ -29,7 +29,7 @@ export default function HealthDataUploadScreen() {
   const router = useRouter();
   const { source } = useLocalSearchParams<{ source?: string }>();
   const insets = useSafeAreaInsets();
-  const { isSelecting, pickDocument, removeFile, selectedFiles, takePhoto } = useHealthFilePicker();
+  const { clearFiles, isSelecting, pickDocument, removeFile, selectedFiles, takePhoto } = useHealthFilePicker();
   const [isUploading, setIsUploading] = useState(false);
   const busy = isSelecting || isUploading;
 
@@ -68,18 +68,19 @@ export default function HealthDataUploadScreen() {
         pathname: '/ocr-result',
         params: { source, uploads: JSON.stringify(uploads) },
       });
+      clearFiles();
     } catch (error) {
       Alert.alert('건강 데이터 업로드에 실패했어요.', getHealthDocumentErrorMessage(error));
     } finally {
       setIsUploading(false);
     }
-  }, [router, selectedFiles, source]);
+  }, [clearFiles, router, selectedFiles, source]);
 
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
       <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
-        <Pressable
+        <Pressable hitSlop={16}
           accessibilityLabel="뒤로 가기"
           accessibilityRole="button"
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/home'))}
@@ -195,7 +196,7 @@ function UploadOption({
   disabled: boolean;
 }) {
   return (
-    <Pressable
+    <Pressable hitSlop={16}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
@@ -215,7 +216,7 @@ function UploadOption({
 }
 
 const styles = StyleSheet.create({
-  root: { alignSelf: 'center', backgroundColor: '#FFFFFF', flex: 1, maxWidth: 412, width: '100%' },
+  root: { alignSelf: 'center', backgroundColor: '#F4F5F7', flex: 1, maxWidth: 412, width: '100%' },
   header: { paddingHorizontal: 20 },
   back: { height: 42, justifyContent: 'center', width: 42 },
   backText: { color: '#222227', fontSize: 32, lineHeight: 36 },
@@ -229,6 +230,7 @@ const styles = StyleSheet.create({
   description: { color: '#777780', fontSize: 13, lineHeight: 19 },
   options: { gap: 9, marginTop: 11 },
   option: {
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     borderColor: '#E7E7EC',
     borderRadius: 9,
@@ -256,6 +258,7 @@ const styles = StyleSheet.create({
   },
   selected: { gap: 9 },
   fileRow: {
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     borderColor: '#E7E7EC',
     borderRadius: 8,
@@ -265,7 +268,7 @@ const styles = StyleSheet.create({
   },
   fileName: { color: '#333339', flex: 1, fontSize: 13, marginRight: 8 },
   examples: {
-    backgroundColor: '#FAFAFB',
+    backgroundColor: '#F4F5F7',
     borderColor: '#ECECF1',
     borderRadius: 9,
     borderWidth: 1,
@@ -279,10 +282,10 @@ const styles = StyleSheet.create({
   exampleTags: { color: '#9999A1', fontSize: 10, marginTop: 2 },
   exampleDivider: { backgroundColor: '#E7E7EC', height: 1, marginVertical: 12 },
   privacy: { color: '#9999A1', fontSize: 11, lineHeight: 17, marginTop: 5 },
-  footer: { backgroundColor: '#FFFFFF', gap: 8, paddingHorizontal: 20, paddingTop: 8 },
+  footer: { backgroundColor: '#F4F5F7', gap: 8, paddingHorizontal: 20, paddingTop: 8 },
   primaryButton: {
     alignItems: 'center',
-    backgroundColor: '#503DD7',
+    backgroundColor: '#5246C6',
     borderRadius: 8,
     height: 49,
     justifyContent: 'center',

@@ -5,7 +5,7 @@ export const KAKAO_MAP_JS_KEY = process.env.EXPO_PUBLIC_KAKAO_MAP_JS_KEY?.trim()
 export const KAKAO_MAP_ORIGIN = process.env.EXPO_PUBLIC_KAKAO_MAP_ORIGIN?.trim() || 'https://211-233-206-193.sslip.io';
 export const KAKAO_MAP_LOAD_TIMEOUT_MS = 8000;
 
-export function kakaoMapHtml(appKey: string, points: RunningCoordinate[], lineColor = '#503DD7') {
+export function kakaoMapHtml(appKey: string, points: RunningCoordinate[], lineColor = '#5246C6') {
   const path = JSON.stringify(points.map((point) => [Number(point.latitude), Number(point.longitude)]));
   return `<!doctype html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">

@@ -34,7 +34,7 @@ function SettingRow({ icon, label, description, onPress, isDark }: SettingRowPro
   const { preferences } = useDisplayPreferences();
   const simple = preferences.simple_mode_enabled;
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.settingRow, simple && simpleStyles.settingRow]}>
+    <Pressable hitSlop={16} accessibilityRole="button" onPress={onPress} style={[styles.settingRow, simple && simpleStyles.settingRow]}>
       <View style={styles.settingIcon}>{icon}</View>
       <View style={styles.settingCopy}>
         <Text style={[styles.settingLabel, isDark && dark.text, simple && simpleStyles.settingLabel]}>{label}</Text>
@@ -123,7 +123,7 @@ export default function MyScreen() {
         <View style={[styles.avatar, isDark && dark.card]}><UserIcon color={isDark ? '#F5F5F7' : '#62626B'} height={24} width={24} /></View>
         <View style={styles.profileCopy}>
           <Text numberOfLines={1} style={[styles.name, isDark && dark.text, simple && simpleStyles.name]}>{name}</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/tier')}>
+          <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/tier')}>
             <Text style={styles.tierLink}>건강 티어 확인 ›</Text>
           </Pressable>
         </View>
@@ -204,41 +204,41 @@ export default function MyScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
+  root: { backgroundColor: '#F4F5F7', flex: 1 },
   content: { gap: 14, paddingHorizontal: 20 },
   titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   title: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 24, marginBottom: 4 },
   profileRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  avatar: { alignItems: 'center', backgroundColor: '#F6F6FA', borderColor: '#E8E8EE', borderRadius: 25, borderWidth: 1, height: 50, justifyContent: 'center', width: 50 },
+  avatar: { alignItems: 'center', backgroundColor: '#F4F5F7', borderColor: '#E8E8EE', borderRadius: 25, borderWidth: 1, height: 50, justifyContent: 'center', width: 50 },
   profileCopy: { flex: 1, gap: 3, minWidth: 0 },
   name: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 17 },
-  tierLink: { color: '#503DD7', fontFamily: fontFamilies.pretendardMedium, fontSize: 11 },
-  profileEdit: { borderColor: '#E6E6ED', borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 8 },
+  tierLink: { color: '#5246C6', fontFamily: fontFamilies.pretendardMedium, fontSize: 11 },
+  profileEdit: { backgroundColor: '#FFFFFF', borderColor: '#E6E6ED', borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 8 },
   profileEditText: { color: '#45454B', fontFamily: fontFamilies.pretendardMedium, fontSize: 11 },
   inlineError: { backgroundColor: '#FFF4F4', borderRadius: 8, padding: 10 },
   inlineErrorText: { color: '#B34141', fontSize: 12 },
-  stats: { alignItems: 'center', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, flexDirection: 'row', height: 66 },
+  stats: { backgroundColor: '#FFFFFF', alignItems: 'center', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, flexDirection: 'row', height: 66 },
   stat: { alignItems: 'center', flex: 1, gap: 4 },
   statValue: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
   statLabel: { color: '#8A8A92', fontFamily: fontFamilies.pretendardRegular, fontSize: 11 },
   statDivider: { backgroundColor: '#ECECF1', height: 28, width: 1 },
-  mileage: { alignItems: 'center', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: 16 },
+  mileage: { backgroundColor: '#FFFFFF', alignItems: 'center', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: 16 },
   mileageLabel: { color: '#45454B', fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
   mileageAmount: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
   sectionTitle: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 16, marginTop: 4 },
   healthCards: { flexDirection: 'row', gap: 8 },
-  healthCard: { borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, flex: 1, minHeight: 100, padding: 13 },
-  healthIcon: { color: '#5B4ACF', fontSize: 21, lineHeight: 26 },
+  healthCard: { backgroundColor: '#FFFFFF', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, flex: 1, minHeight: 100, padding: 13 },
+  healthIcon: { color: '#5246C6', fontSize: 21, lineHeight: 26 },
   healthCardTitle: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13, marginTop: 8 },
   healthCardDescription: { color: '#888891', fontFamily: fontFamilies.pretendardRegular, fontSize: 10, marginTop: 3 },
-  group: { borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
+  group: { backgroundColor: '#FFFFFF', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
   settingRow: { alignItems: 'center', flexDirection: 'row', minHeight: 57, paddingHorizontal: 13, paddingVertical: 8 },
   settingIcon: { alignItems: 'center', justifyContent: 'center', width: 28 },
   settingCopy: { flex: 1, gap: 3, marginLeft: 9 },
   settingLabel: { color: '#333339', fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
   settingDescription: { color: '#8A8A92', fontFamily: fontFamilies.pretendardRegular, fontSize: 10 },
   chevron: { color: '#9B9BA3', fontSize: 24 },
-  rowDivider: { backgroundColor: '#EFEFF2', height: StyleSheet.hairlineWidth, marginLeft: 50 },
+  rowDivider: { backgroundColor: '#EDEFF2', height: StyleSheet.hairlineWidth, marginLeft: 50 },
 });
 
 const simpleStyles = StyleSheet.create({

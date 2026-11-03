@@ -11,7 +11,7 @@ import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 type HistoryRow = Awaited<ReturnType<typeof getExerciseHistory>>['history'][number];
-const purple = '#503DD7';
+const purple = '#5246C6';
 const ink = '#1E1D24';
 const muted = '#777681';
 const border = '#E4E5EB';
@@ -94,9 +94,9 @@ export default function ExerciseHistory() {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
         <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
+          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
           <Text style={styles.title}>내 운동</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="루틴 만들기" onPress={() => router.push('/exercise/routine-builder')}><Text style={styles.link}>만들기</Text></Pressable>
+          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="루틴 만들기" onPress={() => router.push('/exercise/routine-builder')}><Text style={styles.link}>만들기</Text></Pressable>
         </View>
         <View style={styles.tabs}>
           <View style={[styles.tab, styles.tabActive]}><Text style={styles.tabTextActive}>운동 기록</Text></View>
@@ -125,7 +125,7 @@ export default function ExerciseHistory() {
         </View>
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>{selectedDay ? `${selectedDay} 기록` : '운동 내역'}</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/exercise/saved-routines')}><Text style={styles.link}>저장한 운동 ›</Text></Pressable>
+          <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/exercise/saved-routines')}><Text style={styles.link}>저장한 운동 ›</Text></Pressable>
         </View>
         {loading ? <ActivityIndicator color={purple} /> : error ? (
           <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable>
@@ -154,12 +154,12 @@ export default function ExerciseHistory() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8F8FA' },
+  root: { flex: 1, backgroundColor: '#F4F5F7' },
   content: { paddingHorizontal: 20, gap: 18 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 40 },
   back: { fontSize: 32, color: ink, lineHeight: 36 },
   title: { fontSize: 18, color: ink, fontFamily: fontFamilies.pretendardBold },
-  tabs: { flexDirection: 'row', backgroundColor: '#F0F1F3', borderRadius: 13, padding: 4 },
+  tabs: { flexDirection: 'row', backgroundColor: '#EDEFF2', borderRadius: 13, padding: 4 },
   tab: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
   tabActive: { backgroundColor: '#FFF' },
   tabText: { color: muted, fontSize: 13 },
@@ -167,9 +167,9 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 17, color: ink, fontFamily: fontFamilies.pretendardBold },
   week: { backgroundColor: '#FFF', borderColor: border, borderWidth: 1, borderRadius: 16, padding: 10, flexDirection: 'row', justifyContent: 'space-between' },
   day: { flex: 1, alignItems: 'center', gap: 5, paddingVertical: 8, borderRadius: 10 },
-  daySelected: { backgroundColor: purple },
+  daySelected: { backgroundColor: '#F1F0F9' },
   dayText: { color: muted, fontSize: 12 },
-  dayTextSelected: { color: '#FFF' },
+  dayTextSelected: { color: purple },
   dayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'transparent' },
   dayDotActive: { backgroundColor: '#76CE96' },
   summary: { backgroundColor: '#FFF', borderColor: border, borderWidth: 1, borderRadius: 16, padding: 17, gap: 16 },
@@ -180,9 +180,9 @@ const styles = StyleSheet.create({
   link: { color: purple, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
   card: { backgroundColor: '#FFF', borderColor: border, borderWidth: 1, borderRadius: 16, padding: 16, gap: 9 },
   cardTitle: { fontSize: 16, color: ink, fontFamily: fontFamilies.pretendardBold },
-  badge: { color: purple, backgroundColor: '#F0EEFC', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6, fontSize: 11 },
+  badge: { color: purple, backgroundColor: '#F1F0F9', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6, fontSize: 11 },
   body: { color: ink, fontSize: 13, lineHeight: 20 },
-  outlineButton: { borderColor: border, borderWidth: 1, borderRadius: 9, height: 42, alignItems: 'center', justifyContent: 'center', marginTop: 5 },
+  outlineButton: { backgroundColor: '#FFFFFF', borderColor: border, borderWidth: 1, borderRadius: 9, height: 42, alignItems: 'center', justifyContent: 'center', marginTop: 5 },
   outlineText: { color: purple, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
   error: { color: '#A13A2F', fontSize: 13 },
 });

@@ -16,7 +16,7 @@ import { defaultVoiceGuideSettings, loadVoiceGuideSettings, saveVoiceGuideSettin
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const purple = '#503DD7';
+const purple = '#5246C6';
 const ink = '#1E1D24';
 const muted = '#777681';
 const border = '#E3E4E9';
@@ -98,7 +98,7 @@ export function R6ExerciseSession({
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 8 }]} showsVerticalScrollIndicator={false}>
         <View style={s.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="운동 나가기" onPress={onBack} style={s.back}><Text style={s.backText}>‹</Text></Pressable>
+          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="운동 나가기" onPress={onBack} style={s.back}><Text style={s.backText}>‹</Text></Pressable>
           <Text style={s.headerTitle}>운동하기</Text>
           <View style={s.headerActions}><Pressable accessibilityRole="button" accessibilityLabel="음성 안내 설정" onPress={() => setVoiceOpen(true)}><Text style={s.voiceAction}>◖))</Text></Pressable><Pressable accessibilityRole="button" accessibilityLabel={session.paused ? '운동 재개' : '운동 일시정지'} onPress={onTogglePause} style={s.pause}><Text style={s.pauseText}>{session.paused ? '▶' : 'Ⅱ'}</Text></Pressable></View>
         </View>
@@ -188,7 +188,7 @@ export function R6ExerciseSession({
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFF' }, content: { paddingHorizontal: 20, paddingBottom: 32, gap: 14 },
+  root: { flex: 1, backgroundColor: '#F4F5F7' }, content: { paddingHorizontal: 20, paddingBottom: 32, gap: 14 },
   header: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { width: 32, justifyContent: 'center' }, backText: { fontSize: 32, color: ink },
   headerTitle: { fontSize: 16, color: ink, fontFamily: fontFamilies.pretendardBold }, headerActions: { flexDirection: 'row', gap: 15, alignItems: 'center' }, voiceAction: { color: ink, fontSize: 16 },
@@ -196,7 +196,7 @@ const s = StyleSheet.create({
   progressHeading: { flexDirection: 'row', justifyContent: 'space-between' }, progressLabel: { fontSize: 12, color: muted },
   track: { height: 6, borderRadius: 4, backgroundColor: '#E8E8ED', overflow: 'hidden' },
   fill: { height: 6, backgroundColor: purple }, exerciseTitle: { color: ink, fontSize: 19, fontFamily: fontFamilies.pretendardBold, marginTop: 3 },
-  media: { height: 190, borderRadius: 12, backgroundColor: '#F4F4F6', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  media: { height: 190, borderRadius: 12, backgroundColor: '#EDEFF2', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   mediaImage: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
   videoAction: { backgroundColor: '#FFFFFFDD', borderRadius: 24, paddingHorizontal: 15, paddingVertical: 9, alignItems: 'center', flexDirection: 'row', gap: 8 },
   play: { color: purple, fontSize: 15 }, videoText: { color: ink, fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold },
@@ -205,10 +205,10 @@ const s = StyleSheet.create({
   repTotal: { color: muted, fontSize: 17, fontFamily: fontFamilies.pretendardMedium }, setText: { color: muted, fontSize: 12 },
   setMarkers: { width: '100%', flexDirection: 'row', justifyContent: 'space-between' }, marker: { color: muted, fontSize: 11 },
   markerActive: { color: purple, fontFamily: fontFamilies.pretendardBold },
-  tipCard: { borderColor: border, borderWidth: 1, borderRadius: 10, padding: 14, gap: 5 },
-  nextCard: { borderColor: border, borderWidth: 1, borderRadius: 10, padding: 14, gap: 5 },
+  tipCard: { backgroundColor: '#FFFFFF', borderColor: border, borderWidth: 1, borderRadius: 10, padding: 14, gap: 5 },
+  nextCard: { backgroundColor: '#FFFFFF', borderColor: border, borderWidth: 1, borderRadius: 10, padding: 14, gap: 5 },
   tipTitle: { color: ink, fontSize: 13, fontFamily: fontFamilies.pretendardBold }, tipText: { color: muted, fontSize: 12, lineHeight: 18 },
-  actions: { flexDirection: 'row', gap: 8 }, secondaryButton: { flex: 1, height: 48, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F2F4' },
+  actions: { flexDirection: 'row', gap: 8 }, secondaryButton: { flex: 1, height: 48, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EDEFF2' },
   secondaryText: { color: ink, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
   primaryButton: { flex: 1, height: 48, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: purple },
   primaryText: { color: '#FFF', fontSize: 13, fontFamily: fontFamilies.pretendardBold },
@@ -220,8 +220,8 @@ const s = StyleSheet.create({
   sheetDescription: { color: muted, fontSize: 12, lineHeight: 18 }, notice: { backgroundColor: '#FFF4E2', borderRadius: 9, padding: 11 },
   noticeText: { color: '#8E641C', fontSize: 11 }, fieldTitle: { color: ink, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
   optional: { color: muted, fontSize: 11, fontFamily: fontFamilies.pretendardMedium },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, chip: { borderRadius: 20, borderColor: border, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 8 },
-  selectedChip: { backgroundColor: purple, borderColor: purple }, chipText: { color: ink, fontSize: 12 }, selectedChipText: { color: '#FFF' },
-  feelings: { flexDirection: 'row', gap: 7 }, feeling: { flex: 1, borderRadius: 20, borderColor: border, borderWidth: 1, alignItems: 'center', paddingVertical: 9 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, chip: { backgroundColor: '#FFFFFF', borderRadius: 20, borderColor: border, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 8 },
+  selectedChip: { backgroundColor: '#F1F0F9', borderColor: purple }, chipText: { color: ink, fontSize: 12 }, selectedChipText: { color: purple },
+  feelings: { flexDirection: 'row', gap: 7 }, feeling: { backgroundColor: '#FFFFFF', flex: 1, borderRadius: 20, borderColor: border, borderWidth: 1, alignItems: 'center', paddingVertical: 9 },
   voiceRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 7, gap: 12 }, switch: { width: 42, height: 25, backgroundColor: '#D8D9DE', borderRadius: 15, padding: 3 }, switchOn: { backgroundColor: purple }, switchThumb: { width: 19, height: 19, borderRadius: 10, backgroundColor: '#FFF' }, switchThumbOn: { alignSelf: 'flex-end' }, unavailable: { color: muted, fontSize: 11, lineHeight: 16, flexShrink: 1 },
 });

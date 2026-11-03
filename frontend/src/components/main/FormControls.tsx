@@ -25,6 +25,6 @@ export const form = StyleSheet.create({
   error: { color: colors.danger, fontSize: 14, lineHeight: 21 },
   success: { color: colors.primary, fontSize: 14 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { padding: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 15 },
+  chip: { backgroundColor: colors.surface, padding: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 15 },
   selected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
 });

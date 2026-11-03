@@ -167,7 +167,7 @@ function CommunityMessagesScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   message: {
     alignItems: 'center',
     flex: 1,

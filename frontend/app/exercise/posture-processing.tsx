@@ -67,7 +67,7 @@ export default function PostureProcessingScreen() {
     <View style={[styles.screen, { paddingTop: insets.top }] }>
       <StatusBar style="dark" />
       <View style={styles.header}>
-        <Pressable accessibilityLabel="뒤로 가기" onPress={() => router.back()} style={styles.back}><Text style={styles.backText}>‹</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityLabel="뒤로 가기" onPress={() => router.back()} style={styles.back}><Text style={styles.backText}>‹</Text></Pressable>
         <Text style={styles.headerTitle}>자세 분석 중</Text>
         <View style={styles.back} />
       </View>
@@ -86,7 +86,7 @@ export default function PostureProcessingScreen() {
           <Text style={styles.metaStrong}>{job ? `${job.progress_percent}%` : '대기 중'}</Text>
         </View>
         <View style={styles.track}><View style={[styles.progress, { width: `${job?.progress_percent ?? 0}%` }]} /></View>
-        {loading && <ActivityIndicator color="#503DE1" style={styles.loading} />}
+        {loading && <ActivityIndicator color="#5246C6" style={styles.loading} />}
         {(error || isFailed) && <Text style={styles.error}>{error ?? '분석 중 문제가 발생했습니다. 다시 촬영해 주세요.'}</Text>}
         <View style={styles.stepCard}>
           {steps.map((step, index) => {
@@ -108,7 +108,7 @@ export default function PostureProcessingScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFFFF' },
+  screen: { flex: 1, backgroundColor: '#F4F5F7' },
   header: { height: 66, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
   back: { width: 36, alignItems: 'flex-start', justifyContent: 'center' }, backText: { fontSize: 36, color: '#19191D', lineHeight: 40 },
   headerTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 16, color: '#19191D' },
@@ -125,15 +125,15 @@ const styles = StyleSheet.create({
   floor: { position: 'absolute', bottom: 28, height: 2, width: '100%', backgroundColor: '#65D999' },
   heading: { color: '#19191D', fontSize: 19, fontFamily: fontFamilies.pretendardBold, marginTop: 24, marginBottom: 12 },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between' }, meta: { color: '#686970', fontSize: 13 }, metaStrong: { color: '#19191D', fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
-  track: { height: 7, borderRadius: 4, backgroundColor: '#DFE0E3', marginTop: 10, overflow: 'hidden' }, progress: { height: '100%', backgroundColor: '#503DE1', borderRadius: 4 },
+  track: { height: 7, borderRadius: 4, backgroundColor: '#DFE0E3', marginTop: 10, overflow: 'hidden' }, progress: { height: '100%', backgroundColor: '#5246C6', borderRadius: 4 },
   loading: { marginTop: 18 }, error: { color: '#C34543', fontSize: 13, marginTop: 16, lineHeight: 19 },
-  stepCard: { marginTop: 20, borderWidth: 1, borderColor: '#DDE0E6', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 4, backgroundColor: '#F9FAFB' },
+  stepCard: { marginTop: 20, borderWidth: 1, borderColor: '#DDE0E6', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 4, backgroundColor: '#F4F5F7' },
   step: { flexDirection: 'row', alignItems: 'center', minHeight: 62 }, stepBorder: { borderTopWidth: 1, borderTopColor: '#E2E4E8' },
   stepIcon: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: '#DFE2E6', backgroundColor: '#F1F3F5', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  stepDone: { backgroundColor: '#E5F7ED', borderColor: '#E5F7ED' }, stepActive: { borderColor: '#503DE1', backgroundColor: '#EEEAFE' },
+  stepDone: { backgroundColor: '#E5F7ED', borderColor: '#E5F7ED' }, stepActive: { borderColor: '#5246C6', backgroundColor: '#F1F0F9' },
   stepIconText: { color: '#9699A0', fontSize: 12 }, stepDoneText: { color: '#16965E' }, stepCopy: { flex: 1 },
   stepTitle: { color: '#222227', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold }, stepDescription: { color: '#85878D', fontSize: 11, marginTop: 3 }, stepPercent: { color: '#222227', fontSize: 11 },
   note: { color: '#777982', fontSize: 11, lineHeight: 17, marginTop: 16 },
-  button: { backgroundColor: '#F1F2F4', borderRadius: 12, minHeight: 54, alignItems: 'center', justifyContent: 'center', marginTop: 30 },
+  button: { backgroundColor: '#EDEFF2', borderRadius: 12, minHeight: 54, alignItems: 'center', justifyContent: 'center', marginTop: 30 },
   buttonText: { color: '#1B1B20', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
 });

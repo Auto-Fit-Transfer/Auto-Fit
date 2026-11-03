@@ -112,7 +112,7 @@ export default function HomeScreen() {
         {!isInitialLoading ? <Text style={[styles.greeting, simple && simpleStyles.greeting, isDark && dark.text]}>{name}님, 반가워요</Text> : null}
         {isInitialLoading ? (
           <View style={[styles.initialLoading, isDark && dark.card]}>
-            <ActivityIndicator color="#503DD7" />
+            <ActivityIndicator color="#5246C6" />
             <Text style={styles.initialLoadingText}>홈 정보를 불러오는 중이에요</Text>
           </View>
         ) : isInitialError ? (
@@ -122,7 +122,7 @@ export default function HomeScreen() {
           </View>
         ) : !showGettingStarted ? (
           <>
-            <Pressable accessibilityRole="button" onPress={() => router.push('/tier')} style={[styles.overviewTier, simple && simpleStyles.card, isDark && dark.card]}>
+            <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/tier')} style={[styles.overviewTier, simple && simpleStyles.card, isDark && dark.card]}>
               <View style={styles.overviewTierTop}>
                 <View style={styles.overviewBadge}><Text style={styles.overviewBadgeText}>◇</Text></View>
                 <View style={styles.overviewTierCopy}>
@@ -131,14 +131,14 @@ export default function HomeScreen() {
                 </View>
                 <Text style={styles.overviewChevron}>›</Text>
               </View>
-              <View style={styles.overviewTierLine} />
+              <View style={[styles.overviewTierLine, isDark && dark.track]} />
               <Text style={styles.overviewTierFoot}>식사와 운동 등 완료한 활동으로 티어 점수가 쌓여요.</Text>
             </Pressable>
             <View style={[styles.overviewStats, simple && simpleStyles.column]}>
               <Pressable accessibilityRole="button" onPress={() => router.push('/diet')} style={[styles.overviewStatCard, simple && simpleStyles.statCard, isDark && dark.card]}>
                 <Text style={[styles.overviewStatLabel, simple && simpleStyles.statLabel]}>오늘 식단</Text>
                 <Text style={[styles.overviewStatValue, isDark && dark.text]}>{consumed === null ? '—' : Math.round(consumed).toLocaleString('ko-KR')}<Text style={styles.overviewStatUnit}> {calorieTarget === null ? 'kcal' : `/ ${Math.round(calorieTarget).toLocaleString('ko-KR')} kcal`}</Text></Text>
-                <View style={styles.overviewTrack}><View style={[styles.overviewFill, { width: `${calorieRatio}%` }]} /></View>
+                <View style={[styles.overviewTrack, isDark && dark.track]}><View style={[styles.overviewFill, { width: `${calorieRatio}%` }]} /></View>
                 <Text style={styles.overviewStatHint}>{consumed === null ? '식사 기록을 시작해 보세요' : '기록한 식사의 열량'}</Text>
               </Pressable>
               <Pressable accessibilityRole="button" onPress={() => router.push('/exercise')} style={[styles.overviewStatCard, simple && simpleStyles.statCard, isDark && dark.card]}>
@@ -152,10 +152,10 @@ export default function HomeScreen() {
                 <Text style={[styles.weeklyTitle, isDark && dark.text]}>이번 주 운동</Text>
                 <Text style={styles.weeklyCount}>{weeklyCount ?? '—'} / {weeklyTarget ?? '—'}회</Text>
               </View>
-              <View style={styles.overviewTrack}><View style={[styles.overviewFill, { width: `${weeklyRatio}%` }]} /></View>
+              <View style={[styles.overviewTrack, isDark && dark.track]}><View style={[styles.overviewFill, { width: `${weeklyRatio}%` }]} /></View>
               <Text style={styles.weeklyHint}>{weeklyTarget === null ? '운동 목표를 설정해 보세요' : '꾸준한 운동으로 목표를 채워 보세요'} ›</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" onPress={() => router.push(hasScore ? '/total-analysis' : '/upload')} style={[styles.analysisShortcut, isDark && dark.card]}>
+            <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push(hasScore ? '/total-analysis' : '/upload')} style={[styles.analysisShortcut, isDark && dark.card]}>
               <Text style={[styles.analysisShortcutTitle, isDark && dark.text]}>{hasScore ? '내 건강 분석 보기' : '건강 데이터 올리기'}</Text>
               <Text style={styles.analysisShortcutDetail}>{hasScore ? '점수 변화와 맞춤 건강 제안을 확인해요' : '건강검진이나 인바디 결과를 올려 맞춤 분석을 시작해요'}</Text>
               <Text style={styles.overviewChevron}>›</Text>
@@ -230,7 +230,7 @@ function TaskRow({
   const { preferences, isDark } = useDisplayPreferences();
   const simple = preferences.simple_mode_enabled;
   return (
-    <Pressable
+    <Pressable hitSlop={16}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [styles.task, simple && simpleStyles.task, pressed && styles.pressed]}
@@ -248,18 +248,17 @@ function TaskRow({
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
+  root: { backgroundColor: '#F4F5F7', flex: 1 },
   headerRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   content: {
     alignSelf: 'center',
     paddingBottom: 110,
     paddingHorizontal: 20,
     width: '100%',
-    maxWidth: 412,
   },
   initialLoading: {
     alignItems: 'center',
-    backgroundColor: '#FAFAFB',
+    backgroundColor: '#F4F5F7',
     borderRadius: 16,
     gap: 14,
     justifyContent: 'center',
@@ -273,7 +272,7 @@ const styles = StyleSheet.create({
     fontSize: 25,
     letterSpacing: -1.3,
   },
-  accent: { color: '#503DD7' },
+  accent: { color: '#5246C6' },
   date: { color: '#9999A1', fontSize: 12, marginTop: 22 },
   greeting: {
     color: '#222227',
@@ -281,15 +280,15 @@ const styles = StyleSheet.create({
     fontSize: 22,
     marginTop: 5,
   },
-  overviewTier: { backgroundColor: '#F8F7FF', borderColor: '#E9E6F5', borderRadius: 16, borderWidth: 1, marginTop: 24, padding: 16 },
+  overviewTier: { backgroundColor: '#FFFFFF', borderColor: '#E4E5EB', borderRadius: 16, borderWidth: 1, marginTop: 24, padding: 16 },
   overviewTierTop: { alignItems: 'center', flexDirection: 'row', gap: 11 },
-  overviewBadge: { alignItems: 'center', backgroundColor: '#E8E1FF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  overviewBadgeText: { color: '#6955CD', fontSize: 24 },
+  overviewBadge: { alignItems: 'center', backgroundColor: '#F1F0F9', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+  overviewBadgeText: { color: '#5246C6', fontSize: 24 },
   overviewTierCopy: { flex: 1, gap: 4 },
   overviewTierTitle: { color: '#34303F', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
   overviewTierDetail: { color: '#8F8A9B', fontSize: 11 },
   overviewChevron: { color: '#8B86A0', fontSize: 22 },
-  overviewTierLine: { backgroundColor: '#DCD5FA', borderRadius: 3, height: 5, marginTop: 15 },
+  overviewTierLine: { backgroundColor: '#E3E6EB', borderRadius: 3, height: 5, marginTop: 15 },
   overviewTierFoot: { color: '#8F8A9B', fontSize: 11, marginTop: 9 },
   overviewStats: { flexDirection: 'row', gap: 10, marginTop: 16 },
   overviewStatCard: { backgroundColor: '#FFFFFF', borderColor: '#EAE9EE', borderRadius: 14, borderWidth: 1, flex: 1, gap: 8, minHeight: 126, padding: 13 },
@@ -297,14 +296,14 @@ const styles = StyleSheet.create({
   overviewStatValue: { color: '#29272F', fontFamily: fontFamilies.pretendardBold, fontSize: 19 },
   overviewStatUnit: { color: '#96939F', fontFamily: fontFamilies.pretendardRegular, fontSize: 10 },
   overviewStatHint: { color: '#9996A1', fontSize: 10, lineHeight: 14 },
-  overviewTrack: { backgroundColor: '#EBE8F6', borderRadius: 4, height: 5, overflow: 'hidden' },
-  overviewFill: { backgroundColor: '#7765DF', borderRadius: 4, height: 5 },
-  weeklyCard: { borderColor: '#EAE9EE', borderRadius: 14, borderWidth: 1, gap: 14, marginTop: 16, padding: 16 },
+  overviewTrack: { backgroundColor: '#E3E6EB', borderRadius: 4, height: 5, overflow: 'hidden' },
+  overviewFill: { backgroundColor: '#5246C6', borderRadius: 4, height: 5 },
+  weeklyCard: { backgroundColor: '#FFFFFF', borderColor: '#EAE9EE', borderRadius: 14, borderWidth: 1, gap: 14, marginTop: 16, padding: 16 },
   weeklyHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   weeklyTitle: { color: '#33313A', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
-  weeklyCount: { color: '#6955CD', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  weeklyCount: { color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   weeklyHint: { color: '#8D8997', fontSize: 11 },
-  analysisShortcut: { alignItems: 'center', borderColor: '#EAE9EE', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 8, marginTop: 14, padding: 15 },
+  analysisShortcut: { backgroundColor: '#FFFFFF', alignItems: 'center', borderColor: '#EAE9EE', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 8, marginTop: 14, padding: 15 },
   analysisShortcutTitle: { color: '#36333F', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   analysisShortcutDetail: { color: '#9A97A0', flex: 1, fontSize: 10 },
   sectionTitle: {
@@ -315,7 +314,7 @@ const styles = StyleSheet.create({
     marginTop: 22,
   },
   count: { color: '#777780', fontSize: 12 },
-  tasks: { borderColor: '#E8E8ED', borderRadius: 11, borderWidth: 1, overflow: 'hidden' },
+  tasks: { backgroundColor: '#FFFFFF', borderColor: '#E8E8ED', borderRadius: 11, borderWidth: 1, overflow: 'hidden' },
   task: {
     alignItems: 'center',
     borderBottomColor: '#F0F0F2',
@@ -326,7 +325,7 @@ const styles = StyleSheet.create({
   },
   taskIcon: {
     alignItems: 'center',
-    backgroundColor: '#F5F5F7',
+    backgroundColor: '#EDEFF2',
     borderRadius: 8,
     height: 33,
     justifyContent: 'center',
@@ -339,7 +338,7 @@ const styles = StyleSheet.create({
   chevron: { color: '#9999A1', fontSize: 22 },
   tierCard: {
     alignItems: 'center',
-    backgroundColor: '#FAFAFB',
+    backgroundColor: '#F4F5F7',
     borderColor: '#E8E8ED',
     borderRadius: 11,
     borderWidth: 1,
@@ -362,7 +361,7 @@ const styles = StyleSheet.create({
   tierDescription: { color: '#9999A1', fontSize: 10 },
   tierLink: { color: '#55555D', fontSize: 11 },
   healthCard: {
-    backgroundColor: '#FAFAFB',
+    backgroundColor: '#F4F5F7',
     borderColor: '#E8E8ED',
     borderRadius: 11,
     borderWidth: 1,
@@ -372,7 +371,7 @@ const styles = StyleSheet.create({
   },
   cardTitle: { color: '#333339', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
   cardDescription: { color: '#777780', fontSize: 12, lineHeight: 18, marginTop: 10 },
-  score: { color: '#503DD7', fontFamily: fontFamilies.pretendardBold, fontSize: 30, marginTop: 7 },
+  score: { color: '#5246C6', fontFamily: fontFamilies.pretendardBold, fontSize: 30, marginTop: 7 },
   scoreUnit: { color: '#9999A1', fontSize: 12 },
   healthAction: {
     alignSelf: 'flex-start',
@@ -403,6 +402,7 @@ const simpleStyles = StyleSheet.create({
 });
 
 const dark = StyleSheet.create({
+  track: { backgroundColor: darkColors.border },
   root: { backgroundColor: darkColors.background },
   card: { backgroundColor: darkColors.surface, borderColor: darkColors.border },
   text: { color: darkColors.textPrimary },

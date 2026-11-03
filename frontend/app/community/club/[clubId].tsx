@@ -309,7 +309,7 @@ export default function CommunityClubScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   info: {
     borderBottomColor: colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
   ownerName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   action: { flex: 1 },
-  membersCard: { minHeight: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.md, backgroundColor: colors.background, borderRadius: radius.md },
+  membersCard: { minHeight: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md },
   membersCount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   membersLink: { color: colors.textSecondary, fontSize: 12 },
   feedHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.md },
@@ -344,6 +344,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   joinButton: {
+    backgroundColor: colors.surface,
     alignItems: 'center',
     borderRadius: radius.sm,
     borderWidth: 1,

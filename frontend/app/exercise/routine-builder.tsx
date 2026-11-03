@@ -9,7 +9,7 @@ import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 type DraftItem = { id: number; name: string; sets: string; repetitions: string };
-const purple = '#503DD7';
+const purple = '#5246C6';
 let nextId = 2;
 
 export default function RoutineBuilder() {
@@ -60,7 +60,7 @@ export default function RoutineBuilder() {
     <StatusBar style="dark" />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 40 }]}>
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
         <Text style={styles.title}>루틴 만들기</Text>
         <View style={{ width: 24 }} />
       </View>
@@ -89,7 +89,7 @@ export default function RoutineBuilder() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8F8FA' },
+  root: { flex: 1, backgroundColor: '#F4F5F7' },
   content: { paddingHorizontal: 20, gap: 15 },
   header: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { fontSize: 32, color: '#1E1D24', lineHeight: 36 },
@@ -102,12 +102,12 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 15, padding: 15, gap: 12 },
   itemTitle: { color: purple, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
   itemActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  move: { width: 29, height: 29, borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  move: { backgroundColor: '#FFFFFF', width: 29, height: 29, borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   moveText: { color: purple, fontSize: 18, lineHeight: 22 },
   moveDisabled: { color: '#C8C9CE' },
   remove: { color: '#A13A2F', fontSize: 12 },
   inputRow: { flexDirection: 'row', gap: 10 },
-  add: { height: 48, borderWidth: 1, borderColor: purple, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  add: { backgroundColor: '#FFFFFF', height: 48, borderWidth: 1, borderColor: purple, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
   addText: { color: purple, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
   button: { backgroundColor: purple, height: 50, borderRadius: 9, justifyContent: 'center', alignItems: 'center', marginTop: 6 },
   buttonText: { color: '#FFF', fontSize: 15, fontFamily: fontFamilies.pretendardBold },

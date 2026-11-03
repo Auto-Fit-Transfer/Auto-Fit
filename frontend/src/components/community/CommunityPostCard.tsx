@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   },
   category: { color: colors.textSecondary, fontSize: 11, marginTop: 4, marginBottom: 3 },
   tags: { color: colors.textSecondary, fontSize: 12, marginTop: 9 },
-  activityCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, marginTop: 10, gap: 5, backgroundColor: colors.background },
+  activityCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, marginTop: 10, gap: 5, backgroundColor: colors.surface },
   activityType: { color: colors.textSecondary, fontSize: 11 },
   activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
   activityMeta: { color: colors.textSecondary, fontSize: 11 },

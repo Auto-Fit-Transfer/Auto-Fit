@@ -227,7 +227,7 @@ function RuleCard({
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   message: {
     alignItems: 'center',
     flex: 1,
@@ -239,6 +239,7 @@ const styles = StyleSheet.create({
   body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   note: { ...typography.bodySmall, color: colors.textSecondary },
   card: {
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.lg,
     borderWidth: 1,
@@ -265,6 +266,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   input: {
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.md,
     borderWidth: 1,

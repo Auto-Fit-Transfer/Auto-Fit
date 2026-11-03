@@ -331,7 +331,7 @@ function Stat({ label, onPress, value }: { label: string; onPress?: () => void; 
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   profile: {
     borderBottomColor: colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -378,7 +378,7 @@ const styles = StyleSheet.create({
   messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
   empty: { alignItems: 'center', padding: spacing.xxl },
   footer: { paddingVertical: spacing.lg },
-  myRows: { backgroundColor: colors.background, borderRadius: 12, overflow: 'hidden' },
+  myRows: { backgroundColor: colors.surface, borderRadius: 12, overflow: 'hidden' },
   otherActions: { flexDirection: 'row', gap: spacing.sm },
   otherAction: { flex: 1 },
   postsHeading: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, marginHorizontal: -spacing.xl, marginTop: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.lg },

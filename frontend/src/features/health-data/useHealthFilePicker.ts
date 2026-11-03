@@ -29,6 +29,8 @@ export function useHealthFilePicker() {
     setSelectedFiles((current) => [...current, file]);
   }, []);
 
+  const clearFiles = useCallback(() => setSelectedFiles([]), []);
+
   const removeFile = useCallback((index: number) => {
     setSelectedFiles((current) => current.filter((_, fileIndex) => fileIndex !== index));
   }, []);
@@ -110,5 +112,5 @@ export function useHealthFilePicker() {
     }
   }, [appendFile, isSelecting]);
 
-  return { isSelecting, pickDocument, removeFile, selectedFiles, takePhoto };
+  return { clearFiles, isSelecting, pickDocument, removeFile, selectedFiles, takePhoto };
 }

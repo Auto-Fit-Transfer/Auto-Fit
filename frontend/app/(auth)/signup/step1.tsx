@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   },
   select: {
     alignItems: 'center',
-    backgroundColor: '#F9F9FB',
+    backgroundColor: '#F4F5F7',
     borderColor: '#E6E6ED',
     borderRadius: 8,
     borderWidth: 1,
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   genderRow: { flexDirection: 'row', gap: 8 },
   gender: {
     alignItems: 'center',
-    backgroundColor: '#F9F9FB',
+    backgroundColor: '#F4F5F7',
     borderColor: '#E6E6ED',
     borderRadius: 8,
     borderWidth: 1,
@@ -351,9 +351,9 @@ const styles = StyleSheet.create({
     height: 48,
     justifyContent: 'center',
   },
-  genderSelected: { backgroundColor: '#F3F0FF', borderColor: '#503DD7' },
+  genderSelected: { backgroundColor: '#F1F0F9', borderColor: '#5246C6' },
   genderText: { color: '#777780', fontSize: 14 },
-  genderTextSelected: { color: '#503DD7', fontFamily: fontFamilies.pretendardSemiBold },
+  genderTextSelected: { color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold },
   visibility: { color: '#777780', fontSize: 12 },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
   scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.42)' },
@@ -388,5 +388,5 @@ const styles = StyleSheet.create({
   consentRow: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 31 },
   consentText: { color: '#44444B', flex: 1, fontSize: 13 },
   required: { color: '#777780' },
-  checkbox: { color: '#503DD7', fontSize: 21, width: 23 },
+  checkbox: { color: '#5246C6', fontSize: 21, width: 23 },
 });

@@ -221,10 +221,11 @@ function CommunityRankingScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   header: { gap: spacing.sm, padding: spacing.xl, paddingBottom: spacing.md },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   chip: {
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.round,
     borderWidth: 1,

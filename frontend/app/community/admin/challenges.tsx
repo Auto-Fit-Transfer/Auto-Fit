@@ -98,7 +98,7 @@ export default function CommunityAdminChallengesScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   message: {
     alignItems: 'center',
     flex: 1,
@@ -115,6 +115,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   card: {
+    backgroundColor: colors.surface,
     borderColor: colors.border,
     borderRadius: radius.lg,
     borderWidth: 1,

@@ -135,7 +135,7 @@ export default function CommunityClubMembersScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   message: {
     alignItems: 'center',
     flex: 1,
@@ -171,6 +171,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   remove: {
+    backgroundColor: colors.surface,
     borderColor: colors.danger,
     borderRadius: radius.round,
     borderWidth: 1,

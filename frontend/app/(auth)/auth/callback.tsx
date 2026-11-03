@@ -46,7 +46,7 @@ export default function OAuthCallbackScreen() {
 
 const styles = StyleSheet.create({
   screen: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
     flex: 1,
   },
 });

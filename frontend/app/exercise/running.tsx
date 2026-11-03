@@ -9,7 +9,7 @@ import { courseDifficultyLabel, coursesWithRenderablePaths, hasRenderablePath } 
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const purple = '#503DD7';
+const purple = '#5246C6';
 const distanceOptions: RunningDistanceOption[] = ['3km', '5km', '10km'];
 const nameOf = (course: RunningCourse) => course.course_name || course.name || '이름 없는 코스';
 
@@ -93,7 +93,7 @@ export default function RunningRecommendations() {
     <StatusBar style="dark" />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 38 }]}>
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
         <Text style={styles.title}>러닝 추천</Text>
         <View style={{ width: 24 }} />
       </View>
@@ -120,7 +120,7 @@ export default function RunningRecommendations() {
             <Text style={[styles.optionText, condition === value && styles.selectedText]}>{label}</Text>
           </Pressable>)}</View>
         {activeSession ? <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/exercise/run-live', params: { sessionId: activeSession.running_session_id } })} style={styles.button}><Text style={styles.buttonText}>진행 중인 러닝 이어하기</Text></Pressable> :
-          <Pressable accessibilityRole="button" disabled={starting} onPress={() => void start()} style={[styles.button, starting && { opacity: 0.6 }]}><Text style={styles.buttonText}>{starting ? '준비 중…' : '자유 러닝 시작하기'}</Text></Pressable>}
+          <Pressable accessibilityRole="button" disabled={starting} onPress={() => void start()} style={[styles.buttonOutline, starting && { opacity: 0.6 }]}><Text style={styles.buttonOutlineText}>{starting ? '준비 중…' : '자유 러닝 시작하기'}</Text></Pressable>}
       </View>
       <Pressable accessibilityRole="button" disabled={loading} onPress={() => void search()} style={[styles.button, loading && { opacity: 0.6 }]}><Text style={styles.buttonText}>코스 추천받기</Text></Pressable>
       {loading ? <ActivityIndicator color={purple} /> : null}
@@ -142,7 +142,7 @@ export default function RunningRecommendations() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8F8FA' },
+  root: { flex: 1, backgroundColor: '#F4F5F7' },
   content: { paddingHorizontal: 20, gap: 17 },
   header: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { fontSize: 32, color: '#1E1D24', lineHeight: 36 },
@@ -151,16 +151,18 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 10, paddingHorizontal: 13, height: 49, fontSize: 14, color: '#1E1D24' },
   options: { flexDirection: 'row', gap: 9 },
   option: { flex: 1, borderWidth: 1, borderColor: '#E4E5EB', backgroundColor: '#FFF', borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
-  selected: { borderColor: purple, backgroundColor: '#F0EEFC' },
+  selected: { borderColor: purple, backgroundColor: '#F1F0F9' },
   optionText: { color: '#777681', fontSize: 13 },
   selectedText: { color: purple, fontFamily: fontFamilies.pretendardBold },
+  buttonOutline: { backgroundColor: '#FFF', borderColor: purple, borderRadius: 10, borderWidth: 1, height: 50, justifyContent: 'center', alignItems: 'center' },
+  buttonOutlineText: { color: purple, fontSize: 15, fontFamily: fontFamilies.pretendardBold },
   button: { backgroundColor: purple, borderRadius: 10, height: 50, justifyContent: 'center', alignItems: 'center' },
   buttonText: { color: '#FFF', fontSize: 15, fontFamily: fontFamilies.pretendardBold },
   notice: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 14, padding: 16 },
   body: { color: '#1E1D24', fontSize: 13, lineHeight: 20 },
   card: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 15, padding: 16, gap: 8 },
   courseTitle: { color: '#1E1D24', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  courseLink: { color: purple, fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold, marginTop: 4 }, savedHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 }, savedBadge: { backgroundColor: '#F0EEFC', color: purple, borderRadius: 6, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, fontSize: 10 },
+  courseLink: { color: purple, fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold, marginTop: 4 }, savedHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 }, savedBadge: { backgroundColor: '#F1F0F9', color: purple, borderRadius: 6, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, fontSize: 10 },
   meta: { color: '#777681', fontSize: 12 },
   caption: { color: '#777681', fontSize: 12, lineHeight: 18 },
 });

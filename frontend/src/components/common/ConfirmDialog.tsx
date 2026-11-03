@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   secondaryLabel: { color: '#66666F', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
   primary: {
     alignItems: 'center',
-    backgroundColor: '#503DD7',
+    backgroundColor: '#5246C6',
     borderRadius: 8,
     flex: 1,
     height: 39,

@@ -157,7 +157,7 @@ export default function HealthDataManagementScreen() {
     setMountedMenuId(null);
     setDeleteMenuPhase('idle');
     deleteMenuAnimation.setValue(0);
-    Alert.alert('삭제 기능 준비 중', '현재 서버에서 건강 데이터 삭제 기능을 지원하지 않아요.');
+    Alert.alert('삭제 기능 준비 중', '지금은 건강 데이터를 삭제할 수 없어요.');
   }, [deleteMenuAnimation]);
 
   const closeDeleteMenu = useCallback(() => {

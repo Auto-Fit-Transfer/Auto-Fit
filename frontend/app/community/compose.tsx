@@ -315,7 +315,7 @@ export default function CommunityComposeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   header: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -347,19 +347,19 @@ const styles = StyleSheet.create({
   body: { gap: spacing.md, padding: spacing.xl },
   categoryRow: { flexDirection: 'row', gap: 7 },
   categoryChip: { borderColor: colors.border, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: colors.surface },
-  categorySelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  categorySelected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   categoryText: { color: colors.textSecondary, fontSize: 12 },
-  categoryTextSelected: { color: colors.surface, fontFamily: fontFamilies.pretendardSemiBold },
+  categoryTextSelected: { color: colors.primary, fontFamily: fontFamilies.pretendardSemiBold },
   activityHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
   activityLink: { color: colors.primaryDark, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
-  activityOption: { borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, gap: 5 },
-  activitySelected: { borderColor: colors.primary, backgroundColor: colors.background },
+  activityOption: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, gap: 5 },
+  activitySelected: { borderColor: colors.primary, backgroundColor: colors.surface },
   activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   activityDisclosure: { color: colors.textSecondary, fontSize: 11, lineHeight: 16 },
-  tagInput: { borderColor: colors.border, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 13, minHeight: 44, color: colors.textPrimary },
+  tagInput: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 13, minHeight: 44, color: colors.textPrimary },
   fieldLabel: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
   fieldHint: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 11 },
-  inputWrap: { borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, padding: spacing.md },
+  inputWrap: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, padding: spacing.md },
   input: {
     color: colors.textPrimary,
     fontFamily: fontFamilies.pretendardRegular,
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
   },
   addPhotoText: { ...typography.label, color: colors.primaryDark },
   notice: { ...typography.bodySmall, color: colors.textSecondary },
-  unsupported: { backgroundColor: colors.background, borderRadius: radius.md, gap: spacing.xs, padding: spacing.md },
+  unsupported: { backgroundColor: colors.surface, borderRadius: radius.md, gap: spacing.xs, padding: spacing.md },
   unsupportedTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   unsupportedText: { ...typography.bodySmall, color: colors.textSecondary },
   bottom: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.xl, paddingTop: spacing.md },

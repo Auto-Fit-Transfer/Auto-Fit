@@ -130,13 +130,13 @@ export default function CommunityNotificationsScreen() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable><Text style={styles.headerTitle}>알림</Text><View style={{ width: 24 }} /></View>
+      <View style={styles.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable><Text style={styles.headerTitle}>알림</Text><View style={{ width: 24 }} /></View>
       <View style={styles.filters}>
         {([['all', '전체'], ['community', '커뮤니티']] as const).map(([key, label]) => <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={[styles.filter, tab === key && styles.filterSelected]}><Text style={[styles.filterText, tab === key && styles.filterTextSelected]}>{label}</Text></Pressable>)}
         <View accessibilityLabel="챌린지·티어 알림은 준비 중" style={styles.filter}><Text style={styles.filterText}>챌린지 · 티어</Text></View>
-        <Pressable accessibilityRole="button" disabled={markingRead || !items?.some((item) => !item.is_read)} onPress={() => void markAllRead()}><Text style={styles.markRead}>모두 읽음</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" disabled={markingRead || !items?.some((item) => !item.is_read)} onPress={() => void markAllRead()}><Text style={styles.markRead}>모두 읽음</Text></Pressable>
       </View>
-      <Text style={styles.availability}>현재 커뮤니티 알림을 볼 수 있어요. 챌린지·티어 알림은 준비 중입니다.</Text>
+      <Text style={styles.availability}>커뮤니티 알림을 볼 수 있어요. 챌린지·티어 알림은 준비 중이에요.</Text>
       {readError ? <Text style={styles.readError}>{readError}</Text> : null}
       {errorMessage ? (
         <View style={styles.message}>
@@ -219,9 +219,9 @@ export default function CommunityNotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   header: { height: 54, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, back: { color: '#1E1D24', fontSize: 31, lineHeight: 36 }, headerTitle: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-  filters: { paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }, filter: { backgroundColor: '#F7F7F9', borderRadius: 20, paddingHorizontal: 11, paddingVertical: 9, borderWidth: 1, borderColor: '#E4E5EB' }, filterSelected: { backgroundColor: '#503DD7', borderColor: '#503DD7' }, filterText: { color: '#777681', fontSize: 11 }, filterTextSelected: { color: '#FFF' }, markRead: { color: '#777681', fontSize: 11, marginLeft: 5 }, sectionTitle: { color: '#1E1D24', fontSize: 13, fontFamily: fontFamilies.pretendardBold, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8 }, readError: { color: '#A13A2F', fontSize: 12, paddingHorizontal: 20 },
+  filters: { paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }, filter: { backgroundColor: '#F4F5F7', borderRadius: 20, paddingHorizontal: 11, paddingVertical: 9, borderWidth: 1, borderColor: '#E4E5EB' }, filterSelected: { backgroundColor: '#F1F0F9', borderColor: '#5246C6' }, filterText: { color: '#777681', fontSize: 11 }, filterTextSelected: { color: '#5246C6' }, markRead: { color: '#777681', fontSize: 11, marginLeft: 5 }, sectionTitle: { color: '#1E1D24', fontSize: 13, fontFamily: fontFamilies.pretendardBold, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8 }, readError: { color: '#A13A2F', fontSize: 12, paddingHorizontal: 20 },
   availability: { color: '#777681', fontSize: 11, paddingHorizontal: 20, paddingBottom: 8 },
   message: {
     alignItems: 'center',

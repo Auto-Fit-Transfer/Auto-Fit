@@ -15,7 +15,7 @@ import { Text } from '@/src/components/common';
 type Goal = { goal_type: string; weekly_frequency: number; weekly_duration_minutes: number; starts_on: string; ends_on: string };
 type Period = 'week' | 'month';
 type Metric = 'minutes' | 'workouts' | 'runningMinutes';
-const purple = '#503DD7';
+const purple = '#5246C6';
 const goalLabels: Record<string, string> = {
   muscle_gain: '근육량 늘리기', weight_loss: '체중 감량하기',
   endurance: '체력 기르기', maintenance: '꾸준히 운동하기',
@@ -84,13 +84,13 @@ export default function GoalProgress() {
   return <View style={styles.root}>
     <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 38 }]}>
-      <View style={styles.header}><Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable><Text style={styles.title}>진행 현황</Text><SimpleReadButton text={`${period === 'week' ? '주간' : '월간'} 운동 진행 현황입니다. ${Math.round(summary.minutes)}분 운동했고 ${summary.workouts}회 완료했어요. 목표까지 남은 양을 화면에서 확인하세요.`} /></View>
+      <View style={styles.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable><Text style={[styles.title, styles.titleCentered]}>진행 현황</Text><SimpleReadButton text={`${period === 'week' ? '주간' : '월간'} 운동 진행 현황입니다. ${Math.round(summary.minutes)}분 운동했고 ${summary.workouts}회 완료했어요. 목표까지 남은 양을 화면에서 확인하세요.`} /></View>
       <View style={styles.segment}>{([['week', '주간'], ['month', '월간']] as const).map(([key, label]) =>
         <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: period === key }} onPress={() => { if (period !== key || offset !== 0) setLoading(true); setPeriod(key); setOffset(0); }} style={[styles.segmentChoice, period === key && styles.segmentSelected]}><Text style={[styles.segmentText, period === key && styles.segmentTextSelected]}>{label}</Text></Pressable>)}</View>
       <View style={styles.dateRow}>
-        <Pressable accessibilityRole="button" accessibilityLabel="이전 기간" onPress={() => { setLoading(true); setOffset((value) => value - 1); }}><Text style={styles.arrow}>‹</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="이전 기간" onPress={() => { setLoading(true); setOffset((value) => value - 1); }}><Text style={styles.arrow}>‹</Text></Pressable>
         <Text style={styles.dateTitle}>{shortDate(currentStart)} – {shortDate(currentEnd)}</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="다음 기간" disabled={offset >= 0} onPress={() => { setLoading(true); setOffset((value) => value + 1); }}><Text style={[styles.arrow, offset >= 0 && styles.disabled]}>›</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="다음 기간" disabled={offset >= 0} onPress={() => { setLoading(true); setOffset((value) => value + 1); }}><Text style={[styles.arrow, offset >= 0 && styles.disabled]}>›</Text></Pressable>
       </View>
       {loading ? <ActivityIndicator color={purple} /> : error ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> : <>
         <View style={styles.goalRow}><View><Text style={styles.goalName}>{goal ? goalLabels[goal.goal_type] ?? '운동 목표' : '설정한 목표가 없어요'}</Text><Text style={styles.caption}>{goal ? `${goal.starts_on} – ${goal.ends_on}` : '목표를 만들면 진행 상황을 비교할 수 있어요.'}</Text></View><Pressable accessibilityRole="button" onPress={() => router.push('/exercise/goal')} style={styles.outline}><Text style={styles.outlineText}>{goal ? '목표 바꾸기' : '목표 설정'}</Text></Pressable></View>
@@ -111,15 +111,16 @@ export default function GoalProgress() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8F8FA' }, content: { paddingHorizontal: 20, gap: 17 },
+  root: { flex: 1, backgroundColor: '#F4F5F7' }, content: { paddingHorizontal: 20, gap: 17 },
+  titleCentered: { flex: 1, marginRight: 10, textAlign: 'center' },
   header: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, back: { color: '#1E1D24', fontSize: 32, lineHeight: 36 }, title: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-  segment: { flexDirection: 'row', backgroundColor: '#EEEFF2', borderRadius: 24, padding: 3 }, segmentChoice: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 20 }, segmentSelected: { backgroundColor: '#FFF' }, segmentText: { color: '#777681', fontSize: 13 }, segmentTextSelected: { color: '#1E1D24', fontFamily: fontFamilies.pretendardSemiBold },
+  segment: { flexDirection: 'row', backgroundColor: '#EDEFF2', borderRadius: 24, padding: 3 }, segmentChoice: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 20 }, segmentSelected: { backgroundColor: '#FFF' }, segmentText: { color: '#777681', fontSize: 13 }, segmentTextSelected: { color: '#1E1D24', fontFamily: fontFamilies.pretendardSemiBold },
   dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, arrow: { fontSize: 28, color: '#1E1D24' }, disabled: { color: '#C9C9CF' }, dateTitle: { color: '#1E1D24', fontSize: 15, fontFamily: fontFamilies.pretendardBold },
-  goalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, goalName: { color: '#1E1D24', fontSize: 15, fontFamily: fontFamilies.pretendardBold }, caption: { color: '#777681', fontSize: 11, lineHeight: 17 }, outline: { borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 8, padding: 9 }, outlineText: { color: '#1E1D24', fontSize: 12 },
+  goalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, goalName: { color: '#1E1D24', fontSize: 15, fontFamily: fontFamilies.pretendardBold }, caption: { color: '#777681', fontSize: 11, lineHeight: 17 }, outline: { backgroundColor: '#FFFFFF', borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 8, padding: 9 }, outlineText: { color: '#1E1D24', fontSize: 12 },
   tabs: { flexDirection: 'row', gap: 6 }, tab: { borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 20, paddingHorizontal: 11, paddingVertical: 9 }, selectedTab: { backgroundColor: purple, borderColor: purple }, tabText: { color: '#777681', fontSize: 12 }, selectedTabText: { color: '#FFF' },
   card: { backgroundColor: '#FFF', borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 15, padding: 16, gap: 14 }, row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, sectionTitle: { color: '#1E1D24', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, delta: { color: '#24835E', fontSize: 10 },
   bigNumber: { color: '#1E1D24', fontSize: 24, fontFamily: fontFamilies.pretendardBold }, target: { color: '#777681', fontSize: 13 }, progressTrack: { height: 7, borderRadius: 4, backgroundColor: '#E9E9EE', overflow: 'hidden' }, progressFill: { height: 7, backgroundColor: purple },
-  chart: { height: 160, flexDirection: 'row', alignItems: 'flex-end', gap: 5, borderBottomWidth: 1, borderBottomColor: '#E4E5EB' }, barColumn: { flex: 1, height: '100%', justifyContent: 'flex-end', alignItems: 'center', gap: 7 }, barTrack: { flex: 1, width: '78%', backgroundColor: '#F2F2F5', borderRadius: 7, justifyContent: 'flex-end', overflow: 'hidden' }, bar: { backgroundColor: '#24232A', borderRadius: 7, width: '100%' }, barLabel: { color: '#777681', fontSize: 10, marginBottom: 5 },
+  chart: { height: 160, flexDirection: 'row', alignItems: 'flex-end', gap: 5, borderBottomWidth: 1, borderBottomColor: '#E4E5EB' }, barColumn: { flex: 1, height: '100%', justifyContent: 'flex-end', alignItems: 'center', gap: 7 }, barTrack: { flex: 1, width: '78%', backgroundColor: '#EDEFF2', borderRadius: 7, justifyContent: 'flex-end', overflow: 'hidden' }, bar: { backgroundColor: '#24232A', borderRadius: 7, width: '100%' }, barLabel: { color: '#777681', fontSize: 10, marginBottom: 5 },
   stats: { flexDirection: 'row', justifyContent: 'space-between' }, statValue: { color: '#1E1D24', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, button: { backgroundColor: purple, borderRadius: 10, height: 50, justifyContent: 'center', alignItems: 'center' }, buttonText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, error: { color: '#A13A2F', fontSize: 13 },
 });
 

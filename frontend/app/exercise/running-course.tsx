@@ -12,7 +12,7 @@ import { KAKAO_MAP_JS_KEY } from '@/src/features/running/kakaoMap';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const purple = '#503DD7';
+const purple = '#5246C6';
 const nameOf = (course: RunningCourse) => course.course_name || course.name || '이름 없는 코스';
 const sourceOf = (course: RunningCourse) => course.source?.source_type ?? course.source_type;
 
@@ -144,7 +144,7 @@ export default function RunningCourseScreen() {
   return <View style={s.root}>
     <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
-      <View style={s.header}><Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={back}><Text style={s.back}>‹</Text></Pressable><Text style={s.title}>러닝 코스</Text><View style={{ width: 24 }} /></View>
+      <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={back}><Text style={s.back}>‹</Text></Pressable><Text style={s.title}>러닝 코스</Text><View style={{ width: 24 }} /></View>
       {loading ? <ActivityIndicator color={purple} /> : null}
       {error && !course ? <Pressable accessibilityRole="button" onPress={() => { setError(''); setPreviewError(''); setLoading(true); setRetry((value) => value + 1); }} style={s.notice}><Text style={s.error}>{error} · 다시 시도</Text></Pressable> : null}
       {course ? <>
@@ -175,14 +175,14 @@ export default function RunningCourseScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8F8FA' }, content: { paddingHorizontal: 20, gap: 16 },
+  root: { flex: 1, backgroundColor: '#F4F5F7' }, content: { paddingHorizontal: 20, gap: 16 },
   header: { height: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, back: { color: '#1E1D24', fontSize: 32, lineHeight: 36 }, title: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
   eyebrow: { color: '#777681', fontSize: 12, marginTop: 12 }, courseTitle: { color: '#1E1D24', fontSize: 21, fontFamily: fontFamilies.pretendardBold }, body: { color: '#55545F', fontSize: 13, lineHeight: 20 },
-  tags: { flexDirection: 'row', gap: 7 }, tag: { backgroundColor: '#F0F0F2', color: '#55545F', borderRadius: 5, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 5, fontSize: 11 },
+  tags: { flexDirection: 'row', gap: 7 }, tag: { backgroundColor: '#EDEFF2', color: '#55545F', borderRadius: 5, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 5, fontSize: 11 },
   map: { height: 220, backgroundColor: '#F1F2F3', borderRadius: 14, overflow: 'hidden' }, mapEmpty: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' }, mapEmptyText: { color: '#777681', fontSize: 12 }, mapBadge: { position: 'absolute', right: 8, top: 8, backgroundColor: '#FFFE', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 5 }, mapBadgeText: { color: '#55545F', fontSize: 10 },
   metrics: { flexDirection: 'row', gap: 8 }, metric: { flex: 1, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 10, padding: 11, gap: 5 }, metricLabel: { color: '#777681', fontSize: 11 }, metricValue: { color: '#1E1D24', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
   notice: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 10, padding: 14 }, error: { color: '#A13A2F', fontSize: 12, lineHeight: 18 },
   button: { height: 50, backgroundColor: purple, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, disabled: { opacity: 0.5 }, buttonText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, outline: { height: 50, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: '#1E1D24', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-  startCard: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 12, padding: 14, gap: 10 }, input: { height: 45, borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 8, paddingHorizontal: 12, fontSize: 14, color: '#1E1D24' },
-  choices: { flexDirection: 'row', gap: 7 }, choice: { flex: 1, borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 8, paddingVertical: 10, alignItems: 'center' }, choiceSelected: { backgroundColor: '#F0EEFC', borderColor: purple }, choiceText: { color: '#777681', fontSize: 12 }, choiceTextSelected: { color: purple, fontFamily: fontFamilies.pretendardBold },
+  startCard: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 12, padding: 14, gap: 10 }, input: { backgroundColor: '#FFFFFF', height: 45, borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 8, paddingHorizontal: 12, fontSize: 14, color: '#1E1D24' },
+  choices: { flexDirection: 'row', gap: 7 }, choice: { backgroundColor: '#FFFFFF', flex: 1, borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 8, paddingVertical: 10, alignItems: 'center' }, choiceSelected: { backgroundColor: '#F1F0F9', borderColor: purple }, choiceText: { color: '#777681', fontSize: 12 }, choiceTextSelected: { color: purple, fontFamily: fontFamilies.pretendardBold },
 });

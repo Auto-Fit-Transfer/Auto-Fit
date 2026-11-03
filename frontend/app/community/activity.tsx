@@ -180,7 +180,7 @@ export default function CommunityActivityScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface },
+  screen: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 20 },
   header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
   back: { width: 32, minHeight: 32, justifyContent: 'center' },

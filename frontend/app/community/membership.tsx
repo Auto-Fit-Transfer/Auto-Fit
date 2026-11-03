@@ -115,7 +115,7 @@ export default function CommunityMembershipScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   message: {
     alignItems: 'center',
     flex: 1,
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
   body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   status: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     gap: 4,
     padding: spacing.xl,
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   benefit: { ...typography.body, color: colors.textBody },
   notice: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderRadius: radius.md,
     gap: 4,
     marginBottom: spacing.sm,

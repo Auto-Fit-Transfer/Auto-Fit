@@ -16,7 +16,8 @@ import {
 } from '@/src/api/community';
 import { AppButton, Text } from '@/src/components/common';
 import { CommunityClubCard } from '@/src/components/community';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
+import { colors, darkColors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 
 type Scope = 'all' | 'mine';
 
@@ -24,6 +25,7 @@ type Scope = 'all' | 'mine';
 // club created or joined elsewhere shows up.
 export function CommunityClubsPane({ bottomSpace }: { bottomSpace: number }) {
   const router = useRouter();
+  const { isDark } = useDisplayPreferences();
   const [scope, setScope] = useState<Scope>('mine');
   const [clubs, setClubs] = useState<CommunityClub[] | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -81,14 +83,14 @@ export function CommunityClubsPane({ bottomSpace }: { bottomSpace: number }) {
 
   const header = (
     <View style={styles.header}>
-      <Text accessibilityRole="header" style={styles.heading}>
+      <Text accessibilityRole="header" style={[styles.heading, isDark && { color: darkColors.textPrimary }]}>
         {scope === 'mine' ? `내 클럽${clubs && !cursor ? ` ${clubs.length}` : ''}` : '클럽 찾기'}
       </Text>
       <View style={styles.headerActions}>
         <Pressable accessibilityRole="button" onPress={() => switchScope(scope === 'mine' ? 'all' : 'mine')} style={styles.switchButton}>
           <Text style={styles.switchText}>{scope === 'mine' ? '클럽 찾기' : '내 클럽'}</Text>
         </Pressable>
-        {scope === 'all' ? <Pressable accessibilityRole="button" onPress={() => router.push('/community/club/new')} style={styles.createButton}><Text style={styles.createText}>만들기</Text></Pressable> : null}
+        {scope === 'all' ? <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/community/club/new')} style={styles.createButton}><Text style={styles.createText}>만들기</Text></Pressable> : null}
       </View>
     </View>
   );
@@ -156,7 +158,6 @@ export function CommunityClubsPane({ bottomSpace }: { bottomSpace: number }) {
 const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
@@ -165,10 +166,10 @@ const styles = StyleSheet.create({
   },
   heading: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
   headerActions: { flexDirection: 'row', gap: spacing.xs },
-  switchButton: { borderColor: colors.border, borderRadius: radius.sm, borderWidth: 1, paddingHorizontal: spacing.sm, paddingVertical: 7 },
+  switchButton: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.sm, borderWidth: 1, paddingHorizontal: spacing.sm, paddingVertical: 7 },
   switchText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  createButton: { backgroundColor: colors.primary, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 7 },
-  createText: { color: colors.surface, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+  createButton: { backgroundColor: colors.primaryLight, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 7 },
+  createText: { color: colors.primary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
   message: {
     alignItems: 'center',
     flex: 1,

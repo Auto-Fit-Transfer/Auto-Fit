@@ -16,6 +16,6 @@ export default function WeeklyDietScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' },
+  root: { flex: 1, backgroundColor: '#F4F5F7' },
   content: { paddingHorizontal: 20 },
 });

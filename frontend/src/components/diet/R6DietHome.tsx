@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { darkColors, fontFamilies } from '@/src/theme';
@@ -136,7 +136,7 @@ export function R6DietHome(props: Props) {
           <Text style={[styles.month, isDark && dark.text]}>
             {selectedDate.getFullYear()}년 {selectedDate.getMonth() + 1}월
           </Text>
-          <Pressable accessibilityRole="button" onPress={() => props.onSelectDateOffset(0)}>
+          <Pressable hitSlop={16} accessibilityRole="button" onPress={() => props.onSelectDateOffset(0)}>
             <Text style={styles.today}>오늘</Text>
           </Pressable>
         </View>
@@ -269,13 +269,6 @@ export function R6DietHome(props: Props) {
                 onPress={() => setExpandedId(expanded ? null : meal.id)}
                 style={[styles.mealMain, simple && simpleStyles.mealMain]}
               >
-                <View style={styles.mealImage}>
-                  {meal.imageUrl ? (
-                    <Image source={{ uri: meal.imageUrl }} style={styles.mealImageActual} />
-                  ) : (
-                    <Text style={styles.mealImageGlyph}>▧</Text>
-                  )}
-                </View>
                 <View style={styles.mealCopy}>
                   <View style={styles.mealTop}>
                     <Text style={[styles.mealName, simple && simpleStyles.mealName, isDark && dark.text]}>
@@ -376,7 +369,7 @@ export function R6DietHome(props: Props) {
             {mealLabels.map(({ id, title }) => {
               const available = props.meals.some((meal) => meal.id === id && meal.canSave);
               return (
-                <Pressable
+                <Pressable hitSlop={16}
                   key={id}
                   disabled={!available}
                   onPress={() => {
@@ -403,9 +396,9 @@ export function R6DietHome(props: Props) {
   );
 }
 
-const purple = '#503DE1';
+const purple = '#5246C6';
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' },
+  root: { flex: 1, backgroundColor: '#F4F5F7' },
   content: { paddingHorizontal: 20 },
   titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   title: { fontFamily: fontFamilies.pretendardBold, fontSize: 23, color: '#1C1D22' },
@@ -414,15 +407,15 @@ const styles = StyleSheet.create({
     gap: 4,
     marginTop: 16,
     padding: 4,
-    backgroundColor: '#FAFBFC',
+    backgroundColor: '#F4F5F7',
     borderColor: '#DFE2E7',
     borderRadius: 10,
     borderWidth: 1,
   },
   viewTab: { alignItems: 'center', borderRadius: 7, flex: 1, minHeight: 40, justifyContent: 'center' },
-  viewTabActive: { backgroundColor: purple },
+  viewTabActive: { backgroundColor: '#F1F0F9' },
   viewTabText: { color: '#6F7380', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
-  viewTabTextActive: { color: '#FFFFFF' },
+  viewTabTextActive: { color: purple },
   weeklyContent: { marginTop: 18 },
   weeklyDarkSurface: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12 },
   monthRow: {
@@ -447,7 +440,7 @@ const styles = StyleSheet.create({
   },
   selectedDayText: { color: '#FFFFFF' },
   energyCard: {
-    backgroundColor: '#F8F9FB',
+    backgroundColor: '#F4F5F7',
     borderWidth: 1,
     borderColor: '#E0E2E8',
     borderRadius: 15,
@@ -487,6 +480,7 @@ const styles = StyleSheet.create({
   guideLink: { alignSelf: 'flex-start', paddingTop: 12, paddingBottom: 2 },
   guideLinkText: { color: purple, fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold },
   photoButton: {
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E1E3E8',
     borderRadius: 12,
@@ -502,7 +496,7 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F4F4F7',
+    backgroundColor: '#EDEFF2',
     marginRight: 11,
   },
   cameraGlyph: { color: '#4F4E59', fontSize: 16 },
@@ -518,7 +512,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 10,
   },
-  stateCard: { borderWidth: 1, borderColor: '#E3E5E9', borderRadius: 11, padding: 16 },
+  stateCard: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E3E5E9', borderRadius: 11, padding: 16 },
   stateText: { color: '#777981', fontSize: 13, lineHeight: 20 },
   mealCard: {
     borderWidth: 1,
@@ -528,24 +522,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   mealMain: { minHeight: 62, padding: 11, flexDirection: 'row', alignItems: 'center' },
-  mealImage: {
-    width: 37,
-    height: 37,
-    borderRadius: 7,
-    backgroundColor: '#F4F5F7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    marginRight: 10,
-  },
-  mealImageActual: { width: '100%', height: '100%' },
-  mealImageGlyph: { color: '#A6A7AE', fontSize: 20 },
   mealCopy: { flex: 1 },
   mealTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   mealName: { color: '#28292E', fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold },
   mealKcal: { color: '#74767D', fontSize: 10, fontFamily: fontFamilies.pretendardRegular },
   status: { fontSize: 10, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 4 },
-  recommended: { color: '#696A72', backgroundColor: '#F1F2F4' },
+  recommended: { color: '#696A72', backgroundColor: '#EDEFF2' },
   recorded: { color: '#198557', backgroundColor: '#E6F7ED' },
   skipped: { color: '#85868C', backgroundColor: '#F2F2F3' },
   foods: { color: '#46474F', fontSize: 11, lineHeight: 16, marginTop: 4 },
@@ -559,11 +541,11 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   smallActionText: { color: '#35363D', fontSize: 11 },
-  recipeAction: { borderRadius: 7, backgroundColor: purple, paddingHorizontal: 11, paddingVertical: 8 },
-  recipeActionText: { color: '#FFFFFF', fontSize: 11, fontFamily: fontFamilies.pretendardSemiBold },
+  recipeAction: { borderRadius: 7, backgroundColor: '#F1F0F9', paddingHorizontal: 11, paddingVertical: 8 },
+  recipeActionText: { color: purple, fontSize: 11, fontFamily: fontFamilies.pretendardSemiBold },
   alternative: {
     borderRadius: 7,
-    backgroundColor: '#EEEAFE',
+    backgroundColor: '#F1F0F9',
     paddingHorizontal: 9,
     paddingVertical: 8,
   },

@@ -29,10 +29,10 @@ export function R6ConnectionError({ message, offline = false, onRetry, preserves
 
 const styles = StyleSheet.create({
   root: { alignItems: 'center', flex: 1, justifyContent: 'center', paddingHorizontal: 26 },
-  icon: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#F4F4F7', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  icon: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#EDEFF2', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   iconText: { color: '#32313A', fontSize: 29 },
   title: { color: '#25242C', fontFamily: fontFamilies.pretendardBold, fontSize: 19 },
   description: { color: '#777681', fontFamily: fontFamilies.pretendardRegular, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 9 },
-  retry: { marginTop: 20, borderRadius: 8, backgroundColor: '#F4F4F6', paddingHorizontal: 18, paddingVertical: 10 },
+  retry: { marginTop: 20, borderRadius: 8, backgroundColor: '#EDEFF2', paddingHorizontal: 18, paddingVertical: 10 },
   retryText: { color: '#33323A', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
 });

@@ -132,7 +132,7 @@ export default function R6ChatScreen() {
       <StatusBar style="dark" />
       <View style={{ paddingTop: insets.top + 8 }}>
         <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
+          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
           <ChatCharacterAvatar characterId={character.id} size={28} />
           <Text style={[styles.headerName, simple && simpleStyles.headerName]}>{character.name}</Text>
           <Pressable accessibilityRole="button" onPress={() => router.push('/chat/characters')} style={styles.change}><Text style={styles.changeText}>바꾸기</Text></Pressable>
@@ -141,7 +141,7 @@ export default function R6ChatScreen() {
       <View style={styles.disclaimer}><Text style={styles.disclaimerText}>건강 판단은 참고용이에요. 증상이 있으면 병원에 문의해 주세요.</Text></View>
 
       {loading && messages.length === 0 ? (
-        <View style={styles.center}><ActivityIndicator color="#503DD7" /></View>
+        <View style={styles.center}><ActivityIndicator color="#5246C6" /></View>
       ) : initialLoadFailed && error && messages.length === 0 ? (
         <R6ConnectionError message={error} offline={offline} onRetry={() => void load()} preservesInput={Boolean(draft)} />
       ) : (
@@ -172,7 +172,7 @@ export default function R6ChatScreen() {
               </View>
             </View>
           ))}
-          {sending ? <ActivityIndicator color="#503DD7" style={styles.sending} /> : null}
+          {sending ? <ActivityIndicator color="#5246C6" style={styles.sending} /> : null}
           {error ? <View style={styles.inlineError}><Text style={styles.inlineErrorText}>{error}</Text></View> : null}
           <View style={styles.promptRow}>{prompts.map((prompt) => (
             <Pressable accessibilityRole="button" key={prompt} onPress={() => setDraft(prompt)} style={styles.prompt}><Text style={styles.promptText}>{prompt}</Text></Pressable>
@@ -188,7 +188,7 @@ export default function R6ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFF', flex: 1 }, header: { minHeight: 44, paddingHorizontal: 17, flexDirection: 'row', alignItems: 'center', gap: 9 },
+  root: { backgroundColor: '#F4F5F7', flex: 1 }, header: { minHeight: 44, paddingHorizontal: 17, flexDirection: 'row', alignItems: 'center', gap: 9 },
   back: { color: ink, fontSize: 30, width: 22 },
   headerName: { color: ink, fontSize: 15, fontFamily: fontFamilies.pretendardBold, flex: 1 },
   change: { padding: 8 }, changeText: { color: ink, fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold },
@@ -198,16 +198,16 @@ const styles = StyleSheet.create({
   messages: { flexGrow: 1, paddingHorizontal: 17, paddingVertical: 18, gap: 13 },
   assistantRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, maxWidth: '86%' },
   assistantColumn: { flexShrink: 1, gap: 4 },
-  assistantBubble: { borderColor: '#E7E7EC', borderWidth: 1, borderRadius: 11, padding: 12, backgroundColor: '#FAFAFC', flexShrink: 1 },
+  assistantBubble: { borderColor: '#E7E7EC', borderWidth: 1, borderRadius: 11, padding: 12, backgroundColor: '#F4F5F7', flexShrink: 1 },
   messageText: { color: ink, fontSize: 13, lineHeight: 20 }, userRow: { alignItems: 'flex-end', gap: 4 },
   userBubble: { backgroundColor: '#242329', borderRadius: 11, maxWidth: '82%', padding: 12 },
   userText: { color: '#FFF', fontSize: 13, lineHeight: 20 }, time: { color: '#9A99A2', fontSize: 10 },
   sending: { alignSelf: 'flex-start' }, inlineError: { backgroundColor: '#FFF1F0', padding: 10, borderRadius: 8 },
   inlineErrorText: { color: '#A13A2F', fontSize: 12 }, promptRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  prompt: { borderWidth: 1, borderColor: '#E3E4EA', borderRadius: 18, paddingHorizontal: 11, paddingVertical: 7 },
+  prompt: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E3E4EA', borderRadius: 18, paddingHorizontal: 11, paddingVertical: 7 },
   promptText: { color: ink, fontSize: 11 }, composer: { borderTopColor: '#E8E8ED', borderTopWidth: 1, paddingHorizontal: 16, paddingTop: 9, flexDirection: 'row', gap: 8, alignItems: 'center' },
-  input: { flex: 1, backgroundColor: '#F4F4F7', borderRadius: 20, minHeight: 40, paddingHorizontal: 15, color: ink, fontSize: 13 },
-  sendButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#503DD7', alignItems: 'center', justifyContent: 'center' },
+  input: { flex: 1, backgroundColor: '#EDEFF2', borderRadius: 20, minHeight: 40, paddingHorizontal: 15, color: ink, fontSize: 13 },
+  sendButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#5246C6', alignItems: 'center', justifyContent: 'center' },
   sendDisabled: { opacity: 0.4 }, sendText: { color: '#FFF', fontSize: 23, lineHeight: 26 },
 });
 

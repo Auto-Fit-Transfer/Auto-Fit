@@ -151,19 +151,19 @@ export default function Notifications() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface },
+  screen: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 22, gap: 15 },
   header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   back: { width: 32, minHeight: 32, justifyContent: 'center' },
   title: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 17, color: colors.textPrimary },
   sectionTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, marginTop: 13 },
-  card: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16 },
+  card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16 },
   row: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
   copy: { flex: 1, gap: 4 },
   label: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
   detail: { fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
-  timeInput: { flex: 1, minWidth: 63, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 8, color: colors.textPrimary, textAlign: 'center' },
+  timeInput: { backgroundColor: colors.surface, flex: 1, minWidth: 63, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 8, color: colors.textPrimary, textAlign: 'center' },
   timeSave: { padding: 9, borderRadius: 8, backgroundColor: colors.primaryDark },
   timeSaveText: { color: colors.surface, fontSize: 11 },
   note: { color: colors.textSecondary, fontSize: 12, lineHeight: 19 },

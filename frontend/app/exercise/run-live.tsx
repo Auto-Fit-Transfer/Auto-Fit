@@ -11,7 +11,7 @@ import type { RunningPlannedCourse, RunningTrackPoint } from '@/src/api/running'
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const purple = '#503DD7';
+const purple = '#5246C6';
 const formatTime = (seconds: number) => {
   const value = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(value / 3600);
@@ -41,7 +41,7 @@ const RouteCard = memo(function RouteCard({ points, plannedCourse, width }: { po
         {plannedLine ? <Polyline points={plannedLine} fill="none" stroke="#A9ACB3" strokeDasharray="6 5" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" /> : null}
         {actualLine ? <><Polyline points={actualLine} fill="none" stroke="#74E3AE" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" />
           <Circle cx={Number(actualEnds[0].split(',')[0])} cy={Number(actualEnds[0].split(',')[1])} r={6} fill="#FFF" />
-          <Circle cx={Number(actualEnds.at(-1)?.split(',')[0])} cy={Number(actualEnds.at(-1)?.split(',')[1])} r={7} fill="#503DD7" stroke="#FFF" strokeWidth={2} /></> : null}
+          <Circle cx={Number(actualEnds.at(-1)?.split(',')[0])} cy={Number(actualEnds.at(-1)?.split(',')[1])} r={7} fill="#5246C6" stroke="#FFF" strokeWidth={2} /></> : null}
       </Svg>}
     <Text style={styles.routeCaption}>{plannedLine ? '점선: 예정 경로 · 초록색: 실제 이동' : `${points.length}개 위치 기록`} · 앱 사용 중에만 수집</Text>
   </View>;
@@ -68,7 +68,7 @@ export default function RunLive() {
     <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32 }]}>
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => void leave()}><Text style={styles.back}>‹</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => void leave()}><Text style={styles.back}>‹</Text></Pressable>
         <Text style={styles.headerTitle}>러닝하기</Text>
         <Text style={styles.liveBadge}>{session?.status === 'in_progress' ? '기록 중' : '일시정지'}</Text>
       </View>
@@ -95,12 +95,12 @@ export default function RunLive() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8F8FA' },
+  root: { flex: 1, backgroundColor: '#F4F5F7' },
   content: { paddingHorizontal: 20, gap: 18 },
   header: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { fontSize: 32, color: '#1E1D24', lineHeight: 36 },
   headerTitle: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-  liveBadge: { backgroundColor: '#F0EEFC', color: purple, fontSize: 11, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 7 },
+  liveBadge: { backgroundColor: '#F1F0F9', color: purple, fontSize: 11, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 7 },
   hero: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 16, padding: 22, alignItems: 'center', gap: 12 },
   heroLabel: { color: '#777681', fontSize: 13 },
   heroTime: { color: '#1E1D24', fontSize: 50, fontFamily: fontFamilies.pretendardBold, fontVariant: ['tabular-nums'] },

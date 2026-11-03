@@ -8,7 +8,7 @@ import { getApiErrorMessage } from '@/src/api/client';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const purple = '#503DD7';
+const purple = '#5246C6';
 type Filter = 'all' | 'recommendation' | 'custom';
 
 export default function SavedRoutines() {
@@ -37,9 +37,9 @@ export default function SavedRoutines() {
     <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 40 }]}>
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
         <Text style={styles.title}>내 운동</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="루틴 만들기" onPress={() => router.push('/exercise/routine-builder')}><Text style={styles.headerAction}>만들기</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="루틴 만들기" onPress={() => router.push('/exercise/routine-builder')}><Text style={styles.headerAction}>만들기</Text></Pressable>
       </View>
       <View style={styles.tabs}>
         <Pressable accessibilityRole="tab" accessibilityState={{ selected: false }} onPress={() => router.replace('/exercise/history')} style={styles.tab}><Text style={styles.tabText}>운동 기록</Text></Pressable>
@@ -74,13 +74,13 @@ export default function SavedRoutines() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8F8FA' },
+  root: { flex: 1, backgroundColor: '#F4F5F7' },
   content: { paddingHorizontal: 20, gap: 17 },
   header: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { fontSize: 32, color: '#1E1D24', lineHeight: 36 },
   title: { fontSize: 18, color: '#1E1D24', fontFamily: fontFamilies.pretendardBold },
   headerAction: { color: '#1E1D24', fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
-  tabs: { flexDirection: 'row', backgroundColor: '#F0F1F3', borderRadius: 13, padding: 4 },
+  tabs: { flexDirection: 'row', backgroundColor: '#EDEFF2', borderRadius: 13, padding: 4 },
   tab: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
   tabActive: { backgroundColor: '#FFF' },
   tabText: { color: '#777681', fontSize: 13 },
@@ -88,9 +88,9 @@ const styles = StyleSheet.create({
   subtitle: { color: '#777681', fontSize: 13 },
   filters: { flexDirection: 'row', gap: 8 },
   chip: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 20, paddingHorizontal: 13, paddingVertical: 9 },
-  chipActive: { backgroundColor: purple, borderColor: purple },
+  chipActive: { backgroundColor: '#F1F0F9', borderColor: purple },
   chipText: { fontSize: 12, color: '#777681' },
-  chipTextActive: { color: '#FFF' },
+  chipTextActive: { color: purple },
   card: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 15, padding: 16, gap: 10 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardTitle: { color: '#1E1D24', fontSize: 16, fontFamily: fontFamilies.pretendardBold },

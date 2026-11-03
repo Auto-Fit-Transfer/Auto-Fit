@@ -42,6 +42,7 @@ export function CommunityFollowButton({
 
 const styles = StyleSheet.create({
   button: {
+    backgroundColor: colors.surface,
     alignItems: 'center',
     borderRadius: radius.round,
     borderWidth: 1,
@@ -49,11 +50,11 @@ const styles = StyleSheet.create({
     minHeight: 34,
     paddingHorizontal: spacing.lg,
   },
-  follow: { backgroundColor: colors.primary, borderColor: colors.primary },
+  follow: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   following: { backgroundColor: colors.surface, borderColor: colors.border },
   wide: { alignSelf: 'stretch', borderRadius: radius.sm, minHeight: 42 },
   pressed: { opacity: 0.75 },
   text: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  followText: { color: colors.surface },
+  followText: { color: colors.primary },
   followingText: { color: colors.textPrimary },
 });

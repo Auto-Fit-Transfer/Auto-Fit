@@ -97,7 +97,7 @@ export default function Account() {
         {provider === '이메일' ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>보안</Text>
-            <Pressable accessibilityRole="button" onPress={() => router.push('/password/forgot')} style={styles.action}>
+            <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/password/forgot')} style={styles.action}>
               <Text style={styles.label}>비밀번호 변경</Text><Text style={styles.chevron}>›</Text>
             </Pressable>
             <Text style={styles.note}>이메일로 비밀번호 재설정 링크를 받아요.</Text>
@@ -107,11 +107,11 @@ export default function Account() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>계정 관리</Text>
           <View style={styles.card}>
-            <Pressable accessibilityRole="button" disabled={busy} onPress={() => void signOut()} style={styles.actionInner}>
+            <Pressable hitSlop={16} accessibilityRole="button" disabled={busy} onPress={() => void signOut()} style={styles.actionInner}>
               <Text style={styles.label}>로그아웃</Text><Text style={styles.chevron}>›</Text>
             </Pressable>
             <View style={styles.divider} />
-            <Pressable accessibilityRole="button" onPress={() => { setConfirm(true); setConfirmation(''); setError(''); }} style={styles.actionInner}>
+            <Pressable hitSlop={16} accessibilityRole="button" onPress={() => { setConfirm(true); setConfirmation(''); setError(''); }} style={styles.actionInner}>
               <Text style={styles.withdraw}>회원 탈퇴</Text><Text style={styles.chevron}>›</Text>
             </Pressable>
           </View>
@@ -141,7 +141,7 @@ export default function Account() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.surface },
+  screen: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: 22 },
   header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 },
   back: { width: 32, minHeight: 32, justifyContent: 'center' },
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   value: { fontSize: 14, color: colors.textSecondary, flexShrink: 1, textAlign: 'right' },
   note: { fontSize: 12, lineHeight: 18, color: colors.textSecondary },
   connected: { fontSize: 12, color: colors.success, fontFamily: fontFamilies.pretendardSemiBold },
-  action: { minHeight: 56, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  action: { backgroundColor: colors.surface, minHeight: 56, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   actionInner: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   chevron: { fontSize: 22, color: colors.textSecondary },
   withdraw: { color: colors.danger, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },

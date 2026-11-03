@@ -7,7 +7,7 @@ import { getRunningApiErrorMessage, getRunningSession, type RunningSession, type
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const purple = '#503DD7';
+const purple = '#5246C6';
 const duration = (seconds: number) => {
   const total = Math.max(0, Math.floor(Number(seconds) || 0));
   return total >= 3600
@@ -41,7 +41,7 @@ export default function RunResult() {
     <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="운동 화면으로" onPress={() => router.replace('/exercise')}><Text style={styles.back}>‹</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="운동 화면으로" onPress={() => router.replace('/exercise')}><Text style={styles.back}>‹</Text></Pressable>
         <Text style={styles.title}>러닝 완료</Text>
         <View style={{ width: 24 }} />
       </View>
@@ -63,7 +63,7 @@ export default function RunResult() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8F8FA' },
+  root: { flex: 1, backgroundColor: '#F4F5F7' },
   content: { paddingHorizontal: 20, gap: 18 },
   header: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { fontSize: 32, color: '#1E1D24', lineHeight: 36 },

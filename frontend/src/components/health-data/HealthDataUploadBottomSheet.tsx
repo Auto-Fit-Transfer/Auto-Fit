@@ -61,7 +61,7 @@ export function HealthDataUploadBottomSheet({
       {variant === 'reupload' ? (
         <>
           <Text style={styles.reuploadDescription}>새 자료를 올리면 현재 판독 결과를 교체해요.</Text>
-          <Pressable
+          <Pressable hitSlop={16}
             accessibilityRole="button"
             accessibilityState={{ disabled: isSelecting || isBusy }}
             disabled={isSelecting || isBusy}
@@ -75,7 +75,7 @@ export function HealthDataUploadBottomSheet({
             </View>
             <Text style={styles.reuploadChevron}>›</Text>
           </Pressable>
-          <Pressable
+          <Pressable hitSlop={16}
             accessibilityRole="button"
             accessibilityState={{ disabled: isSelecting || isBusy }}
             disabled={isSelecting || isBusy}
@@ -125,8 +125,8 @@ const styles = StyleSheet.create({
   sheet: { borderTopLeftRadius: 22, borderTopRightRadius: 22, minHeight: 300 },
   reuploadContent: { gap: 10, paddingBottom: 16, paddingHorizontal: 20, paddingTop: 0 },
   reuploadDescription: { color: '#99979F', fontFamily: fontFamilies.pretendardRegular, fontSize: 12, marginBottom: 4 },
-  reuploadOption: { alignItems: 'center', borderColor: '#ECEAF0', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 64, paddingHorizontal: 15 },
-  reuploadIcon: { alignItems: 'center', backgroundColor: '#F5F3FA', borderRadius: 11, height: 36, justifyContent: 'center', width: 36 },
+  reuploadOption: { backgroundColor: '#FFFFFF', alignItems: 'center', borderColor: '#ECEAF0', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 64, paddingHorizontal: 15 },
+  reuploadIcon: { alignItems: 'center', backgroundColor: '#F1F0F9', borderRadius: 11, height: 36, justifyContent: 'center', width: 36 },
   reuploadCopy: { flex: 1, gap: 3 },
   reuploadTitle: { color: '#333139', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
   reuploadDetail: { color: '#99979F', fontFamily: fontFamilies.pretendardRegular, fontSize: 11 },

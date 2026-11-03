@@ -105,7 +105,7 @@ export default function CommunityBlocksScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   description: {
     ...typography.bodySmall,
     color: colors.textSecondary,
@@ -136,6 +136,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   unblock: {
+    backgroundColor: colors.surface,
     borderColor: colors.primary,
     borderRadius: radius.round,
     borderWidth: 1,

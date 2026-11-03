@@ -234,7 +234,7 @@ function CommunityChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   message: {
     alignItems: 'center',
     flex: 1,
@@ -274,7 +274,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
   },
   input: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderRadius: radius.lg,
     color: colors.textPrimary,
     flex: 1,

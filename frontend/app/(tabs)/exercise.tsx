@@ -10,7 +10,7 @@ import { useDisplayPreferences } from '@/src/features/settings/DisplayPreference
 import { darkColors, fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const purple = '#503DD7';
+const purple = '#5246C6';
 const ink = '#1E1D24';
 const muted = '#777681';
 const border = '#E4E5EB';
@@ -21,7 +21,7 @@ function MenuRow({ title, detail, onPress }: { title: string; detail: string; on
   const { preferences, isDark } = useDisplayPreferences();
   const simple = preferences.simple_mode_enabled;
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={[styles.menuRow, simple && simpleStyles.menuRow]}>
+    <Pressable hitSlop={16} accessibilityRole="button" onPress={onPress} style={[styles.menuRow, simple && simpleStyles.menuRow]}>
       <View style={styles.menuIcon}><Text style={styles.menuIconText}>◈</Text></View>
       <View style={styles.menuCopy}>
         <Text style={[styles.menuTitle, simple && simpleStyles.menuTitle, isDark && dark.text]}>{title}</Text>
@@ -88,7 +88,7 @@ export default function ExerciseScreen() {
             </Text>
           </Pressable>
           <Pressable accessibilityRole="button" onPress={() => router.push('/exercise/condition')} style={styles.secondaryButton}>
-            <Text style={styles.secondaryText}>다시 추천받기</Text>
+            <Text style={[styles.secondaryText, isDark && dark.text]}>다시 추천받기</Text>
           </Pressable>
         </View>
 
@@ -107,7 +107,7 @@ export default function ExerciseScreen() {
             <Text style={styles.bigCount}>{value(homeMetrics.currentWeekWorkoutCount)}<Text style={styles.countUnit}> / {value(homeMetrics.targetWorkoutCount)}회</Text></Text>
             <Text style={styles.percent}>{value(homeMetrics.goalAchievementRate, '%')}</Text>
           </View>
-          <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: progress }} style={styles.progressTrack}>
+          <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: progress }} style={[styles.progressTrack, isDark && dark.track]}>
             <View style={[styles.progressFill, { width: `${progress}%` }]} />
           </View>
           <View style={styles.progressLabels}>
@@ -142,7 +142,7 @@ export default function ExerciseScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8F8FA' },
+  root: { flex: 1, backgroundColor: '#F4F5F7' },
   titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   content: { paddingHorizontal: 20, gap: 18 },
   pageTitle: { color: ink, fontSize: 24, fontFamily: fontFamilies.pretendardBold, marginBottom: 2 },
@@ -167,11 +167,11 @@ const styles = StyleSheet.create({
   progressFill: { height: 7, backgroundColor: purple },
   progressLabels: { flexDirection: 'row', justifyContent: 'space-between' },
   statRow: { flexDirection: 'row', gap: 10, paddingTop: 4 },
-  statBox: { flex: 1, borderColor: border, borderWidth: 1, borderRadius: 9, padding: 12, gap: 3 },
+  statBox: { backgroundColor: '#FFFFFF', flex: 1, borderColor: border, borderWidth: 1, borderRadius: 9, padding: 12, gap: 3 },
   statLabel: { color: muted, fontSize: 11 },
   statValue: { color: ink, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 50 },
-  menuIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#F0EEFC', alignItems: 'center', justifyContent: 'center' },
+  menuIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#F1F0F9', alignItems: 'center', justifyContent: 'center' },
   menuIconText: { color: purple, fontSize: 16 },
   menuCopy: { flex: 1, gap: 2 },
   menuTitle: { color: ink, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
@@ -196,6 +196,7 @@ const simpleStyles = StyleSheet.create({
 });
 
 const dark = StyleSheet.create({
+  track: { backgroundColor: darkColors.border },
   root: { backgroundColor: darkColors.background },
   card: { backgroundColor: darkColors.surface, borderColor: darkColors.border },
   text: { color: darkColors.textPrimary },

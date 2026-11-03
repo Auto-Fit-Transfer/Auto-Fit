@@ -8,7 +8,7 @@ import { getApiErrorMessage } from '@/src/api/client';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const purple = '#503DD7';
+const purple = '#5246C6';
 const goals: { key: ExerciseGoalInput['goal_type']; label: string }[] = [
   { key: 'muscle_gain', label: '근육량 늘리기' },
   { key: 'weight_loss', label: '체중 감량하기' },
@@ -83,9 +83,9 @@ export default function ExerciseGoal() {
     <StatusBar style="dark" />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 40 }]}>
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
         <Text style={styles.title}>운동 목표</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.push('/exercise/goal-progress')}><Text style={styles.link}>진행 보기</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/exercise/goal-progress')}><Text style={styles.link}>진행 보기</Text></Pressable>
       </View>
       {loading ? <ActivityIndicator color={purple} /> : null}
       {!loading && !loaded ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> : null}
@@ -103,7 +103,7 @@ export default function ExerciseGoal() {
           <Text style={[styles.chipText, goalType === goal.key && styles.selectedText]}>{goal.label}</Text>
         </Pressable>)}</View>
       <View style={styles.card}>
-        <Text style={styles.smallLabel}>체력 목표 · 일주일 운동 시간</Text>
+        <Text style={styles.smallLabel}>일주일 운동 시간</Text>
         <View style={styles.minuteRow}><TextInput accessibilityLabel="일주일 운동 시간(분)" keyboardType="number-pad" value={weeklyMinutes} onChangeText={(value) => { setWeeklyMinutes(value); setSaved(false); }} style={styles.minuteInput} /><Text style={styles.cardTitle}>분</Text></View>
         <Text style={styles.caption}>실제 운동 기록과 비교해 진행 상황에 표시해요.</Text>
       </View>
@@ -123,7 +123,7 @@ export default function ExerciseGoal() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F8F8FA' },
+  root: { flex: 1, backgroundColor: '#F4F5F7' },
   content: { paddingHorizontal: 20, gap: 17 },
   header: { height: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { color: '#1E1D24', fontSize: 32, lineHeight: 36 },
@@ -135,16 +135,16 @@ const styles = StyleSheet.create({
   cardTitle: { color: '#1E1D24', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
   caption: { color: '#777681', fontSize: 12, lineHeight: 18 },
   weekOptions: { flexDirection: 'row', gap: 8 },
-  weekChip: { flex: 1, borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 20, paddingVertical: 9, alignItems: 'center' },
+  weekChip: { backgroundColor: '#FFFFFF', flex: 1, borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 20, paddingVertical: 9, alignItems: 'center' },
   goalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  goalChip: { width: '48%', borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 20, paddingVertical: 11, alignItems: 'center' },
-  selected: { backgroundColor: purple, borderColor: purple },
+  goalChip: { backgroundColor: '#FFFFFF', width: '48%', borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 20, paddingVertical: 11, alignItems: 'center' },
+  selected: { backgroundColor: '#F1F0F9', borderColor: purple },
   chipText: { color: '#1E1D24', fontSize: 12 },
-  selectedText: { color: '#FFF', fontFamily: fontFamilies.pretendardSemiBold },
+  selectedText: { color: purple, fontFamily: fontFamilies.pretendardSemiBold },
   minuteRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   minuteInput: { minWidth: 100, borderBottomWidth: 1, borderBottomColor: '#D5D5DC', color: '#1E1D24', fontSize: 20, fontFamily: fontFamilies.pretendardBold, paddingVertical: 5 },
   frequency: { flexDirection: 'row', justifyContent: 'space-between', gap: 5 },
-  frequencyChip: { flex: 1, aspectRatio: 1, borderRadius: 24, borderWidth: 1, borderColor: '#E4E5EB', alignItems: 'center', justifyContent: 'center' },
+  frequencyChip: { backgroundColor: '#FFFFFF', flex: 1, aspectRatio: 1, borderRadius: 24, borderWidth: 1, borderColor: '#E4E5EB', alignItems: 'center', justifyContent: 'center' },
   button: { height: 51, backgroundColor: purple, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 15 },
   buttonText: { color: '#FFF', fontSize: 15, fontFamily: fontFamilies.pretendardBold },
   error: { color: '#A13A2F', fontSize: 13 },

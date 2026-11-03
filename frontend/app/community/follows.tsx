@@ -182,7 +182,7 @@ export default function CommunityFollowsScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: colors.surface, flex: 1 },
+  root: { backgroundColor: colors.background, flex: 1 },
   tabs: {
     borderBottomColor: colors.border,
     borderBottomWidth: StyleSheet.hairlineWidth,

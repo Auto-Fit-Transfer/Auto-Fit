@@ -14,6 +14,13 @@ import type { SelectedHealthFile } from './useHealthFilePicker';
 export type OCRDocumentType = HealthDocumentType;
 
 export type HealthCheckupOCRResult = {
+  hdlCholesterol: string;
+  ldlCholesterol: string;
+  triglycerides: string;
+  ast: string;
+  alt: string;
+  gammaGtp: string;
+  creatinine: string;
   bloodPressure: string;
   bmi: string;
   checkupDate: string;
@@ -79,6 +86,13 @@ function mapHealthCheckupData(data: HealthCheckupExtractedData): HealthCheckupOC
   const diastolic = displayValue(data.diastolic_bp);
 
   return {
+    hdlCholesterol: displayValue(data.hdl_cholesterol),
+    ldlCholesterol: displayValue(data.ldl_cholesterol),
+    triglycerides: displayValue(data.triglycerides),
+    ast: displayValue(data.ast),
+    alt: displayValue(data.alt),
+    gammaGtp: displayValue(data.gamma_gtp),
+    creatinine: displayValue(data.creatinine),
     bloodPressure: systolic && diastolic ? `${systolic} / ${diastolic}` : '',
     bmi: displayValue(data.bmi),
     checkupDate: displayDate(data.checkup_date),
