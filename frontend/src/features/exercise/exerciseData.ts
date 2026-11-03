@@ -14,6 +14,7 @@ export interface ExerciseCondition {
 
 export interface ExerciseItem {
   caloriesBurned: number | null;
+  demoGifUrl?: string | null;
   demoVideoUrl: string | null;
   durationMinutes: number | null;
   executionType: string | null;

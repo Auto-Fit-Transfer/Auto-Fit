@@ -61,6 +61,8 @@ export function R6ExerciseSession({
     if (!next.enabled) stopGuide();
   };
   const progress = (session.currentExerciseIndex + 1) / session.exercises.length;
+  const gifUrl = exercise.demoGifUrl && /^https:\/\//i.test(exercise.demoGifUrl)
+    ? exercise.demoGifUrl : null;
   const setProgress = exercise.mode === 'reps'
     ? Math.min(1, session.currentRep / Math.max(1, exercise.targetRepetitions ?? 1))
     : Math.min(1, 1 - session.setRemainingMs / Math.max(1, (exercise.targetSeconds ?? 1) * 1000));
@@ -100,12 +102,21 @@ export function R6ExerciseSession({
         <Text style={s.exerciseTitle}>{exercise.name}</Text>
 
         <View style={s.media}>
-          {exercise.thumbnailUrl ? <Image source={{ uri: exercise.thumbnailUrl }} resizeMode="cover" style={s.mediaImage} /> : null}
+          {gifUrl || exercise.thumbnailUrl ? (
+            <Image
+              accessibilityLabel={`${exercise.name} 동작 시범`}
+              source={{ uri: gifUrl ?? exercise.thumbnailUrl! }}
+              resizeMode="contain"
+              style={s.mediaImage}
+            />
+          ) : null}
           {exercise.demoVideoUrl && /^https:\/\//i.test(exercise.demoVideoUrl) ? (
             <Pressable accessibilityRole="button" onPress={openVideo} style={s.videoAction}>
               <Text style={s.play}>▶</Text><Text style={s.videoText}>동작 영상 보기</Text>
             </Pressable>
-          ) : <Text style={s.mediaPlaceholder}>동작 영상이 제공되지 않았어요</Text>}
+          ) : !gifUrl && !exercise.thumbnailUrl ? (
+            <Text style={s.mediaPlaceholder}>동작 영상이 제공되지 않았어요</Text>
+          ) : null}
         </View>
         <Text style={s.voiceHint}>{voice.enabled ? '기기 음성으로 운동을 안내해요' : '음성 안내를 켜거나 화면을 보며 따라 해주세요'}</Text>
 

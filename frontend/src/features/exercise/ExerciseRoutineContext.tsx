@@ -167,6 +167,7 @@ function mapExerciseItems(result: ApiRecord): ExerciseItem[] {
       if (!id || !name) return [];
       const mappedItem: ExerciseItem = {
         caloriesBurned: readNumber(item, ['calories_burned']),
+        demoGifUrl: readString(item, ['demo_gif_url']),
         demoVideoUrl: readString(item, ['demo_video_url']),
         durationMinutes: readNumber(item, ['duration_minutes']),
         executionType: readString(item, ['execution_type']),
