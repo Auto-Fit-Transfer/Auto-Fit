@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import {
   getAllergies,
@@ -7,7 +7,7 @@ import {
   type AllergyType,
 } from '@/src/api/allergies';
 import { getApiErrorMessage } from '@/src/api/client';
-import { AppBottomSheet } from '@/src/components/common';
+import { AppBottomSheet, Text } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 
 type Props = { visible: boolean; onClose: () => void };

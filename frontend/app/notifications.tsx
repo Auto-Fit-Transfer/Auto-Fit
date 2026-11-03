@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
@@ -10,6 +10,7 @@ import {
   getNotificationPreferences, saveNotificationPreferences, type NotificationPreferences,
 } from '@/src/api/userSettings';
 import { colors, fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 type ToggleKey = {
   key: keyof Pick<NotificationPreferences,

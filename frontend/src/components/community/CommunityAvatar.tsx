@@ -1,7 +1,8 @@
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
 import type { CommunityAuthor } from '@/src/api/community';
 import { colors, fontFamilies, radius } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 export function CommunityAvatar({ author, size = 44 }: { author: CommunityAuthor; size?: number }) {
   const frame = { borderRadius: radius.round, height: size, width: size };

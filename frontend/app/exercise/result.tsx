@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -40,6 +39,7 @@ import {
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
 import { colors, fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const referenceWidth = 412;
 const referenceHeight = 917;

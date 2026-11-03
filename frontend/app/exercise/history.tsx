@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getExerciseHistory, saveRecommendedWorkout } from '@/src/api/exercise';
@@ -8,6 +8,7 @@ import { getRunningApiErrorMessage, getRunningHistory, type RunningSession } fro
 import { getApiErrorMessage } from '@/src/api/client';
 import { sessionLocalDate, sessionMinutes } from '@/src/features/exercise/weeklyMetrics';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 type HistoryRow = Awaited<ReturnType<typeof getExerciseHistory>>['history'][number];
 const purple = '#503DD7';

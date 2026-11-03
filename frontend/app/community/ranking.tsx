@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -12,10 +12,11 @@ import {
   type CommunityRankingMetric,
   type CommunityRankingScope,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { COMMUNITY_RANKING_ENABLED } from '@/src/features/community/communityFeatures';
 
 const METRICS: { label: string; unit: string; value: CommunityRankingMetric }[] = [
   { label: '운동 횟수', unit: '회', value: 'workout' },
@@ -28,7 +29,13 @@ function shortDate(value: string) {
 }
 
 // Weekly ranking (Korean week, Monday to Sunday). Only people who opted in are listed.
-export default function CommunityRankingScreen() {
+// While the ranking is switched off, a direct link lands on the community tab instead.
+export default function CommunityRankingRoute() {
+  if (!COMMUNITY_RANKING_ENABLED) return <Redirect href="/community" />;
+  return <CommunityRankingScreen />;
+}
+
+function CommunityRankingScreen() {
   const params = useLocalSearchParams<{ scope?: string; clubId?: string; clubName?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();

@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -25,10 +24,11 @@ import {
   sendCommunityMessage,
   type CommunityMessage,
 } from '@/src/api/community';
-import { AppButton, AppHeader, IconButton } from '@/src/components/common';
+import { AppButton, AppHeader, IconButton, Text } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { COMMUNITY_MESSAGES_ENABLED } from '@/src/features/community/communityFeatures';
 
 // No real-time server: while this screen is shown it checks for new messages every few seconds.
 const POLL_MS = 5000;
@@ -43,7 +43,13 @@ const merge = (current: CommunityMessage[], incoming: CommunityMessage[]) => {
   );
 };
 
-export default function CommunityChatScreen() {
+// While messages are switched off, a direct link lands on the community tab instead.
+export default function CommunityChatRoute() {
+  if (!COMMUNITY_MESSAGES_ENABLED) return <Redirect href="/community" />;
+  return <CommunityChatScreen />;
+}
+
+function CommunityChatScreen() {
   const params = useLocalSearchParams<{
     conversationId: string;
     nickname?: string;
@@ -203,6 +209,7 @@ export default function CommunityChatScreen() {
           <TextInput
             accessibilityLabel="메시지 입력"
             maxLength={COMMUNITY_MAX_MESSAGE_LENGTH}
+            lineBreakStrategyIOS="hangul-word"
             multiline
             onChangeText={setDraft}
             placeholder="메시지를 입력하세요"

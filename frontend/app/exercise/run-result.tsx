@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getRunningApiErrorMessage, getRunningSession, type RunningSession, type RunningTrackPoint } from '@/src/api/running';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const purple = '#503DD7';
 const duration = (seconds: number) => {

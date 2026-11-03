@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import {
   getActiveHealthGoal,
@@ -8,7 +8,7 @@ import {
   type HealthGoalType,
 } from '@/src/api/userSettings';
 import { getApiErrorMessage } from '@/src/api/client';
-import { AppBottomSheet } from '@/src/components/common';
+import { AppBottomSheet, Text } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 
 const goals: { key: HealthGoalType; label: string }[] = [

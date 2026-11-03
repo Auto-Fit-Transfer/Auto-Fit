@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { getActiveExerciseGoal, getExerciseHistory } from '@/src/api/exercise';
 import { getRunningHistory } from '@/src/api/running';
 import { chartActivity, collectActivityDays, localDayKey, shiftDay, summarizeActivity, type ActivityDay } from '@/src/features/exercise/goalProgress';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { darkColors, fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 type Goal = { weekly_duration_minutes: number };
 

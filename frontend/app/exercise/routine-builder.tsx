@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createCustomWorkout, type CustomWorkoutItemInput } from '@/src/api/exercise';
 import { getApiErrorMessage } from '@/src/api/client';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 type DraftItem = { id: number; name: string; sets: string; repetitions: string };
 const purple = '#503DD7';

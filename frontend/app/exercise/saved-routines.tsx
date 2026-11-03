@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getSavedWorkoutRoutines, type SavedWorkoutRoutine } from '@/src/api/exercise';
 import { getApiErrorMessage } from '@/src/api/client';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const purple = '#503DD7';
 type Filter = 'all' | 'recommendation' | 'custom';

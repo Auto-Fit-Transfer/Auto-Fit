@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
 
-import { colors, radius, shadows, spacing } from '@/src/theme';
+import { radius, shadows, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type CardPadding = 'none' | 'sm' | 'md' | 'lg';
 
@@ -13,22 +13,26 @@ export interface AppCardProps extends PropsWithChildren<ViewProps> {
   style?: StyleProp<ViewStyle>;
 }
 
+// Written per side so a caller's paddingHorizontal or paddingVertical can still override it;
+// "none" sets nothing, so a caller's own padding works as before.
 const paddingStyles: Record<CardPadding, ViewStyle> = {
-  none: { padding: 0 },
-  sm: { padding: spacing.sm },
-  md: { padding: spacing.lg },
-  lg: { padding: spacing.xl },
+  none: {},
+  sm: { paddingHorizontal: 8, paddingVertical: 8 },
+  md: { paddingHorizontal: 16, paddingVertical: 16 },
+  lg: { paddingHorizontal: 20, paddingVertical: 20 },
 };
 
+// The Figma box: light gray fill with a thin border (soft = a little darker, no border).
 export function AppCard({
   children,
   padding = 'md',
   soft = false,
-  bordered = false,
+  bordered = !soft,
   shadow = false,
   style,
   ...viewProps
 }: AppCardProps) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View
       style={[
@@ -46,8 +50,10 @@ export function AppCard({
   );
 }
 
-const styles = StyleSheet.create({
-  base: { backgroundColor: colors.card, borderRadius: radius.xl },
-  soft: { backgroundColor: colors.surfaceSoft },
-  bordered: { borderColor: colors.border, borderWidth: 1 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    base: { backgroundColor: colors.surface, borderRadius: radius.card },
+    soft: { backgroundColor: colors.surfaceMuted },
+    bordered: { borderColor: colors.border, borderWidth: 1 },
+  } as const;
+}

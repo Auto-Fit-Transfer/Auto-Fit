@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { darkColors, fontFamilies } from '@/src/theme';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { WeeklyDietContent } from '@/src/components/diet/WeeklyDietContent';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
+import { Text } from '@/src/components/common';
 
 export type R6Meal = {
   id: 'breakfast' | 'lunch' | 'dinner' | 'snack';

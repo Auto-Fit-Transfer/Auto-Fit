@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { ApiError } from '@/src/api/client';
 import {
   generateWeeklyDiet, getDietApiErrorMessage, getWeeklyDiet, regenerateWeeklyDietMeal,
   type WeeklyDay, type WeeklyMealType, type WeeklyPlan,
 } from '@/src/api/diet';
+import { Text } from '@/src/components/common';
 import { fontFamilies } from '@/src/theme';
 
 const days: Record<WeeklyDay, string> = { monday: '월', tuesday: '화', wednesday: '수', thursday: '목', friday: '금', saturday: '토', sunday: '일' };

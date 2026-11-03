@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors, radius } from '@/src/theme';
+import { radius, useThemedStyles, type AppTheme } from '@/src/theme';
 
 export interface IconButtonProps {
   icon: ReactNode;
@@ -22,6 +22,7 @@ export function IconButton({
   surface = false,
   style,
 }: IconButtonProps) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
@@ -44,15 +45,17 @@ export function IconButton({
   );
 }
 
-const styles = StyleSheet.create({
-  base: {
-    alignItems: 'center',
-    borderRadius: radius.round,
-    justifyContent: 'center',
-    minHeight: 44,
-    minWidth: 44,
-  },
-  surface: { backgroundColor: colors.surface },
-  disabled: { opacity: 0.4 },
-  pressed: { backgroundColor: colors.primaryLight },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    base: {
+      alignItems: 'center',
+      borderRadius: radius.round,
+      justifyContent: 'center',
+      minHeight: 44,
+      minWidth: 44,
+    },
+    surface: { backgroundColor: colors.elevated },
+    disabled: { opacity: 0.4 },
+    pressed: { backgroundColor: colors.surfaceMuted },
+  } as const;
+}

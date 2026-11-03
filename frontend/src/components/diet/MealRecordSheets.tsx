@@ -9,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text as NativeText,
   TextInput,
   type TextProps,
   useWindowDimensions,
@@ -31,11 +30,11 @@ import CheckFatIcon from '@/assets/icons/system/Check_Fat.svg';
 import LightbulbIcon from '@/assets/icons/system/Lightbulb.svg';
 import PencilIcon from '@/assets/icons/feature/Pencil_Line.svg';
 import SearchIcon from '@/assets/icons/input/MagnifyingGlass.svg';
-import { AppBottomSheet, CustomScrollIndicator, useCustomScrollIndicator } from '@/src/components/common';
+import { AppBottomSheet, CustomScrollIndicator, useCustomScrollIndicator, Text as SharedText } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 
 function Text(props: TextProps) {
-  return <NativeText allowFontScaling={false} maxFontSizeMultiplier={1} {...props} />;
+  return <SharedText allowFontScaling={false} maxFontSizeMultiplier={1} {...props} />;
 }
 
 export type RecordedFood = {

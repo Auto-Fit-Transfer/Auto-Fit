@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveExerciseGoal, getExerciseHistory } from '@/src/api/exercise';
@@ -10,6 +10,7 @@ import { chartActivity, collectActivityDays, localDayKey, shiftDay, summarizeAct
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 type Goal = { goal_type: string; weekly_frequency: number; weekly_duration_minutes: number; starts_on: string; ends_on: string };
 type Period = 'week' | 'month';

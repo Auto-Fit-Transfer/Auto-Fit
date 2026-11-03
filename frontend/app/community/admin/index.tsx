@@ -1,8 +1,8 @@
 import { useRouter, type Href } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppHeader } from '@/src/components/common';
+import { AppHeader, Text } from '@/src/components/common';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 
 const TOOLS: { title: string; description: string; href: Href }[] = [

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
@@ -8,6 +8,7 @@ import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { BOTTOM_NAVIGATION_MIN_BOTTOM_GAP, getBottomNavigationVisualHeight } from '@/src/components/navigation';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { darkColors, fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const purple = '#503DD7';
 const ink = '#1E1D24';

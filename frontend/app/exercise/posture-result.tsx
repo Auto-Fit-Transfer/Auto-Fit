@@ -1,12 +1,13 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line } from 'react-native-svg';
 
 import { getPostureResult, type PostureFinding, type PostureKeypoint, type PostureResult } from '@/src/api/posture';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const links = [
   ['head', 'neck'], ['neck', 'left_shoulder'], ['left_shoulder', 'left_elbow'],

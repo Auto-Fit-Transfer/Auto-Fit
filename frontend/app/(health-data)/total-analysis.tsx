@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GoalIcon from '@/assets/figma/main/605b2.svg';
@@ -27,6 +27,7 @@ import {
   mainStyles,
 } from '@/src/components/main/MainSurface';
 import { colors, fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 export default function TotalAnalysisScreen() {
   const router = useRouter();

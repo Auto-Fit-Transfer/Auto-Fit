@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -25,7 +24,7 @@ import {
   type CommunityMileage,
   updateCommunityClub,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 
@@ -174,6 +173,7 @@ export default function CommunityNewClubScreen() {
         <TextInput
           accessibilityLabel="클럽 소개"
           maxLength={300}
+          lineBreakStrategyIOS="hangul-word"
           multiline
           onChangeText={setDescription}
           placeholder="어떤 사람들이 모이면 좋을지 적어 주세요."

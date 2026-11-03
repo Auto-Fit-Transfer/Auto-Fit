@@ -1,6 +1,6 @@
 import { useCallback, useState, type ReactNode } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import UserIcon from '@/assets/icons/input/User.svg';
@@ -20,6 +20,7 @@ import { WeeklyWorkoutCard } from '@/src/components/my/WeeklyWorkoutCard';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { darkColors, fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 type SettingRowProps = {
   icon: ReactNode;

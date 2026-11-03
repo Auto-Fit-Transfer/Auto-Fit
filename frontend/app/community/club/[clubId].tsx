@@ -6,7 +6,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,12 +21,13 @@ import {
   type CommunityClub,
   type CommunityPost,
 } from '@/src/api/community';
-import { AppButton, AppHeader, IconButton } from '@/src/components/common';
+import { AppButton, AppHeader, IconButton, Text } from '@/src/components/common';
 import { CommunityAvatar, CommunityPostCard, communityClubCategoryLabel } from '@/src/components/community';
 import {
   applyCommunityEvent,
   subscribeCommunityEvents,
 } from '@/src/features/community/communityEvents';
+import { COMMUNITY_RANKING_ENABLED } from '@/src/features/community/communityFeatures';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 
@@ -221,17 +221,19 @@ export default function CommunityClubScreen() {
         <Text style={styles.membersCount}>회원 {club.member_count.toLocaleString()}명</Text>
         <Text style={styles.membersLink}>전체 보기 ›</Text>
       </Pressable>
-      <Pressable
-        accessibilityRole="link"
-        onPress={() =>
-          router.push({
-            params: { clubId: club.club_id, clubName: club.name, scope: 'club' },
-            pathname: '/community/ranking',
-          })
-        }
-      >
-        <Text style={styles.rankingLink}>이번 주 클럽 랭킹 보기 ›</Text>
-      </Pressable>
+      {COMMUNITY_RANKING_ENABLED ? (
+        <Pressable
+          accessibilityRole="link"
+          onPress={() =>
+            router.push({
+              params: { clubId: club.club_id, clubName: club.name, scope: 'club' },
+              pathname: '/community/ranking',
+            })
+          }
+        >
+          <Text style={styles.rankingLink}>이번 주 클럽 랭킹 보기 ›</Text>
+        </Pressable>
+      ) : null}
       <View style={styles.feedHeading}><Text style={styles.feedTitle}>클럽 글 {club.post_count.toLocaleString()}</Text><Text style={styles.sortLabel}>최신순</Text></View>
     </View>
   ) : null;

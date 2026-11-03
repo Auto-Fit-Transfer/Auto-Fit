@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -8,6 +8,7 @@ import { getSupabaseClient } from '@/src/lib/supabase';
 import { apiRequest, getApiErrorMessage } from '@/src/api/client';
 import { FormField } from '@/src/components/main/FormControls';
 import { colors, fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 export default function Account() {
   const router = useRouter();

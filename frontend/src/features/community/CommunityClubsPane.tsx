@@ -6,7 +6,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 
@@ -15,7 +14,7 @@ import {
   getCommunityErrorMessage,
   type CommunityClub,
 } from '@/src/api/community';
-import { AppButton } from '@/src/components/common';
+import { AppButton, Text } from '@/src/components/common';
 import { CommunityClubCard } from '@/src/components/community';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
 

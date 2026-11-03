@@ -1,5 +1,6 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { fontFamilies } from '@/src/theme';
+import { Text } from './Text';
 
 export function ConfirmDialog({
   visible,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { getApiErrorMessage } from '@/src/api/client';
 import { CommunityAvatar } from '@/src/components/community';
 import { BirthDatePicker } from '@/src/components/auth';
 import { colors, fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 function validBirthDate(value: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;

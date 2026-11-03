@@ -18,6 +18,7 @@ import {
 import { API_BASE_URL, ApiError } from '@/src/api/client';
 import { awardTierActivity } from '@/src/api/tier';
 import { nutritionNumber, type NutritionSummary } from '@/src/features/nutritionSummary';
+import { Text } from '@/src/components/common';
 
 const dateWindowMin = -6;
 const dateWindowMax = 6;

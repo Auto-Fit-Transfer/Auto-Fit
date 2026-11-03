@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { Alert, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Keyboard, Pressable, StyleSheet, View } from 'react-native';
 
 import EmailIcon from '@/assets/icons/auth-redesign/1790c.svg';
 import EmailEmblem from '@/assets/icons/auth-redesign/c08e0.svg';
@@ -10,6 +10,7 @@ import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { PasswordAuthScreenLayout, PasswordAuthSection } from '@/src/components/auth';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { colors, fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();

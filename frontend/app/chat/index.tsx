@@ -1,8 +1,14 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
-  ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView,
-  StyleSheet, Text, TextInput, View,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +22,7 @@ import { getChatSessionSnapshot, mergeChatSessionMessages, prefetchActiveChat, u
 import { chatCharacters, chatWelcomes, displayChatAnswer, loadChatCharacter } from '@/src/features/chat/chatCharacters';
 import type { ChatMessage } from '@/src/types/chat';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const ink = '#25242B';
 const muted = '#777681';

@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { type DisplayPreferences } from '@/src/api/userSettings';
 import { getApiErrorMessage } from '@/src/api/client';
-import { AppBottomSheet } from '@/src/components/common';
+import { AppBottomSheet, Text } from '@/src/components/common';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { darkColors, fontFamilies } from '@/src/theme';

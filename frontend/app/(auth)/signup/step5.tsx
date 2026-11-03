@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, Keyboard, StyleSheet, Text, View } from 'react-native';
+import { Alert, Keyboard, StyleSheet, View } from 'react-native';
 import { saveExerciseGoal, type ExerciseGoalInput } from '@/src/api/exercise';
 import {
   completeOnboarding,
@@ -14,6 +14,7 @@ import { AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import { useSignup, type SignupExerciseGoal } from '@/src/features/signup/SignupContext';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const goalType: Record<SignupExerciseGoal, ExerciseGoalType> = {
   'fat-loss': 'weight_loss',

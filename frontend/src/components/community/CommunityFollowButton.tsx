@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 
 import { colors, fontFamilies, radius, spacing } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 export interface CommunityFollowButtonProps {
   following: boolean;

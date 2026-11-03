@@ -13,7 +13,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   useWindowDimensions,
   View,
@@ -54,6 +53,7 @@ import {
 import { useTemporaryAdjustmentProgress } from '@/src/features/exercise/useTemporaryAdjustmentProgress';
 import { loadVoiceGuideSettings, speakGuide } from '@/src/features/exercise/voiceGuide';
 import { colors, fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const fallbackExerciseImage = require('@/assets/images/illustrations/temp/Image_Exercise.png');
 const finishOneImage = require('@/assets/images/illustrations/exercise/finishes/Finish_One.png');
@@ -1463,6 +1463,7 @@ function DiscomfortRecordModal({
                       <TextInput
                         maxFontSizeMultiplier={1}
                         maxLength={100}
+                        lineBreakStrategyIOS="hangul-word"
                         multiline
                         onChangeText={setOtherDescription}
                         onFocus={() => handleInputFocus(otherDescriptionInputRef.current, 'other')}

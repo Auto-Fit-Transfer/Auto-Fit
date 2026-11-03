@@ -1,9 +1,9 @@
 import { type ReactNode, useCallback } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import CameraIcon from '@/assets/icons/system/Camera.svg';
 import DocumentIcon from '@/assets/icons/system/Document.svg';
-import { AppBottomSheet } from '@/src/components/common';
+import { AppBottomSheet, Text } from '@/src/components/common';
 import { HealthUploadOptionCard } from '@/src/features/health-data/HealthUploadOptionCard';
 import {
   type SelectedHealthFile,

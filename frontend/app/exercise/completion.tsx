@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getExerciseApiErrorMessage, saveExerciseSessionFeedback, type ExerciseSessionFeedbackInput } from '@/src/api/exercise';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const purple = '#503DD7';
 const ink = '#1E1D24';
@@ -105,7 +106,7 @@ export default function ExerciseCompletionScreen() {
             <Text style={[s.chipText, selectedAreas.includes(value) && s.selectedText]}>{label}</Text>
           </Pressable>
         ))}</View>
-        <TextInput accessibilityLabel="운동 후 메모" maxLength={500} multiline onChangeText={setNote} placeholder="운동 후 느낌을 적어주세요 (선택)" style={s.note} value={note} />
+        <TextInput accessibilityLabel="운동 후 메모" maxLength={500} lineBreakStrategyIOS="hangul-word" multiline onChangeText={setNote} placeholder="운동 후 느낌을 적어주세요 (선택)" style={s.note} value={note} />
         <Pressable accessibilityRole="button" disabled={saving || !sessionId} onPress={() => void save()} style={[s.primaryButton, (saving || !sessionId) && s.disabled]}>
           <Text style={s.primaryText}>{saving ? '저장 중...' : resultRecordCompleted ? '분석 보기' : '완료'}</Text>
         </Pressable>

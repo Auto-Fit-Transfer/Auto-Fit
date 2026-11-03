@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { colors, radius, spacing, typography } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 interface BirthDatePickerProps {
   maximumDate: Date;

@@ -11,7 +11,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   useWindowDimensions,
   View,
@@ -50,6 +49,7 @@ import {
   BackButton,
   CustomScrollIndicator,
   useCustomScrollIndicator,
+  Text,
 } from '@/src/components/common';
 import { HealthDataUploadBottomSheet } from '@/src/components/health-data/HealthDataUploadBottomSheet';
 import {

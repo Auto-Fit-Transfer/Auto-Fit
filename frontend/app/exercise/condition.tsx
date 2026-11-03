@@ -9,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -28,6 +27,7 @@ import {
 import { fontFamilies } from '@/src/theme';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
+import { Text } from '@/src/components/common';
 
 const timeOptions = [30, 45, 60, 90, 120];
 const locationOptions: ExerciseLocation[] = ['gym', 'home', 'outdoor', 'other'];

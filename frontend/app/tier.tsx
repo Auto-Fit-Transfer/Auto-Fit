@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getHome, type HomeResponse } from '@/src/api/home';
@@ -17,6 +17,7 @@ import BalanceIcon from '@/assets/figma/main/e036c.svg';
 import ActiveIcon from '@/assets/figma/main/6ebab.svg';
 import FitIcon from '@/assets/figma/main/2ad06.svg';
 import PeakIcon from '@/assets/figma/main/5ef63.svg';
+import { Text } from '@/src/components/common';
 
 const roadmap = [
   { name: 'CORE', description: '관리 시작', Icon: CoreIcon },

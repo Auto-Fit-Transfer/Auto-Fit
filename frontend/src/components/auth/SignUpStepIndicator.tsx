@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import CheckIcon from '@/assets/icons/system/Check.svg';
 import { colors, radius, typography } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 export interface SignUpStepIndicatorProps {
   currentStep: 1 | 2 | 3 | 4;

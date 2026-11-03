@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import LockIcon from '@/assets/icons/auth-redesign/6a5e9.svg';
 import EyeSlashIcon from '@/assets/icons/auth-redesign/5facc.svg';
@@ -8,6 +8,7 @@ import EyeIcon from '@/assets/icons/input/Eye.svg';
 import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { PasswordAuthScreenLayout, PasswordAuthSection } from '@/src/components/auth';
 import { colors, fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const passwordConditions = [
   '8자 이상 입력해 주세요.',

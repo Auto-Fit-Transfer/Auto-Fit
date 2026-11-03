@@ -2,5 +2,21 @@
   "replaceAttrValues": {
     "#343330": "{props.color || '#343330'}",
     "#767676": "{props.color || '#767676'}"
+  },
+  "svgoConfig": {
+    "plugins": [
+      {
+        "name": "preset-default",
+        "params": {
+          "overrides": {
+            "inlineStyles": { "onlyMatchedOnce": false },
+            "removeViewBox": false,
+            "removeUnknownsAndDefaults": false,
+            "convertColors": false
+          }
+        }
+      },
+      "prefixIds"
+    ]
   }
 }

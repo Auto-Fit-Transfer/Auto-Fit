@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { getSignupApiErrorMessage, saveProfile } from '@/src/api/onboarding';
 import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { BirthDatePicker, SignUpScreenLayout } from '@/src/components/auth';
@@ -9,6 +9,7 @@ import { useSignup, type SignupGender } from '@/src/features/signup/SignupContex
 import { getSignupAuthErrorMessage } from '@/src/features/signup/signupAuthError';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const consentItems = [
   { key: 'age', label: '만 14세 이상입니다', required: true },

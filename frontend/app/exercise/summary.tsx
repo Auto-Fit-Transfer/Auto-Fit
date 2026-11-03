@@ -7,7 +7,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -17,6 +16,7 @@ import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineConte
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
 import { exerciseLocationLabels } from '@/src/features/exercise/exerciseData';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 export default function ExerciseSummaryScreen() {
   const router = useRouter();

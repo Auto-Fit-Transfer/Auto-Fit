@@ -1,12 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,13 +15,20 @@ import {
   getCommunityErrorMessage,
   type CommunityConversation,
 } from '@/src/api/community';
-import { AppButton, AppHeader } from '@/src/components/common';
+import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { COMMUNITY_MESSAGES_ENABLED } from '@/src/features/community/communityFeatures';
 
 // Conversations with at least one message, most recent first. Reloads when shown again.
-export default function CommunityMessagesScreen() {
+// While messages are switched off, a direct link lands on the community tab instead.
+export default function CommunityMessagesRoute() {
+  if (!COMMUNITY_MESSAGES_ENABLED) return <Redirect href="/community" />;
+  return <CommunityMessagesScreen />;
+}
+
+function CommunityMessagesScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<CommunityConversation[] | null>(null);

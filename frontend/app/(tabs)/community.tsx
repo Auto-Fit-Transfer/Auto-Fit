@@ -6,7 +6,6 @@ import {
   Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -27,7 +26,7 @@ import {
   type CommunityPost,
   type CommunityPostCategory,
 } from '@/src/api/community';
-import { IconButton } from '@/src/components/common';
+import { IconButton, Text } from '@/src/components/common';
 import { R6ConnectionError } from '@/src/components/common/R6ConnectionError';
 import { CommunityPostCard } from '@/src/components/community';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';

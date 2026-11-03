@@ -8,7 +8,6 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +31,7 @@ import { BackButton } from '@/src/components/common/BackButton';
 import type { OCRUploadRouteItem } from '@/src/features/health-data/ocrResults';
 import type { SelectedHealthFile } from '@/src/features/health-data/useHealthFilePicker';
 import { colors, fontFamilies, radius } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const dataIllustration = require('../assets/images/illustrations/data/Data.png');
 

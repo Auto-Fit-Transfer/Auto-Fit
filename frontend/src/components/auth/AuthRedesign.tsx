@@ -6,7 +6,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
   type StyleProp,
@@ -15,7 +14,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppTextField, type AppTextFieldProps } from '@/src/components/common';
+import { AppTextField, type AppTextFieldProps, Text } from '@/src/components/common';
 import { fontFamilies } from '@/src/theme';
 
 type AuthPageProps = {

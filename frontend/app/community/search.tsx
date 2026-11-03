@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError } from '@/src/api/client';
 import {
@@ -10,6 +10,7 @@ import {
 } from '@/src/api/community';
 import { CommunityAvatar } from '@/src/components/community';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 type SearchTab = 'all' | 'posts' | 'routines' | 'users' | 'clubs';
 const purple = '#503DD7';

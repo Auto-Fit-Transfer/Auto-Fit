@@ -1,10 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import BarbellIcon from '@/assets/icons/deco/Barbell.svg';
 import RunningIcon from '@/assets/icons/deco/SneakerMove.svg';
 import DietIcon from '@/assets/icons/feature/navigator/Diet.svg';
 import { COMMUNITY_CLUB_CATEGORIES, type CommunityClub } from '@/src/api/community';
 import { colors, fontFamilies, radius, spacing } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 export function communityClubCategoryLabel(category: CommunityClub['category']) {
   return COMMUNITY_CLUB_CATEGORIES.find((item) => item.value === category)?.label ?? '기타';

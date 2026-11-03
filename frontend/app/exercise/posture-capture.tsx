@@ -10,12 +10,12 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line } from 'react-native-svg';
+import { Text } from '@/src/components/common';
 
 const RECORD_SECONDS = 10;
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024;

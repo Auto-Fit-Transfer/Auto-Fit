@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import HeartIcon from '@/assets/icons/deco/Heart.svg';
 import HeartFillIcon from '@/assets/icons/deco/Heart_Fill.svg';
@@ -14,6 +14,7 @@ import { colors, darkColors, fontFamilies, spacing } from '@/src/theme';
 import { CommunityAvatar } from './CommunityAvatar';
 import { CommunityFollowButton } from './CommunityFollowButton';
 import { CommunityPostImages } from './CommunityPostImages';
+import { Text } from '@/src/components/common';
 
 const CATEGORY_LABELS = {
   workout: '운동 기록', routine: '루틴 공유', diet: '식단',

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { StatusBar } from 'expo-status-bar';
 import { getDietApiErrorMessage, getDietNutritionSummary, getDietRecommendationsByDate } from '@/src/api/diet';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { nutritionNumber, type NutritionSummary } from '@/src/features/nutritionSummary';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 type Data = Record<string, unknown>;
 type Food = { name: string; protein: number | null; meal: string; amount: string };

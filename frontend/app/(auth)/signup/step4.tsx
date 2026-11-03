@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -18,6 +17,7 @@ import {
 } from '@/src/features/signup/SignupContext';
 import { colors, fontFamilies } from '@/src/theme';
 import CheckIcon from '@/assets/icons/auth-redesign/ab4c2.svg';
+import { Text } from '@/src/components/common';
 
 type ExerciseGoal = SignupExerciseGoal;
 

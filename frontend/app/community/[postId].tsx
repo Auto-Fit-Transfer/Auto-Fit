@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -29,7 +28,7 @@ import {
   type CommunityPost,
   type CommunityProfile,
 } from '@/src/api/community';
-import { AppButton, AppHeader, IconButton } from '@/src/components/common';
+import { AppButton, AppHeader, IconButton, Text } from '@/src/components/common';
 import { CommunityCommentRow, CommunityPostCard } from '@/src/components/community';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
@@ -268,6 +267,7 @@ export default function CommunityPostScreen() {
               accessibilityLabel="댓글 입력"
               ref={commentInputRef}
               maxLength={COMMUNITY_MAX_COMMENT_LENGTH}
+              lineBreakStrategyIOS="hangul-word"
               multiline
               onChangeText={setDraft}
               placeholder="댓글을 남겨 보세요"

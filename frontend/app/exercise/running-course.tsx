@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useCanGoBack, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { getRunningApiErrorMessage, getRunningCourseDetail, getSavedRunningCourses, previewRunningRoute, saveRunningCourse, startSavedCourseRun, type RunningCourse, type RunningRoutePreview } from '@/src/api/running';
@@ -10,6 +10,8 @@ import { KakaoRouteMap } from '@/src/components/exercise/KakaoRouteMap';
 import { canPreviewRoute, previewRouteInput, routePoints, routePolyline } from '@/src/features/running/courseRoute';
 import { KAKAO_MAP_JS_KEY } from '@/src/features/running/kakaoMap';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
+
 const purple = '#503DD7';
 const nameOf = (course: RunningCourse) => course.course_name || course.name || '이름 없는 코스';
 const sourceOf = (course: RunningCourse) => course.source?.source_type ?? course.source_type;

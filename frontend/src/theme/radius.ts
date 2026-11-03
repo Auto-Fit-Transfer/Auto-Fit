@@ -5,4 +5,10 @@ export const radius = {
   lg: 15,
   xl: 20,
   round: 999,
+  // Redesign (Figma) corners
+  buttonSmall: 8,
+  button: 12,
+  card: 16,
+  sheet: 24,
+  dialog: 24,
 } as const;

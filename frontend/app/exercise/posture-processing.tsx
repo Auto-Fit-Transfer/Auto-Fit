@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getPostureJob, type PostureJob } from '@/src/api/posture';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const steps = [
   { stage: 'upload', title: '영상 올리기', description: '분석할 영상을 안전하게 전달했어요' },

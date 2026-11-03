@@ -1,14 +1,15 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useMemo, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { StatusBar } from 'expo-status-bar';
 import { getDietApiErrorMessage, getDietMealRecipe, getDietRecommendationsByDate, submitDietMealFeedback, type DietRecipeSnapshot } from '@/src/api/diet';
 import { awardTierActivity } from '@/src/api/tier';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 type Data = Record<string, unknown>;
 type Food = { name: string; amount: string; carbohydrates: number | null; protein: number | null; fat: number | null };

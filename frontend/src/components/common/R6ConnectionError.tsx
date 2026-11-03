@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { fontFamilies } from '@/src/theme';
+import { Text } from './Text';
 
 type Props = {
   message?: string;

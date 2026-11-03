@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Polyline } from 'react-native-svg';
@@ -9,6 +9,7 @@ import { useRunningSession } from '@/src/features/running/useRunningSession';
 import { routePolyline } from '@/src/features/running/courseRoute';
 import type { RunningPlannedCourse, RunningTrackPoint } from '@/src/api/running';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const purple = '#503DD7';
 const formatTime = (seconds: number) => {

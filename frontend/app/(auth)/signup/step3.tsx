@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   TextInput,
   useWindowDimensions,
   View,
@@ -17,6 +16,7 @@ import { SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
 import { useSignup } from '@/src/features/signup/SignupContext';
 import { colors, fontFamilies } from '@/src/theme';
 import OtherIcon from '@/assets/icons/auth-redesign/00654.svg';
+import { Text } from '@/src/components/common';
 
 interface AllergenOption {
   id: string;

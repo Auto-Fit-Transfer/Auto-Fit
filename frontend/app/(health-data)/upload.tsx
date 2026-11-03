@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CameraIcon from '@/assets/figma/main/62600.svg';
@@ -13,6 +13,7 @@ import {
   useHealthFilePicker,
 } from '@/src/features/health-data/useHealthFilePicker';
 import { fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const maximumUploadSize = 10 * 1024 * 1024;
 function isSupportedHealthDocument(file: SelectedHealthFile) {

@@ -1,7 +1,6 @@
 import { forwardRef, useState, type ReactNode } from 'react';
 import {
-  StyleSheet,
-  Text,
+  Platform,
   TextInput,
   View,
   type StyleProp,
@@ -10,7 +9,14 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { colors, radius, spacing, typography } from '@/src/theme';
+import { radius, scaleForEasyMode, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+
+import { Text } from './Text';
+
+// The field border already shows focus, so the browser's own focus ring is turned off on the web.
+// React Native's types leave out 'none', which react-native-web accepts.
+export const noWebFocusRing: TextStyle =
+  Platform.OS === 'web' ? ({ outlineStyle: 'none' } as unknown as TextStyle) : {};
 
 export interface AppTextFieldProps extends TextInputProps {
   label?: string;
@@ -37,12 +43,14 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
     labelStyle,
     onFocus,
     onBlur,
-    placeholderTextColor = colors.textNavigator,
+    placeholderTextColor,
     style,
     ...textInputProps
   },
   ref,
 ) {
+  const { colors, easyMode } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const [focused, setFocused] = useState(false);
   const supportingText = error ?? helperText;
 
@@ -52,6 +60,7 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
       <View
         style={[
           styles.field,
+          easyMode && styles.fieldEasy,
           focused && styles.focused,
           error && styles.error,
           disabled && styles.disabled,
@@ -61,6 +70,7 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
         {leftElement}
         <TextInput
           ref={ref}
+          lineBreakStrategyIOS="hangul-word"
           {...textInputProps}
           accessibilityLabel={textInputProps.accessibilityLabel ?? label}
           accessibilityState={{ disabled }}
@@ -73,7 +83,7 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
             setFocused(true);
             onFocus?.(event);
           }}
-          placeholderTextColor={placeholderTextColor}
+          placeholderTextColor={placeholderTextColor ?? colors.textSecondary}
           style={[styles.input, disabled && styles.disabledText, style]}
         />
         {rightElement}
@@ -90,32 +100,41 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
   );
 });
 
-const styles = StyleSheet.create({
-  label: { ...typography.label, color: colors.textBody, marginBottom: spacing.sm },
-  field: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 10,
-    height: 55,
-    paddingHorizontal: 10,
-  },
-  focused: { borderColor: colors.primary },
-  error: { borderColor: colors.danger },
-  disabled: { backgroundColor: colors.background },
-  input: {
-    ...typography.body,
-    color: colors.textPrimary,
-    flex: 1,
-    height: '100%',
-    includeFontPadding: false,
-    lineHeight: 17,
-    padding: 0,
-  },
-  disabledText: { color: colors.textDisabled },
-  supporting: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
-  errorText: { color: colors.danger },
-});
+// The Figma "Input": label, a 52px field with a thin border, and a helper line.
+function createStyles({ colors, text, easyMode }: AppTheme) {
+  // TextInput is not the shared Text, so it is enlarged here for the easy mode.
+  const inputText = easyMode ? scaleForEasyMode(text.body1) : text.body1;
+  return {
+    label: { ...text.body2Strong, color: colors.textPrimary, marginBottom: 8 },
+    field: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: radius.button,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 8,
+      height: 52,
+      paddingHorizontal: 16,
+    },
+    fieldEasy: { height: 60 },
+    focused: { borderColor: colors.primary },
+    error: { borderColor: colors.danger, borderWidth: 1.5 },
+    disabled: { backgroundColor: colors.surfaceMuted },
+    input: {
+      ...inputText,
+      color: colors.textPrimary,
+      flex: 1,
+      height: '100%',
+      includeFontPadding: false,
+      // Lets a narrow field shrink the input so a unit on the right stays visible.
+      minWidth: 0,
+      lineHeight: undefined,
+      padding: 0,
+      ...noWebFocusRing,
+    },
+    disabledText: { color: colors.textDisabled },
+    supporting: { ...text.body2, color: colors.textSecondary, marginTop: 8 },
+    errorText: { color: colors.danger },
+  } as const;
+}

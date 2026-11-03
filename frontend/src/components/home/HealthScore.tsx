@@ -2,7 +2,6 @@ import {
   Image,
   Pressable,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type ViewStyle,
@@ -15,6 +14,7 @@ import StarBottomIcon from '@/assets/figma/main/9da88.svg';
 import TierArrow from '@/assets/figma/main/be565.svg';
 import { colors, fontFamilies, radius } from '@/src/theme';
 import { getScoreRatio } from './scoreRatio';
+import { Text } from '@/src/components/common';
 
 const graphSize = 350;
 const graphCenter = graphSize / 2;

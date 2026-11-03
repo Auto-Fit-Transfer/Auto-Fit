@@ -9,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -29,7 +28,7 @@ import {
   type CommunityPostCategory,
   type CommunityPhoto,
 } from '@/src/api/community';
-import { AppDialog } from '@/src/components/common';
+import { AppDialog, Text } from '@/src/components/common';
 import { emitCommunityEvent } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
@@ -200,6 +199,7 @@ export default function CommunityComposeScreen() {
           <TextInput
             accessibilityLabel="글 내용"
             maxLength={COMMUNITY_MAX_POST_LENGTH}
+            lineBreakStrategyIOS="hangul-word"
             multiline
             onChangeText={setContent}
             placeholder="오늘의 운동, 식단, 작은 변화를 나눠 보세요"

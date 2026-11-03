@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -27,6 +26,7 @@ import { getExerciseApiErrorMessage, getExerciseSessionAnalysis } from '@/src/ap
 import { mapExerciseAnalysis } from '@/src/features/exercise/exerciseAnalysis';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { colors, fontFamilies } from '@/src/theme';
+import { Text } from '@/src/components/common';
 
 const referenceHeight = 917;
 const compactHeight = 740;
