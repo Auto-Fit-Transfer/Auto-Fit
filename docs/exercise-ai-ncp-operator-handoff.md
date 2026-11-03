@@ -5,6 +5,7 @@
 ## 현재 확인된 상태
 
 - Auto-Fit Supabase 프로젝트에는 운동 AI용 migration 두 개(`20261103072835`, `20261103072839`)가 적용돼 있다. 재적용하지 않는다.
+- 운영 Postgres 로그에는 두 migration이 각각 **2026-11-03 16:28:35.212**, **16:28:39.292 KST**에 기록돼 있다. 이후 `generator=rules_v1` 추천 생성 행은 조회 시점에 0건이어서 현재 운영 Backend의 규칙 기반 추천 생성 성공은 아직 검증되지 않았다.
 - 운영 기준 `6439380` 위의 [운동 Backend 브랜치](https://github.com/Auto-Fit-Transfer/Auto-Fit/tree/codex/exercise-ai-on-6439380)를 사용한다. 기존 [Backend PR #7](https://github.com/Auto-Fit-Transfer/Auto-Fit/pull/7)은 오래된 `b72181c5` 기준이라 배포 소스로 사용하지 않는다. [모바일 PR #6](https://github.com/Auto-Fit-Transfer/Auto-Fit/pull/6)과 [AI 후보 정합성 PR #8](https://github.com/Auto-Fit-Transfer/Auto-Fit/pull/8)은 아직 병합되지 않았다.
 - 앱에서 사용할 수 있는 기본 GIF는 CSV의 `is_primary_asset=true` 및 `mapping_status=auto_mapped`인 **6,369개, 20.45 GiB**다. 외장하드 전체 기본 GIF 7,027개 중 나머지 658개는 `needs_review`로, 현재 Backend 카탈로그에서 제외된다.
 - 현재 작업 환경에는 NCP 콘솔 로그인과 Object Storage API 키가 없다. 서버용 AI 주소·키도 확인되지 않았다. 업로드와 운영 설정은 담당자가 실행한다.
