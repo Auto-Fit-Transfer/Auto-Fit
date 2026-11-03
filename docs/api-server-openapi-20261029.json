@@ -15341,8 +15341,13 @@
         "properties": {
           "available_minutes": {
             "type": "integer",
-            "maximum": 300.0,
-            "minimum": 5.0,
+            "enum": [
+              30,
+              45,
+              60,
+              90,
+              120
+            ],
             "title": "Available Minutes"
           },
           "location": {
@@ -15372,8 +15377,12 @@
           },
           "condition_level": {
             "type": "string",
-            "maxLength": 30,
-            "minLength": 1,
+            "enum": [
+              "좋음",
+              "보통",
+              "피곤해요",
+              "안 좋아요"
+            ],
             "title": "Condition Level"
           },
           "discomfort_areas": {
@@ -15381,7 +15390,7 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 10,
+            "maxItems": 1,
             "title": "Discomfort Areas"
           },
           "condition_note": {
@@ -17174,22 +17183,26 @@
         "properties": {
           "calories_kcal": {
             "type": "number",
-            "exclusiveMinimum": 0.0,
+            "maximum": 5000.0,
+            "minimum": 1.0,
             "title": "Calories Kcal"
           },
           "protein_g": {
             "type": "number",
-            "minimum": 0.0,
+            "maximum": 1000.0,
+            "minimum": 1.0,
             "title": "Protein G"
           },
           "fat_g": {
             "type": "number",
-            "minimum": 0.0,
+            "maximum": 1000.0,
+            "minimum": 1.0,
             "title": "Fat G"
           },
           "carbohydrate_g": {
             "type": "number",
-            "minimum": 0.0,
+            "maximum": 1000.0,
+            "minimum": 1.0,
             "title": "Carbohydrate G"
           }
         },

@@ -52,7 +52,7 @@ from backend.app.diet_ai import (
     usable_catalog_foods,
 )
 from backend.app.ai_server import AIEndpoint, AIServerClient, AIServerError, get_ai_server_config
-from backend.app.exercise_ai import ExerciseAIError, build_plan as build_ai_exercise_plan, build_request as build_ai_exercise_request
+from backend.app.exercise_ai import ExerciseAIError, build_plan as build_ai_exercise_plan, build_request as build_ai_exercise_request, gif_url_for_exercise
 from backend.app.food_image_generation import (
     generate_missing_menu_images,
     get_food_image_settings,
@@ -297,13 +297,13 @@ class ExercisePreferencesRequest(BaseModel):
 class ExerciseRecommendationContextRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    available_minutes: int = Field(ge=5, le=300)
+    available_minutes: Literal[30, 45, 60, 90, 120]
     location: Literal["gym", "home", "outdoor", "other"]
     available_equipment: list[
         Literal["machine", "band", "dumbbell", "mat", "other"]
     ] = Field(default_factory=list, max_length=5)
-    condition_level: str = Field(min_length=1, max_length=30)
-    discomfort_areas: list[str] = Field(default_factory=list, max_length=10)
+    condition_level: Literal["좋음", "보통", "피곤해요", "안 좋아요"]
+    discomfort_areas: list[str] = Field(default_factory=list, max_length=1)
     condition_note: str | None = Field(default=None, max_length=500)
 
     @field_validator("available_equipment")
@@ -324,9 +324,11 @@ class ExerciseRecommendationContextRequest(BaseModel):
         normalized = value.strip()
         return normalized or None
 
-    @field_validator("discomfort_areas")
+    @field_validator("discomfort_areas", mode="before")
     @classmethod
-    def normalize_discomfort_areas(cls, values: list[str]) -> list[str]:
+    def normalize_discomfort_areas(cls, values: Any) -> Any:
+        if not isinstance(values, list) or any(not isinstance(value, str) for value in values):
+            return values
         normalized: list[str] = []
         seen: set[str] = set()
         for value in values:
@@ -1162,6 +1164,40 @@ async def create_exercise_recommendation(
     return response.json()
 
 
+async def attach_exercise_gif_urls(
+    result: dict[str, Any], context: dict[str, Any], profile: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Expose only confirmed public GIF objects, never catalog filesystem paths."""
+    items = result.get("items") or []
+    base_url = os.getenv("EXERCISE_GIF_BASE_URL", "").strip()
+    gender = (profile or {}).get("gender")
+    if not base_url or gender not in {"male", "female"}:
+        for item in items:
+            item["demo_gif_url"] = None
+        return result
+
+    urls: dict[str, str | None] = {}
+    try:
+        for item in items:
+            key = item.get("exercise_key")
+            if key and key not in urls:
+                urls[key] = gif_url_for_exercise(key, context["location"], gender, base_url)
+    except ExerciseAIError:
+        raise HTTPException(503, detail={"code": "EXERCISE_GIF_CONFIGURATION_ERROR"}) from None
+
+    async with httpx.AsyncClient(timeout=5, follow_redirects=False, trust_env=False) as client:
+        for url in set(url for url in urls.values() if url):
+            try:
+                response = await client.head(url)
+                if response.status_code != 200:
+                    urls = {key: None if value == url else value for key, value in urls.items()}
+            except httpx.HTTPError:
+                urls = {key: None if value == url else value for key, value in urls.items()}
+    for item in items:
+        item["demo_gif_url"] = urls.get(item.get("exercise_key"))
+    return result
+
+
 async def prepare_exercise_routine(
     user_id: str,
     settings: Settings,
@@ -1192,8 +1228,12 @@ async def prepare_exercise_routine(
         if config is None:
             raise HTTPException(503, detail={"code": "AI_DISABLED"})
         try:
+            ai_request = build_ai_exercise_request(preferences, context)
+        except ExerciseAIError:
+            raise HTTPException(409, detail={"code": "EXERCISE_CONTEXT_INVALID"}) from None
+        try:
             ai_response = await AIServerClient(config).post(
-                AIEndpoint.EXERCISE, build_ai_exercise_request(preferences, context)
+                AIEndpoint.EXERCISE, ai_request
             )
         except AIServerError as exc:
             error_status = 503 if exc.code in {
@@ -1214,12 +1254,23 @@ async def prepare_exercise_routine(
             previous_items=previous["items"] if previous else None,
         )
         generator = "rules_v1"
+    gif_urls: dict[str, str | None] = {}
+    if generator == "auto-fit-ai":
+        gif_preview = await attach_exercise_gif_urls(
+            {"items": [item.copy() for item in plan["items"]]}, context, profile,
+        )
+        gif_urls = {
+            item["exercise_key"]: item["demo_gif_url"] for item in gif_preview["items"]
+        }
     result = await create_exercise_recommendation(
         user_id,
         context["exercise_recommendation_context_id"],
         plan,
         settings,
     )
+    if generator == "auto-fit-ai":
+        for item in result.get("items") or []:
+            item["demo_gif_url"] = gif_urls.get(item.get("exercise_key"))
     return {"missing": [], "generated": True, "generator": generator, "result": result}
 
 
@@ -3763,6 +3814,17 @@ async def get_latest_exercise_recommendation(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     result = await fetch_latest_exercise_recommendation(user.id, settings)
+    if result and result["recommendation"].get("generator") == "auto-fit-ai":
+        if os.getenv("EXERCISE_GIF_BASE_URL", "").strip():
+            context, profile = await asyncio.gather(
+                fetch_exercise_context_for_recommendation(
+                    user.id, result["recommendation"]["exercise_recommendation_id"], settings,
+                ),
+                fetch_profile(user.id, settings),
+            )
+        else:
+            context, profile = {}, None
+        result = await attach_exercise_gif_urls(result, context, profile)
     return {"generator": result["recommendation"].get("generator") if result else None,
             "result": result}
 

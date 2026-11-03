@@ -1,6 +1,7 @@
+import asyncio
 import copy
-from contextlib import asynccontextmanager
 import json
+from contextlib import asynccontextmanager
 
 import httpx
 import pytest
@@ -8,7 +9,7 @@ from fastapi.testclient import TestClient
 
 from backend.app import main
 from backend.app.ai_server import AIServerClient
-from backend.app.exercise_ai import EXERCISE_TYPE_NAMES, ExerciseAIError, build_plan, build_request, load_catalog
+from backend.app.exercise_ai import EXERCISE_TYPE_NAMES, ExerciseAIError, build_plan, build_request, gif_url_for_exercise, load_catalog
 
 
 PREFERENCES = {"goal_type": "muscle_gain", "experience_level": "beginner"}
@@ -65,12 +66,41 @@ def ai_response():
 
 def test_build_request_uses_only_available_user_choices():
     request = build_request(PREFERENCES, CONTEXT)
+    assert request["goal_type"] == "muscle_gain"
+    assert request["experience_level"] == "beginner"
+    assert request["available_equipment"] == []
+    assert request["condition_level"] == "피곤해요"
     assert request["daily_condition"] == "tired"
     assert request["has_discomfort"] is True
     assert request["discomfort_areas"] == ["오른쪽 무릎"]
     assert request["metric_statuses"] == {}
-    assert "exercise_mode" not in request
-    assert "gym_preferences" not in request
+    assert request["preferred_training_types"] == []
+
+
+def test_build_request_preserves_multiple_equipment_and_optional_condition():
+    request = build_request({}, {
+        **CONTEXT, "location": "gym", "available_equipment": ["dumbbell", "machine", "mat"],
+        "condition_level": "보통", "discomfort_areas": [], "condition_note": "무릎 조심",
+    })
+    assert request["available_equipment"] == ["dumbbell", "machine", "mat"]
+    assert request["condition_level"] == "보통"
+    assert request["discomfort_areas"] == []
+    assert request["condition_note"] == "무릎 조심"
+    assert "goal_type" not in request
+
+
+@pytest.mark.parametrize("condition, expected", [
+    ("좋음", "good"), ("보통", "normal"), ("피곤해요", "tired"), ("안 좋아요", "tired"),
+])
+def test_build_request_preserves_each_condition(condition, expected):
+    request = build_request(PREFERENCES, {**CONTEXT, "condition_level": condition})
+    assert request["condition_level"] == condition
+    assert request["daily_condition"] == expected
+
+
+def test_build_request_rejects_stale_context_before_ai_call():
+    with pytest.raises(ExerciseAIError, match="Stored exercise context"):
+        build_request(PREFERENCES, {**CONTEXT, "condition_level": "normal"})
 
 
 def test_build_plan_preserves_all_sessions_and_catalog_keys():
@@ -134,6 +164,60 @@ def test_build_plan_rejects_exercise_requiring_unavailable_equipment():
         build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
 
 
+@pytest.mark.parametrize("location", ["outdoor", "other"])
+def test_build_plan_rejects_fixed_equipment_outside_home_or_gym(location):
+    response = ai_response()
+    _, catalog = load_catalog()
+    key, record = next(
+        (key, record) for key, record in catalog.items()
+        if "home_training" in record.modes and record.home_equipment == frozenset({"other"})
+    )
+    exercise = response["result"]["sessions"][0]["exercises"][0]
+    exercise.update(exercise_key=key, catalog_name_en=record.name_en)
+    with pytest.raises(ExerciseAIError, match="equipment"):
+        build_plan(response, PREFERENCES, {**CONTEXT, "location": location, "available_equipment": ["other"]}, "2026-11-03")
+
+
+def test_gif_url_resolves_primary_asset_by_mode_and_gender():
+    _, catalog = load_catalog()
+    key, record = next(
+        (key, record) for key, record in catalog.items()
+        if ("gym", "female") in {(mode, gender) for mode, gender, _ in record.asset_paths}
+    )
+    expected_path = next(path for mode, gender, path in record.asset_paths
+                         if mode == "gym" and gender == "female")
+    url = gif_url_for_exercise(key, "gym", "female", "https://cdn.example.invalid/exercises")
+    assert url.startswith("https://cdn.example.invalid/exercises/")
+    assert expected_path.split("/")[0] in url
+    assert " " not in url
+    assert gif_url_for_exercise(key, "gym", "other", "https://cdn.example.invalid") is None
+    with pytest.raises(ExerciseAIError):
+        gif_url_for_exercise(key, "gym", "female", "http://cdn.example.invalid")
+
+
+def test_gif_url_is_exposed_only_for_existing_https_object(monkeypatch):
+    _, catalog = load_catalog()
+    key, _ = next((key, record) for key, record in catalog.items()
+                  if any(mode == "home_training" and gender == "male"
+                         for mode, gender, _ in record.asset_paths))
+    monkeypatch.setenv("EXERCISE_GIF_BASE_URL", "https://cdn.example.invalid/exercises")
+    original_client = httpx.AsyncClient
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(200 if len(seen) == 1 else 404)
+
+    monkeypatch.setattr(main.httpx, "AsyncClient", lambda **kwargs: original_client(
+        transport=httpx.MockTransport(handler), **kwargs))
+    result = {"items": [{"exercise_key": key}]}
+    first = asyncio.run(main.attach_exercise_gif_urls(result, {"location": "home"}, {"gender": "male"}))
+    assert first["items"][0]["demo_gif_url"].startswith("https://")
+    assert seen[0].method == "HEAD"
+    second = asyncio.run(main.attach_exercise_gif_urls(result, {"location": "home"}, {"gender": "male"}))
+    assert second["items"][0]["demo_gif_url"] is None
+
+
 def test_generate_api_calls_ai_and_saves_validated_items(monkeypatch):
     monkeypatch.setenv("EXERCISE_AI_ENABLED", "true")
     monkeypatch.setenv("AI_SERVER_ENABLED", "true")
@@ -148,7 +232,9 @@ def test_generate_api_calls_ai_and_saves_validated_items(monkeypatch):
         assert request.headers["authorization"].startswith("Bearer synthetic-test-key-")
         payload = json.loads(request.content)
         assert payload["goal_type"] == "muscle_gain"
-        assert payload["daily_condition"] == "tired"
+        assert payload["condition_level"] == "피곤해요"
+        assert payload["available_equipment"] == []
+        assert payload["condition_note"] is None
         return httpx.Response(200, json=ai_response())
 
     monkeypatch.setattr(main, "AIServerClient", lambda config: AIServerClient(
