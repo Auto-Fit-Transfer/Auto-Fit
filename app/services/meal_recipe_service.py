@@ -4,6 +4,7 @@ import asyncio
 import copy
 import inspect
 import logging
+import os
 import re
 import threading
 import time
@@ -154,6 +155,68 @@ class MealRecipeService:
     OFFICIAL_SIMILARITY_THRESHOLD = 0.82
     RECIPE_CACHE_TTL_SECONDS = 30 * 60
     RECIPE_CACHE_MAX_ENTRIES = 512
+
+    @staticmethod
+    def _nested_response_value(
+        value: Any,
+        *path: str,
+    ) -> Any:
+        """OpenAI SDK 객체와 테스트 dict에서 안전하게 값을 읽는다."""
+
+        current = value
+        for name in path:
+            if current is None:
+                return None
+
+            if isinstance(current, dict):
+                current = current.get(name)
+            else:
+                current = getattr(current, name, None)
+
+        return current
+
+    @classmethod
+    def _llm_response_diagnostics(
+        cls,
+        response: Any,
+    ) -> dict[str, Any]:
+        raw_incomplete_details = cls._nested_response_value(
+            response,
+            "incomplete_details",
+        )
+        incomplete_reason = cls._nested_response_value(
+            raw_incomplete_details,
+            "reason",
+        )
+        incomplete_details = (
+            {"reason": incomplete_reason}
+            if raw_incomplete_details is not None
+            else None
+        )
+
+        return {
+            "response_id": cls._nested_response_value(
+                response,
+                "id",
+            ),
+            "status": cls._nested_response_value(
+                response,
+                "status",
+            ),
+            "incomplete_details": incomplete_details,
+            "incomplete_reason": incomplete_reason,
+            "output_tokens": cls._nested_response_value(
+                response,
+                "usage",
+                "output_tokens",
+            ),
+            "reasoning_tokens": cls._nested_response_value(
+                response,
+                "usage",
+                "output_tokens_details",
+                "reasoning_tokens",
+            ),
+        }
 
     def __init__(self) -> None:
         self.settings = get_settings()
@@ -1693,38 +1756,41 @@ class MealRecipeService:
             except Exception:
                 _increment_recipe_metric("llm_failures")
                 logger.exception(
-                    "LLM recipe generation failed (attempt %s/2).",
+                    "LLM recipe generation failed "
+                    "(attempt %s/2, worker_pid=%s).",
                     attempt,
+                    os.getpid(),
                 )
                 continue
 
-            response_status = getattr(response, "status", None)
-            incomplete = getattr(response, "incomplete_details", None)
-            incomplete_details = (
-                {"reason": getattr(incomplete, "reason", None)}
-                if incomplete is not None else None
-            )
             generated = (
                 response.output_parsed
+            )
+
+            diagnostics = (
+                self._llm_response_diagnostics(
+                    response
+                )
             )
 
             if generated is None:
                 _increment_recipe_metric(
                     "llm_unparsed_responses"
                 )
-                usage = getattr(response, "usage", None)
-                output_details = getattr(
-                    usage, "output_tokens_details", None
-                )
                 logger.warning(
                     "LLM recipe response has no parsed output "
-                    "(attempt %s/2, status=%s, incomplete_details=%s, "
+                    "(attempt %s/2, worker_pid=%s, "
+                    "response_id=%s, status=%s, "
+                    "incomplete_details=%s, incomplete_reason=%s, "
                     "output_tokens=%s, reasoning_tokens=%s).",
                     attempt,
-                    response_status,
-                    incomplete_details,
-                    getattr(usage, "output_tokens", None),
-                    getattr(output_details, "reasoning_tokens", None),
+                    os.getpid(),
+                    diagnostics["response_id"],
+                    diagnostics["status"],
+                    diagnostics["incomplete_details"],
+                    diagnostics["incomplete_reason"],
+                    diagnostics["output_tokens"],
+                    diagnostics["reasoning_tokens"],
                 )
                 continue
 
@@ -1746,12 +1812,20 @@ class MealRecipeService:
                 )
                 logger.warning(
                     "LLM recipe rejected by safety check "
-                    "(attempt %s/2, status=%s, incomplete_details=%s, "
-                    "restriction_count=%s).",
+                    "(attempt %s/2, worker_pid=%s, "
+                    "restriction_count=%s, "
+                    "response_id=%s, status=%s, "
+                    "incomplete_details=%s, incomplete_reason=%s, "
+                    "output_tokens=%s, reasoning_tokens=%s).",
                     attempt,
-                    response_status,
-                    incomplete_details,
+                    os.getpid(),
                     len(violations),
+                    diagnostics["response_id"],
+                    diagnostics["status"],
+                    diagnostics["incomplete_details"],
+                    diagnostics["incomplete_reason"],
+                    diagnostics["output_tokens"],
+                    diagnostics["reasoning_tokens"],
                 )
 
                 previous_violations = (

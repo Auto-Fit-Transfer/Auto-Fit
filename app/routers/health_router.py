@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter
 
 from app.services.diet_recommendation_service import (
@@ -42,6 +44,7 @@ async def recipe_health_check():
     return {
         "status": pipeline["status"],
         "service": "healthcare-ai-server",
+        "worker_pid": os.getpid(),
         "recipe_pipeline": pipeline,
     }
 

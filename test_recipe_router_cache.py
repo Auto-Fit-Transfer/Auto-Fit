@@ -111,6 +111,23 @@ async def main() -> None:
 
     health_payload = health.json()["recipe_pipeline"]
 
+    worker_pid = health.json().get("worker_pid")
+    if not isinstance(worker_pid, int) or worker_pid <= 0:
+        raise RuntimeError(
+            "Recipe health에 워커 PID가 반영되지 않았습니다."
+        )
+
+    for metric_name in (
+        "llm_unparsed_responses",
+        "llm_safety_rejections",
+        "llm_failures",
+        "item_failures",
+    ):
+        if metric_name not in health_payload["cache"]:
+            raise RuntimeError(
+                f"Recipe health에 {metric_name} 지표가 없습니다."
+            )
+
     if health_payload["cache"]["cache_entries"] < 1:
         raise RuntimeError("Recipe health에 cache 상태가 반영되지 않았습니다.")
 
