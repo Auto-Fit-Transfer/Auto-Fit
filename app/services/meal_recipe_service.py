@@ -45,6 +45,8 @@ _RECIPE_PIPELINE_STATS = {
     "item_failures": 0,
     "official_api_fallbacks": 0,
     "llm_failures": 0,
+    "llm_unparsed_responses": 0,
+    "llm_safety_rejections": 0,
 }
 
 
@@ -1699,6 +1701,27 @@ class MealRecipeService:
             )
 
             if generated is None:
+                _increment_recipe_metric(
+                    "llm_unparsed_responses"
+                )
+                usage = getattr(response, "usage", None)
+                output_details = getattr(
+                    usage, "output_tokens_details", None
+                )
+                logger.warning(
+                    "LLM recipe response has no parsed output "
+                    "(attempt %s/2, status=%s, incomplete_reason=%s, "
+                    "output_tokens=%s, reasoning_tokens=%s).",
+                    attempt,
+                    getattr(response, "status", None),
+                    getattr(
+                        getattr(response, "incomplete_details", None),
+                        "reason",
+                        None,
+                    ),
+                    getattr(usage, "output_tokens", None),
+                    getattr(output_details, "reasoning_tokens", None),
+                )
                 continue
 
             # ==================================================
@@ -1714,6 +1737,15 @@ class MealRecipeService:
             )
 
             if violations:
+                _increment_recipe_metric(
+                    "llm_safety_rejections"
+                )
+                logger.warning(
+                    "LLM recipe rejected by safety check "
+                    "(attempt %s/2, restriction_count=%s).",
+                    attempt,
+                    len(violations),
+                )
 
                 previous_violations = (
                     violations
