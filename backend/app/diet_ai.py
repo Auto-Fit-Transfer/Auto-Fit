@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal
@@ -11,6 +12,13 @@ from typing import Any, Awaitable, Callable, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
+
+logger = logging.getLogger("uvicorn.error")
+
+# Each extra request is paid, so a rejected answer gets one second chance only.
+AI_RESPONSE_ATTEMPTS = 2
+# The model adds these on its own and the server recalculates them. Other unknown fields stay rejected.
+IGNORED_MEAL_RESPONSE_FIELDS = {"total_calories"}
 
 MealType = Literal["breakfast", "lunch", "dinner", "snack"]
 ModelRequester = Callable[[str], Awaitable[str | None]]
@@ -20,6 +28,10 @@ EXCLUDED_CATALOG_NAME_MARKERS = ("[dummy",)
 
 class DietAIUnavailable(RuntimeError):
     """Raised when a valid AI meal set cannot be produced."""
+
+
+class DietAIRetryableResponse(DietAIUnavailable):
+    """A rejected format or calorie answer that a second request can fix."""
 
 
 class GeneratedFood(BaseModel):
@@ -173,6 +185,25 @@ def _extract_json_object(raw: str) -> dict[str, Any]:
     return parsed
 
 
+def _without_ignored_meal_fields(parsed: dict[str, Any]) -> dict[str, Any]:
+    meals = parsed.get("meals")
+    if not isinstance(meals, list):
+        return parsed
+    return {
+        **parsed,
+        "meals": [
+            {
+                key: value
+                for key, value in meal.items()
+                if key not in IGNORED_MEAL_RESPONSE_FIELDS
+            }
+            if isinstance(meal, dict)
+            else meal
+            for meal in meals
+        ],
+    }
+
+
 async def generate_ai_meals(
     slots: list[dict[str, Any]],
     allergy_names: list[str],
@@ -216,18 +247,43 @@ async def generate_ai_meals(
         "(정수), unit, calories, carbohydrates, protein, fat(모두 정수)가 필요합니다. 입력 슬롯의 "
         "meal_type과 meal_order를 그대로 유지하세요.\n" + json.dumps(payload, ensure_ascii=False)
     )
-    raw = await request_model(prompt)
-    if not raw:
-        raise DietAIUnavailable("AI diet generator is disabled or unavailable")
+    for attempt in range(1, AI_RESPONSE_ATTEMPTS + 1):
+        raw = await request_model(prompt)
+        if not raw:
+            raise DietAIUnavailable("AI diet generator is disabled or unavailable")
+        try:
+            meals = _validated_ai_meals(
+                raw, slots, allergy_names, excluded_representative_foods
+            )
+        except DietAIRetryableResponse as exc:
+            if attempt == AI_RESPONSE_ATTEMPTS:
+                logger.warning("Diet AI retry result: failed extra_calls=1 reason=%s", exc)
+                raise
+            logger.warning("Diet AI response rejected, retrying once: %s", exc)
+            continue
+        if attempt > 1:
+            logger.warning("Diet AI retry result: accepted extra_calls=1")
+        return meals
+    raise DietAIUnavailable("AI diet generator is disabled or unavailable")
+
+
+def _validated_ai_meals(
+    raw: str,
+    slots: list[dict[str, Any]],
+    allergy_names: list[str],
+    excluded_representative_foods: list[str] | None,
+) -> list[dict[str, Any]]:
     try:
-        generated = GeneratedMeals.model_validate(_extract_json_object(raw))
+        generated = GeneratedMeals.model_validate(
+            _without_ignored_meal_fields(_extract_json_object(raw))
+        )
     except (json.JSONDecodeError, ValueError, ValidationError) as exc:
-        raise DietAIUnavailable("AI diet generator returned invalid structured data") from exc
+        raise DietAIRetryableResponse("AI diet generator returned invalid structured data") from exc
 
     expected = {(meal["meal_type"], int(meal["meal_order"])) for meal in slots}
     actual = {(meal.meal_type, meal.meal_order) for meal in generated.meals}
     if actual != expected or len(actual) != len(generated.meals):
-        raise DietAIUnavailable("AI diet generator changed or duplicated meal slots")
+        raise DietAIRetryableResponse("AI diet generator changed or duplicated meal slots")
     if any(
         conflicts_allergy(food.food_name, allergy_names)
         for meal in generated.meals
@@ -257,7 +313,7 @@ async def generate_ai_meals(
         value["recommended_calories"] = sum(food["calories"] for food in value["foods"])
         target = target_by_slot[(meal.meal_type, meal.meal_order)]
         if not target * 0.85 <= value["recommended_calories"] <= target * 1.15:
-            raise DietAIUnavailable("AI diet generator missed the calorie target")
+            raise DietAIRetryableResponse("AI diet generator missed the calorie target")
         value["source_type"] = "ai_generated"
         results.append(value)
     return results
