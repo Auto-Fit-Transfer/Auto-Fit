@@ -3,6 +3,8 @@
 import asyncio
 from types import SimpleNamespace
 
+from pydantic import ValidationError
+
 from app.services.meal_recipe_service import (
     GeneratedRecipeIngredient,
     GeneratedRecipeResponse,
@@ -49,12 +51,13 @@ class FakeResponses:
             generated
         )
         self.call_count = 0
+        self.inputs: list[dict] = []
 
     async def parse(
         self,
         **kwargs,
     ) -> SimpleNamespace:
-        del kwargs
+        self.inputs.append(kwargs)
         result = self.generated[
             self.call_count
         ]
@@ -86,7 +89,7 @@ def test_similarity_and_official_ingredients() -> None:
         service.parse_ingredients_text(
             (
                 "톳나물 15g, 두부 40 g, 천일염 100mg, "
-                "대파 1개, 간장 1큰술, 후추 약간"
+                "대파 1개, 간장 1큰술, 후추 약간, 빈 중량 0g"
             ),
             scale_ratio=1.4,
         )
@@ -115,6 +118,10 @@ def test_similarity_and_official_ingredients() -> None:
         },
         {
             "name": "후추",
+            "amount_g": None,
+        },
+        {
+            "name": "빈 중량",
             "amount_g": None,
         },
     ]
@@ -475,13 +482,117 @@ async def test_llm_safety_retry_and_structure() -> None:
         )
 
 
+def test_llm_ingredient_rejects_zero_grams() -> None:
+    try:
+        GeneratedRecipeIngredient(
+            name="면보",
+            amount_g=0,
+        )
+    except ValidationError:
+        return
+
+    raise RuntimeError(
+        "LLM recipe 재료의 0g 값이 허용되었습니다."
+    )
+
+
+async def test_ready_to_serve_recipe_retries_manufacturing_result() -> None:
+    service = make_service()
+    fake_responses = FakeResponses(
+        [
+            GeneratedRecipeResponse(
+                ingredients=[
+                    GeneratedRecipeIngredient(
+                        name="우유",
+                        amount_g=200.0,
+                    ),
+                    GeneratedRecipeIngredient(
+                        name="체 또는 면보",
+                        amount_g=1.0,
+                    ),
+                ],
+                steps=[
+                    "우유를 데운다.",
+                    "유산균을 넣는다.",
+                    "발효한다.",
+                    "면보에 붓는다.",
+                    "유청을 뺀다.",
+                ],
+            ),
+            GeneratedRecipeResponse(
+                ingredients=[
+                    GeneratedRecipeIngredient(
+                        name="그릭요거트",
+                        amount_g=150.0,
+                    ),
+                ],
+                steps=[
+                    "그릭요거트를 그릇에 담아 제공한다.",
+                ],
+                estimated_duration_minutes=1.0,
+            ),
+        ]
+    )
+    service.settings = SimpleNamespace(
+        openai_model="test-model"
+    )
+    service.openai_client = SimpleNamespace(
+        responses=fake_responses
+    )
+
+    result = await service.generate_llm_recipe(
+        item={
+            "food_name": "그릭요거트",
+            "portion_g": 150.0,
+            "calories_kcal": 120.0,
+            "protein_g": 10.0,
+            "fat_g": 4.0,
+            "carbohydrate_g": 8.0,
+        },
+        allergies=[],
+        disliked_foods=[],
+    )
+
+    if fake_responses.call_count != 2:
+        raise RuntimeError(
+            "완제품 제조형 레시피가 재생성되지 않았습니다."
+        )
+
+    if "이미 완성된 상태" not in fake_responses.inputs[0]["input"]:
+        raise RuntimeError(
+            "완제품 식품 전용 prompt가 적용되지 않았습니다."
+        )
+
+    if "조리 도구가 재료 목록에 포함됨" not in fake_responses.inputs[1]["input"]:
+        raise RuntimeError(
+            "레시피 품질 거부 사유가 재시도에 반영되지 않았습니다."
+        )
+
+    if result["recipe_source"] != "llm_generated":
+        raise RuntimeError(
+            "완제품 레시피 재시도 결과가 반환되지 않았습니다."
+        )
+
+    if result["recipe"]["ingredients"] != [
+        {
+            "name": "그릭요거트",
+            "amount_g": 150.0,
+        }
+    ]:
+        raise RuntimeError(
+            "완제품 레시피 재료 구조가 올바르지 않습니다."
+        )
+
+
 async def main() -> None:
     test_similarity_and_official_ingredients()
+    test_llm_ingredient_rejects_zero_grams()
     await test_official_similar_pipeline()
     await test_official_exact_pipeline()
     await test_unsafe_containment_matches_are_rejected()
     await test_cache_separates_portions()
     await test_llm_safety_retry_and_structure()
+    await test_ready_to_serve_recipe_retries_manufacturing_result()
     print(
         "Meal Recipe 구조 및 안전성 테스트: OK"
     )

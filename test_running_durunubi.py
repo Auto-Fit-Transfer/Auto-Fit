@@ -167,6 +167,7 @@ async def run_async_tests() -> None:
     )
 
     assert response.status == "matched"
+    assert response.generation_recommended is False
     assert [course.course_id for course in response.courses] == [
         "durunubi-123",
         "metadata-course",

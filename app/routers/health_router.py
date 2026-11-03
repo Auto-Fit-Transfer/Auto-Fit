@@ -56,6 +56,7 @@ async def diet_health_check():
     return {
         "status": "ok",
         "service": "healthcare-ai-server",
+        "worker_pid": os.getpid(),
         "diet_candidate_cache": get_diet_candidate_cache_stats(),
         "diet_llm_cache": get_diet_llm_cache_stats(),
         "diet_llm_resilience": get_diet_llm_resilience_stats(),
@@ -73,6 +74,7 @@ async def chat_health_check():
     return {
         "status": "ok",
         "service": "healthcare-ai-server",
+        "worker_pid": os.getpid(),
         "chat_answer_resilience": (
             get_chat_answer_resilience_stats()
         ),

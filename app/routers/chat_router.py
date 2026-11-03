@@ -10,7 +10,6 @@ from fastapi.security import (
     HTTPAuthorizationCredentials,
 )
 
-from app.core.config import get_settings
 from app.core.security import (
     security,
     verify_api_key,
@@ -55,6 +54,7 @@ router = APIRouter(
 @router.post(
     "/chat",
     response_model=BackendChatResponse,
+    response_model_exclude_none=True,
 )
 async def backend_compatible_chat(
     request: BackendChatRequest,
@@ -74,6 +74,7 @@ async def backend_compatible_chat(
     response:
         answer
         model
+        usage (OpenAI가 제공한 경우)
     """
 
     verify_api_key(
@@ -81,16 +82,10 @@ async def backend_compatible_chat(
     )
 
     try:
-        answer = await generate_backend_chat_response(
+        response = await generate_backend_chat_response(
             request
         )
-
-        settings = get_settings()
-
-        return BackendChatResponse(
-            answer=answer,
-            model=settings.openai_model,
-        )
+        return response
 
     except Exception:
         # 사용자 질문 및 개인정보는 로그에 기록하지 않는다.

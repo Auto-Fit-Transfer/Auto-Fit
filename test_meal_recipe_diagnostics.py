@@ -119,10 +119,40 @@ async def test_unparsed_response_without_metadata_can_retry_successfully() -> No
     assert len(warning_texts(warning)) == 1
 
 
+async def test_quality_rejection_records_count_without_ingredient_name() -> None:
+    rejected = SimpleNamespace(
+        output_parsed=recipe_with_ingredient("체 또는 면보"),
+        status="completed",
+        incomplete_details=None,
+    )
+    service, client = make_service([rejected, rejected])
+    before = MealRecipeService.get_operational_stats()["cache"][
+        "llm_quality_rejections"
+    ]
+    with patch.object(recipe_module.logger, "warning") as warning:
+        result = await generate(service)
+    after = MealRecipeService.get_operational_stats()["cache"][
+        "llm_quality_rejections"
+    ]
+
+    assert client.calls == 2
+    assert result["recipe_source"] == "unavailable"
+    assert result["restriction_matches"] == []
+    assert after - before == 2
+    messages = warning_texts(warning)
+    assert len(messages) == 2
+    assert all(
+        "issue_count=" in message and "status=completed" in message
+        for message in messages
+    )
+    assert all("면보" not in message for message in messages)
+
+
 async def main() -> None:
     await test_unparsed_response_records_metadata_without_recipe_text()
     await test_safety_rejection_records_count_without_allergen_name()
     await test_unparsed_response_without_metadata_can_retry_successfully()
+    await test_quality_rejection_records_count_without_ingredient_name()
     print("Meal Recipe 진단 지표 테스트: OK")
 
 

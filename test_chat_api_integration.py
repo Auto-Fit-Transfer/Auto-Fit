@@ -9,6 +9,10 @@ import app.core.security as security_module
 import app.routers.chat_router as chat_router
 import app.services.chat_orchestrator_service as orchestrator
 from app.main import app
+from app.schemas.chat import (
+    BackendChatResponse,
+    BackendChatTokenUsage,
+)
 from app.schemas.running import RunningCourseRecommendationResponse
 
 
@@ -50,7 +54,6 @@ def _diet_summary() -> dict:
 
 async def _run_all() -> None:
     original_security_settings = security_module.get_settings
-    original_router_settings = chat_router.get_settings
     original_backend_answer = (
         chat_router.generate_backend_chat_response
     )
@@ -65,7 +68,17 @@ async def _run_all() -> None:
 
     async def fake_backend_answer(request):
         assert request.question == "안녕하세요"
-        return "정상 호환 응답"
+        return BackendChatResponse(
+            answer="정상 호환 응답",
+            model="integration-test-model",
+            usage=BackendChatTokenUsage(
+                input_tokens=120,
+                cached_input_tokens=20,
+                output_tokens=80,
+                reasoning_tokens=30,
+                total_tokens=200,
+            ),
+        )
 
     async def fake_running_recommendation(request):
         assert request.latitude == 37.3948
@@ -79,7 +92,6 @@ async def _run_all() -> None:
         )
 
     security_module.get_settings = lambda: settings
-    chat_router.get_settings = lambda: settings
     chat_router.generate_backend_chat_response = fake_backend_answer
     orchestrator.recommend_running_courses = (
         fake_running_recommendation
@@ -121,6 +133,13 @@ async def _run_all() -> None:
             assert legacy.json() == {
                 "answer": "정상 호환 응답",
                 "model": "integration-test-model",
+                "usage": {
+                    "input_tokens": 120,
+                    "cached_input_tokens": 20,
+                    "output_tokens": 80,
+                    "reasoning_tokens": 30,
+                    "total_tokens": 200,
+                },
             }
 
             invalid_request = await client.post(
@@ -172,11 +191,12 @@ async def _run_all() -> None:
                 "running_recommend_request"
             )
             assert running_body["action"] == (
-                "running_courses_recommended"
+                "running_generation_required"
             )
             assert running_body["action_status"] == "completed"
             assert running_body["requires_backend_apply"] is False
             assert running_body["data"]["resolved_region"] == "성남시"
+            assert running_body["data"]["generation_recommended"] is True
             assert running_body["data"]["courses"][0][
                 "distance_to_user_km"
             ] == 0.8
@@ -224,7 +244,6 @@ async def _run_all() -> None:
             assert cancellation_body["requires_backend_apply"] is False
     finally:
         security_module.get_settings = original_security_settings
-        chat_router.get_settings = original_router_settings
         chat_router.generate_backend_chat_response = (
             original_backend_answer
         )

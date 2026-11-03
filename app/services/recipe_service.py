@@ -4,6 +4,7 @@ import asyncio
 import logging
 import threading
 import time
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from urllib.parse import quote
 
@@ -22,6 +23,7 @@ _RECIPE_API_STATS = {
     "failures": 0,
     "retries": 0,
     "circuit_rejections": 0,
+    "quota_exhaustions": 0,
 }
 _RECIPE_API_CONSECUTIVE_FAILURES = 0
 _RECIPE_API_CIRCUIT_OPEN_UNTIL = 0.0
@@ -175,6 +177,66 @@ class RecipeService:
             _RECIPE_API_STATS["retries"] += 1
 
     @staticmethod
+    def _provider_result(
+        data: dict[str, Any],
+    ) -> tuple[str, str]:
+        service_data = data.get(
+            RECIPE_SERVICE_ID,
+            {},
+        )
+        if not isinstance(service_data, dict):
+            return "", ""
+
+        result = service_data.get(
+            "RESULT",
+            {},
+        )
+        if not isinstance(result, dict):
+            return "", ""
+
+        return (
+            str(result.get("CODE") or "").strip(),
+            str(result.get("MSG") or "").strip(),
+        )
+
+    @staticmethod
+    def _seconds_until_kst_19() -> float:
+        now_kst = (
+            datetime.now(
+                timezone(timedelta(hours=9))
+            )
+        )
+        window_end = now_kst.replace(
+            hour=19,
+            minute=0,
+            second=0,
+            microsecond=0,
+        )
+        if now_kst < window_end:
+            return max(
+                60.0,
+                (window_end - now_kst).total_seconds(),
+            )
+        return 60.0
+
+    def _open_quota_circuit(
+        self,
+        recovery_seconds: float,
+    ) -> None:
+        global _RECIPE_API_CONSECUTIVE_FAILURES
+        global _RECIPE_API_CIRCUIT_OPEN_UNTIL
+
+        with _RECIPE_API_STATE_LOCK:
+            _RECIPE_API_STATS["failures"] += 1
+            _RECIPE_API_STATS["quota_exhaustions"] += 1
+            _RECIPE_API_CONSECUTIVE_FAILURES += 1
+            _RECIPE_API_CIRCUIT_OPEN_UNTIL = max(
+                _RECIPE_API_CIRCUIT_OPEN_UNTIL,
+                time.monotonic()
+                + max(60.0, recovery_seconds),
+            )
+
+    @staticmethod
     def _begin_request() -> None:
         with _RECIPE_API_STATE_LOCK:
             _RECIPE_API_STATS["requests"] += 1
@@ -231,6 +293,70 @@ class RecipeService:
                 if not isinstance(data, dict):
                     raise ValueError(
                         "공식 레시피 API 응답이 객체가 아닙니다."
+                    )
+
+                result_code, _ = self._provider_result(
+                    data
+                )
+
+                if result_code in {
+                    "ERROR-503",
+                    "INFO-300",
+                    "INFO-320",
+                }:
+                    recovery_seconds = (
+                        self._seconds_until_kst_19()
+                        if result_code == "ERROR-503"
+                        else 60 * 60
+                    )
+                    self._open_quota_circuit(
+                        recovery_seconds
+                    )
+                    logger.error(
+                        "Official recipe API quota exhausted "
+                        "(provider_code=%s).",
+                        result_code,
+                    )
+                    raise OfficialRecipeRequestError(
+                        "식품안전나라 레시피 API 호출 제한에 "
+                        f"도달했습니다. ({result_code})"
+                    )
+
+                if result_code == "INFO-500":
+                    if attempt >= self.REQUEST_MAX_ATTEMPTS:
+                        self._record_request_failure(
+                            circuit_failure=True,
+                        )
+                        raise OfficialRecipeRequestError(
+                            "식품안전나라 레시피 API 인증키가 "
+                            "현재 다른 요청을 처리 중입니다."
+                        )
+
+                    self._record_retry()
+                    logger.warning(
+                        "Official recipe API key is busy; retrying "
+                        "(%s/%s, provider_code=%s).",
+                        attempt,
+                        self.REQUEST_MAX_ATTEMPTS,
+                        result_code,
+                    )
+                    await asyncio.sleep(
+                        self.REQUEST_RETRY_BACKOFF_SECONDS
+                        * (2 ** (attempt - 1))
+                    )
+                    continue
+
+                if result_code not in {
+                    "",
+                    "INFO-000",
+                    "INFO-200",
+                }:
+                    self._record_request_failure(
+                        circuit_failure=False,
+                    )
+                    raise OfficialRecipeRequestError(
+                        "식품안전나라 레시피 API가 오류 코드 "
+                        f"{result_code}로 응답했습니다."
                     )
 
                 self._record_request_success()

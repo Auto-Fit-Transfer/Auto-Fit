@@ -641,15 +641,26 @@ async def process_chat(
         recommendation_data = recommendation.model_dump(
             mode="json"
         )
-        if recommendation.status == "generation_required":
-            return ChatResponse(
-                intent=intent,
-                message=(
+        if recommendation.generation_recommended:
+            if recommendation.courses:
+                message = (
+                    f"{recommendation.resolved_region}에서 "
+                    f"약 {recommendation.target_distance_km:g}km인 "
+                    f"공식 코스 정보 {len(recommendation.courses)}개를 "
+                    "찾았지만 전체 경로 좌표는 제공되지 않았습니다. "
+                    "목록 정보는 확인할 수 있고, 현재 위치를 출발지로 "
+                    "지도에 표시할 순환 코스를 생성할 수 있어요."
+                )
+            else:
+                message = (
                     f"{recommendation.resolved_region}에서 "
                     f"약 {recommendation.target_distance_km:g}km에 맞는 "
                     "공식 코스를 찾지 못했습니다. 현재 위치를 "
                     "출발지로 순환 코스를 생성할 수 있어요."
-                ),
+                )
+            return ChatResponse(
+                intent=intent,
+                message=message,
                 action="running_generation_required",
                 action_status="completed",
                 data=recommendation_data,

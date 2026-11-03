@@ -232,6 +232,34 @@ class RetryClient:
         self.closed = True
 
 
+class ProviderResultClient:
+    def __init__(
+        self,
+        result_codes: list[str],
+    ) -> None:
+        self.result_codes = list(result_codes)
+        self.call_count = 0
+
+    async def get(self, url: str) -> httpx.Response:
+        code = self.result_codes[
+            min(self.call_count, len(self.result_codes) - 1)
+        ]
+        self.call_count += 1
+        return httpx.Response(
+            200,
+            request=httpx.Request("GET", url),
+            json={
+                "COOKRCP01": {
+                    "RESULT": {
+                        "CODE": code,
+                        "MSG": "deterministic provider result",
+                    },
+                    "row": [],
+                }
+            },
+        )
+
+
 async def test_official_api_retry() -> None:
     RecipeService.reset_operational_state()
     client = RetryClient()
@@ -256,6 +284,71 @@ async def test_official_api_retry() -> None:
 
     if stats["retries"] != 2 or stats["successes"] != 1:
         raise RuntimeError(f"공식 API 통계가 잘못되었습니다: {stats}")
+
+
+async def test_provider_busy_result_retries() -> None:
+    RecipeService.reset_operational_state()
+    client = ProviderResultClient(
+        ["INFO-500", "INFO-000"]
+    )
+    service = RecipeService(client=client)
+    service.REQUEST_RETRY_BACKOFF_SECONDS = 0
+
+    await service._request_json(
+        "https://example.test/recipe"
+    )
+    stats = RecipeService.get_operational_stats()
+
+    if client.call_count != 2:
+        raise RuntimeError(
+            "공급자 INFO-500 응답이 재시도되지 않았습니다."
+        )
+
+    if stats["retries"] != 1 or stats["successes"] != 1:
+        raise RuntimeError(
+            f"공급자 재시도 통계가 잘못되었습니다: {stats}"
+        )
+
+
+async def test_provider_quota_opens_circuit_immediately() -> None:
+    RecipeService.reset_operational_state()
+    client = ProviderResultClient(
+        ["ERROR-503"]
+    )
+    service = RecipeService(client=client)
+
+    try:
+        await service._request_json(
+            "https://example.test/recipe"
+        )
+    except OfficialRecipeRequestError:
+        pass
+    else:
+        raise RuntimeError(
+            "공급자 호출 제한이 정상 응답으로 처리되었습니다."
+        )
+
+    try:
+        await service._request_json(
+            "https://example.test/recipe"
+        )
+    except OfficialRecipeCircuitOpenError:
+        pass
+    else:
+        raise RuntimeError(
+            "공급자 호출 제한 circuit가 후속 요청을 차단하지 못했습니다."
+        )
+
+    stats = RecipeService.get_operational_stats()
+    if (
+        client.call_count != 1
+        or stats["quota_exhaustions"] != 1
+        or stats["circuit_rejections"] != 1
+        or not stats["circuit_open"]
+    ):
+        raise RuntimeError(
+            f"공급자 호출 제한 통계가 잘못되었습니다: {stats}"
+        )
 
 
 async def test_official_api_uses_https_and_redacts_key() -> None:
@@ -357,8 +450,10 @@ async def main() -> None:
     await test_cache_ttl_and_size_limit()
     await test_official_failure_uses_llm_fallback()
     await test_official_api_retry()
+    await test_provider_busy_result_retries()
     await test_official_api_uses_https_and_redacts_key()
     await test_official_api_circuit_breaker()
+    await test_provider_quota_opens_circuit_immediately()
     print("Meal Recipe 복원력 테스트: OK")
 
 

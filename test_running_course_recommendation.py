@@ -172,6 +172,9 @@ async def run_async_tests() -> None:
     assert response.courses[0].estimated_duration_minutes == 31.2
     assert response.courses[0].requires_route_validation is True
     assert response.courses[0].source.source_type == "official_metadata"
+    assert response.generation_recommended is True
+    assert response.message is not None
+    assert "full-route geometry" in response.message
 
     gwangju = make_course(
         course_id="gwangju-donggu",

@@ -21,7 +21,7 @@ def main() -> None:
     examples = json.loads(
         EXAMPLES_PATH.read_text(encoding="utf-8")
     )
-    assert examples["contract_version"] == "1.3"
+    assert examples["contract_version"] == "1.4"
     assert set(examples) == {
         "contract_version",
         "place_search",
@@ -52,6 +52,7 @@ def main() -> None:
     assert official_request.current_location() is not None
     assert official_response.status == "matched"
     assert official_response.courses
+    assert official_response.generation_recommended is True
     assert all(
         course.source.source_type == "official_metadata"
         and course.requires_route_validation

@@ -93,6 +93,16 @@ _DIET_LLM_RESILIENCE_STATS = {
     "replacement_fallbacks": 0,
     "timeouts": 0,
     "errors": 0,
+    "openai_requests": 0,
+    "completed_responses": 0,
+    "incomplete_responses": 0,
+    "unparsed_responses": 0,
+    "usage_missing": 0,
+    "input_tokens": 0,
+    "cached_input_tokens": 0,
+    "output_tokens": 0,
+    "reasoning_tokens": 0,
+    "total_tokens": 0,
 }
 
 
@@ -114,16 +124,169 @@ def get_diet_llm_cache_stats() -> dict[str, Any]:
 
 def _increment_diet_llm_resilience_metric(
     metric_name: str,
+    amount: int = 1,
 ) -> None:
     with _DIET_LLM_STATE_LOCK:
-        _DIET_LLM_RESILIENCE_STATS[metric_name] += 1
+        _DIET_LLM_RESILIENCE_STATS[metric_name] += amount
 
 
 def get_diet_llm_resilience_stats() -> dict[str, int]:
-    """Diet OpenAI 장애 시 사용한 fallback 횟수를 반환한다."""
+    """Diet OpenAI fallback과 토큰 사용량을 반환한다."""
 
     with _DIET_LLM_STATE_LOCK:
         return dict(_DIET_LLM_RESILIENCE_STATS)
+
+
+def _diet_response_value(
+    value: Any,
+    *path: str,
+) -> Any:
+    """OpenAI SDK 객체와 테스트 dict에서 안전하게 값을 읽는다."""
+
+    current = value
+
+    for name in path:
+        if current is None:
+            return None
+
+        if isinstance(current, dict):
+            current = current.get(name)
+        else:
+            current = getattr(current, name, None)
+
+    return current
+
+
+def _diet_nonnegative_int(value: Any) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _record_diet_openai_response(
+    response: Any,
+    *,
+    operation: str,
+) -> None:
+    """민감한 입력·출력 원문 없이 응답 상태와 사용량만 기록한다."""
+
+    raw_status = _diet_response_value(
+        response,
+        "status",
+    )
+    status = (
+        str(getattr(raw_status, "value", raw_status))
+        if raw_status is not None
+        else None
+    )
+
+    raw_incomplete_reason = _diet_response_value(
+        response,
+        "incomplete_details",
+        "reason",
+    )
+    incomplete_reason = (
+        str(
+            getattr(
+                raw_incomplete_reason,
+                "value",
+                raw_incomplete_reason,
+            )
+        )
+        if raw_incomplete_reason is not None
+        else None
+    )
+
+    if status == "completed":
+        _increment_diet_llm_resilience_metric(
+            "completed_responses"
+        )
+    elif status == "incomplete":
+        _increment_diet_llm_resilience_metric(
+            "incomplete_responses"
+        )
+
+    usage = _diet_response_value(
+        response,
+        "usage",
+    )
+
+    if usage is None:
+        _increment_diet_llm_resilience_metric(
+            "usage_missing"
+        )
+        input_tokens = None
+        cached_input_tokens = None
+        output_tokens = None
+        reasoning_tokens = None
+        total_tokens = None
+    else:
+        input_tokens = _diet_nonnegative_int(
+            _diet_response_value(
+                usage,
+                "input_tokens",
+            )
+        )
+        cached_input_tokens = _diet_nonnegative_int(
+            _diet_response_value(
+                usage,
+                "input_tokens_details",
+                "cached_tokens",
+            )
+        )
+        output_tokens = _diet_nonnegative_int(
+            _diet_response_value(
+                usage,
+                "output_tokens",
+            )
+        )
+        reasoning_tokens = _diet_nonnegative_int(
+            _diet_response_value(
+                usage,
+                "output_tokens_details",
+                "reasoning_tokens",
+            )
+        )
+        total_tokens = _diet_nonnegative_int(
+            _diet_response_value(
+                usage,
+                "total_tokens",
+            )
+        )
+
+        for metric_name, amount in (
+            ("input_tokens", input_tokens),
+            ("cached_input_tokens", cached_input_tokens),
+            ("output_tokens", output_tokens),
+            ("reasoning_tokens", reasoning_tokens),
+            ("total_tokens", total_tokens),
+        ):
+            _increment_diet_llm_resilience_metric(
+                metric_name,
+                amount,
+            )
+
+    logger.info(
+        "Diet OpenAI usage operation=%s status=%s "
+        "incomplete_reason=%s input_tokens=%s "
+        "cached_input_tokens=%s output_tokens=%s "
+        "reasoning_tokens=%s total_tokens=%s",
+        operation,
+        status,
+        incomplete_reason,
+        input_tokens,
+        cached_input_tokens,
+        output_tokens,
+        reasoning_tokens,
+        total_tokens,
+    )
+
+    if status == "incomplete":
+        raise RuntimeError(
+            "Diet OpenAI response is incomplete: "
+            f"{incomplete_reason or 'unknown'}"
+        )
 
 
 def _build_diet_llm_cache_key(
@@ -4631,6 +4794,9 @@ Structured Output Schema를 정확히 따른다.
     )
 
     async def request_openai() -> Any:
+        _increment_diet_llm_resilience_metric(
+            "openai_requests"
+        )
         response = await client.responses.parse(
             model=model,
             instructions=instructions,
@@ -4645,8 +4811,15 @@ Structured Output Schema를 정확히 따른다.
                 max_output_tokens
             ),
         )
+        _record_diet_openai_response(
+            response,
+            operation="weekly_narrative",
+        )
         result = response.output_parsed
         if result is None:
+            _increment_diet_llm_resilience_metric(
+                "unparsed_responses"
+            )
             raise RuntimeError("Partial diet output is empty")
         return result
 
@@ -4960,6 +5133,9 @@ Structured Output Schema를 정확히 따른다.
     )
 
     async def request_openai() -> Any:
+        _increment_diet_llm_resilience_metric(
+            "openai_requests"
+        )
         response = await client.responses.parse(
             model=model,
             instructions=instructions,
@@ -4974,8 +5150,15 @@ Structured Output Schema를 정확히 따른다.
                 METADATA_MAX_OUTPUT_TOKENS
             ),
         )
+        _record_diet_openai_response(
+            response,
+            operation="weekly_metadata",
+        )
         result = response.output_parsed
         if result is None:
+            _increment_diet_llm_resilience_metric(
+                "unparsed_responses"
+            )
             raise RuntimeError("Diet metadata output is empty")
         return result
 
@@ -6125,6 +6308,9 @@ Structured Output Schema를 정확히 따른다.
     )
 
     async def request_openai() -> Any:
+        _increment_diet_llm_resilience_metric(
+            "openai_requests"
+        )
         response = await client.responses.parse(
             model=(
                 settings.openai_replace_meal_model
@@ -6141,8 +6327,15 @@ Structured Output Schema를 정확히 따른다.
                 REPLACE_MEAL_MAX_OUTPUT_TOKENS
             ),
         )
+        _record_diet_openai_response(
+            response,
+            operation="replacement_narrative",
+        )
         result = response.output_parsed
         if result is None:
+            _increment_diet_llm_resilience_metric(
+                "unparsed_responses"
+            )
             raise RuntimeError("Replacement meal output is empty")
         return result
 

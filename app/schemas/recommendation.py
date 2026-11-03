@@ -1712,7 +1712,7 @@ class DietRecipeIngredient(BaseModel):
     화면 표시용 재료명과 중량(g)만 제공한다.
 
     공식 레시피 원문에서 g 단위를 확인할 수 없는 경우
-    amount_g는 None일 수 있다.
+    amount_g는 None일 수 있다. 확인된 중량은 0보다 커야 한다.
     """
 
     name: str = Field(
@@ -1722,7 +1722,7 @@ class DietRecipeIngredient(BaseModel):
 
     amount_g: float | None = Field(
         default=None,
-        ge=0,
+        gt=0,
         le=100000,
     )
 

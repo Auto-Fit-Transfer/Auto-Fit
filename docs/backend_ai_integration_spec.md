@@ -92,7 +92,7 @@ Content-Type: application/json
 | 2 | `GET /running/courses/{course_id}` | 공식 코스 ID, 사용자 페이스 | 코스 상세와 출발·도착 위치 | Backend 선택 저장 |
 | 2 | `POST /running/routes/preview` | 출발·도착·경유지 좌표, 사용자 페이스 | Kakao 실경로 거리·시간·Polyline | 저장 선택 |
 | 2 | `POST /running/routes/generate-loop` | 출발 좌표, 거리 옵션, 페이스, 후보 수, seed | Kakao 기반 순환 코스 후보와 실제 거리·오차·Polyline | Backend 선택 저장 |
-| 호환 | `POST /chat` | 기존 `question`, `user_info`, `chat_history` | 일반 답변과 model 이름 | Backend 선택 |
+| 호환 | `POST /chat` | 기존 `question`, `user_info`, `chat_history` | 일반 답변, model 이름, 선택적 token usage | Backend 선택 |
 
 `POST /chat/intent-test`, `POST /analysis/debug-inputs`, RAG debug endpoint는 개발용이며 Backend 운영 기능에서 호출하지 않는다.
 
@@ -393,6 +393,8 @@ Backend는 응답의 `day`와 `meal_type`이 요청 대상과 같은지 확인�
 목표 대비 비율을 표시하려면 `daily_nutrition_target`도 함께 전달한다.
 
 정상 exact/similar, LLM fallback, 제한 식품 충돌, unavailable의 전체 응답은 [Recipe API examples](recipe_api_contract_examples.json)를 사용한다.
+
+Backend 구현용 전체 필드·nullable·오류 처리 계약은 [Diet Recipe Backend 전송값 계약](diet_recipe_backend_payload_contract.md)을 사용한다.
 
 ## Chat 요청과 상태 보존
 

@@ -689,6 +689,34 @@ async def recommend_running_courses(
         )
         selected = summaries[: request.limit]
         matched = bool(selected)
+        has_map_ready_course = any(
+            not course.requires_route_validation
+            for course in selected
+        )
+        generation_recommended = not has_map_ready_course
+
+        message = None
+        if matched and generation_recommended:
+            message = (
+                "Official metadata courses matched, but none includes "
+                "validated full-route geometry. Keep the metadata cards "
+                "visible and offer loop generation from the user's start "
+                "point for a map-ready route."
+            )
+        elif not matched:
+            message = (
+                "No official course matched the requested region and "
+                "distance range"
+                + (
+                    " within "
+                    f"{settings.running_course_gps_radius_km:g} km "
+                    "of the user's current GPS location"
+                    if current_location is not None
+                    else ""
+                )
+                + ". Generate a route from the user's "
+                "selected start point instead."
+            )
 
         return RunningCourseRecommendationResponse(
             status=("matched" if matched else "generation_required"),
@@ -698,24 +726,8 @@ async def recommend_running_courses(
             distance_max_km=round(maximum_km, 3),
             courses=selected,
             data_sources=data_sources,
-            generation_recommended=not matched,
-            message=(
-                None
-                if matched
-                else (
-                    "No official course matched the requested region and "
-                    "distance range"
-                    + (
-                        " within "
-                        f"{settings.running_course_gps_radius_km:g} km "
-                        "of the user's current GPS location"
-                        if current_location is not None
-                        else ""
-                    )
-                    + ". Generate a route from the user's "
-                    "selected start point instead."
-                )
-            ),
+            generation_recommended=generation_recommended,
+            message=message,
         )
 
 
@@ -828,9 +840,9 @@ async def recommend_running_session(
             pace_source_override=pace_source,
         )
         status = (
-            "course_candidates"
-            if course_recommendation.status == "matched"
-            else "generation_required"
+            "generation_required"
+            if course_recommendation.generation_recommended
+            else "course_candidates"
         )
 
     return RunningSessionRecommendationResponse(

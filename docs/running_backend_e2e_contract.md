@@ -182,6 +182,8 @@ GPS 좌표가 포함된 추천은 코스 출발지가 사용자 위치에서 직
 
 `requires_route_validation=true`인 코스를 실제 경로가 검증된 것처럼 표시하지 않는다.
 
+`status=matched`라도 선택된 후보가 모두 `requires_route_validation=true`이면 AI Server는 `generation_recommended=true`와 안내 `message`를 반환한다. 이때 목록 카드를 숨기지 말고 `상세 경로 좌표 미제공` 상태로 표시한 뒤, GPS 출발점이 있으면 자동 순환 코스 생성을 제안한다.
+
 ### 6.3 `status=generation_required`
 
 ```json
@@ -194,6 +196,8 @@ GPS 좌표가 포함된 추천은 코스 출발지가 사용자 위치에서 직
 
 HTTP 오류가 아니다. Backend는 동일한 사용자 거리와 출발 좌표로 `POST /running/routes/generate-loop`를 호출한다.
 
+`generation_recommended=true`는 `courses=[]`일 때뿐 아니라 공식 메타데이터 후보는 있으나 지도용 전체 경로가 없을 때도 반환될 수 있다. 따라서 Backend는 `status`와 별도로 이 값을 확인해야 한다.
+
 ### 6.4 데이터 공급자 상태
 
 `data_sources`의 각 항목은 다음 상태를 사용한다.
@@ -205,6 +209,13 @@ HTTP 오류가 아니다. Backend는 동일한 사용자 거리와 출발 좌표
 두루누비가 `disabled` 또는 `unavailable`이어도 전국길 메타데이터 추천이 정상이라면 전체 요청은 성공할 수 있다.
 
 단, `official_gpx=disabled`인 경우 `official_metadata` 코스는 전체 공식 Polyline을 제공하지 않으며 상세 `path=[]`이 될 수 있다. 목록·거리·설명 추천은 정상이지만 지도 경로 표시는 별도 검증이 필요하다.
+
+광주 5km처럼 메타데이터 후보만 존재하는 경우 권장 화면은 다음과 같다.
+
+1. 코스 이름·지역·거리·예상 시간·난이도·설명·경유지 이름은 카드로 표시한다.
+2. 지도 영역에는 빈 Polyline 대신 `상세 경로 좌표 미제공` 안내를 표시한다.
+3. GPS가 있으면 `현재 위치에서 같은 거리 코스 만들기` 버튼으로 `/running/routes/generate-loop`를 호출한다.
+4. 생성 결과는 `source_type=auto_generated`로 구분하고 공식 코스 경로라고 표현하지 않는다.
 
 ## 7. 공식 코스 상세
 

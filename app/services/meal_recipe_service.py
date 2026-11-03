@@ -48,6 +48,7 @@ _RECIPE_PIPELINE_STATS = {
     "llm_failures": 0,
     "llm_unparsed_responses": 0,
     "llm_safety_rejections": 0,
+    "llm_quality_rejections": 0,
 }
 
 
@@ -72,7 +73,7 @@ class GeneratedRecipeIngredient(BaseModel):
 
     amount_g: float | None = Field(
         default=None,
-        ge=0,
+        gt=0,
         le=100000,
     )
 
@@ -157,6 +158,45 @@ class MealRecipeService:
     ALLOWED_OFFICIAL_SIMILAR_SUFFIXES = frozenset({
         "무침",
     })
+    READY_TO_SERVE_FOOD_SUFFIXES = (
+        "요거트",
+        "요구르트",
+        "우유",
+        "두유",
+        "치즈",
+    )
+    RECIPE_EQUIPMENT_TERMS = frozenset({
+        "가위",
+        "거품기",
+        "계량스푼",
+        "국자",
+        "그릇",
+        "냄비",
+        "도마",
+        "면보",
+        "믹서",
+        "믹싱볼",
+        "블렌더",
+        "숟가락",
+        "오븐",
+        "용기",
+        "전자레인지",
+        "젓가락",
+        "주걱",
+        "채반",
+        "체",
+        "칼",
+        "프라이팬",
+    })
+    READY_TO_SERVE_MANUFACTURING_TERMS = (
+        "발효",
+        "숙성",
+        "응고",
+        "유산균",
+        "유청",
+        "우유를데",
+        "면보",
+    )
     RECIPE_CACHE_TTL_SECONDS = 30 * 60
     RECIPE_CACHE_MAX_ENTRIES = 512
 
@@ -622,6 +662,8 @@ class MealRecipeService:
                         amount_g,
                         2,
                     )
+                    if amount_g <= 0:
+                        amount_g = None
                 except (
                     TypeError,
                     ValueError,
@@ -1615,6 +1657,95 @@ class MealRecipeService:
             )
         )
 
+    @classmethod
+    def _ready_to_serve_food_marker(
+        cls,
+        food_name: str,
+    ) -> str | None:
+        """Return the ready-to-serve food suffix that must stay in the recipe."""
+
+        normalized = cls.normalize_for_compare(
+            food_name
+        )
+        return next(
+            (
+                suffix
+                for suffix in cls.READY_TO_SERVE_FOOD_SUFFIXES
+                if normalized.endswith(suffix)
+            ),
+            None,
+        )
+
+    @classmethod
+    def _is_recipe_equipment(
+        cls,
+        ingredient_name: str,
+    ) -> bool:
+        components = re.split(
+            r"\s*(?:또는|및|/|,|·|\+)\s*|\s+(?:과|와)\s+",
+            str(ingredient_name).strip(),
+        )
+        return any(
+            cls.normalize_for_compare(component)
+            in cls.RECIPE_EQUIPMENT_TERMS
+            for component in components
+            if component.strip()
+        )
+
+    def validate_generated_recipe_quality(
+        self,
+        generated: GeneratedRecipeResponse,
+        food_name: str,
+    ) -> list[str]:
+        """Reject non-food ingredients and manufacturing-style ready food recipes."""
+
+        issues: list[str] = []
+
+        if not generated.ingredients:
+            issues.append("재료 목록이 비어 있음")
+
+        if not generated.steps:
+            issues.append("조리 단계가 비어 있음")
+
+        if any(
+            self._is_recipe_equipment(ingredient.name)
+            for ingredient in generated.ingredients
+        ):
+            issues.append("조리 도구가 재료 목록에 포함됨")
+
+        ready_food_marker = self._ready_to_serve_food_marker(
+            food_name
+        )
+        if ready_food_marker is None:
+            return issues
+
+        ingredient_names = [
+            self.normalize_for_compare(ingredient.name)
+            for ingredient in generated.ingredients
+        ]
+        if not any(
+            ready_food_marker in ingredient_name
+            for ingredient_name in ingredient_names
+        ):
+            issues.append("완제품 식품 자체가 재료 목록에 없음")
+
+        if len(generated.steps) > 4:
+            issues.append("완제품 식품의 준비 단계가 지나치게 많음")
+
+        normalized_steps = self.normalize_for_compare(
+            " ".join(
+                step.instruction
+                for step in generated.steps
+            )
+        )
+        if any(
+            term in normalized_steps
+            for term in self.READY_TO_SERVE_MANUFACTURING_TERMS
+        ):
+            issues.append("완제품 식품을 직접 제조하는 과정이 포함됨")
+
+        return issues
+
     # ==================================================
     # 공식 레시피가 없을 경우
     # 사용자 제한조건을 반영해 LLM 레시피 생성
@@ -1672,11 +1803,34 @@ class MealRecipeService:
             )
         )
 
+        ready_to_serve_marker = (
+            self._ready_to_serve_food_marker(
+                food_name
+            )
+        )
+        ready_to_serve_instruction = ""
+        step_count_rule = (
+            "13. 조리 단계는 3~8단계로 작성한다."
+        )
+        if ready_to_serve_marker is not None:
+            ready_to_serve_instruction = f"""
+[완제품 식품 준비 원칙]
+
+이 음식은 이미 완성된 상태로 섭취하는 시판 또는 즉석 식품으로 취급한다.
+{ready_to_serve_marker}를 우유 등 원재료부터 발효·응고·숙성해 직접 제조하지 않는다.
+그릇에 담거나 포장을 열어 제공하는 간단한 섭취 방법만 안내한다.
+음식명과 영양정보에 없는 토핑이나 다른 식품을 임의로 추가하지 않는다.
+"""
+            step_count_rule = (
+                "13. 준비 단계는 1~4단계로 간단하게 작성한다."
+            )
+
         # ==================================================
         # 안전성을 위해 최대 2회 생성 시도
         # ==================================================
 
         previous_violations: list[str] = []
+        previous_quality_issues: list[str] = []
 
         for attempt in range(
             1,
@@ -1695,6 +1849,16 @@ class MealRecipeService:
 
 이번에는 해당 재료 및 파생 재료를
 절대 포함하지 않는다.
+"""
+
+            if previous_quality_issues:
+                retry_instruction += f"""
+이전 생성 결과에서 아래 품질 문제가 발견되었다.
+
+품질 문제:
+{", ".join(previous_quality_issues)}
+
+이번에는 같은 문제가 발생하지 않도록 조리법을 수정한다.
 """
 
             prompt = f"""
@@ -1736,6 +1900,8 @@ class MealRecipeService:
 
 {normalized_disliked}
 
+{ready_to_serve_instruction}
+
 [필수 규칙]
 
 1. 사용자 알레르기 재료를 절대 포함하지 않는다.
@@ -1758,16 +1924,17 @@ class MealRecipeService:
 
 8. 재료는 최대 12개 정도로 작성한다.
 
-9. 각 재료는 name과 amount_g를 반드시 제공한다.
+9. 각 재료는 name과 amount_g 필드를 반드시 제공한다.
 
 10. amount_g는 해당 추천 제공량을 조리하기 위한 입력 재료의
-    현실적인 중량(g)으로 작성한다.
+    현실적인 중량(g)으로 작성한다. 값이 있으면 반드시 0보다 커야 하며,
+    질량을 합리적으로 정할 수 없으면 null로 두고 0g을 사용하지 않는다.
 
 11. '1개', '1큰술', '약간' 같은 단위 대신 가능한 한 g으로 작성한다.
 
 12. 재료별 칼로리, 탄수화물, 단백질, 지방은 생성하지 않는다.
 
-13. 조리 단계는 3~8단계로 작성한다.
+{step_count_rule}
 
 14. 각 조리 단계에 현실적인 소요시간(분)과 필요한 경우 조리 팁을 작성한다.
 
@@ -1779,6 +1946,10 @@ class MealRecipeService:
 
 18. 한국 가정에서 이해하기 쉬운
     한국어로 작성한다.
+
+19. 체, 면보, 칼, 도마, 냄비, 프라이팬, 그릇 같은 조리 도구는
+    재료가 아니다. 필요한 도구는 조리 단계에서만 언급하고
+    ingredients에는 절대 포함하지 않는다.
 
 {retry_instruction}
 """
@@ -1882,6 +2053,36 @@ class MealRecipeService:
                     violations
                 )
 
+                continue
+
+            quality_issues = (
+                self.validate_generated_recipe_quality(
+                    generated=generated,
+                    food_name=food_name,
+                )
+            )
+
+            if quality_issues:
+                _increment_recipe_metric(
+                    "llm_quality_rejections"
+                )
+                logger.warning(
+                    "LLM recipe rejected by quality check "
+                    "(attempt %s/2, worker_pid=%s, "
+                    "issue_count=%s, response_id=%s, status=%s, "
+                    "incomplete_details=%s, incomplete_reason=%s, "
+                    "output_tokens=%s, reasoning_tokens=%s).",
+                    attempt,
+                    os.getpid(),
+                    len(quality_issues),
+                    diagnostics["response_id"],
+                    diagnostics["status"],
+                    diagnostics["incomplete_details"],
+                    diagnostics["incomplete_reason"],
+                    diagnostics["output_tokens"],
+                    diagnostics["reasoning_tokens"],
+                )
+                previous_quality_issues = quality_issues
                 continue
 
             return {

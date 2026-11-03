@@ -360,6 +360,32 @@ class BackendChatRequest(BaseModel):
     )
 
 
+class BackendChatTokenUsage(BaseModel):
+    """OpenAI Responses API가 반환한 요청 단위 토큰 사용량."""
+
+    input_tokens: int = Field(
+        ge=0,
+    )
+
+    cached_input_tokens: int = Field(
+        default=0,
+        ge=0,
+    )
+
+    output_tokens: int = Field(
+        ge=0,
+    )
+
+    reasoning_tokens: int = Field(
+        default=0,
+        ge=0,
+    )
+
+    total_tokens: int = Field(
+        ge=0,
+    )
+
+
 class BackendChatResponse(BaseModel):
     """
     기존 Backend가 기대하는 응답 계약.
@@ -368,3 +394,6 @@ class BackendChatResponse(BaseModel):
     answer: str
 
     model: str
+
+    # 기존 answer/model 계약을 유지하면서 관측 가능한 경우에만 제공한다.
+    usage: BackendChatTokenUsage | None = None

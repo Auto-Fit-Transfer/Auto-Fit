@@ -23,7 +23,7 @@ Content-Type: application/json
 
 ## Legacy chat contract
 
-`POST /chat`은 `question`, `user_info`, `chat_history`를 받으며 `answer`, `model`을 반환한다. `user_info`는 계약 호환을 위해 수신하지만 현재 개인화 계산에는 사용하지 않는다.
+`POST /chat`은 `question`, `user_info`, `chat_history`를 받으며 `answer`, `model`과 OpenAI가 사용량을 제공한 경우 선택 필드 `usage`를 반환한다. `user_info`는 계약 호환을 위해 수신하지만 현재 개인화 계산에는 사용하지 않는다.
 
 ```json
 {
@@ -39,6 +39,24 @@ Content-Type: application/json
 ```
 
 `chat_history.role`은 `user` 또는 `assistant`만 허용한다. history는 최대 20개이며 각 메시지는 최대 2,000자다. OpenAI 오류, 빈 응답 또는 timeout이 발생하면 HTTP 500 대신 안전한 fallback 문장을 반환한다.
+
+성공 응답 예시는 다음과 같다. `usage`를 얻지 못했거나 OpenAI 호출 전 fallback이 발생한 경우 해당 필드는 생략될 수 있다.
+
+```json
+{
+  "answer": "저장된 정보 범위에서 운동 방향을 안내합니다.",
+  "model": "configured-openai-model",
+  "usage": {
+    "input_tokens": 120,
+    "cached_input_tokens": 20,
+    "output_tokens": 80,
+    "reasoning_tokens": 30,
+    "total_tokens": 200
+  }
+}
+```
+
+`usage`는 요청 단위 관측값이며 최종 청구 금액 자체가 아니다. Backend는 이 필드를 선택 필드로 처리한다. 주간 식단 생성에는 이 일반 채팅 endpoint를 사용하지 않는다.
 
 ## Orchestrated chat request
 
@@ -222,9 +240,9 @@ Backend 로직은 사용자 표시용 `message` 문구를 비교하지 않고 `i
 - `courses[].distance_to_user_km`: 좌표가 확인된 코스 출발점까지의 직선거리
 - `courses[].estimated_duration_minutes`: 사용자 페이스 또는 기본 페이스 기준 예상 시간
 - `courses[].geometry_status`: 실제 경로 형상 검증 수준
-- `generation_recommended`: 공식 후보가 없을 때 자동 생성 권장 여부
+- `generation_recommended`: 지도에 표시할 검증 경로 후보가 없을 때 자동 생성 권장 여부. 공식 메타데이터 카드가 있어도 전체 Polyline이 없으면 `true`
 
-공식 코스가 없으면 `running_generation_required`를 반환한다. Frontend가 사용자의 생성 선택을 받은 뒤 같은 GPS 좌표로 “순환 코스를 만들어줘” 요청을 보내야 한다. AI Server가 이 응답만으로 코스를 자동 저장하지 않는다.
+공식 코스가 없거나 공식 메타데이터만 있고 지도용 전체 경로가 없으면 `running_generation_required`를 반환한다. 메타데이터 카드는 숨기지 말고 이름·거리·난이도·설명·경유지 이름을 표시하며, `상세 경로 좌표 미제공` 상태와 자동 생성 버튼을 함께 제공한다. Frontend가 사용자의 생성 선택을 받은 뒤 같은 GPS 좌표로 “순환 코스를 만들어줘” 요청을 보내야 한다. AI Server가 이 응답만으로 코스를 자동 저장하지 않는다.
 
 ## GPS-based loop generation
 

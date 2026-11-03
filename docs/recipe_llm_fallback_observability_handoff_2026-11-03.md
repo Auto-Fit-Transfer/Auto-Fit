@@ -103,9 +103,19 @@ max_output_tokens=1200
 |---|---|
 | `llm_unparsed_responses` | OpenAI 응답은 왔지만 `output_parsed`가 `None`인 횟수 |
 | `llm_safety_rejections` | 파싱된 Recipe가 알레르기·기피 음식 안전검사에서 거부된 횟수 |
+| `llm_quality_rejections` | 파싱된 Recipe에 조리 도구 재료, 완제품 직접 제조, 빈 재료·단계 같은 품질 문제가 있어 거부된 횟수 |
 | `llm_failures` | OpenAI 호출 또는 응답 검증 중 예외가 발생한 횟수 |
 | `item_failures` | 음식 또는 식사 Recipe enrichment의 바깥 단계에서 예외가 발생한 횟수 |
 | `official_api_fallbacks` | 공식 Recipe 조회 예외로 LLM fallback을 사용한 횟수 |
+
+`ingredients[].amount_g`는 확인된 값이면 반드시 `> 0`이며, 원본 단위를
+합리적으로 g으로 정할 수 없으면 `null`이다. `0g`은 유효한 재료량으로
+전송하지 않는다.
+
+공식 API의 `quota_exhaustions`는 HTTP 200 응답 안에서 `ERROR-503`,
+`INFO-300`, `INFO-320` 호출 제한 코드를 받은 횟수다. `ERROR-503`이면
+해당 워커의 공식 Recipe circuit를 한국시간 19시까지 열어 제한 초과 요청을
+반복하지 않으며, `INFO-300`·`INFO-320`은 1시간 동안 차단한다.
 
 모든 값은 누적 횟수이며 Recipe 생성 1건에서 최대 2회까지 LLM을 재시도하므로,
 한 음식 때문에 미파싱 또는 안전거부 지표가 `2` 증가할 수 있다.
@@ -125,10 +135,12 @@ max_output_tokens=1200
     "cache": {
       "llm_unparsed_responses": 0,
       "llm_safety_rejections": 0,
+      "llm_quality_rejections": 0,
       "llm_failures": 0,
       "item_failures": 0
     },
     "official_recipe_api": {
+      "quota_exhaustions": 0,
       "circuit_open": false
     }
   }
@@ -271,6 +283,7 @@ Recipe enrichment failed
 |---|---|---|
 | `llm_unparsed_responses` 증가 + `incomplete_reason=max_output_tokens` | 출력 한도 내 Structured Output 완성 실패 | `reasoning_tokens` 확인 후 토큰 한도 조정 검토 |
 | `llm_safety_rejections` 증가 | Recipe는 생성됐으나 안전 정책 위반 | 요청 제한조건과 `restriction_matches` 대조; 안전검사는 완화하지 않음 |
+| `llm_quality_rejections` 증가 | Recipe는 파싱됐으나 도구가 재료에 포함되거나 완제품 제조 과정 등이 생성됨 | `LLM recipe rejected by quality check` 로그의 시각·워커·횟수를 확인하고 동일 요청의 재시도 결과 확인 |
 | `llm_failures` 증가 | SDK, 네트워크, 모델, 응답 검증 등의 예외 | 같은 PID의 traceback과 OpenAI 상태 확인 |
 | `item_failures` 증가 | Recipe item 또는 meal enrichment 예외 | 같은 시각의 `Recipe enrichment failed` traceback 확인 |
 | `official_api_fallbacks` 증가 | 공식 Recipe API 예외 후 LLM으로 전환 | 식품안전나라 키·응답·circuit 상태 확인 |

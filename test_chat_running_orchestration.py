@@ -121,11 +121,12 @@ async def test_running_recommendation_reuses_running_service(
     assert request.limit == 3
 
     assert result.intent == "running_recommend_request"
-    assert result.action == "running_courses_recommended"
+    assert result.action == "running_generation_required"
     assert result.action_status == "completed"
     assert result.requires_backend_apply is False
     assert result.data is not None
     assert result.data["status"] == "matched"
+    assert result.data["generation_recommended"] is True
     assert len(result.data["courses"]) > 0
 
 

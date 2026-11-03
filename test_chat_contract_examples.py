@@ -257,12 +257,13 @@ async def _run_all() -> None:
         examples["running_gps_recommendation"]["response"]
     )
     assert running_recommendation.action == (
-        "running_courses_recommended"
+        "running_generation_required"
     )
     assert running_recommendation.requires_backend_apply is False
     RunningCourseRecommendationResponse.model_validate(
         running_recommendation.data
     )
+    assert running_recommendation.data["generation_recommended"] is True
 
     running_generation = ChatResponse.model_validate(
         examples["running_gps_loop_generation"]["response"]

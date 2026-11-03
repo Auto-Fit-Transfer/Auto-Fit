@@ -890,3 +890,35 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - 남은 작업: 실제 식품안전나라 API 회귀 호출은 실행 권한 미승인으로 미수행; 배포 환경에서 최소 호출 검증 필요
 - 알려진 제한: 현재 검증된 유사 표현은 나물 복합 음식의 `무침` 접미사로 제한하며 새 유사 규칙은 실제 사례와 회귀 테스트를 추가한 뒤 확장
 - Backend 상세 인계: [backend_official_recipe_matching_followup_2026-11-03.md](backend_official_recipe_matching_followup_2026-11-03.md)
+
+## 2026-11-03 · LLM 완제품 Recipe 품질·러닝 경로 부재 전이 보정
+
+- 상태: 로컬 구현·결정론적 검증 완료, 배포 대기
+- 관련 커밋: 미커밋
+- 변경 목적: 그릭요거트 같은 완제품을 원재료부터 제조하고 도구를 0g 재료로 반환하는 문제, 식품안전나라 HTTP 200 내부 호출 제한 코드를 성공으로 집계하는 문제, 공식 러닝 메타데이터만 있을 때 지도 경로 생성 필요성이 숨겨지는 문제 보정
+- 변경 API: `GET /health/recipe`에 `llm_quality_rejections`, 공식 API `quota_exhaustions` 지표 추가; 러닝 추천의 기존 `generation_recommended` 의미를 지도 표시 가능한 검증 경로 기준으로 명확화
+- 변경 파일: `app/services/meal_recipe_service.py`, `app/services/recipe_service.py`, `app/schemas/recommendation.py`, `app/services/running_route_service.py`, `app/services/chat_orchestrator_service.py`, `docs/ai-openapi.json`, Recipe·러닝·챗봇 테스트 및 기존 계약 문서
+- 기존 동작 영향: Recipe `official_exact → official_similar → llm_generated → unavailable`, 최대 2회 생성, 알레르기·기피 음식 안전검사, 러닝 거리·지역·GPS 3km 정책은 유지
+- Frontend 작업: 메타데이터 코스를 숨기지 말고 `상세 경로 좌표 미제공`으로 표시; `generation_recommended=true`이면 GPS 기반 자동 순환 코스 생성 CTA 제공
+- Backend 작업: `status=matched`여도 `generation_recommended`를 별도로 확인; 생성 결과를 `auto_generated`로 저장하고 원본 공식 코스 경로로 표기하지 않음
+- AI·배포 작업: 배포 후 그릭요거트 LLM fallback 1건과 광주 5km 메타데이터-only 응답 확인; `quota_exhaustions` 모니터링; `RUNNING_DURUNUBI_ENABLED` 활성화 및 광주 GPX 커버리지 별도 확인
+- 실행 테스트: 0g 재료 거부, 조리 도구·완제품 제조형 응답 재생성, 품질 지표·로그, 공급자 INFO-500 재시도·ERROR-503 circuit, metadata-only 생성 전이, GPX 후보 회귀, 챗봇·계약 예제
+- 테스트 결과: syntax compile 통과, Recipe 구조·품질 지표·resilience·router cache·Schema·계약 테스트 통과, 러닝·챗봇·OpenAPI·E2E 관련 15개 pytest 통과
+- 남은 작업: 식품안전나라 `ERROR-503` 카운터 초기화 시각·경계 호출 기준 운영기관 확인, Backend/Frontend/AI 모바일 E2E
+- 알려진 제한: 전국길 표준데이터에 원본 경로 좌표가 없으면 AI Server가 공식 Polyline을 복원할 수 없으며, 자동 생성 경로는 공식 원본과 별개임
+
+## 2026-11-03 · Chat·Diet OpenAI 토큰 사용량 관측 보강
+
+- 상태: 로컬 구현·결정론적 검증 완료, 배포 대기
+- 관련 커밋: 미커밋
+- 변경 목적: 일반 `/chat`과 구조화 식단 설명 생성의 실제 input·output·reasoning token 및 incomplete 상태를 원문 로그 없이 확인
+- 변경 API: `POST /chat`에 선택적 `usage` 추가; `GET /health/chat`, `GET /health/diet`에 `worker_pid`와 프로세스 누적 지표 제공
+- 변경 파일: `app/schemas/chat.py`, `app/services/llm_service.py`, `app/routers/chat_router.py`, `app/routers/health_router.py`, `app/services/diet_recommendation_service.py`, Chat·Diet 관측 테스트와 계약 문서
+- 기존 동작 영향: `/chat` 일반 답변 역할과 fallback 문구, Food DB 기반 주간 식단·한 끼 재추천, LLM 설명 전용 정책은 유지
+- Frontend 작업: 없음. AI Server API Key와 usage는 Frontend에 직접 전달하지 않음
+- Backend 작업: `usage`를 선택 필드로 허용하고 식단 생성은 `/chat`이 아닌 `/recommend/diet*`로 전환
+- AI·배포 작업: 모든 워커 재배포 후 `worker_pid`별 `/health/chat`, `/health/diet` 지표 수집
+- 실행 테스트: Chat 응답 usage·fallback·incomplete, Diet completed·incomplete·usage missing, Router·OpenAPI·식단 회귀
+- 테스트 결과: 관련 pytest 16개, Chat resilience·FastAPI integration, Diet fallback·cache/singleflight·item 보존·한 끼 재추천 스크립트 통과
+- 남은 작업: 로컬 서버가 없어 미실행한 live 주간 식단 E2E, Backend 전환 후 기존 88건 재검증과 워커별 운영 사용량 확인
+- 알려진 제한: health 지표는 프로세스 메모리 기반이며 재시작 시 초기화됨. usage는 최종 청구서가 아니라 OpenAI 응답 관측값임

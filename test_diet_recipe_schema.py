@@ -1,4 +1,7 @@
+from pydantic import ValidationError
+
 from app.schemas.recommendation import (
+    DietRecipeIngredient,
     DietRecipeItemResult,
     DietRecipeRequest,
     DietRecipeResponse,
@@ -6,6 +9,18 @@ from app.schemas.recommendation import (
 
 
 def main():
+
+    try:
+        DietRecipeIngredient(
+            name="면보",
+            amount_g=0,
+        )
+    except ValidationError:
+        pass
+    else:
+        raise RuntimeError(
+            "공개 Recipe Schema가 0g 재료를 허용했습니다."
+        )
 
     request = DietRecipeRequest(
         items=[

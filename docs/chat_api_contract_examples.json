@@ -13,7 +13,14 @@
     },
     "response": {
       "answer": "저장된 정보 범위에서 운동 방향을 안내합니다.",
-      "model": "configured-openai-model"
+      "model": "configured-openai-model",
+      "usage": {
+        "input_tokens": 120,
+        "cached_input_tokens": 20,
+        "output_tokens": 80,
+        "reasoning_tokens": 30,
+        "total_tokens": 200
+      }
     }
   },
   "health_question": {
@@ -424,8 +431,8 @@
     },
     "response": {
       "intent": "running_recommend_request",
-      "message": "성남시에서 약 5km인 러닝 코스 1개를 찾았어요.",
-      "action": "running_courses_recommended",
+      "message": "성남시에서 약 5km인 공식 코스 정보 1개를 찾았지만 전체 경로 좌표는 제공되지 않았습니다. 목록 정보는 확인할 수 있고, 현재 위치를 출발지로 지도에 표시할 순환 코스를 생성할 수 있어요.",
+      "action": "running_generation_required",
       "action_status": "completed",
       "requires_backend_apply": false,
       "pending_action": null,
@@ -500,8 +507,8 @@
             "message": "Durunubi GPX enrichment is disabled."
           }
         ],
-        "generation_recommended": false,
-        "message": null
+        "generation_recommended": true,
+        "message": "Official metadata courses matched, but none includes validated full-route geometry. Keep the metadata cards visible and offer loop generation from the user's start point for a map-ready route."
       },
       "sources": []
     }

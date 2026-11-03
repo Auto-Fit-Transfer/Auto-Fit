@@ -75,7 +75,7 @@ async def run_tests() -> None:
         ),
         public_course_service=FakePublicCourseService(),
     )
-    assert outdoor.status == "course_candidates"
+    assert outdoor.status == "generation_required"
     assert outdoor.recommended_intensity == "light"
     assert outdoor.intensity_adjusted is True
     assert outdoor.target_distance_km == 3.727
@@ -86,6 +86,7 @@ async def run_tests() -> None:
     assert outdoor.course_recommendation is not None
     assert outdoor.course_recommendation.courses[0].pace_source == "default"
     assert outdoor.course_recommendation.courses[0].pace_assumed is True
+    assert outdoor.course_recommendation.generation_recommended is True
 
     blood_pressure = await recommend_running_session(
         RunningSessionRecommendationRequest(

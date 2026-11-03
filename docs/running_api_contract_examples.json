@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.3",
+  "contract_version": "1.4",
   "place_search": {
     "request": {
       "query": "판교역",
@@ -100,8 +100,8 @@
           "message": "Durunubi GPX enrichment is disabled."
         }
       ],
-      "generation_recommended": false,
-      "message": null
+      "generation_recommended": true,
+      "message": "Official metadata courses matched, but none includes validated full-route geometry. Keep the metadata cards visible and offer loop generation from the user's start point for a map-ready route."
     }
   },
   "generation_required": {

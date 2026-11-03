@@ -34,6 +34,9 @@
 - GPS 좌표가 포함된 공식 코스 추천은 코스 출발지가 사용자 위치에서 직선거리 3km 이내인 결과만 반환한다. 출발지 좌표를 확인할 수 없거나 3km를 초과하는 코스는 제외한다. 지역명만 전달한 검색에는 이 반경 제한을 적용하지 않는다.
 - `data_sources.official_gpx=disabled`이면 공식 메타데이터 목록 추천은 가능하지만, 해당 코스의 전체 공식 Polyline은 보장하지 않는다. `official_metadata` 상세의 `path=[]`와 `requires_route_validation=true`를 정상 상태로 처리한다.
 - 지도에 공식 전체 경로를 표시하려면 `RUNNING_DURUNUBI_ENABLED=true`로 검증된 GPX를 활성화하거나, 메타데이터 출발·도착·경유지 좌표를 확정한 후 `/running/routes/preview`로 Kakao 보행 경로를 따로 검증한다. 후자는 지자체 원본 코스와 동일하다고 표시하면 안 된다.
+- 공식 메타데이터 후보는 있지만 검증된 전체 경로가 하나도 없으면 `status=matched`, `courses`는 유지하고 `generation_recommended=true`를 반환한다. `matched`만 보고 지도 표시 가능 여부를 판단하지 않는다.
+- Backend/Frontend는 메타데이터 코스를 목록에서 제거하지 않고 이름·지역·거리·난이도·설명·경유지 이름을 표시하며 `상세 경로 좌표 미제공` 배지를 붙인다.
+- 사용자가 지도 경로를 원하고 GPS 출발점이 있으면 같은 목표 거리로 `POST /running/routes/generate-loop`를 호출한다. 생성 결과는 `auto_generated`로 표시하며 원본 지자체 공식 코스의 복원 경로라고 표시하지 않는다.
 
 ## 전달 자료
 
@@ -86,7 +89,7 @@ PUBLIC_DATA_SERVICE_KEY
 2. 인증 헤더 없이 필수 경로가 `401`을 반환하는지 확인한다.
 3. 올바른 Bearer Key로 장소 검색을 실행한다.
 4. `5km` 공식 코스 추천과 상세 조회를 실행한다.
-5. 공식 코스가 없을 때 `generation_required`를 확인한다.
+5. 공식 코스가 없을 때와 메타데이터 코스만 있을 때 각각 `generation_recommended=true`를 확인한다.
 6. 동일 거리와 출발 좌표로 순환 코스를 생성한다.
 7. `matched`, `best_effort`, `unavailable`을 각각 계약대로 처리한다.
 8. Backend가 선택·즐겨찾기·페이스·경로 snapshot을 저장하는지 확인한다.

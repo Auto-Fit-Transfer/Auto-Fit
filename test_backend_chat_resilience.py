@@ -8,7 +8,12 @@ from app.schemas.chat import BackendChatRequest
 
 class SuccessResponses:
     async def create(self, **kwargs):
-        return SimpleNamespace(output_text="  정상 레거시 응답  ")
+        return SimpleNamespace(
+            status="completed",
+            incomplete_details=None,
+            output_text="  정상 레거시 응답  ",
+            usage=None,
+        )
 
 
 class ErrorResponses:
@@ -24,7 +29,12 @@ class SlowResponses:
 
 class EmptyResponses:
     async def create(self, **kwargs):
-        return SimpleNamespace(output_text="  ")
+        return SimpleNamespace(
+            status="completed",
+            incomplete_details=None,
+            output_text="  ",
+            usage=None,
+        )
 
 
 class FakeOpenAI:
@@ -55,28 +65,37 @@ async def _run_all() -> None:
     try:
         FakeOpenAI.responses_factory = SuccessResponses
         success = await service.generate_backend_chat_response(request)
-        assert success == "정상 레거시 응답"
+        assert success.answer == "정상 레거시 응답"
 
         FakeOpenAI.responses_factory = ErrorResponses
         error_fallback = await service.generate_backend_chat_response(request)
-        assert "잠시 후" in error_fallback
+        assert "잠시 후" in error_fallback.answer
 
         settings.chat_openai_timeout_seconds = 0.01
         FakeOpenAI.responses_factory = SlowResponses
         timeout_fallback = await service.generate_backend_chat_response(request)
-        assert "잠시 후" in timeout_fallback
+        assert "잠시 후" in timeout_fallback.answer
 
         settings.chat_openai_timeout_seconds = 1.0
         FakeOpenAI.responses_factory = EmptyResponses
         empty_fallback = await service.generate_backend_chat_response(request)
-        assert "잠시 후" in empty_fallback
+        assert "잠시 후" in empty_fallback.answer
 
         health = await chat_health_check()
         stats = health["backend_chat_resilience"]
         assert stats == {
+            "openai_requests": 4,
+            "successes": 1,
             "fallbacks": 3,
             "timeouts": 1,
             "errors": 2,
+            "incomplete_responses": 0,
+            "usage_missing": 2,
+            "input_tokens": 0,
+            "cached_input_tokens": 0,
+            "output_tokens": 0,
+            "reasoning_tokens": 0,
+            "total_tokens": 0,
         }
     finally:
         service.get_settings = original_settings
