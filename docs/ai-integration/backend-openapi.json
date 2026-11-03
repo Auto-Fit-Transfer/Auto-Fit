@@ -2972,26 +2972,22 @@
         "properties": {
           "calories_kcal": {
             "type": "number",
-            "maximum": 5000.0,
-            "minimum": 1.0,
+            "exclusiveMinimum": 0.0,
             "title": "Calories Kcal"
           },
           "protein_g": {
             "type": "number",
-            "maximum": 1000.0,
-            "minimum": 1.0,
+            "minimum": 0.0,
             "title": "Protein G"
           },
           "fat_g": {
             "type": "number",
-            "maximum": 1000.0,
-            "minimum": 1.0,
+            "minimum": 0.0,
             "title": "Fat G"
           },
           "carbohydrate_g": {
             "type": "number",
-            "maximum": 1000.0,
-            "minimum": 1.0,
+            "minimum": 0.0,
             "title": "Carbohydrate G"
           }
         },
