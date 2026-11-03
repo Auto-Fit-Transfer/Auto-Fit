@@ -8,6 +8,7 @@ def isolate_chat_quota(monkeypatch):
     # Unit tests must not contact a paid model even if the shell enables it.
     monkeypatch.setenv("CHAT_AI_ENABLED", "false")
     monkeypatch.setenv("AI_SERVER_ENABLED", "false")
+    monkeypatch.setenv("EXERCISE_AI_ENABLED", "false")
     monkeypatch.setenv("FOOD_IMAGE_ENABLED", "false")
     monkeypatch.setenv(
         "FOOD_IMAGE_URL",
