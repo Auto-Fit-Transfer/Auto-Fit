@@ -17,6 +17,13 @@ def daily_source_fingerprint(recipe_request: dict) -> str:
                                      ensure_ascii=False).encode()).hexdigest()
 
 
+def has_unavailable_recipe(reply: dict | None) -> bool:
+    return isinstance(reply, dict) and any(
+        item.get("recipe_source") == "unavailable"
+        for item in reply.get("meal", {}).get("items", [])
+    )
+
+
 def daily_recipe_request(context: dict, allergens: list[str]) -> dict:
     try:
         meal = context["meal"]

@@ -122,16 +122,21 @@ def test_daily_recipe_is_generated_saved_reused_and_refreshed(monkeypatch) -> No
             state["unavailable"] = True
             fourth = await main.get_diet_meal_recipe(
                 MEAL_ID, main.AuthenticatedUser(id="owner-123"), TEST_SETTINGS, request)
+            writes_after_failure = state["writes"]
             fifth = await main.get_diet_meal_recipe(
+                MEAL_ID, main.AuthenticatedUser(id="owner-123"), TEST_SETTINGS, request)
+            assert state["writes"] == writes_after_failure == 2
+            state["unavailable"] = False
+            sixth = await main.get_diet_meal_recipe(
                 MEAL_ID, main.AuthenticatedUser(id="owner-123"), TEST_SETTINGS, request)
         assert first == second
         assert third["recipe"]["diet_recipe_snapshot_id"] == "snapshot-1"
         assert fourth == fifth == {"recipe": None}
-        assert state["row"]["ingredients"] == state["row"]["steps"] == []
+        assert sixth["recipe"]["steps"] == ["현미밥: 현미를 씻습니다."]
         assert first["recipe"]["steps"] == ["현미밥: 현미를 씻습니다."]
         assert first["recipe"]["ingredients"] == [{"name": "현미", "amount_g": 100}]
         assert state["row"]["source_fingerprint"] != old_fingerprint
-        assert state["ai_calls"] == state["writes"] == 3
+        assert state["ai_calls"] == 5 and state["writes"] == 3
 
     asyncio.run(run())
 

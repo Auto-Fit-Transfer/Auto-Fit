@@ -39,7 +39,7 @@ from backend.app.chat_persona import ChatCharacterId, apply_chat_persona
 from backend.app.chat_rate_limit import ChatRateLimiter
 from backend.app.http_client import client_scope, SharedHttpClientMiddleware
 from backend.app.diet_timing import DietTimingMiddleware, timed_http_client
-from backend.app.diet_recipe import daily_recipe_request, daily_source_fingerprint, snapshot_fields
+from backend.app.diet_recipe import daily_recipe_request, daily_source_fingerprint, has_unavailable_recipe, snapshot_fields
 from backend.app.diet_ai import (
     DietAIUnavailable,
     conflicts_allergy,
@@ -4021,7 +4021,7 @@ async def get_diet_meal_recipe(
                 f"{settings.supabase_url}/rest/v1/diet_recipe_snapshots",
                 headers=service_headers(settings),
                 params={
-                    "select": "diet_recipe_snapshot_id,diet_meal_id,title,description,servings,prep_minutes,ingredients,steps,generator,created_at,source_fingerprint",
+                    "select": "diet_recipe_snapshot_id,diet_meal_id,title,description,servings,prep_minutes,ingredients,steps,generator,created_at,source_fingerprint,recipe_response",
                     "user_id": f"eq.{user.id}",
                     "diet_meal_id": f"eq.{diet_meal_id}",
                     "limit": "1",
@@ -4038,7 +4038,8 @@ async def get_diet_meal_recipe(
         return rows[0] if rows else None
 
     existing = await read_snapshot()
-    if existing and existing.get("source_fingerprint") == fingerprint:
+    if (existing and existing.get("source_fingerprint") == fingerprint
+            and not has_unavailable_recipe(existing.get("recipe_response"))):
         return {"recipe": _public_diet_recipe(existing)}
 
     ai = get_weekly_ai_client()
@@ -4053,6 +4054,10 @@ async def get_diet_meal_recipe(
         daily_recipe_request(current_context, current_latest["food_allergens"])
     ) != fingerprint:
         raise HTTPException(409, detail="Diet meal changed while generating its recipe")
+
+    # A failed item must remain retryable when recipe generation recovers.
+    if has_unavailable_recipe(reply):
+        return {"recipe": None}
 
     snapshot_data = {
         "source_fingerprint": fingerprint,
@@ -4087,7 +4092,8 @@ async def get_diet_meal_recipe(
         if not isinstance(error, dict) or error.get("code") != "23505":
             raise HTTPException(502, detail="Supabase diet recipe save failed")
         saved = await read_snapshot()
-        if saved and saved.get("source_fingerprint") == fingerprint:
+        if (saved and saved.get("source_fingerprint") == fingerprint
+                and not has_unavailable_recipe(saved.get("recipe_response"))):
             return {"recipe": _public_diet_recipe(saved)}
         raise HTTPException(409, detail="Diet recipe changed while saving")
     try:
@@ -4098,7 +4104,8 @@ async def get_diet_meal_recipe(
         raise HTTPException(502, detail="Invalid diet recipe save response")
     if not saved_rows:
         saved = await read_snapshot()
-        if saved and saved.get("source_fingerprint") == fingerprint:
+        if (saved and saved.get("source_fingerprint") == fingerprint
+                and not has_unavailable_recipe(saved.get("recipe_response"))):
             return {"recipe": _public_diet_recipe(saved)}
         raise HTTPException(409, detail="Diet recipe changed while saving")
     return {"recipe": _public_diet_recipe(saved_rows[0])}

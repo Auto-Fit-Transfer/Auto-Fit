@@ -1,8 +1,11 @@
--- Save the validated AI response for a daily meal, including an unavailable result.
+-- Save a complete validated AI response for a daily meal.
 -- The fingerprint changes when the saved meal or allergy restrictions change.
 alter table public.diet_recipe_snapshots
-  add column recipe_response jsonb,
-  add column source_fingerprint text;
+  add column if not exists recipe_response jsonb,
+  add column if not exists source_fingerprint text;
+
+alter table public.diet_recipe_snapshots
+  drop constraint if exists diet_recipe_snapshots_response_check;
 
 alter table public.diet_recipe_snapshots
   add constraint diet_recipe_snapshots_response_check check (
@@ -12,8 +15,7 @@ alter table public.diet_recipe_snapshots
     source_fingerprint is null or source_fingerprint ~ '^[0-9a-f]{64}$'
   );
 
--- An AI reply may mark every item unavailable. Preserve that result so a
--- subsequent read does not invoke the AI again or invent recipe steps.
+-- Cooking steps can be present even when the AI supplies no structured ingredients.
 alter table public.diet_recipe_snapshots
   drop constraint diet_recipe_snapshots_ingredients_check,
   drop constraint diet_recipe_snapshots_steps_check;
