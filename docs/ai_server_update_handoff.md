@@ -8,13 +8,13 @@
 
 | 항목 | 값 |
 |---|---|
-| 문서 버전 | 1.1 |
+| 문서 버전 | 1.3 |
 | 최초 작성일 | 2026-11-02 |
-| 최종 갱신일 | 2026-11-02 |
+| 최종 갱신일 | 2026-11-03 |
 | 대상 | Frontend, Backend, AI Server, 배포·인프라 담당자 |
 | AI 저장소 | `Auto-Fit-Transfer/Auto-Fit` |
 | AI 브랜치 | `ai` |
-| 원격 AI 기준 커밋 | `d1eae7b0ee0d399ad4ec2241f48813285ecd886e` |
+| 원격 AI 코드 기준 커밋 | `1134328` |
 | 상세 OpenAPI | [ai-openapi.json](ai-openapi.json) |
 | Backend 연동 명세 | [backend_ai_integration_spec.md](backend_ai_integration_spec.md) |
 
@@ -856,3 +856,37 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - 남은 작업: Backend Recipe proxy 구현·DTO 확장, Frontend 공통 상세 화면 연결, Frontend → Backend → AI Server E2E
 - 알려진 제한: 공식 원본에 조리시간이 없으면 `estimated_duration_minutes`는 `null`; 근거 없는 시간을 생성하지 않음
 - 제외 사항: 장보기 목록 추가는 AI 계약에 포함하지 않으며 Backend/Frontend의 사용자 상태 기능으로 유지
+
+## 2026-11-03 · Recipe LLM fallback 워커별 진단 보강
+
+- 상태: 구현·로컬 검증·GitHub 반영 완료, 운영 재배포 및 유료 실호출 검증 대기
+- 관련 커밋: `9a1e115`, `af35f84`, `5edea40`
+- 변경 목적: OpenAI 응답 미파싱과 안전검사 거부가 로그 없이 `unavailable`이 되던 경로를 구분하고 멀티워커 환경에서 발생 워커를 식별
+- 변경 API: `GET /health/recipe` 최상위에 additive 필드 `worker_pid` 추가; `POST /recommend/diet/recipe` 계약 변경 없음
+- 변경 파일: `app/services/meal_recipe_service.py`, `app/routers/health_router.py`, `test_meal_recipe_diagnostics.py`, `test_recipe_router_cache.py`, `docs/recipe_llm_fallback_observability_handoff_2026-11-03.md`
+- 기존 동작 영향: 공식 exact → similar → LLM → unavailable 우선순위와 Recipe 응답 DTO, 최대 2회 생성, 안전검사는 유지; Recipe LLM reasoning effort만 `minimal`로 명시
+- Frontend 작업: 없음
+- Backend 작업: 비용 승인된 주간 Recipe 1건의 요청 시각·요청조건과 음식별 `recipe_source`, `restriction_matches` 공유; health DTO를 엄격히 검증하면 `worker_pid`를 선택 필드로 허용
+- AI·배포 작업: `5edea40` 이상으로 모든 워커 재배포, 워커별 health 전후 지표와 동일 시각 로그 수집
+- 실행 테스트: syntax/import compile, Recipe diagnostics·structure·resilience·router cache·schema·detail display, 공식 exact/similar 회귀
+- 테스트 결과: 관련 테스트 통과; `톳나물_두부`의 `official_similar` 약 0.9157 유지
+- 남은 작업: 비용 승인 후 실제 OpenAI 주간 Recipe 1건 재현, `incomplete_reason`과 reasoning token 확인, 필요할 때만 토큰 한도 조정
+- 알려진 제한: Recipe 지표와 cache는 프로세스 메모리 기반이라 워커마다 분리되고 재시작 시 초기화됨
+- 상세 인계: [recipe_llm_fallback_observability_handoff_2026-11-03.md](recipe_llm_fallback_observability_handoff_2026-11-03.md)
+
+## 2026-11-03 · 공식 Recipe 유사 매칭 안전성·호출 보정
+
+- 상태: 구현·결정론적 검증·Git 커밋 완료, GitHub 반영·운영 배포 대기
+- 관련 커밋: `1134328`
+- 변경 목적: 포함 관계 점수만으로 다른 음식이 `official_similar`로 저장되는 문제와 음식당 과도한 공식 API 호출, URL 경로 인증키의 오류 로그 노출 가능성 보정
+- 변경 API: `POST /recommend/diet/recipe` 요청·응답 계약 변경 없음
+- 변경 파일: `app/services/meal_recipe_service.py`, `app/services/recipe_service.py`, `test_meal_recipe_structure.py`, `test_meal_recipe_resilience.py`, `docs/backend_official_recipe_matching_followup_2026-11-03.md`
+- 기존 동작 영향: `official_exact → official_similar → llm_generated → unavailable` 순서는 유지; 검증되지 않은 접두·접미 포함 후보는 LLM fallback 대상으로 전환
+- Frontend 작업: 없음
+- Backend 작업: 기존에 저장된 잘못된 `official_similar` 결과를 새 규칙으로 재검증·무효화하고 러닝 `light/moderate/hard`를 `easy/moderate/hard`로 매핑
+- AI·배포 작업: 수정본 배포 후 프로세스 cache 초기화, 공식 exact와 `톳나물_두부 → 톳나물 두부무침` 회귀 확인
+- 실행 테스트: syntax compile, Recipe structure·resilience·diagnostics·schema·router cache·contract·detail display
+- 테스트 결과: 제보된 6개 오매칭과 추가 무효 접미 사례 거부, exact와 기존 톳나물 유사도 0.9157 유지, 관련 로컬 테스트 통과
+- 남은 작업: 실제 식품안전나라 API 회귀 호출은 실행 권한 미승인으로 미수행; 배포 환경에서 최소 호출 검증 필요
+- 알려진 제한: 현재 검증된 유사 표현은 나물 복합 음식의 `무침` 접미사로 제한하며 새 유사 규칙은 실제 사례와 회귀 테스트를 추가한 뒤 확장
+- Backend 상세 인계: [backend_official_recipe_matching_followup_2026-11-03.md](backend_official_recipe_matching_followup_2026-11-03.md)
