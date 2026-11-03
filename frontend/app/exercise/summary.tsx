@@ -21,7 +21,8 @@ import { fontFamilies } from '@/src/theme';
 export default function ExerciseSummaryScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { condition, homeLoadState, refreshHome, routine, startRoutine } = useExerciseRoutine();
+  const { condition, homeLoadState, refreshHome, routine, selectPlanSession, startRoutine } =
+    useExerciseRoutine();
   const { beginSession } = useExerciseSession();
   const [isStarting, setIsStarting] = useState(false);
   const goBack = useCallback(() => router.dismissTo('/exercise'), [router]);
@@ -42,8 +43,19 @@ export default function ExerciseSummaryScreen() {
     return () => subscription.remove();
   }, [goBack]);
 
+  const selectedPlan = routine?.planSessions.find(
+    (plan) => plan.id === routine.selectedPlanSessionId,
+  );
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const canStart =
+    Boolean(routine) &&
+    (!selectedPlan ||
+      (selectedPlan.scheduledDate <= today &&
+        !['completed', 'skipped'].includes(selectedPlan.status)));
+
   const handleStart = async () => {
-    if (!routine || isStarting) return;
+    if (!routine || !canStart || isStarting) return;
     setIsStarting(true);
     try {
       const started = await startRoutine();
@@ -83,12 +95,17 @@ export default function ExerciseSummaryScreen() {
         >
           <Text style={styles.backText}>‹</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>오늘의 맞춤 운동</Text>
+        <Text style={styles.headerTitle}>
+          {routine?.planSessions.length ? '요일별 운동 계획' : '오늘의 맞춤 운동'}
+        </Text>
         <View style={styles.headerSpacer} />
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {routine ? (
           <>
+            <Text style={styles.sourceLabel}>
+              {routine.generator === 'auto-fit-ai' ? 'AI 모델 추천' : '기본 운동 추천'}
+            </Text>
             <Text style={styles.heading}>{routine.title}</Text>
             {routine.subtitle ? <Text style={styles.subtitle}>{routine.subtitle}</Text> : null}
             <Text style={styles.meta}>{summary.join('  ·  ')}</Text>
@@ -120,8 +137,52 @@ export default function ExerciseSummaryScreen() {
                 </Text>
               )}
             </View>
+            {routine.planSessions.length > 0 ? (
+              <View style={styles.planSection}>
+                <Text style={styles.sectionTitle}>이번 추천의 운동 일정</Text>
+                <Text style={styles.planHint}>
+                  각 날짜를 눌러 운동을 확인하세요. 예정일이 되면 시작할 수 있어요.
+                </Text>
+                {routine.planSessions.map((plan) => {
+                  const selected = plan.id === routine.selectedPlanSessionId;
+                  const dateLabel = new Date(`${plan.scheduledDate}T12:00:00`).toLocaleDateString(
+                    'ko-KR',
+                    { month: 'long', day: 'numeric', weekday: 'long' },
+                  );
+                  return (
+                    <Pressable
+                      key={plan.id}
+                      accessibilityLabel={`${dateLabel} ${plan.name}, ${plan.exercises.length}개 운동`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      onPress={() => selectPlanSession(plan.id)}
+                      style={[styles.planRow, selected && styles.planRowSelected]}
+                    >
+                      <View style={styles.planCopy}>
+                        <Text style={styles.planDate}>{dateLabel}</Text>
+                        <Text style={styles.planName}>{plan.name}</Text>
+                        <Text style={styles.planMeta}>
+                          {plan.durationMinutes}분 · {plan.exercises.length}개 운동
+                        </Text>
+                      </View>
+                      <Text style={styles.planStatus}>
+                        {plan.status === 'completed'
+                          ? '완료'
+                          : plan.status === 'in_progress'
+                            ? '진행 중'
+                            : plan.scheduledDate > today
+                              ? '예정'
+                              : '시작 가능'}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
             <View style={styles.listHeader}>
-              <Text style={styles.sectionTitle}>운동 {routine.exercises.length}개</Text>
+              <Text style={styles.sectionTitle}>
+                {selectedPlan ? `${selectedPlan.name} · ` : ''}운동 {routine.exercises.length}개
+              </Text>
             </View>
             <View style={styles.list}>
               {routine.exercises.map((exercise, index) => (
@@ -178,12 +239,20 @@ export default function ExerciseSummaryScreen() {
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 18) }]}>
         <Pressable
           accessibilityRole="button"
-          accessibilityState={{ busy: isStarting, disabled: !routine || isStarting }}
-          disabled={!routine || isStarting}
+          accessibilityState={{ busy: isStarting, disabled: !canStart || isStarting }}
+          disabled={!canStart || isStarting}
           onPress={() => void handleStart()}
-          style={[styles.startButton, (!routine || isStarting) && styles.disabled]}
+          style={[styles.startButton, (!canStart || isStarting) && styles.disabled]}
         >
-          <Text style={styles.startText}>{isStarting ? '운동 시작하는 중…' : '운동 시작하기'}</Text>
+          <Text style={styles.startText}>
+            {isStarting
+              ? '운동 시작하는 중…'
+              : selectedPlan?.status === 'completed'
+                ? '완료한 운동'
+                : selectedPlan && selectedPlan.scheduledDate > today
+                  ? '예정된 운동'
+                  : '운동 시작하기'}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -204,6 +273,7 @@ const styles = StyleSheet.create({
   },
   headerSpacer: { width: 38 },
   content: { paddingBottom: 25, paddingHorizontal: 20, paddingTop: 27 },
+  sourceLabel: { color: '#7060B8', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 11 },
   heading: {
     color: '#222227',
     fontFamily: fontFamilies.pretendardBold,
@@ -245,6 +315,24 @@ const styles = StyleSheet.create({
   },
   reasonTitle: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
   reason: { color: '#66666F', fontSize: 12, lineHeight: 18 },
+  planSection: { gap: 9, marginTop: 22 },
+  planHint: { color: '#777780', fontSize: 11, lineHeight: 16 },
+  planRow: {
+    alignItems: 'center',
+    borderColor: '#E7E7EC',
+    borderRadius: 9,
+    borderWidth: 1,
+    flexDirection: 'row',
+    minHeight: 78,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  planRowSelected: { backgroundColor: '#F5F3FD', borderColor: '#7060B8' },
+  planCopy: { flex: 1, gap: 3 },
+  planDate: { color: '#777780', fontSize: 11 },
+  planName: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+  planMeta: { color: '#777780', fontSize: 11 },
+  planStatus: { color: '#7060B8', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 11 },
   listHeader: { marginBottom: 10, marginTop: 23 },
   sectionTitle: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
   list: { borderColor: '#E7E7EC', borderRadius: 9, borderWidth: 1, overflow: 'hidden' },
@@ -276,7 +364,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 7,
   },
-  postureButtonText: { color: '#503DD7', fontSize: 11, fontFamily: fontFamilies.pretendardSemiBold },
+  postureButtonText: {
+    color: '#503DD7',
+    fontSize: 11,
+    fontFamily: fontFamilies.pretendardSemiBold,
+  },
   empty: { gap: 10, paddingTop: 40 },
   emptyAction: {
     alignSelf: 'flex-start',

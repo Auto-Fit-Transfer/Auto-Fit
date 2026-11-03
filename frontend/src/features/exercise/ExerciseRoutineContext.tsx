@@ -31,6 +31,7 @@ import {
   type ExerciseCondition,
   type ExerciseDayStatus,
   type ExerciseItem,
+  type ExercisePlanSession,
   type ExerciseRoutine,
 } from './exerciseData';
 
@@ -72,6 +73,7 @@ interface ExerciseRoutineContextValue {
   refreshHome: () => Promise<void>;
   resultRecordCompleted: boolean;
   routine: ExerciseRoutine | null;
+  selectPlanSession: (planSessionId: string) => void;
   setCondition: (condition: ExerciseCondition) => void;
   startRoutine: () => Promise<StartedExerciseSession>;
   status: ExerciseDayStatus | null;
@@ -172,6 +174,7 @@ function mapExerciseItems(result: ApiRecord): ExerciseItem[] {
         instruction: readString(item, ['instruction']),
         intensity: readString(item, ['intensity']),
         name,
+        planSessionId: readString(item, ['plan_session_id']),
         prescription: '',
         recommendationId: readString(item, ['exercise_recommendation_id']),
         repetitions: readNumber(item, ['repetitions']),
@@ -203,6 +206,38 @@ function mapExerciseRoutine(response: unknown): ExerciseRoutine | null {
   ]);
   if (!title) return null;
   const aiReason = readString(recommendation, ['ai_reason']);
+  const items = mapExerciseItems(result);
+  const planSessions: ExercisePlanSession[] = (
+    Array.isArray(result.plan_sessions) ? result.plan_sessions : []
+  ).flatMap((value) => {
+    if (!isRecord(value)) return [];
+    const id = readString(value, ['exercise_plan_session_id']);
+    const scheduledDate = readString(value, ['scheduled_date']);
+    const name = readString(value, ['name']);
+    const durationMinutes = readNumber(value, ['duration_minutes']);
+    if (!id || !scheduledDate || !name || durationMinutes === null) return [];
+    const status = readString(value, ['status']);
+    return [
+      {
+        id,
+        scheduledDate,
+        name,
+        focus: readString(value, ['focus']),
+        durationMinutes,
+        status:
+          status === 'completed' || status === 'in_progress' || status === 'skipped'
+            ? status
+            : 'planned',
+        exercises: items.filter((item) => item.planSessionId === id),
+      },
+    ];
+  });
+  const today = getTodayDateKey();
+  const selected =
+    planSessions.find((plan) => plan.status === 'in_progress') ??
+    planSessions.find((plan) => plan.status === 'planned' && plan.scheduledDate <= today) ??
+    planSessions.find((plan) => plan.status === 'planned') ??
+    planSessions[0];
 
   return {
     estimatedCalories: readNumber(recommendation, [
@@ -210,13 +245,22 @@ function mapExerciseRoutine(response: unknown): ExerciseRoutine | null {
       'estimated_kcal',
       'calories',
     ]),
-    exercises: mapExerciseItems(result),
+    exercises: selected?.exercises ?? items,
+    generator:
+      readString(recommendation, ['generator']) === 'auto-fit-ai'
+        ? 'auto-fit-ai'
+        : readString(recommendation, ['generator']) === 'rules_v1'
+          ? 'rules_v1'
+          : null,
     id: readString(recommendation, ['exercise_recommendation_id', 'recommendation_id', 'id']),
     intensity: readString(recommendation, ['intensity', 'intensity_level']) ?? '',
     reasons: aiReason ? [aiReason] : readStringArray(recommendation, ['reasons', 'reason_list']),
+    planSessions,
+    selectedPlanSessionId: selected?.id ?? null,
     subtitle: readString(recommendation, ['subtitle', 'sub_title']) ?? '',
-    totalDurationMinutes: readNumber(recommendation, ['total_duration_minutes']),
-    title,
+    totalDurationMinutes:
+      selected?.durationMinutes ?? readNumber(recommendation, ['total_duration_minutes']),
+    title: selected?.name ?? title,
   };
 }
 
@@ -303,6 +347,22 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
   const sessionRequestInFlight = useRef(false);
   const mountedRef = useRef(true);
   const authenticatedUserIdRef = useRef<string | null>(null);
+
+  const selectPlanSession = useCallback((planSessionId: string) => {
+    setRoutine((current) => {
+      if (!current) return current;
+      const selected = current.planSessions.find((plan) => plan.id === planSessionId);
+      return selected
+        ? {
+            ...current,
+            exercises: selected.exercises,
+            selectedPlanSessionId: selected.id,
+            title: selected.name,
+            totalDurationMinutes: selected.durationMinutes,
+          }
+        : current;
+    });
+  }, []);
 
   useEffect(
     () => () => {
@@ -454,8 +514,20 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    if (
+      nextRoutine.planSessions.length > 0 &&
+      nextRoutine.planSessions.every(
+        (plan) => plan.status === 'completed' || plan.status === 'skipped',
+      )
+    ) {
+      setRoutine(null);
+      setStatus('not-created');
+      setHomeLoadState('ready');
+      return;
+    }
+
     setRoutine(nextRoutine);
-    if (recommendationDate !== todayDateKey) {
+    if (nextRoutine.planSessions.length === 0 && recommendationDate !== todayDateKey) {
       setStatus('not-created');
       setHomeLoadState('ready');
       return;
@@ -514,13 +586,24 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
 
   const startRoutine = useCallback(async () => {
     if (status !== 'ready' || !routine) throw new Error('오늘의 새 운동 추천을 먼저 받아주세요.');
+    const selectedPlan = routine.planSessions.find(
+      (plan) => plan.id === routine.selectedPlanSessionId,
+    );
+    if (
+      selectedPlan &&
+      (selectedPlan.scheduledDate > getTodayDateKey() ||
+        selectedPlan.status === 'completed' ||
+        selectedPlan.status === 'skipped')
+    ) {
+      throw new Error('선택한 날짜의 운동은 아직 시작할 수 없어요.');
+    }
     if (sessionRequestInFlight.current) {
       throw new Error('운동 세션을 시작하고 있어요.');
     }
     sessionRequestInFlight.current = true;
 
     try {
-      const response = await startExerciseSession();
+      const response = await startExerciseSession(selectedPlan?.id);
       const startedSession = mapStartedExerciseSession(response);
       const nextSession = mapExerciseSession(response);
       if (!startedSession || !nextSession) {
@@ -530,6 +613,18 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
       setActiveSession(startedSession);
       setLatestSession(nextSession);
       setResultRecordCompleted(false);
+      if (selectedPlan) {
+        setRoutine((current) =>
+          current
+            ? {
+                ...current,
+                planSessions: current.planSessions.map((plan) =>
+                  plan.id === selectedPlan.id ? { ...plan, status: 'in_progress' } : plan,
+                ),
+              }
+            : current,
+        );
+      }
       return startedSession;
     } finally {
       sessionRequestInFlight.current = false;
@@ -545,6 +640,16 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
       });
       setResultRecordCompleted(false);
       setStatus('completed');
+      setRoutine((current) =>
+        current
+          ? {
+              ...current,
+              planSessions: current.planSessions.map((plan) =>
+                plan.id === current.selectedPlanSessionId ? { ...plan, status: 'completed' } : plan,
+              ),
+            }
+          : current,
+      );
     },
     [],
   );
@@ -567,6 +672,7 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
       refreshHome,
       resultRecordCompleted,
       routine,
+      selectPlanSession,
       setCondition,
       startRoutine,
       status,
@@ -584,6 +690,7 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
       refreshHome,
       resultRecordCompleted,
       routine,
+      selectPlanSession,
       startRoutine,
       status,
     ],

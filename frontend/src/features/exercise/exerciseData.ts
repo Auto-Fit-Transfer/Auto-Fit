@@ -2,15 +2,7 @@ export type ExerciseDayStatus = 'not-created' | 'ready' | 'completed';
 export type ExerciseLocation = 'gym' | 'home' | 'outdoor' | 'other';
 export type ExerciseEquipment = 'machine' | 'band' | 'dumbbell' | 'bodyweight' | 'other';
 export type ExerciseBodyPart =
-  | '코어'
-  | '등'
-  | '가슴'
-  | '어깨'
-  | '허리'
-  | '둔근'
-  | '종아리'
-  | '팔'
-  | '전신';
+  '코어' | '등' | '가슴' | '어깨' | '허리' | '둔근' | '종아리' | '팔' | '전신';
 
 export interface ExerciseCondition {
   availableMinutes: number | null;
@@ -29,6 +21,7 @@ export interface ExerciseItem {
   instruction: string | null;
   intensity: string | null;
   name: string;
+  planSessionId?: string | null;
   prescription: string;
   recommendationId: string | null;
   repetitions: number | null;
@@ -40,6 +33,16 @@ export interface ExerciseItem {
   thumbnailUrl: string | null;
 }
 
+export interface ExercisePlanSession {
+  id: string;
+  scheduledDate: string;
+  name: string;
+  focus: string | null;
+  durationMinutes: number;
+  status: 'planned' | 'in_progress' | 'completed' | 'skipped';
+  exercises: ExerciseItem[];
+}
+
 export interface ExerciseRoutine {
   id: string | null;
   title: string;
@@ -48,6 +51,9 @@ export interface ExerciseRoutine {
   estimatedCalories: number | null;
   totalDurationMinutes: number | null;
   exercises: ExerciseItem[];
+  generator: 'auto-fit-ai' | 'rules_v1' | null;
+  planSessions: ExercisePlanSession[];
+  selectedPlanSessionId: string | null;
   reasons: string[];
 }
 
@@ -76,8 +82,8 @@ export const exerciseEquipmentLabels: Record<ExerciseEquipment, string> = {
 
 // TODO: Replace this temporary presentation mapping when the recommendation API exposes body parts.
 const mockExerciseBodyPartsByName: Record<string, ExerciseBodyPart[]> = {
-  '버드독': ['코어', '둔근'],
-  '랫풀다운': ['등', '팔'],
+  버드독: ['코어', '둔근'],
+  랫풀다운: ['등', '팔'],
   '시티드 로우': ['등', '팔'],
   '덤벨 로우': ['등', '팔'],
   플랭크: ['코어'],

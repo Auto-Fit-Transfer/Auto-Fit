@@ -54,6 +54,10 @@ export default function ExerciseScreen() {
   end.setDate(end.getDate() + 6);
   const day = (date: Date) => `${date.getMonth() + 1}.${String(date.getDate()).padStart(2, '0')}`;
   const progress = Math.min(100, Math.max(0, homeMetrics.goalAchievementRate ?? 0));
+  const selectedPlan = routine?.planSessions.find((plan) => plan.id === routine.selectedPlanSessionId);
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const futurePlan = selectedPlan && selectedPlan.scheduledDate > todayKey;
   const mainAction = () => {
     if (status === 'completed') {
       router.push(resultRecordCompleted ? '/exercise/ai-report' : '/exercise/completion');
@@ -70,7 +74,7 @@ export default function ExerciseScreen() {
       <ScrollView contentContainerStyle={[styles.content, simple && simpleStyles.content, { paddingTop: insets.top + 16, paddingBottom: bottomPadding }]} showsVerticalScrollIndicator={false}>
         <View style={styles.titleRow}><Text style={[styles.pageTitle, simple && simpleStyles.pageTitle, isDark && dark.text]}>운동</Text><SimpleReadButton text={`오늘의 운동입니다. ${status === 'completed' ? '오늘 운동을 마쳤어요.' : routine?.title ?? '오늘의 맞춤 운동을 준비해요.'} 이번 주 운동은 ${value(homeMetrics.currentWeekWorkoutCount)}회 완료했고 목표는 ${value(homeMetrics.targetWorkoutCount)}회입니다.`} /></View>
         <View style={[styles.card, simple && simpleStyles.card, isDark && dark.card]}>
-          <Text style={styles.eyebrow}>오늘의 운동</Text>
+          <Text style={styles.eyebrow}>{routine?.planSessions.length ? '운동 계획' : '오늘의 운동'}</Text>
           <Text style={[styles.heroTitle, simple && simpleStyles.heroTitle, isDark && dark.text]}>
             {status === 'completed' ? '오늘 운동을 마쳤어요' : routine?.title ?? '오늘의 맞춤 운동을 준비해요'}
           </Text>
@@ -83,7 +87,7 @@ export default function ExerciseScreen() {
           </Text>
           <Pressable accessibilityRole="button" disabled={homeLoadState === 'loading'} onPress={mainAction} style={[styles.primaryButton, simple && simpleStyles.primaryButton, homeLoadState === 'loading' && styles.disabled]}>
             <Text style={[styles.primaryText, simple && simpleStyles.primaryText]}>
-              {homeLoadState === 'loading' ? '운동 정보 확인 중' : status === 'completed' ? '운동 결과 보기' : status === 'ready' ? '운동 시작하기' : '운동 추천받기'}
+              {homeLoadState === 'loading' ? '운동 정보 확인 중' : status === 'completed' ? '운동 결과 보기' : status === 'ready' ? routine?.planSessions.length ? futurePlan ? '운동 일정 보기' : '오늘 운동 보기' : '운동 시작하기' : '운동 추천받기'}
             </Text>
           </Pressable>
           <Pressable accessibilityRole="button" onPress={() => router.push('/exercise/condition')} style={styles.secondaryButton}>

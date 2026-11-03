@@ -117,9 +117,9 @@ export function generateExerciseRecommendation() {
   });
 }
 
-export function startExerciseSession() {
+export function startExerciseSession(planSessionId?: string) {
   return apiRequest<ExerciseApiResponse>('/api/exercise/sessions/start', {
-    body: JSON.stringify({}),
+    body: JSON.stringify(planSessionId ? { plan_session_id: planSessionId } : {}),
     method: 'POST',
   });
 }
