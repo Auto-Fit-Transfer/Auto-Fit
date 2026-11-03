@@ -34,9 +34,14 @@ jobs:
             echo "API_BASE_URL must be an HTTPS origin" >&2
             exit 1
           fi
-          curl --fail-with-body --show-error --silent \
-            --retry 3 --retry-all-errors --max-time 1200 \
+          # This POST can generate paid recommendations. A failed response needs
+          # inspection before another request, so never retry it automatically.
+          response=$(curl --fail-with-body --show-error --silent \
+            --max-time 1200 \
             --request POST \
             --header "X-Cron-Token: ${DIET_REFRESH_CRON_TOKEN}" \
             --header "X-Diet-Refresh-Mode: ${DIET_REFRESH_MODE}" \
-            "${API_BASE_URL}/internal/diet-refresh"
+            "${API_BASE_URL}/internal/diet-refresh")
+          echo "$response"
+          # The backend returns HTTP 200 with failed > 0 for partial runs.
+          jq -e '.failed == 0' <<< "$response" >/dev/null
