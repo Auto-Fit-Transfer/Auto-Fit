@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import hashlib
 from dataclasses import dataclass
+from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
@@ -79,6 +80,7 @@ class AIExercise(BaseModel):
 
 class AISession(BaseModel):
     name: str = Field(min_length=1, max_length=200)
+    focus: str | None = Field(default=None, max_length=200)
     exercises: list[AIExercise] = Field(min_length=1, max_length=4)
 
 
@@ -175,65 +177,78 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
     if parsed.result.catalog_version != catalog_version:
         raise ExerciseAIError("Exercise AI catalog version does not match")
 
-    # The app records one workout at a time. The first AI session is today's workout.
-    session = parsed.result.sessions[0]
-    if not session.name.strip() or not parsed.result.summary.strip():
+    if not parsed.result.summary.strip():
         raise ExerciseAIError("Exercise AI response is missing text")
-    seen: set[str] = set()
+    start_date = date.fromisoformat(recommendation_date)
+    plan_sessions: list[dict[str, Any]] = []
     items: list[dict[str, Any]] = []
-    for exercise in session.exercises:
-        record = catalog.get(exercise.exercise_key)
-        location = context.get("location")
-        expected_modes = (
-            record.modes.intersection({"gym"}) if record and location == "gym"
-            else record.modes.intersection({"home_training"}) if record and location == "home"
-            else record.modes if record else frozenset()
-        )
-        if (record is None or record.name_en != exercise.catalog_name_en
-                or set(exercise.exercise_modes) != expected_modes
-                or exercise.exercise_key in seen):
-            raise ExerciseAIError("Exercise AI returned an invalid catalog exercise")
-        if (not exercise.name.strip()
-                or any(not part.strip() or len(part) > 300 for part in exercise.instructions)):
-            raise ExerciseAIError("Exercise AI returned invalid instructions")
-        _check_equipment(record, context)
-        training_type = dict(record.training_type_by_mode).get(
-            "gym" if location == "gym" else "home_training" if location == "home" else "",
-            record.training_type,
-        )
-        type_name = EXERCISE_TYPE_NAMES.get(training_type)
-        if type_name is None:
-            raise ExerciseAIError("Exercise AI returned an unknown training type")
-        seen.add(exercise.exercise_key)
-        items.append({
-            "exercise_key": exercise.exercise_key,
-            "exercise_type_name": type_name,
-            "exercise_name": exercise.name.strip(),
-            "duration_minutes": exercise.duration_minutes,
-            "sets": None,
-            "repetitions": None,
-            "calories_burned": None,
-            "intensity": _intensity(exercise.intensity or parsed.result.intensity),
-            "instruction": " ".join(part.strip() for part in exercise.instructions if part.strip()),
-            "execution_type": "time_based",
-            "target_duration_seconds": exercise.duration_minutes * 60,
-            "target_weight_kg": None,
-            "rest_seconds": None,
+    for session_index, session in enumerate(parsed.result.sessions, start=1):
+        if not session.name.strip():
+            raise ExerciseAIError("Exercise AI response is missing text")
+        seen: set[str] = set()
+        session_minutes = 0
+        for exercise in session.exercises:
+            record = catalog.get(exercise.exercise_key)
+            location = context.get("location")
+            expected_modes = (
+                record.modes.intersection({"gym"}) if record and location == "gym"
+                else record.modes.intersection({"home_training"}) if record and location in {"home", "outdoor", "other"}
+                else record.modes if record else frozenset()
+            )
+            if (record is None or record.name_en != exercise.catalog_name_en
+                    or set(exercise.exercise_modes) != expected_modes
+                    or exercise.exercise_key in seen):
+                raise ExerciseAIError("Exercise AI returned an invalid catalog exercise")
+            if (not exercise.name.strip()
+                    or any(not part.strip() or len(part) > 300 for part in exercise.instructions)):
+                raise ExerciseAIError("Exercise AI returned invalid instructions")
+            _check_equipment(record, context)
+            training_type = dict(record.training_type_by_mode).get(
+                "gym" if location == "gym" else "home_training",
+                record.training_type,
+            )
+            type_name = EXERCISE_TYPE_NAMES.get(training_type)
+            if type_name is None:
+                raise ExerciseAIError("Exercise AI returned an unknown training type")
+            seen.add(exercise.exercise_key)
+            session_minutes += exercise.duration_minutes
+            items.append({
+                "plan_session_index": session_index,
+                "exercise_key": exercise.exercise_key,
+                "exercise_type_name": type_name,
+                "exercise_name": exercise.name.strip(),
+                "duration_minutes": exercise.duration_minutes,
+                "sets": None,
+                "repetitions": None,
+                "calories_burned": None,
+                "intensity": _intensity(exercise.intensity or parsed.result.intensity),
+                "instruction": " ".join(part.strip() for part in exercise.instructions if part.strip()),
+                "execution_type": "time_based",
+                "target_duration_seconds": exercise.duration_minutes * 60,
+                "target_weight_kg": None,
+                "rest_seconds": None,
+            })
+        if session_minutes > int(context["available_minutes"]):
+            raise ExerciseAIError("Exercise AI exceeded the available time")
+        plan_sessions.append({
+            "session_index": session_index,
+            "scheduled_date": (start_date + timedelta(days=(session_index - 1) * 7 // len(parsed.result.sessions))).isoformat(),
+            "name": session.name.strip(),
+            "focus": session.focus.strip() if session.focus else None,
+            "duration_minutes": session_minutes,
         })
 
-    total_minutes = sum(item["duration_minutes"] for item in items)
-    if total_minutes > int(context["available_minutes"]):
-        raise ExerciseAIError("Exercise AI exceeded the available time")
     return {
         "recommendation": {
             "generator": "auto-fit-ai",
             "catalog_version": catalog_version,
             "recommendation_date": recommendation_date,
             "goal": preferences["goal_type"],
-            "total_duration_minutes": total_minutes,
+            "total_duration_minutes": plan_sessions[0]["duration_minutes"],
             "intensity": _intensity(parsed.result.intensity),
-            "recommendation_summary": session.name.strip(),
+            "recommendation_summary": plan_sessions[0]["name"],
             "ai_reason": parsed.result.summary.strip(),
+            "plan_sessions": plan_sessions,
         },
         "items": items,
     }

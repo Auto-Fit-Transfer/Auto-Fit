@@ -1,4 +1,5 @@
 import copy
+from contextlib import asynccontextmanager
 import json
 
 import httpx
@@ -72,14 +73,18 @@ def test_build_request_uses_only_available_user_choices():
     assert "gym_preferences" not in request
 
 
-def test_build_plan_stores_only_first_session_and_catalog_keys():
+def test_build_plan_preserves_all_sessions_and_catalog_keys():
     response = ai_response()
     plan = build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
     assert plan["recommendation"]["generator"] == "auto-fit-ai"
     assert plan["recommendation"]["catalog_version"] == response["result"]["catalog_version"]
     assert plan["recommendation"]["total_duration_minutes"] == 10
     assert plan["recommendation"]["intensity"] == "low"
-    assert len(plan["items"]) == 2
+    assert len(plan["items"]) == 3
+    assert [session["scheduled_date"] for session in plan["recommendation"]["plan_sessions"]] == [
+        "2026-11-03", "2026-11-06"
+    ]
+    assert [item["plan_session_index"] for item in plan["items"]] == [1, 1, 2]
     assert plan["items"][0]["exercise_key"] == response["result"]["sessions"][0]["exercises"][0]["exercise_key"]
     assert all(item["execution_type"] == "time_based" for item in plan["items"])
 
@@ -186,7 +191,7 @@ def test_generate_api_calls_ai_and_saves_validated_items(monkeypatch):
         response = TestClient(main.app).post("/api/exercise/recommendations/generate", json={})
         assert response.status_code == 200
         assert response.json()["generator"] == "auto-fit-ai"
-        assert len(response.json()["result"]["items"]) == 2
+        assert len(response.json()["result"]["items"]) == 3
         assert len(requested) == len(saved) == 1
     finally:
         main.app.dependency_overrides.clear()
@@ -232,5 +237,103 @@ def test_generate_api_rejects_invalid_ai_response_before_storage(monkeypatch):
         response = TestClient(main.app).post("/api/exercise/recommendations/generate", json={})
         assert response.status_code == 502
         assert response.json()["detail"] == {"code": "AI_EXERCISE_INVALID_RESPONSE"}
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_start_api_uses_selected_ai_plan_session(monkeypatch):
+    selected_id = "10000000-0000-4000-8000-000000000002"
+
+    async def fake_user():
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_latest(_user_id, _settings):
+        return {
+            "recommendation": {
+                "exercise_recommendation_id": "20000000-0000-4000-8000-000000000001",
+                "generator": "auto-fit-ai",
+                "status": "active",
+            },
+            "plan_sessions": [
+                {"exercise_plan_session_id": "10000000-0000-4000-8000-000000000001", "status": "completed"},
+                {"exercise_plan_session_id": selected_id, "status": "planned"},
+            ],
+            "items": [],
+        }
+
+    async def fake_rpc(name, payload, _settings):
+        assert name == "start_exercise_plan_session"
+        assert payload["p_user_id"] == "authenticated-user"
+        assert payload["p_plan_session_id"] == selected_id
+        return {"session": {"plan_session_id": selected_id}, "items": []}
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: main.Settings(
+        supabase_url="https://example.supabase.co",
+        supabase_publishable_key="sb_publishable_test",
+        supabase_service_role_key="server-only-test-key",
+        frontend_origin="http://localhost:3000",
+    )
+    monkeypatch.setattr(main, "fetch_latest_exercise_recommendation", fake_latest)
+    monkeypatch.setattr(main, "call_exercise_session_rpc", fake_rpc)
+    try:
+        response = TestClient(main.app).post(
+            "/api/exercise/sessions/start", json={"plan_session_id": selected_id}
+        )
+        assert response.status_code == 200
+        assert response.json()["result"]["session"]["plan_session_id"] == selected_id
+        automatic = TestClient(main.app).post("/api/exercise/sessions/start", json={})
+        assert automatic.status_code == 200
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_latest_api_returns_dated_ai_sessions_and_status(monkeypatch):
+    plan_id = "10000000-0000-4000-8000-000000000001"
+    recommendation_id = "20000000-0000-4000-8000-000000000001"
+
+    class FakeClient:
+        async def get(self, url, *, headers, params):
+            assert headers
+            if url.endswith("/exercise_recommendations"):
+                assert "generator,catalog_version" in params["select"]
+                rows = [{"exercise_recommendation_id": recommendation_id,
+                         "generator": "auto-fit-ai", "status": "active"}]
+            elif url.endswith("/exercise_items"):
+                rows = [{"exercise_item_id": "30000000-0000-4000-8000-000000000001",
+                         "plan_session_id": plan_id, "exercise_name": "스쿼트"}]
+            elif url.endswith("/exercise_plan_sessions"):
+                rows = [{"exercise_plan_session_id": plan_id,
+                         "exercise_recommendation_id": recommendation_id,
+                         "session_index": 1, "scheduled_date": "2026-11-03",
+                         "name": "첫날", "duration_minutes": 10}]
+            elif url.endswith("/exercise_sessions"):
+                rows = [{"plan_session_id": plan_id, "status": "completed"}]
+            else:
+                raise AssertionError(url)
+            return httpx.Response(200, json=rows, request=httpx.Request("GET", url))
+
+    @asynccontextmanager
+    async def fake_scope():
+        yield FakeClient()
+
+    async def fake_user():
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: main.Settings(
+        supabase_url="https://example.supabase.co",
+        supabase_publishable_key="sb_publishable_test",
+        supabase_service_role_key="server-only-test-key",
+        frontend_origin="http://localhost:3000",
+    )
+    monkeypatch.setattr(main, "client_scope", fake_scope)
+    try:
+        response = TestClient(main.app).get("/api/exercise/recommendations/latest")
+        assert response.status_code == 200
+        assert response.json()["generator"] == "auto-fit-ai"
+        result = response.json()["result"]
+        assert result["plan_sessions"][0]["status"] == "completed"
+        assert result["items"][0]["plan_session_id"] == plan_id
     finally:
         main.app.dependency_overrides.clear()
