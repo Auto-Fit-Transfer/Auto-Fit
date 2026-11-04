@@ -249,6 +249,7 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
     if not parsed.result.summary.strip():
         raise ExerciseAIError("Exercise AI response is missing text", reason_codes=("response_text_missing",))
     start_date = date.fromisoformat(recommendation_date)
+    target_minutes = int(context["available_minutes"])
     plan_sessions: list[dict[str, Any]] = []
     items: list[dict[str, Any]] = []
     for session_index, session in enumerate(parsed.result.sessions, start=1):
@@ -300,7 +301,9 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
                 "target_weight_kg": None,
                 "rest_seconds": None,
             })
-        if session_minutes > int(context["available_minutes"]):
+        if session_minutes < target_minutes - 5:
+            raise ExerciseAIError("Exercise AI session is shorter than the target", reason_codes=("session_duration_short",))
+        if session_minutes > target_minutes + 5:
             raise ExerciseAIError("Exercise AI exceeded the available time", reason_codes=("session_duration_exceeded",))
         plan_sessions.append({
             "session_index": session_index,

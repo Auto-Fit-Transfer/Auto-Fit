@@ -44,7 +44,7 @@ def ai_response():
                         "name": f"운동 {index}",
                         "catalog_name_en": record.name_en,
                         "exercise_modes": ["home_training"],
-                        "duration_minutes": 5,
+                        "duration_minutes": 15,
                         "intensity": "낮음",
                         "instructions": ["천천히 수행하세요."],
                     }
@@ -55,7 +55,7 @@ def ai_response():
                     "name": "다음 회차 운동",
                     "catalog_name_en": selected[0][1].name_en,
                     "exercise_modes": ["home_training"],
-                    "duration_minutes": 5,
+                    "duration_minutes": 30,
                 }]},
             ],
             "cautions": ["통증이 생기면 중단하세요."],
@@ -108,7 +108,7 @@ def test_build_plan_preserves_all_sessions_and_catalog_keys():
     plan = build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
     assert plan["recommendation"]["generator"] == "auto-fit-ai"
     assert plan["recommendation"]["catalog_version"] == response["result"]["catalog_version"]
-    assert plan["recommendation"]["total_duration_minutes"] == 10
+    assert plan["recommendation"]["total_duration_minutes"] == 30
     assert plan["recommendation"]["intensity"] == "low"
     assert len(plan["items"]) == 3
     assert [session["scheduled_date"] for session in plan["recommendation"]["plan_sessions"]] == [
@@ -128,6 +128,37 @@ def test_build_plan_preserves_explicit_set_and_rep_prescription():
     assert item["execution_type"] == "count_based"
     assert item["target_duration_seconds"] is None
     assert plan["items"][1]["execution_type"] == "time_based"
+
+
+@pytest.mark.parametrize(("minutes", "accepted"), [
+    (39, False), (40, True), (45, True), (50, True), (51, False),
+])
+def test_build_plan_requires_each_session_within_five_minutes_of_target(minutes, accepted):
+    response = ai_response()
+    for session in response["result"]["sessions"]:
+        exercises = session["exercises"]
+        for exercise in exercises:
+            exercise["duration_minutes"] = minutes // len(exercises)
+        exercises[-1]["duration_minutes"] += minutes % len(exercises)
+    context = {**CONTEXT, "available_minutes": 45}
+    if accepted:
+        plan = build_plan(response, PREFERENCES, context, "2026-11-03")
+        assert all(session["duration_minutes"] == minutes
+                   for session in plan["recommendation"]["plan_sessions"])
+    else:
+        with pytest.raises(ExerciseAIError) as error:
+            build_plan(response, PREFERENCES, context, "2026-11-03")
+        assert error.value.reason_codes == (
+            "session_duration_short" if minutes < 40 else "session_duration_exceeded",
+        )
+
+
+def test_build_plan_rejects_short_later_session():
+    response = ai_response()
+    response["result"]["sessions"][0]["exercises"][0]["duration_minutes"] = 30
+    with pytest.raises(ExerciseAIError) as error:
+        build_plan(response, PREFERENCES, {**CONTEXT, "available_minutes": 45}, "2026-11-03")
+    assert error.value.reason_codes == ("session_duration_short",)
 
 
 @pytest.mark.parametrize("partial", [{"sets": 3}, {"repetitions": 10}])
