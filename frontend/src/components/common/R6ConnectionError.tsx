@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native';
+import RetryIcon from '@/assets/icons/system/ArrowsClockwise.svg';
 import { fontFamilies } from '@/src/theme';
 import { Text } from './Text';
 
@@ -12,7 +13,7 @@ type Props = {
 export function R6ConnectionError({ message, offline = false, onRetry, preservesInput = false }: Props) {
   return (
     <View style={styles.root}>
-      <View style={styles.icon}><Text style={styles.iconText}>⟳</Text></View>
+      <View style={styles.icon}><RetryIcon color="#17161D" height={28} width={28} /></View>
       <Text accessibilityRole="header" style={styles.title}>
         {offline ? '연결이 끊겼어요' : '불러오지 못했어요'}
       </Text>
@@ -29,10 +30,9 @@ export function R6ConnectionError({ message, offline = false, onRetry, preserves
 
 const styles = StyleSheet.create({
   root: { alignItems: 'center', flex: 1, justifyContent: 'center', paddingHorizontal: 26 },
-  icon: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#EDEFF2', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  iconText: { color: '#32313A', fontSize: 29 },
-  title: { color: '#25242C', fontFamily: fontFamilies.pretendardBold, fontSize: 19 },
-  description: { color: '#777681', fontFamily: fontFamilies.pretendardRegular, fontSize: 13, lineHeight: 19, textAlign: 'center', marginTop: 9 },
-  retry: { marginTop: 20, borderRadius: 8, backgroundColor: '#EDEFF2', paddingHorizontal: 18, paddingVertical: 10 },
-  retryText: { color: '#33323A', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  icon: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 32, height: 64, justifyContent: 'center', marginBottom: 16, width: 64 },
+  title: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
+  description: { color: '#3B3A42', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21, marginTop: 4, textAlign: 'center' },
+  retry: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 8, height: 40, justifyContent: 'center', marginTop: 16, paddingHorizontal: 16 },
+  retryText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
 });

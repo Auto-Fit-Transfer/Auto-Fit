@@ -3,10 +3,18 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CheckIcon from '@/assets/icons/ui/check.svg';
 import { ChatCharacterAvatar } from '@/src/components/chat/ChatCharacterAvatar';
 import { chatCharacters, getChatCharacter, loadChatCharacter, saveChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
+
+const samples: Record<ChatCharacterId, string> = {
+  quni: '3일 동안 쉬었네요. 괜찮아요, 천천히 같이 해요. 오늘은 10분 걷기부터 어때요?',
+  nabi: '흠, 3일째 조용하네. 뭐… 쉴 수도 있지. 오늘은 10분만 움직여.',
+  coach: '3일 쉬었습니다. 핑계 금지. 스쿼트 30개, 지금 바로. 끝나면 한 세트 더.',
+};
 
 export default function ChatCharactersScreen() {
   const router = useRouter();
@@ -33,13 +41,11 @@ export default function ChatCharactersScreen() {
   return (
     <View style={s.root}>
       <StatusBar style="dark" />
-      <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 8, paddingBottom: 18 }]}>
-        <View style={s.header}>
-          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={() => router.back()}><Text style={s.back}>‹</Text></Pressable>
-          <Text style={s.headerTitle}>대화 상대 고르기</Text><View style={s.spacer} />
-        </View>
+      <ScreenHeader onBack={() => router.back()} title="대화 상대 고르기" />
+      <ScrollView contentContainerStyle={[s.content, { paddingBottom: 18 }]} showsVerticalScrollIndicator={false}>
         <Text style={s.title}>누구와 이야기할까요?</Text>
-        <Text style={s.description}>마음에 드는 캐릭터를 골라주세요. 선택한 상대의 말투와 상황에 맞는 표정으로 답해요. 선택은 이 기기에 저장돼요.</Text>
+        <Text style={s.description}>말투만 다르고 알려 주는 내용은 같아요.</Text>
+        <Text style={s.sampleLabel}>같은 질문 “3일째 운동을 못 했어요”</Text>
         <View style={s.list}>
           {chatCharacters.map((character) => (
             <Pressable
@@ -53,9 +59,10 @@ export default function ChatCharactersScreen() {
               <View style={s.copy}>
                 <Text style={s.name}>{character.name} <Text style={s.role}>{character.role}</Text></Text>
                 <Text style={s.cardDescription}>{character.description}</Text>
+                <Text style={s.sample}>{samples[character.id]}</Text>
               </View>
               <View style={[s.radio, selected === character.id && s.radioSelected]}>
-                {selected === character.id ? <Text style={s.check}>✓</Text> : null}
+                {selected === character.id ? <CheckIcon color="#FFFFFF" height={14} width={14} /> : null}
               </View>
             </Pressable>
           ))}
@@ -71,19 +78,23 @@ export default function ChatCharactersScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 }, content: { paddingHorizontal: 20, gap: 18 },
-  header: { height: 44, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  back: { fontSize: 32, color: '#25242B', width: 30 }, headerTitle: { color: '#25242B', fontSize: 15, fontFamily: fontFamilies.pretendardBold },
-  spacer: { width: 30 }, title: { color: '#25242B', fontSize: 22, fontFamily: fontFamilies.pretendardBold },
-  description: { color: '#777681', fontSize: 13, lineHeight: 20, marginTop: -8 },
-  list: { gap: 10 }, card: { minHeight: 84, borderWidth: 1, borderColor: '#E3E4EA', borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FAFBFC' },
-  selectedCard: { borderColor: '#5246C6', borderWidth: 1.5 },
-  copy: { flex: 1, gap: 4 }, name: { color: '#25242B', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-  role: { color: '#777681', fontSize: 10, fontFamily: fontFamilies.pretendardRegular },
-  cardDescription: { color: '#777681', fontSize: 11, lineHeight: 16 },
-  radio: { width: 21, height: 21, borderRadius: 11, borderWidth: 1, borderColor: '#C4C5CB', alignItems: 'center', justifyContent: 'center' },
-  radioSelected: { borderColor: '#5246C6', backgroundColor: '#5246C6' }, check: { color: '#FFF', fontSize: 12 },
-  bottom: { borderTopWidth: 1, borderTopColor: '#E8E8ED', paddingHorizontal: 20, paddingTop: 12, backgroundColor: '#FFFFFF' },
-  primaryButton: { backgroundColor: '#5246C6', borderRadius: 9, height: 50, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 },
+  root: { backgroundColor: '#FFFFFF', flex: 1 },
+  content: { gap: 12, paddingHorizontal: 20, paddingTop: 8 },
+  title: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
+  description: { color: '#3B3A42', fontSize: 16, lineHeight: 24 },
+  sampleLabel: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
+  list: { gap: 12 },
+  card: { alignItems: 'flex-start', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 16 },
+  selectedCard: { borderColor: '#5246C6', borderWidth: 2 },
+  copy: { flex: 1, gap: 2, minWidth: 0 },
+  name: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+  role: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
+  cardDescription: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  sample: { color: '#3B3A42', fontSize: 14, lineHeight: 21, marginTop: 2 },
+  radio: { alignItems: 'center', borderColor: '#5E5D66', borderRadius: 12, borderWidth: 1, height: 24, justifyContent: 'center', width: 24 },
+  radioSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
+  bottom: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 8 },
+  primaryButton: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center' },
+  primaryText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+  disabled: { opacity: 0.5 },
 });
