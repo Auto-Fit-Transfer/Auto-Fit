@@ -9,6 +9,7 @@ from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
+from urllib.parse import quote, urlsplit
 
 from pydantic import BaseModel, Field, ValidationError
 
@@ -28,6 +29,7 @@ class CatalogExercise:
     modes: frozenset[str]
     home_equipment: frozenset[str]
     gym_styles: frozenset[str]
+    asset_paths: tuple[tuple[str, str, str], ...]
 
 
 @lru_cache(maxsize=1)
@@ -48,9 +50,10 @@ def load_catalog() -> tuple[str, dict[str, CatalogExercise]]:
                 training_type = row["recommended_training_type"].strip()
                 group = groups.setdefault(key, {"name": name, "training_type": training_type,
                                                 "training_type_by_mode": {}, "modes": set(),
-                                                "equipment": set(), "styles": set()})
+                                                "equipment": set(), "styles": set(), "assets": {}})
                 mode = row["exercise_mode"].strip()
                 group["modes"].add(mode)
+                group["assets"].setdefault((mode, row["gender"].strip()), row["relative_path"].strip())
                 group["training_type_by_mode"].setdefault(mode, training_type)
                 if mode == "home_training":
                     group["equipment"].add(row["home_equipment"].strip())
@@ -61,11 +64,38 @@ def load_catalog() -> tuple[str, dict[str, CatalogExercise]]:
         return version, {
             key: CatalogExercise(value["name"], value["training_type"],
                                  tuple(value["training_type_by_mode"].items()), frozenset(value["modes"]),
-                                 frozenset(value["equipment"]), frozenset(value["styles"]))
+                                 frozenset(value["equipment"]), frozenset(value["styles"]),
+                                 tuple((mode, gender, path) for (mode, gender), path in value["assets"].items()))
             for key, value in groups.items()
         }
     except (OSError, KeyError, UnicodeError) as exc:
         raise ExerciseAIError("Exercise catalog is unavailable") from exc
+
+
+def gif_url_for_exercise(exercise_key: str, location: str, gender: str,
+                         base_url: str) -> str | None:
+    """Resolve only a primary CSV asset under a trusted public HTTPS prefix."""
+    try:
+        parsed = urlsplit(base_url)
+        port = parsed.port
+    except ValueError:
+        raise ExerciseAIError("Exercise GIF base URL must be HTTPS") from None
+    if (parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password
+            or port == 0 or parsed.query or parsed.fragment
+            or any(char.isspace() for char in base_url)):
+        raise ExerciseAIError("Exercise GIF base URL must be HTTPS")
+    _, catalog = load_catalog()
+    record = catalog.get(exercise_key)
+    if record is None:
+        return None
+    mode = "gym" if location == "gym" else "home_training"
+    for asset_mode, asset_gender, path in record.asset_paths:
+        if asset_mode == mode and asset_gender == gender:
+            parts = Path(path).parts
+            if not path or path.startswith("/") or any(part in {"..", "."} for part in parts):
+                raise ExerciseAIError("Exercise GIF catalog path is invalid")
+            return base_url.rstrip("/") + "/" + quote(path, safe="/")
+    return None
 
 
 class AIExercise(BaseModel):
@@ -73,7 +103,7 @@ class AIExercise(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     catalog_name_en: str = Field(min_length=1, max_length=300)
     exercise_modes: list[Literal["gym", "home_training"]] = Field(min_length=1, max_length=2)
-    duration_minutes: int = Field(ge=1, le=300)
+    duration_minutes: int = Field(ge=1, le=200)
     intensity: str | None = None
     instructions: list[str] = Field(default_factory=list, max_length=3)
 
@@ -81,6 +111,7 @@ class AIExercise(BaseModel):
 class AISession(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     focus: str | None = Field(default=None, max_length=200)
+    estimated_duration_minutes: int = Field(ge=1, le=200)
     exercises: list[AIExercise] = Field(min_length=1, max_length=4)
 
 
@@ -98,28 +129,45 @@ class AIEnvelope(BaseModel):
     result: AIResult
 
 
+class AIRequestContext(BaseModel):
+    available_minutes: int = Field(ge=5, le=200)
+    location: Literal["gym", "home", "outdoor", "other"]
+    available_equipment: list[Literal["machine", "band", "dumbbell", "mat", "other"]] = Field(max_length=5)
+    condition_level: Literal["좋음", "보통", "피곤해요", "안 좋아요"]
+    discomfort_areas: list[str] = Field(max_length=1)
+    condition_note: str | None = Field(max_length=500)
+
+
 def build_request(preferences: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
-    """Use only values the current screen actually collects; legacy AI inputs remain valid."""
-    condition = str(context.get("condition_level") or "").strip().casefold()
-    daily_condition = (
-        "good" if condition in {"좋음", "good"}
-        else "normal" if condition in {"보통", "normal"}
-        else "tired" if condition in {"피곤해요", "안 좋아요", "tired", "bad"}
-        else None
-    )
-    areas = context.get("discomfort_areas") or []
+    """Forward screen choices and the compatibility fields used by the deployed AI API."""
     request = {
-        "metric_statuses": {},
-        "goal_type": preferences["goal_type"],
-        "experience_level": preferences["experience_level"],
-        "available_minutes": context["available_minutes"],
+        "available_minutes": context.get("available_minutes"),
         "location": context.get("location"),
-        "preferred_training_types": [],
-        "has_discomfort": bool(areas),
-        "discomfort_areas": areas,
+        "available_equipment": context.get("available_equipment") or [],
+        "condition_level": context.get("condition_level"),
+        "discomfort_areas": context.get("discomfort_areas") or [],
+        "condition_note": context.get("condition_note") or None,
     }
-    if daily_condition:
-        request["daily_condition"] = daily_condition
+    try:
+        AIRequestContext.model_validate(request)
+    except ValidationError as exc:
+        raise ExerciseAIError("Stored exercise context does not match the AI contract") from exc
+    request.update({
+        "metric_statuses": {},
+        "preferred_training_types": [],
+        "daily_condition": {
+            "좋음": "good", "보통": "normal", "피곤해요": "tired", "안 좋아요": "poor",
+        }[request["condition_level"]],
+        "has_discomfort": bool(request["discomfort_areas"]),
+    })
+    for field in ("goal_type", "experience_level"):
+        if preferences.get(field) is not None:
+            request[field] = preferences[field]
+    if preferences.get("goal_type") == "other":
+        custom_goal = preferences.get("custom_goal")
+        if not isinstance(custom_goal, str) or not 1 <= len(custom_goal.strip()) <= 200:
+            raise ExerciseAIError("Custom exercise goal is invalid")
+        request["custom_goal"] = custom_goal.strip()
     return request
 
 
@@ -156,18 +204,26 @@ def _check_equipment(item: CatalogExercise, context: dict[str, Any]) -> None:
             )
             if item.gym_styles.isdisjoint(allowed):
                 raise ExerciseAIError("Exercise AI returned unavailable equipment")
-    elif location in {"home", "outdoor"}:
+    elif location in {"home", "outdoor", "other"}:
         if "home_training" not in item.modes:
             raise ExerciseAIError("Exercise AI returned an unavailable exercise mode")
         allowed = {"", "none"} | ({"band"} if "band" in equipment else set()) | (
             {"dumbbell"} if "dumbbell" in equipment else set()
-        ) | ({"other"} if "other" in equipment else set())
+        ) | ({"other"} if "other" in equipment and location == "home" else set())
         if item.home_equipment.isdisjoint(allowed):
             raise ExerciseAIError("Exercise AI returned unavailable equipment")
 
 
 def build_plan(response: dict[str, Any], preferences: dict[str, Any],
                context: dict[str, Any], recommendation_date: str) -> dict[str, Any]:
+    try:
+        target_minutes = int(context["available_minutes"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ExerciseAIError("Exercise target time is out of range") from exc
+    if not 5 <= target_minutes <= 200:
+        raise ExerciseAIError("Exercise target time is out of range")
+    maximum_minutes = min(target_minutes + 5, 200)
+
     try:
         parsed = AIEnvelope.model_validate(response)
     except ValidationError as exc:
@@ -228,8 +284,10 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
                 "target_weight_kg": None,
                 "rest_seconds": None,
             })
-        if session_minutes > int(context["available_minutes"]):
-            raise ExerciseAIError("Exercise AI exceeded the available time")
+        if not target_minutes <= session_minutes <= maximum_minutes:
+            raise ExerciseAIError("Exercise AI returned an invalid session duration")
+        if session.estimated_duration_minutes != session_minutes:
+            raise ExerciseAIError("Exercise AI returned inconsistent session duration")
         plan_sessions.append({
             "session_index": session_index,
             "scheduled_date": (start_date + timedelta(days=(session_index - 1) * 7 // len(parsed.result.sessions))).isoformat(),

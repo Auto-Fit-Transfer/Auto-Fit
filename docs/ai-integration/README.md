@@ -50,7 +50,7 @@
 `ingredients`를 `items`로 임의 변환하지 않으며, 이 구버전 형태를 거부하는 회귀 테스트를 추가했다.
 
 건강 분석은 위 커밋에서 `/health-analysis`와 `/health-analysis/diet-refresh` 및 전체 DTO를 확인했다.
-운동 추천 DTO도 확인했다. 두 기능은 기존 DB 저장 구조와의 매핑·검증 구현이 남아 있다.
+운동 추천 DTO도 당시 확인했다. 이 기준 시점에는 두 기능의 기존 DB 저장 구조 매핑·검증 구현이 남아 있었다. 현재 운동 연동 상태는 [운동 AI 연결 작업](../exercise-ai-integration.md)을 따른다.
 특히 건강 분석 냉장고 입력의 `inventory_item_id`는 해당 AI schema에서 필수이고,
 응답 `used_inventory_item_ids`와 대응하므로 불필요한 metadata와 구분해야 한다.
 근거: [건강 schema](https://github.com/gahya9904/Auto-Fit/blob/1ebb6a2f9eac1e1c49e95aa573ea76e46b1ababe/app/schemas/health_analysis.py),
@@ -66,7 +66,7 @@
 | Recipe | API 없음 | `GET /api/diet/weekly-recommendations/{plan_id}/meals/{day}/{meal_type}/recipe` 연결. 선택한 한 끼만 AI에 요청하고 응답 상태·영양값을 검증 |
 | Chat | 대화 저장, `/chat` 호환 호출 | `/chat/orchestrate`와 `pending_action`은 미연결. 상세 action 계약 필요 |
 | 건강 분석 | 최신 확정 입력 조회·저장된 분석 조회·규칙 기반 냉장고 갱신 | AI 경로·DTO 소스 확인. 최초 분석 및 부분 갱신의 저장 매핑·연결 미구현 |
-| 운동 추천 | 내부 규칙 기반 추천과 저장 RPC | AI DTO 소스 확인. 내부 종목·세트·반복 등과의 매핑 미구현 |
+| 운동 추천·완료 분석 | 별도 AI 서버 호출과 저장 RPC | 새 추천은 AI 전용이며 완료 분석 문구도 AI 서버에서 생성. 과거 규칙 추천 기록은 조회 호환 유지 |
 
 기존 일일 API·식사 기록·자정 갱신 작업은 일일 테이블을 사용한다. 이번 주간 API는 별도
 `weekly_diet_plans`를 사용하므로 **주간 식단이 기존 일일 화면이나 식사 기록으로 자동 연결되지는 않는다.**
@@ -206,8 +206,7 @@ AI 전송 시 건강 record ID·기관명·기기명 등 분석에 불필요한 
    `safety_checked=false`일 때 노출 가능 여부를 확인해야 한다. 현재는 입력 builder만 준비했다.
 3. **실제 적용 AI 버전**: 위 원격 커밋과 첨부 명세 사이에 차이가 있어 최신 브랜치/커밋이 필요하다.
    확인한 건강 분석 `analysis` schema는 기존 `MainAnalysis` 및 popup 지표·점수와 대응해야 한다.
-4. **운동 추천 저장 매핑**: 확인한 AI schema에는 내부 RPC가 요구하는 종목 ID·세트·반복 등이 없어
-   값을 임의 생성하지 않고 저장 구조와의 대응 규칙을 확정해야 한다.
+4. **운동 추천 저장 매핑(당시 미해결)**: 이후 AI 카탈로그 키를 검증해 저장하는 경로를 구현했다. 현재 계약은 [운동 AI 연결 작업](../exercise-ai-integration.md)을 따른다.
 5. **건강 status·목표 enum 및 지역 규격**: 사용자 운동 목표 enum은
    `weight_loss/muscle_gain/endurance/maintenance/rehabilitation/other`이다.
 6. **AI 서버의 실제 base URL·검증용 환경** 및 응답 최대 크기·timeout 적합성. 키는 별도 안전한 경로로 설정한다.

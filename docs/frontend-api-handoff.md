@@ -106,15 +106,15 @@ GET/PUT 응답의 `preferences.custom_goal`에서 입력 목표를 읽을 수 �
 }
 ```
 
-시간 5~300분. 장소 gym/home/outdoor/other. 장비 machine/band/dumbbell/mat/other.
-condition_level 1~30자, 불편 부위 최대 10개(각 1~50자), 메모 최대 500자.
+시간 5~200분. 장소 gym/home/outdoor/other. 장비 machine/band/dumbbell/mat/other.
+condition_level은 좋음/보통/피곤해요/안 좋아요, 불편 부위 최대 1개(1~50자), 메모 최대 500자.
 
 `result.recommendation`은 exercise_recommendation_id, recommendation_date, goal,
 total_duration_minutes, intensity, recommendation_summary, ai_reason, status 등을 가진다.
 `result.items[]`는 exercise_item_id, exercise_name, sequence_order, sets, repetitions,
 execution_type, target_duration_seconds, target_weight_kg, rest_seconds, instruction 등을 가진다.
 운동 상세·수행 화면에는 여기서 받은 exercise_item_id를 사용한다.
-현재 추천 생성기는 **rules_v1**이며 기본 프로필의 activity_level도 강도 결정에 반영한다. ai_reason이라는 필드명이 AI 모델 호출을 의미하지 않는다.
+새 추천 생성기는 **auto-fit-ai**다. AI 서버가 비활성화되거나 응답 검증에 실패하면 추천을 저장하지 않고 오류를 반환한다. 과거 `rules_v1` 추천은 조회와 기존 세션 진행을 위해 유지한다.
 
 ## 4. 운동 수행·피드백 (9개)
 
@@ -179,7 +179,7 @@ action_taken: adjust/stop/continue. 조정 후 result.adjusted_items와 result.s
 perceived_difficulty 1~5. post_condition very_bad/bad/normal/good/very_good.
 분석은 종료 상태와 피드백을 요구한다(미충족 409, 세션 없음 404).
 analysis: generator, summary, metrics, feedback_summary, insights[], next_session_adjustments[], safety_notice.
-분석은 현재 rules_v1이다. 다음 운동 조정 문구가 실제 다음 추천에 반영되는지까지 보장하는 계약은 아니다.
+분석 문구는 AI 서버에서 생성하고 `generator=auto-fit-ai`로 반환한다. `metrics`와 `feedback_summary`는 저장된 기록을 사용한다. 다음 운동 조정 문구가 실제 다음 추천에 반영되는지까지 보장하는 계약은 아니다. AI 분석이 불가능하면 오류를 반환한다.
 
 ## 5. 운동 목표·기록·진행 현황 (5개)
 

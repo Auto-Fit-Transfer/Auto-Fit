@@ -655,7 +655,7 @@ OpenAPI에 201, 401, 404, 409, 413, 415, 422, 502와 오류 스키마를 정의�
 
 | 필드 | 필수 | 타입 | 조건 |
 |---|---|---|---|
-| available_minutes | 예 | integer | maximum=300; minimum=5 |
+| available_minutes | 예 | integer | maximum=200; minimum=5 |
 | location | 예 | string | enum=["gym","home","outdoor","other"] |
 | available_equipment | 아니오 | 배열<string> | maxItems=5 |
 | condition_level | 예 | string | maxLength=30; minLength=1 |

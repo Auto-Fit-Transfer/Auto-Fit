@@ -3,6 +3,7 @@ import httpx
 import json
 from datetime import date
 from fastapi.testclient import TestClient
+import pytest
 
 from backend.app import main
 
@@ -711,7 +712,7 @@ def test_exercise_context_save_uses_authenticated_user_id(monkeypatch) -> None:
         assert context.available_minutes == 60
         assert context.location == "gym"
         assert context.available_equipment == ["machine", "mat"]
-        assert context.condition_level == "normal"
+        assert context.condition_level == "보통"
         assert context.discomfort_areas == ["허리"]
         assert context.condition_note is None
         return {"user_id": user_id, **context.model_dump()}
@@ -728,7 +729,7 @@ def test_exercise_context_save_uses_authenticated_user_id(monkeypatch) -> None:
                 "available_minutes": 60,
                 "location": "gym",
                 "available_equipment": ["machine", "mat", "machine"],
-                "condition_level": " normal ",
+                "condition_level": " 보통 ",
                 "discomfort_areas": [" 허리 ", "허리"],
                 "condition_note": "   ",
             },
@@ -754,7 +755,7 @@ def test_exercise_context_rejects_client_supplied_user_id() -> None:
                 "available_minutes": 30,
                 "location": "home",
                 "available_equipment": [],
-                "condition_level": "good",
+                "condition_level": "좋음",
                 "discomfort_areas": [],
                 "user_id": "another-user",
             },
@@ -779,7 +780,7 @@ def test_exercise_context_rejects_unknown_equipment_and_blank_area() -> None:
                 "available_minutes": 30,
                 "location": "home",
                 "available_equipment": ["treadmill"],
-                "condition_level": "good",
+                "condition_level": "좋음",
                 "discomfort_areas": [],
             },
         )
@@ -789,12 +790,88 @@ def test_exercise_context_rejects_unknown_equipment_and_blank_area() -> None:
                 "available_minutes": 30,
                 "location": "home",
                 "available_equipment": [],
-                "condition_level": "good",
+                "condition_level": "좋음",
                 "discomfort_areas": ["   "],
             },
         )
         assert invalid_equipment.status_code == 422
         assert blank_area.status_code == 422
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+@pytest.mark.parametrize("field,value", [
+    ("available_minutes", 201),
+    ("available_minutes", 4),
+    ("condition_level", "good"),
+    ("discomfort_areas", ["허리", "무릎"]),
+])
+def test_exercise_context_rejects_values_outside_screen_contract(field, value):
+    payload = {
+        "available_minutes": 30, "location": "home", "available_equipment": ["mat"],
+        "condition_level": "좋음", "discomfort_areas": [],
+    }
+    payload[field] = value
+    with pytest.raises(ValueError):
+        main.ExerciseRecommendationContextRequest.model_validate(payload)
+
+
+@pytest.mark.parametrize("minutes, expected_status", [(5, 200), (50, 200), (200, 200), (201, 422)])
+def test_exercise_context_accepts_duration_range(monkeypatch, minutes, expected_status):
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_create(user_id, context, settings):
+        return {"user_id": user_id, **context.model_dump()}
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "create_exercise_context", fake_create)
+    try:
+        response = TestClient(main.app).post(
+            "/api/exercise/recommendation-contexts",
+            json={
+                "available_minutes": minutes,
+                "location": "home",
+                "available_equipment": [],
+                "condition_level": "좋음",
+                "discomfort_areas": [],
+            },
+        )
+        assert response.status_code == expected_status
+        if expected_status == 200:
+            assert response.json()["context"]["available_minutes"] == minutes
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_generate_exercise_recommendation_rejects_stale_duration_before_storage(monkeypatch):
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_profile(*_args):
+        return {}
+
+    async def fake_preferences(*_args):
+        return {"goal_type": "maintenance", "experience_level": "beginner"}
+
+    async def fake_context(*_args):
+        return {"exercise_recommendation_context_id": "context-123", "available_minutes": 201}
+
+    async def forbidden_create(*_args):
+        raise AssertionError("stale exercise context reached storage")
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "fetch_profile", fake_profile)
+    monkeypatch.setattr(main, "fetch_exercise_preferences", fake_preferences)
+    monkeypatch.setattr(main, "fetch_latest_unlinked_exercise_context", fake_context)
+    monkeypatch.setattr(main, "create_exercise_recommendation", forbidden_create)
+    try:
+        response = TestClient(main.app).post("/api/exercise/recommendations/generate", json={})
+        assert response.status_code == 409
+        assert response.json()["detail"]["code"] == "EXERCISE_CONTEXT_INVALID"
+        assert "again" in response.json()["detail"]["message"]
     finally:
         main.app.dependency_overrides.clear()
 
@@ -821,70 +898,7 @@ def test_latest_exercise_context_uses_authenticated_user_id(monkeypatch) -> None
         main.app.dependency_overrides.clear()
 
 
-def test_build_exercise_recommendation_plan_uses_context_and_preferences() -> None:
-    plan = main.build_exercise_recommendation_plan(
-        {"goal_type": "muscle_gain", "experience_level": "advanced"},
-        {
-            "available_minutes": 60,
-            "available_equipment": ["machine", "mat"],
-            "condition_level": "보통",
-            "discomfort_areas": ["허리"],
-        },
-    )
-
-    assert plan["recommendation"]["intensity"] == "low"
-    assert plan["recommendation"]["total_duration_minutes"] == 60
-    assert sum(item["duration_minutes"] for item in plan["items"]) == 60
-    assert plan["items"][1]["exercise_type_name"] == "웨이트 트레이닝"
-    assert plan["items"][1]["sets"] == 2
-
-
-def test_build_exercise_recommendation_plan_uses_profile_activity_level() -> None:
-    plan = main.build_exercise_recommendation_plan(
-        {"goal_type": "maintenance", "experience_level": "beginner"},
-        {
-            "available_minutes": 30,
-            "available_equipment": [],
-            "condition_level": "좋음",
-            "discomfort_areas": [],
-        },
-        {"activity_level": "sedentary"},
-    )
-
-    assert plan["recommendation"]["intensity"] == "low"
-    assert "활동 수준" in plan["recommendation"]["ai_reason"]
-
-
-def test_build_exercise_recommendation_plan_rotates_previous_workout() -> None:
-    preferences = {"goal_type": "weight_loss", "experience_level": "beginner"}
-    context = {
-        "available_minutes": 60,
-        "location": "home",
-        "available_equipment": ["mat"],
-        "condition_level": "보통",
-        "discomfort_areas": [],
-    }
-    first = main.build_exercise_recommendation_plan(preferences, context)
-    second = main.build_exercise_recommendation_plan(
-        preferences, context, previous_items=first["items"]
-    )
-    third = main.build_exercise_recommendation_plan(
-        preferences, context, previous_items=second["items"]
-    )
-
-    assert [item["exercise_name"] for item in first["items"]] != [
-        item["exercise_name"] for item in second["items"]
-    ]
-    assert [item["exercise_name"] for item in second["items"]] != [
-        item["exercise_name"] for item in third["items"]
-    ]
-    assert first["items"][1]["instruction"] != second["items"][1]["instruction"]
-    assert first["recommendation"]["recommendation_summary"] != second["recommendation"]["recommendation_summary"]
-    assert sum(item["duration_minutes"] for item in second["items"]) == 60
-    assert all(item["exercise_type_name"] in {"걷기", "스트레칭"} for item in second["items"])
-
-
-def test_generate_exercise_recommendation_uses_authenticated_user(monkeypatch) -> None:
+def test_generate_exercise_recommendation_requires_ai_configuration(monkeypatch) -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="authenticated-user")
 
@@ -893,11 +907,9 @@ def test_generate_exercise_recommendation_uses_authenticated_user(monkeypatch) -
         return {"goal_type": "maintenance", "experience_level": "beginner"}
 
     async def fake_profile(user_id: str, settings: main.Settings):
-        assert user_id == "authenticated-user"
         return {"user_id": user_id, "activity_level": "light"}
 
     async def fake_context(user_id: str, settings: main.Settings):
-        assert user_id == "authenticated-user"
         return {
             "exercise_recommendation_context_id": "context-123",
             "available_minutes": 30,
@@ -906,49 +918,19 @@ def test_generate_exercise_recommendation_uses_authenticated_user(monkeypatch) -
             "discomfort_areas": [],
         }
 
-    async def fake_create(
-        user_id: str,
-        context_id: str,
-        plan: dict,
-        settings: main.Settings,
-    ):
-        assert user_id == "authenticated-user"
-        assert context_id == "context-123"
-        assert plan["recommendation"]["goal"] == "maintenance"
-        assert plan["recommendation"]["intensity"] == "low"
-        assert plan["items"][1]["exercise_name"] == "평지 지속 걷기"
-        assert settings == TEST_SETTINGS
-        return {"recommendation": {"user_id": user_id}, "items": plan["items"]}
+    async def forbidden_create(*_args):
+        raise AssertionError("exercise recommendation was saved without AI")
 
     main.app.dependency_overrides[main.get_current_user] = fake_user
     main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
     monkeypatch.setattr(main, "fetch_exercise_preferences", fake_preferences)
     monkeypatch.setattr(main, "fetch_profile", fake_profile)
     monkeypatch.setattr(main, "fetch_latest_unlinked_exercise_context", fake_context)
-
-    async def fake_previous(user_id: str, settings: main.Settings):
-        assert user_id == "authenticated-user"
-        previous = main.build_exercise_recommendation_plan(
-            {"goal_type": "maintenance", "experience_level": "beginner"},
-            {
-                "available_minutes": 30,
-                "available_equipment": [],
-                "condition_level": "좋음",
-                "discomfort_areas": [],
-            },
-            {"activity_level": "light"},
-        )
-        return {"recommendation": previous["recommendation"], "items": previous["items"]}
-
-    monkeypatch.setattr(main, "fetch_latest_exercise_recommendation", fake_previous)
-    monkeypatch.setattr(main, "create_exercise_recommendation", fake_create)
-
+    monkeypatch.setattr(main, "create_exercise_recommendation", forbidden_create)
     try:
-        client = TestClient(main.app)
-        response = client.post("/api/exercise/recommendations/generate", json={})
-        assert response.status_code == 200
-        assert response.json()["generator"] == "rules_v1"
-        assert len(response.json()["result"]["items"]) == 3
+        response = TestClient(main.app).post("/api/exercise/recommendations/generate", json={})
+        assert response.status_code == 503
+        assert response.json()["detail"] == {"code": "AI_DISABLED"}
     finally:
         main.app.dependency_overrides.clear()
 
@@ -1345,30 +1327,6 @@ def test_get_exercise_feedback_uses_authenticated_user(monkeypatch) -> None:
         assert response.json()["feedback"]["post_condition"] == "very_good"
     finally:
         main.app.dependency_overrides.clear()
-
-
-def test_build_exercise_analysis_adjusts_high_difficulty_and_discomfort() -> None:
-    analysis = main.build_exercise_session_analysis(
-        {
-            "session": {
-                "status": "completed",
-                "completion_rate": "100.00",
-                "total_duration_seconds": 1800,
-                "total_calories_burned": "150.00",
-            },
-            "logs": [],
-            "feedback": {
-                "perceived_difficulty": 5,
-                "post_condition": "bad",
-                "uncomfortable_areas": ["허리"],
-            },
-        }
-    )
-    assert analysis["generator"] == "rules_v1"
-    assert analysis["metrics"]["duration_minutes"] == 30
-    assert analysis["feedback_summary"]["difficulty"] == "매우 어려움"
-    assert "다음 운동 강도를 한 단계 낮춤" in analysis["next_session_adjustments"]
-    assert analysis["safety_notice"] is not None
 
 
 def test_get_exercise_analysis_requires_feedback(monkeypatch) -> None:

@@ -14419,7 +14419,7 @@
         "properties": {
           "available_minutes": {
             "type": "integer",
-            "maximum": 300.0,
+            "maximum": 200.0,
             "minimum": 5.0,
             "title": "Available Minutes"
           },
@@ -14450,8 +14450,12 @@
           },
           "condition_level": {
             "type": "string",
-            "maxLength": 30,
-            "minLength": 1,
+            "enum": [
+              "좋음",
+              "보통",
+              "피곤해요",
+              "안 좋아요"
+            ],
             "title": "Condition Level"
           },
           "discomfort_areas": {
@@ -14459,7 +14463,7 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 10,
+            "maxItems": 1,
             "title": "Discomfort Areas"
           },
           "condition_note": {

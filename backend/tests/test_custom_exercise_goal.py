@@ -91,12 +91,18 @@ def test_custom_goal_storage_payload_and_select(monkeypatch):
     assert asyncio.run(main.fetch_exercise_preferences("owner", TEST_SETTINGS))["custom_goal"] == "등산 준비"
 
 
-def test_other_goal_recommendation_is_safe_fallback():
-    plan = main.build_exercise_recommendation_plan(
+def test_other_goal_is_sent_to_ai():
+    from backend.app.exercise_ai import build_request
+
+    request = build_request(
         {"goal_type": "other", "experience_level": "beginner", "custom_goal": "등산 준비"},
-        {"available_minutes": 30, "condition_level": "좋음"},
+        {
+            "available_minutes": 30,
+            "location": "home",
+            "available_equipment": [],
+            "condition_level": "좋음",
+            "discomfort_areas": [],
+        },
     )
-    assert plan["recommendation"]["goal"] == "other"
-    assert "등산 준비" in plan["recommendation"]["recommendation_summary"]
-    assert "기본 걷기" in plan["recommendation"]["ai_reason"]
-    assert plan["items"][1]["exercise_type_name"] == "걷기"
+    assert request["goal_type"] == "other"
+    assert request["custom_goal"] == "등산 준비"

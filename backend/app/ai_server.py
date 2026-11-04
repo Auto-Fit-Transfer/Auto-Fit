@@ -25,6 +25,7 @@ class AIEndpoint(str, Enum):
     HEALTH = "/health-analysis"
     DIET_REFRESH = "/health-analysis/diet-refresh"
     EXERCISE = "/recommend/exercise"
+    EXERCISE_ANALYSIS = "/analyze/exercise-session"
 
 
 @dataclass(frozen=True)

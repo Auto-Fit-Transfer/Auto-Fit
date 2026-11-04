@@ -1,14 +1,16 @@
+import asyncio
 import copy
-from contextlib import asynccontextmanager
 import json
+from contextlib import asynccontextmanager
 
 import httpx
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from backend.app import main
 from backend.app.ai_server import AIServerClient
-from backend.app.exercise_ai import EXERCISE_TYPE_NAMES, ExerciseAIError, build_plan, build_request, load_catalog
+from backend.app.exercise_ai import EXERCISE_TYPE_NAMES, ExerciseAIError, build_plan, build_request, gif_url_for_exercise, load_catalog
 
 
 PREFERENCES = {"goal_type": "muscle_gain", "experience_level": "beginner"}
@@ -37,24 +39,24 @@ def ai_response():
             "weekly_frequency": 3,
             "intensity": "낮음",
             "sessions": [
-                {"name": "오늘의 홈트", "exercises": [
+                {"name": "오늘의 홈트", "estimated_duration_minutes": 30, "exercises": [
                     {
                         "exercise_key": key,
                         "name": f"운동 {index}",
                         "catalog_name_en": record.name_en,
                         "exercise_modes": ["home_training"],
-                        "duration_minutes": 5,
+                        "duration_minutes": 15,
                         "intensity": "낮음",
                         "instructions": ["천천히 수행하세요."],
                     }
                     for index, (key, record) in enumerate(selected)
                 ]},
-                {"name": "다음 운동", "exercises": [{
+                {"name": "다음 운동", "estimated_duration_minutes": 30, "exercises": [{
                     "exercise_key": selected[0][0],
                     "name": "다음 회차 운동",
                     "catalog_name_en": selected[0][1].name_en,
                     "exercise_modes": ["home_training"],
-                    "duration_minutes": 5,
+                    "duration_minutes": 30,
                 }]},
             ],
             "cautions": ["통증이 생기면 중단하세요."],
@@ -63,14 +65,156 @@ def ai_response():
     }
 
 
+def ai_response_for_minutes(target_minutes, actual_minutes):
+    response = ai_response()
+    first, second = response["result"]["sessions"]
+    first["exercises"][0]["duration_minutes"] = actual_minutes // 2
+    first["exercises"][1]["duration_minutes"] = actual_minutes - actual_minutes // 2
+    first["estimated_duration_minutes"] = actual_minutes
+    second["exercises"][0]["duration_minutes"] = target_minutes
+    second["estimated_duration_minutes"] = target_minutes
+    return response
+
+
+def test_concurrent_generation_uses_one_ai_call_for_one_context(monkeypatch):
+    state = {"linked": False, "ai_calls": 0}
+
+    async def fake_profile(*_args):
+        return {}
+
+    async def fake_preferences(*_args):
+        return PREFERENCES
+
+    async def fake_context(*_args):
+        if state["linked"]:
+            return None
+        return {"exercise_recommendation_context_id": "context-123", **CONTEXT}
+
+    async def fake_create(_user_id, _context_id, plan, _settings):
+        state["linked"] = True
+        return {"recommendation": plan["recommendation"], "items": plan["items"]}
+
+    class FakeClient:
+        def __init__(self, _config):
+            pass
+
+        async def post(self, endpoint, _payload):
+            assert endpoint is main.AIEndpoint.EXERCISE
+            state["ai_calls"] += 1
+            await asyncio.sleep(0)
+            return ai_response()
+
+    monkeypatch.setattr(main, "fetch_profile", fake_profile)
+    monkeypatch.setattr(main, "fetch_exercise_preferences", fake_preferences)
+    monkeypatch.setattr(main, "fetch_latest_unlinked_exercise_context", fake_context)
+    monkeypatch.setattr(main, "create_exercise_recommendation", fake_create)
+    monkeypatch.setattr(main, "get_ai_server_config", lambda: object())
+    monkeypatch.setattr(main, "AIServerClient", FakeClient)
+
+    async def run_both():
+        return await asyncio.gather(
+            main.prepare_exercise_routine("concurrent-user", object(), generate=True),
+            main.prepare_exercise_routine("concurrent-user", object(), generate=True),
+        )
+
+    first, second = asyncio.run(run_both())
+    assert first["generated"] is True
+    assert second["missing"] == ["recommendation_context"]
+    assert state["ai_calls"] == 1
+
+
+def test_generate_api_blocks_paid_call_when_quota_is_exhausted(monkeypatch):
+    quota_checks = []
+    ai_calls = []
+
+    async def fake_user():
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_preferences(*_args):
+        return PREFERENCES
+
+    async def fake_context(*_args):
+        return {"exercise_recommendation_context_id": "context-123", **CONTEXT}
+
+    class ExhaustedQuota:
+        async def check(self, bucket):
+            quota_checks.append(bucket)
+            raise HTTPException(429, detail={"code": "RATE_LIMITED"})
+
+    class FakeClient:
+        def __init__(self, _config):
+            pass
+
+        async def post(self, *_args):
+            ai_calls.append(1)
+            return ai_response()
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: object()
+    main.app.dependency_overrides[main.get_exercise_generation_limiter] = lambda: ExhaustedQuota()
+    monkeypatch.setattr(main, "fetch_profile", lambda *_args: asyncio.sleep(0, result={}))
+    monkeypatch.setattr(main, "fetch_exercise_preferences", fake_preferences)
+    monkeypatch.setattr(main, "fetch_latest_unlinked_exercise_context", fake_context)
+    monkeypatch.setattr(main, "get_ai_server_config", lambda: object())
+    monkeypatch.setattr(main, "AIServerClient", FakeClient)
+    try:
+        response = TestClient(main.app).post("/api/exercise/recommendations/generate", json={})
+        assert response.status_code == 429
+        assert response.json()["detail"] == {"code": "RATE_LIMITED"}
+        assert quota_checks == ["answers"]
+        assert ai_calls == []
+    finally:
+        main.app.dependency_overrides.clear()
+
+
 def test_build_request_uses_only_available_user_choices():
     request = build_request(PREFERENCES, CONTEXT)
+    assert request["goal_type"] == "muscle_gain"
+    assert request["experience_level"] == "beginner"
+    assert request["available_equipment"] == []
+    assert request["condition_level"] == "피곤해요"
     assert request["daily_condition"] == "tired"
     assert request["has_discomfort"] is True
     assert request["discomfort_areas"] == ["오른쪽 무릎"]
     assert request["metric_statuses"] == {}
-    assert "exercise_mode" not in request
-    assert "gym_preferences" not in request
+    assert request["preferred_training_types"] == []
+
+
+def test_build_request_preserves_multiple_equipment_and_optional_condition():
+    request = build_request({}, {
+        **CONTEXT, "location": "gym", "available_equipment": ["dumbbell", "machine", "mat"],
+        "condition_level": "보통", "discomfort_areas": [], "condition_note": "무릎 조심",
+    })
+    assert request["available_equipment"] == ["dumbbell", "machine", "mat"]
+    assert request["condition_level"] == "보통"
+    assert request["discomfort_areas"] == []
+    assert request["condition_note"] == "무릎 조심"
+    assert "goal_type" not in request
+
+
+@pytest.mark.parametrize("condition, expected", [
+    ("좋음", "good"), ("보통", "normal"), ("피곤해요", "tired"), ("안 좋아요", "poor"),
+])
+def test_build_request_preserves_each_condition(condition, expected):
+    request = build_request(PREFERENCES, {**CONTEXT, "condition_level": condition})
+    assert request["condition_level"] == condition
+    assert request["daily_condition"] == expected
+
+
+def test_build_request_rejects_stale_context_before_ai_call():
+    with pytest.raises(ExerciseAIError, match="Stored exercise context"):
+        build_request(PREFERENCES, {**CONTEXT, "condition_level": "normal"})
+
+
+@pytest.mark.parametrize("minutes", [5, 50, 198, 200])
+def test_build_request_accepts_duration_range(minutes):
+    assert build_request(PREFERENCES, {**CONTEXT, "available_minutes": minutes})["available_minutes"] == minutes
+
+
+@pytest.mark.parametrize("minutes", [4, 201])
+def test_build_request_rejects_out_of_range_duration(minutes):
+    with pytest.raises(ExerciseAIError, match="Stored exercise context"):
+        build_request(PREFERENCES, {**CONTEXT, "available_minutes": minutes})
 
 
 def test_build_plan_preserves_all_sessions_and_catalog_keys():
@@ -78,7 +222,8 @@ def test_build_plan_preserves_all_sessions_and_catalog_keys():
     plan = build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
     assert plan["recommendation"]["generator"] == "auto-fit-ai"
     assert plan["recommendation"]["catalog_version"] == response["result"]["catalog_version"]
-    assert plan["recommendation"]["total_duration_minutes"] == 10
+    assert plan["recommendation"]["total_duration_minutes"] == 30
+    assert [session["duration_minutes"] for session in plan["recommendation"]["plan_sessions"]] == [30, 30]
     assert plan["recommendation"]["intensity"] == "low"
     assert len(plan["items"]) == 3
     assert [session["scheduled_date"] for session in plan["recommendation"]["plan_sessions"]] == [
@@ -87,6 +232,59 @@ def test_build_plan_preserves_all_sessions_and_catalog_keys():
     assert [item["plan_session_index"] for item in plan["items"]] == [1, 1, 2]
     assert plan["items"][0]["exercise_key"] == response["result"]["sessions"][0]["exercises"][0]["exercise_key"]
     assert all(item["execution_type"] == "time_based" for item in plan["items"])
+
+
+@pytest.mark.parametrize("target, actual, accepted", [
+    (5, 5, True), (5, 10, True), (5, 11, False),
+    (30, 29, False), (30, 30, True), (30, 35, True), (30, 36, False),
+    (195, 195, True), (195, 200, True), (195, 201, False),
+    (198, 198, True), (198, 200, True), (198, 201, False),
+    (200, 200, True), (200, 201, False),
+])
+def test_build_plan_enforces_each_session_duration(target, actual, accepted):
+    response = ai_response_for_minutes(target, actual)
+    context = {**CONTEXT, "available_minutes": target}
+    if not accepted:
+        with pytest.raises(ExerciseAIError):
+            build_plan(response, PREFERENCES, context, "2026-11-03")
+        return
+
+    plan = build_plan(response, PREFERENCES, context, "2026-11-03")
+    assert [session["duration_minutes"] for session in plan["recommendation"]["plan_sessions"]] == [actual, target]
+    assert plan["recommendation"]["total_duration_minutes"] == actual
+
+
+def test_build_plan_rejects_one_invalid_session():
+    response = ai_response_for_minutes(30, 30)
+    second = response["result"]["sessions"][1]
+    second["exercises"][0]["duration_minutes"] = 29
+    second["estimated_duration_minutes"] = 29
+    with pytest.raises(ExerciseAIError, match="invalid session duration"):
+        build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
+
+
+def test_build_plan_rejects_inconsistent_estimated_duration():
+    response = ai_response()
+    response["result"]["sessions"][0]["estimated_duration_minutes"] = 31
+    with pytest.raises(ExerciseAIError, match="inconsistent session duration"):
+        build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
+
+
+@pytest.mark.parametrize("change", [
+    lambda session: session.pop("estimated_duration_minutes"),
+    lambda session: session["exercises"][0].update(duration_minutes=201),
+])
+def test_build_plan_rejects_invalid_duration_fields(change):
+    response = ai_response()
+    change(response["result"]["sessions"][0])
+    with pytest.raises(ExerciseAIError, match="invalid structure"):
+        build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
+
+
+@pytest.mark.parametrize("minutes", [4, 201])
+def test_build_plan_rejects_invalid_target(minutes):
+    with pytest.raises(ExerciseAIError, match="target time is out of range"):
+        build_plan(ai_response(), PREFERENCES, {**CONTEXT, "available_minutes": minutes}, "2026-11-03")
 
 
 def test_build_plan_uses_training_type_for_selected_mode():
@@ -134,8 +332,61 @@ def test_build_plan_rejects_exercise_requiring_unavailable_equipment():
         build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
 
 
+@pytest.mark.parametrize("location", ["outdoor", "other"])
+def test_build_plan_rejects_fixed_equipment_outside_home_or_gym(location):
+    response = ai_response()
+    _, catalog = load_catalog()
+    key, record = next(
+        (key, record) for key, record in catalog.items()
+        if "home_training" in record.modes and record.home_equipment == frozenset({"other"})
+    )
+    exercise = response["result"]["sessions"][0]["exercises"][0]
+    exercise.update(exercise_key=key, catalog_name_en=record.name_en)
+    with pytest.raises(ExerciseAIError, match="equipment"):
+        build_plan(response, PREFERENCES, {**CONTEXT, "location": location, "available_equipment": ["other"]}, "2026-11-03")
+
+
+def test_gif_url_resolves_primary_asset_by_mode_and_gender():
+    _, catalog = load_catalog()
+    key, record = next(
+        (key, record) for key, record in catalog.items()
+        if ("gym", "female") in {(mode, gender) for mode, gender, _ in record.asset_paths}
+    )
+    expected_path = next(path for mode, gender, path in record.asset_paths
+                         if mode == "gym" and gender == "female")
+    url = gif_url_for_exercise(key, "gym", "female", "https://cdn.example.invalid/exercises")
+    assert url.startswith("https://cdn.example.invalid/exercises/")
+    assert expected_path.split("/")[0] in url
+    assert " " not in url
+    assert gif_url_for_exercise(key, "gym", "other", "https://cdn.example.invalid") is None
+    with pytest.raises(ExerciseAIError):
+        gif_url_for_exercise(key, "gym", "female", "http://cdn.example.invalid")
+
+
+def test_gif_url_is_exposed_only_for_existing_https_object(monkeypatch):
+    _, catalog = load_catalog()
+    key, _ = next((key, record) for key, record in catalog.items()
+                  if any(mode == "home_training" and gender == "male"
+                         for mode, gender, _ in record.asset_paths))
+    monkeypatch.setenv("EXERCISE_GIF_BASE_URL", "https://cdn.example.invalid/exercises")
+    original_client = httpx.AsyncClient
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(200 if len(seen) == 1 else 404)
+
+    monkeypatch.setattr(main.httpx, "AsyncClient", lambda **kwargs: original_client(
+        transport=httpx.MockTransport(handler), **kwargs))
+    result = {"items": [{"exercise_key": key}]}
+    first = asyncio.run(main.attach_exercise_gif_urls(result, {"location": "home"}, {"gender": "male"}))
+    assert first["items"][0]["demo_gif_url"].startswith("https://")
+    assert seen[0].method == "HEAD"
+    second = asyncio.run(main.attach_exercise_gif_urls(result, {"location": "home"}, {"gender": "male"}))
+    assert second["items"][0]["demo_gif_url"] is None
+
+
 def test_generate_api_calls_ai_and_saves_validated_items(monkeypatch):
-    monkeypatch.setenv("EXERCISE_AI_ENABLED", "true")
     monkeypatch.setenv("AI_SERVER_ENABLED", "true")
     monkeypatch.setenv("AI_SERVER_BASE_URL", "https://ai.example.invalid")
     monkeypatch.setenv("AI_SERVER_API_KEY", "synthetic-test-key-" + "x" * 32)
@@ -148,8 +399,10 @@ def test_generate_api_calls_ai_and_saves_validated_items(monkeypatch):
         assert request.headers["authorization"].startswith("Bearer synthetic-test-key-")
         payload = json.loads(request.content)
         assert payload["goal_type"] == "muscle_gain"
-        assert payload["daily_condition"] == "tired"
-        return httpx.Response(200, json=ai_response())
+        assert payload["condition_level"] == "피곤해요"
+        assert payload["available_equipment"] == []
+        assert payload["condition_note"] is None
+        return httpx.Response(200, json=ai_response_for_minutes(30, 35))
 
     monkeypatch.setattr(main, "AIServerClient", lambda config: AIServerClient(
         config, transport=httpx.MockTransport(handler)))
@@ -173,7 +426,7 @@ def test_generate_api_calls_ai_and_saves_validated_items(monkeypatch):
         return {"recommendation": plan["recommendation"], "items": plan["items"]}
 
     async def unexpected_previous(_user_id, _settings):
-        raise AssertionError("rules_v1 previous recommendation was consulted")
+        raise AssertionError("previous recommendation was consulted during AI generation")
 
     main.app.dependency_overrides[main.get_current_user] = fake_user
     main.app.dependency_overrides[main.get_settings] = lambda: main.Settings(
@@ -193,17 +446,23 @@ def test_generate_api_calls_ai_and_saves_validated_items(monkeypatch):
         assert response.json()["generator"] == "auto-fit-ai"
         assert len(response.json()["result"]["items"]) == 3
         assert len(requested) == len(saved) == 1
+        assert saved[0]["recommendation"]["total_duration_minutes"] == 35
+        assert [session["duration_minutes"] for session in saved[0]["recommendation"]["plan_sessions"]] == [35, 30]
     finally:
         main.app.dependency_overrides.clear()
 
 
-def test_generate_api_rejects_invalid_ai_response_before_storage(monkeypatch):
-    monkeypatch.setenv("EXERCISE_AI_ENABLED", "true")
+@pytest.mark.parametrize("invalid_case", ["catalog", "too_short", "too_long"])
+def test_generate_api_rejects_invalid_ai_response_before_storage(monkeypatch, invalid_case):
     monkeypatch.setenv("AI_SERVER_ENABLED", "true")
     monkeypatch.setenv("AI_SERVER_BASE_URL", "https://ai.example.invalid")
     monkeypatch.setenv("AI_SERVER_API_KEY", "synthetic-test-key-" + "x" * 32)
     invalid = ai_response()
-    invalid["result"]["catalog_version"] = "sha256:wrong"
+    if invalid_case == "catalog":
+        invalid["result"]["catalog_version"] = "sha256:wrong"
+    else:
+        actual = 29 if invalid_case == "too_short" else 36
+        invalid = ai_response_for_minutes(30, actual)
     monkeypatch.setattr(main, "AIServerClient", lambda config: AIServerClient(
         config, transport=httpx.MockTransport(lambda _: httpx.Response(200, json=invalid))))
 

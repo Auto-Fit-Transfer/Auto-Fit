@@ -55,7 +55,8 @@ from backend.app.diet_ai import (
     select_ai_slots,
 )
 from backend.app.ai_server import AIEndpoint, AIServerClient, AIServerError, get_ai_server_config
-from backend.app.exercise_ai import ExerciseAIError, build_plan as build_ai_exercise_plan, build_request as build_ai_exercise_request
+from backend.app.exercise_ai import ExerciseAIError, build_plan as build_ai_exercise_plan, build_request as build_ai_exercise_request, gif_url_for_exercise
+from backend.app.exercise_analysis_ai import analysis_input_hash, build_analysis_input, build_public_analysis
 from backend.app.food_image_generation import (
     generate_missing_menu_images,
     get_food_image_settings,
@@ -91,6 +92,8 @@ CHAT_REQUEST_TIMEOUT_SECONDS = 70
 DUMMY_FOOD_NAME_PREFIX = re.compile(r"^\[DUMMY[^\]]*\]\s*", re.IGNORECASE)
 FOOD_NAME_PARENTHETICAL = re.compile(r"\s*(?:\([^()]*\)|（[^（）]*）)")
 DIET_GENERATION_LOCKS: dict[tuple[str, date], asyncio.Lock] = defaultdict(asyncio.Lock)
+EXERCISE_GENERATION_LOCKS: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+EXERCISE_ANALYSIS_LOCKS: dict[tuple[str, str], asyncio.Lock] = defaultdict(asyncio.Lock)
 
 
 def without_parenthetical_details(value: str) -> str:
@@ -300,13 +303,13 @@ class ExercisePreferencesRequest(BaseModel):
 class ExerciseRecommendationContextRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    available_minutes: int = Field(ge=5, le=300)
+    available_minutes: int = Field(ge=5, le=200)
     location: Literal["gym", "home", "outdoor", "other"]
     available_equipment: list[
         Literal["machine", "band", "dumbbell", "mat", "other"]
     ] = Field(default_factory=list, max_length=5)
-    condition_level: str = Field(min_length=1, max_length=30)
-    discomfort_areas: list[str] = Field(default_factory=list, max_length=10)
+    condition_level: Literal["좋음", "보통", "피곤해요", "안 좋아요"]
+    discomfort_areas: list[str] = Field(default_factory=list, max_length=1)
     condition_note: str | None = Field(default=None, max_length=500)
 
     @field_validator("available_equipment")
@@ -327,9 +330,11 @@ class ExerciseRecommendationContextRequest(BaseModel):
         normalized = value.strip()
         return normalized or None
 
-    @field_validator("discomfort_areas")
+    @field_validator("discomfort_areas", mode="before")
     @classmethod
-    def normalize_discomfort_areas(cls, values: list[str]) -> list[str]:
+    def normalize_discomfort_areas(cls, values: Any) -> Any:
+        if not isinstance(values, list) or any(not isinstance(value, str) for value in values):
+            return values
         normalized: list[str] = []
         seen: set[str] = set()
         for value in values:
@@ -935,212 +940,6 @@ async def fetch_latest_unlinked_exercise_context(
     return rows[0] if rows else None
 
 
-def build_exercise_recommendation_plan(
-    preferences: dict[str, Any],
-    context: dict[str, Any],
-    profile: dict[str, Any] | None = None,
-    *,
-    previous_items: list[dict[str, Any]] | None = None,
-) -> dict[str, Any]:
-    goal = preferences["goal_type"]
-    experience = preferences["experience_level"]
-    available_minutes = int(context["available_minutes"])
-    equipment = set(context.get("available_equipment") or [])
-    discomfort_areas = context.get("discomfort_areas") or []
-    condition = str(context.get("condition_level") or "").casefold()
-
-    risk_words = ("나쁨", "피곤", "통증", "어지", "bad", "tired", "pain", "dizzy")
-    activity_level = (profile or {}).get("activity_level")
-    if discomfort_areas or any(word in condition for word in risk_words):
-        intensity = "low"
-    elif experience == "beginner" and activity_level in {None, "sedentary", "light"}:
-        intensity = "low"
-    elif experience == "advanced":
-        intensity = "high"
-    else:
-        intensity = "moderate"
-
-    if goal == "muscle_gain":
-        if equipment.intersection({"machine", "dumbbell"}):
-            main_type = "웨이트 트레이닝"
-            main_names = (
-                "전신 웨이트 트레이닝",
-                "저중량 전신 웨이트 트레이닝",
-                "상·하체 교대 웨이트 트레이닝",
-            )
-            main_guidance = (
-                "전신 동작을 고르게 수행하세요.",
-                "평소보다 낮은 중량으로 자세를 확인하며 수행하세요.",
-                "상체와 하체 동작을 번갈아 수행하세요.",
-            )
-        else:
-            main_type = "스쿼트"
-            main_names = ("맨몸 스쿼트", "느린 맨몸 스쿼트", "발 간격 조절 맨몸 스쿼트")
-            main_guidance = (
-                "발을 어깨 너비로 두고 천천히 앉았다 일어나세요.",
-                "내려가는 동작을 천천히 하며 자세를 유지하세요.",
-                "발 간격을 편한 범위에서 조절하며 수행하세요.",
-            )
-        main_execution = "count_based"
-        main_sets = 3 if intensity != "low" else 2
-        main_repetitions = 12 if intensity != "low" else 8
-    elif goal == "rehabilitation":
-        main_type = "요가"
-        main_names = ("저강도 회복 요가", "호흡 중심 회복 요가", "부드러운 전신 요가")
-        main_guidance = (
-            "무리 없는 범위에서 자세를 천천히 이어가세요.",
-            "호흡을 일정하게 유지하며 가벼운 자세를 이어가세요.",
-            "전신을 부드럽게 움직이며 자세를 이어가세요.",
-        )
-        main_execution = "time_based"
-        main_sets = main_repetitions = None
-    elif goal == "endurance" and intensity != "low":
-        main_type = "달리기"
-        main_names = ("가벼운 지속 달리기", "완급 조절 달리기", "편안한 페이스 달리기")
-        main_guidance = (
-            "대화할 수 있는 속도로 일정하게 달리세요.",
-            "편안한 속도와 조금 빠른 속도를 번갈아 유지하세요.",
-            "호흡이 안정적인 속도를 찾아 유지하세요.",
-        )
-        main_execution = "time_based"
-        main_sets = main_repetitions = None
-    else:
-        main_type = "걷기"
-        main_names = (
-            ("편안한 속도 걷기", "평지 지속 걷기", "가벼운 리듬 걷기")
-            if intensity == "low"
-            else ("빠르게 걷기", "속도 변화 걷기", "일정한 속도 걷기")
-        )
-        main_guidance = (
-            (
-                "무리 없는 속도로 걸으세요.",
-                "경사가 없는 평지에서 일정한 속도로 걸으세요.",
-                "편안한 속도와 느린 속도를 번갈아 걸으세요.",
-            )
-            if intensity == "low"
-            else (
-                "팔을 자연스럽게 흔들며 빠르게 걸으세요.",
-                "빠른 걸음과 보통 걸음을 번갈아 걸으세요.",
-                "호흡을 유지할 수 있는 속도로 일정하게 걸으세요.",
-            )
-        )
-        main_execution = "time_based"
-        main_sets = main_repetitions = None
-
-    previous_main_name = (
-        previous_items[1].get("exercise_name")
-        if previous_items and len(previous_items) > 1
-        else None
-    )
-    main_index = (
-        (main_names.index(previous_main_name) + 1) % len(main_names)
-        if previous_main_name in main_names
-        else 0
-    )
-    main_name = main_names[main_index]
-    warmup_names = (
-        "전신 워밍업 스트레칭",
-        "관절 가동성 스트레칭",
-        "가벼운 준비 스트레칭",
-    )
-    cooldown_names = (
-        "마무리 스트레칭",
-        "호흡 정리 스트레칭",
-        "전신 이완 스트레칭",
-    )
-    warmup_guidance = (
-        "통증이 없는 범위에서 천천히 관절과 근육을 풀어주세요.",
-        "목과 어깨, 골반과 발목을 편한 범위에서 부드럽게 움직이세요.",
-        "호흡을 유지하며 전신을 가볍게 움직여 준비하세요.",
-    )
-    cooldown_guidance = (
-        "호흡을 고르며 사용한 근육을 부드럽게 이완하세요.",
-        "호흡을 천천히 고르며 움직임을 마무리하세요.",
-        "사용한 부위를 편한 범위에서 천천히 이완하세요.",
-    )
-    main_instruction = (
-        f"{main_guidance[main_index]} "
-        "불편함이나 어지러움이 생기면 즉시 강도를 낮추거나 중단하세요."
-    )
-
-    warmup_minutes = max(1, min(5, available_minutes // 6))
-    cooldown_minutes = max(1, min(5, available_minutes // 6))
-    main_minutes = max(1, available_minutes - warmup_minutes - cooldown_minutes)
-    estimated_calories = max(1, round(available_minutes * (3 if intensity == "low" else 5)))
-
-    items = [
-        {
-            "exercise_type_name": "스트레칭",
-            "exercise_name": warmup_names[main_index],
-            "duration_minutes": warmup_minutes,
-            "sets": None,
-            "repetitions": None,
-            "calories_burned": max(1, warmup_minutes * 2),
-            "intensity": "low",
-            "instruction": warmup_guidance[main_index],
-            "execution_type": "time_based",
-            "target_duration_seconds": warmup_minutes * 60,
-            "target_weight_kg": None,
-            "rest_seconds": 30,
-        },
-        {
-            "exercise_type_name": main_type,
-            "exercise_name": main_name,
-            "duration_minutes": main_minutes,
-            "sets": main_sets,
-            "repetitions": main_repetitions,
-            "calories_burned": max(1, estimated_calories - warmup_minutes * 2 - cooldown_minutes * 2),
-            "intensity": intensity,
-            "instruction": main_instruction,
-            "execution_type": main_execution,
-            "target_duration_seconds": main_minutes * 60 if main_execution == "time_based" else None,
-            "target_weight_kg": None,
-            "rest_seconds": 60,
-        },
-        {
-            "exercise_type_name": "스트레칭",
-            "exercise_name": cooldown_names[main_index],
-            "duration_minutes": cooldown_minutes,
-            "sets": None,
-            "repetitions": None,
-            "calories_burned": max(1, cooldown_minutes * 2),
-            "intensity": "low",
-            "instruction": cooldown_guidance[main_index],
-            "execution_type": "time_based",
-            "target_duration_seconds": cooldown_minutes * 60,
-            "target_weight_kg": None,
-            "rest_seconds": 0,
-        },
-    ]
-
-    goal_labels = {
-        "weight_loss": "체지방 감량",
-        "muscle_gain": "근육량 증가",
-        "endurance": "체력 향상",
-        "maintenance": "건강 유지",
-        "rehabilitation": "컨디셔닝 / 기능 회복",
-        "other": preferences.get("custom_goal") or "기타",
-    }
-    return {
-        "recommendation": {
-            "recommendation_date": datetime.now(KST).date().isoformat(),
-            "goal": goal,
-            "total_duration_minutes": available_minutes,
-            "intensity": intensity,
-            "recommendation_summary": (
-                f"{goal_labels[goal]} 목표를 위한 {available_minutes}분 루틴 · {main_name}"
-            ),
-            "ai_reason": (
-                "기본 프로필의 활동 수준, 운동 목표, 경험 수준, 사용 가능 시간과 "
-                "장비, 현재 컨디션 및 불편 부위를 반영한 규칙 기반 테스트 추천입니다."
-                + (" 기타 목표는 입력 내용을 표시하고 기본 걷기 루틴을 제공합니다."
-                   if goal == "other" else "")
-            ),
-        },
-        "items": items,
-    }
-
-
 async def create_exercise_recommendation(
     user_id: str,
     context_id: str,
@@ -1168,11 +967,61 @@ async def create_exercise_recommendation(
     return response.json()
 
 
+async def attach_exercise_gif_urls(
+    result: dict[str, Any], context: dict[str, Any], profile: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Expose only confirmed public GIF objects, never catalog filesystem paths."""
+    items = result.get("items") or []
+    base_url = os.getenv("EXERCISE_GIF_BASE_URL", "").strip()
+    gender = (profile or {}).get("gender")
+    if not base_url or gender not in {"male", "female"}:
+        for item in items:
+            item["demo_gif_url"] = None
+        return result
+
+    urls: dict[str, str | None] = {}
+    try:
+        for item in items:
+            key = item.get("exercise_key")
+            if key and key not in urls:
+                urls[key] = gif_url_for_exercise(key, context["location"], gender, base_url)
+    except ExerciseAIError:
+        raise HTTPException(503, detail={"code": "EXERCISE_GIF_CONFIGURATION_ERROR"}) from None
+
+    async with httpx.AsyncClient(timeout=5, follow_redirects=False, trust_env=False) as client:
+        for url in set(url for url in urls.values() if url):
+            try:
+                response = await client.head(url)
+                if response.status_code != 200:
+                    urls = {key: None if value == url else value for key, value in urls.items()}
+            except httpx.HTTPError:
+                urls = {key: None if value == url else value for key, value in urls.items()}
+    for item in items:
+        item["demo_gif_url"] = urls.get(item.get("exercise_key"))
+    return result
+
+
 async def prepare_exercise_routine(
     user_id: str,
     settings: Settings,
     *,
     generate: bool,
+    limiter: ChatRateLimiter | None = None,
+) -> dict[str, Any]:
+    if generate:
+        async with EXERCISE_GENERATION_LOCKS[user_id]:
+            return await _prepare_exercise_routine(
+                user_id, settings, generate=True, limiter=limiter,
+            )
+    return await _prepare_exercise_routine(user_id, settings, generate=False)
+
+
+async def _prepare_exercise_routine(
+    user_id: str,
+    settings: Settings,
+    *,
+    generate: bool,
+    limiter: ChatRateLimiter | None = None,
 ) -> dict[str, Any]:
     profile, preferences = await asyncio.gather(
         fetch_profile(user_id, settings),
@@ -1187,46 +1036,55 @@ async def prepare_exercise_routine(
     if not generate:
         return {"missing": [], "generated": False, "result": None}
 
-    exercise_ai_enabled = os.getenv("EXERCISE_AI_ENABLED", "false")
-    if exercise_ai_enabled not in {"true", "false"}:
-        raise HTTPException(503, detail={"code": "AI_CONFIGURATION_ERROR"})
-    if exercise_ai_enabled == "true":
-        try:
-            config = get_ai_server_config()
-        except ValueError:
-            raise HTTPException(503, detail={"code": "AI_CONFIGURATION_ERROR"}) from None
-        if config is None:
-            raise HTTPException(503, detail={"code": "AI_DISABLED"})
-        try:
-            ai_response = await AIServerClient(config).post(
-                AIEndpoint.EXERCISE, build_ai_exercise_request(preferences, context)
-            )
-        except AIServerError as exc:
-            error_status = 503 if exc.code in {
-                "AI_UNAVAILABLE", "AI_TIMEOUT", "AI_CONNECTION_ERROR"
-            } else 502
-            raise HTTPException(error_status, detail={"code": exc.code}) from None
-        try:
-            plan = build_ai_exercise_plan(
-                ai_response, preferences, context, datetime.now(KST).date().isoformat()
-            )
-        except ExerciseAIError:
-            raise HTTPException(502, detail={"code": "AI_EXERCISE_INVALID_RESPONSE"}) from None
-        generator = "auto-fit-ai"
-    else:
-        previous = await fetch_latest_exercise_recommendation(user_id, settings)
-        plan = build_exercise_recommendation_plan(
-            preferences, context, profile,
-            previous_items=previous["items"] if previous else None,
+    if not 5 <= context["available_minutes"] <= 200:
+        raise HTTPException(
+            409,
+            detail={
+                "code": "EXERCISE_CONTEXT_INVALID",
+                "message": "Select an exercise duration between 5 and 200 minutes again",
+            },
         )
-        generator = "rules_v1"
+
+    try:
+        config = get_ai_server_config()
+    except ValueError:
+        raise HTTPException(503, detail={"code": "AI_CONFIGURATION_ERROR"}) from None
+    if config is None:
+        raise HTTPException(503, detail={"code": "AI_DISABLED"})
+    try:
+        ai_request = build_ai_exercise_request(preferences, context)
+    except ExerciseAIError:
+        raise HTTPException(409, detail={"code": "EXERCISE_CONTEXT_INVALID"}) from None
+    if limiter is not None:
+        await limiter.check("answers")
+    try:
+        ai_response = await AIServerClient(config).post(AIEndpoint.EXERCISE, ai_request)
+    except AIServerError as exc:
+        error_status = 503 if exc.code in {
+            "AI_UNAVAILABLE", "AI_TIMEOUT", "AI_CONNECTION_ERROR"
+        } else 502
+        raise HTTPException(error_status, detail={"code": exc.code}) from None
+    try:
+        plan = build_ai_exercise_plan(
+            ai_response, preferences, context, datetime.now(KST).date().isoformat()
+        )
+    except ExerciseAIError:
+        raise HTTPException(502, detail={"code": "AI_EXERCISE_INVALID_RESPONSE"}) from None
+    gif_preview = await attach_exercise_gif_urls(
+        {"items": [item.copy() for item in plan["items"]]}, context, profile,
+    )
+    gif_urls = {
+        item["exercise_key"]: item["demo_gif_url"] for item in gif_preview["items"]
+    }
     result = await create_exercise_recommendation(
         user_id,
         context["exercise_recommendation_context_id"],
         plan,
         settings,
     )
-    return {"missing": [], "generated": True, "generator": generator, "result": result}
+    for item in result.get("items") or []:
+        item["demo_gif_url"] = gif_urls.get(item.get("exercise_key"))
+    return {"missing": [], "generated": True, "generator": "auto-fit-ai", "result": result}
 
 
 async def fetch_latest_exercise_recommendation(
@@ -1556,11 +1414,57 @@ async def fetch_exercise_session_result(
             detail="Supabase exercise log query failed",
         )
     feedback = await fetch_exercise_session_feedback(user_id, session_id, settings)
+    discomfort_logs = await fetch_exercise_discomfort_logs(user_id, session_id, settings)
     return {
         "session": sessions[0],
         "logs": log_response.json(),
         "feedback": feedback,
+        "discomfort_logs": discomfort_logs,
     }
+
+
+async def fetch_cached_exercise_analysis(
+    user_id: str, session_id: str, input_hash: str, settings: Settings,
+) -> dict[str, Any] | None:
+    async with client_scope() as client:
+        response = await client.get(
+            f"{settings.supabase_url}/rest/v1/exercise_session_analyses",
+            headers=service_headers(settings),
+            params={
+                "select": "analysis", "user_id": f"eq.{user_id}",
+                "exercise_session_id": f"eq.{session_id}",
+                "input_hash": f"eq.{input_hash}", "limit": "1",
+            },
+        )
+    if not response.is_success:
+        raise HTTPException(502, detail="Supabase exercise analysis cache query failed")
+    rows = response.json()
+    analysis = rows[0].get("analysis") if rows else None
+    return analysis if isinstance(analysis, dict) and analysis.get("generator") == "auto-fit-ai" else None
+
+
+async def save_cached_exercise_analysis(
+    user_id: str, session_id: str, input_hash: str, analysis: dict[str, Any],
+    settings: Settings,
+) -> None:
+    async with client_scope() as client:
+        response = await client.post(
+            f"{settings.supabase_url}/rest/v1/exercise_session_analyses",
+            headers={
+                **service_headers(settings),
+                "Prefer": "resolution=merge-duplicates,return=minimal",
+            },
+            params={"on_conflict": "exercise_session_id"},
+            json={
+                "exercise_session_id": session_id,
+                "user_id": user_id,
+                "input_hash": input_hash,
+                "analysis": analysis,
+                "updated_at": datetime.now(UTC).isoformat(),
+            },
+        )
+    if not response.is_success:
+        raise HTTPException(502, detail="Supabase exercise analysis cache save failed")
 
 
 async def fetch_active_exercise_goal(
@@ -3427,74 +3331,6 @@ def build_daily_nutrition_summary(
     }
 
 
-def build_exercise_session_analysis(result: dict[str, Any]) -> dict[str, Any]:
-    session = result["session"]
-    feedback = result.get("feedback")
-    if session.get("status") not in {"completed", "stopped"}:
-        raise ValueError("Exercise session is not finished")
-    if not feedback:
-        raise ValueError("Exercise session feedback is required")
-
-    difficulty_labels = {1: "매우 쉬움", 2: "쉬움", 3: "보통", 4: "어려움", 5: "매우 어려움"}
-    condition_labels = {
-        "very_bad": "매우 나쁨",
-        "bad": "나쁨",
-        "normal": "보통",
-        "good": "좋음",
-        "very_good": "매우 좋음",
-    }
-    completion_rate = float(session.get("completion_rate") or 0)
-    duration_minutes = round(float(session.get("total_duration_seconds") or 0) / 60, 1)
-    calories_burned = float(session.get("total_calories_burned") or 0)
-    difficulty = int(feedback["perceived_difficulty"])
-    post_condition = feedback["post_condition"]
-    areas = feedback.get("uncomfortable_areas") or []
-
-    insights: list[str] = []
-    adjustments: list[str] = []
-    if completion_rate >= 80:
-        insights.append("계획한 운동을 안정적으로 수행했습니다.")
-    else:
-        insights.append("완료하지 못한 운동을 다음 루틴에서 무리 없이 다시 구성합니다.")
-    if difficulty >= 4:
-        insights.append("체감 난이도가 높았습니다.")
-        adjustments.append("다음 운동 강도를 한 단계 낮춤")
-    if post_condition in {"bad", "very_bad"}:
-        insights.append("운동 후 컨디션 회복이 필요합니다.")
-        adjustments.append("다음 운동 시간을 약 20% 단축")
-    if areas:
-        insights.append(f"불편 부위가 기록되었습니다: {', '.join(areas)}")
-        adjustments.append("불편 부위의 부담이 적은 동작으로 교체")
-    if not adjustments:
-        adjustments.append("현재 운동 강도와 구성을 유지")
-
-    return {
-        "generator": "rules_v1",
-        "summary": (
-            "오늘 운동을 완료했습니다."
-            if session["status"] == "completed"
-            else "상태 변화를 반영해 오늘 운동을 종료했습니다."
-        ),
-        "metrics": {
-            "completion_rate": completion_rate,
-            "duration_minutes": duration_minutes,
-            "calories_burned": calories_burned,
-        },
-        "feedback_summary": {
-            "difficulty": difficulty_labels[difficulty],
-            "post_condition": condition_labels[post_condition],
-            "uncomfortable_areas": areas,
-        },
-        "insights": insights,
-        "next_session_adjustments": adjustments,
-        "safety_notice": (
-            "통증, 어지럼 또는 호흡 불편이 지속되거나 심해지면 운동을 중단하고 전문가와 상담하세요."
-            if areas or post_condition in {"bad", "very_bad"}
-            else None
-        ),
-    }
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_model_config()  # Fail early on invalid opt-in configuration; no network call.
@@ -3893,8 +3729,26 @@ async def get_latest_exercise_recommendation(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     result = await fetch_latest_exercise_recommendation(user.id, settings)
+    if result and result["recommendation"].get("generator") == "auto-fit-ai":
+        if os.getenv("EXERCISE_GIF_BASE_URL", "").strip():
+            context, profile = await asyncio.gather(
+                fetch_exercise_context_for_recommendation(
+                    user.id, result["recommendation"]["exercise_recommendation_id"], settings,
+                ),
+                fetch_profile(user.id, settings),
+            )
+        else:
+            context, profile = {}, None
+        result = await attach_exercise_gif_urls(result, context, profile)
     return {"generator": result["recommendation"].get("generator") if result else None,
             "result": result}
+
+
+def get_exercise_generation_limiter(
+    user: AuthenticatedUser = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> ChatRateLimiter:
+    return ChatRateLimiter(settings.supabase_url, service_headers(settings), user.id)
 
 
 @app.post("/api/exercise/recommendations/generate", tags=["Exercise"])
@@ -3902,8 +3756,11 @@ async def generate_exercise_recommendation(
     body: GenerateExerciseRecommendationRequest,
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
+    limiter: ChatRateLimiter = Depends(get_exercise_generation_limiter),
 ) -> dict[str, Any]:
-    outcome = await prepare_exercise_routine(user.id, settings, generate=True)
+    outcome = await prepare_exercise_routine(
+        user.id, settings, generate=True, limiter=limiter,
+    )
     if "exercise_preferences" in outcome["missing"]:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -3914,7 +3771,7 @@ async def generate_exercise_recommendation(
             status_code=status.HTTP_409_CONFLICT,
             detail="A new exercise recommendation context is required",
         )
-    return {"ok": True, "generator": outcome.get("generator", "rules_v1"), "result": outcome["result"]}
+    return {"ok": True, "generator": outcome["generator"], "result": outcome["result"]}
 
 
 @app.post("/api/exercise/sessions/start", tags=["Exercise"])
@@ -4062,11 +3919,19 @@ async def get_exercise_session_feedback(
     return {"feedback": feedback}
 
 
+def get_exercise_analysis_limiter(
+    user: AuthenticatedUser = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> ChatRateLimiter:
+    return ChatRateLimiter(settings.supabase_url, service_headers(settings), user.id)
+
+
 @app.get("/api/exercise/sessions/{session_id}/analysis", tags=["Exercise"])
 async def get_exercise_session_analysis(
     session_id: UUID,
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
+    limiter: ChatRateLimiter = Depends(get_exercise_analysis_limiter),
 ) -> dict[str, Any]:
     result = await fetch_exercise_session_result(user.id, str(session_id), settings)
     if not result:
@@ -4075,12 +3940,44 @@ async def get_exercise_session_analysis(
             detail="Exercise session not found",
         )
     try:
-        analysis = build_exercise_session_analysis(result)
+        ai_payload, metrics, feedback_summary = build_analysis_input(result)
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(error),
         ) from error
+    input_hash = analysis_input_hash(ai_payload)
+    async with EXERCISE_ANALYSIS_LOCKS[(user.id, str(session_id))]:
+        analysis = await fetch_cached_exercise_analysis(
+            user.id, str(session_id), input_hash, settings,
+        )
+        if analysis is None:
+            try:
+                config = get_ai_server_config()
+            except ValueError:
+                raise HTTPException(503, detail={"code": "AI_CONFIGURATION_ERROR"}) from None
+            if config is None:
+                raise HTTPException(503, detail={"code": "AI_DISABLED"})
+            await limiter.check("answers")
+            try:
+                ai_response = await AIServerClient(config).post(
+                    AIEndpoint.EXERCISE_ANALYSIS, ai_payload,
+                )
+            except AIServerError as exc:
+                error_status = 503 if exc.code in {
+                    "AI_UNAVAILABLE", "AI_TIMEOUT", "AI_CONNECTION_ERROR"
+                } else 502
+                raise HTTPException(error_status, detail={"code": exc.code}) from None
+            try:
+                analysis = build_public_analysis(
+                    ai_response, metrics, feedback_summary,
+                    has_discomfort_event=bool(result.get("discomfort_logs")),
+                )
+            except ValueError:
+                raise HTTPException(502, detail={"code": "AI_EXERCISE_ANALYSIS_INVALID_RESPONSE"}) from None
+            await save_cached_exercise_analysis(
+                user.id, str(session_id), input_hash, analysis, settings,
+            )
     return {"analysis": analysis, "result": result}
 
 
