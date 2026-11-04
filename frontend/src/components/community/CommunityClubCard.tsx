@@ -4,8 +4,9 @@ import BarbellIcon from '@/assets/icons/deco/Barbell.svg';
 import RunningIcon from '@/assets/icons/deco/SneakerMove.svg';
 import DietIcon from '@/assets/icons/feature/navigator/Diet.svg';
 import { COMMUNITY_CLUB_CATEGORIES, type CommunityClub } from '@/src/api/community';
-import { colors, fontFamilies, radius, spacing } from '@/src/theme';
+import { colors, fontFamilies, spacing } from '@/src/theme';
 import { Text } from '@/src/components/common';
+import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 
 export function communityClubCategoryLabel(category: CommunityClub['category']) {
   return COMMUNITY_CLUB_CATEGORIES.find((item) => item.value === category)?.label ?? '기타';
@@ -40,7 +41,7 @@ export function CommunityClubCard({ club, onPress }: { club: CommunityClub; onPr
           {communityClubCategoryLabel(club.category)} · 회원 {club.member_count.toLocaleString()}명 · 글 {club.post_count.toLocaleString()}개
         </Text>
       </View>
-      <Text style={styles.chevron}>›</Text>
+      <CaretRightIcon color="#5E5D66" height={18} width={18} />
     </Pressable>
   );
 }
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderColor: colors.border,
     borderWidth: 1,
-    borderRadius: radius.md,
+    borderRadius: 16,
     flexDirection: 'row',
     gap: spacing.md,
     marginHorizontal: spacing.xl,
@@ -62,12 +63,12 @@ const styles = StyleSheet.create({
   pressed: { backgroundColor: colors.background },
   badge: {
     alignItems: 'center',
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    height: 44,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    height: 40,
     justifyContent: 'center',
     paddingHorizontal: 4,
-    width: 44,
+    width: 40,
   },
   badgeText: {
     color: colors.textPrimary,
@@ -84,10 +85,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   joined: {
-    color: colors.primaryDark,
+    color: colors.textSecondary,
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 12,
   },
   meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-  chevron: { color: colors.textSecondary, fontSize: 22 },
 });

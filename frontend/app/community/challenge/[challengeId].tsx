@@ -3,6 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import { claimCommunityChallenge, getCommunityChallenges, getCommunityErrorMessage, isProvisionalNote, setCommunityChallengeParticipation, type CommunityChallenge } from '@/src/api/community';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
@@ -79,7 +80,7 @@ export default function ChallengeDetail() {
   return <View style={s.root}>
     <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
-      <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={s.back}>‹</Text></Pressable><Text style={s.title}>챌린지</Text><View style={{ width: 24 }} /></View>
+      <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable><Text style={s.title}>챌린지</Text><View style={{ width: 24 }} /></View>
       {loading ? <ActivityIndicator color={purple} /> : null}
       {error && !challenge ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); void load(); }} style={s.card}><Text style={s.error}>{error} · 다시 시도</Text></Pressable> : null}
       {challenge ? <>
@@ -99,7 +100,7 @@ export default function ChallengeDetail() {
           <Text style={s.caption}>날짜별 기록은 현재 제공되지 않아 합계만 표시해요.</Text>
         </View>
         <View style={s.card}><Text style={s.section}>함께 도전해요</Text><Text style={s.body}>{challenge.participant_count.toLocaleString()}명이 이 챌린지에 참여하고 있어요.</Text></View>
-        <View style={s.card}><Text style={s.section}>이렇게 진행돼요</Text><Text style={s.step}>1  기간 안에 {metricLabel[challenge.metric]}을 기록해요.</Text><Text style={s.step}>2  {challenge.goal}일 목표를 채우면 완료 상태가 돼요.</Text><Text style={s.step}>3  보상을 받을 수 있을 때 신청해요.</Text></View>
+        <View style={s.card}><Text style={s.section}>이렇게 진행돼요</Text>{[`기간 안에 ${metricLabel[challenge.metric]}을 기록해요.`, `${challenge.goal}일 목표를 채우면 완료 상태가 돼요.`, '보상을 받을 수 있을 때 신청해요.'].map((step, index) => <View key={step} style={s.stepRow}><View style={s.stepNumber}><Text style={s.stepNumberText}>{index + 1}</Text></View><Text style={s.step}>{step}</Text></View>)}</View>
         {notice ? <Text style={s.success}>{notice}</Text> : null}{error ? <Text style={s.error}>{error}</Text> : null}
         <Pressable accessibilityRole="button" disabled={actionDisabled} onPress={action} style={[s.button, actionDisabled && s.disabled]}><Text style={s.buttonText}>{busy ? '처리 중…' : actionText}</Text></Pressable>
         {challenge.joined && challenge.phase !== 'ended' && !challenge.completed ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => void act(() => setCommunityChallengeParticipation(challenge.challenge_id, false), '챌린지 참여를 취소했어요.')} style={s.outline}><Text style={s.outlineText}>참여 취소</Text></Pressable> : null}
@@ -110,11 +111,11 @@ export default function ChallengeDetail() {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, gap: 17 },
-  header: { height: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, back: { fontSize: 32, lineHeight: 36, color: '#1E1D24' }, title: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-  phase: { alignSelf: 'flex-start', color: '#24835E', backgroundColor: '#E8F6EF', borderRadius: 7, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 6, fontSize: 11, marginTop: 10 },
-  hero: { color: '#1E1D24', fontSize: 24, fontFamily: fontFamilies.pretendardBold }, body: { color: '#55545F', fontSize: 13, lineHeight: 20 }, caption: { color: '#777681', fontSize: 11, lineHeight: 16 },
-  stats: { flexDirection: 'row', gap: 8 }, stat: { flex: 1, backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 10, padding: 11, gap: 6 }, statLabel: { color: '#777681', fontSize: 11 }, statValue: { color: '#1E1D24', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 14, padding: 16, gap: 12 }, row: { flexDirection: 'row', justifyContent: 'space-between' }, section: { color: '#1E1D24', fontSize: 15, fontFamily: fontFamilies.pretendardBold }, progressValue: { color: purple, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-  track: { height: 7, borderRadius: 5, backgroundColor: '#ECECF0', overflow: 'hidden' }, fill: { height: 7, backgroundColor: purple }, step: { color: '#55545F', fontSize: 12, lineHeight: 18 }, notice: { backgroundColor: '#FFF4E2', borderRadius: 9, padding: 12 }, noticeText: { color: '#8E641C', fontSize: 12 },
-  button: { height: 50, backgroundColor: purple, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 }, outline: { height: 46, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: '#777681', fontSize: 12 }, success: { color: '#24835E', fontSize: 12 }, error: { color: '#A13A2F', fontSize: 12, lineHeight: 18 },
+  header: { height: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, title: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardSemiBold },
+  phase: { alignSelf: 'flex-start', color: '#0E7C48', backgroundColor: '#E8F6EF', borderRadius: 999, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 5, fontSize: 12, marginTop: 10 },
+  hero: { color: '#17161D', fontSize: 24, fontFamily: fontFamilies.pretendardBold }, body: { color: '#3B3A42', fontSize: 14, lineHeight: 21 }, caption: { color: '#5E5D66', fontSize: 12, lineHeight: 18 },
+  stats: { flexDirection: 'row', gap: 8 }, stat: { flex: 1, backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 12, padding: 12, gap: 6 }, statLabel: { color: '#5E5D66', fontSize: 12 }, statValue: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
+  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, padding: 16, gap: 12 }, row: { flexDirection: 'row', justifyContent: 'space-between' }, section: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, progressValue: { color: purple, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
+  track: { height: 7, borderRadius: 5, backgroundColor: '#E3E6EB', overflow: 'hidden' }, fill: { height: 7, backgroundColor: purple }, stepRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 }, stepNumber: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 12, height: 22, justifyContent: 'center', width: 22 }, stepNumberText: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 }, step: { color: '#3B3A42', flex: 1, fontSize: 14, lineHeight: 21 }, notice: { backgroundColor: '#FFF2E0', borderRadius: 12, padding: 12 }, noticeText: { color: '#B3690B', fontSize: 12 },
+  button: { height: 56, backgroundColor: purple, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 }, outline: { height: 46, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: '#5E5D66', fontSize: 12 }, success: { color: '#0E7C48', fontSize: 12 }, error: { color: '#A13A2F', fontSize: 12, lineHeight: 18 },
 });

@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   tabActive: { borderBottomColor: colors.primary },
-  tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
+  tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
   tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
   note: {
     ...typography.bodySmall,
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.lg,
+    borderRadius: 16,
     borderWidth: 1,
     gap: spacing.xs,
     marginHorizontal: spacing.xl,
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   cardTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
   type: {
     backgroundColor: colors.dangerLight,
-    borderRadius: radius.sm,
+    borderRadius: 12,
     color: colors.danger,
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 12,
@@ -297,14 +297,14 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flex: 1,
     fontFamily: fontFamilies.pretendardBold,
-    fontSize: 15,
+    fontSize: 16,
   },
-  count: { color: colors.danger, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
-  reasons: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
+  count: { color: colors.danger, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+  reasons: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
   snapshot: {
     ...typography.body,
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: 12,
     color: colors.textPrimary,
     padding: spacing.md,
   },
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   link: {
-    color: colors.primaryDark,
+    color: colors.primary,
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 14,
     marginRight: 'auto',
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   },
   buttonDanger: { borderColor: colors.danger },
   pressed: { opacity: 0.7 },
-  buttonText: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  buttonText: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
   buttonTextDanger: { color: colors.danger },
   message: {
     alignItems: 'center',

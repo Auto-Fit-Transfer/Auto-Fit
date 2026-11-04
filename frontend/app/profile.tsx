@@ -3,7 +3,8 @@ import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Back from '@/assets/figma/main/a08ac.svg';
+import CalendarIcon from '@/assets/icons/ui/calendar-check.svg';
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import { getProfile, updateProfile, type Profile } from '@/src/api/home';
 import { getCommunityProfile, type CommunityProfile } from '@/src/api/community';
 import { getApiErrorMessage } from '@/src/api/client';
@@ -102,7 +103,7 @@ export default function ProfileScreen() {
       >
         <View style={styles.header}>
           <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}>
-            <Back />
+            <CaretLeftIcon color="#17161D" height={24} width={24} />
           </Pressable>
           <Text style={styles.title}>프로필 수정</Text>
           <View style={styles.back} />
@@ -157,10 +158,11 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.field}>
                 <Text style={styles.label}>생년월일</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel="생년월일 선택" onPress={() => setPickerVisible(true)} style={styles.input}>
+                <Pressable accessibilityRole="button" accessibilityLabel="생년월일 선택" onPress={() => setPickerVisible(true)} style={[styles.input, styles.dateInput]}>
                   <Text style={profile.birth_date ? styles.inputText : styles.helper}>
                     {profile.birth_date?.replace(/-/g, '.') ?? '생년월일을 선택해 주세요'}
                   </Text>
+                  <CalendarIcon color="#5E5D66" height={20} width={20} />
                 </Pressable>
               </View>
               <View style={styles.field}>
@@ -187,7 +189,7 @@ export default function ProfileScreen() {
                 <Text style={styles.label}>키 · 몸무게</Text>
                 <Pressable accessibilityRole="button" onPress={() => router.push('/health-data-management')} style={styles.healthLink}>
                   <Text style={styles.healthLinkText}>건강 데이터에서 확인하기</Text>
-                  <Text style={styles.helper}>검진·체성분 기록으로 관리해요  ›</Text>
+                  <Text style={styles.helper}>검진·체성분 기록으로 관리해요</Text>
                 </Pressable>
               </View>
             </View>
@@ -234,31 +236,32 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 22 },
   header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { width: 32, minHeight: 32, justifyContent: 'center' },
-  title: { fontFamily: fontFamilies.pretendardSemiBold, color: colors.textPrimary, fontSize: 17 },
+  title: { fontFamily: fontFamilies.pretendardSemiBold, color: colors.textPrimary, fontSize: 16 },
   avatarBlock: { alignItems: 'center', marginTop: 28, marginBottom: 32, gap: 8 },
   avatarCaption: { fontFamily: fontFamilies.pretendardSemiBold, color: colors.textPrimary, fontSize: 14 },
   form: { gap: 22 },
   field: { gap: 9 },
   label: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14, color: colors.textPrimary },
   optional: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
-  input: { minHeight: 52, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingHorizontal: 14, justifyContent: 'center', fontSize: 15, color: colors.textPrimary, backgroundColor: colors.surface },
-  inputText: { fontSize: 15, color: colors.textPrimary },
+  input: { minHeight: 52, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', fontSize: 16, color: colors.textPrimary, backgroundColor: colors.surface },
+  dateInput: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  inputText: { fontSize: 16, color: colors.textPrimary },
   helper: { fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
   unavailable: { backgroundColor: colors.surface, justifyContent: 'center' },
   genderRow: { flexDirection: 'row', gap: 9 },
-  gender: { backgroundColor: colors.surface, flex: 1, height: 45, borderWidth: 1, borderColor: colors.border, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  genderSelected: { borderColor: colors.primaryDark, backgroundColor: colors.surfaceSoft },
+  gender: { backgroundColor: colors.background, flex: 1, height: 40, borderWidth: 1, borderColor: colors.border, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  genderSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
   genderText: { fontSize: 14, color: colors.textSecondary },
-  genderTextSelected: { color: colors.primaryDark, fontFamily: fontFamilies.pretendardSemiBold },
-  healthLink: { backgroundColor: colors.surface, minHeight: 60, padding: 12, borderWidth: 1, borderColor: colors.border, borderRadius: 10, gap: 4 },
+  genderTextSelected: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold },
+  healthLink: { backgroundColor: colors.surface, minHeight: 60, padding: 14, borderWidth: 1, borderColor: colors.border, borderRadius: 12, gap: 4 },
   healthLinkText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
   message: { color: colors.textSecondary, marginTop: 30 },
   error: { color: colors.danger, marginTop: 18 },
   success: { color: colors.success, marginTop: 18 },
   retry: { paddingVertical: 14 },
-  retryText: { color: colors.primaryDark },
-  footer: { borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.background, paddingHorizontal: 22, paddingTop: 12 },
-  save: { height: 54, borderRadius: 10, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
+  retryText: { color: colors.primary },
+  footer: { backgroundColor: colors.background, paddingHorizontal: 22, paddingTop: 12 },
+  save: { height: 56, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   saveDisabled: { opacity: 0.45 },
   saveText: { fontFamily: fontFamilies.pretendardSemiBold, color: colors.surface, fontSize: 16 },
 });

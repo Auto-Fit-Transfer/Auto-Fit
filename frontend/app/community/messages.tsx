@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flex: 1,
     fontFamily: fontFamilies.pretendardBold,
-    fontSize: 15,
+    fontSize: 16,
   },
   time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
   preview: {

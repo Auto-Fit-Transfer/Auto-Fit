@@ -21,7 +21,7 @@ import {
 } from '@/src/api/community';
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { colors, fontFamilies, spacing, typography } from '@/src/theme';
 
 const RULES: Record<
   CommunityAdminRule['rule_key'],
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.lg,
+    borderRadius: 16,
     borderWidth: 1,
     gap: spacing.xs,
     padding: spacing.lg,
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
   provisional: {
     backgroundColor: colors.dangerLight,
-    borderRadius: radius.sm,
+    borderRadius: 12,
     color: colors.danger,
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 12,
@@ -268,11 +268,11 @@ const styles = StyleSheet.create({
   input: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.md,
+    borderRadius: 12,
     borderWidth: 1,
     color: colors.textPrimary,
     fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 15,
+    fontSize: 16,
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
   },

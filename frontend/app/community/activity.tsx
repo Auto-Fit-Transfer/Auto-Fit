@@ -4,7 +4,9 @@ import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
-import Back from '@/assets/figma/main/a08ac.svg';
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
+import HeartIcon from '@/assets/icons/deco/Heart.svg';
+import ChatIcon from '@/assets/icons/feature/ChatCircle.svg';
 import {
   getCommunityErrorMessage,
   getCommunityProfile,
@@ -14,6 +16,7 @@ import {
   type CommunityActivityItem,
   type CommunityPost,
 } from '@/src/api/community';
+import { COMMUNITY_POST_CATEGORY_LABELS } from '@/src/components/community';
 import { colors, fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
@@ -117,7 +120,7 @@ export default function CommunityActivityScreen() {
   const header = (
     <>
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}><Back /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
         <Text style={styles.title}>커뮤니티 활동</Text>
         <View style={styles.back} />
       </View>
@@ -128,9 +131,9 @@ export default function CommunityActivityScreen() {
       ))}</View>
       <View style={styles.listHeader}>
         <Text style={styles.listTitle}>{tabs.find((item) => item.key === tab)?.label}{tab === 'posts' ? ` ${count ?? '–'}` : ''}</Text>
-        <Text style={styles.sort}>최신순⌄</Text>
+        <Text style={styles.sort}>최신순</Text>
       </View>
-      {loading ? <ActivityIndicator color={colors.primaryDark} style={styles.spinner} /> : null}
+      {loading ? <ActivityIndicator color={colors.primary} style={styles.spinner} /> : null}
       {error ? (
         <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.errorBox}>
           <Text accessibilityRole="alert" style={styles.error}>{error} · 다시 시도하기</Text>
@@ -153,7 +156,7 @@ export default function CommunityActivityScreen() {
         keyExtractor={(item) => tab === 'comments' || tab === 'likes' ? (item as CommunityActivityItem).activity_id : (item as CommunityPost).post_id}
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 32 }]}
         ListHeaderComponent={header}
-        ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.primaryDark} /> : null}
+        ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.primary} /> : null}
         onEndReached={() => void loadMore()}
         onEndReachedThreshold={0.5}
         renderItem={({ item }) => {
@@ -167,9 +170,16 @@ export default function CommunityActivityScreen() {
             style={styles.post}
           >
             <View style={styles.postText}>
+              {post.category ? <Text style={styles.category}>{COMMUNITY_POST_CATEGORY_LABELS[post.category]}</Text> : null}
               <Text numberOfLines={2} style={styles.postTitle}>{activity?.detail || post.content?.trim() || '사진 게시글'}</Text>
               {post.content ? <Text numberOfLines={2} style={styles.postPreview}>{post.content}</Text> : null}
-              <Text style={styles.meta}>{(activity?.occurred_at ?? post.created_at).slice(0, 10)} · 좋아요 {post.like_count} · 댓글 {post.comment_count}</Text>
+              <View style={styles.metaRow}>
+                <Text style={styles.meta}>{(activity?.occurred_at ?? post.created_at).slice(0, 10).replace(/-/g, '.')}</Text>
+                <View style={styles.reactions}>
+                  <HeartIcon color="#5E5D66" height={14} width={14} /><Text style={styles.meta}>{post.like_count}</Text>
+                  <ChatIcon color="#5E5D66" height={14} width={14} /><Text style={styles.meta}>{post.comment_count}</Text>
+                </View>
+              </View>
             </View>
             {post.images[0]?.url ? <Image source={{ uri: post.images[0].url }} style={styles.thumbnail} /> : null}
           </Pressable>
@@ -184,26 +194,29 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 20 },
   header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
   back: { width: 32, minHeight: 32, justifyContent: 'center' },
-  title: { fontSize: 17, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
-  tabs: { flexDirection: 'row', backgroundColor: colors.background, borderRadius: 12, padding: 4, gap: 2 },
-  activeTab: { flex: 1, borderRadius: 9, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', height: 35 },
+  title: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+  tabs: { flexDirection: 'row', backgroundColor: colors.surfaceSoft, borderRadius: 12, padding: 4, gap: 2 },
+  activeTab: { flex: 1, borderRadius: 12, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', height: 35 },
   activeTabText: { color: colors.textPrimary, fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold },
   inactiveTab: { flex: 1, alignItems: 'center', justifyContent: 'center', height: 35 },
   inactiveTabText: { color: colors.textSecondary, fontSize: 12 },
-  tabNote: { color: colors.textSecondary, fontSize: 11, lineHeight: 17, marginTop: 8 },
+  tabNote: { color: colors.textSecondary, fontSize: 12, lineHeight: 17, marginTop: 8 },
   listHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 8 },
-  listTitle: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+  listTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
   sort: { fontSize: 12, color: colors.textSecondary },
   spinner: { marginVertical: 30 },
-  errorBox: { marginVertical: 20, padding: 15, borderRadius: 10, backgroundColor: colors.dangerLight },
+  errorBox: { marginVertical: 20, padding: 15, borderRadius: 12, backgroundColor: colors.dangerLight },
   error: { color: colors.danger, fontSize: 12 },
   empty: { alignItems: 'center', paddingVertical: 50, gap: 12 },
   emptyTitle: { color: colors.textSecondary, fontSize: 14 },
-  writeLink: { color: colors.primaryDark, fontSize: 13 },
-  post: { borderBottomWidth: 1, borderColor: colors.border, flexDirection: 'row', gap: 12, paddingVertical: 15 },
+  writeLink: { color: colors.primary, fontSize: 14 },
+  post: { borderBottomWidth: 1, borderColor: colors.border, flexDirection: 'row', gap: 12, paddingVertical: 16 },
   postText: { flex: 1, gap: 5 },
-  postTitle: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, lineHeight: 20 },
-  postPreview: { fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
-  meta: { color: colors.textSecondary, fontSize: 11, marginTop: 2 },
-  thumbnail: { width: 54, height: 54, borderRadius: 9, backgroundColor: colors.background },
+  postTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, lineHeight: 23 },
+  category: { alignSelf: 'flex-start', backgroundColor: colors.surfaceSoft, borderRadius: 6, color: colors.textBody, fontSize: 12, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3 },
+  metaRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
+  reactions: { alignItems: 'center', flexDirection: 'row', gap: 4 },
+  postPreview: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+  meta: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
+  thumbnail: { width: 72, height: 72, borderRadius: 12, backgroundColor: colors.background },
 });

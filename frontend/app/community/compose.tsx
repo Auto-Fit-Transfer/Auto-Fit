@@ -181,7 +181,7 @@ export default function CommunityComposeScreen() {
     >
       <View style={styles.header}>
         <Pressable accessibilityLabel="글쓰기 닫기" accessibilityRole="button" hitSlop={8} onPress={close} style={styles.cancel}>
-          <Text style={styles.cancelText}>×</Text>
+          <CloseIcon color="#17161D" height={24} width={24} />
         </Pressable>
         <Text accessibilityRole="header" numberOfLines={1} style={styles.title}>
           {clubName ? `${clubName}에 글쓰기` : '새 글'}
@@ -194,7 +194,6 @@ export default function CommunityComposeScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
           {CATEGORIES.map((item) => <Pressable key={item.key} accessibilityRole="button" accessibilityState={{ selected: category === item.key }} onPress={() => setCategory(item.key)} style={[styles.categoryChip, category === item.key && styles.categorySelected]}><Text style={[styles.categoryText, category === item.key && styles.categoryTextSelected]}>{item.label}</Text></Pressable>)}
         </ScrollView>
-        <Text style={styles.fieldLabel}>내용</Text>
         <View style={styles.inputWrap}>
           <TextInput
             accessibilityLabel="글 내용"
@@ -246,7 +245,7 @@ export default function CommunityComposeScreen() {
               onPress={() => void pickPhotos()}
               style={[styles.thumbnail, styles.addPhoto]}
             >
-              <ImageIcon color={colors.primaryDark} height={26} width={26} />
+              <ImageIcon color="#5E5D66" height={26} width={26} />
               <Text style={styles.addPhotoText}>
                 {photos.length}/{COMMUNITY_MAX_IMAGES}
               </Text>
@@ -254,22 +253,22 @@ export default function CommunityComposeScreen() {
           ) : null}
         </ScrollView>
 
-        <Text style={styles.fieldLabel}>태그 · 최대 5개</Text>
-        <TextInput accessibilityLabel="글 태그" value={tagInput} onChangeText={setTagInput} placeholder="#하체, #스쿼트" maxLength={130} style={styles.tagInput} />
-        <Text style={styles.fieldHint}>쉼표나 띄어쓰기로 구분해 주세요.</Text>
-
         <View style={styles.activityHeading}>
-          <Text style={styles.fieldLabel}>운동 기록 첨부 · 선택</Text>
-          <Pressable accessibilityRole="button" onPress={() => void loadActivities()}><Text style={styles.activityLink}>{activities ? '접기' : '기록 불러오기'}</Text></Pressable>
+          <Text style={styles.fieldLabel}>기록 붙이기 <Text style={styles.fieldHint}>선택</Text></Text>
+          <Pressable accessibilityRole="button" onPress={() => void loadActivities()} style={styles.activityButton}><Text style={styles.activityLink}>{activities ? '접기' : '기록 불러오기'}</Text></Pressable>
         </View>
         {activityLoading ? <Text style={styles.fieldHint}>운동 기록을 불러오는 중…</Text> : null}
         {activities?.length === 0 ? <Text style={styles.fieldHint}>완료한 운동 기록이 없어요.</Text> : null}
         {activities?.map((activity) => <Pressable key={activity.session_id} accessibilityRole="button" accessibilityState={{ selected: selectedActivity?.session_id === activity.session_id }} onPress={() => setSelectedActivity((current) => current?.session_id === activity.session_id ? null : activity)} style={[styles.activityOption, selectedActivity?.session_id === activity.session_id && styles.activitySelected]}><Text style={styles.activityName}>{activity.snapshot.name}</Text><Text style={styles.fieldHint}>{new Date(activity.completed_at).toLocaleDateString('ko-KR')} · {activity.snapshot.duration_minutes}분 · 약 {activity.snapshot.calories}kcal</Text></Pressable>)}
         {selectedActivity ? <Text style={styles.activityDisclosure}>선택한 운동 시간·열량·운동명이 글과 함께 공개됩니다.</Text> : null}
 
-        <View style={styles.unsupported}>
-          <Text style={styles.unsupportedTitle}>추가 글 정보</Text>
-          <Text style={styles.unsupportedText}>공개 범위 선택은 연결 중이에요. 글은 전체 공개됩니다.</Text>
+        <Text style={styles.fieldLabel}>태그 · 최대 5개</Text>
+        <TextInput accessibilityLabel="글 태그" value={tagInput} onChangeText={setTagInput} placeholder="#하체, #스쿼트" maxLength={130} style={styles.tagInput} />
+        <Text style={styles.fieldHint}>쉼표나 띄어쓰기로 구분해 주세요.</Text>
+
+        <View style={styles.visibilityRow}>
+          <Text style={styles.fieldLabel}>공개 범위</Text>
+          <Text style={styles.visibilityValue}>전체 공개</Text>
         </View>
 
         <Text style={styles.notice}>
@@ -324,9 +323,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   cancel: { minWidth: 44, paddingVertical: spacing.sm },
-  cancelText: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 28 },
   draftButton: { minWidth: 58, alignItems: 'flex-end', paddingVertical: spacing.sm },
-  draftText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
+  draftText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
   title: {
     ...typography.sectionTitle,
     color: colors.textPrimary,
@@ -336,30 +334,33 @@ const styles = StyleSheet.create({
   post: {
     alignItems: 'center',
     backgroundColor: colors.primary,
-    borderRadius: radius.sm,
+    borderRadius: 12,
     justifyContent: 'center',
-    minHeight: 50,
+    minHeight: 56,
     paddingHorizontal: spacing.lg,
   },
-  postDisabled: { backgroundColor: colors.border },
-  postPressed: { backgroundColor: colors.primaryDark },
-  postText: { color: colors.surface, fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
+  postDisabled: { backgroundColor: colors.primary, opacity: 0.4 },
+  postPressed: { opacity: 0.85 },
+  postText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
   body: { gap: spacing.md, padding: spacing.xl },
   categoryRow: { flexDirection: 'row', gap: 7 },
-  categoryChip: { borderColor: colors.border, borderWidth: 1, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: colors.surface },
-  categorySelected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  categoryText: { color: colors.textSecondary, fontSize: 12 },
-  categoryTextSelected: { color: colors.primary, fontFamily: fontFamilies.pretendardSemiBold },
+  categoryChip: { borderColor: colors.border, borderWidth: 1, borderRadius: 999, height: 40, justifyContent: 'center', paddingHorizontal: 16, backgroundColor: colors.background },
+  categorySelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  categoryText: { color: colors.textSecondary, fontSize: 14 },
+  categoryTextSelected: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold },
   activityHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
-  activityLink: { color: colors.primaryDark, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
-  activityOption: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, gap: 5 },
+  activityButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+  activityLink: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  visibilityRow: { alignItems: 'center', borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm, paddingTop: spacing.md },
+  visibilityValue: { color: colors.textSecondary, fontSize: 14 },
+  activityOption: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, gap: 5 },
   activitySelected: { borderColor: colors.primary, backgroundColor: colors.surface },
-  activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
-  activityDisclosure: { color: colors.textSecondary, fontSize: 11, lineHeight: 16 },
-  tagInput: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: radius.md, paddingHorizontal: 13, minHeight: 44, color: colors.textPrimary },
+  activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+  activityDisclosure: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+  tagInput: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, minHeight: 48, color: colors.textPrimary },
   fieldLabel: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  fieldHint: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 11 },
-  inputWrap: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.md, borderWidth: 1, padding: spacing.md },
+  fieldHint: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+  inputWrap: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, padding: spacing.md },
   input: {
     color: colors.textPrimary,
     fontFamily: fontFamilies.pretendardRegular,
@@ -371,8 +372,8 @@ const styles = StyleSheet.create({
   photoHeading: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   photos: { gap: spacing.sm },
   thumbnail: {
-    backgroundColor: colors.border,
-    borderRadius: radius.md,
+    backgroundColor: colors.surfaceSoft,
+    borderRadius: 12,
     height: 84,
     overflow: 'hidden',
     width: 84,
@@ -390,23 +391,20 @@ const styles = StyleSheet.create({
   },
   addPhoto: {
     alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderStyle: 'dashed',
     borderWidth: 1,
     gap: 2,
     justifyContent: 'center',
   },
-  addPhotoText: { ...typography.label, color: colors.primaryDark },
+  addPhotoText: { ...typography.label, color: colors.textSecondary },
   notice: { ...typography.bodySmall, color: colors.textSecondary },
-  unsupported: { backgroundColor: colors.surface, borderRadius: radius.md, gap: spacing.xs, padding: spacing.md },
-  unsupportedTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
-  unsupportedText: { ...typography.bodySmall, color: colors.textSecondary },
-  bottom: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+  bottom: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   progress: {
     alignItems: 'center',
-    backgroundColor: colors.primaryLight,
+    backgroundColor: colors.surfaceSoft,
     paddingVertical: spacing.sm,
   },
-  progressText: { ...typography.bodyEmphasis, color: colors.primaryDark },
+  progressText: { ...typography.bodyEmphasis, color: colors.textPrimary },
 });

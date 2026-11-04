@@ -37,7 +37,7 @@ import {
   subscribeCommunityEvents,
 } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { colors, fontFamilies, spacing, typography } from '@/src/theme';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
@@ -236,7 +236,7 @@ export default function CommunityPostScreen() {
                   post={post}
                 />
                 {bookmarkAvailable ? <Pressable accessibilityRole="button" accessibilityState={{ selected: bookmarked, disabled: bookmarkBusy }} disabled={bookmarkBusy} onPress={() => void toggleBookmark()} style={styles.bookmarkButton}>
-                  <Text style={styles.bookmarkText}>{bookmarked ? '✓ 스크랩됨' : '＋ 스크랩'}</Text>
+                  <Text style={styles.bookmarkText}>{bookmarked ? '스크랩됨' : '스크랩'}</Text>
                 </Pressable> : null}
                 <View style={styles.commentsHeading}>
                   <Text accessibilityRole="header" style={styles.sectionTitle}>댓글 {post.comment_count.toLocaleString()}</Text>
@@ -298,13 +298,13 @@ const styles = StyleSheet.create({
   messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
   sectionTitle: {
     color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
+    fontFamily: fontFamilies.pretendardBold,
+    fontSize: 16,
   },
   commentsHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xs },
   sortLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-  bookmarkButton: { backgroundColor: colors.surface, alignSelf: 'flex-end', borderColor: colors.border, borderRadius: 8, borderWidth: 1, marginHorizontal: spacing.xl, marginTop: spacing.sm, paddingHorizontal: 13, paddingVertical: 8 },
-  bookmarkText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+  bookmarkButton: { alignItems: 'center', backgroundColor: '#FFFFFF', alignSelf: 'flex-end', borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', marginHorizontal: spacing.xl, marginTop: spacing.sm, paddingHorizontal: 12 },
+  bookmarkText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
   empty: {
     ...typography.body,
     color: colors.textSecondary,
@@ -323,7 +323,9 @@ const styles = StyleSheet.create({
   input: {
     ...typography.body,
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderColor: colors.border,
+    borderRadius: 12,
+    borderWidth: 1,
     color: colors.textPrimary,
     flex: 1,
     maxHeight: 110,

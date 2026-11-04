@@ -29,7 +29,8 @@ import {
 } from '@/src/features/community/communityEvents';
 import { COMMUNITY_RANKING_ENABLED } from '@/src/features/community/communityFeatures';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { colors, fontFamilies, spacing, typography } from '@/src/theme';
+import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 
 export default function CommunityClubScreen() {
   const { clubId } = useLocalSearchParams<{ clubId: string }>();
@@ -199,7 +200,7 @@ export default function CommunityClubScreen() {
       <Pressable accessibilityRole="button" onPress={() => openProfile(club.owner)} style={styles.ownerRow}>
         <CommunityAvatar author={club.owner} size={24} />
         <Text style={styles.ownerLabel}>클럽장</Text>
-        <Text style={styles.ownerName}>{club.owner.nickname} ›</Text>
+        <Text style={styles.ownerName}>{club.owner.nickname}</Text>
       </Pressable>
       <View style={styles.actionRow}>
         {club.is_owner ? (
@@ -212,14 +213,14 @@ export default function CommunityClubScreen() {
             onPress={() => void toggleMembership()}
             style={({ pressed }) => [styles.joinButton, styles.action, club.is_member ? styles.joined : styles.join, (pressed || busy) && styles.pressed]}
           >
-            <Text style={club.is_member ? styles.joinedText : styles.joinTextOn}>{club.is_member ? '가입함 ✓' : '클럽 가입하기'}</Text>
+            <Text style={club.is_member ? styles.joinedText : styles.joinTextOn}>{club.is_member ? '가입함' : '클럽 가입하기'}</Text>
           </Pressable>
         )}
         {club.is_member || club.is_owner ? <Pressable accessibilityRole="button" onPress={() => router.push({ params: { clubId: club.club_id, clubName: club.name }, pathname: '/community/compose' })} style={[styles.joinButton, styles.action, styles.join]}><Text style={styles.joinTextOn}>클럽에 글쓰기</Text></Pressable> : null}
       </View>
       <Pressable accessibilityRole="button" onPress={openMembers} style={styles.membersCard}>
         <Text style={styles.membersCount}>회원 {club.member_count.toLocaleString()}명</Text>
-        <Text style={styles.membersLink}>전체 보기 ›</Text>
+        <View style={styles.membersMore}><Text style={styles.membersLink}>전체 보기</Text><CaretRightIcon color="#5E5D66" height={18} width={18} /></View>
       </Pressable>
       {COMMUNITY_RANKING_ENABLED ? (
         <Pressable
@@ -319,26 +320,27 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
   },
   identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  categoryIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, borderRadius: radius.md },
-  categoryIconText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 13 },
+  categoryIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 22 },
+  categoryIconText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14 },
   identityText: { flex: 1, gap: 2 },
   category: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
   name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
   description: { ...typography.body, color: colors.textBody },
-  meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 13 },
+  meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
   ownerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   ownerLabel: { color: colors.textSecondary, fontSize: 12 },
-  ownerName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  ownerName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
   actionRow: { flexDirection: 'row', gap: spacing.sm },
   action: { flex: 1 },
-  membersCard: { minHeight: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.md, backgroundColor: colors.surface, borderRadius: radius.md },
-  membersCount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  membersCard: { minHeight: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16 },
+  membersMore: { alignItems: 'center', flexDirection: 'row', gap: 2 },
+  membersCount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
   membersLink: { color: colors.textSecondary, fontSize: 12 },
   feedHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.md },
-  feedTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
+  feedTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
   sortLabel: { color: colors.textSecondary, fontSize: 12 },
   rankingLink: {
-    color: colors.primaryDark,
+    color: colors.primary,
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 14,
     marginTop: 2,
@@ -346,16 +348,16 @@ const styles = StyleSheet.create({
   joinButton: {
     backgroundColor: colors.surface,
     alignItems: 'center',
-    borderRadius: radius.sm,
+    borderRadius: 12,
     borderWidth: 1,
-    minHeight: 42,
+    minHeight: 44,
     justifyContent: 'center',
   },
   join: { backgroundColor: colors.primary, borderColor: colors.primary },
-  joined: { backgroundColor: colors.background, borderColor: colors.background },
+  joined: { backgroundColor: colors.surfaceSoft, borderColor: colors.surfaceSoft },
   pressed: { opacity: 0.75 },
-  joinTextOn: { color: colors.surface, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
-  joinedText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  joinTextOn: { color: colors.surface, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+  joinedText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
   message: {
     alignItems: 'center',
     flex: 1,

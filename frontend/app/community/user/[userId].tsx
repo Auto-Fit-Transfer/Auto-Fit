@@ -35,6 +35,7 @@ import {
 } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { colors, fontFamilies, spacing, typography } from '@/src/theme';
+import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 
 // userId may be 'me' (the server resolves it to the signed-in user).
 export default function CommunityProfileScreen() {
@@ -310,7 +311,7 @@ function MyRow({ label, onPress, value }: { label: string; onPress: () => void; 
       style={({ pressed }) => [styles.myRow, pressed && styles.myRowPressed]}
     >
       <Text style={styles.myRowLabel}>{label}</Text>
-      <Text style={styles.myRowValue}>{value} ›</Text>
+      <View style={styles.myRowEnd}><Text style={styles.myRowValue}>{value}</Text><CaretRightIcon color="#5E5D66" height={18} width={18} /></View>
     </Pressable>
   );
 }
@@ -342,14 +343,14 @@ const styles = StyleSheet.create({
   },
   otherProfile: { paddingTop: spacing.lg },
   profileTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.lg },
-  bio: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 13, lineHeight: 19 },
+  bio: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
   stats: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
   stat: { alignItems: 'center', minWidth: 56, paddingVertical: spacing.xs },
   statValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18 },
   statLabel: {
     color: colors.textSecondary,
     fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
+    fontSize: 14,
   },
   nameRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
   name: {
@@ -378,11 +379,11 @@ const styles = StyleSheet.create({
   messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
   empty: { alignItems: 'center', padding: spacing.xxl },
   footer: { paddingVertical: spacing.lg },
-  myRows: { backgroundColor: colors.surface, borderRadius: 12, overflow: 'hidden' },
+  myRows: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   otherActions: { flexDirection: 'row', gap: spacing.sm },
   otherAction: { flex: 1 },
   postsHeading: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, marginHorizontal: -spacing.xl, marginTop: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.lg },
-  postsTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
+  postsTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
   myRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -390,11 +391,12 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: spacing.lg,
   },
-  myRowPressed: { backgroundColor: colors.border },
+  myRowPressed: { backgroundColor: colors.surfaceSoft },
+  myRowEnd: { alignItems: 'center', flexDirection: 'row', gap: 2 },
   myRowLabel: {
     color: colors.textPrimary,
     fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
+    fontSize: 14,
   },
   myRowValue: {
     color: colors.textSecondary,

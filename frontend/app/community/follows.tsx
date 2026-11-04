@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   tabActive: { borderBottomColor: colors.primary },
-  tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
+  tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
   tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
   message: {
     alignItems: 'center',
@@ -220,6 +220,6 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flexShrink: 1,
     fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
+    fontSize: 16,
   },
 });

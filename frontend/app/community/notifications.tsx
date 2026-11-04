@@ -1,3 +1,4 @@
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
@@ -130,11 +131,11 @@ export default function CommunityNotificationsScreen() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <View style={styles.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable><Text style={styles.headerTitle}>알림</Text><View style={{ width: 24 }} /></View>
+      <View style={styles.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable><Text style={styles.headerTitle}>알림</Text><View style={{ width: 24 }} /></View>
       <View style={styles.filters}>
         {([['all', '전체'], ['community', '커뮤니티']] as const).map(([key, label]) => <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={[styles.filter, tab === key && styles.filterSelected]}><Text style={[styles.filterText, tab === key && styles.filterTextSelected]}>{label}</Text></Pressable>)}
         <View accessibilityLabel="챌린지·티어 알림은 준비 중" style={styles.filter}><Text style={styles.filterText}>챌린지 · 티어</Text></View>
-        <Pressable hitSlop={16} accessibilityRole="button" disabled={markingRead || !items?.some((item) => !item.is_read)} onPress={() => void markAllRead()}><Text style={styles.markRead}>모두 읽음</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" disabled={markingRead || !items?.some((item) => !item.is_read)} onPress={() => void markAllRead()} style={styles.markReadButton}><Text style={styles.markRead}>모두 읽음</Text></Pressable>
       </View>
       <Text style={styles.availability}>커뮤니티 알림을 볼 수 있어요. 챌린지·티어 알림은 준비 중이에요.</Text>
       {readError ? <Text style={styles.readError}>{readError}</Text> : null}
@@ -187,10 +188,10 @@ export default function CommunityNotificationsScreen() {
                 onPress={() => open(item)}
                 style={({ pressed }) => [
                   styles.row,
-                  !item.is_read && styles.unread,
                   pressed && styles.pressed,
                 ]}
               >
+                <View accessibilityLabel={item.is_read ? undefined : '읽지 않음'} style={[styles.dot, item.is_read && styles.dotRead]} />
                 <Pressable
                   accessibilityLabel={`${item.actor.nickname}님 프로필`}
                   onPress={() => openActor(item)}
@@ -220,9 +221,9 @@ export default function CommunityNotificationsScreen() {
 
 const styles = StyleSheet.create({
   root: { backgroundColor: colors.background, flex: 1 },
-  header: { height: 54, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, back: { color: '#1E1D24', fontSize: 31, lineHeight: 36 }, headerTitle: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-  filters: { paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }, filter: { backgroundColor: '#FAFBFC', borderRadius: 20, paddingHorizontal: 11, paddingVertical: 9, borderWidth: 1, borderColor: '#E4E5EB' }, filterSelected: { backgroundColor: '#ECE9FF', borderColor: '#5246C6' }, filterText: { color: '#777681', fontSize: 11 }, filterTextSelected: { color: '#5246C6' }, markRead: { color: '#777681', fontSize: 11, marginLeft: 5 }, sectionTitle: { color: '#1E1D24', fontSize: 13, fontFamily: fontFamilies.pretendardBold, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8 }, readError: { color: '#A13A2F', fontSize: 12, paddingHorizontal: 20 },
-  availability: { color: '#777681', fontSize: 11, paddingHorizontal: 20, paddingBottom: 8 },
+  header: { height: 54, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, headerTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardSemiBold },
+  filters: { paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }, filter: { backgroundColor: '#FFFFFF', borderRadius: 999, height: 34, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderColor: '#DFE2E7' }, filterSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' }, filterText: { color: '#5E5D66', fontSize: 12 }, filterTextSelected: { color: '#FFFFFF' }, markReadButton: { marginLeft: 'auto' }, markRead: { color: '#5E5D66', fontSize: 12 }, sectionTitle: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardBold, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8 }, readError: { color: '#A13A2F', fontSize: 12, paddingHorizontal: 20 },
+  availability: { color: '#5E5D66', fontSize: 12, paddingHorizontal: 20, paddingBottom: 8 },
   message: {
     alignItems: 'center',
     flex: 1,
@@ -239,21 +240,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
   },
-  unread: { backgroundColor: colors.primaryLight },
+  dot: { alignSelf: 'center', backgroundColor: '#17161D', borderRadius: 3, height: 6, marginLeft: -10, marginRight: -6, width: 6 },
+  dotRead: { backgroundColor: 'transparent' },
   pressed: { opacity: 0.8 },
   body: { flex: 1, gap: 2, minWidth: 0 },
   text: {
     color: colors.textPrimary,
     fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 15,
-    lineHeight: 21,
+    fontSize: 14,
+    lineHeight: 20,
   },
   actor: { fontFamily: fontFamilies.pretendardBold },
   preview: {
     color: colors.textSecondary,
     fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 18,
   },
   time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
 });

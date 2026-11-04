@@ -1,6 +1,6 @@
 import { Pressable, StyleSheet } from 'react-native';
 
-import { colors, fontFamilies, radius, spacing } from '@/src/theme';
+import { colors, fontFamilies, spacing } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 export interface CommunityFollowButtonProps {
@@ -44,17 +44,17 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: colors.surface,
     alignItems: 'center',
-    borderRadius: radius.round,
+    borderRadius: 8,
     borderWidth: 1,
     justifyContent: 'center',
     minHeight: 34,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
-  follow: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  following: { backgroundColor: colors.surface, borderColor: colors.border },
-  wide: { alignSelf: 'stretch', borderRadius: radius.sm, minHeight: 42 },
+  follow: { backgroundColor: '#FFFFFF', borderColor: colors.border },
+  following: { backgroundColor: colors.surfaceSoft, borderColor: colors.surfaceSoft },
+  wide: { alignSelf: 'stretch', borderRadius: 12, minHeight: 44 },
   pressed: { opacity: 0.75 },
-  text: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  followText: { color: colors.primary },
+  text: { fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  followText: { color: colors.textPrimary },
   followingText: { color: colors.textPrimary },
 });

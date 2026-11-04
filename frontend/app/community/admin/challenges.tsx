@@ -9,7 +9,7 @@ import {
   type CommunityAdminChallenge,
 } from '@/src/api/community';
 import { AppButton, AppHeader, Text } from '@/src/components/common';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { colors, fontFamilies, spacing, typography } from '@/src/theme';
 
 const METRIC: Record<CommunityAdminChallenge['metric'], string> = {
   meal_log_days: '식단 기록한 날',
@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
-    borderRadius: radius.lg,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 4,
     marginHorizontal: spacing.xl,
@@ -134,8 +134,8 @@ const styles = StyleSheet.create({
   },
   badge: {
     backgroundColor: colors.primaryLight,
-    borderRadius: radius.sm,
-    color: colors.primaryDark,
+    borderRadius: 12,
+    color: colors.primary,
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 12,
     overflow: 'hidden',
@@ -143,6 +143,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   badgeOff: { backgroundColor: colors.background, color: colors.textSecondary },
-  meta: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 13 },
+  meta: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
   note: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
 });

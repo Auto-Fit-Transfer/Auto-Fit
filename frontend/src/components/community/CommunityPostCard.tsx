@@ -18,7 +18,7 @@ import { CommunityFollowButton } from './CommunityFollowButton';
 import { CommunityPostImages } from './CommunityPostImages';
 import { Text } from '@/src/components/common';
 
-const CATEGORY_LABELS = {
+export const COMMUNITY_POST_CATEGORY_LABELS = {
   workout: '운동 기록', routine: '루틴 공유', diet: '식단',
   question: '질문', review: '후기',
 } as const;
@@ -112,7 +112,7 @@ export function CommunityPostCard({
           </Pressable>
           <View style={styles.meta}>
             <Text style={styles.time}>{formatCommunityTime(post.created_at)}</Text>
-            {post.category ? <Text style={styles.category}>{CATEGORY_LABELS[post.category]}</Text> : null}
+            {post.category ? <Text style={styles.category}>{COMMUNITY_POST_CATEGORY_LABELS[post.category]}</Text> : null}
           </View>
         </View>
         {expanded && followProfile && !followProfile.is_me && onFollow ? (

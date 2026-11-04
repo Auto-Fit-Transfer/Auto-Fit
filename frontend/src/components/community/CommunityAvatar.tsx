@@ -31,5 +31,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   image: { backgroundColor: colors.border },
-  initial: { color: colors.primaryDark, fontFamily: fontFamilies.pretendardBold },
+  initial: { color: colors.primary, fontFamily: fontFamilies.pretendardBold },
 });

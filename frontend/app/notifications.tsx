@@ -4,7 +4,11 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, TextInput
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 
-import Back from '@/assets/figma/main/a08ac.svg';
+import BarbellIcon from '@/assets/icons/ui/barbell.svg';
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
+import ChatsIcon from '@/assets/icons/ui/chats-circle.svg';
+import ForkKnifeIcon from '@/assets/icons/ui/fork-knife.svg';
+import HeartbeatIcon from '@/assets/icons/ui/heartbeat.svg';
 import { getApiErrorMessage } from '@/src/api/client';
 import {
   getNotificationPreferences, saveNotificationPreferences, type NotificationPreferences,
@@ -26,6 +30,10 @@ const categories: ToggleKey[] = [
   { key: 'health_report_enabled', label: '건강 데이터 알림', detail: '새 자료를 올릴 때가 되면' },
   { key: 'community_enabled', label: '커뮤니티 알림', detail: '좋아요 · 댓글 · 팔로우 · 서버 반영 예정' },
 ];
+
+const categoryIcons: Partial<Record<ToggleKey['key'], typeof BarbellIcon>> = {
+  diet_enabled: ForkKnifeIcon, exercise_enabled: BarbellIcon, health_report_enabled: HeartbeatIcon, community_enabled: ChatsIcon,
+};
 
 const validTime = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 const shortTime = (value: string | null) => value?.slice(0, 5) ?? '';
@@ -100,8 +108,11 @@ export default function Notifications() {
     void persist({ ...preferences, quiet_hours_start: start, quiet_hours_end: end });
   };
 
-  const row = ({ key, label, detail }: ToggleKey) => (
+  const row = ({ key, label, detail }: ToggleKey) => {
+    const Icon = categoryIcons[key];
+    return (
     <View key={key} style={styles.row}>
+      {Icon ? <Icon color="#17161D" height={24} width={24} /> : null}
       <View style={styles.copy}>
         <Text style={styles.label}>{label}</Text>
         <Text style={styles.detail}>{detail}</Text>
@@ -110,22 +121,25 @@ export default function Notifications() {
         accessibilityLabel={label}
         disabled={!preferences || saving}
         onValueChange={() => toggle(key)}
-        trackColor={{ false: '#92929A', true: colors.primaryDark }}
+        thumbColor="#FFFFFF"
+        {...({ activeThumbColor: '#FFFFFF' } as object)}
+        trackColor={{ false: '#C9CCD2', true: '#17161D' }}
         value={preferences?.[key] ?? false}
       />
     </View>
   );
+  };
 
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 32 }]}>
         <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}><Back /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
           <Text style={styles.title}>알림 설정</Text>
           <View style={styles.back} />
         </View>
-        {loading ? <ActivityIndicator color={colors.primaryDark} /> : null}
+        {loading ? <ActivityIndicator color={colors.primary} /> : null}
         {error ? <Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text accessibilityRole="alert" style={styles.error}>{error} · 다시 시도하기</Text></Pressable> : null}
         {saved ? <Text accessibilityRole="alert" style={styles.saved}>설정을 저장했어요.</Text> : null}
         <Text style={styles.sectionTitle}>알림 종류</Text>
@@ -155,17 +169,17 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 22, gap: 15 },
   header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
   back: { width: 32, minHeight: 32, justifyContent: 'center' },
-  title: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 17, color: colors.textPrimary },
+  title: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16, color: colors.textPrimary },
   sectionTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, marginTop: 13 },
-  card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16 },
+  card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 16 },
   row: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
   copy: { flex: 1, gap: 4 },
   label: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
   detail: { fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
   timeInput: { backgroundColor: colors.surface, flex: 1, minWidth: 63, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 8, color: colors.textPrimary, textAlign: 'center' },
-  timeSave: { padding: 9, borderRadius: 8, backgroundColor: colors.primaryDark },
-  timeSaveText: { color: colors.surface, fontSize: 11 },
+  timeSave: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+  timeSaveText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
   note: { color: colors.textSecondary, fontSize: 12, lineHeight: 19 },
   error: { color: colors.danger, fontSize: 12 },
   saved: { color: colors.success, fontSize: 12 },

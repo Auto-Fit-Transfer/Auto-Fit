@@ -3,7 +3,12 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import Back from '@/assets/figma/main/a08ac.svg';
+import Constants from 'expo-constants';
+import GoogleIcon from '@/assets/icons/auth-redesign/google-logo.svg';
+import KakaoIcon from '@/assets/icons/auth-redesign/kakao-symbol.svg';
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
+import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
+import LockIcon from '@/assets/icons/ui/lock.svg';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { apiRequest, getApiErrorMessage } from '@/src/api/client';
 import { FormField } from '@/src/components/main/FormControls';
@@ -15,6 +20,8 @@ export default function Account() {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('확인 중');
   const [provider, setProvider] = useState('');
+  const [providerKey, setProviderKey] = useState('');
+  const version = Constants.expoConfig?.version;
   const [confirm, setConfirm] = useState(false);
   const [confirmation, setConfirmation] = useState('');
   const [busy, setBusy] = useState(false);
@@ -29,9 +36,10 @@ export default function Account() {
           setError('로그인 정보를 확인하지 못했어요.');
           return;
         }
-        setEmail(data.user?.email ?? '이메일 없음');
+        setEmail(data.user?.email || '이메일 없음');
         const currentProvider = data.user?.app_metadata?.provider;
-        setProvider(currentProvider === 'email' ? '이메일' : String(currentProvider ?? '연결된 계정'));
+        setProviderKey(String(currentProvider ?? ''));
+        setProvider(currentProvider === 'email' ? '이메일' : currentProvider === 'kakao' ? '카카오' : currentProvider === 'google' ? 'Google' : String(currentProvider ?? '연결된 계정'));
       })
       .catch(() => { if (live) setError('로그인 정보를 확인하지 못했어요.'); });
     return () => { live = false; };
@@ -71,7 +79,7 @@ export default function Account() {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 35 }]}>
         <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}><Back /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
           <Text style={styles.title}>계정 설정</Text>
           <View style={styles.back} />
         </View>
@@ -87,36 +95,52 @@ export default function Account() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>연결된 로그인</Text>
+          <Text style={styles.sectionTitle}>간편 로그인 연결</Text>
           <View style={styles.card}>
-            <View style={styles.row}><Text style={styles.label}>{provider || '연결된 계정'}</Text><Text style={styles.connected}>사용 중</Text></View>
+            {([['kakao', '카카오', <View key="kakao" style={styles.kakaoMark}><KakaoIcon height={14} width={14} /></View>], ['google', 'Google', <GoogleIcon key="google" height={22} width={22} />]] as const).map(([key, label, icon], index) => (
+              <View key={key}>
+                {index > 0 ? <View style={styles.divider} /> : null}
+                <View style={styles.row}>
+                  <View style={styles.rowStart}>{icon}<Text style={styles.label}>{label}</Text></View>
+                  {providerKey === key ? <View style={styles.connectedPill}><Text style={styles.connected}>연결됨</Text></View> : <Text style={styles.soon}>준비 중</Text>}
+                </View>
+              </View>
+            ))}
           </View>
-          <Text style={styles.note}>다른 로그인 수단 연결은 준비 중이에요.</Text>
         </View>
 
         {provider === '이메일' ? (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>보안</Text>
             <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/password/forgot')} style={styles.action}>
-              <Text style={styles.label}>비밀번호 변경</Text><Text style={styles.chevron}>›</Text>
+              <View style={styles.rowStart}>
+                <LockIcon color="#17161D" height={22} width={22} />
+                <View style={styles.actionCopy}>
+                  <Text style={styles.label}>비밀번호 바꾸기</Text>
+                  <Text style={styles.note}>이메일로 재설정 링크를 받아요.</Text>
+                </View>
+              </View>
+              <CaretRightIcon color="#5E5D66" height={18} width={18} />
             </Pressable>
-            <Text style={styles.note}>이메일로 비밀번호 재설정 링크를 받아요.</Text>
           </View>
         ) : null}
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>계정 관리</Text>
+          <Text style={styles.sectionTitle}>약관 · 정보</Text>
           <View style={styles.card}>
-            <Pressable hitSlop={16} accessibilityRole="button" disabled={busy} onPress={() => void signOut()} style={styles.actionInner}>
-              <Text style={styles.label}>로그아웃</Text><Text style={styles.chevron}>›</Text>
-            </Pressable>
+            <View style={styles.row}><Text style={styles.label}>서비스 이용약관</Text><Text style={styles.soon}>준비 중</Text></View>
             <View style={styles.divider} />
-            <Pressable hitSlop={16} accessibilityRole="button" onPress={() => { setConfirm(true); setConfirmation(''); setError(''); }} style={styles.actionInner}>
-              <Text style={styles.withdraw}>회원 탈퇴</Text><Text style={styles.chevron}>›</Text>
-            </Pressable>
+            <View style={styles.row}><Text style={styles.label}>개인정보 처리방침</Text><Text style={styles.soon}>준비 중</Text></View>
           </View>
-          <Text style={styles.note}>탈퇴하면 계정과 건강·운동 기록이 영구 삭제돼요.</Text>
         </View>
+
+        <Pressable hitSlop={8} accessibilityRole="button" disabled={busy} onPress={() => void signOut()} style={styles.signOut}>
+          <Text style={styles.signOutText}>로그아웃</Text>
+        </Pressable>
+        <Pressable hitSlop={8} accessibilityRole="button" onPress={() => { setConfirm(true); setConfirmation(''); setError(''); }} style={styles.withdrawButton}>
+          <Text style={styles.withdraw}>회원 탈퇴</Text>
+        </Pressable>
+        {version ? <Text style={styles.version}>앱 버전 {version}</Text> : null}
         {error && !confirm ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
       </ScrollView>
 
@@ -145,28 +169,35 @@ const styles = StyleSheet.create({
   content: { paddingHorizontal: 22 },
   header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 },
   back: { width: 32, minHeight: 32, justifyContent: 'center' },
-  title: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 17, color: colors.textPrimary },
+  title: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16, color: colors.textPrimary },
   section: { gap: 11, marginBottom: 28 },
   sectionTitle: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16, color: colors.textPrimary },
   card: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: colors.surface, paddingHorizontal: 16 },
   row: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   divider: { height: 1, backgroundColor: colors.border },
   label: { fontFamily: fontFamilies.pretendardMedium, fontSize: 14, color: colors.textPrimary },
-  value: { fontSize: 14, color: colors.textSecondary, flexShrink: 1, textAlign: 'right' },
+  value: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, flexShrink: 1, textAlign: 'right' },
+  kakaoMark: { alignItems: 'center', backgroundColor: '#FEE500', borderRadius: 11, height: 22, justifyContent: 'center', width: 22 },
+  rowStart: { alignItems: 'center', flexDirection: 'row', flex: 1, gap: 12 },
+  actionCopy: { flex: 1, gap: 2 },
+  soon: { fontSize: 12, color: colors.textSecondary },
+  connectedPill: { backgroundColor: '#E8F6EF', borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  signOut: { alignItems: 'center', backgroundColor: colors.surfaceSoft, borderRadius: 12, height: 48, justifyContent: 'center' },
+  signOutText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+  withdrawButton: { alignItems: 'center', marginTop: 18, paddingVertical: 6 },
+  version: { color: colors.textSecondary, fontSize: 12, marginTop: 6, textAlign: 'center' },
   note: { fontSize: 12, lineHeight: 18, color: colors.textSecondary },
-  connected: { fontSize: 12, color: colors.success, fontFamily: fontFamilies.pretendardSemiBold },
-  action: { backgroundColor: colors.surface, minHeight: 56, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  actionInner: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  chevron: { fontSize: 22, color: colors.textSecondary },
-  withdraw: { color: colors.danger, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  error: { color: colors.danger, fontSize: 13 },
+  connected: { fontSize: 12, color: '#0E7C48', fontFamily: fontFamilies.pretendardSemiBold },
+  action: { backgroundColor: colors.surface, gap: 12, minHeight: 64, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  withdraw: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, textDecorationLine: 'underline' },
+  error: { color: colors.danger, fontSize: 14 },
   overlay: { flex: 1, padding: 22, backgroundColor: colors.overlay, justifyContent: 'center' },
-  dialog: { padding: 22, borderRadius: 14, backgroundColor: colors.surface, gap: 16 },
+  dialog: { padding: 22, borderRadius: 16, backgroundColor: colors.surface, gap: 16 },
   dialogTitle: { fontSize: 18, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
   dialogDescription: { fontSize: 14, lineHeight: 21, color: colors.textSecondary },
-  deleteButton: { minHeight: 50, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: colors.danger },
+  deleteButton: { minHeight: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.danger },
   disabled: { opacity: 0.45 },
-  deleteText: { fontSize: 15, color: colors.surface, fontFamily: fontFamilies.pretendardSemiBold },
+  deleteText: { fontSize: 16, color: colors.surface, fontFamily: fontFamilies.pretendardSemiBold },
   cancel: { alignItems: 'center', paddingVertical: 8 },
   cancelText: { fontSize: 14, color: colors.textSecondary },
 });

@@ -158,12 +158,12 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flexShrink: 1,
     fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
+    fontSize: 16,
   },
   owner: {
     backgroundColor: colors.primaryLight,
-    borderRadius: radius.sm,
-    color: colors.primaryDark,
+    borderRadius: 12,
+    color: colors.primary,
     fontFamily: fontFamilies.pretendardSemiBold,
     fontSize: 12,
     overflow: 'hidden',
@@ -179,5 +179,5 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   pressed: { backgroundColor: colors.dangerLight },
-  removeText: { color: colors.danger, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
+  removeText: { color: colors.danger, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
 });

@@ -11,7 +11,7 @@ import {
 } from '@/src/api/community';
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { colors, fontFamilies, spacing, typography } from '@/src/theme';
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
   status: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: 16,
     gap: 4,
     padding: spacing.xl,
   },
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   benefit: { ...typography.body, color: colors.textBody },
   notice: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
+    borderRadius: 12,
     gap: 4,
     marginBottom: spacing.sm,
     padding: spacing.lg,

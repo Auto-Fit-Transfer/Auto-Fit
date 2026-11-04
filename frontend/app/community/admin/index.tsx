@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader, Text } from '@/src/components/common';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { colors, fontFamilies, spacing, typography } from '@/src/theme';
 
 const TOOLS: { title: string; description: string; href: Href }[] = [
   {
@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     alignItems: 'center',
     borderColor: colors.border,
-    borderRadius: radius.lg,
+    borderRadius: 16,
     borderWidth: 1,
     flexDirection: 'row',
     padding: spacing.lg,

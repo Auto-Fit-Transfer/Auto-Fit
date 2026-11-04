@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     flex: 1,
     fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
+    fontSize: 16,
   },
   unblock: {
     backgroundColor: colors.surface,
@@ -145,8 +145,8 @@ const styles = StyleSheet.create({
   },
   pressed: { backgroundColor: colors.primaryLight },
   unblockText: {
-    color: colors.primaryDark,
+    color: colors.primary,
     fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 13,
+    fontSize: 14,
   },
 });
