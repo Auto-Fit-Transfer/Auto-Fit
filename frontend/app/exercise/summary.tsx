@@ -15,7 +15,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getExerciseApiErrorMessage } from '@/src/api/exercise';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
-import { exerciseLocationLabels } from '@/src/features/exercise/exerciseData';
+import {
+  exerciseEquipmentLabels,
+  exerciseLocationLabels,
+} from '@/src/features/exercise/exerciseData';
 import { fontFamilies } from '@/src/theme';
 
 export default function ExerciseSummaryScreen() {
@@ -79,7 +82,13 @@ export default function ExerciseSummaryScreen() {
   const conditions = [
     condition.availableMinutes === null ? null : String(condition.availableMinutes) + '분',
     condition.location ? exerciseLocationLabels[condition.location] : null,
-    condition.equipment.length ? condition.equipment.length + '종 기구' : '기구 없음',
+    condition.location
+      ? condition.equipment.length === 1
+        ? exerciseEquipmentLabels[condition.equipment[0]]
+        : condition.equipment.length > 1
+          ? condition.equipment.length + '종 기구'
+          : '기구 없음'
+      : null,
     condition.condition,
   ].filter((value): value is string => Boolean(value));
 

@@ -34,6 +34,7 @@ import {
   type ExercisePlanSession,
   type ExerciseRoutine,
 } from './exerciseData';
+import { mapPersistedExerciseCondition } from './exerciseCondition';
 
 type ApiRecord = Record<string, unknown>;
 type ExerciseLoadState = 'empty' | 'error' | 'loading' | 'ready';
@@ -445,6 +446,10 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
       recommendationResult.status === 'fulfilled' ? recommendationResult.value : { result: null };
     const recommendationResultValue = getResultValue(recommendationResponse);
     const nextRoutine = mapExerciseRoutine(recommendationResponse);
+    setCondition(
+      mapPersistedExerciseCondition(recommendationResponse, nextRoutine?.id ?? null) ??
+        initialExerciseCondition,
+    );
     const recommendationRecord = getResult(recommendationResponse);
     const recommendationMetadata = recommendationRecord
       ? (readRecord(recommendationRecord, 'recommendation') ?? recommendationRecord)
