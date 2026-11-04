@@ -91,6 +91,12 @@ def test_presentation_flow_from_profile_to_progress(monkeypatch) -> None:
         assert request_user_id == user_id
         return state["recommendation"]
 
+    async def fetch_context_for_recommendation(request_user_id, request_recommendation_id, settings):
+        assert request_user_id == user_id
+        assert request_recommendation_id == recommendation_id
+        assert settings == TEST_SETTINGS
+        return state["context"]
+
     async def exercise_rpc(name, payload, settings):
         assert payload["p_user_id"] == user_id
         if name == "start_exercise_session":
@@ -142,6 +148,7 @@ def test_presentation_flow_from_profile_to_progress(monkeypatch) -> None:
     monkeypatch.setattr(main, "fetch_latest_unlinked_exercise_context", fetch_unlinked_context)
     monkeypatch.setattr(main, "create_exercise_recommendation", create_recommendation)
     monkeypatch.setattr(main, "fetch_latest_exercise_recommendation", fetch_recommendation)
+    monkeypatch.setattr(main, "fetch_exercise_context_for_recommendation", fetch_context_for_recommendation)
     monkeypatch.setattr(main, "call_exercise_session_rpc", exercise_rpc)
     monkeypatch.setattr(main, "fetch_completed_exercise_sessions", completed_sessions)
     monkeypatch.setattr(ChatStore, "exchange", exchange)
@@ -179,6 +186,7 @@ def test_presentation_flow_from_profile_to_progress(monkeypatch) -> None:
 
         routine = client.get("/api/exercise/recommendations/latest").json()["result"]
         assert routine["recommendation"]["intensity"] == "low"
+        assert routine["context"]["available_equipment"] == ["mat"]
         started = client.post("/api/exercise/sessions/start", json={}).json()["result"]
         for item in started["items"]:
             result = client.post(

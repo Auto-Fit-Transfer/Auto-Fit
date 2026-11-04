@@ -20,6 +20,8 @@ AI 모델의 최대 3개 세션은 날짜별 계획으로 저장한다. 모델 �
 사용자 식별정보는 전달하지 않는다. 공용 GitHub의 현재 AI 요청 계약이 사용하는
 `daily_condition`과 `has_discomfort`도 실제 입력값에서 변환해 함께 보낸다.
 AI 출력이 선택한 장비와 맞지 않으면 추천 생성에 실패한다.
+최신 추천 조회의 `result.context`에는 해당 추천 ID에 연결된 입력 조건만 포함한다.
+실패한 뒤 남은 더 최신 미연결 조건은 요약 화면에 표시하지 않는다.
 
 `EXERCISE_GIF_BASE_URL`에 CSV의 `relative_path`가 배포된 공개 HTTPS prefix를
 설정하면 Backend가 `exercise_key`·운동 모드·프로필 성별로 primary GIF를 고른다.
@@ -28,7 +30,7 @@ AI 출력이 선택한 장비와 맞지 않으면 추천 생성에 실패한다.
 
 ## 활성화 순서
 
-1. 별도 AI 서버에 [공용 GitHub `ai` 브랜치](https://github.com/Auto-Fit-Transfer/Auto-Fit/tree/2f9f9801dec72bed210102b57b1e9f239b475229)의 운동 API와 CSV 카탈로그가 배포됐는지 확인한다. 공개 `/openapi.json`에 `POST /recommend/exercise`가 있어야 한다.
+1. 별도 AI 서버에 [공용 GitHub `ai` 브랜치](https://github.com/Auto-Fit-Transfer/Auto-Fit/tree/ffa3a2b0ce7ec1e7defa987354da371bfe0c533a)의 운동 API와 CSV 카탈로그가 배포됐는지 확인한다. 공개 `/openapi.json`에 `POST /recommend/exercise`가 있어야 한다.
 2. `supabase/migrations/20261103072835_store_ai_exercise_recommendations.sql`과 `20261103072839_exercise_ai_weekly_sessions.sql`을 순서대로 적용한다. Auto-Fit 운영 프로젝트에는 2026-11-03에 두 버전이 이미 적용됐다. 기존 추천은 `generator=rules_v1`을 유지한다.
 3. 카탈로그 CSV를 포함한 백엔드를 배포한다. 현재 CSV 해시는 `sha256:5e231250283742da2deee4e36da0308fb635409999ee8f6a29ff49274c5d97a1`이다. AI 서버의 `catalog_version`이 다르면 저장하지 않는다.
 4. 백엔드 서버 전용 환경에 `AI_SERVER_BASE_URL=https://ai.211-233-193-159.sslip.io`, `AI_SERVER_API_KEY`, `AI_SERVER_ENABLED=true`를 설정한다. 시험 중에는 `EXERCISE_AI_ENABLED=false`와 `EXERCISE_AI_TEST_USER_IDS=<테스트 계정 UUID>`로 해당 계정만 AI를 사용하게 한다. 전체 공개 시 테스트 UUID 변수를 제거하고 `EXERCISE_AI_ENABLED=true`로 바꾼다. GIF 객체를 공개 HTTPS에 업로드한 뒤 `EXERCISE_GIF_BASE_URL`도 설정한다. 앱 공용 API 주소 `https://211-233-206-193.sslip.io`는 AI 서버 주소가 아니다.
@@ -36,8 +38,9 @@ AI 출력이 선택한 장비와 맞지 않으면 추천 생성에 실패한다.
 
 ## 남은 검증과 범위
 
-- 로컬 PostgreSQL 호환 엔진에서 AI·기존 규칙 저장, 날짜별 세션 시작·항목 분리·완료·미래 날짜 제한을 확인했다. 운영 기준 `6439380` 위에 운동 변경과 테스트 계정 허용목록을 올린 Backend 브랜치의 테스트 883개, 모바일 단위 테스트 16개와 TypeScript 타입 검사가 통과했다. 운영 DB에서는 새 테이블의 RLS, 컬럼, 마이그레이션 기록을 확인했다. 운영 담당자는 규칙 기반 추천 생성·최신 조회 200을 보고했으며 시작·완료와 식단 생성은 아직 확인하지 않았다.
-- AI 서버 주소와 운동 API는 확인했지만 서버 간 키에 접근할 수 없어 라이브 AI 생성·저장 시험은 아직 실행하지 못했다. PR #8은 `ai` 브랜치에 병합됐으며 AI 서버 재배포는 별도로 확인해야 한다.
+- 로컬 PostgreSQL 호환 엔진에서 AI·기존 규칙 저장, 날짜별 세션 시작·항목 분리·완료·미래 날짜 제한을 확인했다. 운영 기준 `6439380` 위에 운동 변경과 테스트 계정 허용목록을 올린 Backend 브랜치의 테스트 883개, 모바일 단위 테스트 16개와 TypeScript 타입 검사가 통과했다. 운영 DB에서는 새 테이블의 RLS, 컬럼, 마이그레이션 기록을 확인했다. 운영 담당자는 규칙 운동 시작·항목 완료·세션 완료와 식단 생성 200, 허용목록 밖 계정의 `generator=rules_v1`을 확인했다.
+- 2026-11-03 17:46 KST 파일럿에서 AI `ffa3a2b`·Backend `348f737`로 45분/헬스장/머신/보통 요청 시 AI는 200(13초), Backend는 `502 AI_EXERCISE_INVALID_RESPONSE`를 반환했다. 저장은 없었으므로 날짜별 계획의 저장·조회·시작·완료는 아직 운영 검증 전이다. 실제 AI 응답 본문에 접근하지 못해 단일 탈락 이유는 확정하지 않았다. Backend 후속 브랜치는 AI 원문과 사용자 정보 없이 `reason` 코드만 로그에 남긴다. 이를 배포한 뒤 동일 조건으로 1회 재시험해 사유를 확인한다.
+- AI 모델 담당자와 응답 계약을 맞춰야 한다. 현재 AI 스키마는 각 운동의 `duration_minutes`를 선택값으로 허용하지만 Backend는 필수 정수(1~300)로 검증한다. AI 응답 단계에서 운동 시간 필수, 허용 강도 값, 세션 1~3개·세션별 운동 1~4개, 각 세션 운동 시간 합계 `available_minutes` 이하를 보장해야 한다. 누락된 시간을 임의 배분하거나 초과 시간을 조용히 잘라 저장하면 처방이 달라지므로 모델 재생성 또는 명시적 검증 실패로 처리한다.
 - GIF 자산의 공개 HTTPS 배포와 실제 AI 서버에 새 요청 Schema를 반영한 뒤
   라이브 계약을 확인해야 한다. AI 요청 계약은 원격 `ai` 브랜치에 있고,
   모바일 GIF 표시 코드는 별도 PR로 올라갔다. Backend 요청과 AI 입력 모델의

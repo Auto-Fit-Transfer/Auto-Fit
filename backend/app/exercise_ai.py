@@ -20,6 +20,30 @@ CATALOG_PATH = Path(__file__).resolve().parents[1] / "data/exercise_assets/exerc
 class ExerciseAIError(ValueError):
     """The AI response cannot safely become a stored exercise routine."""
 
+    def __init__(self, message: str, *, reason_codes: tuple[str, ...] = ("unknown",)):
+        super().__init__(message)
+        self.reason_codes = reason_codes
+
+
+def _structure_reasons(error: ValidationError) -> tuple[str, ...]:
+    """Classify schema failures without retaining AI values or validation context."""
+    reasons: set[str] = set()
+    for issue in error.errors(include_input=False, include_context=False, include_url=False):
+        path = issue["loc"]
+        field = path[-1] if path else None
+        if field == "duration_minutes" and "exercises" in path:
+            reasons.add("duration_minutes_missing" if issue["type"] == "missing"
+                        else "duration_minutes_invalid")
+        elif field == "sessions":
+            reasons.add("session_count_invalid")
+        elif field == "exercises":
+            reasons.add("exercise_count_invalid")
+        elif field == "intensity":
+            reasons.add("intensity_invalid")
+        else:
+            reasons.add("response_structure_invalid")
+    return tuple(sorted(reasons)) or ("response_structure_invalid",)
+
 
 @dataclass(frozen=True)
 class CatalogExercise:
@@ -46,7 +70,7 @@ def load_catalog() -> tuple[str, dict[str, CatalogExercise]]:
                 key = row["exercise_key"].strip()
                 name = row["exercise_name_en"].strip()
                 if not key or not name:
-                    raise ExerciseAIError("Exercise catalog is invalid")
+                    raise ExerciseAIError("Exercise catalog is invalid", reason_codes=("catalog_unavailable",))
                 training_type = row["recommended_training_type"].strip()
                 group = groups.setdefault(key, {"name": name, "training_type": training_type,
                                                 "training_type_by_mode": {}, "modes": set(),
@@ -60,7 +84,7 @@ def load_catalog() -> tuple[str, dict[str, CatalogExercise]]:
                 elif mode == "gym":
                     group["styles"].add(row["gym_training_style"].strip())
         if not groups:
-            raise ExerciseAIError("Exercise catalog is unavailable")
+            raise ExerciseAIError("Exercise catalog is unavailable", reason_codes=("catalog_unavailable",))
         return version, {
             key: CatalogExercise(value["name"], value["training_type"],
                                  tuple(value["training_type_by_mode"].items()), frozenset(value["modes"]),
@@ -69,7 +93,7 @@ def load_catalog() -> tuple[str, dict[str, CatalogExercise]]:
             for key, value in groups.items()
         }
     except (OSError, KeyError, UnicodeError) as exc:
-        raise ExerciseAIError("Exercise catalog is unavailable") from exc
+        raise ExerciseAIError("Exercise catalog is unavailable", reason_codes=("catalog_unavailable",)) from exc
 
 
 def gif_url_for_exercise(exercise_key: str, location: str, gender: str,
@@ -173,7 +197,7 @@ def _intensity(value: str | None) -> str:
         return "moderate"
     if normalized in {"high", "hard", "높음", "고강도"}:
         return "high"
-    raise ExerciseAIError("Exercise AI returned an invalid intensity")
+    raise ExerciseAIError("Exercise AI returned an invalid intensity", reason_codes=("intensity_invalid",))
 
 
 EXERCISE_TYPE_NAMES = {
@@ -191,21 +215,21 @@ def _check_equipment(item: CatalogExercise, context: dict[str, Any]) -> None:
     equipment = set(context.get("available_equipment") or [])
     if location == "gym":
         if "gym" not in item.modes:
-            raise ExerciseAIError("Exercise AI returned an unavailable exercise mode")
+            raise ExerciseAIError("Exercise AI returned an unavailable exercise mode", reason_codes=("exercise_mode_unavailable",))
         if item.gym_styles and item.gym_styles.isdisjoint({"", "any"}):
             allowed = ({"machine"} if "machine" in equipment else set()) | (
                 {"free_weight"} if "dumbbell" in equipment else set()
             )
             if item.gym_styles.isdisjoint(allowed):
-                raise ExerciseAIError("Exercise AI returned unavailable equipment")
+                raise ExerciseAIError("Exercise AI returned unavailable equipment", reason_codes=("equipment_unavailable",))
     elif location in {"home", "outdoor", "other"}:
         if "home_training" not in item.modes:
-            raise ExerciseAIError("Exercise AI returned an unavailable exercise mode")
+            raise ExerciseAIError("Exercise AI returned an unavailable exercise mode", reason_codes=("exercise_mode_unavailable",))
         allowed = {"", "none"} | ({"band"} if "band" in equipment else set()) | (
             {"dumbbell"} if "dumbbell" in equipment else set()
         ) | ({"other"} if "other" in equipment and location == "home" else set())
         if item.home_equipment.isdisjoint(allowed):
-            raise ExerciseAIError("Exercise AI returned unavailable equipment")
+            raise ExerciseAIError("Exercise AI returned unavailable equipment", reason_codes=("equipment_unavailable",))
 
 
 def build_plan(response: dict[str, Any], preferences: dict[str, Any],
@@ -213,20 +237,21 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
     try:
         parsed = AIEnvelope.model_validate(response)
     except ValidationError as exc:
-        raise ExerciseAIError("Exercise AI response has an invalid structure") from exc
+        raise ExerciseAIError("Exercise AI response has an invalid structure",
+                              reason_codes=_structure_reasons(exc)) from exc
 
     catalog_version, catalog = load_catalog()
     if parsed.result.catalog_version != catalog_version:
-        raise ExerciseAIError("Exercise AI catalog version does not match")
+        raise ExerciseAIError("Exercise AI catalog version does not match", reason_codes=("catalog_version_mismatch",))
 
     if not parsed.result.summary.strip():
-        raise ExerciseAIError("Exercise AI response is missing text")
+        raise ExerciseAIError("Exercise AI response is missing text", reason_codes=("response_text_missing",))
     start_date = date.fromisoformat(recommendation_date)
     plan_sessions: list[dict[str, Any]] = []
     items: list[dict[str, Any]] = []
     for session_index, session in enumerate(parsed.result.sessions, start=1):
         if not session.name.strip():
-            raise ExerciseAIError("Exercise AI response is missing text")
+            raise ExerciseAIError("Exercise AI response is missing text", reason_codes=("response_text_missing",))
         seen: set[str] = set()
         session_minutes = 0
         for exercise in session.exercises:
@@ -240,10 +265,10 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
             if (record is None or record.name_en != exercise.catalog_name_en
                     or set(exercise.exercise_modes) != expected_modes
                     or exercise.exercise_key in seen):
-                raise ExerciseAIError("Exercise AI returned an invalid catalog exercise")
+                raise ExerciseAIError("Exercise AI returned an invalid catalog exercise", reason_codes=("catalog_exercise_invalid",))
             if (not exercise.name.strip()
                     or any(not part.strip() or len(part) > 300 for part in exercise.instructions)):
-                raise ExerciseAIError("Exercise AI returned invalid instructions")
+                raise ExerciseAIError("Exercise AI returned invalid instructions", reason_codes=("instructions_invalid",))
             _check_equipment(record, context)
             training_type = dict(record.training_type_by_mode).get(
                 "gym" if location == "gym" else "home_training",
@@ -251,7 +276,7 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
             )
             type_name = EXERCISE_TYPE_NAMES.get(training_type)
             if type_name is None:
-                raise ExerciseAIError("Exercise AI returned an unknown training type")
+                raise ExerciseAIError("Exercise AI returned an unknown training type", reason_codes=("training_type_unknown",))
             seen.add(exercise.exercise_key)
             session_minutes += exercise.duration_minutes
             items.append({
@@ -271,7 +296,7 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
                 "rest_seconds": None,
             })
         if session_minutes > int(context["available_minutes"]):
-            raise ExerciseAIError("Exercise AI exceeded the available time")
+            raise ExerciseAIError("Exercise AI exceeded the available time", reason_codes=("session_duration_exceeded",))
         plan_sessions.append({
             "session_index": session_index,
             "scheduled_date": (start_date + timedelta(days=(session_index - 1) * 7 // len(parsed.result.sessions))).isoformat(),

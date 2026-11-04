@@ -151,6 +151,25 @@ def test_build_plan_rejects_invalid_ai_responses(change):
         build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
 
 
+@pytest.mark.parametrize(("change", "expected_reason"), [
+    (lambda response: response["result"]["sessions"][0]["exercises"][0].pop("duration_minutes"),
+     "duration_minutes_missing"),
+    (lambda response: response["result"]["sessions"][0]["exercises"][0].update(duration_minutes=None),
+     "duration_minutes_invalid"),
+    (lambda response: response["result"].update(intensity="적당한 강도"), "intensity_invalid"),
+    (lambda response: response["result"]["sessions"][0]["exercises"][0].update(duration_minutes=31),
+     "session_duration_exceeded"),
+    (lambda response: response["result"].update(sessions=response["result"]["sessions"] * 2),
+     "session_count_invalid"),
+])
+def test_build_plan_reports_safe_rejection_reason(change, expected_reason):
+    response = copy.deepcopy(ai_response())
+    change(response)
+    with pytest.raises(ExerciseAIError) as error:
+        build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
+    assert expected_reason in error.value.reason_codes
+
+
 def test_build_plan_rejects_exercise_requiring_unavailable_equipment():
     response = ai_response()
     _, catalog = load_catalog()
@@ -304,13 +323,13 @@ def test_generate_api_calls_ai_and_saves_validated_items(monkeypatch):
         main.app.dependency_overrides.clear()
 
 
-def test_generate_api_rejects_invalid_ai_response_before_storage(monkeypatch):
+def test_generate_api_rejects_invalid_ai_response_before_storage(monkeypatch, caplog):
     monkeypatch.setenv("EXERCISE_AI_ENABLED", "true")
     monkeypatch.setenv("AI_SERVER_ENABLED", "true")
     monkeypatch.setenv("AI_SERVER_BASE_URL", "https://ai.example.invalid")
     monkeypatch.setenv("AI_SERVER_API_KEY", "synthetic-test-key-" + "x" * 32)
     invalid = ai_response()
-    invalid["result"]["catalog_version"] = "sha256:wrong"
+    invalid["result"]["catalog_version"] = "private-response-value"
     monkeypatch.setattr(main, "AIServerClient", lambda config: AIServerClient(
         config, transport=httpx.MockTransport(lambda _: httpx.Response(200, json=invalid))))
 
@@ -344,6 +363,8 @@ def test_generate_api_rejects_invalid_ai_response_before_storage(monkeypatch):
         response = TestClient(main.app).post("/api/exercise/recommendations/generate", json={})
         assert response.status_code == 502
         assert response.json()["detail"] == {"code": "AI_EXERCISE_INVALID_RESPONSE"}
+        assert "reason=catalog_version_mismatch" in caplog.text
+        assert "private-response-value" not in caplog.text
     finally:
         main.app.dependency_overrides.clear()
 
@@ -416,6 +437,12 @@ def test_latest_api_returns_dated_ai_sessions_and_status(monkeypatch):
                          "name": "첫날", "duration_minutes": 10}]
             elif url.endswith("/exercise_sessions"):
                 rows = [{"plan_session_id": plan_id, "status": "completed"}]
+            elif url.endswith("/exercise_recommendation_contexts"):
+                assert params["exercise_recommendation_id"] == f"eq.{recommendation_id}"
+                rows = [{"exercise_recommendation_id": recommendation_id,
+                         "available_minutes": 45, "location": "gym",
+                         "available_equipment": ["machine"], "condition_level": "보통",
+                         "discomfort_areas": []}]
             else:
                 raise AssertionError(url)
             return httpx.Response(200, json=rows, request=httpx.Request("GET", url))
@@ -442,5 +469,6 @@ def test_latest_api_returns_dated_ai_sessions_and_status(monkeypatch):
         result = response.json()["result"]
         assert result["plan_sessions"][0]["status"] == "completed"
         assert result["items"][0]["plan_session_id"] == plan_id
+        assert result["context"]["available_equipment"] == ["machine"]
     finally:
         main.app.dependency_overrides.clear()

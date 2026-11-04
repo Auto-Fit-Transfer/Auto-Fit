@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import asyncio
 import hashlib
+import logging
 import re
 import secrets
 from collections import defaultdict
@@ -87,6 +88,7 @@ from backend.app.security import (
 
 
 KST = ZoneInfo("Asia/Seoul")
+logger = logging.getLogger("uvicorn.error")
 CHAT_REQUEST_TIMEOUT_SECONDS = 70
 DUMMY_FOOD_NAME_PREFIX = re.compile(r"^\[DUMMY[^\]]*\]\s*", re.IGNORECASE)
 FOOD_NAME_PARENTHETICAL = re.compile(r"\s*(?:\([^()]*\)|（[^（）]*）)")
@@ -1259,7 +1261,8 @@ async def prepare_exercise_routine(
             plan = build_ai_exercise_plan(
                 ai_response, preferences, context, datetime.now(KST).date().isoformat()
             )
-        except ExerciseAIError:
+        except ExerciseAIError as exc:
+            logger.warning("Exercise AI plan rejected reason=%s", ",".join(exc.reason_codes))
             raise HTTPException(502, detail={"code": "AI_EXERCISE_INVALID_RESPONSE"}) from None
         generator = "auto-fit-ai"
     else:
@@ -1391,21 +1394,26 @@ async def fetch_latest_exercise_recommendation(
 
 async def fetch_exercise_context_for_recommendation(
     user_id: str, recommendation_id: str, settings: Settings,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
     async with client_scope() as client:
         response = await client.get(
             f"{settings.supabase_url}/rest/v1/exercise_recommendation_contexts",
             headers=service_headers(settings),
             params={
-                "select": "location",
+                "select": (
+                    "exercise_recommendation_context_id,exercise_recommendation_id,"
+                    "available_minutes,location,available_equipment,condition_level,"
+                    "discomfort_areas,condition_note"
+                ),
                 "user_id": f"eq.{user_id}",
                 "exercise_recommendation_id": f"eq.{recommendation_id}",
                 "limit": "1",
             },
         )
-    if not response.is_success or not response.json():
+    if not response.is_success:
         raise HTTPException(502, detail="Supabase exercise context query failed")
-    return response.json()[0]
+    rows = response.json()
+    return rows[0] if rows else None
 
 
 async def call_exercise_session_rpc(
@@ -3829,17 +3837,22 @@ async def get_latest_exercise_recommendation(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     result = await fetch_latest_exercise_recommendation(user.id, settings)
-    if result and result["recommendation"].get("generator") == "auto-fit-ai":
-        if os.getenv("EXERCISE_GIF_BASE_URL", "").strip():
+    if result:
+        recommendation_id = result["recommendation"]["exercise_recommendation_id"]
+        is_ai = result["recommendation"].get("generator") == "auto-fit-ai"
+        if is_ai and os.getenv("EXERCISE_GIF_BASE_URL", "").strip():
             context, profile = await asyncio.gather(
-                fetch_exercise_context_for_recommendation(
-                    user.id, result["recommendation"]["exercise_recommendation_id"], settings,
-                ),
+                fetch_exercise_context_for_recommendation(user.id, recommendation_id, settings),
                 fetch_profile(user.id, settings),
             )
         else:
-            context, profile = {}, None
-        result = await attach_exercise_gif_urls(result, context, profile)
+            context = await fetch_exercise_context_for_recommendation(
+                user.id, recommendation_id, settings,
+            )
+            profile = None
+        result["context"] = context
+        if is_ai:
+            result = await attach_exercise_gif_urls(result, context or {}, profile if context else None)
     return {"generator": result["recommendation"].get("generator") if result else None,
             "result": result}
 

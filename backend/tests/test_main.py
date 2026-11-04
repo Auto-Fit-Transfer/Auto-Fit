@@ -922,7 +922,8 @@ def test_generate_exercise_recommendation_rejects_client_user_id() -> None:
         main.app.dependency_overrides.clear()
 
 
-def test_latest_exercise_recommendation_uses_authenticated_user(monkeypatch) -> None:
+@pytest.mark.parametrize("has_linked_context", [True, False])
+def test_latest_exercise_recommendation_uses_authenticated_user(monkeypatch, has_linked_context) -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="authenticated-user")
 
@@ -930,19 +931,31 @@ def test_latest_exercise_recommendation_uses_authenticated_user(monkeypatch) -> 
         assert user_id == "authenticated-user"
         assert settings == TEST_SETTINGS
         return {
-            "recommendation": {"user_id": user_id},
+            "recommendation": {"user_id": user_id, "exercise_recommendation_id": "recommendation-1"},
             "items": [{"exercise_name": "빠르게 걷기"}],
         }
+
+    async def fake_context(user_id: str, recommendation_id: str, settings: main.Settings):
+        assert user_id == "authenticated-user"
+        assert recommendation_id == "recommendation-1"
+        assert settings == TEST_SETTINGS
+        return ({"exercise_recommendation_id": recommendation_id, "available_equipment": ["machine"]}
+                if has_linked_context else None)
 
     main.app.dependency_overrides[main.get_current_user] = fake_user
     main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
     monkeypatch.setattr(main, "fetch_latest_exercise_recommendation", fake_fetch)
+    monkeypatch.setattr(main, "fetch_exercise_context_for_recommendation", fake_context)
 
     try:
         client = TestClient(main.app)
         response = client.get("/api/exercise/recommendations/latest")
         assert response.status_code == 200
         assert response.json()["result"]["items"][0]["exercise_name"] == "빠르게 걷기"
+        context = response.json()["result"]["context"]
+        assert (context["available_equipment"] if context else None) == (
+            ["machine"] if has_linked_context else None
+        )
     finally:
         main.app.dependency_overrides.clear()
 
