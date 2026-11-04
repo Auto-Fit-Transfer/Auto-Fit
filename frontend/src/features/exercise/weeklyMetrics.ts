@@ -28,6 +28,16 @@ export function sessionMinutes(value: unknown) {
   const seconds = number(value);
   return seconds === null ? null : Math.round(seconds / 6) / 10;
 }
+export function formatSessionDuration(minutes: number | null | undefined) {
+  if (minutes == null || !Number.isFinite(minutes) || minutes < 0) return '—';
+  const seconds = Math.round(minutes * 60);
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+}
+export function sessionCalories(value: unknown, completedItemCount: unknown) {
+  const calories = number(value);
+  // The session RPC stores zero when a completed item's calorie estimate is absent.
+  return calories === 0 && (number(completedItemCount) ?? 0) > 0 ? null : calories;
+}
 export function sessionLocalDate(value: unknown) {
   if (typeof value !== 'string') return '날짜 미기록';
   const d = new Date(value);

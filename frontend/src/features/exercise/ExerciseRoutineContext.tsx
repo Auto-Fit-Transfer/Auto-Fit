@@ -1,4 +1,4 @@
-import { mapWeeklyMetrics, sessionMinutes, sessionLocalDate } from './weeklyMetrics';
+import { mapWeeklyMetrics, sessionCalories, sessionMinutes, sessionLocalDate } from './weeklyMetrics';
 import {
   createContext,
   useCallback,
@@ -273,12 +273,15 @@ function mapExerciseSession(response: unknown): ExerciseSessionSummary | null {
   const completedAt = readString(session, ['completed_at']);
 
   return {
-    calories: readNumber(session, [
-      'total_calories_burned',
-      'calories',
-      'total_calories',
-      'calories_burned',
-    ]),
+    calories: sessionCalories(
+      readNumber(session, [
+        'total_calories_burned',
+        'calories',
+        'total_calories',
+        'calories_burned',
+      ]),
+      session.completed_item_count,
+    ),
     completed: session.completed === true || status === 'completed' || completedAt !== null,
     date:
       completedAt ??

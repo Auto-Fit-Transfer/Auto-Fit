@@ -39,6 +39,7 @@ import {
 } from '@/src/features/exercise/exerciseResultMocks';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
+import { formatSessionDuration } from '@/src/features/exercise/weeklyMetrics';
 import { colors, fontFamilies } from '@/src/theme';
 
 const referenceWidth = 412;
@@ -63,11 +64,6 @@ const postConditionValues = {
   tired: 'bad',
   'very-tired': 'very_bad',
 } as const;
-
-function formatDuration(durationMinutes: number | null | undefined) {
-  if (durationMinutes === null || durationMinutes === undefined) return '35:28';
-  return `${String(durationMinutes).padStart(2, '0')}:00`;
-}
 
 export default function ExerciseResultScreen() {
   const router = useRouter();
@@ -129,9 +125,9 @@ export default function ExerciseResultScreen() {
   };
   const resultSummary = useMemo(
     () => [
-      { Icon: ClockIcon, label: '총 운동 시간', value: formatDuration(latestSession?.durationMinutes) },
-      { Icon: BarbellIcon, label: '운동 개수', value: `${latestSession?.itemCount ?? 5}개` },
-      { Icon: FireIcon, label: '소모 칼로리', value: `${latestSession?.calories ?? 236} kcal` },
+      { Icon: ClockIcon, label: '총 운동 시간', value: formatSessionDuration(latestSession?.durationMinutes) },
+      { Icon: BarbellIcon, label: '운동 개수', value: latestSession?.itemCount == null ? '—' : `${latestSession.itemCount}개` },
+      { Icon: FireIcon, label: '소모 칼로리', value: latestSession?.calories == null ? '—' : `${latestSession.calories} kcal` },
     ],
     [latestSession],
   );
