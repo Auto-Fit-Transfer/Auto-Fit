@@ -3,9 +3,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import CameraIcon from '@/assets/figma/main/62600.svg';
-import DocumentIcon from '@/assets/figma/main/e8bfe.svg';
 import TrashIcon from '@/assets/icons/common/Trash.svg';
+import CameraIcon from '@/assets/icons/ui/camera.svg';
+import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
+import FileIcon from '@/assets/icons/ui/file-text.svg';
+import HeartbeatIcon from '@/assets/icons/ui/heartbeat.svg';
+import LockIcon from '@/assets/icons/ui/lock.svg';
+import ScalesIcon from '@/assets/icons/ui/scales.svg';
 import { getHealthDocumentErrorMessage, uploadHealthDocument } from '@/src/api/healthDocuments';
 import type { OCRUploadRouteItem } from '@/src/features/health-data/ocrResults';
 import {
@@ -14,6 +18,7 @@ import {
 } from '@/src/features/health-data/useHealthFilePicker';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 
 const maximumUploadSize = 10 * 1024 * 1024;
 function isSupportedHealthDocument(file: SelectedHealthFile) {
@@ -79,31 +84,22 @@ export default function HealthDataUploadScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
-        <Pressable hitSlop={16}
-          accessibilityLabel="뒤로 가기"
-          accessibilityRole="button"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/home'))}
-          style={styles.back}
-        >
-          <Text style={styles.backText}>‹</Text>
-        </Pressable>
-      </View>
+      <ScreenHeader onBack={() => (router.canGoBack() ? router.back() : router.replace('/home'))} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <Text style={styles.heading}>건강검진 결과나 인바디 결과지가 있나요?</Text>
+        <Text style={styles.heading}>건강검진 결과나{'\n'}인바디 결과지가 있나요?</Text>
         <Text style={styles.description}>
-          올려 주시면 수치를 읽어서 운동·식단 추천을 내 몸에 맞게 바꿔 드려요.
+          올려 주시면 수치를 읽어서 운동 · 식단 추천을 내 몸에 맞게 바꿔 드려요.
         </Text>
         <View style={styles.options}>
           <UploadOption
             Icon={CameraIcon}
             disabled={busy}
             label="사진 찍기"
-            detail="종이 결과지를 바로 찍어 올려요"
+            detail="종이 결과지를 바로 찍어요"
             onPress={takePhoto}
           />
           <UploadOption
-            Icon={DocumentIcon}
+            Icon={FileIcon}
             disabled={busy}
             label="파일에서 고르기"
             detail="PDF · JPG · PNG · HEIC, 10MB까지"
@@ -122,35 +118,25 @@ export default function HealthDataUploadScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={file.name + ' 삭제'}
                   disabled={busy}
+                  hitSlop={10}
                   onPress={() => removeFile(index)}
                 >
-                  <TrashIcon height={19} width={19} />
+                  <TrashIcon height={20} width={20} />
                 </Pressable>
               </View>
             ))}
           </View>
         ) : null}
-        <Text style={styles.sectionTitle}>이런 자료를 올려요</Text>
+        <Text style={styles.sectionTitle}>이런 자료를 읽어요</Text>
         <View style={styles.examples}>
-          <View style={styles.exampleRow}>
-            <Text style={styles.exampleIcon}>♡</Text>
-            <View style={styles.exampleCopy}>
-              <Text style={styles.exampleTitle}>건강검진 결과표</Text>
-              <Text style={styles.exampleDescription}>국가건강검진 · 병원 검진 결과</Text>
-              <Text style={styles.exampleTags}>키　몸무게　혈압　공복혈당　콜레스테롤</Text>
-            </View>
-          </View>
+          <ExampleRow Icon={HeartbeatIcon} title="건강검진 결과표" detail="국가건강검진 · 병원 검진 결과" tags={['키', '몸무게', '혈압', '공복혈당', '콜레스테롤', '간 수치']} />
           <View style={styles.exampleDivider} />
-          <View style={styles.exampleRow}>
-            <Text style={styles.exampleIcon}>♧</Text>
-            <View style={styles.exampleCopy}>
-              <Text style={styles.exampleTitle}>인바디 결과지</Text>
-              <Text style={styles.exampleDescription}>체성분 · 기초대사량 등</Text>
-              <Text style={styles.exampleTags}>체중　골격근량　체지방률　BMI</Text>
-            </View>
-          </View>
+          <ExampleRow Icon={ScalesIcon} title="인바디 결과지" detail="헬스장 · 보건소 체성분 측정지" tags={['체중', '골격근량', '체지방률', 'BMI', '기초대사량']} />
         </View>
-        <Text style={styles.privacy}>건강정보가 포함된 자료인지 확인한 뒤 올려 주세요.</Text>
+        <View style={styles.privacyRow}>
+          <LockIcon color="#5E5D66" height={18} width={18} />
+          <Text style={styles.privacy}>올린 자료는 암호화해서 보관해요.</Text>
+        </View>
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 18) }]}>
         {selectedFiles.length > 0 ? (
@@ -165,7 +151,7 @@ export default function HealthDataUploadScreen() {
               {isUploading ? '업로드 중…' : '자료 올리고 계속하기'}
             </Text>
           </Pressable>
-        ) : null}
+        ) : <Text style={styles.skipHint}>지금 안 올려도 괜찮아요.</Text>}
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ disabled: busy }}
@@ -177,6 +163,21 @@ export default function HealthDataUploadScreen() {
         >
           <Text style={styles.skipLabel}>나중에 하기</Text>
         </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function ExampleRow({ Icon, title, detail, tags }: { Icon: typeof CameraIcon; title: string; detail: string; tags: string[] }) {
+  return (
+    <View style={styles.exampleRow}>
+      <View style={styles.exampleIcon}><Icon color="#17161D" height={20} width={20} /></View>
+      <View style={styles.exampleCopy}>
+        <Text style={styles.exampleTitle}>{title}</Text>
+        <Text style={styles.exampleDescription}>{detail}</Text>
+        <View style={styles.tags}>
+          {tags.map((tag) => <Text key={tag} style={styles.tag}>{tag}</Text>)}
+        </View>
       </View>
     </View>
   );
@@ -196,7 +197,7 @@ function UploadOption({
   disabled: boolean;
 }) {
   return (
-    <Pressable hitSlop={16}
+    <Pressable hitSlop={8}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
@@ -204,100 +205,48 @@ function UploadOption({
       style={({ pressed }) => [styles.option, pressed && styles.pressed]}
     >
       <View style={styles.optionIcon}>
-        <Icon height={20} width={20} />
+        <Icon color="#17161D" height={22} width={22} />
       </View>
       <View style={styles.optionCopy}>
         <Text style={styles.optionTitle}>{label}</Text>
         <Text style={styles.optionDetail}>{detail}</Text>
       </View>
-      <Text style={styles.chevron}>›</Text>
+      <CaretRightIcon color="#5E5D66" height={20} width={20} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   root: { alignSelf: 'center', backgroundColor: '#FFFFFF', flex: 1, maxWidth: 412, width: '100%' },
-  header: { paddingHorizontal: 20 },
-  back: { height: 42, justifyContent: 'center', width: 42 },
-  backText: { color: '#222227', fontSize: 32, lineHeight: 36 },
-  content: { gap: 13, paddingBottom: 28, paddingHorizontal: 20, paddingTop: 14 },
-  heading: {
-    color: '#222227',
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 24,
-    lineHeight: 31,
-  },
-  description: { color: '#777780', fontSize: 13, lineHeight: 19 },
-  options: { gap: 9, marginTop: 11 },
-  option: {
-    backgroundColor: '#FAFBFC',
-    alignItems: 'center',
-    borderColor: '#E7E7EC',
-    borderRadius: 9,
-    borderWidth: 1,
-    flexDirection: 'row',
-    minHeight: 66,
-    paddingHorizontal: 13,
-  },
-  optionIcon: {
-    alignItems: 'center',
-    borderRadius: 8,
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
-  },
-  optionCopy: { flex: 1, gap: 4, marginLeft: 9 },
-  optionTitle: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  optionDetail: { color: '#888890', fontSize: 11 },
-  chevron: { color: '#9999A1', fontSize: 24 },
-  sectionTitle: {
-    color: '#222227',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-    marginTop: 13,
-  },
-  selected: { gap: 9 },
-  fileRow: {
-    backgroundColor: '#FAFBFC',
-    alignItems: 'center',
-    borderColor: '#E7E7EC',
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: 'row',
-    padding: 12,
-  },
-  fileName: { color: '#333339', flex: 1, fontSize: 13, marginRight: 8 },
-  examples: {
-    backgroundColor: '#FAFBFC',
-    borderColor: '#ECECF1',
-    borderRadius: 9,
-    borderWidth: 1,
-    padding: 14,
-  },
-  exampleRow: { flexDirection: 'row', gap: 10 },
-  exampleIcon: { color: '#777780', fontSize: 22, width: 25 },
-  exampleCopy: { flex: 1, gap: 4 },
-  exampleTitle: { color: '#333339', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
-  exampleDescription: { color: '#777780', fontSize: 11 },
-  exampleTags: { color: '#9999A1', fontSize: 10, marginTop: 2 },
-  exampleDivider: { backgroundColor: '#E7E7EC', height: 1, marginVertical: 12 },
-  privacy: { color: '#9999A1', fontSize: 11, lineHeight: 17, marginTop: 5 },
+  content: { gap: 12, paddingBottom: 20, paddingHorizontal: 20, paddingTop: 8 },
+  heading: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
+  description: { color: '#3B3A42', fontSize: 16, lineHeight: 24 },
+  options: { gap: 12, marginTop: 4 },
+  option: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 75, paddingHorizontal: 16 },
+  optionIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+  optionCopy: { flex: 1, minWidth: 0 },
+  optionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+  optionDetail: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  sectionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21, marginTop: 8 },
+  selected: { gap: 8 },
+  fileRow: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, flexDirection: 'row', minHeight: 48, paddingHorizontal: 14 },
+  fileName: { color: '#17161D', flex: 1, fontSize: 14, marginRight: 8 },
+  examples: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, padding: 16 },
+  exampleRow: { flexDirection: 'row', gap: 12 },
+  exampleIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 10, borderWidth: 1, height: 36, justifyContent: 'center', width: 36 },
+  exampleCopy: { flex: 1, gap: 2, minWidth: 0 },
+  exampleTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
+  exampleDescription: { color: '#5E5D66', fontSize: 12, lineHeight: 18 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 },
+  tag: { backgroundColor: '#F2F4F6', borderRadius: 6, color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 12, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 2 },
+  exampleDivider: { backgroundColor: '#DFE2E7', height: 1, marginVertical: 12 },
+  privacyRow: { alignItems: 'center', flexDirection: 'row', gap: 6, marginTop: 4 },
+  privacy: { color: '#5E5D66', flex: 1, fontSize: 14, lineHeight: 21 },
   footer: { backgroundColor: '#FFFFFF', gap: 8, paddingHorizontal: 20, paddingTop: 8 },
-  primaryButton: {
-    alignItems: 'center',
-    backgroundColor: '#5246C6',
-    borderRadius: 8,
-    height: 49,
-    justifyContent: 'center',
-  },
-  primaryLabel: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  skipButton: {
-    alignItems: 'center',
-    backgroundColor: '#F3F3F5',
-    borderRadius: 8,
-    height: 49,
-    justifyContent: 'center',
-  },
-  skipLabel: { color: '#55555D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+  primaryButton: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center' },
+  primaryLabel: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+  skipHint: { color: '#5E5D66', fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  skipButton: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 12, height: 56, justifyContent: 'center' },
+  skipLabel: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
   pressed: { opacity: 0.7 },
 });

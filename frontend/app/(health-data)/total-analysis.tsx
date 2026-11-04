@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import GoalIcon from '@/assets/figma/main/605b2.svg';
-import DietIcon from '@/assets/figma/main/2c97f.svg';
-import ExerciseIcon from '@/assets/figma/main/0360a.svg';
-import Down from '@/assets/figma/main/0369c.svg';
+import CheckIcon from '@/assets/icons/ui/check.svg';
+import MinusIcon from '@/assets/icons/ui/minus.svg';
+import PlusIcon from '@/assets/icons/ui/plus.svg';
+import TargetIcon from '@/assets/icons/ui/target.svg';
+import WarningIcon from '@/assets/icons/ui/warning-circle.svg';
 import { getHome, type HomeResponse } from '@/src/api/home';
 import { getHabitTierProgress, type HabitTierProgress } from '@/src/api/tier';
 import {
@@ -23,16 +24,14 @@ import {
   TotalAnalysisBottomSheet,
   type AnalysisSheetState,
 } from '@/src/components/analysis/TotalAnalysisBottomSheet';
-import {
-  mainStyles,
-} from '@/src/components/main/MainSurface';
-import { colors, fontFamilies } from '@/src/theme';
+import { nextTierName, tierBadges } from '@/src/features/tier/tierBadges';
+import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 
 export default function TotalAnalysisScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const compact = useWindowDimensions().width < 370;
   const [data, setData] = useState<AnalysisDisplayData | null>(null);
   const [home, setHome] = useState<HomeResponse | null>(null);
   const [tier, setTier] = useState<HabitTierProgress | null>(null);
@@ -89,46 +88,45 @@ export default function TotalAnalysisScreen() {
       ? Math.max(0, Math.min(100, (score / total) * 100))
       : 0;
   const delta = home?.score_change.change;
+  const Badge = tierBadges[tier?.tier_code ?? 'CORE'];
+  const nextName = tier ? nextTierName(tier) : null;
   const openReference = (id: string) => {
     const reference = data?.references.find((r) => r.id === id);
     if (reference) setSheet({ type: 'reference', reference });
   };
   return (
     <>
-      <ScrollView style={s.root} contentContainerStyle={{ paddingBottom: insets.bottom + 28 }} showsVerticalScrollIndicator={false}>
-        <StatusBar style="dark" />
-        <View style={[s.header, { paddingTop: insets.top + 6 }]}>
-          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={() => router.back()} style={s.back}>
-            <Text style={s.backText}>‹</Text>
-          </Pressable>
-          <Text style={s.headerTitle}>종합 건강 분석</Text>
-        </View>
-        <View style={s.scoreCard}>
-          <Text style={s.scoreLabel}>나의 건강 점수</Text>
-          <View style={s.scoreRow}>
-            <Text style={[s.score, compact && { fontSize: 34 }]}>{score ?? '—'}</Text>
-            <Text style={s.scoreTotal}> / {total ?? '—'}점</Text>
-          </View>
-          <View style={s.barRow}>
-            <View style={s.track}><View style={[s.fill, { width: `${ratio}%` }]} /></View>
-          </View>
-          <View style={s.scoreBottom}>
-            <Text style={s.scoreMessage}>{home?.score_change.message || '건강 점수를 확인해 보세요.'}</Text>
-            {delta != null ? <Text style={s.delta}>{delta > 0 ? '+' : ''}{delta}점</Text> : null}
-          </View>
-          <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/tier')} style={s.tierLink}>
-            <View style={s.tierIcon}><Text style={s.tierIconText}>◇</Text></View>
-            <View style={s.tierCopy}>
-              <Text style={s.tierLabel}>나의 건강관리 티어</Text>
-              <Text style={s.tierDescription}>{tier ? `${tier.tier_name} ${tier.sublevel} · 활동 ${tier.points.toLocaleString()}P` : '누적 활동 티어 확인하기'}</Text>
+      <StatusBar style="dark" />
+      <View style={s.root}>
+        <ScreenHeader onBack={() => router.back()} title="종합 건강 분석" />
+        <ScrollView contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 28 }]} showsVerticalScrollIndicator={false}>
+          <View style={[s.card, s.scoreCard]}>
+            <Text style={s.muted}>건강 점수</Text>
+            <View style={s.scoreRow}>
+              <Text style={s.score}>{score ?? '—'}<Text style={s.scoreTotal}>  / {total ?? '—'}</Text></Text>
+              {delta ? (
+                <View style={[s.pill, delta > 0 && s.pillGood]}>
+                  {delta > 0 ? <CheckIcon color="#0E7C48" height={14} width={14} /> : null}
+                  <Text style={[s.pillText, delta > 0 && s.pillGoodText]}>지난번보다 {delta > 0 ? '+' : ''}{delta}</Text>
+                </View>
+              ) : null}
             </View>
-            <Text style={s.tierChevron}>›</Text>
-          </Pressable>
-        </View>
-        <View style={s.content}>
+            <View style={s.track}><View style={[s.fill, { width: `${ratio}%` }]} /></View>
+            <View style={s.tierRow}>
+              <Badge height={44} width={44} />
+              <View style={s.grow}>
+                <Text style={s.rowTitle}>{tier ? `${tier.tier_name} ${tier.sublevel}` : '건강관리 티어'}</Text>
+                {tier && nextName ? <Text style={s.muted}>다음 {nextName}까지 {Math.max(0, (tier.next_level_points ?? 0) - tier.points)}점</Text> : null}
+              </View>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/tier')} style={s.smallButton}>
+                <Text style={s.smallButtonText}>티어 보기</Text>
+              </Pressable>
+            </View>
+            {home?.score_change.message ? <Text style={s.message}>{home.score_change.message}</Text> : null}
+          </View>
           {state !== 'ready' || !data ? (
-            <View style={[mainStyles.card, mainStyles.empty]}>
-              <Text style={mainStyles.emptyTitle}>
+            <View style={[s.card, s.empty]}>
+              <Text style={s.emptyTitle}>
                 {state === 'loading'
                   ? '건강 분석을 불러오는 중이에요.'
                   : state === 'empty'
@@ -136,98 +134,65 @@ export default function TotalAnalysisScreen() {
                     : error}
               </Text>
               {state === 'empty' ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => router.push('/upload')}
-                  style={mainStyles.button}
-                >
-                  <Text style={mainStyles.buttonText}>건강 데이터 업로드</Text>
+                <Pressable accessibilityRole="button" onPress={() => router.push('/upload')} style={s.smallButton}>
+                  <Text style={s.smallButtonText}>건강 데이터 올리기</Text>
                 </Pressable>
               ) : state === 'error' ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setAttempt((v) => v + 1)}
-                  style={mainStyles.button}
-                >
-                  <Text style={mainStyles.buttonText}>다시 시도</Text>
+                <Pressable accessibilityRole="button" onPress={() => setAttempt((v) => v + 1)} style={s.smallButton}>
+                  <Text style={s.smallButtonText}>다시 시도</Text>
                 </Pressable>
               ) : null}
             </View>
           ) : (
             <>
-              <View style={[mainStyles.card, s.goal]}>
-                <View style={s.icon}>
-                  <GoalIcon />
-                </View>
-                <View style={s.goalCopy}>
-                  <Text style={s.goalLabel}>내 건강 목표</Text>
-                  <Text style={s.heading}>{data.goal || '건강 목표를 설정해 주세요.'}</Text>
+              <View style={[s.card, s.goal]}>
+                <View style={s.icon}><TargetIcon color="#17161D" height={22} width={22} /></View>
+                <View style={s.grow}>
+                  <Text style={s.muted}>내 목표</Text>
+                  <Text style={s.rowTitle}>{data.goal || '건강 목표를 설정해 주세요.'}</Text>
                 </View>
               </View>
-              <View style={s.strategy}>
-                <Text style={s.strategyLabel}>✦ Auto-Fit 맞춤 제안</Text>
+              <View style={[s.card, s.strategy]}>
+                <Text style={s.muted}>맞춤 제안</Text>
                 <Text style={s.strategyTitle}>{data.strategy.title}</Text>
-                <Text style={s.strategyMessage}>{data.strategy.message}</Text>
                 {data.strategy.tags.length > 0 ? (
-                  <Text style={s.strategyMessage}>{data.strategy.tags.join(' · ')}</Text>
+                  <View style={s.tags}>
+                    {data.strategy.tags.map((tag) => <Text key={tag} style={s.tag}>{tag}</Text>)}
+                  </View>
                 ) : null}
-                <View style={[s.managementRow, compact && s.managementRowCompact]}>
-                  {(
-                    [
-                      {
-                        path: '/diet',
-                        title: '식단 관리',
-                        description: '오늘의 맞춤 식단 확인',
-                        Icon: DietIcon,
-                      },
-                      {
-                        path: '/exercise',
-                        title: '운동 관리',
-                        description: '맞춤 운동 루틴 확인',
-                        Icon: ExerciseIcon,
-                      },
-                    ] as const
-                  ).map((item) => (
-                    <Pressable
-                      accessibilityRole="button"
-                      key={item.path}
-                      onPress={() => router.push(item.path)}
-                      style={[s.management, compact && s.managementCompact]}
-                    >
-                      <View style={s.managementHeading}>
-                        <item.Icon />
-                        <Text style={s.tag}>{item.title}</Text>
-                      </View>
-                      <Text style={s.managementText}>{item.description} ›</Text>
-                    </Pressable>
+                <Text style={s.body}>{data.strategy.message}</Text>
+                <View style={s.plans}>
+                  {([
+                    { path: '/diet', title: '식단', detail: '오늘의 맞춤 식단을 확인해요', action: '식단 보기' },
+                    { path: '/exercise', title: '운동', detail: '맞춤 운동 루틴을 확인해요', action: '운동 보기' },
+                  ] as const).map((item) => (
+                    <View key={item.path} style={s.plan}>
+                      <Text style={s.rowTitle}>{item.title}</Text>
+                      <Text style={s.body}>{item.detail}</Text>
+                      <Pressable accessibilityRole="button" onPress={() => router.push(item.path)} style={s.smallButton}>
+                        <Text style={s.smallButtonText}>{item.action}</Text>
+                      </Pressable>
+                    </View>
                   ))}
                 </View>
               </View>
-              <View style={[mainStyles.card, { gap: 14, borderRadius: 20 }]}>
-                <Text style={s.heading}>건강 점수 변화</Text>
-                <Text style={mainStyles.text}>
-                  {home?.score_change.message || '이전 분석과 비교할 점수 변화가 아직 없어요.'}
-                </Text>
-                <View style={s.change}>
-                  <Text style={s.changeLabel}>이전 평가 대비</Text>
-                  <Text style={s.changeValue}>
-                    {delta == null ? '—' : `${delta > 0 ? '+' : ''}${delta}점`}
-                  </Text>
-                </View>
-                <Text style={s.hint}>지표별 점수 기여도는 준비 중이에요.</Text>
+              <View style={s.card}>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ expanded }}
                   onPress={() => setExpanded((v) => !v)}
                   style={s.expand}
                 >
-                  <Text style={mainStyles.text}>분석 지표 자세히 보기</Text>
-                  <Down />
+                  <View style={s.grow}>
+                    <Text style={s.rowTitle}>{delta ? `점수가 바뀐 이유 · ${delta > 0 ? '+' : ''}${delta}점` : '분석 지표 자세히 보기'}</Text>
+                    <Text numberOfLines={expanded ? undefined : 2} style={s.small}>{data.summary.description}</Text>
+                  </View>
+                  {expanded ? <MinusIcon color="#17161D" height={22} width={22} /> : <PlusIcon color="#17161D" height={22} width={22} />}
                 </Pressable>
                 {expanded ? (
-                  <View style={{ gap: 14 }}>
+                  <>
                     {data.keyMetrics.length === 0 ? (
-                      <Text style={mainStyles.text}>분석 지표가 아직 없어요.</Text>
+                      <Text style={[s.body, s.expandedText]}>분석 지표가 아직 없어요.</Text>
                     ) : (
                       data.keyMetrics.map((metric) => (
                         <Pressable
@@ -239,15 +204,17 @@ export default function TotalAnalysisScreen() {
                           }}
                           style={s.metric}
                         >
-                          <Text style={s.metricTitle}>{metric.name}</Text>
-                          <Text style={s.metricValue}>
-                            {metric.value} {metric.unit}
-                          </Text>
-                          <Text style={mainStyles.text}>{metric.status} ›</Text>
+                          <View style={s.grow}>
+                            <Text style={s.rowTitle}>{metric.name}</Text>
+                            <Text style={s.muted}>{metric.value} {metric.unit}</Text>
+                          </View>
+                          <View style={[s.pill, metric.tone === 'normal' ? s.pillGood : s.pillWarn]}>
+                            {metric.tone === 'normal' ? <CheckIcon color="#0E7C48" height={14} width={14} /> : <WarningIcon color="#B3690B" height={14} width={14} />}
+                            <Text style={[s.pillText, metric.tone === 'normal' ? s.pillGoodText : s.pillWarnText]}>{metric.status}</Text>
+                          </View>
                         </Pressable>
                       ))
                     )}
-                    <Text style={mainStyles.text}>{data.summary.description}</Text>
                     {data.reasons.map((reason) => (
                       <Pressable
                         accessibilityRole="button"
@@ -255,26 +222,26 @@ export default function TotalAnalysisScreen() {
                         onPress={() => setSheet({ type: 'additional', reason })}
                         style={s.reason}
                       >
-                        <Text style={s.metricTitle}>{reason.title} ›</Text>
-                        <Text style={mainStyles.text}>{reason.description}</Text>
+                        <Text style={s.rowTitle}>{reason.title}</Text>
+                        <Text style={s.body}>{reason.description}</Text>
                       </Pressable>
                     ))}
-                  </View>
+                  </>
                 ) : null}
               </View>
-              <View style={[mainStyles.card, { gap: 12 }]}>
+              <View style={s.card}>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityState={{ expanded: sources }}
                   onPress={() => setSources((v) => !v)}
                   style={s.expand}
                 >
-                  <Text style={s.heading}>분석 기준 및 출처</Text>
-                  <Down />
+                  <Text style={[s.rowTitle, s.grow]}>분석 기준과 출처</Text>
+                  {sources ? <MinusIcon color="#17161D" height={22} width={22} /> : <PlusIcon color="#17161D" height={22} width={22} />}
                 </Pressable>
                 {sources ? (
                   <>
-                    <Text style={mainStyles.text}>
+                    <Text style={[s.body, s.expandedText]}>
                       분석 결과는 건강 관리 참고 정보이며, 의학적 진단을 대신하지 않아요.
                     </Text>
                     {data.metricCriteria.map((criterion) => (
@@ -284,7 +251,7 @@ export default function TotalAnalysisScreen() {
                         onPress={() => setSheet({ type: 'criterion', criterion })}
                         style={s.reason}
                       >
-                        <Text style={s.metricTitle}>{criterion.metricName} 판정 기준 ›</Text>
+                        <Text style={s.body}>{criterion.metricName} 판정 기준 ›</Text>
                       </Pressable>
                     ))}
                     {data.references.map((reference) => (
@@ -294,26 +261,22 @@ export default function TotalAnalysisScreen() {
                         onPress={() => openReference(reference.id)}
                         style={s.reason}
                       >
-                        <Text style={mainStyles.text}>{reference.title} ›</Text>
+                        <Text style={s.body}>{reference.title} ›</Text>
                       </Pressable>
                     ))}
                     {data.references.length === 0 ? (
-                      <Text style={mainStyles.text}>등록된 출처가 없어요.</Text>
+                      <Text style={[s.body, s.expandedText]}>등록된 출처가 없어요.</Text>
                     ) : null}
                   </>
                 ) : null}
               </View>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push('/start-move')}
-                style={mainStyles.button}
-              >
-                <Text style={mainStyles.buttonText}>건강 관리 시작하기</Text>
+              <Pressable accessibilityRole="button" onPress={() => router.push('/exercise')} style={s.primary}>
+                <Text style={s.primaryText}>운동하러 가기</Text>
               </Pressable>
             </>
           )}
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </View>
       <TotalAnalysisBottomSheet
         sheet={sheet}
         onClose={() => setSheet(null)}
@@ -324,130 +287,43 @@ export default function TotalAnalysisScreen() {
 }
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: { minHeight: 62, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-  back: { position: 'absolute', left: 20, bottom: 7, height: 42, width: 42, justifyContent: 'center', zIndex: 1 },
-  backText: { color: '#27262D', fontSize: 32, lineHeight: 38 },
-  headerTitle: { color: '#27262D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  content: { alignSelf: 'stretch', marginHorizontal: 20, marginTop: 20, gap: 18 },
-  scoreCard: { marginHorizontal: 20, marginTop: 20, borderRadius: 16, borderWidth: 1, borderColor: '#E4E5EB', backgroundColor: '#FAFBFC', padding: 20, gap: 12 },
-  scoreLabel: { color: '#514770', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
-  scoreRow: { flexDirection: 'row', alignItems: 'baseline' },
-  score: { fontFamily: fontFamilies.pretendardBold, fontSize: 42, color: '#5246C6' },
-  scoreTotal: { fontFamily: fontFamilies.pretendardMedium, fontSize: 18, color: '#9D98AA' },
-  delta: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13, color: '#5246C6' },
-  barRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  track: { flex: 1, height: 9, backgroundColor: '#E3E6EB', borderRadius: 5, overflow: 'hidden' },
-  fill: { height: 9, backgroundColor: '#5246C6', borderRadius: 5 },
-  scoreBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  scoreMessage: { color: '#878190', fontFamily: fontFamilies.pretendardRegular, fontSize: 12, flex: 1 },
-  tierLink: { marginTop: 6, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#E4E5EB', flexDirection: 'row', alignItems: 'center', gap: 10 },
-  tierIcon: { height: 36, width: 36, borderRadius: 18, backgroundColor: '#ECE9FF', alignItems: 'center', justifyContent: 'center' },
-  tierIconText: { color: '#5246C6', fontSize: 22 },
-  tierCopy: { flex: 1, gap: 2 },
-  tierLabel: { color: '#4F4862', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
-  tierDescription: { color: '#9C96A8', fontSize: 11 },
-  tierChevron: { color: '#5246C6', fontSize: 22 },
-  goal: { borderRadius: 16, borderWidth: 1, borderColor: '#E4E5EB', flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 74, backgroundColor: '#FAFBFC' },
-  goalCopy: { flex: 1, flexShrink: 1, gap: 5, minWidth: 0 },
-  icon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  goalLabel: { fontFamily: fontFamilies.pretendardBold, fontSize: 18, color: colors.primary },
-  heading: {
-    color: colors.textBody,
-    flexShrink: 1,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 18,
-  },
-  strategy: {
-    alignSelf: 'stretch',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    gap: 12,
-    minWidth: 0,
-    overflow: 'hidden',
-    padding: 16,
-  },
-  strategyLabel: {
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-    color: '#5246C6',
-  },
-  strategyTitle: {
-    alignSelf: 'stretch',
-    flexShrink: 1,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 22,
-    lineHeight: 29,
-    color: '#413955',
-  },
-  strategyMessage: {
-    alignSelf: 'stretch',
-    flexShrink: 1,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#726B80',
-  },
-  managementRow: { alignSelf: 'stretch', flexDirection: 'row', gap: 10, minWidth: 0 },
-  managementRowCompact: { flexDirection: 'column' },
-  management: {
-    flex: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    padding: 10,
-    gap: 10,
-    borderRadius: 16,
-    borderWidth: 0.5,
-    borderColor: '#E3DDF4',
-    backgroundColor: '#FFFFFF',
-  },
-  managementCompact: { flexBasis: 'auto', width: '100%' },
-  managementHeading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 5,
-    minWidth: 0,
-  },
-  tag: {
-    flexShrink: 1,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-    color: colors.primary,
-    backgroundColor: colors.primaryLight,
-    borderRadius: 10,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
-  managementText: {
-    color: '#5A526C',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  change: { backgroundColor: colors.surfaceSoft, borderRadius: 14, padding: 16, gap: 7 },
-  changeLabel: { fontSize: 14, color: colors.primary },
-  changeValue: { fontFamily: fontFamilies.pretendardBold, fontSize: 24, color: colors.primary },
-  hint: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
-  expand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 10,
-    minHeight: 32,
-  },
-  metric: { paddingVertical: 10, borderBottomWidth: 0.5, borderColor: colors.border, gap: 5 },
-  metricTitle: {
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-    color: colors.textBody,
-  },
-  metricValue: { fontFamily: fontFamilies.pretendardBold, fontSize: 22, color: colors.primary },
-  reason: { gap: 8, paddingVertical: 10 },
+  content: { gap: 16, paddingHorizontal: 20, paddingTop: 8 },
+  card: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  grow: { flex: 1, minWidth: 0 },
+  muted: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  small: { color: '#5E5D66', fontSize: 12, lineHeight: 18 },
+  body: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
+  rowTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+  scoreCard: { gap: 10, padding: 18 },
+  scoreRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
+  score: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 32, lineHeight: 42 },
+  scoreTotal: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 16 },
+  pill: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 999, flexDirection: 'row', gap: 4, height: 26, paddingHorizontal: 10 },
+  pillText: { color: '#5E5D66', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+  pillGood: { backgroundColor: '#E8F6EF' },
+  pillGoodText: { color: '#0E7C48' },
+  pillWarn: { backgroundColor: '#FFF2E0' },
+  pillWarnText: { color: '#8A5208' },
+  track: { backgroundColor: '#E3E6EB', borderRadius: 4, height: 8, overflow: 'hidden' },
+  fill: { backgroundColor: '#17161D', borderRadius: 4, height: 8 },
+  tierRow: { alignItems: 'center', flexDirection: 'row', gap: 10, marginTop: 4 },
+  message: { borderTopColor: '#DFE2E7', borderTopWidth: 1, color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21, marginTop: 4, paddingTop: 12 },
+  smallButton: { alignItems: 'center', alignSelf: 'flex-start', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, justifyContent: 'center', minHeight: 34, paddingHorizontal: 12 },
+  smallButtonText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  empty: { alignItems: 'center', gap: 12, padding: 24 },
+  emptyTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 16, lineHeight: 24, textAlign: 'center' },
+  goal: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 75, paddingHorizontal: 16, paddingVertical: 10 },
+  icon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+  strategy: { gap: 8, padding: 18 },
+  strategyTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  tag: { backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 12, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 4 },
+  plans: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  plan: { backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, flex: 1, gap: 6, minWidth: 0, padding: 12 },
+  expand: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 64, padding: 16 },
+  expandedText: { paddingBottom: 12, paddingHorizontal: 16 },
+  metric: { alignItems: 'center', borderTopColor: '#DFE2E7', borderTopWidth: 1, flexDirection: 'row', gap: 8, minHeight: 72, paddingHorizontal: 16, paddingVertical: 8 },
+  reason: { borderTopColor: '#DFE2E7', borderTopWidth: 1, gap: 4, paddingHorizontal: 16, paddingVertical: 12 },
+  primary: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center' },
+  primaryText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
 });

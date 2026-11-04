@@ -4,7 +4,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   Image,
   Keyboard,
   Platform,
@@ -32,8 +31,12 @@ import HeightIcon from '@/assets/icons/data/Height.svg';
 import HemoglobinIcon from '@/assets/icons/data/Hemoglobin.svg';
 import MuscleIcon from '@/assets/icons/data/Muscle.svg';
 import WeightIcon from '@/assets/icons/data/Weight.svg';
-import DocumentIcon from '@/assets/icons/system/Document.svg';
-import ShieldCheckIcon from '@/assets/icons/system/ShieldCheck.svg';
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
+import FileIcon from '@/assets/icons/ui/file-text.svg';
+import HouseIcon from '@/assets/icons/ui/house.svg';
+import PencilIcon from '@/assets/icons/ui/pencil-simple.svg';
+import ShieldCheckIcon from '@/assets/icons/ui/shield-check.svg';
+import WarningIcon from '@/assets/icons/ui/warning-circle.svg';
 import {
   confirmHealthDocument,
   getHealthDocument,
@@ -46,12 +49,12 @@ import {
 import { awardTierActivity } from '@/src/api/tier';
 import {
   AppCard,
-  BackButton,
   CustomScrollIndicator,
   useCustomScrollIndicator,
   Text,
 } from '@/src/components/common';
-import { HealthDataUploadBottomSheet } from '@/src/components/health-data/HealthDataUploadBottomSheet';
+import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
+import { HealthDataUploadBottomSheet, useHealthFileSelect } from '@/src/components/health-data/HealthDataUploadBottomSheet';
 import {
   type HealthCheckupOCRResult,
   type InbodyOCRResult,
@@ -60,16 +63,13 @@ import {
   mapHealthDocumentToOCRResult,
 } from '@/src/features/health-data/ocrResults';
 import { type SelectedHealthFile } from '@/src/features/health-data/useHealthFilePicker';
-import { colors, fontFamilies, radius } from '@/src/theme';
+import { fontFamilies } from '@/src/theme';
 
 const referenceWidth = 412;
 const referenceHeight = 917;
-const referenceExtractedCardHeight = 450;
 const referenceTitleTop = 38;
 const keyboardSafeGap = 16;
 const baseBottomContentPadding = 20;
-const minimumScreenHeight = 740;
-const maximumScreenHeight = 917;
 const webInnerScrollStyle =
   Platform.OS === 'web' ? ({ overscrollBehavior: 'contain' } as ViewStyle) : undefined;
 
@@ -108,8 +108,10 @@ function isImageFile(file: SelectedHealthFile) {
 }
 
 function formatUploadDate(value: string) {
-  const date = value.slice(0, 10);
-  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.replaceAll('-', '.') : '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  const clock = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  return `${date.getMonth() + 1}월 ${date.getDate()}일 ${clock} 올림`;
 }
 
 function parseUploadRouteItems(value?: string): OCRUploadRouteItem[] {
@@ -174,7 +176,7 @@ const healthMetricDefinitions: HealthMetricDefinition[] = [
     inputKind: 'decimal',
     keyboardType: 'decimal-pad',
     key: 'height',
-    label: '신장',
+    label: '키',
     unit: 'cm',
   },
   {
@@ -183,7 +185,7 @@ const healthMetricDefinitions: HealthMetricDefinition[] = [
     inputKind: 'decimal',
     keyboardType: 'decimal-pad',
     key: 'weight',
-    label: '체중',
+    label: '몸무게',
     unit: 'kg',
   },
   {
@@ -481,24 +483,6 @@ function buildExtractedDataUpdate(
   };
 }
 
-function ResultStepIndicator({ current, total }: { current: number; total: number }) {
-  return (
-    <View
-      accessibilityLabel={`OCR 결과 확인 ${total}개 중 ${current}번째`}
-      style={styles.stepIndicator}
-    >
-      {Array.from({ length: total }, (_, index) => index + 1).map((step, index) => (
-        <View key={step} style={styles.stepGroup}>
-          {index > 0 ? <View style={styles.stepLine} /> : null}
-          <View style={[styles.step, step === current && styles.activeStep]}>
-            <Text style={[styles.stepText, step === current && styles.activeStepText]}>{step}</Text>
-          </View>
-        </View>
-      ))}
-    </View>
-  );
-}
-
 function MetricRow({
   definition,
   disabled,
@@ -526,75 +510,69 @@ function MetricRow({
   systolicDraft: string;
   value: string;
 }) {
+  const box = isEditing ? (
+    <View style={styles.metricInputBox}>
+      {definition.inputKind === 'bloodPressure' ? (
+        <>
+          <TextInput
+            accessibilityLabel="수축기 혈압"
+            autoFocus
+            keyboardType="numeric"
+            maxLength={3}
+            onChangeText={(text) => onChangeSystolicDraft(text.replace(/[^0-9]/g, ''))}
+            returnKeyType="next"
+            selectionColor="#5246C6"
+            style={[styles.metricInput, styles.bloodPressureInput]}
+            value={systolicDraft}
+          />
+          <Text style={styles.metricUnit}>/</Text>
+          <TextInput
+            accessibilityLabel="이완기 혈압"
+            keyboardType="numeric"
+            maxLength={3}
+            onChangeText={(text) => onChangeDiastolicDraft(text.replace(/[^0-9]/g, ''))}
+            onSubmitEditing={onToggleEdit}
+            returnKeyType="done"
+            selectionColor="#5246C6"
+            style={[styles.metricInput, styles.bloodPressureInput]}
+            value={diastolicDraft}
+          />
+        </>
+      ) : (
+        <TextInput
+          accessibilityLabel={definition.label}
+          autoFocus
+          keyboardType={definition.keyboardType}
+          maxLength={definition.inputKind === 'date' ? 8 : undefined}
+          onChangeText={(text) => onChangeDraft(sanitizeMetricInput(text, definition.inputKind))}
+          onSubmitEditing={onToggleEdit}
+          returnKeyType="done"
+          selectionColor="#5246C6"
+          style={styles.metricInput}
+          value={draftValue}
+        />
+      )}
+      {definition.unit ? <Text style={styles.metricUnit}>{definition.unit}</Text> : null}
+    </View>
+  ) : null;
   return (
     <View ref={onRowRef} style={styles.metricRow}>
-      <View style={styles.metricMain}>
-        <View style={styles.metricContent}>
-          <Text style={styles.metricLabel}>{definition.label}</Text>
-          <View style={styles.metricValue}>
-            {isEditing && definition.inputKind === 'bloodPressure' ? (
-              <View style={styles.bloodPressureInputs}>
-                <TextInput
-                  accessibilityLabel="수축기 혈압"
-                  autoFocus
-                  keyboardType="numeric"
-                  maxLength={3}
-                  onChangeText={(text) => onChangeSystolicDraft(text.replace(/\D/g, ''))}
-                  returnKeyType="next"
-                  selectionColor="#1371EB"
-                  style={[styles.metricInput, styles.bloodPressureInput]}
-                  value={systolicDraft}
-                />
-                <Text style={styles.bloodPressureSeparator}>/</Text>
-                <TextInput
-                  accessibilityLabel="이완기 혈압"
-                  keyboardType="numeric"
-                  maxLength={3}
-                  onChangeText={(text) => onChangeDiastolicDraft(text.replace(/\D/g, ''))}
-                  onSubmitEditing={onToggleEdit}
-                  returnKeyType="done"
-                  selectionColor="#1371EB"
-                  style={[styles.metricInput, styles.bloodPressureInput]}
-                  value={diastolicDraft}
-                />
-              </View>
-            ) : isEditing ? (
-              <TextInput
-                autoFocus
-                keyboardType={definition.keyboardType}
-                maxLength={definition.inputKind === 'date' ? 8 : undefined}
-                onChangeText={(text) =>
-                  onChangeDraft(sanitizeMetricInput(text, definition.inputKind))
-                }
-                onSubmitEditing={onToggleEdit}
-                returnKeyType="done"
-                selectionColor="#1371EB"
-                style={styles.metricInput}
-                value={draftValue}
-              />
-            ) : (
-              <Text style={styles.metricValueText}>{value}</Text>
-            )}
-            {definition.unit ? <Text style={styles.metricUnit}> {definition.unit}</Text> : null}
-          </View>
-          <Pressable
-            accessibilityLabel={`${definition.label} ${isEditing ? '확인' : '수정'}`}
-            accessibilityRole="button"
-            disabled={disabled}
-            onPress={onToggleEdit}
-            style={({ pressed }) => [
-              styles.modifyButton,
-              isEditing && styles.confirmButton,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={[styles.modifyButtonText, isEditing && styles.confirmButtonText]}>
-              {isEditing ? '✓' : '✎'}
-            </Text>
-          </Pressable>
-        </View>
-        <View style={styles.metricDivider} />
-      </View>
+      <Text style={styles.metricLabel}>{definition.label}</Text>
+      {isEditing ? box : (
+        <Text numberOfLines={1} style={styles.metricValueText}>
+          {value}{definition.unit && value ? ` ${definition.unit}` : ''}
+        </Text>
+      )}
+      <Pressable
+        accessibilityLabel={`${definition.label} ${isEditing ? '저장' : '고치기'}`}
+        accessibilityRole="button"
+        disabled={disabled}
+        hitSlop={8}
+        onPress={onToggleEdit}
+        style={({ pressed }) => [isEditing ? styles.saveButton : styles.modifyButton, pressed && styles.pressed]}
+      >
+        {isEditing ? <Text style={styles.saveText}>저장</Text> : <PencilIcon color="#17161D" height={20} width={20} />}
+      </Pressable>
     </View>
   );
 }
@@ -632,6 +610,7 @@ export default function OCRResultScreen() {
   const keyboardCanvasOffsetRef = useRef(0);
   const screenViewportRef = useRef<View>(null);
   const innerScrollIndicator = useCustomScrollIndicator();
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
 
   useEffect(() => {
     let isActive = true;
@@ -712,28 +691,17 @@ export default function OCRResultScreen() {
   const scaledWidth = referenceWidth * widthScale;
   const canvasLeft = insets.left + (availableWidth - scaledWidth) / 2;
   const safeTopAdjustment = Math.max(0, insets.top + 8 - referenceTitleTop * scale);
-  const screenHeight = Dimensions.get('screen').height;
-  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
-  const heightProgress = Math.max(
-    0,
-    Math.min(
-      1,
-      (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight),
-    ),
-  );
-  const verticalValue = (expanded: number, compact: number) =>
-    compact + (expanded - compact) * heightProgress;
   const currentResult = results[currentIndex] ?? loadingResult;
-  const extractedCardHeight = referenceExtractedCardHeight;
-  const completionTop = 104;
-  const stepIndicatorTop = 70;
-  const uploadFileTop = Math.max(204, completionTop + 50 + 20);
-  const extractedCardTop = Math.max(verticalValue(359, 300), uploadFileTop + 135 + 16);
-  const nextButtonTop = Math.max(
-    verticalValue(830, 780),
-    extractedCardTop + extractedCardHeight + 15,
-  );
-  const contentBottom = Math.max(measuredContentBottom, nextButtonTop + 45);
+  const completionTop = 76;
+  const uploadFileTop = 118;
+  const tabsTop = 195;
+  const extractedCardTop = 252;
+  // The list takes spare height on a tall screen; a short one scrolls with the button below it.
+  const bottomButtonTop = (windowHeight - insets.bottom - safeTopAdjustment) / scale - 76;
+  const extractedCardHeight = Math.max(380, bottomButtonTop - 44 - 12 - extractedCardTop);
+  const privacyTop = extractedCardTop + extractedCardHeight + 12;
+  const nextButtonTop = privacyTop + 44;
+  const contentBottom = Math.max(measuredContentBottom, nextButtonTop + 56);
   const bottomContentPadding = baseBottomContentPadding + insets.bottom;
   const contentViewportHeight = safeTopAdjustment + contentBottom * scale;
   const renderedContentHeight = contentViewportHeight + bottomContentPadding;
@@ -755,6 +723,18 @@ export default function OCRResultScreen() {
   const canReviewCurrentResult =
     currentResult.ocrStatus === 'completed' && currentResult.status === 'awaiting_review';
   const canEditCurrentResult = canReviewCurrentResult && !isSaving && !isReuploading;
+  const hasUnsavedEdits =
+    editingMetricKey !== null ||
+    metricDefinitions.some(
+      (definition) =>
+        (metricValues[definition.key] ?? '') !==
+        ((currentResult.data as Record<string, string>)[definition.key] ?? ''),
+    );
+  const goHome = () => {
+    Keyboard.dismiss();
+    setLeaveDialogOpen(false);
+    router.replace('/home');
+  };
 
   const centerFocusedRow = useCallback(
     (key: OCRMetricKey, activeKeyboardTop: number) => {
@@ -875,11 +855,14 @@ export default function OCRResultScreen() {
       return;
     }
 
+    const currentValue = metricValues[key] ?? '';
     if (key === 'bloodPressure') {
-      setSystolicDraft('');
-      setDiastolicDraft('');
+      const [systolic = '', diastolic = ''] = currentValue.split('/').map((part) => part.trim());
+      setSystolicDraft(systolic);
+      setDiastolicDraft(diastolic);
     } else {
-      setDraftValue('');
+      const isDate = metricDefinitions.find((definition) => definition.key === key)?.inputKind === 'date';
+      setDraftValue(isDate ? currentValue.replace(/[^0-9]/g, '') : currentValue);
     }
 
     editingMetricKeyRef.current = key;
@@ -907,6 +890,7 @@ export default function OCRResultScreen() {
       setIsReuploading(false);
     }
   };
+  const failureSelect = useHealthFileSelect(handleReuploadSelection, isReuploading || isSaving);
   const handleBack = () => {
     if (currentIndex === 0) {
       Keyboard.dismiss();
@@ -1065,7 +1049,7 @@ export default function OCRResultScreen() {
   if (isLoadingResults || results.length === 0) {
     return (
       <View style={styles.loadingRoot}>
-        <ActivityIndicator color={colors.primary} />
+        <ActivityIndicator color="#5246C6" />
       </View>
     );
   }
@@ -1074,24 +1058,21 @@ export default function OCRResultScreen() {
     return (
       <View style={styles.failureRoot}>
         <StatusBar style="dark" />
-        <View style={[styles.failureHeader, { paddingTop: insets.top + 6 }]}>
-          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={handleBack} style={styles.failureBack}>
-            <Text style={styles.failureBackText}>‹</Text>
+        <View style={[styles.failureHeader, { paddingTop: insets.top + 4 }]}>
+          <Pressable hitSlop={12} accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={handleBack} style={styles.failureBack}>
+            <CaretLeftIcon color="#17161D" height={24} width={24} />
           </Pressable>
-          <Text style={styles.failureHeaderTitle}>건강 데이터 확인</Text>
         </View>
         <ScrollView contentContainerStyle={styles.failureContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.failureIcon}><Text style={styles.failureIconText}>!</Text></View>
+          <View style={styles.failureIcon}><WarningIcon color="#B3690B" height={32} width={32} /></View>
           <Text style={styles.failureTitle}>글자를 읽지 못했어요</Text>
-          <Text style={styles.failureDescription}>
-            사진의 일부가 흐리거나 글자가 잘 보이지 않아요. 다시 촬영하거나 선명한 파일을 올려 주세요.
-          </Text>
+          <Text style={styles.failureDescription}>사진이 흐리거나 결과지 일부가 잘렸을 수 있어요.</Text>
           <View style={styles.failureGuide}>
             <Text style={styles.failureGuideTitle}>다시 찍을 때는</Text>
             {[
-              '밝은 곳에서 촬영해 주세요',
-              '결과지를 평평하게 놓고 찍어 주세요',
-              '결과지 전체가 화면에 들어오게 해 주세요',
+              '밝은 곳에서 그림자 없이 찍어 주세요',
+              '결과지 네 모서리가 모두 보이게 해 주세요',
+              '글자가 흔들리지 않게 가까이 찍어 주세요',
             ].map((tip, index) => (
               <View key={tip} style={styles.failureTipRow}>
                 <Text style={styles.failureTipNumber}>{index + 1}</Text>
@@ -1105,19 +1086,21 @@ export default function OCRResultScreen() {
             accessibilityRole="button"
             accessibilityState={{ disabled: isReuploading || isSaving }}
             disabled={isReuploading || isSaving}
-            onPress={() => setIsReuploadSheetOpen(true)}
+            onPress={failureSelect.selectPhoto}
             style={styles.failureButton}
           >
-            <Text style={styles.failureButtonText}>{isReuploading ? '업로드 중…' : '다시 올리기'}</Text>
+            <Text style={styles.failureButtonText}>{isReuploading ? '업로드 중…' : '다시 찍기'}</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isReuploading || isSaving }}
+            disabled={isReuploading || isSaving}
+            onPress={failureSelect.selectDocument}
+            style={styles.failureSecondary}
+          >
+            <Text style={styles.failureSecondaryText}>파일에서 고르기</Text>
           </Pressable>
         </View>
-        <HealthDataUploadBottomSheet
-          isBusy={isReuploading || isSaving}
-          onClose={() => setIsReuploadSheetOpen(false)}
-          onSelectFile={handleReuploadSelection}
-          visible={isReuploadSheetOpen}
-          variant="reupload"
-        />
       </View>
     );
   }
@@ -1160,87 +1143,62 @@ export default function OCRResultScreen() {
               },
             ]}
           >
-            <BackButton
-              color={colors.textBody}
-              onPress={handleBack}
-              size={44}
-              style={styles.backButton}
-            />
+            <Pressable accessibilityLabel="뒤로 가기" accessibilityRole="button" hitSlop={12} onPress={handleBack} style={styles.backButton}>
+              <CaretLeftIcon color="#17161D" height={24} width={24} />
+            </Pressable>
             <Text style={styles.screenTitle}>판독 결과 확인</Text>
-            {results.length > 1 ? (
-              <View style={[styles.stepPosition, { top: stepIndicatorTop }]}>
-                <ResultStepIndicator current={currentIndex + 1} total={results.length} />
-              </View>
-            ) : null}
+            <Pressable
+              accessibilityLabel="홈으로 가기"
+              accessibilityRole="button"
+              hitSlop={12}
+              onPress={() => (hasUnsavedEdits ? setLeaveDialogOpen(true) : goHome())}
+              style={styles.homeButton}
+            >
+              <HouseIcon color="#17161D" height={24} width={24} />
+            </Pressable>
 
-            <View style={[styles.completionSection, { top: completionTop }]}>
-              <View style={styles.completionTexts}>
-                <Text
-                  style={[
-                    styles.completionTitle,
-                    currentResult.type === 'health_checkup' && styles.healthCompletionTitle,
-                  ]}
-                >
-                  {currentResult.ocrStatus === 'completed'
-                    ? '읽어 온 수치를 확인해 주세요'
-                    : '건강 수치를 읽고 있어요'}
-                </Text>
-                <Text
-                  style={[
-                    styles.completionDescription,
-                    currentResult.type === 'health_checkup' && styles.healthCompletionDescription,
-                  ]}
-                >
-                  {currentResult.ocrStatus === 'completed'
-                    ? '원본 자료와 비교하고 필요한 항목은 수정해 주세요.'
-                    : '판독이 끝나면 추출한 수치를 확인할 수 있어요.'}
-                </Text>
-              </View>
-            </View>
+            <Text style={[styles.completionTitle, { top: completionTop }]}>
+              {currentResult.ocrStatus === 'completed'
+                ? '읽어 온 수치를 확인해 주세요'
+                : '건강 수치를 읽고 있어요'}
+            </Text>
 
             <AppCard
               bordered
               padding="none"
               style={[styles.uploadFileCard, { top: uploadFileTop }]}
             >
-              <View style={styles.uploadFileContent}>
-                <View style={styles.uploadFileBottom}>
-                  <View style={styles.filePreview}>
-                    {hasImagePreview ? (
-                      <Image
-                        accessibilityLabel={`${uploadedFile.name} 미리보기`}
-                        resizeMode="cover"
-                        source={{ uri: uploadedFile.uri }}
-                        style={styles.filePreviewImage}
-                      />
-                    ) : (
-                      <DocumentIcon
-                        color={colors.primary}
-                        fill={colors.primary}
-                        height={42}
-                        width={42}
-                      />
-                    )}
-                  </View>
-                  <View style={styles.fileTexts}>
-                    <Text numberOfLines={1} style={styles.fileName}>
-                      {uploadedFile.name}
-                    </Text>
-                    <Text style={styles.uploadTime}>업로드 일시 {uploadTimestamp}</Text>
-                  </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    disabled={isSaving || isReuploading}
-                    onPress={() => setIsReuploadSheetOpen(true)}
-                    style={({ pressed }) => [styles.reuploadButton, pressed && styles.pressed]}
-                  >
-                    <Text style={styles.reuploadText}>다시 올리기</Text>
-                  </Pressable>
+              <View style={styles.uploadFileBottom}>
+                <View style={styles.filePreview}>
+                  {hasImagePreview ? (
+                    <Image
+                      accessibilityLabel={`${uploadedFile.name} 미리보기`}
+                      resizeMode="cover"
+                      source={{ uri: uploadedFile.uri }}
+                      style={styles.filePreviewImage}
+                    />
+                  ) : (
+                    <FileIcon color="#17161D" height={22} width={22} />
+                  )}
                 </View>
+                <View style={styles.fileTexts}>
+                  <Text numberOfLines={1} style={styles.fileName}>
+                    {uploadedFile.name}
+                  </Text>
+                  <Text style={styles.uploadTime}>{uploadTimestamp}</Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isSaving || isReuploading}
+                  onPress={() => setIsReuploadSheetOpen(true)}
+                  style={({ pressed }) => [styles.reuploadButton, pressed && styles.pressed]}
+                >
+                  <Text style={styles.reuploadText}>다시 올리기</Text>
+                </Pressable>
               </View>
             </AppCard>
 
-            <View style={[styles.resultTabs, { top: extractedCardTop - 43 }]}>
+            <View style={[styles.resultTabs, { top: tabsTop }]}>
               <Pressable
                 accessibilityRole="tab"
                 accessibilityState={{ selected: currentResult.type === 'health_checkup', disabled: !results.some((result) => result.type === 'health_checkup') }}
@@ -1266,46 +1224,41 @@ export default function OCRResultScreen() {
               padding="none"
               style={[styles.extractedCard, { height: extractedCardHeight, top: extractedCardTop }]}
             >
-              <View style={styles.extractedContent}>
-                <View style={styles.metricListViewport}>
-                  <ScrollView
-                    key={currentResult.id}
-                    ref={metricListScrollRef}
-                    bounces={false}
-                    contentContainerStyle={styles.metricListContent}
-                    keyboardShouldPersistTaps="always"
-                    nestedScrollEnabled
-                    onContentSizeChange={innerScrollIndicator.onContentSizeChange}
-                    onLayout={innerScrollIndicator.onLayout}
-                    onMomentumScrollBegin={innerScrollIndicator.onMomentumScrollBegin}
-                    onMomentumScrollEnd={innerScrollIndicator.onMomentumScrollEnd}
-                    onScroll={innerScrollIndicator.onScroll}
-                    onScrollBeginDrag={innerScrollIndicator.onScrollBeginDrag}
-                    onScrollEndDrag={innerScrollIndicator.onScrollEndDrag}
-                    onTouchCancel={() => setIsInnerScrollActive(false)}
-                    onTouchEnd={() => setIsInnerScrollActive(false)}
-                    onTouchStart={() => setIsInnerScrollActive(true)}
-                    scrollEventThrottle={16}
-                    showsVerticalScrollIndicator={false}
-                    style={[styles.metricList, webInnerScrollStyle]}
-                  >
-                    {metricRows}
-                  </ScrollView>
-                  <CustomScrollIndicator {...innerScrollIndicator.indicatorProps} rightInset={-5} />
-                </View>
-                <View style={styles.privacyBox}>
-                  <ShieldCheckIcon
-                    color={colors.primary}
-                    fill={colors.primary}
-                    height={24}
-                    width={24}
-                  />
-                  <Text style={styles.privacyText}>
-                    인식한 수치를 원본 자료와 비교해 주세요. 틀린 값은 수정한 뒤 다음으로 진행할 수 있어요.
-                  </Text>
-                </View>
+              <View style={styles.metricListViewport}>
+                <ScrollView
+                  key={currentResult.id}
+                  ref={metricListScrollRef}
+                  bounces={false}
+                  keyboardShouldPersistTaps="always"
+                  nestedScrollEnabled
+                  onContentSizeChange={innerScrollIndicator.onContentSizeChange}
+                  onLayout={innerScrollIndicator.onLayout}
+                  onMomentumScrollBegin={innerScrollIndicator.onMomentumScrollBegin}
+                  onMomentumScrollEnd={innerScrollIndicator.onMomentumScrollEnd}
+                  onScroll={innerScrollIndicator.onScroll}
+                  onScrollBeginDrag={innerScrollIndicator.onScrollBeginDrag}
+                  onScrollEndDrag={innerScrollIndicator.onScrollEndDrag}
+                  onTouchCancel={() => setIsInnerScrollActive(false)}
+                  onTouchEnd={() => setIsInnerScrollActive(false)}
+                  onTouchStart={() => setIsInnerScrollActive(true)}
+                  scrollEventThrottle={16}
+                  showsVerticalScrollIndicator={false}
+                  style={[styles.metricList, webInnerScrollStyle]}
+                >
+                  {metricRows}
+                </ScrollView>
+                <CustomScrollIndicator {...innerScrollIndicator.indicatorProps} rightInset={3} />
               </View>
             </AppCard>
+
+            <View style={[styles.privacyBox, { top: privacyTop }]}>
+              <ShieldCheckIcon color="#5E5D66" height={18} width={18} />
+              <Text style={styles.privacyText}>
+                {currentResult.ocrStatus === 'completed'
+                  ? '읽어 온 수치는 분석과 추천에만 써요.'
+                  : '판독이 끝나면 읽어 온 수치를 확인할 수 있어요.'}
+              </Text>
+            </View>
 
             <Pressable
               accessibilityRole="button"
@@ -1357,458 +1310,77 @@ export default function OCRResultScreen() {
         visible={isReuploadSheetOpen}
         variant="reupload"
       />
+      <ConfirmDialog
+        description="고친 내용은 저장되지 않아요."
+        onPrimary={goHome}
+        onSecondary={() => setLeaveDialogOpen(false)}
+        primaryLabel="나가기"
+        secondaryLabel="계속 확인"
+        title="홈으로 나갈까요?"
+        visible={leaveDialogOpen}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   failureRoot: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: 412, backgroundColor: '#FFFFFF' },
-  failureHeader: { minHeight: 62, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-  failureBack: { position: 'absolute', left: 20, bottom: 7, height: 42, width: 42, justifyContent: 'center', zIndex: 1 },
-  failureBackText: { color: '#27262D', fontSize: 32, lineHeight: 38 },
-  failureHeaderTitle: { color: '#27262D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  failureContent: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 104, alignItems: 'center' },
-  failureIcon: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#FFF4D6', alignItems: 'center', justifyContent: 'center' },
-  failureIconText: { color: '#D79B1E', fontFamily: fontFamilies.pretendardBold, fontSize: 36 },
-  failureTitle: { marginTop: 26, color: '#27262D', fontFamily: fontFamilies.pretendardBold, fontSize: 25 },
-  failureDescription: { marginTop: 14, color: '#85858D', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 22, textAlign: 'center' },
-  failureGuide: { backgroundColor: colors.surface, alignSelf: 'stretch', marginTop: 48, borderRadius: 18, borderWidth: 1, borderColor: '#E9E7ED', padding: 20, gap: 16 },
-  failureGuideTitle: { color: '#33313A', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  failureTipRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  failureTipNumber: { color: '#5246C6', fontFamily: fontFamilies.pretendardBold, fontSize: 14, width: 17 },
-  failureTipText: { color: '#67656E', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 20, flex: 1 },
-  failureFooter: { paddingHorizontal: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F2F0F4' },
-  failureButton: { minHeight: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#5246C6' },
-  failureButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  loadingRoot: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    flex: 1,
-    justifyContent: 'center',
-  },
-  root: {
-    backgroundColor: colors.background,
-    flex: 1,
-    overflow: 'hidden',
-  },
-  background: {
-    ...StyleSheet.absoluteFill,
-    height: '100%',
-    width: '100%',
-  },
-  scrollContent: {
-    alignItems: 'center',
-  },
-  canvasSlot: {
-    position: 'relative',
-    width: '100%',
-  },
-  canvas: {
-    height: referenceHeight,
-    position: 'absolute',
-    transformOrigin: 'top left',
-    width: referenceWidth,
-  },
-  backButton: {
-    left: 12,
-    position: 'absolute',
-    top: 22,
-  },
-  screenTitle: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 15,
-    left: 70,
-    letterSpacing: 1.5,
-    lineHeight: 20,
-    position: 'absolute',
-    right: 70,
-    textAlign: 'center',
-    top: 38,
-  },
-  stepPosition: {
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 75,
-  },
-  stepIndicator: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    height: 20,
-    justifyContent: 'center',
-  },
-  stepGroup: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 3,
-  },
-  stepLine: {
-    backgroundColor: colors.textDisabled,
-    height: StyleSheet.hairlineWidth,
-    marginLeft: 3,
-    width: 37.6,
-  },
-  step: {
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    borderColor: colors.textDisabled,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    height: 17,
-    justifyContent: 'center',
-    width: 17,
-  },
-  activeStep: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  stepText: {
-    color: colors.textDisabled,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 9,
-    includeFontPadding: false,
-    lineHeight: 11,
-  },
-  activeStepText: {
-    color: colors.surface,
-  },
-  completionSection: {
-    alignItems: 'flex-start',
-    left: 21,
-    position: 'absolute',
-    top: 114,
-    width: 370,
-  },
-  completionIconCircle: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: 25,
-    height: 50,
-    justifyContent: 'center',
-    width: 50,
-  },
-  completionTexts: {
-    gap: 8,
-    width: 370,
-  },
-  completionTitle: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 19,
-    includeFontPadding: false,
-    lineHeight: 22,
-  },
-  completionDescription: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
-    includeFontPadding: false,
-    lineHeight: 17,
-  },
-  healthCompletionTitle: {
-    fontSize: 19,
-  },
-  healthCompletionDescription: {
-    fontSize: 14,
-  },
-  uploadFileCard: {
-    borderRadius: 12,
-    left: 21,
-    position: 'absolute',
-    top: 204,
-    width: 370,
-  },
-  uploadFileContent: {
-    padding: 12,
-  },
-  cardTitle: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-    includeFontPadding: false,
-    lineHeight: 17,
-  },
-  uploadFileBottom: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  filePreview: {
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    height: 48,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 48,
-  },
-  filePreviewImage: {
-    height: '100%',
-    width: '100%',
-  },
-  fileTexts: {
-    flex: 1,
-    gap: 6,
-    minWidth: 0,
-  },
-  fileName: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    includeFontPadding: false,
-    lineHeight: 17,
-  },
-  uploadTime: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 12.5,
-    includeFontPadding: false,
-    lineHeight: 17,
-  },
-  reuploadButton: {
-    alignItems: 'center',
-    borderColor: '#D8D3ED',
-    borderRadius: radius.sm,
-    borderWidth: 0.5,
-    height: 32,
-    justifyContent: 'center',
-    width: 78,
-  },
-  reuploadText: {
-    color: '#5246C6',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 12,
-    includeFontPadding: false,
-    lineHeight: 17,
-  },
-  resultTabs: {
-    backgroundColor: '#F6F5F8',
-    borderRadius: 9,
-    flexDirection: 'row',
-    height: 34,
-    left: 21,
-    padding: 3,
-    position: 'absolute',
-    width: 370,
-  },
-  resultTab: { alignItems: 'center', flex: 1, justifyContent: 'center' },
-  resultTabActive: { backgroundColor: '#FFFFFF', borderRadius: 7 },
-  resultTabText: { color: '#96939C', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  resultTabTextActive: { color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold },
-  extractedCard: {
-    borderRadius: 13,
-    height: 450,
-    left: 21,
-    position: 'absolute',
-    top: 359,
-    width: 370,
-  },
-  extractedContent: {
-    gap: 10,
-    height: '100%',
-    paddingBottom: 15,
-    paddingHorizontal: 15,
-    paddingTop: 16,
-  },
-  metricListContent: {
-    gap: 0,
-    paddingRight: 2,
-  },
-  metricList: {
-    flex: 1,
-    width: '100%',
-  },
-  metricListViewport: {
-    height: 330,
-    position: 'relative',
-    width: 341,
-  },
-  metricRow: {
-    minHeight: 46,
-  },
-  metricIconCircle: {
-    alignItems: 'center',
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.round,
-    height: 32,
-    justifyContent: 'center',
-    width: 32,
-  },
-  metricMain: {
-    flex: 1,
-    gap: 0,
-  },
-  metricContent: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    minHeight: 45,
-  },
-  metricLabel: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 13,
-    includeFontPadding: false,
-    lineHeight: 17,
-    width: 106,
-  },
-  metricValue: {
-    alignItems: 'center',
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    minWidth: 0,
-  },
-  metricValueText: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 13,
-    includeFontPadding: false,
-    lineHeight: 17,
-  },
-  metricInput: {
-    backgroundColor: '#FAFBFC',
-    borderColor: '#D9DEE5',
-    borderRadius: 8,
-    borderWidth: 1,
-
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardLight,
-    fontSize: 14,
-
-    height: 28,
-    includeFontPadding: false,
-    lineHeight: 17,
-
-    paddingHorizontal: 8,
-    paddingVertical: 0,
-
-    width: 92,
-  },
-  bloodPressureInputs: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 3,
-  },
-  bloodPressureInput: {
-    paddingHorizontal: 3,
-    textAlign: 'center',
-    width: 36,
-  },
-  bloodPressureSeparator: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-    lineHeight: 17,
-  },
-  metricUnit: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  modifyButton: {
-    alignItems: 'center',
-    height: 32,
-    justifyContent: 'center',
-    width: 30,
-  },
-  modifyButtonText: {
-    color: '#5246C6',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 20,
-    includeFontPadding: false,
-    lineHeight: 17,
-  },
-  extractedCardTitle: {
-    lineHeight: 18,
-  },
-  confirmButton: {
-    backgroundColor: '#ECE9FF',
-  },
-  confirmButtonText: {
-    color: '#1371EB',
-  },
-  metricDivider: {
-    backgroundColor: colors.border,
-    height: StyleSheet.hairlineWidth,
-    width: '100%',
-  },
-  privacyBox: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSoft,
-    borderRadius: radius.lg,
-    flexDirection: 'row',
-    gap: 3,
-    marginTop: 'auto',
-    height: 50,
-    paddingHorizontal: 8,
-  },
-  privacyText: {
-    color: colors.textSecondary,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
-    includeFontPadding: false,
-    lineHeight: 16,
-  },
-  privacyEmphasis: {
-    color: colors.primaryDark,
-  },
-  nextButton: {
-    alignItems: 'center',
-    backgroundColor: '#5246C6',
-    borderRadius: 8,
-    height: 52,
-    justifyContent: 'center',
-    left: 21,
-    position: 'absolute',
-    top: 830,
-    width: 370,
-  },
-  nextButtonDisabled: {
-    opacity: 0.5,
-  },
-  nextButtonText: {
-    color: colors.surface,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 16,
-    includeFontPadding: false,
-    lineHeight: 22,
-  },
-  pressed: {
-    opacity: 0.72,
-  },
-  reuploadSheetOverlay: {
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-  },
-  reuploadSheet: {
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    minHeight: 300,
-  },
-  reuploadSheetHandle: {
-    backgroundColor: '#D9D9D9',
-    height: 4,
-    marginTop: 11,
-    width: 40,
-  },
-  reuploadSheetContent: {
-    paddingBottom: 0,
-    paddingHorizontal: 16,
-    paddingTop: 36,
-  },
-  reuploadOptions: {
-    flexDirection: 'row',
-    gap: 20,
-    justifyContent: 'center',
-    width: '100%',
-  },
-  reuploadOptionCard: {
-    flex: 1,
-    maxWidth: 180,
-    width: 'auto',
-  },
+  failureHeader: { minHeight: 52, justifyContent: 'center', paddingHorizontal: 20 },
+  failureBack: { justifyContent: 'center', minHeight: 44, width: 44 },
+  failureContent: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 12 },
+  failureIcon: { alignItems: 'center', backgroundColor: '#FFF2E0', borderRadius: 32, height: 64, justifyContent: 'center', width: 64 },
+  failureTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30, marginTop: 20 },
+  failureDescription: { color: '#3B3A42', fontSize: 16, lineHeight: 24, marginTop: 4 },
+  failureGuide: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, gap: 12, marginTop: 20, padding: 18 },
+  failureGuideTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+  failureTipRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  failureTipNumber: { backgroundColor: '#FFFFFF', borderRadius: 12, color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 12, height: 24, lineHeight: 24, overflow: 'hidden', textAlign: 'center', width: 24 },
+  failureTipText: { color: '#3B3A42', flex: 1, fontSize: 14, lineHeight: 21 },
+  failureFooter: { gap: 8, paddingHorizontal: 20, paddingTop: 8 },
+  failureButton: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center' },
+  failureButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+  failureSecondary: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 12, height: 56, justifyContent: 'center' },
+  failureSecondaryText: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+  loadingRoot: { alignItems: 'center', backgroundColor: '#FFFFFF', flex: 1, justifyContent: 'center' },
+  root: { backgroundColor: '#FFFFFF', flex: 1, overflow: 'hidden' },
+  scrollContent: { alignItems: 'center' },
+  canvasSlot: { position: 'relative', width: '100%' },
+  canvas: { height: referenceHeight, position: 'absolute', transformOrigin: 'top left', width: referenceWidth },
+  backButton: { height: 44, justifyContent: 'center', left: 20, position: 'absolute', top: 20, width: 44 },
+  screenTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, left: 70, lineHeight: 24, position: 'absolute', right: 70, textAlign: 'center', top: 30 },
+  homeButton: { alignItems: 'flex-end', height: 44, justifyContent: 'center', position: 'absolute', right: 20, top: 20, width: 44 },
+  completionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, left: 20, lineHeight: 30, position: 'absolute', right: 20 },
+  uploadFileCard: { backgroundColor: '#FAFBFC', borderRadius: 16, left: 20, position: 'absolute', width: 372 },
+  uploadFileBottom: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 63, paddingHorizontal: 14 },
+  filePreview: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', overflow: 'hidden', width: 40 },
+  filePreviewImage: { height: '100%', width: '100%' },
+  fileTexts: { flex: 1, minWidth: 0 },
+  fileName: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
+  uploadTime: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  reuploadButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+  reuploadText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  resultTabs: { backgroundColor: '#F2F4F6', borderRadius: 16, flexDirection: 'row', height: 46, left: 20, padding: 4, position: 'absolute', width: 372 },
+  resultTab: { alignItems: 'center', borderRadius: 12, flex: 1, justifyContent: 'center' },
+  resultTabActive: { backgroundColor: '#FFFFFF' },
+  resultTabText: { color: '#5E5D66', fontSize: 14 },
+  resultTabTextActive: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium },
+  extractedCard: { backgroundColor: '#FAFBFC', borderRadius: 16, left: 20, overflow: 'hidden', position: 'absolute', width: 372 },
+  metricListViewport: { height: '100%', position: 'relative', width: '100%' },
+  metricList: { flex: 1, width: '100%' },
+  metricRow: { alignItems: 'center', borderBottomColor: '#DFE2E7', borderBottomWidth: 1, flexDirection: 'row', gap: 8, minHeight: 56, paddingHorizontal: 16 },
+  metricLabel: { color: '#3B3A42', fontSize: 14, lineHeight: 21, width: 96 },
+  metricValueText: { color: '#17161D', flex: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 16, textAlign: 'right' },
+  metricInputBox: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#5246C6', borderRadius: 12, borderWidth: 2, flex: 1, flexDirection: 'row', gap: 4, height: 44, minWidth: 0, paddingHorizontal: 10 },
+  metricInput: { color: '#17161D', flex: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 16, minWidth: 0, padding: 0 },
+  bloodPressureInput: { textAlign: 'center' },
+  metricUnit: { color: '#5E5D66', fontSize: 14 },
+  modifyButton: { alignItems: 'center', height: 34, justifyContent: 'center', width: 28 },
+  saveButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+  saveText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  privacyBox: { alignItems: 'center', flexDirection: 'row', gap: 6, left: 20, position: 'absolute', right: 20 },
+  privacyText: { color: '#5E5D66', flex: 1, fontSize: 14, lineHeight: 21 },
+  nextButton: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center', left: 20, position: 'absolute', width: 372 },
+  nextButtonDisabled: { opacity: 0.5 },
+  nextButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+  pressed: { opacity: 0.72 },
 });

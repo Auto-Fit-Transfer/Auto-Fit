@@ -3,28 +3,25 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { getHome, type HomeResponse } from '@/src/api/home';
+import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
+import BarbellIcon from '@/assets/icons/ui/barbell.svg';
+import CheckIcon from '@/assets/icons/ui/check.svg';
+import FileIcon from '@/assets/icons/ui/file-text.svg';
+import ForkKnifeIcon from '@/assets/icons/ui/fork-knife.svg';
 import { getHabitTierProgress, type HabitTierProgress } from '@/src/api/tier';
 import { getApiErrorMessage } from '@/src/api/client';
+import { Text } from '@/src/components/common';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
+import { nextTierName, tierBadges, tierColors, tierDescriptions, tierOrder } from '@/src/features/tier/tierBadges';
 import { fontFamilies } from '@/src/theme';
-import DietIcon from '@/assets/figma/main/8f046.svg';
-import ExerciseIcon from '@/assets/figma/main/3a625.svg';
-import DataIcon from '@/assets/figma/main/baa81.svg';
-import CoreIcon from '@/assets/figma/main/6a991.svg';
-import BalanceIcon from '@/assets/figma/main/e036c.svg';
-import ActiveIcon from '@/assets/figma/main/6ebab.svg';
-import FitIcon from '@/assets/figma/main/2ad06.svg';
-import PeakIcon from '@/assets/figma/main/5ef63.svg';
-import { Text } from '@/src/components/common';
 
-const roadmap = [
-  { name: 'CORE', description: '관리 시작', Icon: CoreIcon },
-  { name: 'BALANCE', description: '균형 잡기', Icon: BalanceIcon },
-  { name: 'ACTIVE', description: '꾸준한 실천', Icon: ActiveIcon },
-  { name: 'FIT', description: '습관 안정화', Icon: FitIcon },
-  { name: 'PEAK', description: '건강 흐름 유지', Icon: PeakIcon },
+// Points and limits come from the habit tier policy in the database.
+const ways = [
+  { title: '식단 관리', detail: '식사 기록 1번마다, 하루 3번까지', points: 2, Icon: ForkKnifeIcon, path: '/diet' as const },
+  { title: '운동 관리', detail: '추천 운동 완료, 하루 1번', points: 5, Icon: BarbellIcon, path: '/exercise' as const },
+  { title: '건강 데이터', detail: '검진 · 인바디 올리기, 한 달 1번', points: 15, Icon: FileIcon, path: '/health-data-management' as const },
 ];
 
 export default function TierScreen() {
@@ -32,18 +29,12 @@ export default function TierScreen() {
   const insets = useSafeAreaInsets();
   const { preferences } = useDisplayPreferences();
   const simple = preferences.simple_mode_enabled;
-  const [home, setHome] = useState<HomeResponse | null>(null);
   const [tier, setTier] = useState<HabitTierProgress | null>(null);
   const [tierError, setTierError] = useState('');
   const [tierLoading, setTierLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
   useFocusEffect(useCallback(() => {
     let active = true;
-    void getHome().then((response) => {
-      if (active) setHome(response);
-    }).catch(() => {
-      if (active) setHome(null);
-    });
     void getHabitTierProgress().then(({ progress }) => {
       if (active) { setTier(progress); setTierError(''); }
     }).catch((cause) => {
@@ -55,31 +46,28 @@ export default function TierScreen() {
     // A retry replaces the focus callback and cancels its previous request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt]));
-  const score = home?.health_score.score;
-  const total = home?.health_score.total_score;
-  const ratio = score != null && total && total > 0 ? Math.max(0, Math.min(100, (score / total) * 100)) : 0;
+  const code = tier?.tier_code ?? 'CORE';
+  const Badge = tierBadges[code];
+  const nextName = tier ? nextTierName(tier) : null;
   const tierRatio = tier
     ? tier.next_level_points === null
       ? 100
       : Math.max(0, Math.min(100, ((tier.points - tier.level_start_points) / Math.max(1, tier.next_level_points - tier.level_start_points)) * 100))
     : 0;
-  const CurrentIcon = roadmap.find((stage) => stage.name === tier?.tier_code)?.Icon ?? CoreIcon;
 
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
-        <Pressable hitSlop={16} accessibilityLabel="뒤로 가기" accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
-          <Text style={styles.backText}>‹</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>내 티어</Text>
-        <View style={styles.read}><SimpleReadButton text={`내 티어 화면입니다. ${tier ? `현재 ${tier.tier_name} ${tier.sublevel}, 누적 활동 점수 ${tier.points}점입니다.` : '티어 정보를 확인하고 있어요.'} 현재 건강 점수는 ${score ?? '정보 없음'}점입니다.`} /></View>
-      </View>
+      <ScreenHeader
+        onBack={() => router.back()}
+        right={<SimpleReadButton text={`내 티어 화면입니다. ${tier ? `현재 ${tier.tier_name} ${tier.sublevel}, 활동 점수 ${tier.points}점입니다.` : '티어 정보를 확인하고 있어요.'}`} />}
+        title="내 티어"
+      />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <View style={styles.heroIcon}><CurrentIcon /></View>
-          <Text style={[styles.heroTitle, simple && simpleStyles.heroTitle]}>{tier ? tier.tier_name + ' ' + tier.sublevel : tierLoading ? '티어를 불러오는 중…' : '티어를 확인할 수 없어요'}</Text>
-          <Text style={styles.heroDescription}>기록하고 완료한 건강관리 활동으로 쌓이는 티어예요.</Text>
+          <Badge height={120} width={120} />
+          <Text style={[styles.heroTitle, simple && simpleStyles.heroTitle]}>{tier ? `${tier.tier_name} ${tier.sublevel}` : tierLoading ? '티어를 불러오는 중…' : '티어를 확인할 수 없어요'}</Text>
+          {tier ? <Text style={styles.heroDescription}>{tierDescriptions[code]}</Text> : null}
         </View>
         {tierError ? (
           <Pressable accessibilityRole="button" onPress={() => { setTierLoading(true); setAttempt((value) => value + 1); }} style={styles.tierError}>
@@ -87,58 +75,60 @@ export default function TierScreen() {
           </Pressable>
         ) : null}
         {tier ? (
-          <View style={[styles.pointsCard, simple && simpleStyles.card]}>
-            <View style={styles.scoreHeading}>
-              <Text style={styles.scoreLabel}>누적 활동 점수</Text>
-              <Text style={styles.scoreValue}>{tier.points.toLocaleString()}<Text style={styles.scoreTotal}> P</Text></Text>
+          <View style={[styles.card, styles.pointsCard, simple && simpleStyles.card]}>
+            <View style={styles.spread}>
+              <Text style={styles.points}>
+                {tier.points.toLocaleString()}점
+                {nextName ? <Text style={styles.muted}>  / {nextName} · {tier.next_level_points?.toLocaleString()}점부터</Text> : null}
+              </Text>
+              <Text style={styles.left}>{tier.next_level_points === null ? '가장 높은 단계' : `${Math.max(0, tier.next_level_points - tier.points).toLocaleString()}점 남음`}</Text>
             </View>
             <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: tierRatio }} style={styles.track}>
-              <View style={[styles.fill, { width: `${tierRatio}%` }]} />
+              <View style={[styles.fill, { backgroundColor: tierColors[code], width: `${tierRatio}%` }]} />
             </View>
-            <Text style={styles.scoreNote}>{tier.next_level_points === null ? '현재 최고 단계예요.' : '다음 단계까지 ' + Math.max(0, tier.next_level_points - tier.points).toLocaleString() + 'P 남았어요.'}</Text>
+            <View style={styles.spread}>
+              <Text style={styles.muted}>{tier.tier_name} {tier.sublevel} · {tier.level_start_points.toLocaleString()}점</Text>
+              {nextName ? <Text style={styles.muted}>{nextName} · {tier.next_level_points?.toLocaleString()}점</Text> : null}
+            </View>
           </View>
         ) : null}
 
-        <View style={[styles.scoreCard, simple && simpleStyles.card]}>
-          <View style={styles.scoreHeading}>
-            <Text style={styles.scoreLabel}>현재 건강 점수</Text>
-            <Text style={styles.scoreValue}>{score ?? '—'}<Text style={styles.scoreTotal}> / {total ?? '—'}점</Text></Text>
-          </View>
-          <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: ratio }} style={styles.track}>
-            <View style={[styles.fill, { width: `${ratio}%` }]} />
-          </View>
-          <Text style={styles.scoreNote}>건강 점수는 활동 점수·마일리지와 별도로 계산돼요.</Text>
-        </View>
-
-        <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle]}>이번 주 이렇게 관리해 보세요</Text>
-        <View style={styles.missions}>
-          {[
-            { title: '식단 관리', description: '식사를 기록하고 영양 상태를 확인해요', Icon: DietIcon, path: '/diet' as const },
-            { title: '운동 관리', description: '나에게 맞는 운동을 꾸준히 실천해요', Icon: ExerciseIcon, path: '/exercise' as const },
-            { title: '건강 데이터', description: '최신 건강검진·인바디 자료를 관리해요', Icon: DataIcon, path: '/health-data-management' as const },
-          ].map(({ title, description, Icon, path }) => (
-            <Pressable hitSlop={16} key={title} accessibilityRole="button" onPress={() => router.push(path)} style={[styles.mission, simple && simpleStyles.mission]}>
-              <View style={styles.missionIcon}><Icon /></View>
-              <View style={styles.missionCopy}>
-                <Text style={[styles.missionTitle, simple && simpleStyles.missionTitle]}>{title}</Text>
-                <Text style={styles.missionDescription}>{description}</Text>
+        <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle]}>이렇게 올려 보세요</Text>
+        <View style={styles.card}>
+          {ways.map(({ title, detail, points, Icon, path }, index) => (
+            <Pressable hitSlop={8} key={title} accessibilityRole="button" onPress={() => router.push(path)} style={[styles.way, simple && simpleStyles.way, index > 0 && styles.wayDivider]}>
+              <View style={styles.wayIcon}><Icon color="#17161D" height={22} width={22} /></View>
+              <View style={styles.wayCopy}>
+                <Text style={[styles.wayTitle, simple && simpleStyles.wayTitle]}>{title}</Text>
+                <Text style={styles.muted}>{detail}</Text>
               </View>
-              <Text style={styles.chevron}>›</Text>
+              <View style={styles.pill}>
+                <CheckIcon color="#0E7C48" height={14} width={14} />
+                <Text style={styles.pillText}>+{points}점</Text>
+              </View>
+              <CaretRightIcon color="#5E5D66" height={20} width={20} />
             </Pressable>
           ))}
         </View>
 
-        <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle]}>건강 티어 로드맵</Text>
-        <Text style={styles.roadmapNote}>CORE부터 PEAK까지 3단계씩 올라가요. 현재 단계는 강조했어요.</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.roadmap}>
-          {roadmap.map(({ name, description, Icon }) => (
-            <View key={name} style={[styles.stage, tier?.tier_code === name && styles.currentStage]}>
-              <View style={styles.stageIcon}><Icon /></View>
-              <Text style={styles.stageTitle}>{name}</Text>
-              <Text style={styles.stageDescription}>{description}</Text>
-            </View>
-          ))}
-        </ScrollView>
+        <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle]}>티어 단계</Text>
+        <View style={[styles.card, styles.steps]}>
+          <View style={styles.stepRow}>
+            {tierOrder.map((name) => {
+              const StepBadge = tierBadges[name];
+              const current = name === tier?.tier_code;
+              const size = current ? 56 : 40;
+              return (
+                <View key={name} style={styles.step}>
+                  <StepBadge height={size} width={size} />
+                  <Text numberOfLines={1} style={[styles.stepName, current && { color: tierColors[name] }]}>{name}</Text>
+                  {current ? <Text style={styles.now}>지금</Text> : null}
+                </View>
+              );
+            })}
+          </View>
+          <Text style={styles.muted}>CORE부터 PEAK까지, 티어마다 3단계씩 올라가요.</Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -146,48 +136,39 @@ export default function TierScreen() {
 
 const styles = StyleSheet.create({
   root: { backgroundColor: '#FFFFFF', flex: 1 },
-  header: { alignItems: 'center', justifyContent: 'center', minHeight: 62, paddingHorizontal: 20 },
-  read: { position: 'absolute', right: 20, bottom: 7 },
-  back: { bottom: 7, height: 42, justifyContent: 'center', left: 20, position: 'absolute', width: 42, zIndex: 1 },
-  backText: { color: '#27262D', fontSize: 32, lineHeight: 38 },
-  headerTitle: { color: '#27262D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
   content: { alignSelf: 'center', maxWidth: 412, paddingHorizontal: 20, width: '100%' },
-  hero: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 28 },
-  heroIcon: { alignItems: 'center', backgroundColor: '#ECE9FF', borderRadius: 42, height: 84, justifyContent: 'center', width: 84 },
-  heroTitle: { color: '#322D43', fontFamily: fontFamilies.pretendardBold, fontSize: 23, marginTop: 17 },
-  heroDescription: { color: '#98939F', fontSize: 12, lineHeight: 19, marginTop: 8, textAlign: 'center' },
-  tierError: { backgroundColor: '#FFF4F4', borderRadius: 9, marginTop: 18, padding: 12 },
-  tierErrorText: { color: '#B34141', fontSize: 12 },
-  pointsCard: { backgroundColor: '#FAFBFC', borderColor: '#E4E5EB', borderRadius: 17, borderWidth: 1, gap: 12, marginTop: 25, padding: 17 },
-  scoreCard: { backgroundColor: '#FAFBFC', borderColor: '#E4E5EB', borderRadius: 17, borderWidth: 1, gap: 12, marginTop: 30, padding: 17 },
-  scoreHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  scoreLabel: { color: '#696472', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
-  scoreValue: { color: '#5246C6', fontFamily: fontFamilies.pretendardBold, fontSize: 21 },
-  scoreTotal: { color: '#9A96A2', fontFamily: fontFamilies.pretendardRegular, fontSize: 11 },
-  track: { backgroundColor: '#E3E6EB', borderRadius: 4, height: 7, overflow: 'hidden' },
-  fill: { backgroundColor: '#5246C6', borderRadius: 4, height: 7 },
-  scoreNote: { color: '#96919E', fontSize: 11, lineHeight: 17 },
-  sectionTitle: { color: '#333039', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 17, marginBottom: 11, marginTop: 29 },
-  missions: { backgroundColor: '#FAFBFC', borderColor: '#EAE9EE', borderRadius: 15, borderWidth: 1, overflow: 'hidden' },
-  mission: { alignItems: 'center', borderBottomColor: '#F1F0F4', borderBottomWidth: 1, flexDirection: 'row', gap: 12, minHeight: 67, paddingHorizontal: 13 },
-  missionIcon: { alignItems: 'center', backgroundColor: '#ECE9FF', borderRadius: 11, height: 38, justifyContent: 'center', width: 38 },
-  missionCopy: { flex: 1, gap: 4 },
-  missionTitle: { color: '#3C3844', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
-  missionDescription: { color: '#9A96A1', fontSize: 10 },
-  chevron: { color: '#9A96A1', fontSize: 22 },
-  roadmapNote: { color: '#9995A0', fontSize: 11, marginTop: -3 },
-  roadmap: { gap: 9, paddingBottom: 8, paddingTop: 14 },
-  stage: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 13, minHeight: 123, padding: 12, width: 112 },
-  currentStage: { borderColor: '#5246C6', borderWidth: 2 },
-  stageIcon: { alignItems: 'center', height: 49, justifyContent: 'center' },
-  stageTitle: { color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12, marginTop: 3 },
-  stageDescription: { color: '#938F9B', fontSize: 10, marginTop: 5, textAlign: 'center' },
+  hero: { alignItems: 'center', paddingTop: 8 },
+  heroTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 32, lineHeight: 42, marginTop: 8 },
+  heroDescription: { color: '#3B3A42', fontSize: 16, lineHeight: 24, marginTop: 2, textAlign: 'center' },
+  tierError: { backgroundColor: '#FFF4F4', borderRadius: 12, marginTop: 16, padding: 12 },
+  tierErrorText: { color: '#B34141', fontSize: 14 },
+  card: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  pointsCard: { gap: 10, marginTop: 24, padding: 18 },
+  spread: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'space-between' },
+  points: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
+  left: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  muted: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
+  track: { backgroundColor: '#E3E6EB', borderRadius: 4, height: 8, overflow: 'hidden' },
+  fill: { borderRadius: 4, height: 8 },
+  sectionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, marginBottom: 12, marginTop: 24 },
+  way: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 80, paddingHorizontal: 16, paddingVertical: 10 },
+  wayDivider: { borderTopColor: '#DFE2E7', borderTopWidth: 1 },
+  wayIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+  wayCopy: { flex: 1, gap: 2, minWidth: 0 },
+  wayTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+  pill: { alignItems: 'center', backgroundColor: '#E8F6EF', borderRadius: 999, flexDirection: 'row', gap: 4, height: 26, paddingHorizontal: 8 },
+  pillText: { color: '#0E7C48', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+  steps: { gap: 16, padding: 18 },
+  stepRow: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between' },
+  step: { alignItems: 'center', flex: 1, gap: 4 },
+  stepName: { color: '#5E5D66', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+  now: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 12 },
 });
 
 const simpleStyles = StyleSheet.create({
-  heroTitle: { fontSize: 29 },
+  heroTitle: { fontSize: 36 },
   card: { padding: 20 },
   sectionTitle: { fontSize: 20 },
-  mission: { minHeight: 84 },
-  missionTitle: { fontSize: 17 },
+  way: { minHeight: 96 },
+  wayTitle: { fontSize: 18 },
 });

@@ -19,7 +19,7 @@ import { nutritionNumber, type NutritionSummary } from '@/src/features/nutrition
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { CHAT_CHARACTER_KEY, chatCharacters } from '@/src/features/chat/chatCharacters';
 import { localDayKey, useWeekWorkouts } from '@/src/features/exercise/useWeekWorkouts';
-import { tierBadges } from '@/src/features/tier/tierBadges';
+import { nextTierName, tierBadges, tierColors } from '@/src/features/tier/tierBadges';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
@@ -27,15 +27,7 @@ import { darkColors, fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 type LoadState = 'loading' | 'ready' | 'error';
-const tierOrder = ['CORE', 'BALANCE', 'ACTIVE', 'FIT', 'PEAK'] as const;
 const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-const nextTierLabel = (tier: HabitTierProgress) => {
-  if (tier.next_level_points === null) return null;
-  const left = Math.max(0, tier.next_level_points - tier.points);
-  if (tier.sublevel < 3) return `${tier.tier_name} ${tier.sublevel + 1}까지 ${left}점`;
-  const next = tierOrder[tierOrder.indexOf(tier.tier_code) + 1];
-  return next ? `${next} 1까지 ${left}점` : null;
-};
 async function getSessionName() {
   try {
     const { data } = await getSupabaseClient().auth.getSession();
@@ -130,7 +122,8 @@ export default function HomeScreen() {
     ? Math.min(100, Math.max(0, ((tier.points - tier.level_start_points) / (tier.next_level_points - tier.level_start_points)) * 100))
     : tier ? 100 : 0;
   const Badge = tierBadges[tier?.tier_code ?? 'CORE'];
-  const nextLabel = tier ? nextTierLabel(tier) : null;
+  const nextName = tier ? nextTierName(tier) : null;
+  const nextLabel = tier && nextName ? `${nextName}까지 ${Math.max(0, (tier.next_level_points ?? 0) - tier.points)}점` : null;
   const caloriesLeft = consumed !== null && calorieTarget !== null ? calorieTarget - consumed : null;
   const todayMinutes = exercisedToday ? Math.round(latestSession.durationMinutes ?? 0) : 0;
   // The context keeps the last recommendation even when it was made on an earlier day.
@@ -181,7 +174,7 @@ export default function HomeScreen() {
                   <Text style={[styles.smallButtonText, isDark && dark.text]}>내 티어</Text>
                 </Pressable>
               </View>
-              <View style={[styles.tierTrack, isDark && dark.track]}><View style={[styles.tierFill, { width: `${tierRatio}%` }]} /></View>
+              <View style={[styles.tierTrack, isDark && dark.track]}><View style={[styles.tierFill, { backgroundColor: tierColors[tier?.tier_code ?? 'CORE'], width: `${tierRatio}%` }]} /></View>
               <View style={styles.spread}>
                 <Text style={[styles.muted, isDark && dark.secondary]}>{tier ? `${tier.tier_name} ${tier.sublevel}` : ''}</Text>
                 {nextLabel ? <Text style={[styles.tierNext, isDark && dark.text]}>{nextLabel}</Text> : null}
@@ -316,7 +309,7 @@ const styles = StyleSheet.create({
   tierScore: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium },
   tierNext: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
   tierTrack: { backgroundColor: '#F2F4F6', borderRadius: 4, height: 8, overflow: 'hidden' },
-  tierFill: { backgroundColor: '#5246C6', borderRadius: 4, height: 8 },
+  tierFill: { borderRadius: 4, height: 8 },
   smallButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
   smallButtonText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
   spread: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
