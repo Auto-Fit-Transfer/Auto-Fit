@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 from copy import deepcopy
 from datetime import date
 from decimal import Decimal
@@ -24,6 +25,10 @@ MealType = Literal["breakfast", "lunch", "dinner", "snack"]
 ModelRequester = Callable[[str], Awaitable[str | None]]
 EXCLUDED_CATALOG_SOURCE_TYPES = {"dummy"}
 EXCLUDED_CATALOG_NAME_MARKERS = ("[dummy",)
+MENU_EXPLANATION_RE = re.compile(
+    r"(?:^|\s)(?:제외(?:한|하고|하여|해서)?|대체(?:한|하여|해서)?|대신|불가로|없어서|때문에)"
+    r"(?=\s|[:：,.;]|$)"
+)
 
 
 class DietAIUnavailable(RuntimeError):
@@ -44,6 +49,13 @@ class GeneratedFood(BaseModel):
     carbohydrates: int = Field(ge=0, le=1000)
     protein: int = Field(ge=0, le=500)
     fat: int = Field(ge=0, le=500)
+
+    @field_validator("food_name")
+    @classmethod
+    def require_plain_food_name(cls, value: str) -> str:
+        if MENU_EXPLANATION_RE.search(value):
+            raise ValueError("food_name must contain only a food name")
+        return value
 
 
 class GeneratedMeal(BaseModel):
@@ -243,7 +255,8 @@ async def generate_ai_meals(
         + "우유·대두·견과류·생선 등 주요 알레르기 식품은 포함하지 마세요. 각 슬롯마다 "
         "서로 다른 음식 2~4개를 제안하고 목표 열량의 ±15%를 맞추세요. 응답은 설명이나 "
         "마크다운 없이 정확히 {\"meals\":[...]} JSON만 반환하세요. 각 meal에는 meal_type, "
-        "meal_order, recommendation_note, foods가 필요하고, 각 food에는 food_name, quantity "
+        "meal_order, recommendation_note, foods가 필요합니다. food_name에는 음식명만 쓰고 "
+        "제외·대체 등 설명은 recommendation_note에만 작성하세요. 각 food에는 food_name, quantity "
         "(정수), unit, calories, carbohydrates, protein, fat(모두 정수)가 필요합니다. 입력 슬롯의 "
         "meal_type과 meal_order를 그대로 유지하세요.\n" + json.dumps(payload, ensure_ascii=False)
     )

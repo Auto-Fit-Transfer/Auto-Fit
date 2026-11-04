@@ -344,6 +344,33 @@ def test_zero_quantity_is_never_accepted() -> None:
     assert len(calls) == 2
 
 
+@pytest.mark.parametrize("rejected", [
+    "두부 제외 닭계란 대체 불가로 살코기 제육볶음",
+    "두부를 제외한 살코기 제육볶음",
+    "두부 제외: 살코기 제육볶음",
+    "달걀로 대체한 살코기 제육볶음",
+])
+def test_explanation_in_food_name_is_retried_as_a_plain_menu_name(caplog, rejected) -> None:
+    fake_model, calls = _requester(_answer(name=rejected), _answer(name="살코기 제육볶음"))
+
+    with caplog.at_level("WARNING", logger="uvicorn.error"):
+        meals = asyncio.run(generate_ai_meals(BASE_MEALS[:1], [], fake_model))
+
+    assert len(calls) == 2
+    assert meals[0]["foods"][0]["food_name"] == "살코기 제육볶음"
+    assert "food_name에는 음식명만" in calls[0]
+    assert rejected not in caplog.text
+
+
+def test_plain_alternative_protein_name_is_not_rejected() -> None:
+    fake_model, calls = _requester(_answer(name="대체육 볶음"))
+
+    meals = asyncio.run(generate_ai_meals(BASE_MEALS[:1], [], fake_model))
+
+    assert len(calls) == 1
+    assert meals[0]["foods"][0]["food_name"] == "대체육 볶음"
+
+
 def test_calorie_miss_is_requested_once_more_and_can_recover() -> None:
     fake_model, calls = _requester(_answer(calories=900), _answer())
 
