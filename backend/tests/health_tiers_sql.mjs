@@ -33,10 +33,10 @@ try {
     await db.exec(base.slice(start,end));
   }
   for (const name of [
-    '20260917013929_enforce_notification_settings_integrity.sql',
-    '20260917014724_enforce_user_reference_integrity.sql',
-    '20260917015323_enforce_business_reference_integrity.sql',
-    '20260917021925_cascade_account_deletion.sql',
+    '20260917014100_enforce_notification_settings_integrity.sql',
+    '20260917014900_enforce_user_reference_integrity.sql',
+    '20260917015823_enforce_business_reference_integrity.sql',
+    '20260917022453_cascade_account_deletion.sql',
   ]) {
     const functions = [...read(name).matchAll(/create function [\s\S]*?\$\$;/gi)];
     for (const match of functions) await db.exec(match[0]);

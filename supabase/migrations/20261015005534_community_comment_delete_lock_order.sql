@@ -47,4 +47,4 @@ begin
 end;
 $$;
 
--- CREATE OR REPLACE preserves the existing function owner and grants.
+-- CREATE OR REPLACE preserves the existing function owner and grants.;

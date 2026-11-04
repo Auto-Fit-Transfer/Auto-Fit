@@ -16,3 +16,9 @@ backend/.venv/
 backend/**/__pycache__/
 backend/.pytest_cache/
 *.pyc
+
+# Server-local credentials and build outputs
+deploy/ncp/.env
+deploy/ncp/api.env
+.worktrees/
+*.ipa

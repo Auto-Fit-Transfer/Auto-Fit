@@ -21,7 +21,7 @@ try {
     await db.exec('alter table public.' + table + ' enable row level security; grant select,insert,update,delete on public.' + table + ' to service_role;');
   }
   await db.exec(read('20260903023055_create_diet_rpcs.sql'));
-  await db.exec(read('20260916071945_update_diet_meal_feedback.sql'));
+  await db.exec(read('20260916072413_update_diet_meal_feedback.sql'));
   await db.query("insert into diet_recommendations (diet_recommendation_id,user_id,recommendation_date,status) values ($1,$2,current_date,'active')", [rec,owner]);
   await db.query("insert into diet_meals (diet_meal_id,diet_recommendation_id,meal_type,meal_order,status) values ($1,$2,'lunch',1,'recommended')", [meal,rec]);
   await db.query("insert into diet_meal_foods (diet_meal_id,food_name,quantity,unit,calories) values ($1,'밥',1,'개',300)", [meal]);

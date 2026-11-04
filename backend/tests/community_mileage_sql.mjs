@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 const { PGlite } = createRequire(import.meta.url)(process.argv[2]);
 const db = new PGlite();
 const migration = readFileSync(
-  new URL('../../supabase/migrations/20261028072013_community_mileage_trial_rules.sql', import.meta.url),
+  new URL('../../supabase/migrations/20261029005800_community_mileage_trial_rules.sql', import.meta.url),
   'utf8',
 );
 const one = async (sql, params = []) => Object.values((await db.query(sql, params)).rows[0])[0];

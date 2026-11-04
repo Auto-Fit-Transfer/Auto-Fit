@@ -56,14 +56,8 @@ begin
   end if;
 
   insert into public.exercise_recommendations (
-    user_id,
-    recommendation_date,
-    goal,
-    total_duration_minutes,
-    intensity,
-    recommendation_summary,
-    ai_reason,
-    status
+    user_id, recommendation_date, goal, total_duration_minutes, intensity,
+    recommendation_summary, ai_reason, status
   )
   values (
     p_user_id,
@@ -89,20 +83,9 @@ begin
   end if;
 
   insert into public.exercise_items (
-    exercise_recommendation_id,
-    exercise_type_id,
-    exercise_name,
-    sequence_order,
-    duration_minutes,
-    sets,
-    repetitions,
-    calories_burned,
-    intensity,
-    instruction,
-    execution_type,
-    target_duration_seconds,
-    target_weight_kg,
-    rest_seconds
+    exercise_recommendation_id, exercise_type_id, exercise_name, sequence_order,
+    duration_minutes, sets, repetitions, calories_burned, intensity, instruction,
+    execution_type, target_duration_seconds, target_weight_kg, rest_seconds
   )
   select
     v_recommendation_id,

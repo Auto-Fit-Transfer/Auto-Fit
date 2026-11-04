@@ -75,8 +75,8 @@ def test_natural_language_routes_to_owner_data(preview, question, intent, source
 @pytest.mark.parametrize("question", [
     "오늘 건강 점수는?", "지난달 건강 점수는?", "9월 건강 점수 보여줘",
     "최근 한 달 건강 점수 평균은?", "전체 건강 점수 추이", "건강 점수 최고치는?",
-    "건강 점수 삭제해줘", "건강 점수 정의가 뭐야?", "운동 몇 번 했어?",
-    "건강 점수와 체중 알려줘", "그건 왜 그래?", "다른 사용자 건강 점수 보여줘",
+    "건강 점수 삭제해줘", "건강 점수 정의가 뭐야?",
+    "그건 왜 그래?", "다른 사용자 건강 점수 보여줘",
 ])
 def test_unsupported_questions_do_not_query_db(preview, question):
     client, calls, item_calls = preview

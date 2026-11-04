@@ -318,11 +318,13 @@ $$;
 
 revoke all on function public.create_diet_recommendation(uuid, jsonb, jsonb)
   from public, anon, authenticated;
+
 grant execute on function public.create_diet_recommendation(uuid, jsonb, jsonb)
   to service_role;
 
 revoke all on function public.replace_diet_meal(uuid, uuid, jsonb)
   from public, anon, authenticated;
+
 grant execute on function public.replace_diet_meal(uuid, uuid, jsonb)
   to service_role;
 

@@ -1,5 +1,4 @@
--- Applied to Auto-Fit on 2026-09-08; filename matches remote migration history.
--- Additive, no foreign keys.
+-- Additive, no foreign keys. Apply only after review on the target database.
 alter table public.chat_messages
   add column client_message_id uuid,
   add column intent text,

@@ -1,5 +1,7 @@
 # 운동 AI 연결 작업
 
+> 2026-11-04 통합 기준: GIF는 비공개 버킷과 임시 GET 링크를 사용한다. 아래 공개 URL/ACL 절차는 이전 기록이며, 현재 배포는 [통합 배포 기록](branch-consolidation-20261104.md)의 비공개 GIF 설정을 따른다.
+
 ## 현재 코드 경로
 
 앱은 기존 `POST /api/exercise/recommendations/generate`를 계속 호출한다. 백엔드는

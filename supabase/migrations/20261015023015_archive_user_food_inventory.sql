@@ -1,5 +1,3 @@
--- The refrigerator feature was removed from the Main mobile experience.
--- Preserve existing rows outside the public API schema so the change stays reversible.
 create schema if not exists archive;
 
 revoke all on schema archive from public, anon, authenticated;
@@ -13,9 +11,6 @@ revoke all on table archive.user_food_inventory from anon, authenticated;
 grant usage on schema archive to service_role;
 grant select on table archive.user_food_inventory to service_role;
 
--- The currently deployed backend still performs read-only inventory lookups while
--- recommendations and reports are being generated. Return an empty set so those
--- requests remain healthy without using archived refrigerator data.
 create view public.user_food_inventory
 with (security_invoker = true)
 as

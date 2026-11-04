@@ -51,4 +51,4 @@ revoke all on function autofit_maintenance.purge_expired_weekly_diet_plans()
 select cron.schedule('autofit-weekly-diet-retention-30-days', '*/5 * * * *',
   'set statement_timeout = ''60s''; select autofit_maintenance.purge_expired_weekly_diet_plans();');
 
--- Rollback: unschedule the named job, drop the function, then drop the index.
+-- Rollback: unschedule the named job, drop the function, then drop the index.;

@@ -28,5 +28,6 @@ before update on public.user_exercise_profiles
 for each row execute function public.set_updated_at();
 
 revoke all on table public.user_exercise_profiles from public, anon, authenticated;
+
 grant select, insert, update, delete on table public.user_exercise_profiles
   to service_role;

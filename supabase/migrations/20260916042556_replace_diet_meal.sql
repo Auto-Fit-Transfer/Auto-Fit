@@ -155,5 +155,6 @@ $$;
 
 revoke all on function public.replace_diet_meal(uuid, uuid, jsonb)
   from public, anon, authenticated;
+
 grant execute on function public.replace_diet_meal(uuid, uuid, jsonb)
   to service_role;

@@ -73,10 +73,10 @@ def test_render_blueprint_has_only_web_scheduler_target() -> None:
 def test_diet_migration_enforces_ai_source_mix() -> None:
     sql = (
         ROOT
-        / "supabase/migrations/20260928082133_daily_ai_diet_refresh.sql"
-    ).read_text()
+        / "supabase/migrations/20261104060214_reconcile_live_diet_functions.sql"
+    ).read_text().lower()
 
-    assert "source_type in ('db_catalog', 'ai_generated')" in sql
+    assert "source_type' not in ('db_catalog', 'ai_generated', 'rules_based')" in sql
     assert "v_ai_meal_count not between 2 and 3" in sql
     assert "nullif(v_food_input ->> 'food_item_id', '')::uuid" in sql
 
@@ -84,10 +84,11 @@ def test_diet_migration_enforces_ai_source_mix() -> None:
 def test_regenerate_migration_updates_ai_source_type() -> None:
     sql = (
         ROOT
-        / "supabase/migrations/20260929042545_update_regenerated_meal_source_type.sql"
-    ).read_text()
+        / "supabase/migrations/20261104060214_reconcile_live_diet_functions.sql"
+    ).read_text().lower()
 
-    assert "v_source_type is null" in sql
+    assert "v_source_type is not null" in sql
+    assert "coalesce(v_source_type, v_meal.source_type)" in sql
     assert "v_source_type not in ('db_catalog', 'ai_generated')" in sql
     assert "source_type = v_source_type" in sql
     assert "security invoker" in sql

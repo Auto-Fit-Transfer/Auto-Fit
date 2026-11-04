@@ -5,7 +5,7 @@ MIGRATION = Path(
     "supabase/migrations/20260916064111_health_document_storage.sql"
 )
 DELETE_MIGRATION = Path(
-    "supabase/migrations/20260928090000_delete_health_document.sql"
+    "supabase/migrations/20261102051648_delete_health_document.sql"
 )
 
 

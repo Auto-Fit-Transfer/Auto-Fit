@@ -10,6 +10,8 @@ from backend.app.chat_intents import classify_question, is_off_topic_question
 from backend.app.chat_records import record_period
 from backend.app.chat_model import explain_records, general_information
 from backend.app.chat_exercise_info import information_topic, needs_safety_guidance, answer_exercise_information
+from backend.app.chat_running import answer_running_course
+from backend.app.chat_service import match_service_query, navigation_answer, service_answer
 
 
 def clarification(message: str, required: str) -> dict:
@@ -110,8 +112,12 @@ async def decide_answer(
 async def answer_question(
     content: str, load_scores: Callable[[], Awaitable[list[Assessment]]], load_records=None,
     load_catalog=None, allow_general=False, prepare_routine=None,
-    load_score_items=None,
+    load_score_items=None, lookup_running_courses=None, read_service=None,
 ) -> dict:
+    if lookup_running_courses is not None:
+        running_answer = await answer_running_course(content, lookup_running_courses)
+        if running_answer is not None:
+            return running_answer
     if is_routine_generation_request(content):
         if prepare_routine is None:
             return clarification(
@@ -124,6 +130,17 @@ async def answer_question(
         if needs_safety_guidance(content):
             return clarification('통증·질환 등이 언급된 질문에는 일반 운동 목록을 개인에게 적합한 운동으로 안내할 수 없습니다. 운동 가능 여부는 의료 전문가와 상담해 주세요.', 'professional_exercise_guidance')
         return await answer_exercise_information(topic, load_catalog)
+    if read_service is not None:
+        query = match_service_query(content)
+        if query is not None:
+            return service_answer(query, await read_service(query))
+        navigation = navigation_answer(content)
+        plan = classify_question(content)
+        existing_route = plan.intent in {"health_score_latest", "health_score_change"} or (
+            plan.intent in {"meal_history", "exercise_history"} and record_period(content) is not None
+        )
+        if navigation is not None and not existing_route:
+            return navigation
     if is_off_topic_question(content):
         if not allow_general:
             return clarification(

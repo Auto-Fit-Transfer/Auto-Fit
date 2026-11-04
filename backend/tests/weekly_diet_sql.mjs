@@ -35,11 +35,11 @@ try {
     insert into auth.users(id) values ('${owner}'), ('${other}');
     insert into public.profiles values ('${owner}'), ('${other}');
   `);
-  const business = migration('20260917015323_enforce_business_reference_integrity.sql');
+  const business = migration('20260917015823_enforce_business_reference_integrity.sql');
   await db.exec(business.slice(business.indexOf('create function autofit_integrity.business_owner('), business.indexOf('create function autofit_integrity.check_business_references(')));
-  const users = migration('20260917014724_enforce_user_reference_integrity.sql');
+  const users = migration('20260917014900_enforce_user_reference_integrity.sql');
   await db.exec(users.slice(users.indexOf('create function autofit_integrity.check_user_reference('), users.indexOf('create function autofit_integrity.protect_user_removal(')));
-  await db.exec(migration('20260917021925_cascade_account_deletion.sql'));
+  await db.exec(migration('20260917022453_cascade_account_deletion.sql'));
   await db.exec(migration('20261020044749_weekly_ai_diet_plans.sql'));
   await db.exec('set role service_role');
   const inserted = await db.query(`insert into public.weekly_diet_plans

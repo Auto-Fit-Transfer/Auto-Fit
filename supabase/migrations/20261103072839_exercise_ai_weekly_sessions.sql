@@ -480,4 +480,4 @@ grant execute on function public.complete_exercise_session(uuid, uuid)
   to service_role;
 
 -- Rollback: stop AI weekly creation, restore the three RPCs from their prior
--- migrations, then drop plan_session_id columns and exercise_plan_sessions.
+-- migrations, then drop plan_session_id columns and exercise_plan_sessions.;

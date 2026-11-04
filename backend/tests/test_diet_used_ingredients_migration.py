@@ -8,7 +8,7 @@ MIGRATION = (
 )
 LATER_CREATE_MIGRATION = (
     ROOT
-    / "supabase/migrations/20260930090000_menu_image_dataset_matching.sql"
+    / "supabase/migrations/20261104060214_reconcile_live_diet_functions.sql"
 )
 
 

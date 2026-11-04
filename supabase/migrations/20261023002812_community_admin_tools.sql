@@ -7,6 +7,31 @@
 grant insert, update on public.community_challenges to service_role;
 grant update on public.community_rules to service_role;
 
+-- A join must hold a lock on its challenge until the insert commits. Otherwise an
+-- admin could see no participants, change the goal or reward, and race with a join.
+-- The admin edit takes FOR UPDATE on the same row before checking participants.
+create function public.community_lock_challenge_for_join()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+declare
+  v_challenge public.community_challenges;
+begin
+  select * into v_challenge from public.community_challenges
+    where challenge_id = new.challenge_id for share;
+  if not found or not v_challenge.enabled then
+    raise exception using message = 'COMMUNITY_CHALLENGE_NOT_FOUND', errcode = 'P0001';
+  end if;
+  if public.community_today() > v_challenge.ends_on then
+    raise exception using message = 'COMMUNITY_CHALLENGE_ENDED', errcode = 'P0001';
+  end if;
+  return new;
+end;
+$$;
+create trigger community_lock_challenge_for_join
+  before insert on public.community_challenge_participants
+  for each row execute function public.community_lock_challenge_for_join();
+revoke all on function public.community_lock_challenge_for_join() from public, anon, authenticated;
+grant execute on function public.community_lock_challenge_for_join() to service_role;
+
 -- ---------------------------------------------------------------------------
 -- Challenges
 -- ---------------------------------------------------------------------------

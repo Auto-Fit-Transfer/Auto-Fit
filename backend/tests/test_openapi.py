@@ -33,6 +33,6 @@ def test_onboarding_status_has_boolean_response_schema() -> None:
 
 
 def test_running_recommendation_parameters_match_published_openapi() -> None:
-    published = json.loads((Path(__file__).resolve().parents[2] / "docs/openapi.json").read_text())
+    published = json.loads((Path(__file__).resolve().parents[2] / "docs/api-server-openapi-20261029.json").read_text())
     path = "/api/running/courses/recommend"
     assert published["paths"][path]["get"]["parameters"] == app.openapi()["paths"][path]["get"]["parameters"]

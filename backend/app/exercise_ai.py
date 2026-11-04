@@ -108,6 +108,14 @@ def gif_url_for_exercise(exercise_key: str, location: str, gender: str,
             or port == 0 or parsed.query or parsed.fragment
             or any(char.isspace() for char in base_url)):
         raise ExerciseAIError("Exercise GIF base URL must be HTTPS")
+    path = gif_path_for_exercise(exercise_key, location, gender)
+    return None if path is None else base_url.rstrip("/") + "/" + quote(path, safe="/")
+
+
+def gif_path_for_exercise(exercise_key: str, location: str, gender: str) -> str | None:
+    """Resolve a safe primary GIF path from the server-owned catalog."""
+    if location not in {"home", "gym"} or gender not in {"male", "female"}:
+        return None
     _, catalog = load_catalog()
     record = catalog.get(exercise_key)
     if record is None:
@@ -115,10 +123,11 @@ def gif_url_for_exercise(exercise_key: str, location: str, gender: str,
     mode = "gym" if location == "gym" else "home_training"
     for asset_mode, asset_gender, path in record.asset_paths:
         if asset_mode == mode and asset_gender == gender:
-            parts = Path(path).parts
-            if not path or path.startswith("/") or any(part in {"..", "."} for part in parts):
+            parts = path.split("/")
+            if (not path or "\\" in path or not path.lower().endswith(".gif")
+                    or any(part in {"", "..", "."} for part in parts)):
                 raise ExerciseAIError("Exercise GIF catalog path is invalid")
-            return base_url.rstrip("/") + "/" + quote(path, safe="/")
+            return path
     return None
 
 

@@ -36,6 +36,8 @@ from backend.app.chat_intents import is_off_topic_question
 from backend.app.chat_model import get_model_config, request_model
 from backend.app.chat_records import answer_records
 from backend.app.chat_storage import ChatStore, fail as chat_fail
+from backend.app.chat_running import answer_running_course, search_running_courses
+from backend.app.chat_service import ServiceQuery
 from backend.app.chat_persona import ChatCharacterId, apply_chat_persona
 from backend.app.chat_rate_limit import ChatRateLimiter
 from backend.app.http_client import client_scope, SharedHttpClientMiddleware
@@ -55,6 +57,8 @@ from backend.app.diet_ai import (
 )
 from backend.app.ai_server import AIEndpoint, AIServerClient, AIServerError, get_ai_server_config
 from backend.app.exercise_ai import ExerciseAIError, build_plan as build_ai_exercise_plan, build_request as build_ai_exercise_request, gif_url_for_exercise
+from backend.app.exercise_gifs import private_gif_urls
+from backend.app.exercise_analysis_ai import analysis_input_hash, build_analysis_input, build_public_analysis
 from backend.app.food_image_generation import (
     generate_missing_menu_images,
     get_food_image_settings,
@@ -91,6 +95,7 @@ from backend.app.security import (
 KST = ZoneInfo("Asia/Seoul")
 logger = logging.getLogger("uvicorn.error")
 CHAT_REQUEST_TIMEOUT_SECONDS = 70
+EXERCISE_ANALYSIS_LOCKS: dict[tuple[str, str], asyncio.Lock] = defaultdict(asyncio.Lock)
 DIET_GENERATION_LOCKS: dict[tuple[str, date], asyncio.Lock] = defaultdict(asyncio.Lock)
 DUMMY_FOOD_NAME_PREFIX = re.compile(r"^\[DUMMY[^\]]*\]\s*", re.IGNORECASE)
 FOOD_NAME_PARENTHETICAL = re.compile(r"\s*(?:\([^()]*\)|（[^（）]*）)")
@@ -1174,13 +1179,26 @@ async def create_exercise_recommendation(
 async def attach_exercise_gif_urls(
     result: dict[str, Any], context: dict[str, Any], profile: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Expose only confirmed public GIF objects, never catalog filesystem paths."""
+    """Attach fresh private links, or use the legacy public asset configuration."""
     items = result.get("items") or []
     base_url = os.getenv("EXERCISE_GIF_BASE_URL", "").strip()
+    private_bucket = os.getenv("EXERCISE_GIF_BUCKET", "").strip()
     gender = (profile or {}).get("gender")
-    if not base_url or gender not in {"male", "female"}:
+    if not (private_bucket or base_url) or gender not in {"male", "female"}:
         for item in items:
             item["demo_gif_url"] = None
+        return result
+
+    if private_bucket:
+        try:
+            urls = private_gif_urls(
+                {item["exercise_key"] for item in items if item.get("exercise_key")},
+                context.get("location", ""), gender,
+            )
+        except ExerciseAIError:
+            raise HTTPException(503, detail={"code": "EXERCISE_GIF_CONFIGURATION_ERROR"}) from None
+        for item in items:
+            item["demo_gif_url"] = urls.get(item.get("exercise_key"))
         return result
 
     urls: dict[str, str | None] = {}
@@ -3899,7 +3917,8 @@ async def get_latest_exercise_recommendation(
     if result:
         recommendation_id = result["recommendation"]["exercise_recommendation_id"]
         is_ai = result["recommendation"].get("generator") == "auto-fit-ai"
-        if is_ai and os.getenv("EXERCISE_GIF_BASE_URL", "").strip():
+        if is_ai and (os.getenv("EXERCISE_GIF_BASE_URL", "").strip()
+                      or os.getenv("EXERCISE_GIF_BUCKET", "").strip()):
             context, profile = await asyncio.gather(
                 fetch_exercise_context_for_recommendation(user.id, recommendation_id, settings),
                 fetch_profile(user.id, settings),
@@ -4081,11 +4100,19 @@ async def get_exercise_session_feedback(
     return {"feedback": feedback}
 
 
+def get_exercise_analysis_limiter(
+    user: AuthenticatedUser = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> ChatRateLimiter:
+    return ChatRateLimiter(settings.supabase_url, service_headers(settings), user.id)
+
+
 @app.get("/api/exercise/sessions/{session_id}/analysis", tags=["Exercise"])
 async def get_exercise_session_analysis(
     session_id: UUID,
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
+    limiter: ChatRateLimiter = Depends(get_exercise_analysis_limiter),
 ) -> dict[str, Any]:
     result = await fetch_exercise_session_result(user.id, str(session_id), settings)
     if not result:
@@ -4093,13 +4120,50 @@ async def get_exercise_session_analysis(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Exercise session not found",
         )
+    if not exercise_ai_enabled_for_user(user.id):
+        try:
+            return {"analysis": build_exercise_session_analysis(result)}
+        except ValueError as error:
+            raise HTTPException(409, detail=str(error)) from error
     try:
-        analysis = build_exercise_session_analysis(result)
+        ai_payload, metrics, feedback_summary = build_analysis_input(result)
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(error),
         ) from error
+    input_hash = analysis_input_hash(ai_payload)
+    async with EXERCISE_ANALYSIS_LOCKS[(user.id, str(session_id))]:
+        analysis = await fetch_cached_exercise_analysis(
+            user.id, str(session_id), input_hash, settings,
+        )
+        if analysis is None:
+            try:
+                config = get_ai_server_config()
+            except ValueError:
+                raise HTTPException(503, detail={"code": "AI_CONFIGURATION_ERROR"}) from None
+            if config is None:
+                raise HTTPException(503, detail={"code": "AI_DISABLED"})
+            await limiter.check("answers")
+            try:
+                ai_response = await AIServerClient(config).post(
+                    AIEndpoint.EXERCISE_ANALYSIS, ai_payload,
+                )
+            except AIServerError as exc:
+                error_status = 503 if exc.code in {
+                    "AI_UNAVAILABLE", "AI_TIMEOUT", "AI_CONNECTION_ERROR"
+                } else 502
+                raise HTTPException(error_status, detail={"code": exc.code}) from None
+            try:
+                analysis = build_public_analysis(
+                    ai_response, metrics, feedback_summary,
+                    has_discomfort_event=bool(result.get("discomfort_logs")),
+                )
+            except ValueError:
+                raise HTTPException(502, detail={"code": "AI_EXERCISE_ANALYSIS_INVALID_RESPONSE"}) from None
+            await save_cached_exercise_analysis(
+                user.id, str(session_id), input_hash, analysis, settings,
+            )
     return {"analysis": analysis, "result": result}
 
 
@@ -4635,6 +4699,7 @@ async def preview_health_score_answer(
 @app.post("/api/chats/answer-preview", tags=["Chat"])
 async def preview_chat_answer(
     body: ChatAnswerPreviewRequest,
+    request: Request,
     character_id: ChatCharacterId | None = Header(default=None, alias="X-AutoFit-Character"),
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
@@ -4658,6 +4723,12 @@ async def preview_chat_answer(
     async def preview_routine():
         return await prepare_exercise_routine(user.id, settings, generate=False)
 
+    async def lookup_running_courses(region, distance):
+        return await search_running_courses(region, distance, settings, user.id)
+
+    async def read_service(query: ServiceQuery):
+        return await read_chat_service(request, query)
+
     answer = await answer_question(
         body.content,
         load_scores,
@@ -4665,6 +4736,9 @@ async def preview_chat_answer(
         load_catalog,
         prepare_routine=preview_routine,
         load_score_items=load_score_items,
+        lookup_running_courses=lookup_running_courses,
+        read_service=read_service,
+        allow_general=True,
     )
     return {"answer": apply_chat_persona(answer, character_id)}
 
@@ -4708,7 +4782,7 @@ async def list_chat_messages(
 
 @app.post("/api/chats/{chat_id}/messages", status_code=201, tags=["Chat"])
 async def send_chat_message(
-    chat_id: UUID, body: ChatMessageRequest, response: Response,
+    chat_id: UUID, body: ChatMessageRequest, response: Response, request: Request,
     character_id: ChatCharacterId | None = Header(default=None, alias="X-AutoFit-Character"),
     store: ChatStore = Depends(get_chat_store),
     limiter: ChatRateLimiter = Depends(get_chat_access),
@@ -4736,10 +4810,27 @@ async def send_chat_message(
                         store.user_id, settings, generate=True
                     )
 
+                async def lookup_running_courses(region, distance):
+                    return await search_running_courses(region, distance, settings, store.user_id)
+
+                async def read_service(query: ServiceQuery):
+                    return await read_chat_service(request, query)
+
+                action_answer = None
+                region_reply = re.fullmatch(r"[가-힣]{2,20}(?:동|구|시|군|읍|면)", body.content.strip())
+                if region_reply:
+                    history = await store.messages(chat_id, 1, None)
+                    previous = history["messages"][-1] if history["messages"] else None
+                    previous = previous if previous and previous["sender_type"] == "assistant" else None
+
+                    if region_reply and previous and "running_region" in (previous.get("required_data") or []):
+                        action_answer = await answer_running_course(
+                            f"{body.content} 러닝 코스", lookup_running_courses,
+                        )
                 allow_general = False
                 if is_off_topic_question(body.content):
                     allow_general = not await store.has_general_ai_answer(chat_id)
-                answer = await answer_question(
+                answer = action_answer or await answer_question(
                     body.content,
                     load_scores,
                     load_records,
@@ -4747,6 +4838,8 @@ async def send_chat_message(
                     allow_general,
                     generate_routine,
                     load_score_items,
+                    lookup_running_courses,
+                    read_service,
                 )
                 answer = apply_chat_persona(answer, character_id)
                 result = await store.exchange(chat_id, body.client_message_id, body.content, answer)
@@ -4839,3 +4932,99 @@ async def preview_all_ai_diet_recommendation(
         "persisted": False,
         "result": plan,
     }
+
+
+async def read_chat_service(request: Request, query: ServiceQuery) -> dict | None:
+    """Reuse authenticated GET routes; the model and user cannot choose a path."""
+    if query.path not in CHAT_READ_PATHS or (
+        query.secondary_path is not None and query.secondary_path not in CHAT_READ_PATHS
+    ):
+        raise ValueError("Chat service read is not allowlisted")
+    authorization = request.headers.get("authorization", "")
+    try:
+        transport = httpx.ASGITransport(app=request.app)
+        async with httpx.AsyncClient(transport=transport, base_url=str(request.base_url),
+                                     timeout=30) as client:
+            headers = {"Authorization": authorization} if authorization else {}
+            result = await client.get(query.path, params=dict(query.params), headers=headers)
+            secondary = (await client.get(query.secondary_path, headers=headers)
+                         if query.secondary_path else None)
+        if result.status_code == 404:
+            return None
+        if result.is_error or len(result.content) > 512_000 or (
+            secondary is not None and (secondary.is_error or len(secondary.content) > 512_000)
+        ):
+            chat_fail("DATA_SOURCE_ERROR")
+        data = result.json()
+        if not isinstance(data, dict):
+            chat_fail("DATA_SOURCE_ERROR")
+        if secondary is not None:
+            secondary_data = secondary.json()
+            if not isinstance(secondary_data, dict):
+                chat_fail("DATA_SOURCE_ERROR")
+            return {"home": data, "report": secondary_data}
+        return data
+    except (httpx.HTTPError, ValueError):
+        chat_fail("DATA_SOURCE_ERROR")
+
+
+
+CHAT_READ_PATHS = frozenset({
+    "/api/community/mileage", "/api/community/mileage/history", "/api/tier/progress",
+    "/api/running/saved-courses", "/api/running/sessions/history",
+    "/api/running/sessions/active", "/api/running/pace", "/api/allergies",
+    "/api/diet/inventory", "/api/diet/nutrition-summary", "/api/diet/meal-logs",
+    "/api/diet/weekly-recommendations", "/api/diet/recommendations/latest",
+    "/api/diet/recommendations",
+    "/api/exercise/saved-routines", "/api/exercise/history",
+    "/api/exercise/progress", "/api/exercise/goals/active",
+    "/api/exercise/recommendations/latest", "/api/exercise/summary",
+    "/api/health-report", "/api/health-documents",
+    "/api/health-assessments/latest", "/api/profile",
+    "/api/health/goals/active", "/api/app/preferences",
+    "/api/home",
+})
+
+
+async def fetch_cached_exercise_analysis(
+    user_id: str, session_id: str, input_hash: str, settings: Settings,
+) -> dict[str, Any] | None:
+    async with client_scope() as client:
+        response = await client.get(
+            f"{settings.supabase_url}/rest/v1/exercise_session_analyses",
+            headers=service_headers(settings),
+            params={
+                "select": "analysis", "user_id": f"eq.{user_id}",
+                "exercise_session_id": f"eq.{session_id}",
+                "input_hash": f"eq.{input_hash}", "limit": "1",
+            },
+        )
+    if not response.is_success:
+        raise HTTPException(502, detail="Supabase exercise analysis cache query failed")
+    rows = response.json()
+    analysis = rows[0].get("analysis") if rows else None
+    return analysis if isinstance(analysis, dict) and analysis.get("generator") == "auto-fit-ai" else None
+
+
+async def save_cached_exercise_analysis(
+    user_id: str, session_id: str, input_hash: str, analysis: dict[str, Any],
+    settings: Settings,
+) -> None:
+    async with client_scope() as client:
+        response = await client.post(
+            f"{settings.supabase_url}/rest/v1/exercise_session_analyses",
+            headers={
+                **service_headers(settings),
+                "Prefer": "resolution=merge-duplicates,return=minimal",
+            },
+            params={"on_conflict": "exercise_session_id"},
+            json={
+                "exercise_session_id": session_id,
+                "user_id": user_id,
+                "input_hash": input_hash,
+                "analysis": analysis,
+                "updated_at": datetime.now(UTC).isoformat(),
+            },
+        )
+    if not response.is_success:
+        raise HTTPException(502, detail="Supabase exercise analysis cache save failed")

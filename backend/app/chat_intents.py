@@ -18,6 +18,7 @@ SOURCES = {
     "health_checkup": ("health_checkups",),
     "meal_history": ("meal_logs", "meal_log_items"),
     "exercise_history": ("exercise_sessions", "exercise_logs"),
+    "running": ("running_sessions", "running_courses"),
     "allergies": ("user_allergies", "allergy_types"),
     "food_inventory": ("user_food_inventory", "food_items"),
 }
@@ -28,6 +29,7 @@ KEYWORDS = {
     "health_checkup": ("건강검진", "혈압", "혈당", "콜레스테롤", "검진결과"),
     "meal_history": ("식사", "식단", "먹었", "먹은", "섭취"),
     "exercise_history": ("운동",),
+    "running": ("러닝", "런닝", "달리기", "조깅"),
     "allergies": ("알레르기", "알러지"),
     "food_inventory": ("냉장고", "보유재료"),
 }

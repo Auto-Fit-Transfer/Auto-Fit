@@ -24,6 +24,9 @@ comment on table public.upload_files is
 -- FastAPI authenticates the user and applies an explicit user_id ownership filter.
 -- Browser roles retain no direct DML access to these sensitive tables.
 grant select, insert, update, delete on table public.upload_files to service_role;
+
 grant select, insert, update, delete on table public.ocr_results to service_role;
+
 grant select, insert, update, delete on table public.health_checkups to service_role;
+
 grant select, insert, update, delete on table public.body_compositions to service_role;

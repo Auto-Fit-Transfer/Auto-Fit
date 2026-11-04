@@ -16,7 +16,7 @@ const migration = readFileSync(
   'utf8',
 );
 const laterMigration = readFileSync(
-  new URL('../../supabase/migrations/20260930090000_menu_image_dataset_matching.sql', import.meta.url),
+  new URL('../../supabase/migrations/20261104060214_reconcile_live_diet_functions.sql', import.meta.url),
   'utf8',
 );
 
@@ -108,13 +108,8 @@ try {
     [usedIngredient('블루베리', '블루베리')],
   );
 
-  const laterFunctionStart = laterMigration.indexOf(
-    'create or replace function public.create_diet_recommendation(',
-  );
-  const laterFunctionEnd = laterMigration.indexOf('\n$$;', laterFunctionStart) + 4;
-  assert.ok(laterFunctionStart >= 0 && laterFunctionEnd > 3);
   await db.exec('reset role');
-  await db.exec(laterMigration.slice(laterFunctionStart, laterFunctionEnd));
+  await db.exec(laterMigration);
   await db.exec('set role service_role');
   await db.query(
     'select public.create_diet_recommendation($1::uuid,$2::jsonb,$3::jsonb)',
@@ -159,7 +154,25 @@ try {
     [usedIngredient('딸기', '딸기')],
   );
 
-  console.log('3 diet used-ingredient snapshot SQL checks passed in isolated PGlite.');
+  // Preserve the live mixed rollout and reject a premature four-AI migration.
+  const withRules = meals.map((meal, index) => index === 2 ? { ...meal, source_type: 'rules_based' } : meal);
+  await db.query('select public.create_diet_recommendation($1::uuid,$2::jsonb,$3::jsonb)',
+    [owner, { ...recommendation, recommendation_date: '2026-10-02' }, withRules]);
+  await assert.rejects(() => db.query('select public.create_diet_recommendation($1::uuid,$2::jsonb,$3::jsonb)',
+    [owner, recommendation, meals.map(meal => ({ ...meal, source_type: 'ai_generated' }))]), /2.*3/);
+  // Old clients omit source_type; the saved source survives regeneration.
+  const withoutSource = { ...replacement, foods: [food('사과', 400)] };
+  delete withoutSource.source_type;
+  await db.query('select public.replace_diet_meal($1::uuid,$2::uuid,$3::jsonb)',
+    [owner, stored.rows[0].diet_meal_id, withoutSource]);
+  assert.equal((await db.query('select source_type from public.diet_meals where diet_meal_id=$1',
+    [stored.rows[0].diet_meal_id])).rows[0].source_type, 'ai_generated');
+  await assert.rejects(() => db.query('select public.replace_diet_meal($1::uuid,$2::uuid,$3::jsonb)',
+    [inventory, stored.rows[0].diet_meal_id, replacement]), /not found for user/);
+  await db.exec('set role authenticated');
+  await assert.rejects(() => db.query('select public.create_diet_recommendation($1::uuid,$2::jsonb,$3::jsonb)',
+    [owner, recommendation, meals]), /permission denied/);
+  console.log('Diet SQL passed: ingredient snapshots, mixed rollout, four-AI rejection, source fallback, ownership and role restrictions.');
 } finally {
   await db.close();
 }

@@ -180,4 +180,4 @@ grant execute on function public.create_exercise_recommendation(uuid, uuid, json
 -- Rollback after AI recommendations stop being generated:
 -- restore the original RPC from 20260902041419_create_exercise_recommendation_rpc.sql,
 -- review the six inserted exercise_types rows, then drop exercise_items.exercise_key and
--- exercise_recommendations.catalog_version/generator.
+-- exercise_recommendations.catalog_version/generator.;

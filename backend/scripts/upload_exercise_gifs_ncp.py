@@ -14,7 +14,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote
-from urllib.request import Request, urlopen
 
 
 CATALOG = Path(__file__).resolve().parents[1] / "data/exercise_assets/exercise_asset_catalog.csv"
@@ -90,12 +89,12 @@ def upload_one(client: object, bucket: str, asset: Asset) -> str:
         if (remote["ContentLength"] != asset.size
                 or remote.get("Metadata", {}).get("sha256") != digest):
             raise ValueError(f"Existing object differs; refusing overwrite: {asset.key}")
-        client.put_object_acl(Bucket=bucket, Key=asset.key, ACL="public-read")
+        client.put_object_acl(Bucket=bucket, Key=asset.key, ACL="private")
         return "existing"
     client.upload_file(
         str(asset.path), bucket, asset.key,
-        ExtraArgs={"ACL": "public-read", "ContentType": "image/gif",
-                   "CacheControl": "public, max-age=86400", "Metadata": {"sha256": digest}},
+        ExtraArgs={"ACL": "private", "ContentType": "image/gif",
+                   "CacheControl": "private, no-store", "Metadata": {"sha256": digest}},
     )
     remote = client.head_object(Bucket=bucket, Key=asset.key)
     if remote["ContentLength"] != asset.size or remote.get("Metadata", {}).get("sha256") != digest:
@@ -103,11 +102,13 @@ def upload_one(client: object, bucket: str, asset: Asset) -> str:
     return "uploaded"
 
 
-def verify_public(asset: Asset, bucket: str) -> None:
-    request = Request(public_url(bucket, asset.key), method="HEAD")
-    with urlopen(request, timeout=20) as response:
-        if response.status != 200 or int(response.headers.get("Content-Length", "-1")) != asset.size:
-            raise ValueError(f"Public URL verification failed: {asset.key}")
+def verify_private(client: object, asset: Asset, bucket: str) -> None:
+    remote = client.head_object(Bucket=bucket, Key=asset.key)
+    acl = client.get_object_acl(Bucket=bucket, Key=asset.key)
+    if remote["ContentLength"] != asset.size:
+        raise ValueError(f"Private object verification failed: {asset.key}")
+    if any(grant.get("Grantee", {}).get("Type") == "Group" for grant in acl.get("Grants", [])):
+        raise ValueError(f"Object still has group access: {asset.key}")
 
 
 def main() -> None:
@@ -149,7 +150,7 @@ def main() -> None:
                 print(f"Processed {sum(counts.values())}/{len(assets)} objects", flush=True)
     print(f"Objects: {counts['uploaded']} uploaded, {counts['existing']} already present")
     with ThreadPoolExecutor(max_workers=args.workers) as executor:
-        futures = [executor.submit(verify_public, asset, args.bucket) for asset in assets]
+        futures = [executor.submit(verify_private, client, asset, args.bucket) for asset in assets]
         for index, future in enumerate(as_completed(futures), 1):
             try:
                 future.result()
@@ -157,10 +158,10 @@ def main() -> None:
                 executor.shutdown(wait=False, cancel_futures=True)
                 raise
             if index % 500 == 0:
-                print(f"Verified {index}/{len(assets)} public URLs", flush=True)
-    print(f"Verified {len(assets)} public HTTPS URLs")
-    base = public_url(args.bucket, args.prefix.strip("/")) if args.prefix else f"{ENDPOINT}/{args.bucket}"
-    print(f"EXERCISE_GIF_BASE_URL={base}")
+                print(f"Verified {index}/{len(assets)} private objects", flush=True)
+    print(f"Verified {len(assets)} private objects")
+    print(f"EXERCISE_GIF_BUCKET={args.bucket}")
+    print(f"EXERCISE_GIF_PREFIX={args.prefix}")
 
 
 if __name__ == "__main__":

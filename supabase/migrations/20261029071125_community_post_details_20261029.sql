@@ -215,4 +215,4 @@ grant execute on function public.community_category_timeline(uuid,text,timestamp
 
 -- Rollback after removing v2 posts: drop function public.community_create_post_v2(uuid,text,uuid[],text,text[],uuid,uuid);
 -- Restore the original community_create_post and community_post_view definitions from
--- 20261014062855_community_feed.sql before dropping category/tags columns and the 1000-char check.
+-- 20261014062855_community_feed.sql before dropping category/tags columns and the 1000-char check.;
