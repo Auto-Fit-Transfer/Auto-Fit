@@ -441,7 +441,7 @@ def test_generate_api_calls_ai_and_saves_validated_items(monkeypatch):
         return {"recommendation": plan["recommendation"], "items": plan["items"]}
 
     async def unexpected_previous(_user_id, _settings):
-        raise AssertionError("rules_v1 previous recommendation was consulted")
+        raise AssertionError("Previous recommendation was consulted during AI generation")
 
     main.app.dependency_overrides[main.get_current_user] = fake_user
     main.app.dependency_overrides[main.get_settings] = lambda: main.Settings(
@@ -567,6 +567,7 @@ def test_latest_api_returns_dated_ai_sessions_and_status(monkeypatch):
             assert headers
             if url.endswith("/exercise_recommendations"):
                 assert "generator,catalog_version" in params["select"]
+                assert params["generator"] == "eq.auto-fit-ai"
                 rows = [{"exercise_recommendation_id": recommendation_id,
                          "generator": "auto-fit-ai", "status": "active"}]
             elif url.endswith("/exercise_items"):

@@ -797,7 +797,7 @@ def test_latest_exercise_recommendation_uses_authenticated_user(monkeypatch, has
         assert user_id == "authenticated-user"
         assert settings == TEST_SETTINGS
         return {
-            "recommendation": {"user_id": user_id, "exercise_recommendation_id": "recommendation-1"},
+            "recommendation": {"user_id": user_id, "exercise_recommendation_id": "recommendation-1", "generator": "auto-fit-ai"},
             "items": [{"exercise_name": "빠르게 걷기"}],
         }
 
@@ -868,15 +868,18 @@ def test_start_exercise_session_uses_authenticated_user(monkeypatch) -> None:
             "recommendation": {
                 "exercise_recommendation_id": "recommendation-123",
                 "status": "active",
+                "generator": "auto-fit-ai",
             },
             "items": [],
+            "plan_sessions": [{"exercise_plan_session_id": "plan-123", "status": "planned"}],
         }
 
     async def fake_rpc(name: str, payload: dict, settings: main.Settings):
-        assert name == "start_exercise_session"
+        assert name == "start_exercise_plan_session"
         assert payload == {
             "p_user_id": "authenticated-user",
             "p_recommendation_id": "recommendation-123",
+            "p_plan_session_id": "plan-123",
         }
         return {"session": {"user_id": payload["p_user_id"]}, "items": []}
 

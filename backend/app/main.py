@@ -1026,7 +1026,7 @@ def exercise_ai_enabled_for_user(user_id: str) -> bool:
         raise HTTPException(503, detail={"code": "AI_CONFIGURATION_ERROR"})
 
     # A present pilot variable takes precedence, including an empty value.
-    # An empty or invalid list disables generation; rules_v1 is retired.
+    # An empty or invalid list disables AI generation.
     pilot_ids = os.getenv("EXERCISE_AI_TEST_USER_IDS")
     if pilot_ids is None:
         return enabled == "true"
@@ -1128,6 +1128,7 @@ async def fetch_latest_exercise_recommendation(
             "generator,catalog_version,status,created_at"
         ),
         "user_id": f"eq.{user_id}",
+        "generator": "eq.auto-fit-ai",
         "order": "recommendation_date.desc,created_at.desc",
         "limit": "1",
     }
@@ -1171,9 +1172,6 @@ async def fetch_latest_exercise_recommendation(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Supabase exercise item query failed",
         )
-    if recommendation.get("generator") != "auto-fit-ai":
-        return {"recommendation": recommendation, "items": item_response.json(), "plan_sessions": []}
-
     plan_params = {
         "select": (
             "exercise_plan_session_id,exercise_recommendation_id,session_index,"
@@ -3643,9 +3641,8 @@ async def get_latest_exercise_recommendation(
     result = await fetch_latest_exercise_recommendation(user.id, settings)
     if result:
         recommendation_id = result["recommendation"]["exercise_recommendation_id"]
-        is_ai = result["recommendation"].get("generator") == "auto-fit-ai"
-        if is_ai and (os.getenv("EXERCISE_GIF_BASE_URL", "").strip()
-                      or os.getenv("EXERCISE_GIF_BUCKET", "").strip()):
+        if (os.getenv("EXERCISE_GIF_BASE_URL", "").strip()
+                or os.getenv("EXERCISE_GIF_BUCKET", "").strip()):
             context, profile = await asyncio.gather(
                 fetch_exercise_context_for_recommendation(user.id, recommendation_id, settings),
                 fetch_profile(user.id, settings),
@@ -3656,8 +3653,7 @@ async def get_latest_exercise_recommendation(
             )
             profile = None
         result["context"] = context
-        if is_ai:
-            result = await attach_exercise_gif_urls(result, context or {}, profile if context else None)
+        result = await attach_exercise_gif_urls(result, context or {}, profile if context else None)
     return {"generator": result["recommendation"].get("generator") if result else None,
             "result": result}
 
@@ -3683,13 +3679,14 @@ async def generate_exercise_recommendation(
 
 
 @app.post("/api/exercise/sessions/start", tags=["Exercise"])
-async def start_exercise_session(
+async def start_ai_exercise_session(
     body: StartExerciseSessionRequest,
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     latest = await fetch_latest_exercise_recommendation(user.id, settings)
-    if not latest or latest["recommendation"]["status"] != "active":
+    if (not latest or latest["recommendation"].get("generator") != "auto-fit-ai"
+            or latest["recommendation"]["status"] != "active"):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="An active exercise recommendation is required",
@@ -3698,25 +3695,19 @@ async def start_exercise_session(
         "p_user_id": user.id,
         "p_recommendation_id": latest["recommendation"]["exercise_recommendation_id"],
     }
-    if latest["recommendation"].get("generator") == "auto-fit-ai":
-        plan_sessions = latest.get("plan_sessions") or []
-        requested_id = str(body.plan_session_id) if body.plan_session_id else None
-        selected = next(
-            (plan for plan in plan_sessions if plan["exercise_plan_session_id"] == requested_id),
-            None,
-        ) if requested_id else next(
-            (plan for plan in plan_sessions if plan["status"] not in {"completed", "skipped"}),
-            None,
-        )
-        if not selected:
-            raise HTTPException(409, detail="An available exercise plan session is required")
-        payload["p_plan_session_id"] = selected["exercise_plan_session_id"]
-        rpc_name = "start_exercise_plan_session"
-    else:
-        if body.plan_session_id:
-            raise HTTPException(409, detail="This recommendation has no planned sessions")
-        rpc_name = "start_exercise_session"
-    result = await call_exercise_session_rpc(rpc_name, payload, settings)
+    plan_sessions = latest.get("plan_sessions") or []
+    requested_id = str(body.plan_session_id) if body.plan_session_id else None
+    selected = next(
+        (plan for plan in plan_sessions if plan["exercise_plan_session_id"] == requested_id),
+        None,
+    ) if requested_id else next(
+        (plan for plan in plan_sessions if plan["status"] not in {"completed", "skipped"}),
+        None,
+    )
+    if not selected:
+        raise HTTPException(409, detail="An available exercise plan session is required")
+    payload["p_plan_session_id"] = selected["exercise_plan_session_id"]
+    result = await call_exercise_session_rpc("start_exercise_plan_session", payload, settings)
     return {"ok": True, "result": result}
 
 

@@ -9130,8 +9130,8 @@
         "tags": [
           "Exercise"
         ],
-        "summary": "Start Exercise Session",
-        "operationId": "start_exercise_session_api_exercise_sessions_start_post",
+        "summary": "Start Ai Exercise Session",
+        "operationId": "start_ai_exercise_session_api_exercise_sessions_start_post",
         "parameters": [
           {
             "name": "authorization",
@@ -9168,7 +9168,7 @@
                 "schema": {
                   "type": "object",
                   "additionalProperties": true,
-                  "title": "Response Start Exercise Session Api Exercise Sessions Start Post"
+                  "title": "Response Start Ai Exercise Session Api Exercise Sessions Start Post"
                 }
               }
             }

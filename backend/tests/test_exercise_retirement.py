@@ -102,20 +102,32 @@ def test_disabled_ai_does_not_fall_back_to_rules(client, monkeypatch):
     assert response.json()["detail"]["code"] == "AI_DISABLED"
 
 
-def test_historical_rules_remain_readable_outside_pilot(client, monkeypatch):
+def test_unsupported_recommendation_cannot_start(client, monkeypatch):
+    async def latest(user_id, _settings):
+        assert user_id == USER
+        return {"recommendation": {"exercise_recommendation_id": SESSION,
+                "generator": "rules_v1", "status": "active"}, "items": []}
+
+    async def forbidden_start(*_args):
+        pytest.fail("Unsupported recommendation must never start a session")
+
+    monkeypatch.setattr(main, "fetch_latest_exercise_recommendation", latest)
+    monkeypatch.setattr(main, "call_exercise_session_rpc", forbidden_start)
+    response = client.post("/api/exercise/sessions/start", json={})
+    assert response.status_code == 409
+
+
+def test_historical_sessions_remain_readable_outside_pilot(client, monkeypatch):
     monkeypatch.setenv("EXERCISE_AI_ENABLED", "false")
     monkeypatch.setenv("EXERCISE_AI_TEST_USER_IDS", "")
 
     async def latest(user_id, _settings):
         assert user_id == USER
-        return {"recommendation": {"exercise_recommendation_id": SESSION,
-                "generator": "rules_v1", "status": "completed"}, "items": []}
+        return {"session": {"exercise_session_id": SESSION, "status": "completed",
+                "plan_session_id": None}, "logs": [{"exercise_name": "과거 운동"}]}
 
-    async def context(*_args):
-        return {}
-
-    monkeypatch.setattr(main, "fetch_latest_exercise_recommendation", latest)
-    monkeypatch.setattr(main, "fetch_exercise_context_for_recommendation", context)
-    response = client.get("/api/exercise/recommendations/latest")
+    monkeypatch.setattr(main, "fetch_latest_exercise_session", latest)
+    response = client.get("/api/exercise/sessions/latest")
     assert response.status_code == 200
-    assert response.json()["generator"] == "rules_v1"
+    assert response.json()["result"]["session"]["status"] == "completed"
+    assert response.json()["result"]["logs"][0]["exercise_name"] == "과거 운동"
