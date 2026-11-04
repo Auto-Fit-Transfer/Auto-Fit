@@ -323,13 +323,13 @@ export default function TotalAnalysisScreen() {
   );
 }
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F4F5F7' },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
   header: { minHeight: 62, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
   back: { position: 'absolute', left: 20, bottom: 7, height: 42, width: 42, justifyContent: 'center', zIndex: 1 },
   backText: { color: '#27262D', fontSize: 32, lineHeight: 38 },
   headerTitle: { color: '#27262D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
   content: { alignSelf: 'stretch', marginHorizontal: 20, marginTop: 20, gap: 18 },
-  scoreCard: { marginHorizontal: 20, marginTop: 20, borderRadius: 16, borderWidth: 1, borderColor: '#E4E5EB', backgroundColor: '#FFFFFF', padding: 20, gap: 12 },
+  scoreCard: { marginHorizontal: 20, marginTop: 20, borderRadius: 16, borderWidth: 1, borderColor: '#E4E5EB', backgroundColor: '#FAFBFC', padding: 20, gap: 12 },
   scoreLabel: { color: '#514770', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
   scoreRow: { flexDirection: 'row', alignItems: 'baseline' },
   score: { fontFamily: fontFamilies.pretendardBold, fontSize: 42, color: '#5246C6' },
@@ -341,13 +341,13 @@ const s = StyleSheet.create({
   scoreBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   scoreMessage: { color: '#878190', fontFamily: fontFamilies.pretendardRegular, fontSize: 12, flex: 1 },
   tierLink: { marginTop: 6, paddingTop: 18, borderTopWidth: 1, borderTopColor: '#E4E5EB', flexDirection: 'row', alignItems: 'center', gap: 10 },
-  tierIcon: { height: 36, width: 36, borderRadius: 18, backgroundColor: '#F1F0F9', alignItems: 'center', justifyContent: 'center' },
+  tierIcon: { height: 36, width: 36, borderRadius: 18, backgroundColor: '#ECE9FF', alignItems: 'center', justifyContent: 'center' },
   tierIconText: { color: '#5246C6', fontSize: 22 },
   tierCopy: { flex: 1, gap: 2 },
   tierLabel: { color: '#4F4862', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   tierDescription: { color: '#9C96A8', fontSize: 11 },
   tierChevron: { color: '#5246C6', fontSize: 22 },
-  goal: { borderRadius: 16, borderWidth: 1, borderColor: '#E4E5EB', flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 74, backgroundColor: '#FFFFFF' },
+  goal: { borderRadius: 16, borderWidth: 1, borderColor: '#E4E5EB', flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 74, backgroundColor: '#FAFBFC' },
   goalCopy: { flex: 1, flexShrink: 1, gap: 5, minWidth: 0 },
   icon: {
     width: 40,

@@ -216,7 +216,7 @@ function UploadOption({
 }
 
 const styles = StyleSheet.create({
-  root: { alignSelf: 'center', backgroundColor: '#F4F5F7', flex: 1, maxWidth: 412, width: '100%' },
+  root: { alignSelf: 'center', backgroundColor: '#FFFFFF', flex: 1, maxWidth: 412, width: '100%' },
   header: { paddingHorizontal: 20 },
   back: { height: 42, justifyContent: 'center', width: 42 },
   backText: { color: '#222227', fontSize: 32, lineHeight: 36 },
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   description: { color: '#777780', fontSize: 13, lineHeight: 19 },
   options: { gap: 9, marginTop: 11 },
   option: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFBFC',
     alignItems: 'center',
     borderColor: '#E7E7EC',
     borderRadius: 9,
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   },
   selected: { gap: 9 },
   fileRow: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFBFC',
     alignItems: 'center',
     borderColor: '#E7E7EC',
     borderRadius: 8,
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   },
   fileName: { color: '#333339', flex: 1, fontSize: 13, marginRight: 8 },
   examples: {
-    backgroundColor: '#F4F5F7',
+    backgroundColor: '#FAFBFC',
     borderColor: '#ECECF1',
     borderRadius: 9,
     borderWidth: 1,
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   exampleTags: { color: '#9999A1', fontSize: 10, marginTop: 2 },
   exampleDivider: { backgroundColor: '#E7E7EC', height: 1, marginVertical: 12 },
   privacy: { color: '#9999A1', fontSize: 11, lineHeight: 17, marginTop: 5 },
-  footer: { backgroundColor: '#F4F5F7', gap: 8, paddingHorizontal: 20, paddingTop: 8 },
+  footer: { backgroundColor: '#FFFFFF', gap: 8, paddingHorizontal: 20, paddingTop: 8 },
   primaryButton: {
     alignItems: 'center',
     backgroundColor: '#5246C6',

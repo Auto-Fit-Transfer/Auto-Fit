@@ -95,13 +95,13 @@ export default function RunLive() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F4F5F7' },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { paddingHorizontal: 20, gap: 18 },
   header: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { fontSize: 32, color: '#1E1D24', lineHeight: 36 },
   headerTitle: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-  liveBadge: { backgroundColor: '#F1F0F9', color: purple, fontSize: 11, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 7 },
-  hero: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 16, padding: 22, alignItems: 'center', gap: 12 },
+  liveBadge: { backgroundColor: '#ECE9FF', color: purple, fontSize: 11, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 7 },
+  hero: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 16, padding: 22, alignItems: 'center', gap: 12 },
   heroLabel: { color: '#777681', fontSize: 13 },
   heroTime: { color: '#1E1D24', fontSize: 50, fontFamily: fontFamilies.pretendardBold, fontVariant: ['tabular-nums'] },
   metrics: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', borderTopWidth: 1, borderTopColor: '#E4E5EB', paddingTop: 18 },
@@ -116,6 +116,6 @@ const styles = StyleSheet.create({
   hint: { color: '#777681', fontSize: 12, lineHeight: 18 },
   primary: { height: 51, backgroundColor: purple, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   primaryText: { color: '#FFF', fontSize: 15, fontFamily: fontFamilies.pretendardBold },
-  secondary: { height: 48, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  secondary: { height: 48, backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { color: '#1E1D24', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
 });

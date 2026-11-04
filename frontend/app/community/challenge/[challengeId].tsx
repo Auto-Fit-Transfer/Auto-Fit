@@ -109,12 +109,12 @@ export default function ChallengeDetail() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F4F5F7' }, content: { paddingHorizontal: 20, gap: 17 },
+  root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, gap: 17 },
   header: { height: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, back: { fontSize: 32, lineHeight: 36, color: '#1E1D24' }, title: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
   phase: { alignSelf: 'flex-start', color: '#24835E', backgroundColor: '#E8F6EF', borderRadius: 7, overflow: 'hidden', paddingHorizontal: 9, paddingVertical: 6, fontSize: 11, marginTop: 10 },
   hero: { color: '#1E1D24', fontSize: 24, fontFamily: fontFamilies.pretendardBold }, body: { color: '#55545F', fontSize: 13, lineHeight: 20 }, caption: { color: '#777681', fontSize: 11, lineHeight: 16 },
-  stats: { flexDirection: 'row', gap: 8 }, stat: { flex: 1, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 10, padding: 11, gap: 6 }, statLabel: { color: '#777681', fontSize: 11 }, statValue: { color: '#1E1D24', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-  card: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 14, padding: 16, gap: 12 }, row: { flexDirection: 'row', justifyContent: 'space-between' }, section: { color: '#1E1D24', fontSize: 15, fontFamily: fontFamilies.pretendardBold }, progressValue: { color: purple, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
+  stats: { flexDirection: 'row', gap: 8 }, stat: { flex: 1, backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 10, padding: 11, gap: 6 }, statLabel: { color: '#777681', fontSize: 11 }, statValue: { color: '#1E1D24', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
+  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 14, padding: 16, gap: 12 }, row: { flexDirection: 'row', justifyContent: 'space-between' }, section: { color: '#1E1D24', fontSize: 15, fontFamily: fontFamilies.pretendardBold }, progressValue: { color: purple, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
   track: { height: 7, borderRadius: 5, backgroundColor: '#ECECF0', overflow: 'hidden' }, fill: { height: 7, backgroundColor: purple }, step: { color: '#55545F', fontSize: 12, lineHeight: 18 }, notice: { backgroundColor: '#FFF4E2', borderRadius: 9, padding: 12 }, noticeText: { color: '#8E641C', fontSize: 12 },
   button: { height: 50, backgroundColor: purple, borderRadius: 10, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 }, outline: { height: 46, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: '#777681', fontSize: 12 }, success: { color: '#24835E', fontSize: 12 }, error: { color: '#A13A2F', fontSize: 12, lineHeight: 18 },
 });

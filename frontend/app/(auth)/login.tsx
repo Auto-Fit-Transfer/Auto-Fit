@@ -5,8 +5,8 @@ import type { SvgProps } from 'react-native-svg';
 
 import EyeSlashIcon from '@/assets/icons/auth-redesign/5facc.svg';
 import EyeIcon from '@/assets/icons/input/Eye.svg';
-import GoogleIcon from '@/assets/icons/auth-redesign/1aa1b.svg';
-import KakaoIcon from '@/assets/icons/auth-redesign/e9a73.svg';
+import GoogleIcon from '@/assets/icons/auth-redesign/google-logo.svg';
+import KakaoIcon from '@/assets/icons/auth-redesign/kakao-symbol.svg';
 import { AuthButton, AuthCard, AuthPage, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import {
   signInWithSocialProvider,
@@ -22,7 +22,7 @@ type SocialLoginButtonProps = {
   label: string;
   icon: ComponentType<SvgProps>;
   onPress: () => void;
-  google?: boolean;
+  kakao?: boolean;
 };
 
 function SocialLoginButton({
@@ -30,7 +30,7 @@ function SocialLoginButton({
   label,
   icon: Icon,
   onPress,
-  google = false,
+  kakao = false,
 }: SocialLoginButtonProps) {
   return (
     <Pressable
@@ -38,13 +38,10 @@ function SocialLoginButton({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.socialButton, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.socialButton, kakao && styles.kakaoButton, pressed && styles.pressed]}
     >
-      <View style={styles.socialIconBox}>
-        <Icon height={google ? 50 : 30} width={google ? 50 : 30} />
-      </View>
-      <Text style={styles.socialLabel}>{label}</Text>
-      <View style={styles.socialSpacer} />
+      <Icon height={kakao ? 20 : 18} width={kakao ? 20 : 18} />
+      <Text style={[styles.socialLabel, kakao && styles.kakaoLabel]}>{label}</Text>
     </Pressable>
   );
 }
@@ -116,7 +113,7 @@ export default function LoginScreen() {
           label="이메일"
           onChangeText={setEmail}
           onSubmitEditing={() => passwordRef.current?.focus()}
-          placeholder="이메일을 입력해 주세요"
+          placeholder="example@email.com"
           returnKeyType="next"
           textContentType="emailAddress"
           value={email}
@@ -140,9 +137,9 @@ export default function LoginScreen() {
               onPress={() => setPasswordVisible(!passwordVisible)}
             >
               {passwordVisible ? (
-                <EyeIcon height={20} width={20} />
+                <EyeSlashIcon height={22} width={22} />
               ) : (
-                <EyeSlashIcon height={20} width={20} />
+                <EyeIcon height={22} width={22} />
               )}
             </Pressable>
           }
@@ -150,17 +147,19 @@ export default function LoginScreen() {
           textContentType="password"
           value={password}
         />
-        <AuthButton
-          loading={activeLoginProvider === 'email'}
-          onPress={handleLogin}
-          title="로그인"
-        />
+        <View style={styles.loginButton}>
+          <AuthButton
+            loading={activeLoginProvider === 'email'}
+            onPress={handleLogin}
+            title="로그인"
+          />
+        </View>
         <View style={styles.accountLinks}>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/password/forgot')}>
+          <Pressable accessibilityRole="button" onPress={() => router.push('/password/forgot')} style={styles.linkButton}>
             <Text style={styles.link}>비밀번호 찾기</Text>
           </Pressable>
-          <Text style={styles.linkDivider}>|</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/signup/step1')}>
+          <View style={styles.linkDivider} />
+          <Pressable accessibilityRole="button" onPress={() => router.push('/signup/step1')} style={styles.linkButton}>
             <Text style={styles.link}>회원가입</Text>
           </Pressable>
         </View>
@@ -174,12 +173,12 @@ export default function LoginScreen() {
         <SocialLoginButton
           disabled={activeLoginProvider !== null}
           icon={KakaoIcon}
-          label="Kakao로 계속하기"
+          kakao
+          label="카카오로 계속하기"
           onPress={() => void handleSocialLogin('kakao')}
         />
         <SocialLoginButton
           disabled={activeLoginProvider !== null}
-          google
           icon={GoogleIcon}
           label="Google로 계속하기"
           onPress={() => void handleSocialLogin('google')}
@@ -190,53 +189,49 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  loginCard: { gap: 18 },
+  loginCard: { gap: 16 },
+  loginButton: { marginTop: 8 },
   accountLinks: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 15,
+    gap: 4,
     justifyContent: 'center',
-    paddingTop: 3,
+    marginTop: -8,
   },
-  linkDivider: { color: '#D3D3DC' },
+  linkButton: { alignItems: 'center', height: 44, justifyContent: 'center', width: 120 },
+  linkDivider: { backgroundColor: colors.border, height: 12, width: 1 },
   link: {
-    color: '#777780',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 13,
-    lineHeight: 22,
+    color: colors.textPrimary,
+    fontFamily: fontFamilies.pretendardMedium,
+    fontSize: 14,
+    lineHeight: 21,
   },
-  divider: { alignItems: 'center', flexDirection: 'row', gap: 12, height: 24 },
+  divider: { alignItems: 'center', flexDirection: 'row', gap: 12, marginBottom: 16, marginTop: 'auto', paddingTop: 24 },
   dividerLine: { backgroundColor: colors.border, flex: 1, height: 1 },
   dividerText: {
     color: colors.textSecondary,
     fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 21,
   },
-  socialGroup: { gap: 10 },
+  socialGroup: { gap: 8 },
   socialButton: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: '#FAFBFC',
     borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
     flexDirection: 'row',
-    height: 50,
-    paddingHorizontal: 16,
-  },
-  socialIconBox: {
-    alignItems: 'center',
-    height: 24,
+    gap: 8,
+    height: 56,
     justifyContent: 'center',
-    overflow: 'hidden',
-    width: 24,
   },
+  kakaoButton: { backgroundColor: '#FEE500', borderWidth: 0 },
   socialLabel: {
-    color: colors.dark,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    textAlign: 'center',
+    color: colors.textPrimary,
+    fontFamily: fontFamilies.pretendardBold,
+    fontSize: 16,
   },
-  socialSpacer: { width: 24 },
+  kakaoLabel: { color: '#000000' },
   pressed: { opacity: 0.75 },
 });

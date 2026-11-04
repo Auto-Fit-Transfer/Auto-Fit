@@ -1,21 +1,36 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { Alert, Keyboard, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Keyboard, Platform, Pressable, StyleSheet, View } from 'react-native';
 
-import EmailIcon from '@/assets/icons/auth-redesign/1790c.svg';
-import EmailEmblem from '@/assets/icons/auth-redesign/c08e0.svg';
-import ShieldIcon from '@/assets/icons/auth-redesign/6e53a.svg';
+import EmailIcon from '@/assets/icons/input/Email.svg';
+import InfoIcon from '@/assets/icons/auth-redesign/info-circle.svg';
 import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
-import { PasswordAuthScreenLayout, PasswordAuthSection } from '@/src/components/auth';
+import { PasswordAuthScreenLayout } from '@/src/components/auth';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
+
+const resendSeconds = 60;
+const formatSentAt = (date: Date) => {
+  const hour = date.getHours();
+  return `${hour < 12 ? '오전' : '오후'} ${hour % 12 || 12}:${String(date.getMinutes()).padStart(2, '0')}`;
+};
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [sentAt, setSentAt] = useState<Date | null>(null);
+  const [wait, setWait] = useState(0);
+  const [resent, setResent] = useState(false);
+
+  useEffect(() => {
+    if (wait <= 0) return undefined;
+    const timer = setTimeout(() => setWait((current) => current - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [wait]);
+
   const sendResetEmail = async () => {
     if (isSending) return;
     const normalizedEmail = email.trim().toLowerCase();
@@ -30,7 +45,9 @@ export default function ForgotPasswordScreen() {
         redirectTo: Linking.createURL('auth/recovery'),
       });
       if (error) throw error;
-      Alert.alert('메일 발송을 요청했습니다', '가입된 이메일이라면 비밀번호 재설정 링크가 도착합니다.');
+      setResent(sentAt !== null);
+      setSentAt(new Date());
+      setWait(resendSeconds);
     } catch (error) {
       console.error('비밀번호 재설정 메일 요청 실패:', error);
       Alert.alert('메일을 보내지 못했습니다', '잠시 후 다시 시도해 주세요.');
@@ -39,108 +56,140 @@ export default function ForgotPasswordScreen() {
     }
   };
 
+  const openMailApp = () => {
+    // shortcut: mailto opens a new message on Android, not the inbox; replace it when a device check shows it matters.
+    void Linking.openURL(Platform.OS === 'ios' ? 'message://' : 'mailto:').catch(() => undefined);
+  };
+
+  const backToLogin = (
+    <Pressable accessibilityRole="button" onPress={() => router.replace('/login')} style={styles.backToLogin}>
+      <Text style={styles.backToLoginText}>로그인으로 돌아가기</Text>
+    </Pressable>
+  );
+
+  if (sentAt) {
+    return (
+      <PasswordAuthScreenLayout
+        description={'아래 주소로 비밀번호를 새로 정하는 링크를 보냈어요.\n링크는 10분 동안 쓸 수 있어요.'}
+        footer={
+          <>
+            <AuthButton onPress={openMailApp} title="메일 앱 열기" />
+            {backToLogin}
+          </>
+        }
+        onBack={() => setSentAt(null)}
+        title="메일을 보냈어요"
+      >
+        <View style={styles.sentCard}>
+          <View style={styles.sentRow}>
+            <EmailIcon height={20} width={20} />
+            <View style={styles.sentCopy}>
+              <Text numberOfLines={1} style={styles.sentEmail}>{email.trim().toLowerCase()}</Text>
+              <Text style={styles.sentTime}>{formatSentAt(sentAt)}에 보냈어요</Text>
+            </View>
+          </View>
+          <View style={styles.sentActions}>
+            <Pressable accessibilityRole="button" onPress={() => setSentAt(null)} style={styles.smallButton}>
+              <Text style={styles.smallButtonText}>주소 바꾸기</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: wait > 0 || isSending }}
+              disabled={wait > 0 || isSending}
+              onPress={() => void sendResetEmail()}
+              style={styles.smallButton}
+            >
+              <Text style={[styles.smallButtonText, wait > 0 && styles.smallButtonDisabled]}>
+                {wait > 0 ? `다시 보내기 ${Math.floor(wait / 60)}:${String(wait % 60).padStart(2, '0')}` : '다시 보내기'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+        {resent ? (
+          <View style={styles.toast}>
+            <Text style={styles.toastText}>메일을 다시 보냈어요</Text>
+          </View>
+        ) : null}
+        <View style={styles.notice}>
+          <InfoIcon height={20} width={20} />
+          <View style={styles.sentCopy}>
+            <Text style={styles.noticeTitle}>메일이 안 오나요?</Text>
+            <Text style={styles.noticeText}>스팸함을 확인해 보세요.</Text>
+          </View>
+        </View>
+      </PasswordAuthScreenLayout>
+    );
+  }
+
   return (
     <PasswordAuthScreenLayout
-      description="가입한 이메일로 비밀번호 재설정 링크를 보내드려요."
+      description="가입한 이메일로 새 비밀번호를 정하는 링크를 보내 드려요. 링크는 10분 동안 쓸 수 있어요."
+      footer={
+        <>
+          <AuthButton loading={isSending} onPress={() => void sendResetEmail()} title="링크 보내기" />
+          {backToLogin}
+        </>
+      }
       onBack={() => router.back()}
-      title="비밀번호 찾기"
+      title="비밀번호를 잊으셨나요?"
     >
-      <PasswordAuthSection top={0} innerStyle={styles.recoveryCard}>
-        <View style={styles.emblem}>
-          <EmailEmblem height={28} width={28} />
-        </View>
-        <AuthTextField
-          accessibilityLabel="이메일"
-          autoCapitalize="none"
-          autoComplete="email"
-          autoCorrect={false}
-          keyboardType="email-address"
-          label="이메일"
-          leftElement={<EmailIcon height={20} width={20} />}
-          onChangeText={setEmail}
-          onSubmitEditing={() => void sendResetEmail()}
-          placeholder="가입 시 입력한 이메일을 입력해 주세요"
-          returnKeyType="send"
-          textContentType="emailAddress"
-          value={email}
-        />
-        <AuthButton loading={isSending} onPress={() => void sendResetEmail()} title="인증 메일 보내기" />
-      </PasswordAuthSection>
-      <PasswordAuthSection card={false} top={0} innerStyle={styles.notice}>
-        <ShieldIcon height={24} width={24} />
-        <View style={styles.noticeText}>
-          <Text style={styles.noticeTitle}>안전하게 비밀번호를 재설정해요</Text>
-          <Text style={styles.noticeDescription}>
-            입력하신 이메일로 재설정 링크를 보내드려요.{`\n`}링크는 10분 동안 유효합니다.
-          </Text>
-        </View>
-      </PasswordAuthSection>
-      <PasswordAuthSection top={0} innerStyle={styles.help}>
-        <Text style={styles.helpTitle}>메일이 오지 않나요?</Text>
-        <Text style={styles.helpDescription}>
-          스팸 메일함을 확인하거나{`\n`}잠시 후 다시 시도해 주세요.
-        </Text>
-      </PasswordAuthSection>
-      <Pressable
-        accessibilityRole="button"
-        onPress={() => router.replace('/login')}
-        style={styles.backToLogin}
-      >
-        <Text style={styles.backToLoginText}>로그인으로 돌아가기</Text>
-      </Pressable>
+      <AuthTextField
+        accessibilityLabel="이메일"
+        autoCapitalize="none"
+        autoComplete="email"
+        autoCorrect={false}
+        keyboardType="email-address"
+        label="이메일"
+        onChangeText={setEmail}
+        onSubmitEditing={() => void sendResetEmail()}
+        placeholder="example@email.com"
+        returnKeyType="send"
+        textContentType="emailAddress"
+        value={email}
+      />
     </PasswordAuthScreenLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  recoveryCard: { gap: 20 },
-  emblem: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSoft,
+  backToLogin: { alignItems: 'center', height: 44, justifyContent: 'center', marginTop: 8 },
+  backToLoginText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  sentCard: {
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
     borderRadius: 16,
-    height: 56,
-    justifyContent: 'center',
-    width: 56,
-  },
-  notice: {
-    backgroundColor: colors.surfaceSoft,
-    borderRadius: 12,
-    flexDirection: 'row',
+    borderWidth: 1,
     gap: 12,
-    minHeight: 98,
     padding: 16,
   },
-  noticeText: { flex: 1, gap: 4 },
-  noticeTitle: {
-    color: colors.dark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 22,
+  sentRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  sentCopy: { flex: 1, gap: 2 },
+  sentEmail: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+  sentTime: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  sentActions: { flexDirection: 'row', gap: 8 },
+  smallButton: {
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#DFE2E7',
+    borderRadius: 8,
+    borderWidth: 1,
+    flex: 1,
+    height: 44,
+    justifyContent: 'center',
   },
-  noticeDescription: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    lineHeight: 20,
+  smallButtonText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  smallButtonDisabled: { color: '#8E8D95' },
+  toast: { backgroundColor: '#17161D', borderRadius: 12, marginTop: -12, padding: 14 },
+  toastText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  notice: {
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 16,
   },
-  help: { gap: 8 },
-  helpTitle: {
-    color: colors.dark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  helpDescription: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 15,
-    lineHeight: 23,
-  },
-  backToLogin: { alignItems: 'center', justifyContent: 'center', minHeight: 48 },
-  backToLoginText: {
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 22,
-  },
+  noticeTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 14, lineHeight: 21 },
+  noticeText: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
 });

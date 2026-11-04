@@ -108,7 +108,7 @@ export default function PostureProcessingScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F4F5F7' },
+  screen: { flex: 1, backgroundColor: '#FFFFFF' },
   header: { height: 66, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
   back: { width: 36, alignItems: 'flex-start', justifyContent: 'center' }, backText: { fontSize: 36, color: '#19191D', lineHeight: 40 },
   headerTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 16, color: '#19191D' },
@@ -127,10 +127,10 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', justifyContent: 'space-between' }, meta: { color: '#686970', fontSize: 13 }, metaStrong: { color: '#19191D', fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
   track: { height: 7, borderRadius: 4, backgroundColor: '#DFE0E3', marginTop: 10, overflow: 'hidden' }, progress: { height: '100%', backgroundColor: '#5246C6', borderRadius: 4 },
   loading: { marginTop: 18 }, error: { color: '#C34543', fontSize: 13, marginTop: 16, lineHeight: 19 },
-  stepCard: { marginTop: 20, borderWidth: 1, borderColor: '#DDE0E6', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 4, backgroundColor: '#F4F5F7' },
+  stepCard: { marginTop: 20, borderWidth: 1, borderColor: '#DDE0E6', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 4, backgroundColor: '#FAFBFC' },
   step: { flexDirection: 'row', alignItems: 'center', minHeight: 62 }, stepBorder: { borderTopWidth: 1, borderTopColor: '#E2E4E8' },
   stepIcon: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: '#DFE2E6', backgroundColor: '#F1F3F5', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  stepDone: { backgroundColor: '#E5F7ED', borderColor: '#E5F7ED' }, stepActive: { borderColor: '#5246C6', backgroundColor: '#F1F0F9' },
+  stepDone: { backgroundColor: '#E5F7ED', borderColor: '#E5F7ED' }, stepActive: { borderColor: '#5246C6', backgroundColor: '#ECE9FF' },
   stepIconText: { color: '#9699A0', fontSize: 12 }, stepDoneText: { color: '#16965E' }, stepCopy: { flex: 1 },
   stepTitle: { color: '#222227', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold }, stepDescription: { color: '#85878D', fontSize: 11, marginTop: 3 }, stepPercent: { color: '#222227', fontSize: 11 },
   note: { color: '#777982', fontSize: 11, lineHeight: 17, marginTop: 16 },

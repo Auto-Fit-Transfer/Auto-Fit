@@ -1,6 +1,10 @@
 import { useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert, Modal, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import CalendarIcon from '@/assets/icons/input/Calendar.svg';
+import CheckIcon from '@/assets/icons/auth-redesign/ab4c2.svg';
+import EyeIcon from '@/assets/icons/input/Eye.svg';
+import EyeSlashIcon from '@/assets/icons/auth-redesign/5facc.svg';
 import { getSignupApiErrorMessage, saveProfile } from '@/src/api/onboarding';
 import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { BirthDatePicker, SignUpScreenLayout } from '@/src/components/auth';
@@ -12,11 +16,16 @@ import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 const consentItems = [
-  { key: 'age', label: '만 14세 이상입니다', required: true },
-  { key: 'service', label: '서비스 이용약관 동의', required: true },
-  { key: 'privacy', label: '개인정보 수집 및 이용 동의', required: true },
-  { key: 'health', label: '민감정보(건강정보) 수집 및 이용 동의', required: true },
-  { key: 'marketing', label: '마케팅 알림 수신 동의', required: false },
+  { key: 'age', label: '만 14세 이상이에요', required: true },
+  { key: 'service', label: '서비스 이용약관', required: true },
+  { key: 'privacy', label: '개인정보 수집 · 이용', required: true },
+  {
+    key: 'health',
+    label: '건강정보(민감정보) 수집 · 이용',
+    detail: '검진 결과 · 체성분 · 알레르기 · 운동 기록을 맞춤 추천에 써요',
+    required: true,
+  },
+  { key: 'marketing', label: '혜택 · 이벤트 알림 받기', required: false },
 ] as const;
 type ConsentKey = (typeof consentItems)[number]['key'];
 const formatDate = (date: Date) =>
@@ -187,13 +196,13 @@ export default function SignUpStep1Screen() {
                   accessibilityLabel={passwordVisible ? '비밀번호 숨기기' : '비밀번호 보기'}
                   onPress={() => setPasswordVisible((current) => !current)}
                 >
-                  <Text style={styles.visibility}>{passwordVisible ? '숨기기' : '보기'}</Text>
+                  {passwordVisible ? <EyeSlashIcon height={22} width={22} /> : <EyeIcon height={22} width={22} />}
                 </Pressable>
               }
               value={password}
             />
             <Text style={styles.hint}>
-              영문 대소문자, 숫자, 특수문자를 포함해 8자 이상 입력해 주세요.
+              8자 이상, 영문 대소문자 · 숫자 · 특수문자를 섞어 주세요
             </Text>
           </>
         ) : null}
@@ -206,9 +215,9 @@ export default function SignUpStep1Screen() {
             style={styles.select}
           >
             <Text style={[styles.selectText, !birthday && styles.placeholder]}>
-              {birthday ? formatDate(birthday).replace(/-/g, '.') : '생년월일을 선택해 주세요'}
+              {birthday ? formatDate(birthday).replace(/-/g, '. ') : '생년월일을 선택해 주세요'}
             </Text>
-            <Text style={styles.chevron}>⌄</Text>
+            <CalendarIcon height={22} width={22} />
           </Pressable>
         </View>
         <View>
@@ -281,8 +290,13 @@ export default function SignUpStep1Screen() {
               onPress={() => setConsents(allChecked ? [] : consentItems.map((item) => item.key))}
               style={styles.allRow}
             >
-              <Text style={styles.checkbox}>{allChecked ? '☑' : '□'}</Text>
-              <Text style={styles.allText}>전체 동의하기</Text>
+              <View style={[styles.checkbox, allChecked && styles.checkboxOn]}>
+                {allChecked ? <CheckIcon height={16} width={16} /> : null}
+              </View>
+              <View style={styles.consentCopy}>
+                <Text style={styles.allText}>모두 동의하기</Text>
+                <Text style={styles.allHint}>선택 항목도 함께 동의해요</Text>
+              </View>
             </Pressable>
             {consentItems.map((item) => (
               <Pressable
@@ -292,11 +306,16 @@ export default function SignUpStep1Screen() {
                 onPress={() => toggleConsent(item.key)}
                 style={styles.consentRow}
               >
-                <Text style={styles.checkbox}>{consents.includes(item.key) ? '☑' : '□'}</Text>
-                <Text style={styles.consentText}>
-                  <Text style={styles.required}>{item.required ? '[필수] ' : '[선택] '}</Text>
-                  {item.label}
-                </Text>
+                <View style={[styles.checkbox, consents.includes(item.key) && styles.checkboxOn]}>
+                  {consents.includes(item.key) ? <CheckIcon height={16} width={16} /> : null}
+                </View>
+                <View style={styles.consentCopy}>
+                  <Text style={styles.consentText}>
+                    <Text style={styles.required}>{item.required ? '필수  ' : '선택  '}</Text>
+                    {item.label}
+                  </Text>
+                  {'detail' in item ? <Text style={styles.consentDetail}>{item.detail}</Text> : null}
+                </View>
               </Pressable>
             ))}
             <AuthButton
@@ -313,80 +332,93 @@ export default function SignUpStep1Screen() {
 }
 
 const styles = StyleSheet.create({
-  form: { gap: 18 },
+  form: { gap: 20 },
   hint: {
-    color: '#87878F',
+    color: '#5E5D66',
     fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 11,
+    fontSize: 14,
+    lineHeight: 21,
     marginTop: -12,
   },
   label: {
-    color: '#333339',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 13,
-    marginBottom: 6,
+    color: '#17161D',
+    fontFamily: fontFamilies.pretendardMedium,
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: 8,
   },
   select: {
     alignItems: 'center',
-    backgroundColor: '#F4F5F7',
-    borderColor: '#E6E6ED',
-    borderRadius: 8,
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
+    borderRadius: 12,
     borderWidth: 1,
     flexDirection: 'row',
-    height: 48,
+    height: 52,
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
   },
-  selectText: { color: '#222227', fontSize: 14 },
-  placeholder: { color: '#9B9BA4' },
-  chevron: { color: '#888890', fontSize: 23 },
+  selectText: { color: '#17161D', fontSize: 16 },
+  placeholder: { color: '#5E5D66' },
   genderRow: { flexDirection: 'row', gap: 8 },
   gender: {
     alignItems: 'center',
-    backgroundColor: '#F4F5F7',
-    borderColor: '#E6E6ED',
-    borderRadius: 8,
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
+    borderRadius: 999,
     borderWidth: 1,
     flex: 1,
-    height: 48,
+    height: 40,
     justifyContent: 'center',
   },
-  genderSelected: { backgroundColor: '#F1F0F9', borderColor: '#5246C6' },
-  genderText: { color: '#777780', fontSize: 14 },
-  genderTextSelected: { color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold },
-  visibility: { color: '#777780', fontSize: 12 },
+  genderSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
+  genderText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  genderTextSelected: { color: '#FFFFFF' },
   modalRoot: { flex: 1, justifyContent: 'flex-end' },
-  scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.42)' },
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(13, 13, 20, 0.45)' },
   sheet: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    gap: 13,
-    paddingBottom: 35,
-    paddingHorizontal: 22,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    gap: 16,
+    paddingBottom: 34,
+    paddingHorizontal: 20,
     paddingTop: 12,
   },
   handle: {
     alignSelf: 'center',
-    backgroundColor: '#D9D9DF',
+    backgroundColor: '#DFE2E7',
     borderRadius: 3,
     height: 4,
-    marginBottom: 12,
     width: 40,
   },
-  sheetTitle: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 22 },
-  sheetDescription: { color: '#777780', fontSize: 13, marginBottom: 8 },
+  sheetTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, marginTop: 4 },
+  sheetDescription: { color: '#5E5D66', fontSize: 14, lineHeight: 21, marginTop: -10 },
   allRow: {
     alignItems: 'center',
-    borderBottomColor: '#ECECF1',
-    borderBottomWidth: 1,
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
+    borderRadius: 12,
+    borderWidth: 1,
     flexDirection: 'row',
-    gap: 10,
-    paddingBottom: 16,
+    gap: 12,
+    padding: 16,
   },
-  allText: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
-  consentRow: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 31 },
-  consentText: { color: '#44444B', flex: 1, fontSize: 13 },
-  required: { color: '#777780' },
-  checkbox: { color: '#5246C6', fontSize: 21, width: 23 },
+  consentCopy: { flex: 1, gap: 2 },
+  allText: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+  allHint: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  consentRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, minHeight: 24 },
+  consentText: { color: '#17161D', fontSize: 14, lineHeight: 24 },
+  consentDetail: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  required: { fontFamily: fontFamilies.pretendardBold },
+  checkbox: {
+    alignItems: 'center',
+    borderColor: '#8E8D95',
+    borderRadius: 6,
+    borderWidth: 1,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  checkboxOn: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
 });

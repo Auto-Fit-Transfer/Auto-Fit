@@ -264,7 +264,7 @@ function Chip({
 }
 
 const styles = StyleSheet.create({
-  root: { alignSelf: 'center', backgroundColor: '#F4F5F7', flex: 1, maxWidth: 412, width: '100%' },
+  root: { alignSelf: 'center', backgroundColor: '#FFFFFF', flex: 1, maxWidth: 412, width: '100%' },
   header: { alignItems: 'center', flexDirection: 'row', paddingHorizontal: 19 },
   readRow: { alignItems: 'flex-end', paddingHorizontal: 20, paddingTop: 4 },
   back: { height: 44, justifyContent: 'center', width: 38 },
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     alignItems: 'center',
-    backgroundColor: '#F4F5F7',
+    backgroundColor: '#FAFBFC',
     borderColor: '#E6E6ED',
     borderRadius: 18,
     borderWidth: 1,
@@ -292,12 +292,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 14,
   },
-  chipSelected: { backgroundColor: '#F1F0F9', borderColor: '#5246C6' },
+  chipSelected: { backgroundColor: '#ECE9FF', borderColor: '#5246C6' },
   chipText: { color: '#66666F', fontSize: 12 },
   chipTextSelected: { color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold },
   discomfort: { gap: 9 },
   input: {
-    backgroundColor: '#F4F5F7',
+    backgroundColor: '#FAFBFC',
     borderColor: '#E6E6ED',
     borderRadius: 8,
     borderWidth: 1,
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   },
   noticeIcon: { color: '#B77E2C', fontSize: 16 },
   noticeText: { color: '#8A704D', flex: 1, fontSize: 11, lineHeight: 16 },
-  footer: { backgroundColor: '#F4F5F7', paddingHorizontal: 20, paddingTop: 10 },
+  footer: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 10 },
   button: {
     alignItems: 'center',
     backgroundColor: '#5246C6',

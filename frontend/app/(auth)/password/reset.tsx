@@ -1,20 +1,15 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
 
-import LockIcon from '@/assets/icons/auth-redesign/6a5e9.svg';
+import CheckIcon from '@/assets/icons/system/Check.svg';
 import EyeSlashIcon from '@/assets/icons/auth-redesign/5facc.svg';
 import EyeIcon from '@/assets/icons/input/Eye.svg';
 import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
-import { PasswordAuthScreenLayout, PasswordAuthSection } from '@/src/components/auth';
-import { colors, fontFamilies } from '@/src/theme';
+import { PasswordAuthScreenLayout } from '@/src/components/auth';
+import { getSupabaseClient } from '@/src/lib/supabase';
+import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
-
-const passwordConditions = [
-  '8자 이상 입력해 주세요.',
-  '영문, 숫자, 특수문자를 포함해 주세요.',
-  '연속되거나 반복되는 문자 사용은 피해 주세요.',
-] as const;
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -23,73 +18,82 @@ export default function ResetPasswordScreen() {
   const [confirmation, setConfirmation] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
-  const passwordsMatch = confirmation.length === 0 || password === confirmation;
-  const completeReset = () => {
+  const [saving, setSaving] = useState(false);
+  const conditions = [
+    { label: '8자 이상', met: password.length >= 8 },
+    {
+      label: '영문 · 숫자 · 특수문자를 모두 섞기',
+      met: /[A-Za-z]/.test(password) && /\d/.test(password) && /[^A-Za-z0-9]/.test(password),
+    },
+    { label: '두 칸이 같아요', met: password.length > 0 && password === confirmation },
+    { label: '같은 글자를 3번 넘게 잇지 않기', met: password.length > 0 && !/(.)\1{3}/.test(password) },
+  ];
+  const ready = conditions.every((condition) => condition.met);
+
+  const completeReset = async () => {
     Keyboard.dismiss();
-    if (passwordsMatch) router.replace('/login');
+    if (!ready || saving) return;
+    setSaving(true);
+    try {
+      const { error } = await getSupabaseClient().auth.updateUser({ password });
+      if (error) throw error;
+      router.replace('/login');
+    } catch (error) {
+      console.error('비밀번호 변경 실패:', error);
+      Alert.alert('비밀번호를 바꾸지 못했습니다', '메일의 링크를 다시 눌러 시도해 주세요.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <PasswordAuthScreenLayout
-      description="안전한 비밀번호는 계정 보호에 도움이 됩니다."
-      footer={
-        <AuthButton disabled={!passwordsMatch} onPress={completeReset} title="비밀번호 변경" />
-      }
+      description=""
+      footer={<AuthButton disabled={!ready} loading={saving} onPress={() => void completeReset()} title="비밀번호 바꾸기" />}
       onBack={() => router.back()}
-      title="비밀번호 재설정"
+      title="새 비밀번호를 정해 주세요"
     >
-      <PasswordAuthSection top={0} innerStyle={styles.card}>
-        <AuthTextField
-          accessibilityLabel="새 비밀번호"
-          autoCapitalize="none"
-          autoComplete="new-password"
-          label="새 비밀번호"
-          leftElement={<LockIcon height={20} width={20} />}
-          onChangeText={setPassword}
-          onSubmitEditing={() => confirmationRef.current?.focus()}
-          placeholder="새 비밀번호를 입력해 주세요"
-          returnKeyType="next"
-          rightElement={
-            <VisibilityButton
-              onPress={() => setPasswordVisible(!passwordVisible)}
-              visible={passwordVisible}
-            />
-          }
-          secureTextEntry={!passwordVisible}
-          textContentType="newPassword"
-          value={password}
-        />
-        <AuthTextField
-          ref={confirmationRef}
-          accessibilityLabel="새 비밀번호 확인"
-          autoCapitalize="none"
-          autoComplete="new-password"
-          label="새 비밀번호 확인"
-          leftElement={<LockIcon height={20} width={20} />}
-          onChangeText={setConfirmation}
-          onSubmitEditing={completeReset}
-          placeholder="새 비밀번호를 다시 입력해 주세요"
-          returnKeyType="done"
-          rightElement={
-            <VisibilityButton
-              onPress={() => setConfirmationVisible(!confirmationVisible)}
-              visible={confirmationVisible}
-            />
-          }
-          secureTextEntry={!confirmationVisible}
-          textContentType="newPassword"
-          value={confirmation}
-        />
-        <View style={styles.conditions}>
-          <Text style={styles.conditionsTitle}>비밀번호 조건</Text>
-          {passwordConditions.map((condition) => (
-            <View key={condition} style={styles.conditionRow}>
-              <View style={styles.bullet} />
-              <Text style={styles.conditionText}>{condition}</Text>
-            </View>
-          ))}
-        </View>
-      </PasswordAuthSection>
+      <AuthTextField
+        accessibilityLabel="새 비밀번호"
+        autoCapitalize="none"
+        autoComplete="new-password"
+        label="새 비밀번호"
+        onChangeText={setPassword}
+        onSubmitEditing={() => confirmationRef.current?.focus()}
+        placeholder="새 비밀번호를 입력해 주세요"
+        returnKeyType="next"
+        rightElement={
+          <VisibilityButton onPress={() => setPasswordVisible(!passwordVisible)} visible={passwordVisible} />
+        }
+        secureTextEntry={!passwordVisible}
+        textContentType="newPassword"
+        value={password}
+      />
+      <AuthTextField
+        ref={confirmationRef}
+        accessibilityLabel="한 번 더 입력"
+        autoCapitalize="none"
+        autoComplete="new-password"
+        label="한 번 더 입력"
+        onChangeText={setConfirmation}
+        onSubmitEditing={() => void completeReset()}
+        placeholder="새 비밀번호를 다시 입력해 주세요"
+        returnKeyType="done"
+        rightElement={
+          <VisibilityButton onPress={() => setConfirmationVisible(!confirmationVisible)} visible={confirmationVisible} />
+        }
+        secureTextEntry={!confirmationVisible}
+        textContentType="newPassword"
+        value={confirmation}
+      />
+      <View style={styles.conditions}>
+        {conditions.map((condition) => (
+          <View key={condition.label} style={styles.conditionRow}>
+            <CheckIcon color={condition.met ? '#0E7C48' : '#8E8D95'} height={18} width={18} />
+            <Text style={[styles.conditionText, condition.met && styles.conditionMet]}>{condition.label}</Text>
+          </View>
+        ))}
+      </View>
     </PasswordAuthScreenLayout>
   );
 }
@@ -102,27 +106,21 @@ function VisibilityButton({ onPress, visible }: { onPress: () => void; visible: 
       hitSlop={10}
       onPress={onPress}
     >
-      {visible ? <EyeIcon height={20} width={20} /> : <EyeSlashIcon height={20} width={20} />}
+      {visible ? <EyeSlashIcon height={22} width={22} /> : <EyeIcon height={22} width={22} />}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { gap: 20 },
-  conditions: { backgroundColor: colors.surfaceSoft, borderRadius: 12, gap: 10, padding: 16 },
-  conditionsTitle: {
-    color: colors.dark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 4,
+  conditions: {
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 10,
+    padding: 16,
   },
-  conditionRow: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 20 },
-  bullet: { backgroundColor: colors.textSecondary, borderRadius: 2, height: 4, width: 4 },
-  conditionText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    lineHeight: 20,
-  },
+  conditionRow: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 21 },
+  conditionText: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
+  conditionMet: { color: '#17161D' },
 });

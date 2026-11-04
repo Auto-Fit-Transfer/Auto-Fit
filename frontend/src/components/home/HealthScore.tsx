@@ -68,7 +68,7 @@ export function HealthScore({
           cy={graphCenter}
           fill="none"
           r={graphRadius}
-          stroke="#F1F0F9"
+          stroke="#ECE9FF"
           strokeWidth={23}
         />
         {score !== null ? (
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   },
   healthIconCircle: {
     alignItems: 'center',
-    backgroundColor: '#F1F0F9',
+    backgroundColor: '#ECE9FF',
     borderRadius: radius.round,
     height: 60,
     justifyContent: 'center',
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     alignItems: 'center',
-    backgroundColor: '#F1F0F9',
+    backgroundColor: '#ECE9FF',
     borderRadius: radius.round,
     height: 40,
     justifyContent: 'center',

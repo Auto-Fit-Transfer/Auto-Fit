@@ -1669,7 +1669,7 @@ const styles = StyleSheet.create({
     lineHeight: 17,
   },
   metricInput: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFBFC',
     borderColor: '#D9DEE5',
     borderRadius: 8,
     borderWidth: 1,
@@ -1726,7 +1726,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   confirmButton: {
-    backgroundColor: '#F1F0F9',
+    backgroundColor: '#ECE9FF',
   },
   confirmButtonText: {
     color: '#1371EB',

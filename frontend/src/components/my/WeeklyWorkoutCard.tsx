@@ -77,7 +77,7 @@ export function WeeklyWorkoutCard() {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: '#FFFFFF', borderColor: '#E6E6ED', borderRadius: 14, borderWidth: 1, gap: 11, padding: 16 },
+  card: { backgroundColor: '#FAFBFC', borderColor: '#E6E6ED', borderRadius: 14, borderWidth: 1, gap: 11, padding: 16 },
   label: { color: '#777781', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
   valueRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   value: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 20 },

@@ -116,20 +116,20 @@ export default function ExerciseCompletionScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F4F5F7' }, content: { paddingHorizontal: 20, gap: 17 },
+  root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, gap: 17 },
   header: { height: 43, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   back: { width: 32, color: ink, fontSize: 32 }, headerTitle: { color: ink, fontSize: 16, fontFamily: fontFamilies.pretendardBold }, headerSpacer: { width: 32 },
   check: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EAF7F0', alignItems: 'center', justifyContent: 'center', marginTop: 6 },
   checkText: { color: '#24925C', fontSize: 21 }, title: { color: ink, fontSize: 22, fontFamily: fontFamilies.pretendardBold },
-  subtitle: { color: muted, fontSize: 13 }, card: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: border, borderRadius: 12, padding: 15, gap: 8 },
+  subtitle: { color: muted, fontSize: 13 }, card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: border, borderRadius: 12, padding: 15, gap: 8 },
   metricRow: { flexDirection: 'row' }, metric: { flex: 1, alignItems: 'center', gap: 4 },
   metricLabel: { color: muted, fontSize: 11 }, metricValue: { color: ink, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
   sectionTitle: { color: ink, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
   body: { color: muted, fontSize: 12, lineHeight: 18 }, optional: { color: muted, fontSize: 11, fontFamily: fontFamilies.pretendardMedium },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  chip: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: border, borderRadius: 22, paddingHorizontal: 11, paddingVertical: 9 },
-  selectedChip: { backgroundColor: '#F1F0F9', borderColor: purple }, chipText: { color: ink, fontSize: 11 }, selectedText: { color: purple },
-  note: { backgroundColor: '#FFFFFF', borderColor: border, borderWidth: 1, borderRadius: 10, minHeight: 70, color: ink, padding: 12, fontSize: 12, textAlignVertical: 'top' },
+  chip: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: border, borderRadius: 22, paddingHorizontal: 11, paddingVertical: 9 },
+  selectedChip: { backgroundColor: '#ECE9FF', borderColor: purple }, chipText: { color: ink, fontSize: 11 }, selectedText: { color: purple },
+  note: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 10, minHeight: 70, color: ink, padding: 12, fontSize: 12, textAlignVertical: 'top' },
   primaryButton: { height: 50, borderRadius: 9, backgroundColor: purple, alignItems: 'center', justifyContent: 'center' },
   primaryText: { color: '#FFF', fontSize: 15, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 },
 });

@@ -28,10 +28,10 @@ export default function BodyGuide() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F4F5F7' }, content: { paddingHorizontal: 20, gap: 18 },
+  root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, gap: 18 },
   header: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, back: { color: '#1E1D24', fontSize: 32, lineHeight: 36 }, title: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
   hero: { color: '#1E1D24', fontSize: 22, fontFamily: fontFamilies.pretendardBold, marginTop: 12 }, caption: { color: '#777681', fontSize: 12, lineHeight: 18 },
-  chips: { flexDirection: 'row', gap: 7 }, chip: { flex: 1, borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 20, paddingVertical: 9, alignItems: 'center', backgroundColor: '#FFF' }, chipSelected: { backgroundColor: '#F1F0F9', borderColor: purple }, chipText: { color: '#777681', fontSize: 12 }, chipTextSelected: { color: purple },
-  card: { backgroundColor: '#FFF', borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 14, padding: 18, gap: 10 }, cardTitle: { color: '#1E1D24', fontSize: 15, fontFamily: fontFamilies.pretendardBold }, body: { color: '#55545F', fontSize: 13, lineHeight: 20 },
+  chips: { flexDirection: 'row', gap: 7 }, chip: { flex: 1, borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 20, paddingVertical: 9, alignItems: 'center', backgroundColor: '#FAFBFC' }, chipSelected: { backgroundColor: '#ECE9FF', borderColor: purple }, chipText: { color: '#777681', fontSize: 12 }, chipTextSelected: { color: purple },
+  card: { backgroundColor: '#FAFBFC', borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 14, padding: 18, gap: 10 }, cardTitle: { color: '#1E1D24', fontSize: 15, fontFamily: fontFamilies.pretendardBold }, body: { color: '#55545F', fontSize: 13, lineHeight: 20 },
   button: { backgroundColor: purple, height: 50, borderRadius: 10, justifyContent: 'center', alignItems: 'center' }, buttonText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
 });

@@ -4,11 +4,11 @@ import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { AuthButton, AuthCard, AuthPage } from './AuthRedesign';
 
 const copy = {
-  basic: ['기본 정보를 알려 주세요', '건강한 변화를 위한 첫걸음, 함께 시작해요.'],
-  verify: ['메일로 받은 6자리를 입력해 주세요', '입력한 이메일로 인증 코드를 보냈어요.'],
-  allergy: ['피해야 하는 음식이 있나요?', '알레르기가 있다면 선택해 주세요.'],
-  goal: ['어떤 목표를 가지고 있나요?', '지금 가장 중요한 목표를 알려 주세요.'],
-  detail: ['목표를 조금 더 자세히 알려 주세요', '나에게 맞는 운동 계획을 준비할게요.'],
+  basic: ['기본 정보를 알려 주세요', '로그인과 맞춤 추천에 써요.'],
+  verify: ['메일로 받은 6자리를\n입력해 주세요', ''],
+  allergy: ['피해야 하는 음식이 있나요?', '식단을 추천할 때 빼 드려요. 여러 개 고를 수 있어요.'],
+  goal: ['가장 이루고 싶은 목표는\n무엇인가요?', ''],
+  detail: ['목표를 조금만 더 알려 주세요', '고른 내용으로 첫 식단과 운동을 맞춰 드려요.'],
 } as const;
 
 export interface SignUpScreenLayoutProps {
@@ -23,6 +23,8 @@ export interface SignUpScreenLayoutProps {
   alignStepCta?: boolean;
   ctaDisabled?: boolean;
   ctaLoading?: boolean;
+  heading?: string;
+  footerExtra?: ReactNode;
 }
 
 export interface SignUpSectionProps {
@@ -48,6 +50,8 @@ export function SignUpScreenLayout({
   contentOffsetY = 0,
   ctaDisabled = false,
   ctaLoading = false,
+  heading: headingOverride,
+  footerExtra,
 }: SignUpScreenLayoutProps) {
   const key =
     totalSteps === 3
@@ -61,18 +65,20 @@ export function SignUpScreenLayout({
       contentOffsetY={contentOffsetY}
       description={description}
       footer={
-        <AuthButton
-          disabled={ctaDisabled}
-          loading={ctaLoading}
-          onPress={onContinue}
-          title={ctaLabel}
-        />
+        <>
+          <AuthButton
+            disabled={ctaDisabled}
+            loading={ctaLoading}
+            onPress={onContinue}
+            title={ctaLabel}
+          />
+          {footerExtra}
+        </>
       }
-      heading={heading}
+      heading={headingOverride ?? heading}
       mode="signup"
       onBack={onBack}
       step={currentStep}
-      title="회원가입"
       totalSteps={totalSteps}
     >
       {children}

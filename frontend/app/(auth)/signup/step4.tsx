@@ -9,13 +9,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
+import { SignUpScreenLayout } from '@/src/components/auth';
 import {
   useSignup,
   type SignupExerciseExperience,
   type SignupExerciseGoal,
 } from '@/src/features/signup/SignupContext';
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies } from '@/src/theme';
 import CheckIcon from '@/assets/icons/auth-redesign/ab4c2.svg';
 import { Text } from '@/src/components/common';
 
@@ -36,12 +36,12 @@ const goalOptions: GoalOption[] = [
   { id: 'fat-loss', label: '체지방 감량' },
   { id: 'muscle-gain', label: '근육량 증가' },
   { id: 'stamina', label: '체력 향상' },
-  { id: 'conditioning', label: '컨디셔닝 / 기능 회복' },
+  { id: 'conditioning', label: '컨디셔닝 · 기능 회복' },
 ];
 const experienceOptions: ExperienceOption[] = [
-  { id: 'beginner', label: '초보 (운동 6개월 미만)' },
-  { id: 'intermediate', label: '중급 (6개월 ~ 2년)' },
-  { id: 'advanced', label: '고급 (2년 이상)' },
+  { id: 'beginner', label: '초보' },
+  { id: 'intermediate', label: '중급' },
+  { id: 'advanced', label: '고급' },
 ];
 
 export default function SignUpStep4Screen() {
@@ -134,18 +134,24 @@ export default function SignUpStep4Screen() {
       onBack={() => router.back()}
       onContinue={goNext}
     >
-      <SignUpSection top={0} innerStyle={styles.optionSection}>
-        <Text style={styles.sectionTitle}>운동 목표</Text>
-        <Text style={styles.sectionDescription}>가장 집중하고 싶은 목표를 선택해 주세요.</Text>
-        <View style={styles.choiceList}>
-          {goalOptions.map((option) => (
-            <ChoiceRow
-              key={option.id}
-              label={option.label}
-              onPress={() => selectGoal(option.id)}
-              selected={exerciseGoal === option.id}
-            />
-          ))}
+      <View style={styles.choiceList}>
+        {goalOptions.map((option) => (
+          <ChoiceRow
+            key={option.id}
+            label={option.label}
+            onPress={() => selectGoal(option.id)}
+            selected={exerciseGoal === option.id}
+          />
+        ))}
+        <ChoiceRow
+          label="기타 (직접 적기)"
+          onPress={() => {
+            setExerciseGoal('custom');
+            updateDraft({ exerciseGoal: 'custom' });
+          }}
+          selected={exerciseGoal === 'custom'}
+        />
+        {exerciseGoal === 'custom' ? (
           <CustomGoalInput
             inputRef={customGoalInputRef}
             onBlur={() => {
@@ -156,30 +162,34 @@ export default function SignUpStep4Screen() {
               setCustomGoal(value);
               updateDraft({ customGoal: value });
             }}
-            onFocus={() => {
-              setExerciseGoal('custom');
-              updateDraft({ exerciseGoal: 'custom' });
-              setIsCustomGoalFocused(true);
-            }}
-            selected={exerciseGoal === 'custom'}
+            onFocus={() => setIsCustomGoalFocused(true)}
             value={customGoal}
           />
-        </View>
-      </SignUpSection>
-      <SignUpSection top={0} innerStyle={styles.optionSection}>
+        ) : null}
+      </View>
+      <View>
         <Text style={styles.sectionTitle}>운동 경험</Text>
-        <Text style={styles.sectionDescription}>현재 본인의 운동 경험 수준을 선택해 주세요.</Text>
-        <View style={styles.choiceList}>
+        <View style={styles.experienceRow}>
           {experienceOptions.map((option) => (
-            <ChoiceRow
+            <Pressable
               key={option.id}
-              label={option.label}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: exerciseExperience === option.id }}
               onPress={() => selectExperience(option.id)}
-              selected={exerciseExperience === option.id}
-            />
+              style={({ pressed }) => [
+                styles.chip,
+                exerciseExperience === option.id && styles.chipSelected,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={[styles.chipText, exerciseExperience === option.id && styles.chipTextSelected]}>
+                {option.label}
+              </Text>
+            </Pressable>
           ))}
         </View>
-      </SignUpSection>
+        <Text style={styles.experienceHint}>초보 6개월 미만 · 중급 6개월~2년 · 고급 2년 이상</Text>
+      </View>
     </SignUpScreenLayout>
   );
 }
@@ -206,21 +216,19 @@ function ChoiceRow({
     >
       <Text style={[styles.choiceLabel, selected && styles.selectedLabel]}>{label}</Text>
       <View style={[styles.radio, selected && styles.radioSelected]}>
-        {selected ? <CheckIcon height={14} width={14} /> : null}
+        {selected ? <CheckIcon height={16} width={16} /> : null}
       </View>
     </Pressable>
   );
 }
 
 function CustomGoalInput({
-  selected,
   value,
   inputRef,
   onFocus,
   onBlur,
   onChangeText,
 }: {
-  selected: boolean;
   value: string;
   inputRef: RefObject<TextInput | null>;
   onFocus: () => void;
@@ -228,80 +236,124 @@ function CustomGoalInput({
   onChangeText: (value: string) => void;
 }) {
   return (
-    <View style={[styles.choice, selected && styles.selected]}>
-      <TextInput
-        ref={inputRef}
-        accessibilityLabel="기타 운동 목표"
-        maxLength={200}
-        onBlur={onBlur}
-        onChangeText={onChangeText}
-        onFocus={onFocus}
-        placeholder="기타 / 운동 목표를 입력해 주세요"
-        placeholderTextColor={colors.textSecondary}
-        returnKeyType="done"
-        style={[styles.customInput, selected && styles.selectedLabel]}
-        value={value}
-      />
-      <View style={[styles.radio, selected && styles.radioSelected]}>
-        {selected ? <CheckIcon height={14} width={14} /> : null}
+    <View>
+      <Text style={styles.customLabel}>어떤 목표인가요?</Text>
+      <View style={styles.customField}>
+        <TextInput
+          ref={inputRef}
+          accessibilityLabel="어떤 목표인가요?"
+          maxLength={30}
+          onBlur={onBlur}
+          onChangeText={onChangeText}
+          onFocus={onFocus}
+          placeholder="예) 무릎 수술 뒤 다시 오래 걷기"
+          placeholderTextColor="#5E5D66"
+          returnKeyType="done"
+          style={styles.customInput}
+          value={value}
+        />
+        <Text style={styles.customCount}>{value.length} / 30</Text>
       </View>
+      <Text style={styles.customHint}>적은 목표에 맞춰 다음 단계에서 몇 가지를 더 물어봐요.</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  optionSection: { gap: 8 },
   sectionTitle: {
-    color: colors.dark,
+    color: '#17161D',
     fontFamily: fontFamilies.pretendardBold,
-    fontSize: 20,
-    lineHeight: 26,
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 10,
   },
-  sectionDescription: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  choiceList: { gap: 8, marginTop: 4 },
+  choiceList: { gap: 8 },
   choice: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
     borderRadius: 12,
     borderWidth: 1,
     flexDirection: 'row',
-    height: 44,
+    height: 56,
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
+    paddingHorizontal: 19,
   },
-  selected: { backgroundColor: colors.surfaceSoft, borderColor: colors.primary },
+  selected: { borderColor: '#5246C6' },
   choiceLabel: {
-    color: colors.dark,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  selectedLabel: { color: colors.primaryDark },
-  radio: {
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: 10,
-    borderWidth: 1,
-    height: 20,
-    justifyContent: 'center',
-    width: 20,
-  },
-  radioSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  customInput: {
-    color: colors.dark,
+    color: '#17161D',
     flex: 1,
     fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 15,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  selectedLabel: { fontFamily: fontFamilies.pretendardBold },
+  radio: {
+    alignItems: 'center',
+    borderColor: '#8E8D95',
+    borderRadius: 12,
+    borderWidth: 1,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  radioSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
+  experienceRow: { flexDirection: 'row', gap: 8 },
+  chip: {
+    alignItems: 'center',
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
+    borderRadius: 999,
+    borderWidth: 1,
+    flex: 1,
+    height: 40,
+    justifyContent: 'center',
+  },
+  chipSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
+  chipText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  chipTextSelected: { color: '#FFFFFF' },
+  experienceHint: {
+    color: '#5E5D66',
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 10,
+  },
+  customLabel: {
+    color: '#17161D',
+    fontFamily: fontFamilies.pretendardMedium,
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  customField: {
+    alignItems: 'center',
+    backgroundColor: '#FAFBFC',
+    borderColor: '#5246C6',
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    height: 52,
+    paddingHorizontal: 16,
+  },
+  customInput: {
+    color: '#17161D',
+    flex: 1,
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 16,
     height: '100%',
     minWidth: 0,
     padding: 0,
+  },
+  customCount: { color: '#5E5D66', fontSize: 14 },
+  customHint: {
+    color: '#5E5D66',
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 8,
   },
   pressed: { opacity: 0.75 },
 });

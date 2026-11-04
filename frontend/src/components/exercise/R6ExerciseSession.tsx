@@ -188,7 +188,7 @@ export function R6ExerciseSession({
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F4F5F7' }, content: { paddingHorizontal: 20, paddingBottom: 32, gap: 14 },
+  root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, paddingBottom: 32, gap: 14 },
   header: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { width: 32, justifyContent: 'center' }, backText: { fontSize: 32, color: ink },
   headerTitle: { fontSize: 16, color: ink, fontFamily: fontFamilies.pretendardBold }, headerActions: { flexDirection: 'row', gap: 15, alignItems: 'center' }, voiceAction: { color: ink, fontSize: 16 },
@@ -205,8 +205,8 @@ const s = StyleSheet.create({
   repTotal: { color: muted, fontSize: 17, fontFamily: fontFamilies.pretendardMedium }, setText: { color: muted, fontSize: 12 },
   setMarkers: { width: '100%', flexDirection: 'row', justifyContent: 'space-between' }, marker: { color: muted, fontSize: 11 },
   markerActive: { color: purple, fontFamily: fontFamilies.pretendardBold },
-  tipCard: { backgroundColor: '#FFFFFF', borderColor: border, borderWidth: 1, borderRadius: 10, padding: 14, gap: 5 },
-  nextCard: { backgroundColor: '#FFFFFF', borderColor: border, borderWidth: 1, borderRadius: 10, padding: 14, gap: 5 },
+  tipCard: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 10, padding: 14, gap: 5 },
+  nextCard: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 10, padding: 14, gap: 5 },
   tipTitle: { color: ink, fontSize: 13, fontFamily: fontFamilies.pretendardBold }, tipText: { color: muted, fontSize: 12, lineHeight: 18 },
   actions: { flexDirection: 'row', gap: 8 }, secondaryButton: { flex: 1, height: 48, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EDEFF2' },
   secondaryText: { color: ink, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
@@ -220,8 +220,8 @@ const s = StyleSheet.create({
   sheetDescription: { color: muted, fontSize: 12, lineHeight: 18 }, notice: { backgroundColor: '#FFF4E2', borderRadius: 9, padding: 11 },
   noticeText: { color: '#8E641C', fontSize: 11 }, fieldTitle: { color: ink, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
   optional: { color: muted, fontSize: 11, fontFamily: fontFamilies.pretendardMedium },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, chip: { backgroundColor: '#FFFFFF', borderRadius: 20, borderColor: border, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 8 },
-  selectedChip: { backgroundColor: '#F1F0F9', borderColor: purple }, chipText: { color: ink, fontSize: 12 }, selectedChipText: { color: purple },
-  feelings: { flexDirection: 'row', gap: 7 }, feeling: { backgroundColor: '#FFFFFF', flex: 1, borderRadius: 20, borderColor: border, borderWidth: 1, alignItems: 'center', paddingVertical: 9 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, chip: { backgroundColor: '#FAFBFC', borderRadius: 20, borderColor: border, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 8 },
+  selectedChip: { backgroundColor: '#ECE9FF', borderColor: purple }, chipText: { color: ink, fontSize: 12 }, selectedChipText: { color: purple },
+  feelings: { flexDirection: 'row', gap: 7 }, feeling: { backgroundColor: '#FAFBFC', flex: 1, borderRadius: 20, borderColor: border, borderWidth: 1, alignItems: 'center', paddingVertical: 9 },
   voiceRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 7, gap: 12 }, switch: { width: 42, height: 25, backgroundColor: '#D8D9DE', borderRadius: 15, padding: 3 }, switchOn: { backgroundColor: purple }, switchThumb: { width: 19, height: 19, borderRadius: 10, backgroundColor: '#FFF' }, switchThumbOn: { alignSelf: 'flex-end' }, unavailable: { color: muted, fontSize: 11, lineHeight: 16, flexShrink: 1 },
 });

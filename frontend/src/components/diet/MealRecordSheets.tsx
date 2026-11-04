@@ -1383,7 +1383,7 @@ const styles = StyleSheet.create({
   r6FallbackDescription: { color: '#777981', fontSize: 13, lineHeight: 19, marginBottom: 18 },
   r6FallbackLabel: { color: '#33343A', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13, marginTop: 20, marginBottom: 10 },
   r6FallbackChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  r6FallbackChip: { borderWidth: 1, borderColor: '#E2E4E8', borderRadius: 16, paddingHorizontal: 11, paddingVertical: 7, backgroundColor: '#F4F5F7' },
+  r6FallbackChip: { borderWidth: 1, borderColor: '#E2E4E8', borderRadius: 16, paddingHorizontal: 11, paddingVertical: 7, backgroundColor: '#FAFBFC' },
   r6FallbackChipText: { color: '#55575E', fontSize: 11 },
   r6FallbackSpacer: { flex: 1, minHeight: 120 },
   r6RetryButton: { backgroundColor: '#EDEFF2', minHeight: 51, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },

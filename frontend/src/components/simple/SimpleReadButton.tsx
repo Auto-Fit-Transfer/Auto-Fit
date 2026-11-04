@@ -52,7 +52,7 @@ export function SimpleReadButton({ text, label = '화면 읽어 주기' }: Props
 }
 
 const styles = StyleSheet.create({
-  button: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DDE0E6', borderRadius: 8, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 11 },
+  button: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DDE0E6', borderRadius: 8, borderWidth: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 11 },
   darkButton: { backgroundColor: darkColors.surface, borderColor: darkColors.border },
   label: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   darkLabel: { color: darkColors.textPrimary },

@@ -3,6 +3,8 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AutofitWordmark from '@/assets/icons/autofit-wordmark.svg';
+import AutofitWordmarkDark from '@/assets/icons/autofit-wordmark-dark.svg';
 import { getHome, type HomeResponse } from '@/src/api/home';
 import { getHabitTierProgress, type HabitTierProgress } from '@/src/api/tier';
 import { getDietNutritionSummary } from '@/src/api/diet';
@@ -31,6 +33,7 @@ export default function HomeScreen() {
   const { onboardingSkip } = useLocalSearchParams<{ onboardingSkip?: string }>();
   const insets = useSafeAreaInsets();
   const { preferences, isDark } = useDisplayPreferences();
+  const Wordmark = isDark ? AutofitWordmarkDark : AutofitWordmark;
   const simple = preferences.simple_mode_enabled;
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [home, setHome] = useState<HomeResponse | null>(null);
@@ -103,9 +106,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerRow}>
-          <Text accessibilityLabel="autofit" style={[styles.wordmark, isDark && dark.text]}>
-            auto<Text style={styles.accent}>fit</Text>
-          </Text>
+          <Wordmark accessibilityLabel="autofit" height={24} width={88} />
           <SimpleReadButton text={`${name}님, 반가워요. ${tier ? `현재 티어는 ${tier.tier_name} ${tier.sublevel}입니다.` : ''} 오늘 식단과 운동을 확인하고 기록해 보세요.`} />
         </View>
         <Text style={styles.date}>{dateLabel}</Text>
@@ -248,7 +249,7 @@ function TaskRow({
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: '#F4F5F7', flex: 1 },
+  root: { backgroundColor: '#FFFFFF', flex: 1 },
   headerRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   content: {
     alignSelf: 'center',
@@ -258,7 +259,7 @@ const styles = StyleSheet.create({
   },
   initialLoading: {
     alignItems: 'center',
-    backgroundColor: '#F4F5F7',
+    backgroundColor: '#FAFBFC',
     borderRadius: 16,
     gap: 14,
     justifyContent: 'center',
@@ -266,13 +267,6 @@ const styles = StyleSheet.create({
     minHeight: 180,
   },
   initialLoadingText: { color: '#777780', fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
-  wordmark: {
-    color: '#18181C',
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 25,
-    letterSpacing: -1.3,
-  },
-  accent: { color: '#5246C6' },
   date: { color: '#9999A1', fontSize: 12, marginTop: 22 },
   greeting: {
     color: '#222227',
@@ -280,9 +274,9 @@ const styles = StyleSheet.create({
     fontSize: 22,
     marginTop: 5,
   },
-  overviewTier: { backgroundColor: '#FFFFFF', borderColor: '#E4E5EB', borderRadius: 16, borderWidth: 1, marginTop: 24, padding: 16 },
+  overviewTier: { backgroundColor: '#FAFBFC', borderColor: '#E4E5EB', borderRadius: 16, borderWidth: 1, marginTop: 24, padding: 16 },
   overviewTierTop: { alignItems: 'center', flexDirection: 'row', gap: 11 },
-  overviewBadge: { alignItems: 'center', backgroundColor: '#F1F0F9', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+  overviewBadge: { alignItems: 'center', backgroundColor: '#ECE9FF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
   overviewBadgeText: { color: '#5246C6', fontSize: 24 },
   overviewTierCopy: { flex: 1, gap: 4 },
   overviewTierTitle: { color: '#34303F', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
@@ -291,19 +285,19 @@ const styles = StyleSheet.create({
   overviewTierLine: { backgroundColor: '#E3E6EB', borderRadius: 3, height: 5, marginTop: 15 },
   overviewTierFoot: { color: '#8F8A9B', fontSize: 11, marginTop: 9 },
   overviewStats: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  overviewStatCard: { backgroundColor: '#FFFFFF', borderColor: '#EAE9EE', borderRadius: 14, borderWidth: 1, flex: 1, gap: 8, minHeight: 126, padding: 13 },
+  overviewStatCard: { backgroundColor: '#FAFBFC', borderColor: '#EAE9EE', borderRadius: 14, borderWidth: 1, flex: 1, gap: 8, minHeight: 126, padding: 13 },
   overviewStatLabel: { color: '#8F8D98', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
   overviewStatValue: { color: '#29272F', fontFamily: fontFamilies.pretendardBold, fontSize: 19 },
   overviewStatUnit: { color: '#96939F', fontFamily: fontFamilies.pretendardRegular, fontSize: 10 },
   overviewStatHint: { color: '#9996A1', fontSize: 10, lineHeight: 14 },
   overviewTrack: { backgroundColor: '#E3E6EB', borderRadius: 4, height: 5, overflow: 'hidden' },
   overviewFill: { backgroundColor: '#5246C6', borderRadius: 4, height: 5 },
-  weeklyCard: { backgroundColor: '#FFFFFF', borderColor: '#EAE9EE', borderRadius: 14, borderWidth: 1, gap: 14, marginTop: 16, padding: 16 },
+  weeklyCard: { backgroundColor: '#FAFBFC', borderColor: '#EAE9EE', borderRadius: 14, borderWidth: 1, gap: 14, marginTop: 16, padding: 16 },
   weeklyHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   weeklyTitle: { color: '#33313A', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
   weeklyCount: { color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   weeklyHint: { color: '#8D8997', fontSize: 11 },
-  analysisShortcut: { backgroundColor: '#FFFFFF', alignItems: 'center', borderColor: '#EAE9EE', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 8, marginTop: 14, padding: 15 },
+  analysisShortcut: { backgroundColor: '#FAFBFC', alignItems: 'center', borderColor: '#EAE9EE', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 8, marginTop: 14, padding: 15 },
   analysisShortcutTitle: { color: '#36333F', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   analysisShortcutDetail: { color: '#9A97A0', flex: 1, fontSize: 10 },
   sectionTitle: {
@@ -314,7 +308,7 @@ const styles = StyleSheet.create({
     marginTop: 22,
   },
   count: { color: '#777780', fontSize: 12 },
-  tasks: { backgroundColor: '#FFFFFF', borderColor: '#E8E8ED', borderRadius: 11, borderWidth: 1, overflow: 'hidden' },
+  tasks: { backgroundColor: '#FAFBFC', borderColor: '#E8E8ED', borderRadius: 11, borderWidth: 1, overflow: 'hidden' },
   task: {
     alignItems: 'center',
     borderBottomColor: '#F0F0F2',
@@ -338,7 +332,7 @@ const styles = StyleSheet.create({
   chevron: { color: '#9999A1', fontSize: 22 },
   tierCard: {
     alignItems: 'center',
-    backgroundColor: '#F4F5F7',
+    backgroundColor: '#FAFBFC',
     borderColor: '#E8E8ED',
     borderRadius: 11,
     borderWidth: 1,
@@ -361,7 +355,7 @@ const styles = StyleSheet.create({
   tierDescription: { color: '#9999A1', fontSize: 10 },
   tierLink: { color: '#55555D', fontSize: 11 },
   healthCard: {
-    backgroundColor: '#F4F5F7',
+    backgroundColor: '#FAFBFC',
     borderColor: '#E8E8ED',
     borderRadius: 11,
     borderWidth: 1,
@@ -375,7 +369,7 @@ const styles = StyleSheet.create({
   scoreUnit: { color: '#9999A1', fontSize: 12 },
   healthAction: {
     alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFBFC',
     borderColor: '#DADAE1',
     borderRadius: 5,
     borderWidth: 1,

@@ -13,13 +13,14 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AutofitWordmark from '@/assets/icons/autofit-wordmark.svg';
+import BackIcon from '@/assets/icons/common/chevrons/Left.svg';
 
 import { AppTextField, type AppTextFieldProps, Text } from '@/src/components/common';
 import { fontFamilies } from '@/src/theme';
 
 type AuthPageProps = {
   mode: 'login' | 'signup' | 'password';
-  title?: string;
   heading?: string;
   description?: string;
   step?: number;
@@ -32,7 +33,6 @@ type AuthPageProps = {
 
 export function AuthPage({
   mode,
-  title,
   heading,
   description,
   step,
@@ -52,10 +52,8 @@ export function AuthPage({
     >
       <StatusBar style="dark" />
       {isLogin ? (
-        <View style={[styles.loginHeader, { paddingTop: insets.top + 37 }]}>
-          <Text accessibilityLabel="autofit" style={styles.wordmark}>
-            auto<Text style={styles.wordmarkAccent}>fit</Text>
-          </Text>
+        <View style={[styles.loginHeader, { paddingTop: insets.top + 56 }]}>
+          <AutofitWordmark accessibilityLabel="autofit" height={35} width={129} />
         </View>
       ) : (
         <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
@@ -67,10 +65,9 @@ export function AuthPage({
               onPress={onBack}
               style={styles.backButton}
             >
-              <Text style={styles.backSymbol}>‹</Text>
+              <BackIcon color="#17161D" height={24} width={24} />
             </Pressable>
-            {mode === 'password' ? <Text style={styles.navigationTitle}>{title}</Text> : null}
-          </View>
+                      </View>
           {step ? (
             <View accessibilityLabel={`${totalSteps}단계 중 ${step}단계`} style={styles.progress}>
               {Array.from({ length: totalSteps }, (_, index) => (
@@ -90,7 +87,7 @@ export function AuthPage({
           styles.content,
           isLogin && styles.loginContent,
           {
-            paddingBottom: footer ? 18 : Math.max(insets.bottom + 30, 40),
+            paddingBottom: footer ? 18 : Math.max(insets.bottom + 34, 40),
             transform: [{ translateY: -contentOffsetY }],
           },
         ]}
@@ -101,7 +98,7 @@ export function AuthPage({
         {children}
       </ScrollView>
       {footer ? (
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 18) }]}>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 34) }]}>
           {footer}
         </View>
       ) : null}
@@ -127,7 +124,7 @@ export const AuthTextField = forwardRef<TextInput, AppTextFieldProps>(
         ref={ref}
         fieldStyle={[styles.field, props.fieldStyle]}
         labelStyle={[styles.fieldLabel, props.labelStyle]}
-        placeholderTextColor="#9B9BA4"
+        placeholderTextColor="#5E5D66"
         style={[styles.fieldInput, props.style]}
       />
     );
@@ -160,84 +157,69 @@ export function AuthButton({
       {loading ? (
         <ActivityIndicator color="#FFFFFF" />
       ) : (
-        <Text style={styles.buttonLabel}>{title}</Text>
+        <Text style={[styles.buttonLabel, disabled && styles.buttonLabelDisabled]}>{title}</Text>
       )}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { alignSelf: 'center', backgroundColor: '#F4F5F7', flex: 1, maxWidth: 412, width: '100%' },
-  loginHeader: { minHeight: 100, paddingHorizontal: 24 },
-  wordmark: {
-    color: '#17171B',
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 34,
-    letterSpacing: -1.7,
-  },
-  wordmarkAccent: { color: '#5246C6' },
+  root: { alignSelf: 'center', backgroundColor: '#FFFFFF', flex: 1, maxWidth: 412, width: '100%' },
+  loginHeader: { paddingHorizontal: 20 },
   header: { paddingHorizontal: 20 },
-  navigation: { alignItems: 'center', flexDirection: 'row', height: 42 },
-  backButton: { alignItems: 'flex-start', height: 42, justifyContent: 'center', width: 40 },
-  backSymbol: { color: '#222227', fontSize: 32, lineHeight: 36 },
-  navigationTitle: {
-    color: '#222227',
-    flex: 1,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-    marginRight: 40,
-    textAlign: 'center',
-  },
-  progress: { flexDirection: 'row', gap: 5, marginTop: 7 },
-  progressSegment: { backgroundColor: '#E5E5EA', borderRadius: 2, flex: 1, height: 3 },
-  progressActive: { backgroundColor: '#222227' },
+  navigation: { alignItems: 'center', flexDirection: 'row', height: 56 },
+  backButton: { alignItems: 'flex-start', height: 44, justifyContent: 'center', marginLeft: -2, width: 40 },
+  progress: { flexDirection: 'row', gap: 4, marginTop: 4 },
+  progressSegment: { backgroundColor: '#DFE2E7', borderRadius: 3, flex: 1, height: 6 },
+  progressActive: { backgroundColor: '#17161D' },
   heading: {
-    color: '#222227',
+    color: '#17161D',
     fontFamily: fontFamilies.pretendardBold,
-    fontSize: 23,
+    fontSize: 22,
     lineHeight: 30,
     marginTop: 24,
   },
   description: {
-    color: '#777780',
+    color: '#5E5D66',
     fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: 5,
+    fontSize: 16,
+    lineHeight: 24,
+    marginTop: 8,
   },
   scroll: { flex: 1 },
-  content: { flexGrow: 1, gap: 18, paddingHorizontal: 20, paddingTop: 20 },
-  loginContent: { paddingHorizontal: 24, paddingTop: 9 },
-  footer: { backgroundColor: '#F4F5F7', paddingHorizontal: 20, paddingTop: 10 },
+  content: { flexGrow: 1, gap: 28, paddingHorizontal: 20, paddingTop: 28 },
+  loginContent: { gap: 0, paddingHorizontal: 20, paddingTop: 40 },
+  footer: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 10 },
   card: { gap: 12 },
   field: {
-    backgroundColor: '#F4F5F7',
-    borderColor: '#E6E6ED',
-    borderRadius: 8,
-    height: 48,
-    paddingHorizontal: 12,
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
+    borderRadius: 12,
+    height: 52,
+    paddingHorizontal: 16,
   },
   fieldLabel: {
-    color: '#333339',
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 13,
-    lineHeight: 19,
-    marginBottom: 6,
+    color: '#17161D',
+    fontFamily: fontFamilies.pretendardMedium,
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: 8,
   },
   fieldInput: {
-    color: '#222227',
-    fontSize: Platform.OS === 'web' ? 16 : 14,
-    lineHeight: Platform.OS === 'web' ? 22 : 21,
+    color: '#17161D',
+    fontSize: 16,
+    lineHeight: 24,
   },
   primaryButton: {
     alignItems: 'center',
     backgroundColor: '#5246C6',
-    borderRadius: 8,
-    height: 50,
+    borderRadius: 12,
+    height: 56,
     justifyContent: 'center',
     width: '100%',
   },
-  buttonDisabled: { backgroundColor: '#EDEDF1' },
+  buttonDisabled: { backgroundColor: '#F2F4F6' },
+  buttonLabelDisabled: { color: '#8E8D95' },
   buttonPressed: { opacity: 0.85 },
-  buttonLabel: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
+  buttonLabel: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
 });

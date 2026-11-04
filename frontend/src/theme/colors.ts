@@ -14,7 +14,7 @@ export const colors = {
   textWhite: '#F3F4F6',
   textWhiteSecondary: '#A3A7AF',
   primaryBack: palette.primaryLight,
-  surface: palette.elevated,
+  surface: palette.surface,
   surfaceSoft: palette.surfaceMuted,
   card: palette.surface,
   border: palette.border,

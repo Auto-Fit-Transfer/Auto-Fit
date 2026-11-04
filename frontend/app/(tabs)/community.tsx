@@ -355,10 +355,10 @@ export default function CommunityScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: '#F4F5F7', flex: 1 },
+  root: { backgroundColor: '#FFFFFF', flex: 1 },
   header: {
     alignItems: 'center',
-    backgroundColor: '#F4F5F7',
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingBottom: spacing.xs,
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: colors.surface, fontFamily: fontFamilies.pretendardBold, fontSize: 11 },
   tabs: {
-    backgroundColor: '#F4F5F7',
+    backgroundColor: '#FFFFFF',
     borderBottomColor: '#E6E6EB',
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
@@ -395,15 +395,15 @@ const styles = StyleSheet.create({
   tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
   tabTextActive: { color: '#222127', fontFamily: fontFamilies.pretendardBold },
   list: { flexGrow: 1, gap: 10 },
-  feedHeader: { backgroundColor: '#F4F5F7', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 14, gap: 16 },
+  feedHeader: { backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 14, gap: 16 },
   categories: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   categoryChip: { backgroundColor: colors.surface, borderColor: '#E6E6EB', borderWidth: 1, borderRadius: 18, paddingHorizontal: 11, paddingVertical: 7 },
-  categoryActive: { backgroundColor: '#F1F0F9', borderColor: '#5246C6' },
+  categoryActive: { backgroundColor: '#ECE9FF', borderColor: '#5246C6' },
   categoryText: { color: '#666670', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
   categoryTextActive: { color: '#5246C6' },
   categoryNotice: { color: '#9998A1', fontSize: 10 },
-  challengeCard: { borderColor: '#E6E6EB', borderWidth: 1, borderRadius: 12, backgroundColor: '#F4F5F7', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  challengeIcon: { backgroundColor: '#F1F0F9', width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  challengeCard: { borderColor: '#E6E6EB', borderWidth: 1, borderRadius: 12, backgroundColor: '#FAFBFC', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  challengeIcon: { backgroundColor: '#ECE9FF', width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   challengeIconText: { color: '#5246C6', fontSize: 18 },
   challengeCopy: { flex: 1, gap: 2 },
   challengeTitle: { color: '#25242B', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },

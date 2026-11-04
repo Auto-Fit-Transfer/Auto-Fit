@@ -2,20 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Alert,
-  Dimensions,
   Keyboard,
   Platform,
   Pressable,
   StyleSheet,
   TextInput,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { getSignupApiErrorMessage, saveAllergies } from '@/src/api/onboarding';
-import { SignUpScreenLayout, SignUpSection } from '@/src/components/auth';
+import { SignUpScreenLayout } from '@/src/components/auth';
 import { useSignup } from '@/src/features/signup/SignupContext';
-import { colors, fontFamilies } from '@/src/theme';
-import OtherIcon from '@/assets/icons/auth-redesign/00654.svg';
+import { fontFamilies } from '@/src/theme';
+import NoticeIcon from '@/assets/icons/auth-redesign/info-circle.svg';
 import { Text } from '@/src/components/common';
 
 interface AllergenOption {
@@ -29,72 +27,32 @@ const allergenOptions: AllergenOption[] = [
   { id: 'peanut', label: '땅콩' },
   { id: 'nuts', label: '견과류' },
   { id: 'wheat', label: '밀(글루텐)' },
-  { id: 'buckwheat', label: '메밀' },
   { id: 'soybean', label: '콩(대두)' },
-  { id: 'peach', label: '복숭아' },
-  { id: 'fish', label: '생선' },
+  { id: 'buckwheat', label: '메밀' },
   { id: 'crab', label: '갑각류' },
   { id: 'shellfish', label: '조개' },
+  { id: 'fish', label: '생선' },
+  { id: 'peach', label: '복숭아' },
   { id: 'sesame', label: '참깨' },
 ];
 
-const descriptionTop = 285;
-const allergenGridTop = 397;
-const allergenGridHeight = 230;
-const otherCardTop = 644;
-const referenceDescriptionHeight = 44;
-const minimumScreenHeight = 740;
-const maximumScreenHeight = 917;
 const keyboardSafeGap = 20;
-const signUpBrandVisualHeight = 144;
 
 export default function SignUpStep3Screen() {
   const router = useRouter();
   const { flow } = useLocalSearchParams<{ flow?: string }>();
   const isPostLoginOnboarding = flow === 'post-login';
   const { draft, updateDraft } = useSignup();
-  const { height: windowHeight } = useWindowDimensions();
   const otherAllergyInputRef = useRef<TextInput>(null);
   const saveInFlightRef = useRef(false);
   const [selectedAllergens, setSelectedAllergens] = useState<string[]>(draft.selectedAllergens);
   const [otherAllergy, setOtherAllergy] = useState(draft.otherAllergy);
-  const descriptionHeight = referenceDescriptionHeight;
+  const [noneChosen, setNoneChosen] = useState(false);
   const [isOtherAllergyFocused, setIsOtherAllergyFocused] = useState(false);
   const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
   const [keyboardContentOffset, setKeyboardContentOffset] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
-  const screenHeight = Dimensions.get('screen').height;
-  const responsiveHeight = Platform.OS === 'android' ? screenHeight : windowHeight;
-  const heightProgress = Math.max(
-    0,
-    Math.min(
-      1,
-      (responsiveHeight - minimumScreenHeight) / (maximumScreenHeight - minimumScreenHeight),
-    ),
-  );
-  const verticalValue = (expanded: number, compact: number) =>
-    compact + (expanded - compact) * heightProgress;
-  const explanationGap = verticalValue(30, 20);
-  const explanationBottomGap = verticalValue(18, 10);
-  const otherCardGap = verticalValue(17, 12);
 
-  const explanationHeight = 20 + explanationGap + descriptionHeight;
-  const signUpBrandBottom = verticalValue(96, 74) + signUpBrandVisualHeight;
-
-  const responsiveDescriptionTop = Math.min(
-    verticalValue(descriptionTop, 215),
-    verticalValue(allergenGridTop, 346) - explanationHeight - explanationBottomGap,
-  );
-  const protectedDescriptionTop = Math.max(responsiveDescriptionTop, signUpBrandBottom + 12);
-  const responsiveAllergenGridTop = Math.max(
-    verticalValue(allergenGridTop, 346),
-    protectedDescriptionTop + explanationHeight + explanationBottomGap,
-  );
-
-  const responsiveOtherCardTop = Math.max(
-    verticalValue(otherCardTop, 588),
-    responsiveAllergenGridTop + allergenGridHeight + otherCardGap,
-  );
   useEffect(() => {
     if (Platform.OS !== 'android') return undefined;
 
@@ -169,39 +127,49 @@ export default function SignUpStep3Screen() {
       onBack={() => router.back()}
       onContinue={() => void goNext()}
     >
-      <SignUpSection top={protectedDescriptionTop} innerStyle={styles.allergyCard}>
-        <View style={styles.allergenGrid}>
-          {allergenOptions.map((option) => (
-            <AllergenButton
-              key={option.id}
-              onPress={() => toggleAllergen(option.id)}
-              option={option}
-              selected={selectedAllergens.includes(option.id)}
-            />
-          ))}
-        </View>
-      </SignUpSection>
-      <SignUpSection top={responsiveOtherCardTop} innerStyle={styles.otherCard}>
-        <Text style={styles.otherTitle}>기타 알레르기가 있으신가요?</Text>
-        <View style={styles.otherField}>
-          <OtherIcon height={20} width={20} />
-          <TextInput
-            ref={otherAllergyInputRef}
-            accessibilityLabel="기타 알레르기"
-            onChangeText={setOtherAllergy}
-            onBlur={() => {
-              setIsOtherAllergyFocused(false);
-              setKeyboardContentOffset(0);
-            }}
-            onFocus={() => setIsOtherAllergyFocused(true)}
-            placeholder="직접 입력해 주세요 (선택 사항)"
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType="done"
-            style={styles.otherInput}
-            value={otherAllergy}
+      <View style={styles.allergenGrid}>
+        <AllergenButton
+          onPress={() => {
+            setNoneChosen(true);
+            setSelectedAllergens([]);
+          }}
+          option={{ id: 'none', label: '없어요' }}
+          selected={noneChosen && selectedAllergens.length === 0}
+        />
+        {allergenOptions.map((option) => (
+          <AllergenButton
+            key={option.id}
+            onPress={() => toggleAllergen(option.id)}
+            option={option}
+            selected={selectedAllergens.includes(option.id)}
           />
+        ))}
+      </View>
+      <View>
+        <Text style={styles.otherTitle}>그 밖의 알레르기 (선택)</Text>
+        <TextInput
+          ref={otherAllergyInputRef}
+          accessibilityLabel="그 밖의 알레르기"
+          onChangeText={setOtherAllergy}
+          onBlur={() => {
+            setIsOtherAllergyFocused(false);
+            setKeyboardContentOffset(0);
+          }}
+          onFocus={() => setIsOtherAllergyFocused(true)}
+          placeholder="예) 키위, 토마토"
+          placeholderTextColor="#5E5D66"
+          returnKeyType="done"
+          style={styles.otherInput}
+          value={otherAllergy}
+        />
+      </View>
+      <View style={styles.notice}>
+        <NoticeIcon height={20} width={20} />
+        <View style={styles.noticeCopy}>
+          <Text style={styles.noticeTitle}>참고용 정보예요</Text>
+          <Text style={styles.noticeText}>음식을 먹기 전에는 성분표를 꼭 확인해 주세요.</Text>
         </View>
-      </SignUpSection>
+      </View>
     </SignUpScreenLayout>
   );
 }
@@ -234,72 +202,56 @@ function AllergenButton({
 }
 
 const styles = StyleSheet.create({
-  allergyCard: { gap: 16 },
-  headingRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  sectionTitle: {
-    color: colors.dark,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 20,
-    lineHeight: 26,
-  },
-  titleAside: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    lineHeight: 20,
-  },
-  description: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 15,
-    lineHeight: 23,
-  },
   allergenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   allergenButton: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 20,
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
+    borderRadius: 999,
     borderWidth: 1,
-    height: 34,
+    height: 40,
     justifyContent: 'center',
-    paddingHorizontal: 13,
+    minWidth: 80,
+    paddingHorizontal: 10,
   },
-  allergenButtonSelected: { backgroundColor: colors.surfaceSoft, borderColor: colors.primary },
+  allergenButtonSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
   allergenLabel: {
-    color: colors.dark,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    lineHeight: 20,
+    color: '#3B3A42',
+    fontFamily: fontFamilies.pretendardMedium,
+    fontSize: 14,
+    lineHeight: 21,
     textAlign: 'center',
   },
-  allergenLabelSelected: { color: colors.primaryDark },
-  otherCard: { gap: 8 },
+  allergenLabelSelected: { color: '#FFFFFF' },
   otherTitle: {
-    color: colors.dark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    lineHeight: 22,
+    color: '#17161D',
+    fontFamily: fontFamilies.pretendardMedium,
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: 8,
   },
-  otherField: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+  otherInput: {
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
     borderRadius: 12,
+    borderWidth: 1,
+    color: '#17161D',
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 16,
+    height: 52,
+    paddingHorizontal: 16,
+  },
+  notice: {
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
+    borderRadius: 16,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 10,
-    height: 48,
-    paddingHorizontal: 14,
+    padding: 16,
   },
-  otherInput: {
-    color: colors.dark,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 15,
-    height: '100%',
-    minWidth: 0,
-    padding: 0,
-  },
+  noticeCopy: { flex: 1, gap: 2 },
+  noticeTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 14, lineHeight: 21 },
+  noticeText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
   pressed: { opacity: 0.75 },
 });

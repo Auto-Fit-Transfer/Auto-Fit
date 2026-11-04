@@ -142,11 +142,11 @@ export default function ExerciseScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F4F5F7' },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
   titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
   content: { paddingHorizontal: 20, gap: 18 },
   pageTitle: { color: ink, fontSize: 24, fontFamily: fontFamilies.pretendardBold, marginBottom: 2 },
-  card: { backgroundColor: '#FFF', borderColor: border, borderWidth: 1, borderRadius: 16, padding: 18, gap: 12 },
+  card: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 16, padding: 18, gap: 12 },
   eyebrow: { color: muted, fontSize: 13, fontFamily: fontFamilies.pretendardMedium },
   heroTitle: { color: ink, fontSize: 20, fontFamily: fontFamilies.pretendardBold },
   heroMeta: { color: muted, fontSize: 13, fontFamily: fontFamilies.pretendardMedium },
@@ -167,11 +167,11 @@ const styles = StyleSheet.create({
   progressFill: { height: 7, backgroundColor: purple },
   progressLabels: { flexDirection: 'row', justifyContent: 'space-between' },
   statRow: { flexDirection: 'row', gap: 10, paddingTop: 4 },
-  statBox: { backgroundColor: '#FFFFFF', flex: 1, borderColor: border, borderWidth: 1, borderRadius: 9, padding: 12, gap: 3 },
+  statBox: { backgroundColor: '#FAFBFC', flex: 1, borderColor: border, borderWidth: 1, borderRadius: 9, padding: 12, gap: 3 },
   statLabel: { color: muted, fontSize: 11 },
   statValue: { color: ink, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
   menuRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 50 },
-  menuIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#F1F0F9', alignItems: 'center', justifyContent: 'center' },
+  menuIcon: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#ECE9FF', alignItems: 'center', justifyContent: 'center' },
   menuIconText: { color: purple, fontSize: 16 },
   menuCopy: { flex: 1, gap: 2 },
   menuTitle: { color: ink, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },

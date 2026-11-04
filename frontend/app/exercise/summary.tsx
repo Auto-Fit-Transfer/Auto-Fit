@@ -191,7 +191,7 @@ export default function ExerciseSummaryScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { alignSelf: 'center', backgroundColor: '#F4F5F7', flex: 1, maxWidth: 412, width: '100%' },
+  root: { alignSelf: 'center', backgroundColor: '#FFFFFF', flex: 1, maxWidth: 412, width: '100%' },
   header: { alignItems: 'center', flexDirection: 'row', paddingHorizontal: 19 },
   back: { height: 44, justifyContent: 'center', width: 38 },
   backText: { color: '#222227', fontSize: 31, lineHeight: 36 },
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
   meta: { color: '#777780', fontSize: 12, marginTop: 10 },
   conditionBar: {
     alignItems: 'center',
-    backgroundColor: '#F4F5F7',
+    backgroundColor: '#FAFBFC',
     borderColor: '#E7E7EC',
     borderRadius: 8,
     borderWidth: 1,
@@ -226,7 +226,7 @@ const styles = StyleSheet.create({
   },
   conditionText: { color: '#66666F', flex: 1, fontSize: 11, lineHeight: 16 },
   change: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFBFC',
     borderColor: '#E7E7EC',
     borderRadius: 5,
     borderWidth: 1,
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   },
   changeText: { color: '#55555D', fontSize: 11 },
   reasonCard: {
-    backgroundColor: '#F4F5F7',
+    backgroundColor: '#FAFBFC',
     borderColor: '#E7E7EC',
     borderRadius: 9,
     borderWidth: 1,
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   reason: { color: '#66666F', fontSize: 12, lineHeight: 18 },
   listHeader: { marginBottom: 10, marginTop: 23 },
   sectionTitle: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  list: { backgroundColor: '#FFFFFF', borderColor: '#E7E7EC', borderRadius: 9, borderWidth: 1, overflow: 'hidden' },
+  list: { backgroundColor: '#FAFBFC', borderColor: '#E7E7EC', borderRadius: 9, borderWidth: 1, overflow: 'hidden' },
   exerciseRow: {
     alignItems: 'center',
     borderBottomColor: '#EEEEF1',
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   exerciseName: { color: '#333339', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
   exercisePrescription: { color: '#9999A1', fontSize: 11 },
   postureButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFBFC',
     borderColor: '#E7E7EC',
     borderRadius: 7,
     borderWidth: 1,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   postureButtonText: { color: '#5246C6', fontSize: 11, fontFamily: fontFamilies.pretendardSemiBold },
   empty: { gap: 10, paddingTop: 40 },
   emptyAction: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FAFBFC',
     alignSelf: 'flex-start',
     borderColor: '#E7E7EC',
     borderRadius: 7,
@@ -289,7 +289,7 @@ const styles = StyleSheet.create({
     padding: 9,
   },
   emptyActionText: { color: '#5246C6', fontSize: 12 },
-  footer: { backgroundColor: '#F4F5F7', paddingHorizontal: 20, paddingTop: 10 },
+  footer: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 10 },
   startButton: {
     alignItems: 'center',
     backgroundColor: '#5246C6',

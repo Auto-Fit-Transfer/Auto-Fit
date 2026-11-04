@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, Keyboard, StyleSheet, View } from 'react-native';
+import { Alert, Keyboard, Pressable, StyleSheet, View } from 'react-native';
 import { saveExerciseGoal, type ExerciseGoalInput } from '@/src/api/exercise';
 import {
   completeOnboarding,
@@ -30,6 +30,24 @@ const activeGoalType: Partial<Record<SignupExerciseGoal, ExerciseGoalInput['goal
   conditioning: 'rehabilitation',
 };
 
+const goalNames: Partial<Record<SignupExerciseGoal, string>> = {
+  'fat-loss': '체지방 감량',
+  'muscle-gain': '근육량 증가',
+  stamina: '체력 향상',
+  conditioning: '컨디셔닝 · 기능 회복',
+};
+const periodOptions = [
+  { label: '1개월', weeks: 4 },
+  { label: '3개월', weeks: 13 },
+  { label: '6개월', weeks: 26 },
+] as const;
+const frequencyOptions = [
+  { label: '1~2번', count: 2 },
+  { label: '3번', count: 3 },
+  { label: '4번', count: 4 },
+  { label: '5번 이상', count: 5 },
+] as const;
+
 export default function SignUpStep5Screen() {
   const router = useRouter();
   const { flow } = useLocalSearchParams<{ flow?: string }>();
@@ -37,20 +55,21 @@ export default function SignUpStep5Screen() {
   const { draft, resetDraft } = useSignup();
   const inFlight = useRef(false);
   const [targetWeight, setTargetWeight] = useState('');
-  const [frequency, setFrequency] = useState('3');
+  const [frequency, setFrequency] = useState(3);
   const [minutes, setMinutes] = useState('120');
-  const [weeks, setWeeks] = useState('8');
+  const [weeks, setWeeks] = useState<number | null>(13);
   const [saving, setSaving] = useState(false);
   const showWeight = draft.exerciseGoal === 'fat-loss' || draft.exerciseGoal === 'muscle-gain';
 
-  const finish = async () => {
+  const finish = async (skipGoal = false) => {
     if (inFlight.current) return;
-    const f = Number(frequency),
+    const f = frequency,
       m = Number(minutes),
-      w = Number(weeks);
-    const weight = targetWeight.trim() ? Number(targetWeight) : null;
+      w = weeks ?? 8;
+    const weight = !skipGoal && targetWeight.trim() ? Number(targetWeight) : null;
     if (
-      !Number.isInteger(f) ||
+      !skipGoal &&
+      (!Number.isInteger(f) ||
       f < 1 ||
       f > 7 ||
       !Number.isInteger(m) ||
@@ -58,7 +77,7 @@ export default function SignUpStep5Screen() {
       m > 10080 ||
       !Number.isInteger(w) ||
       w < 1 ||
-      w > 260
+      w > 260)
     ) {
       Alert.alert(
         '목표를 확인해 주세요',
@@ -92,7 +111,7 @@ export default function SignUpStep5Screen() {
       );
       if (showWeight && weight !== null) await saveTargetWeight(weight);
       const supportedGoal = activeGoalType[draft.exerciseGoal];
-      if (supportedGoal)
+      if (supportedGoal && !skipGoal)
         await saveExerciseGoal({
           goal_type: supportedGoal,
           weekly_frequency: f,
@@ -112,62 +131,98 @@ export default function SignUpStep5Screen() {
 
   return (
     <SignUpScreenLayout
-      ctaLabel="시작하기"
+      ctaLabel="가입 완료"
       ctaLoading={saving}
       currentStep={isPostLogin ? 4 : 5}
       totalSteps={isPostLogin ? 4 : 5}
+      footerExtra={
+        <Pressable accessibilityRole="button" disabled={saving} onPress={() => void finish(true)} style={styles.later}>
+          <Text style={styles.laterText}>나중에 정할래요</Text>
+        </Pressable>
+      }
+      heading={goalNames[draft.exerciseGoal] ? `${goalNames[draft.exerciseGoal]}, 조금만 더 알려 주세요` : undefined}
       onBack={() => router.back()}
       onContinue={() => void finish()}
     >
       <View style={styles.form}>
         {showWeight ? (
           <AuthTextField
-            accessibilityLabel="목표 체중"
-            label="목표 체중 (선택)"
+            accessibilityLabel="목표 몸무게"
+            label="목표 몸무게"
             keyboardType="decimal-pad"
             onChangeText={setTargetWeight}
-            placeholder="예: 52 kg"
+            placeholder="52.0"
+            rightElement={<Text style={styles.unit}>kg</Text>}
             value={targetWeight}
           />
         ) : null}
-        <Text style={styles.sectionTitle}>운동 계획</Text>
-        <AuthTextField
-          accessibilityLabel="일주일 운동 횟수"
-          label="일주일 운동 횟수"
-          keyboardType="number-pad"
-          onChangeText={setFrequency}
-          placeholder="주 1~7회"
-          value={frequency}
-        />
+        <View>
+          <Text style={styles.sectionTitle}>언제까지 이룰까요?</Text>
+          <View style={styles.chips}>
+            {periodOptions.map((option) => (
+              <Chip key={option.label} label={option.label} onPress={() => setWeeks(option.weeks)} selected={weeks === option.weeks} />
+            ))}
+            <Chip label="정하지 않음" onPress={() => setWeeks(null)} selected={weeks === null} />
+          </View>
+        </View>
+        <View>
+          <Text style={styles.sectionTitle}>일주일에 몇 번 운동할 수 있나요?</Text>
+          <View style={styles.chips}>
+            {frequencyOptions.map((option) => (
+              <Chip key={option.label} label={option.label} onPress={() => setFrequency(option.count)} selected={frequency === option.count} />
+            ))}
+          </View>
+        </View>
         <AuthTextField
           accessibilityLabel="일주일 운동 시간"
           label="일주일 운동 시간 (분)"
           keyboardType="number-pad"
           onChangeText={setMinutes}
-          placeholder="주간 총 운동 시간"
+          placeholder="120"
           value={minutes}
         />
-        <AuthTextField
-          accessibilityLabel="목표 기간"
-          label="목표 기간 (주)"
-          keyboardType="number-pad"
-          onChangeText={setWeeks}
-          placeholder="목표 기간"
-          value={weeks}
-        />
-        <Text style={styles.note}>운동 목표는 나중에 마이페이지에서 수정할 수 있어요.</Text>
       </View>
     </SignUpScreenLayout>
   );
 }
 
+function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={[styles.chip, selected && styles.chipSelected]}
+    >
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  form: { gap: 18 },
+  form: { gap: 28 },
   sectionTitle: {
-    color: '#222227',
+    color: '#17161D',
     fontFamily: fontFamilies.pretendardBold,
-    fontSize: 17,
-    marginTop: 8,
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 10,
   },
-  note: { color: '#87878F', fontSize: 12, lineHeight: 18 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    alignItems: 'center',
+    backgroundColor: '#FAFBFC',
+    borderColor: '#DFE2E7',
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 40,
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  chipSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
+  chipText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  chipTextSelected: { color: '#FFFFFF' },
+  unit: { color: '#5E5D66', fontSize: 16 },
+  later: { alignItems: 'center', height: 44, justifyContent: 'center', marginTop: 8 },
+  laterText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
 });

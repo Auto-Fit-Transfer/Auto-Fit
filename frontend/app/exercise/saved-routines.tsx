@@ -74,7 +74,7 @@ export default function SavedRoutines() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F4F5F7' },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { paddingHorizontal: 20, gap: 17 },
   header: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   back: { fontSize: 32, color: '#1E1D24', lineHeight: 36 },
@@ -87,11 +87,11 @@ const styles = StyleSheet.create({
   tabTextActive: { color: '#1E1D24', fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
   subtitle: { color: '#777681', fontSize: 13 },
   filters: { flexDirection: 'row', gap: 8 },
-  chip: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 20, paddingHorizontal: 13, paddingVertical: 9 },
-  chipActive: { backgroundColor: '#F1F0F9', borderColor: purple },
+  chip: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 20, paddingHorizontal: 13, paddingVertical: 9 },
+  chipActive: { backgroundColor: '#ECE9FF', borderColor: purple },
   chipText: { fontSize: 12, color: '#777681' },
   chipTextActive: { color: purple },
-  card: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 15, padding: 16, gap: 10 },
+  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 15, padding: 16, gap: 10 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardTitle: { color: '#1E1D24', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
   arrow: { color: purple, fontSize: 19 },

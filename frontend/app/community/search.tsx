@@ -93,16 +93,16 @@ function PostRow({ post, onPress, routine = false }: { post: CommunityPost; onPr
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F4F5F7' },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
   searchRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingBottom: 13, gap: 8 },
   backButton: { width: 30, alignItems: 'center' }, back: { color: ink, fontSize: 32, lineHeight: 36 },
-  inputWrap: { flex: 1, height: 42, backgroundColor: '#F4F5F7', borderColor: '#E2E4E8', borderWidth: 1, borderRadius: 23, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 7 },
+  inputWrap: { flex: 1, height: 42, backgroundColor: '#FAFBFC', borderColor: '#E2E4E8', borderWidth: 1, borderRadius: 23, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 7 },
   searchIcon: { color: muted, fontSize: 22 }, input: { flex: 1, fontSize: 13, color: ink }, clear: { fontSize: 20, color: muted, paddingHorizontal: 4 },
   tabsScroll: { flexGrow: 0, borderBottomColor: '#ECECF0', borderBottomWidth: 1 },
   tabs: { paddingHorizontal: 20, gap: 20, alignItems: 'center' }, tab: { paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' }, tabActive: { borderBottomColor: ink }, tabText: { fontSize: 13, color: muted }, tabTextActive: { color: ink, fontFamily: fontFamilies.pretendardSemiBold },
   content: { paddingHorizontal: 20, paddingTop: 16, gap: 10 }, hint: { color: muted, fontSize: 13, marginTop: 18 }, loading: { marginTop: 35 },
   sectionTitle: { color: ink, fontSize: 15, fontFamily: fontFamilies.pretendardBold, marginTop: 10 },
   postRow: { borderBottomWidth: 1, borderBottomColor: '#ECECF0', paddingVertical: 11, gap: 5 }, category: { color: muted, fontSize: 11 }, rowTitle: { color: ink, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold, lineHeight: 20 }, meta: { color: muted, fontSize: 11 },
-  personRow: { backgroundColor: '#FFFFFF', borderColor: '#E2E4E8', borderWidth: 1, borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }, personCopy: { flex: 1, gap: 3 }, chevron: { color: muted, fontSize: 21 }, clubIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#F1F0F9', alignItems: 'center', justifyContent: 'center' }, clubIconText: { color: purple, fontSize: 22 },
-  empty: { backgroundColor: '#F4F5F7', borderRadius: 12, padding: 20, marginTop: 20, alignItems: 'center' }, emptyText: { color: muted, fontSize: 13 }, error: { color: '#A13A2F', fontSize: 12 },
+  personRow: { backgroundColor: '#FAFBFC', borderColor: '#E2E4E8', borderWidth: 1, borderRadius: 12, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }, personCopy: { flex: 1, gap: 3 }, chevron: { color: muted, fontSize: 21 }, clubIcon: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#ECE9FF', alignItems: 'center', justifyContent: 'center' }, clubIconText: { color: purple, fontSize: 22 },
+  empty: { backgroundColor: '#FAFBFC', borderRadius: 12, padding: 20, marginTop: 20, alignItems: 'center' }, emptyText: { color: muted, fontSize: 13 }, error: { color: '#A13A2F', fontSize: 12 },
 });

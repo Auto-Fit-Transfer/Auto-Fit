@@ -18,7 +18,7 @@ export default function SplashScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      <AutofitWordmark accessibilityLabel="autofit" height={43} width={160} />
+      <AutofitWordmark accessibilityLabel="autofit" height={41} width={151} />
     </View>
   );
 }
@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
   root: {
     alignItems: 'center',
     alignSelf: 'center',
-    backgroundColor: '#F4F5F7',
+    backgroundColor: '#FAFBFC',
     flex: 1,
     justifyContent: 'center',
     maxWidth: 412,
