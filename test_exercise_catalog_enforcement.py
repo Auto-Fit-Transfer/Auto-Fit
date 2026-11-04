@@ -1,4 +1,5 @@
 import hashlib
+import itertools
 from types import SimpleNamespace
 
 import pytest
@@ -643,31 +644,25 @@ def test_exercise_endpoint_returns_503_for_invalid_generation(
     assert exc_info.value.status_code == 503
 
 
-@pytest.mark.parametrize(
-    ("minutes", "target"),
-    [
-        ([10, 10, 8, 7], 45),
-        ([60, 20], 45),
-        ([7, 7, 7], 30),
-        ([1, 1, 1, 1], 120),
-        ([100, 1, 1, 1], 5),
-        ([11, 12, 9, 12], 45),
-    ],
-)
-def test_off_target_session_is_fitted_to_available_minutes(
-    minutes: list[int],
+@pytest.mark.parametrize("target", [5, 30, 45, 60, 90, 120, 300])
+def test_every_session_is_fitted_to_exactly_available_minutes(
     target: int,
 ) -> None:
-    fitted = service._fit_session_minutes(minutes, target)
+    for size in range(1, 5):
+        for minutes in itertools.product(
+            [1, 7, 11, 48, 300],
+            repeat=size,
+        ):
+            fitted = service._fit_session_minutes(list(minutes), target)
 
-    assert len(fitted) == len(minutes)
-    assert min(fitted) >= 1
-    assert 0 <= sum(fitted) - target <= 5
+            assert len(fitted) == size
+            assert min(fitted) >= 1
+            assert sum(fitted) == target
 
 
 def test_on_target_session_is_left_as_generated() -> None:
-    for minutes in ([12, 12, 11, 10], [14, 13, 12, 11]):
-        assert service._fit_session_minutes(minutes, 45) == minutes
+    minutes = [12, 12, 11, 10]
+    assert service._fit_session_minutes(minutes, 45) == minutes
 
 
 def test_generate_fits_every_session_to_45_minutes(
@@ -734,12 +729,12 @@ def test_generate_fits_every_session_to_45_minutes(
         service.generate_exercise_recommendation(request)
     )
 
-    assert "합계 45~50분" in fake_responses.input_text
+    assert "합계 45분" in fake_responses.input_text
     assert len(result.sessions) == 2
     for session in result.sessions:
         total = sum(
             exercise.duration_minutes
             for exercise in session.exercises
         )
-        assert 45 <= total <= 50
+        assert total == 45
         assert session.estimated_duration_minutes == total

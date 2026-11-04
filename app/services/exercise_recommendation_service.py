@@ -28,7 +28,6 @@ from app.services.exercise_context_service import (
 logger = logging.getLogger(__name__)
 
 EXERCISE_GENERATION_MAX_ATTEMPTS = 2
-EXERCISE_SESSION_EXTRA_MINUTES = 5
 
 
 SYSTEM_INSTRUCTIONS = """
@@ -136,27 +135,22 @@ def _fit_session_minutes(
     minutes: list[int],
     target_minutes: int,
 ) -> list[int]:
-    """Scale an off-target session to the target, keeping exercise ratios.
+    """Scale a session to exactly the target, keeping exercise ratios.
 
-    Below the target means the workout was not completed, so only extra
-    minutes are allowed.
+    Shorter reads as an unfinished workout, and longer is refused by the
+    backend, so the total always equals the selected time.
     """
 
     total = sum(minutes)
-    if 0 <= total - target_minutes <= EXERCISE_SESSION_EXTRA_MINUTES:
+    if total == target_minutes:
         return minutes
 
     fitted = [
         max(1, value * target_minutes // total)
         for value in minutes
     ]
-    # Rounding down leaves fewer minutes than exercises; longest ones take them.
-    longest_first = sorted(
-        range(len(minutes)),
-        key=lambda index: -minutes[index],
-    )
-    for index in longest_first[: max(0, target_minutes - sum(fitted))]:
-        fitted[index] += 1
+    # Rounding leaves a few minutes over or under; the longest exercise absorbs them.
+    fitted[minutes.index(max(minutes))] += target_minutes - sum(fitted)
     return fitted
 
 
@@ -536,10 +530,9 @@ exercise_mode, daily_condition, available_equipment, 모드별 설정은 사용�
 
 개인화:
 - available_minutes가 있으면 session마다 모든 exercise의 duration_minutes 합계가
-  available_minutes 이상, 5분 초과 이내가 되게 구성하세요. 예: 45분이면 session마다 합계 45~50분.
-- 합계가 available_minutes보다 짧으면 안 됩니다.
+  available_minutes와 정확히 같게 구성하세요. 예: 45분이면 session마다 합계 45분.
 - estimated_duration_minutes에는 그 합계를 작성하세요.
-- daily_condition이 tired 또는 poor여도 이 합계 범위를 지키고, 운동량은 강도와 동작 난이도로 낮추세요.
+- daily_condition이 tired 또는 poor여도 이 합계를 지키고, 운동량은 강도와 동작 난이도로 낮추세요.
 - experience_level에 맞는 난이도로 구성하세요.
 - location이 제공되면 해당 장소에서 수행 가능한 운동을 우선하세요.
 - goal_type이 제공되면 운동 구성에 반영하세요.
