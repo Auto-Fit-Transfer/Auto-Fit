@@ -159,6 +159,53 @@ def _maximum_session_duration_minutes(
     )
 
 
+def _fit_session_minutes(
+    minutes: list[int],
+    target_minutes: int,
+) -> list[int]:
+    """Fit positive exercise minutes to an exact target proportionally."""
+
+    if not minutes:
+        raise ValueError("At least one exercise duration is required.")
+
+    if any(value < 1 for value in minutes):
+        raise ValueError("Exercise durations must be positive.")
+
+    if target_minutes < len(minutes):
+        raise ValueError(
+            "Target duration must allow at least one minute per exercise."
+        )
+
+    source_total = sum(minutes)
+    distributable_minutes = target_minutes - len(minutes)
+    quotient_and_remainder = [
+        divmod(
+            value * distributable_minutes,
+            source_total,
+        )
+        for value in minutes
+    ]
+    fitted = [
+        1 + quotient
+        for quotient, _remainder in quotient_and_remainder
+    ]
+    unallocated_minutes = target_minutes - sum(fitted)
+    allocation_order = sorted(
+        range(len(minutes)),
+        key=lambda index: (
+            quotient_and_remainder[index][1],
+            minutes[index],
+            -index,
+        ),
+        reverse=True,
+    )
+
+    for index in allocation_order[:unallocated_minutes]:
+        fitted[index] += 1
+
+    return fitted
+
+
 def _hydrate_catalog_response(
     selection: _CatalogExerciseRecommendationSelection,
     candidates: tuple[ExerciseCatalogCandidate, ...],
@@ -170,7 +217,47 @@ def _hydrate_catalog_response(
     for selected_session in selection.sessions:
         exercises: list[ExerciseItem] = []
 
-        for selected_exercise in selected_session.exercises:
+        original_minutes = [
+            selected_exercise.duration_minutes
+            for selected_exercise in selected_session.exercises
+        ]
+        original_total_minutes = sum(original_minutes)
+        maximum_duration_minutes = _maximum_session_duration_minutes(
+            target_duration_minutes
+        )
+        should_fit_duration = (
+            target_duration_minutes is not None
+            and not (
+                target_duration_minutes
+                <= original_total_minutes
+                <= maximum_duration_minutes
+            )
+        )
+        fitted_minutes = (
+            _fit_session_minutes(
+                original_minutes,
+                target_duration_minutes,
+            )
+            if should_fit_duration
+            and target_duration_minutes is not None
+            else original_minutes
+        )
+
+        if should_fit_duration:
+            logger.info(
+                "Exercise session duration fitted locally. "
+                "original_minutes=%s adjusted_minutes=%s "
+                "target_minutes=%s maximum_minutes=%s",
+                original_total_minutes,
+                sum(fitted_minutes),
+                target_duration_minutes,
+                maximum_duration_minutes,
+            )
+
+        for selected_exercise, duration_minutes in zip(
+            selected_session.exercises,
+            fitted_minutes,
+        ):
             candidate = allowed_candidates.get(
                 selected_exercise.exercise_key
             )
@@ -194,9 +281,7 @@ def _hydrate_catalog_response(
                             for asset in candidate.assets
                         }
                     ),
-                    duration_minutes=(
-                        selected_exercise.duration_minutes
-                    ),
+                    duration_minutes=duration_minutes,
                     intensity=selected_exercise.intensity,
                     instructions=(
                         selected_exercise.instructions
@@ -209,9 +294,6 @@ def _hydrate_catalog_response(
             for exercise in exercises
         )
 
-        maximum_duration_minutes = _maximum_session_duration_minutes(
-            target_duration_minutes
-        )
         is_below_target = (
             target_duration_minutes is not None
             and session_duration_minutes < target_duration_minutes

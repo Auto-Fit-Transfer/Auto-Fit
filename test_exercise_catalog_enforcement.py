@@ -305,7 +305,7 @@ def _duration_selection(
     )
 
 
-@pytest.mark.parametrize("total_minutes", [45, 50])
+@pytest.mark.parametrize("total_minutes", [45, 47, 50])
 def test_hydration_accepts_target_through_plus_five_minutes(
     total_minutes: int,
 ) -> None:
@@ -330,8 +330,8 @@ def test_hydration_accepts_target_through_plus_five_minutes(
     )
 
 
-@pytest.mark.parametrize("total_minutes", [44, 51])
-def test_hydration_rejects_duration_outside_target_window(
+@pytest.mark.parametrize("total_minutes", [37, 40, 44, 51, 52])
+def test_hydration_fits_duration_outside_target_window(
     total_minutes: int,
 ) -> None:
     request = _home_request(45)
@@ -341,29 +341,133 @@ def test_hydration_rejects_duration_outside_target_window(
         total_minutes,
     )
 
-    with pytest.raises(service._ExerciseSelectionValidationError):
-        service._hydrate_catalog_response(
-            selection,
-            candidates,
-            target_duration_minutes=request.available_minutes,
-        )
+    result = service._hydrate_catalog_response(
+        selection,
+        candidates,
+        target_duration_minutes=request.available_minutes,
+    )
+
+    assert result.sessions[0].estimated_duration_minutes == 45
+    assert result.sessions[0].exercises[0].duration_minutes == 45
 
 
-def test_hydration_rejects_when_any_session_breaks_duration_window() -> None:
+def test_hydration_fits_only_session_outside_duration_window() -> None:
     request = _home_request(45)
     candidates = select_exercise_candidates(request)
     selection = _duration_selection(
         candidates[0].exercise_key,
-        45,
+        47,
         44,
     )
 
-    with pytest.raises(service._ExerciseSelectionValidationError):
+    result = service._hydrate_catalog_response(
+        selection,
+        candidates,
+        target_duration_minutes=request.available_minutes,
+    )
+
+    assert [
+        session.estimated_duration_minutes
+        for session in result.sessions
+    ] == [47, 45]
+
+
+@pytest.mark.parametrize(
+    ("source_minutes", "expected_minutes"),
+    [
+        ([10, 10, 10, 10], [12, 11, 11, 11]),
+        ([10, 10, 10, 7], [12, 12, 12, 9]),
+        ([15, 15, 15, 7], [13, 13, 13, 6]),
+    ],
+)
+def test_fit_session_minutes_preserves_ratios_and_exact_total(
+    source_minutes: list[int],
+    expected_minutes: list[int],
+) -> None:
+    fitted = service._fit_session_minutes(
+        source_minutes,
+        target_minutes=45,
+    )
+
+    assert fitted == expected_minutes
+    assert sum(fitted) == 45
+    assert min(fitted) >= 1
+
+
+def test_hydration_preserves_exercise_order_when_fitting() -> None:
+    request = _home_request(45)
+    candidates = select_exercise_candidates(request)
+    selected_candidates = candidates[:4]
+    selection = service._CatalogExerciseRecommendationSelection(
+        summary="운동시간 비율 보정 fixture",
+        weekly_frequency=3,
+        intensity="moderate",
+        sessions=[
+            {
+                "name": "보정 세션",
+                "exercises": [
+                    {
+                        "exercise_key": candidate.exercise_key,
+                        "name": f"카탈로그 운동 {index + 1}",
+                        "duration_minutes": duration_minutes,
+                    }
+                    for index, (candidate, duration_minutes) in enumerate(
+                        zip(
+                            selected_candidates,
+                            [10, 10, 10, 7],
+                        )
+                    )
+                ],
+            }
+        ],
+    )
+
+    result = service._hydrate_catalog_response(
+        selection,
+        candidates,
+        target_duration_minutes=request.available_minutes,
+    )
+    session = result.sessions[0]
+
+    assert [
+        exercise.exercise_key for exercise in session.exercises
+    ] == [candidate.exercise_key for candidate in selected_candidates]
+    assert [
+        exercise.duration_minutes for exercise in session.exercises
+    ] == [12, 12, 12, 9]
+    assert session.estimated_duration_minutes == 45
+
+
+def test_hydration_validates_duration_after_local_fit(
+    monkeypatch,
+) -> None:
+    request = _home_request(45)
+    candidates = select_exercise_candidates(request)
+    selection = _duration_selection(
+        candidates[0].exercise_key,
+        40,
+    )
+    monkeypatch.setattr(
+        service,
+        "_fit_session_minutes",
+        lambda _minutes, _target_minutes: [44],
+    )
+
+    with pytest.raises(
+        service._ExerciseSelectionValidationError
+    ) as exc_info:
         service._hydrate_catalog_response(
             selection,
             candidates,
             target_duration_minutes=request.available_minutes,
         )
+
+    assert exc_info.value.reason == "session_duration_out_of_range"
+    assert exc_info.value.details == {
+        "target_minutes": 45,
+        "actual_minutes": 44,
+        "maximum_minutes": 50,
+    }
 
 
 def test_hydration_normalizes_legacy_none_duration_to_actual_total() -> None:
@@ -402,22 +506,22 @@ def test_request_enforces_200_minute_maximum(
 
 
 @pytest.mark.parametrize(
-    ("target_minutes", "total_minutes", "should_accept"),
+    ("target_minutes", "total_minutes", "expected_minutes"),
     [
-        (195, 195, True),
-        (195, 200, True),
-        (195, 201, False),
-        (198, 198, True),
-        (198, 200, True),
-        (198, 201, False),
-        (200, 200, True),
-        (200, 201, False),
+        (195, 195, 195),
+        (195, 200, 200),
+        (195, 201, 195),
+        (198, 198, 198),
+        (198, 200, 200),
+        (198, 201, 198),
+        (200, 200, 200),
+        (200, 201, 200),
     ],
 )
 def test_hydration_caps_session_total_at_200_minutes(
     target_minutes: int,
     total_minutes: int,
-    should_accept: bool,
+    expected_minutes: int,
 ) -> None:
     request = _home_request(target_minutes)
     candidates = select_exercise_candidates(request)
@@ -447,33 +551,20 @@ def test_hydration_caps_session_total_at_200_minutes(
         ],
     )
 
-    if should_accept:
-        result = service._hydrate_catalog_response(
-            selection,
-            candidates,
-            target_duration_minutes=request.available_minutes,
-        )
-        assert (
-            result.sessions[0].estimated_duration_minutes
-            == total_minutes
-        )
-        return
+    result = service._hydrate_catalog_response(
+        selection,
+        candidates,
+        target_duration_minutes=request.available_minutes,
+    )
 
-    with pytest.raises(
-        service._ExerciseSelectionValidationError
-    ) as exc_info:
-        service._hydrate_catalog_response(
-            selection,
-            candidates,
-            target_duration_minutes=request.available_minutes,
-        )
-
-    assert exc_info.value.reason == "session_duration_out_of_range"
-    assert exc_info.value.details == {
-        "target_minutes": target_minutes,
-        "actual_minutes": total_minutes,
-        "maximum_minutes": 200,
-    }
+    assert (
+        result.sessions[0].estimated_duration_minutes
+        == expected_minutes
+    )
+    assert sum(
+        exercise.duration_minutes
+        for exercise in result.sessions[0].exercises
+    ) == expected_minutes
 
 
 @pytest.mark.parametrize(
@@ -870,10 +961,10 @@ def test_generate_retries_unparsed_response_once(
     assert result.sessions[0].exercises[0].intensity is None
 
 
-def test_generate_retries_after_duration_violation_and_succeeds(
+def test_generate_fits_duration_without_openai_retry(
     monkeypatch,
 ) -> None:
-    request = _home_request()
+    request = _home_request(45)
     selected = select_exercise_candidates(request)[0]
 
     class FakeResponses:
@@ -882,11 +973,11 @@ def test_generate_retries_after_duration_violation_and_succeeds(
 
         async def parse(self, **_kwargs):
             self.calls += 1
-            duration_minutes = 19 if self.calls == 1 else 20
             return SimpleNamespace(
                 output_parsed=_duration_selection(
                     selected.exercise_key,
-                    duration_minutes,
+                    40,
+                    37,
                 )
             )
 
@@ -906,8 +997,11 @@ def test_generate_retries_after_duration_violation_and_succeeds(
         service.generate_exercise_recommendation(request)
     )
 
-    assert fake_responses.calls == 2
-    assert result.sessions[0].estimated_duration_minutes == 20
+    assert fake_responses.calls == 1
+    assert [
+        session.estimated_duration_minutes
+        for session in result.sessions
+    ] == [45, 45]
 
 
 def test_generate_fails_after_two_unparsed_responses(
@@ -973,7 +1067,7 @@ def test_exercise_endpoint_returns_503_for_invalid_generation(
     assert exc_info.value.status_code == 503
 
 
-def test_exercise_endpoint_returns_503_after_duration_retries_exhausted(
+def test_exercise_endpoint_returns_fitted_duration_without_retry(
     monkeypatch,
 ) -> None:
     request = _home_request()
@@ -1009,13 +1103,13 @@ def test_exercise_endpoint_returns_503_after_duration_retries_exhausted(
         lambda _credentials: None,
     )
 
-    with pytest.raises(HTTPException) as exc_info:
-        run_immediate(
-            recommendation_router.recommend_exercise(
-                request,
-                credentials=None,
-            )
+    response = run_immediate(
+        recommendation_router.recommend_exercise(
+            request,
+            credentials=None,
         )
+    )
 
-    assert fake_responses.calls == 2
-    assert exc_info.value.status_code == 503
+    assert fake_responses.calls == 1
+    assert response.ok is True
+    assert response.result.sessions[0].estimated_duration_minutes == 20
