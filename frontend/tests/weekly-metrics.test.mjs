@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   mapWeeklyMetrics,
+  formatSessionDuration,
+  sessionCalories,
   sessionMinutes,
   sessionLocalDate,
 } from '../src/features/exercise/weeklyMetrics.ts';
@@ -15,6 +17,18 @@ test('weekly achievement preserves server frequency and duration weighting', () 
   assert.equal(v.goalAchievementRate, 75);
   assert.equal(v.remainingGoalWorkoutCount, 0);
   assert.equal(v.targetWorkoutCount, 3);
+});
+test('completed workouts without calorie estimates are not shown as zero kcal', () => {
+  assert.equal(sessionCalories(0, 4), null);
+  assert.equal(sessionCalories('0', '1'), null);
+  assert.equal(sessionCalories(120, 4), 120);
+  assert.equal(sessionCalories(0, 0), 0);
+  assert.equal(sessionCalories(null, 4), null);
+});
+test('result duration uses recorded fractional minutes without placeholder values', () => {
+  assert.equal(formatSessionDuration(35.5), '35:30');
+  assert.equal(formatSessionDuration(35), '35:00');
+  assert.equal(formatSessionDuration(null), '—');
 });
 test('over-target completion does not raise the target and missing data is not zero', () => {
   const v = mapWeeklyMetrics({
