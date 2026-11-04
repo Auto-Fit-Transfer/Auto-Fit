@@ -320,6 +320,8 @@ class ExerciseRecommendationRequest(BaseModel):
 
     goal_type: str | None = None
 
+    custom_goal: str | None = Field(default=None, max_length=200)
+
     experience_level: str | None = None
 
 

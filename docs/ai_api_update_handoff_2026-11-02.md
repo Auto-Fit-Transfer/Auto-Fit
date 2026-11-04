@@ -1,5 +1,9 @@
 # Auto-Fit API 업데이트 인계서
 
+> 2026-11-04 참고: 이 문서의 `rules_v1` 사용·fallback 설명은 2026-11-02 당시 상태다.
+> 새 운동 추천 생성은 AI 전용이며, 완료 분석은 `/analyze/exercise-session`을 사용한다.
+> 변경 코드는 Backend 및 AI Server 작업 트리에 있고 배포 전이다.
+
 - 작성일: 2026-11-02
 - 대상: Frontend, Backend, AI Server, 배포 담당자
 - 목적: 2026-11-02 AI Server 변경사항과 최신 Frontend·Backend 비교 결과 공유

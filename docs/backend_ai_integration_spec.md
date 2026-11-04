@@ -2,6 +2,10 @@
 
 이 문서는 Auto-Fit Backend가 AI Server를 연결할 때 필요한 입력 데이터, AI Server 응답, 저장 책임과 연동 순서를 정의한다. 현재 코드에 구현된 Router와 Pydantic Schema를 기준으로 작성했으며, Backend API 명세를 받으면 필드 매핑과 최종 endpoint를 함께 확정한다.
 
+> 2026-11-04 변경: Backend 작업 트리에서 새 운동 추천의 `rules_v1` 경로를 제거하고
+> `/recommend/exercise`와 `/analyze/exercise-session` 호출을 구현했다. 아래
+> 2026-10-28 코드 대조 표는 당시 커밋의 기록이며 현재 연동 상태가 아니다.
+
 ## 실제 Backend 코드 대조 상태
 
 2026-10-28 기준 `origin/backend` 커밋 `51dcf00`의 실제 import와 호출 관계를 확인한 결과다. 아래 상태는 구현 목표가 아니라 해당 커밋에서 실행되는 코드 기준이다.
@@ -86,6 +90,7 @@ Content-Type: application/json
 | 2 | `POST /health-analysis` | 건강검진, 체성분, 목표, 냉장고 context | 종합 분석과 냉장고 맞춤 제안 | Backend |
 | 2 | `POST /health-analysis/diet-refresh` | 기존 건강 입력과 최신 냉장고 context | 식단 제안 영역만 갱신 | Backend |
 | 2 | `POST /recommend/exercise` | 건강 상태와 운동 선호 | AI 기반 운동 추천 | Backend |
+| 2 | `POST /analyze/exercise-session` | 종료 세션 요약·운동 수행 항목·사용자 피드백 | AI 운동 완료 분석 문구 | Backend에서 기록과 함께 반환 |
 | 2 | `POST /posture-analysis/analyze` | 작업 UUID, 측면 스쿼트 영상 | 회차별 관절 좌표·각도·점수·교정사항 | Backend |
 | 2 | `GET /running/places/search` | 주소·장소명, 선택적 중심 좌표·반경 | 출발지 후보와 WGS84 좌표 | 저장하지 않음 |
 | 2 | `GET /running/courses/recommend` | 지역 또는 GPS, 거리 옵션, 사용자 페이스 | 공식 코스 후보와 거리·근접도·검증 상태 | Backend 선택 저장 |
@@ -629,6 +634,7 @@ Frontend에서 저장한 오늘의 운동 조건은 Backend가 `POST /recommend/
 | `condition_level` | `좋음`, `보통`, `피곤해요`, `안 좋아요` |
 | `discomfort_areas` | 미선택 시 `[]`, 선택 시 문자열 배열 |
 | `condition_note` | 추가 설명 또는 `null` |
+| `custom_goal` | `goal_type=other`일 때 사용자가 입력한 목표(최대 200자) |
 
 AI Server는 컨디션을 내부 안전 상태로 다음처럼 정규화한다.
 
@@ -764,6 +770,21 @@ Frontend용 URL로 제공한다. 실제 자산 루트는 `EXERCISE_GIF_ROOT` 같
 환경변수로 관리하고 Frontend에 노출하지 않는다.
 자동 정규화가 불확실한 `mapping_status=needs_review` 행과 중복 후보는 추천에서
 제외한다.
+
+## 운동 완료 분석
+
+`POST /analyze/exercise-session`은 Backend가 소유권을 확인한 종료 세션의 기록만
+Bearer 인증으로 받는다. 사용자 ID, 토큰, 운동 로그 메모는 요청에 포함하지 않는다.
+요청은 종료 상태, 완료율, 시간, 측정된 경우의 열량, 계획·완료·건너뜀 수,
+운동명·수행 여부·시간, 운동 중 불편 기록의 유형·강도·부위·조치,
+사용자가 남긴 난이도·컨디션·불편 부위·피드백 메모로 제한한다.
+열량이 집계되지 않은 0은 `null`로 보낸다.
+
+응답은 `{"ok":true,"generator":"auto-fit-ai","result":{...}}`이며 `result`에는
+`summary`, `insights`(1~5개), `next_session_adjustments`(1~5개), `safety_notice`가 있다.
+AI Server는 기록에 없는 수치나 의료 진단을 만들지 않고, 다음 세션 조정을 실제 계획에
+적용했다고 말하지 않는다. Backend는 요약·문구만 AI에서 받고 수치와 피드백 표시는
+저장된 원본으로 구성한다. AI 호출 또는 검증 실패 시 규칙 기반 분석으로 대체하지 않는다.
 
 ## 운동 자세 분석
 

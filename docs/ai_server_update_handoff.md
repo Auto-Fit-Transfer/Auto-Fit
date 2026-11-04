@@ -1,5 +1,9 @@
 # Auto-Fit AI Server 업데이트 인계서
 
+> 2026-11-04 참고: 이 문서의 `rules_v1` 사용·fallback 설명은 이전 연동 상태다.
+> 새 운동 추천 생성은 AI 전용이며, 완료 분석은 `/analyze/exercise-session`을 사용한다.
+> 변경 코드는 Backend 및 AI Server 작업 트리에 있고 배포 전이다.
+
 > 이 문서는 Auto-Fit AI Server의 누적 개발·연동 상태를 관리하는 상시 인계서다.
 > 기능 업데이트 후 기존 이력을 삭제하지 않고 문서 마지막의 업데이트 이력에 새 항목을
 > 추가한다.

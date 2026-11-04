@@ -1435,6 +1435,52 @@
           }
         }
       }
+    },
+    "/analyze/exercise-session": {
+      "post": {
+        "tags": [
+          "exercise-analysis"
+        ],
+        "summary": "Analyze Session",
+        "operationId": "analyze_session_analyze_exercise_session_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExerciseSessionAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExerciseSessionAnalysisResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -4714,6 +4760,18 @@
                 "type": "null"
               }
             ]
+          },
+          "custom_goal": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Custom Goal"
           }
         },
         "additionalProperties": false,
@@ -9169,6 +9227,317 @@
         ],
         "title": "WeeklyExerciseScoreInput",
         "description": "운동 목표 설정과 실제 수행 기록을 비교하기 위한 입력이다.\n\n- 시간 달성도: 50%\n- 주간 횟수 달성도: 30%\n- 선택한 운동 목적에 맞는 추천 운동 수행도: 20%"
+      },
+      "ExerciseAnalysisNarrative": {
+        "properties": {
+          "summary": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Summary"
+          },
+          "insights": {
+            "items": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Insights"
+          },
+          "next_session_adjustments": {
+            "items": {
+              "type": "string",
+              "maxLength": 500,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Next Session Adjustments"
+          },
+          "safety_notice": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Safety Notice"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "summary",
+          "insights",
+          "next_session_adjustments"
+        ],
+        "title": "ExerciseAnalysisNarrative"
+      },
+      "ExerciseFeedback": {
+        "properties": {
+          "perceived_difficulty": {
+            "type": "integer",
+            "maximum": 5.0,
+            "minimum": 1.0,
+            "title": "Perceived Difficulty"
+          },
+          "post_condition": {
+            "type": "string",
+            "enum": [
+              "very_bad",
+              "bad",
+              "normal",
+              "good",
+              "very_good"
+            ],
+            "title": "Post Condition"
+          },
+          "uncomfortable_areas": {
+            "items": {
+              "type": "string",
+              "maxLength": 50,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Uncomfortable Areas"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "perceived_difficulty",
+          "post_condition"
+        ],
+        "title": "ExerciseFeedback"
+      },
+      "ExerciseSessionAnalysisRequest": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "stopped"
+            ],
+            "title": "Status"
+          },
+          "completion_rate": {
+            "type": "number",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Completion Rate"
+          },
+          "duration_minutes": {
+            "type": "number",
+            "maximum": 10080.0,
+            "minimum": 0.0,
+            "title": "Duration Minutes"
+          },
+          "calories_burned": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calories Burned"
+          },
+          "planned_item_count": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Planned Item Count"
+          },
+          "completed_item_count": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Completed Item Count"
+          },
+          "skipped_item_count": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 0.0,
+            "title": "Skipped Item Count"
+          },
+          "exercises": {
+            "items": {
+              "$ref": "#/components/schemas/PerformedExercise"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Exercises"
+          },
+          "discomfort_events": {
+            "items": {
+              "$ref": "#/components/schemas/DiscomfortEvent"
+            },
+            "type": "array",
+            "maxItems": 30,
+            "title": "Discomfort Events"
+          },
+          "feedback": {
+            "$ref": "#/components/schemas/ExerciseFeedback"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "completion_rate",
+          "duration_minutes",
+          "planned_item_count",
+          "completed_item_count",
+          "skipped_item_count",
+          "feedback"
+        ],
+        "title": "ExerciseSessionAnalysisRequest"
+      },
+      "ExerciseSessionAnalysisResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true,
+            "title": "Ok"
+          },
+          "generator": {
+            "type": "string",
+            "const": "auto-fit-ai",
+            "title": "Generator"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ExerciseAnalysisNarrative"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ok",
+          "generator",
+          "result"
+        ],
+        "title": "ExerciseSessionAnalysisResponse"
+      },
+      "PerformedExercise": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "completed": {
+            "type": "boolean",
+            "title": "Completed"
+          },
+          "skipped": {
+            "type": "boolean",
+            "title": "Skipped"
+          },
+          "duration_minutes": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 300.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Minutes"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "completed",
+          "skipped"
+        ],
+        "title": "PerformedExercise"
+      },
+      "DiscomfortEvent": {
+        "properties": {
+          "symptom_type": {
+            "type": "string",
+            "enum": [
+              "pain",
+              "fatigue",
+              "dizziness",
+              "breathing",
+              "other"
+            ],
+            "title": "Symptom Type"
+          },
+          "severity": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 10.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Severity"
+          },
+          "body_areas": {
+            "items": {
+              "type": "string",
+              "maxLength": 50,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Body Areas"
+          },
+          "action_taken": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "adjust",
+                  "stop",
+                  "continue"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Taken"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "symptom_type"
+        ],
+        "title": "DiscomfortEvent"
       }
     },
     "securitySchemes": {

@@ -30,6 +30,10 @@ EXPECTED_OPERATIONS = {
         "ExerciseRecommendationRequest",
         "ExerciseGenerateResponse",
     ),
+    "/analyze/exercise-session": (
+        "ExerciseSessionAnalysisRequest",
+        "ExerciseSessionAnalysisResponse",
+    ),
     "/recommend/diet": (
         "DietRecommendationRequest",
         "DietGenerateResponse",

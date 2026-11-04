@@ -46,6 +46,12 @@ class Settings(BaseSettings):
         le=300,
     )
 
+    exercise_analysis_openai_timeout_seconds: float = Field(
+        default=45.0,
+        gt=0,
+        le=300,
+    )
+
     # 냉장고 변경 후 식단 개인화 갱신 제한 시간
     diet_refresh_openai_timeout_seconds: float = Field(
         default=30.0,
