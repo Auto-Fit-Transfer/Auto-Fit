@@ -670,9 +670,17 @@ OpenAI는 서버가 필터링한 `exercise_key` 후보 중 하나를 선택하�
 선택 결과를 다시 검증한 뒤 CSV의 영문 표준명을 조립한다.
 후보 밖의 key를 선택하면 임의 운동으로 대체하지 않고 요청을 실패 처리한다.
 
+운동 추천 결과의 상위 `intensity`는 `low`, `moderate`, `high` 중 하나를
+필수로 반환한다. 운동별 `intensity`는 생략 또는 `null`일 수 있으며, 값을
+반환한다면 동일한 세 코드 중 하나여야 한다. 운동별 값이 없으면 Backend는
+상위 강도를 사용한다. `condition_level="보통"`은 현재 컨디션 입력이므로 결과
+강도를 `moderate`로 고정하지 않는다. 한글 표시는 통신 계약 밖의 화면 계층에서
+변환한다.
+
 ```json
 {
   "catalog_version": "sha256:<LF로 정규화한 CSV SHA-256>",
+  "intensity": "moderate",
   "sessions": [
     {
       "name": "복부 운동",
@@ -683,7 +691,7 @@ OpenAI는 서버가 필터링한 `exercise_key` 후보 중 하나를 선택하�
           "catalog_name_en": "45 Degree Bycicle Twisting Crunch",
           "exercise_modes": ["gym"],
           "duration_minutes": 5,
-          "intensity": "보통",
+          "intensity": "moderate",
           "instructions": [
             "복부에 힘을 유지하고 천천히 수행하세요."
           ]

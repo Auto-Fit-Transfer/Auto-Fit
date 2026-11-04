@@ -98,7 +98,7 @@ AI Server는 구매한 운동 GIF CSV에 존재하는 운동만 추천하며 각
     "catalog_version": "sha256:<catalog-hash>",
     "summary": "오늘 컨디션과 장비를 반영한 운동입니다.",
     "weekly_frequency": 3,
-    "intensity": "보통",
+    "intensity": "moderate",
     "sessions": [
       {
         "name": "상체 운동",
@@ -110,7 +110,7 @@ AI Server는 구매한 운동 GIF CSV에 존재하는 운동만 추천하며 각
             "catalog_name_en": "45 Degree Bycicle Twisting Crunch",
             "exercise_modes": ["gym"],
             "duration_minutes": 5,
-            "intensity": "보통",
+            "intensity": "moderate",
             "instructions": [
               "복부에 힘을 유지하고 천천히 수행하세요."
             ]
@@ -126,12 +126,21 @@ AI Server는 구매한 운동 GIF CSV에 존재하는 운동만 추천하며 각
 
 Backend는 응답 수신 후 다음 항목을 검증합니다.
 
+- `result.intensity`가 `low`, `moderate`, `high` 중 하나인지
+- 운동별 `intensity`가 생략 또는 `null`이거나 `low`, `moderate`, `high` 중 하나인지
 - `catalog_version`이 Backend에 배포된 CSV 버전과 일치하는지
 - 모든 `exercise_key`가 Backend CSV에 존재하는지
 - 요청 장소와 운동의 `exercise_modes`가 충돌하지 않는지
 - 요청한 장비로 수행할 수 있는 운동인지
 - 운동 시간이 유효한지
 - 빈 세션 또는 빈 운동 목록을 정상 추천으로 저장하지 않는지
+
+`condition_level="보통"`은 사용자의 현재 컨디션 입력이며 추천 결과의
+`intensity`를 `moderate`로 고정한다는 뜻이 아닙니다. AI Server는 운동 목표,
+경험 수준, 안전 조건과 실제 운동 구성을 함께 고려해 결과 강도를 결정합니다.
+운동별 `intensity`가 생략되거나 `null`이면 Backend는 상위
+`result.intensity`를 사용합니다. 화면용 한글 표시는 Backend 또는 Frontend에서
+변환하고 AI Server 통신 및 저장 계약에는 영문 코드만 사용합니다.
 
 ## 6. GIF 연결 책임
 

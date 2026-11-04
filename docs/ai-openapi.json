@@ -4496,22 +4496,20 @@
             "title": "Exercise Modes"
           },
           "duration_minutes": {
-            "anyOf": [
-              {
-                "type": "integer",
-                "maximum": 300.0,
-                "minimum": 1.0
-              },
-              {
-                "type": "null"
-              }
-            ],
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": 1.0,
             "title": "Duration Minutes"
           },
           "intensity": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "enum": [
+                  "low",
+                  "moderate",
+                  "high"
+                ]
               },
               {
                 "type": "null"
@@ -4533,7 +4531,8 @@
           "exercise_key",
           "name",
           "catalog_name_en",
-          "exercise_modes"
+          "exercise_modes",
+          "duration_minutes"
         ],
         "title": "ExerciseItem"
       },
@@ -4741,6 +4740,11 @@
           },
           "intensity": {
             "type": "string",
+            "enum": [
+              "low",
+              "moderate",
+              "high"
+            ],
             "title": "Intensity"
           },
           "sessions": {
@@ -4748,6 +4752,8 @@
               "$ref": "#/components/schemas/ExerciseSession"
             },
             "type": "array",
+            "maxItems": 3,
+            "minItems": 1,
             "title": "Sessions"
           },
           "cautions": {
@@ -4771,7 +4777,8 @@
           "catalog_version",
           "summary",
           "weekly_frequency",
-          "intensity"
+          "intensity",
+          "sessions"
         ],
         "title": "ExerciseRecommendationResponse"
       },
@@ -4811,12 +4818,14 @@
             },
             "type": "array",
             "maxItems": 4,
+            "minItems": 1,
             "title": "Exercises"
           }
         },
         "type": "object",
         "required": [
-          "name"
+          "name",
+          "exercises"
         ],
         "title": "ExerciseSession"
       },

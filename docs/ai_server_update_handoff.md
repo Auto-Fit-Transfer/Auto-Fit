@@ -8,13 +8,13 @@
 
 | 항목 | 값 |
 |---|---|
-| 문서 버전 | 1.3 |
+| 문서 버전 | 1.4 |
 | 최초 작성일 | 2026-11-02 |
-| 최종 갱신일 | 2026-11-03 |
+| 최종 갱신일 | 2026-11-04 |
 | 대상 | Frontend, Backend, AI Server, 배포·인프라 담당자 |
 | AI 저장소 | `Auto-Fit-Transfer/Auto-Fit` |
 | AI 브랜치 | `ai` |
-| 원격 AI 코드 기준 커밋 | `1134328` |
+| 원격 AI 코드 기준 커밋 | `ffa3a2b` |
 | 상세 OpenAPI | [ai-openapi.json](ai-openapi.json) |
 | Backend 연동 명세 | [backend_ai_integration_spec.md](backend_ai_integration_spec.md) |
 
@@ -940,3 +940,21 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - 테스트 결과: 운동·Backend AI 계약 pytest `12 passed`, 기존 운동 화면 설정 스크립트 통과
 - 남은 작업: 원격 Backend에 `exercise_ai.py` 반영 후 실제 요청·응답 DTO 대조, Frontend → Backend → AI Server E2E, Backend GIF URL 매핑
 - Backend 상세 인계: [backend_exercise_ai_request_contract_2026-11-03.md](backend_exercise_ai_request_contract_2026-11-03.md)
+
+## 2026-11-04 · 운동 추천 강도 응답 계약 강화
+
+- 상태: 로컬 구현·결정론적 검증 완료, AI Server 재배포 및 Backend 재시험 대기
+- 관련 커밋: 미커밋
+- 변경 목적: AI Server가 계약 외 운동 강도를 200으로 반환해 Backend에서 `intensity_invalid` 502가 발생하던 문제 방지
+- 변경 API: `POST /recommend/exercise` 응답의 상위 `intensity`를 `low|moderate|high` 필수 enum으로 제한; 운동별 `intensity`는 같은 enum 또는 `null`
+- 변경 파일: `app/schemas/recommendation.py`, `app/services/exercise_recommendation_service.py`, `docs/ai-openapi.json`, 운동 연동 계약·테스트 파일
+- 기존 동작 영향: CSV 후보 강제, `exercise_key`·`catalog_version`, RAG 안전 조건, 장비·장소 필터는 유지
+- 출력 보강: 운동별 `duration_minutes`를 필수화하고 세션과 세션별 운동 목록을 최소 1개로 제한
+- 재생성 정책: 구조 파싱·응답 Schema·카탈로그 선택 검증 실패 시에만 1회 재생성하며, 재실패 또는 안전 거부는 정상 200으로 반환하지 않고 503 처리
+- 컨디션 정책: `condition_level="보통"` 또는 `daily_condition="normal"`은 현재 컨디션이며 추천 결과를 무조건 `moderate`로 고정하지 않음
+- Frontend 작업: 없음. 화면용 한글 강도는 Backend 또는 Frontend에서 canonical 코드를 변환
+- Backend 작업: AI 요청에 `available_equipment`를 포함하고 `45분/헬스장/머신/보통` 조건으로 재시험; 응답 강도는 canonical 세 값으로 검증
+- 실행 테스트: 운동 enum·nullable fallback·필수 시간·빈 계획 거부·1회 재생성·2회 실패·Router 503·카탈로그 강제·OpenAPI snapshot
+- 테스트 결과: 관련 pytest `28 passed`, 기존 운동 화면 설정 스크립트 통과, syntax compile 통과
+- 남은 작업: AI Server 배포 후 Backend 동일 조건 재시험 및 후속 catalog·장비·세션 시간 검증 오류 확인
+- 알려진 제한: 실제 OpenAI 유료 호출은 수행하지 않았으며 fake structured response로 재생성 경계를 검증함

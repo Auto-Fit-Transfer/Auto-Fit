@@ -2,9 +2,14 @@ import hashlib
 from types import SimpleNamespace
 
 import pytest
+from fastapi import HTTPException
+from pydantic import ValidationError
 
 from app.schemas.recommendation import (
+    ExerciseItem,
     ExerciseRecommendationRequest,
+    ExerciseRecommendationResponse,
+    ExerciseSession,
 )
 from app.services.exercise_catalog_service import (
     EXERCISE_CATALOG_PATH,
@@ -15,6 +20,7 @@ from app.services.exercise_catalog_service import (
     select_exercise_candidates,
 )
 import app.services.exercise_recommendation_service as service
+import app.routers.recommendation_router as recommendation_router
 
 
 def run_immediate(coroutine):
@@ -244,7 +250,7 @@ def test_hydration_rejects_key_outside_candidates() -> None:
     selection = service._CatalogExerciseRecommendationSelection(
         summary="catalog enforcement fixture",
         weekly_frequency=3,
-        intensity="보통",
+        intensity="moderate",
         sessions=[
             {
                 "name": "홈트",
@@ -252,6 +258,7 @@ def test_hydration_rejects_key_outside_candidates() -> None:
                     {
                         "exercise_key": "ex_not_in_catalog",
                         "name": "임의 운동",
+                        "duration_minutes": 5,
                     }
                 ],
             }
@@ -283,7 +290,7 @@ def test_generate_hydrates_only_catalog_assets(
                     service._CatalogExerciseRecommendationSelection(
                         summary="CSV 운동만 사용",
                         weekly_frequency=3,
-                        intensity="보통",
+                        intensity="high",
                         sessions=[
                             {
                                 "name": "홈트",
@@ -296,7 +303,7 @@ def test_generate_hydrates_only_catalog_assets(
                                         ),
                                         "name": "카탈로그 운동",
                                         "duration_minutes": 5,
-                                        "intensity": "보통",
+                                        "intensity": "moderate",
                                         "instructions": [
                                             "안정적으로 수행하세요."
                                         ],
@@ -347,9 +354,290 @@ def test_generate_hydrates_only_catalog_assets(
     assert result.catalog_version == (
         get_exercise_catalog_version()
     )
+    assert request.daily_condition == "normal"
+    assert result.intensity == "high"
     assert selected.exercise_key in (
         fake_client.responses.input_text
     )
     assert "catalog_candidates" in (
         fake_client.responses.input_text
     )
+
+
+def _response_with_intensity(
+    intensity: str,
+    *,
+    exercise_intensity: str | None = None,
+) -> ExerciseRecommendationResponse:
+    return ExerciseRecommendationResponse(
+        catalog_version="sha256:test",
+        summary="운동 강도 계약 테스트",
+        weekly_frequency=3,
+        intensity=intensity,
+        sessions=[
+            ExerciseSession(
+                name="전신 운동",
+                exercises=[
+                    ExerciseItem(
+                        exercise_key="ex_test",
+                        name="테스트 운동",
+                        catalog_name_en="Test Exercise",
+                        exercise_modes=["gym"],
+                        duration_minutes=5,
+                        intensity=exercise_intensity,
+                        instructions=[],
+                    )
+                ],
+            )
+        ],
+        cautions=[],
+        sources=[],
+    )
+
+
+@pytest.mark.parametrize(
+    "intensity",
+    ["low", "moderate", "high"],
+)
+def test_exercise_intensity_contract_accepts_canonical_values(
+    intensity: str,
+) -> None:
+    response = _response_with_intensity(
+        intensity,
+        exercise_intensity=intensity,
+    )
+
+    assert response.intensity == intensity
+    assert (
+        response.sessions[0].exercises[0].intensity
+        == intensity
+    )
+
+
+def test_exercise_item_intensity_can_fall_back_to_result() -> None:
+    response = _response_with_intensity(
+        "low",
+        exercise_intensity=None,
+    )
+
+    assert response.sessions[0].exercises[0].intensity is None
+
+
+@pytest.mark.parametrize(
+    "invalid_intensity",
+    ["보통", "가벼움", "medium", "anything"],
+)
+def test_exercise_intensity_contract_rejects_noncanonical_values(
+    invalid_intensity: str,
+) -> None:
+    with pytest.raises(ValidationError):
+        _response_with_intensity(invalid_intensity)
+
+    with pytest.raises(ValidationError):
+        _response_with_intensity(
+            "moderate",
+            exercise_intensity=invalid_intensity,
+        )
+
+    with pytest.raises(ValidationError):
+        service._CatalogExerciseRecommendationSelection(
+            summary="잘못된 상위 강도",
+            weekly_frequency=3,
+            intensity=invalid_intensity,
+            sessions=[
+                {
+                    "name": "홈트",
+                    "exercises": [
+                        {
+                            "exercise_key": "ex_test",
+                            "name": "테스트 운동",
+                            "duration_minutes": 5,
+                        }
+                    ],
+                }
+            ],
+        )
+
+    with pytest.raises(ValidationError):
+        service._CatalogExerciseRecommendationSelection(
+            summary="잘못된 운동별 강도",
+            weekly_frequency=3,
+            intensity="moderate",
+            sessions=[
+                {
+                    "name": "홈트",
+                    "exercises": [
+                        {
+                            "exercise_key": "ex_test",
+                            "name": "테스트 운동",
+                            "duration_minutes": 5,
+                            "intensity": invalid_intensity,
+                        }
+                    ],
+                }
+            ],
+        )
+
+
+def test_selection_requires_duration_and_non_empty_plan() -> None:
+    with pytest.raises(ValidationError):
+        service._CatalogExerciseRecommendationSelection(
+            summary="빈 세션",
+            weekly_frequency=3,
+            intensity="moderate",
+            sessions=[],
+        )
+
+    with pytest.raises(ValidationError):
+        service._CatalogExerciseRecommendationSelection(
+            summary="빈 운동 목록",
+            weekly_frequency=3,
+            intensity="moderate",
+            sessions=[
+                {
+                    "name": "빈 세션",
+                    "exercises": [],
+                }
+            ],
+        )
+
+    with pytest.raises(ValidationError):
+        service._CatalogExerciseRecommendationSelection(
+            summary="운동 시간 누락",
+            weekly_frequency=3,
+            intensity="moderate",
+            sessions=[
+                {
+                    "name": "홈트",
+                    "exercises": [
+                        {
+                            "exercise_key": "ex_test",
+                            "name": "테스트 운동",
+                        }
+                    ],
+                }
+            ],
+        )
+
+
+def test_generate_retries_unparsed_response_once(
+    monkeypatch,
+) -> None:
+    request = _home_request()
+    selected = select_exercise_candidates(request)[0]
+
+    class FakeResponses:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def parse(self, **_kwargs):
+            self.calls += 1
+            if self.calls == 1:
+                return SimpleNamespace(output_parsed=None)
+            return SimpleNamespace(
+                output_parsed=(
+                    service._CatalogExerciseRecommendationSelection(
+                        summary="재생성 성공",
+                        weekly_frequency=3,
+                        intensity="low",
+                        sessions=[
+                            {
+                                "name": "홈트",
+                                "exercises": [
+                                    {
+                                        "exercise_key": (
+                                            selected.exercise_key
+                                        ),
+                                        "name": "카탈로그 운동",
+                                        "duration_minutes": 5,
+                                        "intensity": None,
+                                    }
+                                ],
+                            }
+                        ],
+                    )
+                )
+            )
+
+    fake_responses = FakeResponses()
+
+    async def fake_rag_node(_state):
+        return {"rag_context": []}
+
+    monkeypatch.setattr(
+        service,
+        "_get_openai_client",
+        lambda: SimpleNamespace(responses=fake_responses),
+    )
+    monkeypatch.setattr(service, "rag_node", fake_rag_node)
+
+    result = run_immediate(
+        service.generate_exercise_recommendation(request)
+    )
+
+    assert fake_responses.calls == 2
+    assert result.intensity == "low"
+    assert result.sessions[0].exercises[0].intensity is None
+
+
+def test_generate_fails_after_two_unparsed_responses(
+    monkeypatch,
+) -> None:
+    request = _home_request()
+
+    class FakeResponses:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def parse(self, **_kwargs):
+            self.calls += 1
+            return SimpleNamespace(output_parsed=None)
+
+    fake_responses = FakeResponses()
+
+    async def fake_rag_node(_state):
+        return {"rag_context": []}
+
+    monkeypatch.setattr(
+        service,
+        "_get_openai_client",
+        lambda: SimpleNamespace(responses=fake_responses),
+    )
+    monkeypatch.setattr(service, "rag_node", fake_rag_node)
+
+    with pytest.raises(RuntimeError):
+        run_immediate(
+            service.generate_exercise_recommendation(request)
+        )
+
+    assert fake_responses.calls == 2
+
+
+def test_exercise_endpoint_returns_503_for_invalid_generation(
+    monkeypatch,
+) -> None:
+    request = _home_request()
+
+    async def fail_generation(_request):
+        raise RuntimeError("invalid structured output")
+
+    monkeypatch.setattr(
+        recommendation_router,
+        "generate_exercise_recommendation",
+        fail_generation,
+    )
+    monkeypatch.setattr(
+        recommendation_router,
+        "verify_api_key",
+        lambda _credentials: None,
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        run_immediate(
+            recommendation_router.recommend_exercise(
+                request,
+                credentials=None,
+            )
+        )
+
+    assert exc_info.value.status_code == 503

@@ -4,24 +4,38 @@ from pydantic import ValidationError
 
 from app.schemas.recommendation import (
     ExerciseRecommendationRequest,
-    ExerciseRecommendationResponse,
+)
+from app.services.exercise_catalog_service import (
+    select_exercise_candidates,
 )
 import app.services.exercise_recommendation_service as service
 
 
 class FakeResponses:
-    def __init__(self) -> None:
+    def __init__(self, exercise_key: str) -> None:
         self.input_text = ""
+        self.exercise_key = exercise_key
 
     async def parse(self, **kwargs):
         self.input_text = kwargs["input"]
         return SimpleNamespace(
-            output_parsed=ExerciseRecommendationResponse(
-                catalog_version="selection-placeholder",
+            output_parsed=service._CatalogExerciseRecommendationSelection(
                 summary="오늘의 설정을 반영한 홈트",
                 weekly_frequency=3,
-                intensity="가벼움",
-                sessions=[],
+                intensity="low",
+                sessions=[
+                    {
+                        "name": "회복 홈트",
+                        "exercises": [
+                            {
+                                "exercise_key": self.exercise_key,
+                                "name": "회복 운동",
+                                "duration_minutes": 5,
+                                "intensity": None,
+                            }
+                        ],
+                    }
+                ],
                 cautions=[],
                 sources=[],
             )
@@ -29,8 +43,8 @@ class FakeResponses:
 
 
 class FakeClient:
-    def __init__(self) -> None:
-        self.responses = FakeResponses()
+    def __init__(self, exercise_key: str) -> None:
+        self.responses = FakeResponses(exercise_key)
 
 
 def run_immediate(coroutine):
@@ -54,7 +68,8 @@ async def run_service_test() -> None:
         discomfort_areas=["오른쪽 무릎"],
         condition_note="평소보다 피곤함",
     )
-    fake_client = FakeClient()
+    exercise_key = select_exercise_candidates(request)[0].exercise_key
+    fake_client = FakeClient(exercise_key)
 
     original_client = service._get_openai_client
     original_rag_node = service.rag_node

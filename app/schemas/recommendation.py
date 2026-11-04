@@ -79,6 +79,17 @@ ExerciseDailyCondition = Literal[
 ]
 
 
+ExerciseIntensity = Literal[
+
+    "low",
+
+    "moderate",
+
+    "high",
+
+]
+
+
 ExerciseBackendConditionLevel = Literal[
 
     "좋음",
@@ -624,9 +635,7 @@ class ExerciseItem(BaseModel):
 
 
 
-    duration_minutes: int | None = Field(
-
-        default=None,
+    duration_minutes: int = Field(
 
         ge=1,
 
@@ -636,7 +645,7 @@ class ExerciseItem(BaseModel):
 
 
 
-    intensity: str | None = None
+    intensity: ExerciseIntensity | None = None
 
 
 
@@ -676,7 +685,7 @@ class ExerciseSession(BaseModel):
 
     exercises: list[ExerciseItem] = Field(
 
-        default_factory=list,
+        min_length=1,
 
         max_length=4,
 
@@ -712,13 +721,15 @@ class ExerciseRecommendationResponse(BaseModel):
 
 
 
-    intensity: str
+    intensity: ExerciseIntensity
 
 
 
     sessions: list[ExerciseSession] = Field(
 
-        default_factory=list
+        min_length=1,
+
+        max_length=3,
 
     )
 

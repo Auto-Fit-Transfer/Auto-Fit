@@ -1,12 +1,14 @@
 import json
+import logging
 
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from app.core.config import get_settings
 from app.graphs.nodes.rag_node import rag_node
 from app.schemas.recommendation import (
     ExerciseItem,
+    ExerciseIntensity,
     ExerciseRecommendationRequest,
     ExerciseRecommendationResponse,
     ExerciseSession,
@@ -21,6 +23,11 @@ from app.services.exercise_catalog_service import (
 from app.services.exercise_context_service import (
     build_exercise_safety_tags,
 )
+
+
+logger = logging.getLogger(__name__)
+
+EXERCISE_GENERATION_MAX_ATTEMPTS = 2
 
 
 SYSTEM_INSTRUCTIONS = """
@@ -47,6 +54,8 @@ SYSTEM_INSTRUCTIONS = """
 - has_discomfort가 true이면 불편 부위에 직접 부담되는 동작을 피하고 주의사항을 제공한다.
 - available_equipment가 제공되면 해당 장비로 가능한 운동만 선택한다.
 - 제공된 장비만 사용할 수 있는 것으로 간주하고 없는 장비를 가정하지 않는다.
+- 추천 결과의 intensity는 반드시 low, moderate, high 중 하나만 사용한다.
+- 사용자 컨디션 값 normal과 추천 결과 강도 moderate를 같은 값으로 간주하지 않는다.
 - 특정 전문 장비가 필요한 운동만으로 운동 계획을 구성하지 않는다.
 - 운동 장소 조건이 제공되면 해당 장소에서 현실적으로 수행 가능한 운동을 우선한다.
 - 검증된 RAG 근거가 없는 의학적 내용을 임의로 생성하지 않는다.
@@ -71,12 +80,11 @@ class _CatalogExerciseSelection(BaseModel):
         min_length=1,
         max_length=200,
     )
-    duration_minutes: int | None = Field(
-        default=None,
+    duration_minutes: int = Field(
         ge=1,
         le=300,
     )
-    intensity: str | None = None
+    intensity: ExerciseIntensity | None = None
     instructions: list[str] = Field(
         default_factory=list,
         max_length=3,
@@ -92,7 +100,7 @@ class _CatalogExerciseSessionSelection(BaseModel):
         le=300,
     )
     exercises: list[_CatalogExerciseSelection] = Field(
-        default_factory=list,
+        min_length=1,
         max_length=4,
     )
 
@@ -103,10 +111,13 @@ class _CatalogExerciseRecommendationSelection(BaseModel):
         ge=1,
         le=7,
     )
-    intensity: str
+    intensity: ExerciseIntensity
     sessions: list[
         _CatalogExerciseSessionSelection
-    ] = Field(default_factory=list)
+    ] = Field(
+        min_length=1,
+        max_length=3,
+    )
     cautions: list[str] = Field(
         default_factory=list,
         max_length=5,
@@ -114,6 +125,10 @@ class _CatalogExerciseRecommendationSelection(BaseModel):
     sources: list[RecommendationSource] = Field(
         default_factory=list
     )
+
+
+class _ExerciseSelectionValidationError(RuntimeError):
+    """OpenAI selection failed the catalog-backed response contract."""
 
 
 def _hydrate_catalog_response(
@@ -131,7 +146,7 @@ def _hydrate_catalog_response(
                 selected_exercise.exercise_key
             )
             if candidate is None:
-                raise RuntimeError(
+                raise _ExerciseSelectionValidationError(
                     "OpenAI selected an exercise outside the "
                     "exercise catalog candidate set."
                 )
@@ -232,6 +247,34 @@ def _build_safe_rag_context(
         )
 
     return safe_rag_context
+
+
+def _response_contains_refusal(response: object) -> bool:
+    """Return whether an OpenAI response contains a safety refusal."""
+
+    for output_item in getattr(response, "output", ()) or ():
+        for content_item in getattr(output_item, "content", ()) or ():
+            if getattr(content_item, "type", None) == "refusal":
+                return True
+
+    return False
+
+
+def _validation_error_summary(
+    error: ValidationError,
+) -> list[dict[str, str]]:
+    """Build log-safe Pydantic error metadata without input values."""
+
+    return [
+        {
+            "loc": ".".join(str(part) for part in item["loc"]),
+            "type": str(item["type"]),
+        }
+        for item in error.errors(
+            include_url=False,
+            include_input=False,
+        )
+    ]
 
 
 async def generate_exercise_recommendation(
@@ -394,10 +437,7 @@ async def generate_exercise_recommendation(
 
     client = _get_openai_client()
 
-    response = await client.responses.parse(
-        model=settings.openai_model,
-        instructions=SYSTEM_INSTRUCTIONS,
-        input=f"""
+    base_input = f"""
 아래 정보를 기반으로 사용자가 실제로 수행할 수 있는
 개인 맞춤형 운동 계획을 작성하세요.
 
@@ -471,8 +511,15 @@ exercise_mode, daily_condition, available_equipment, 모드별 설정은 사용�
 
 출력:
 - weekly_frequency는 일반적으로 2~5회 범위에서 결정하세요.
-- sessions는 최대 3개까지만 생성하세요.
-- 각 session의 exercises는 최대 4개까지만 생성하세요.
+- result.intensity는 반드시 low, moderate, high 중 하나만 사용하세요.
+- 각 exercise의 intensity는 생략하거나 null로 두거나,
+  low, moderate, high 중 하나만 사용하세요.
+- condition_level의 "보통" 또는 daily_condition의 normal은 사용자 컨디션이며,
+  추천 결과 강도를 moderate로 고정하라는 뜻이 아닙니다.
+- 목표, 경험 수준, 안전 조건, 불편 부위와 실제 운동 구성을 종합해 강도를 결정하세요.
+- sessions는 최소 1개, 최대 3개 생성하세요.
+- 각 session의 exercises는 최소 1개, 최대 4개 생성하세요.
+- 모든 exercise에 1분 이상의 duration_minutes를 반드시 작성하세요.
 - 각 exercise의 instructions는 최대 3개까지만 작성하세요.
 - instructions 한 항목은 한 문장으로 간결하게 작성하세요.
 - cautions는 최대 4개까지만 작성하세요.
@@ -486,24 +533,112 @@ exercise_mode, daily_condition, available_equipment, 모드별 설정은 사용�
     payload,
     ensure_ascii=False,
 )}
-""".strip(),
-        reasoning={
-            "effort": "minimal"
-        },
-        text_format=(
-            _CatalogExerciseRecommendationSelection
-        ),
-        max_output_tokens=3000,
-    )
+""".strip()
 
-    parsed = response.output_parsed
+    last_validation_error: Exception | None = None
 
-    if parsed is None:
-        raise RuntimeError(
-            "운동 추천 구조화 응답을 생성하지 못했습니다."
-        )
+    for attempt in range(1, EXERCISE_GENERATION_MAX_ATTEMPTS + 1):
+        retry_instruction = ""
+        if attempt > 1:
+            retry_instruction = (
+                "\n\n이전 응답이 출력 계약 검증에 실패했습니다. "
+                "강도 enum, 필수 시간, 비어 있지 않은 세션과 운동 목록, "
+                "catalog_candidates의 exercise_key를 지켜 다시 생성하세요."
+            )
 
-    return _hydrate_catalog_response(
-        parsed,
-        catalog_candidates,
-    )
+        try:
+            response = await client.responses.parse(
+                model=settings.openai_model,
+                instructions=SYSTEM_INSTRUCTIONS,
+                input=base_input + retry_instruction,
+                reasoning={
+                    "effort": "minimal"
+                },
+                text_format=(
+                    _CatalogExerciseRecommendationSelection
+                ),
+                max_output_tokens=3000,
+            )
+        except ValidationError as exc:
+            last_validation_error = exc
+            logger.warning(
+                "Exercise recommendation structured output validation "
+                "failed. attempt=%s/%s errors=%s",
+                attempt,
+                EXERCISE_GENERATION_MAX_ATTEMPTS,
+                _validation_error_summary(exc),
+            )
+            continue
+
+        parsed = response.output_parsed
+
+        if parsed is None:
+            response_id = getattr(response, "id", None)
+            response_status = getattr(response, "status", None)
+            incomplete_details = getattr(
+                response,
+                "incomplete_details",
+                None,
+            )
+            incomplete_reason = getattr(
+                incomplete_details,
+                "reason",
+                None,
+            )
+
+            if _response_contains_refusal(response):
+                logger.warning(
+                    "Exercise recommendation was refused. "
+                    "attempt=%s/%s response_id=%s status=%s",
+                    attempt,
+                    EXERCISE_GENERATION_MAX_ATTEMPTS,
+                    response_id,
+                    response_status,
+                )
+                raise RuntimeError(
+                    "운동 추천 구조화 응답이 안전 정책에 의해 거부되었습니다."
+                )
+
+            logger.warning(
+                "Exercise recommendation has no parsed output. "
+                "attempt=%s/%s response_id=%s status=%s "
+                "incomplete_reason=%s",
+                attempt,
+                EXERCISE_GENERATION_MAX_ATTEMPTS,
+                response_id,
+                response_status,
+                incomplete_reason,
+            )
+            continue
+
+        try:
+            validated_selection = (
+                _CatalogExerciseRecommendationSelection.model_validate(
+                    parsed
+                )
+            )
+            return _hydrate_catalog_response(
+                validated_selection,
+                catalog_candidates,
+            )
+        except ValidationError as exc:
+            last_validation_error = exc
+            logger.warning(
+                "Exercise recommendation response contract validation "
+                "failed. attempt=%s/%s errors=%s",
+                attempt,
+                EXERCISE_GENERATION_MAX_ATTEMPTS,
+                _validation_error_summary(exc),
+            )
+        except _ExerciseSelectionValidationError as exc:
+            last_validation_error = exc
+            logger.warning(
+                "Exercise recommendation catalog selection validation "
+                "failed. attempt=%s/%s",
+                attempt,
+                EXERCISE_GENERATION_MAX_ATTEMPTS,
+            )
+
+    raise RuntimeError(
+        "운동 추천 구조화 응답을 생성하지 못했습니다."
+    ) from last_validation_error
