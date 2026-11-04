@@ -651,6 +651,7 @@ def test_exercise_endpoint_returns_503_for_invalid_generation(
         ([7, 7, 7], 30),
         ([1, 1, 1, 1], 120),
         ([100, 1, 1, 1], 5),
+        ([11, 12, 9, 12], 45),
     ],
 )
 def test_off_target_session_is_fitted_to_available_minutes(
@@ -661,16 +662,12 @@ def test_off_target_session_is_fitted_to_available_minutes(
 
     assert len(fitted) == len(minutes)
     assert min(fitted) >= 1
-    assert abs(sum(fitted) - target) <= 5
+    assert 0 <= sum(fitted) - target <= 5
 
 
 def test_on_target_session_is_left_as_generated() -> None:
-    assert service._fit_session_minutes([12, 10, 10, 10], 45) == [
-        12,
-        10,
-        10,
-        10,
-    ]
+    for minutes in ([12, 12, 11, 10], [14, 13, 12, 11]):
+        assert service._fit_session_minutes(minutes, 45) == minutes
 
 
 def test_generate_fits_every_session_to_45_minutes(
@@ -737,12 +734,12 @@ def test_generate_fits_every_session_to_45_minutes(
         service.generate_exercise_recommendation(request)
     )
 
-    assert "합계 40~50분" in fake_responses.input_text
+    assert "합계 45~50분" in fake_responses.input_text
     assert len(result.sessions) == 2
     for session in result.sessions:
         total = sum(
             exercise.duration_minutes
             for exercise in session.exercises
         )
-        assert 40 <= total <= 50
+        assert 45 <= total <= 50
         assert session.estimated_duration_minutes == total

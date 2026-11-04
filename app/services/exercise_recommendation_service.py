@@ -28,7 +28,7 @@ from app.services.exercise_context_service import (
 logger = logging.getLogger(__name__)
 
 EXERCISE_GENERATION_MAX_ATTEMPTS = 2
-EXERCISE_SESSION_MINUTES_TOLERANCE = 5
+EXERCISE_SESSION_EXTRA_MINUTES = 5
 
 
 SYSTEM_INSTRUCTIONS = """
@@ -136,10 +136,14 @@ def _fit_session_minutes(
     minutes: list[int],
     target_minutes: int,
 ) -> list[int]:
-    """Scale an off-target session to the target, keeping exercise ratios."""
+    """Scale an off-target session to the target, keeping exercise ratios.
+
+    Below the target means the workout was not completed, so only extra
+    minutes are allowed.
+    """
 
     total = sum(minutes)
-    if abs(total - target_minutes) <= EXERCISE_SESSION_MINUTES_TOLERANCE:
+    if 0 <= total - target_minutes <= EXERCISE_SESSION_EXTRA_MINUTES:
         return minutes
 
     fitted = [
@@ -532,7 +536,8 @@ exercise_mode, daily_condition, available_equipment, 모드별 설정은 사용�
 
 개인화:
 - available_minutes가 있으면 session마다 모든 exercise의 duration_minutes 합계가
-  available_minutes의 ±5분 이내가 되게 구성하세요. 예: 45분이면 session마다 합계 40~50분.
+  available_minutes 이상, 5분 초과 이내가 되게 구성하세요. 예: 45분이면 session마다 합계 45~50분.
+- 합계가 available_minutes보다 짧으면 안 됩니다.
 - estimated_duration_minutes에는 그 합계를 작성하세요.
 - daily_condition이 tired 또는 poor여도 이 합계 범위를 지키고, 운동량은 강도와 동작 난이도로 낮추세요.
 - experience_level에 맞는 난이도로 구성하세요.
