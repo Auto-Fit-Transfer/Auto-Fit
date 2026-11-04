@@ -943,210 +943,6 @@ async def fetch_latest_unlinked_exercise_context(
     return rows[0] if rows else None
 
 
-def build_exercise_recommendation_plan(
-    preferences: dict[str, Any],
-    context: dict[str, Any],
-    profile: dict[str, Any] | None = None,
-    *,
-    previous_items: list[dict[str, Any]] | None = None,
-) -> dict[str, Any]:
-    goal = preferences["goal_type"]
-    experience = preferences["experience_level"]
-    available_minutes = int(context["available_minutes"])
-    equipment = set(context.get("available_equipment") or [])
-    discomfort_areas = context.get("discomfort_areas") or []
-    condition = str(context.get("condition_level") or "").casefold()
-
-    risk_words = ("나쁨", "피곤", "통증", "어지", "bad", "tired", "pain", "dizzy")
-    activity_level = (profile or {}).get("activity_level")
-    if discomfort_areas or any(word in condition for word in risk_words):
-        intensity = "low"
-    elif experience == "beginner" and activity_level in {None, "sedentary", "light"}:
-        intensity = "low"
-    elif experience == "advanced":
-        intensity = "high"
-    else:
-        intensity = "moderate"
-
-    if goal == "muscle_gain":
-        if equipment.intersection({"machine", "dumbbell"}):
-            main_type = "웨이트 트레이닝"
-            main_names = (
-                "전신 웨이트 트레이닝",
-                "저중량 전신 웨이트 트레이닝",
-                "상·하체 교대 웨이트 트레이닝",
-            )
-            main_guidance = (
-                "전신 동작을 고르게 수행하세요.",
-                "평소보다 낮은 중량으로 자세를 확인하며 수행하세요.",
-                "상체와 하체 동작을 번갈아 수행하세요.",
-            )
-        else:
-            main_type = "스쿼트"
-            main_names = ("맨몸 스쿼트", "느린 맨몸 스쿼트", "발 간격 조절 맨몸 스쿼트")
-            main_guidance = (
-                "발을 어깨 너비로 두고 천천히 앉았다 일어나세요.",
-                "내려가는 동작을 천천히 하며 자세를 유지하세요.",
-                "발 간격을 편한 범위에서 조절하며 수행하세요.",
-            )
-        main_execution = "count_based"
-        main_sets = 3 if intensity != "low" else 2
-        main_repetitions = 12 if intensity != "low" else 8
-    elif goal == "rehabilitation":
-        main_type = "요가"
-        main_names = ("저강도 회복 요가", "호흡 중심 회복 요가", "부드러운 전신 요가")
-        main_guidance = (
-            "무리 없는 범위에서 자세를 천천히 이어가세요.",
-            "호흡을 일정하게 유지하며 가벼운 자세를 이어가세요.",
-            "전신을 부드럽게 움직이며 자세를 이어가세요.",
-        )
-        main_execution = "time_based"
-        main_sets = main_repetitions = None
-    elif goal == "endurance" and intensity != "low":
-        main_type = "달리기"
-        main_names = ("가벼운 지속 달리기", "완급 조절 달리기", "편안한 페이스 달리기")
-        main_guidance = (
-            "대화할 수 있는 속도로 일정하게 달리세요.",
-            "편안한 속도와 조금 빠른 속도를 번갈아 유지하세요.",
-            "호흡이 안정적인 속도를 찾아 유지하세요.",
-        )
-        main_execution = "time_based"
-        main_sets = main_repetitions = None
-    else:
-        main_type = "걷기"
-        main_names = (
-            ("편안한 속도 걷기", "평지 지속 걷기", "가벼운 리듬 걷기")
-            if intensity == "low"
-            else ("빠르게 걷기", "속도 변화 걷기", "일정한 속도 걷기")
-        )
-        main_guidance = (
-            (
-                "무리 없는 속도로 걸으세요.",
-                "경사가 없는 평지에서 일정한 속도로 걸으세요.",
-                "편안한 속도와 느린 속도를 번갈아 걸으세요.",
-            )
-            if intensity == "low"
-            else (
-                "팔을 자연스럽게 흔들며 빠르게 걸으세요.",
-                "빠른 걸음과 보통 걸음을 번갈아 걸으세요.",
-                "호흡을 유지할 수 있는 속도로 일정하게 걸으세요.",
-            )
-        )
-        main_execution = "time_based"
-        main_sets = main_repetitions = None
-
-    previous_main_name = (
-        previous_items[1].get("exercise_name")
-        if previous_items and len(previous_items) > 1
-        else None
-    )
-    main_index = (
-        (main_names.index(previous_main_name) + 1) % len(main_names)
-        if previous_main_name in main_names
-        else 0
-    )
-    main_name = main_names[main_index]
-    warmup_names = (
-        "전신 워밍업 스트레칭",
-        "관절 가동성 스트레칭",
-        "가벼운 준비 스트레칭",
-    )
-    cooldown_names = (
-        "마무리 스트레칭",
-        "호흡 정리 스트레칭",
-        "전신 이완 스트레칭",
-    )
-    warmup_guidance = (
-        "통증이 없는 범위에서 천천히 관절과 근육을 풀어주세요.",
-        "목과 어깨, 골반과 발목을 편한 범위에서 부드럽게 움직이세요.",
-        "호흡을 유지하며 전신을 가볍게 움직여 준비하세요.",
-    )
-    cooldown_guidance = (
-        "호흡을 고르며 사용한 근육을 부드럽게 이완하세요.",
-        "호흡을 천천히 고르며 움직임을 마무리하세요.",
-        "사용한 부위를 편한 범위에서 천천히 이완하세요.",
-    )
-    main_instruction = (
-        f"{main_guidance[main_index]} "
-        "불편함이나 어지러움이 생기면 즉시 강도를 낮추거나 중단하세요."
-    )
-
-    warmup_minutes = max(1, min(5, available_minutes // 6))
-    cooldown_minutes = max(1, min(5, available_minutes // 6))
-    main_minutes = max(1, available_minutes - warmup_minutes - cooldown_minutes)
-    estimated_calories = max(1, round(available_minutes * (3 if intensity == "low" else 5)))
-
-    items = [
-        {
-            "exercise_type_name": "스트레칭",
-            "exercise_name": warmup_names[main_index],
-            "duration_minutes": warmup_minutes,
-            "sets": None,
-            "repetitions": None,
-            "calories_burned": max(1, warmup_minutes * 2),
-            "intensity": "low",
-            "instruction": warmup_guidance[main_index],
-            "execution_type": "time_based",
-            "target_duration_seconds": warmup_minutes * 60,
-            "target_weight_kg": None,
-            "rest_seconds": 30,
-        },
-        {
-            "exercise_type_name": main_type,
-            "exercise_name": main_name,
-            "duration_minutes": main_minutes,
-            "sets": main_sets,
-            "repetitions": main_repetitions,
-            "calories_burned": max(1, estimated_calories - warmup_minutes * 2 - cooldown_minutes * 2),
-            "intensity": intensity,
-            "instruction": main_instruction,
-            "execution_type": main_execution,
-            "target_duration_seconds": main_minutes * 60 if main_execution == "time_based" else None,
-            "target_weight_kg": None,
-            "rest_seconds": 60,
-        },
-        {
-            "exercise_type_name": "스트레칭",
-            "exercise_name": cooldown_names[main_index],
-            "duration_minutes": cooldown_minutes,
-            "sets": None,
-            "repetitions": None,
-            "calories_burned": max(1, cooldown_minutes * 2),
-            "intensity": "low",
-            "instruction": cooldown_guidance[main_index],
-            "execution_type": "time_based",
-            "target_duration_seconds": cooldown_minutes * 60,
-            "target_weight_kg": None,
-            "rest_seconds": 0,
-        },
-    ]
-
-    goal_labels = {
-        "weight_loss": "체지방 감량",
-        "muscle_gain": "근육량 증가",
-        "endurance": "체력 향상",
-        "maintenance": "건강 유지",
-        "rehabilitation": "컨디셔닝 / 기능 회복",
-        "other": preferences.get("custom_goal") or "기타",
-    }
-    return {
-        "recommendation": {
-            "recommendation_date": datetime.now(KST).date().isoformat(),
-            "goal": goal,
-            "total_duration_minutes": available_minutes,
-            "intensity": intensity,
-            "recommendation_summary": (
-                f"{goal_labels[goal]} 목표를 위한 {available_minutes}분 루틴 · {main_name}"
-            ),
-            "ai_reason": (
-                "기본 프로필의 활동 수준, 운동 목표, 경험 수준, 사용 가능 시간과 "
-                "장비, 현재 컨디션 및 불편 부위를 반영한 규칙 기반 테스트 추천입니다."
-                + (" 기타 목표는 입력 내용을 표시하고 기본 걷기 루틴을 제공합니다."
-                   if goal == "other" else "")
-            ),
-        },
-        "items": items,
-    }
 
 
 async def create_exercise_recommendation(
@@ -1230,7 +1026,7 @@ def exercise_ai_enabled_for_user(user_id: str) -> bool:
         raise HTTPException(503, detail={"code": "AI_CONFIGURATION_ERROR"})
 
     # A present pilot variable takes precedence, including an empty value.
-    # This keeps a misconfigured rollout on the existing rules path.
+    # An empty or invalid list disables generation; rules_v1 is retired.
     pilot_ids = os.getenv("EXERCISE_AI_TEST_USER_IDS")
     if pilot_ids is None:
         return enabled == "true"
@@ -1239,6 +1035,14 @@ def exercise_ai_enabled_for_user(user_id: str) -> bool:
         return UUID(user_id) in allowed
     except ValueError:
         return False
+
+
+def require_exercise_ai_access(user_id: str) -> None:
+    if not exercise_ai_enabled_for_user(user_id):
+        raise HTTPException(403, detail={
+            "code": "EXERCISE_AI_NOT_ENABLED",
+            "message": "현재 일부 테스트 계정에만 AI 운동 추천과 분석을 제공하고 있어요.",
+        })
 
 
 async def prepare_exercise_routine(
@@ -1269,59 +1073,48 @@ async def prepare_exercise_routine(
             },
         )
 
-    if exercise_ai_enabled_for_user(user_id):
-        try:
-            config = get_ai_server_config()
-        except ValueError:
-            raise HTTPException(503, detail={"code": "AI_CONFIGURATION_ERROR"}) from None
-        if config is None:
-            raise HTTPException(503, detail={"code": "AI_DISABLED"})
-        try:
-            ai_request = build_ai_exercise_request(preferences, context)
-        except ExerciseAIError:
-            raise HTTPException(409, detail={"code": "EXERCISE_CONTEXT_INVALID"}) from None
-        try:
-            ai_response = await AIServerClient(config).post(
-                AIEndpoint.EXERCISE, ai_request
-            )
-        except AIServerError as exc:
-            error_status = 503 if exc.code in {
-                "AI_UNAVAILABLE", "AI_TIMEOUT", "AI_CONNECTION_ERROR"
-            } else 502
-            raise HTTPException(error_status, detail={"code": exc.code}) from None
-        try:
-            plan = build_ai_exercise_plan(
-                ai_response, preferences, context, datetime.now(KST).date().isoformat()
-            )
-        except ExerciseAIError as exc:
-            logger.warning("Exercise AI plan rejected reason=%s", ",".join(exc.reason_codes))
-            raise HTTPException(502, detail={"code": "AI_EXERCISE_INVALID_RESPONSE"}) from None
-        generator = "auto-fit-ai"
-    else:
-        previous = await fetch_latest_exercise_recommendation(user_id, settings)
-        plan = build_exercise_recommendation_plan(
-            preferences, context, profile,
-            previous_items=previous["items"] if previous else None,
+    require_exercise_ai_access(user_id)
+    try:
+        config = get_ai_server_config()
+    except ValueError:
+        raise HTTPException(503, detail={"code": "AI_CONFIGURATION_ERROR"}) from None
+    if config is None:
+        raise HTTPException(503, detail={"code": "AI_DISABLED"})
+    try:
+        ai_request = build_ai_exercise_request(preferences, context)
+    except ExerciseAIError:
+        raise HTTPException(409, detail={"code": "EXERCISE_CONTEXT_INVALID"}) from None
+    try:
+        ai_response = await AIServerClient(config).post(
+            AIEndpoint.EXERCISE, ai_request
         )
-        generator = "rules_v1"
-    gif_urls: dict[str, str | None] = {}
-    if generator == "auto-fit-ai":
-        gif_preview = await attach_exercise_gif_urls(
-            {"items": [item.copy() for item in plan["items"]]}, context, profile,
+    except AIServerError as exc:
+        error_status = 503 if exc.code in {
+            "AI_UNAVAILABLE", "AI_TIMEOUT", "AI_CONNECTION_ERROR"
+        } else 502
+        raise HTTPException(error_status, detail={"code": exc.code}) from None
+    try:
+        plan = build_ai_exercise_plan(
+            ai_response, preferences, context, datetime.now(KST).date().isoformat()
         )
-        gif_urls = {
-            item["exercise_key"]: item["demo_gif_url"] for item in gif_preview["items"]
-        }
+    except ExerciseAIError as exc:
+        logger.warning("Exercise AI plan rejected reason=%s", ",".join(exc.reason_codes))
+        raise HTTPException(502, detail={"code": "AI_EXERCISE_INVALID_RESPONSE"}) from None
+    gif_preview = await attach_exercise_gif_urls(
+        {"items": [item.copy() for item in plan["items"]]}, context, profile,
+    )
+    gif_urls = {
+        item["exercise_key"]: item["demo_gif_url"] for item in gif_preview["items"]
+    }
     result = await create_exercise_recommendation(
         user_id,
         context["exercise_recommendation_context_id"],
         plan,
         settings,
     )
-    if generator == "auto-fit-ai":
-        for item in result.get("items") or []:
-            item["demo_gif_url"] = gif_urls.get(item.get("exercise_key"))
-    return {"missing": [], "generated": True, "generator": generator, "result": result}
+    for item in result.get("items") or []:
+        item["demo_gif_url"] = gif_urls.get(item.get("exercise_key"))
+    return {"missing": [], "generated": True, "generator": "auto-fit-ai", "result": result}
 
 
 async def fetch_latest_exercise_recommendation(
@@ -3503,72 +3296,6 @@ def build_daily_nutrition_summary(
     }
 
 
-def build_exercise_session_analysis(result: dict[str, Any]) -> dict[str, Any]:
-    session = result["session"]
-    feedback = result.get("feedback")
-    if session.get("status") not in {"completed", "stopped"}:
-        raise ValueError("Exercise session is not finished")
-    if not feedback:
-        raise ValueError("Exercise session feedback is required")
-
-    difficulty_labels = {1: "매우 쉬움", 2: "쉬움", 3: "보통", 4: "어려움", 5: "매우 어려움"}
-    condition_labels = {
-        "very_bad": "매우 나쁨",
-        "bad": "나쁨",
-        "normal": "보통",
-        "good": "좋음",
-        "very_good": "매우 좋음",
-    }
-    completion_rate = float(session.get("completion_rate") or 0)
-    duration_minutes = round(float(session.get("total_duration_seconds") or 0) / 60, 1)
-    calories_burned = float(session.get("total_calories_burned") or 0)
-    difficulty = int(feedback["perceived_difficulty"])
-    post_condition = feedback["post_condition"]
-    areas = feedback.get("uncomfortable_areas") or []
-
-    insights: list[str] = []
-    adjustments: list[str] = []
-    if completion_rate >= 80:
-        insights.append("계획한 운동을 안정적으로 수행했습니다.")
-    else:
-        insights.append("완료하지 못한 운동을 다음 루틴에서 무리 없이 다시 구성합니다.")
-    if difficulty >= 4:
-        insights.append("체감 난이도가 높았습니다.")
-        adjustments.append("다음 운동 강도를 한 단계 낮춤")
-    if post_condition in {"bad", "very_bad"}:
-        insights.append("운동 후 컨디션 회복이 필요합니다.")
-        adjustments.append("다음 운동 시간을 약 20% 단축")
-    if areas:
-        insights.append(f"불편 부위가 기록되었습니다: {', '.join(areas)}")
-        adjustments.append("불편 부위의 부담이 적은 동작으로 교체")
-    if not adjustments:
-        adjustments.append("현재 운동 강도와 구성을 유지")
-
-    return {
-        "generator": "rules_v1",
-        "summary": (
-            "오늘 운동을 완료했습니다."
-            if session["status"] == "completed"
-            else "상태 변화를 반영해 오늘 운동을 종료했습니다."
-        ),
-        "metrics": {
-            "completion_rate": completion_rate,
-            "duration_minutes": duration_minutes,
-            "calories_burned": calories_burned,
-        },
-        "feedback_summary": {
-            "difficulty": difficulty_labels[difficulty],
-            "post_condition": condition_labels[post_condition],
-            "uncomfortable_areas": areas,
-        },
-        "insights": insights,
-        "next_session_adjustments": adjustments,
-        "safety_notice": (
-            "통증, 어지럼 또는 호흡 불편이 지속되거나 심해지면 운동을 중단하고 전문가와 상담하세요."
-            if areas or post_condition in {"bad", "very_bad"}
-            else None
-        ),
-    }
 
 
 @asynccontextmanager
@@ -3952,7 +3679,7 @@ async def generate_exercise_recommendation(
             status_code=status.HTTP_409_CONFLICT,
             detail="A new exercise recommendation context is required",
         )
-    return {"ok": True, "generator": outcome.get("generator", "rules_v1"), "result": outcome["result"]}
+    return {"ok": True, "generator": outcome["generator"], "result": outcome["result"]}
 
 
 @app.post("/api/exercise/sessions/start", tags=["Exercise"])
@@ -4120,11 +3847,7 @@ async def get_exercise_session_analysis(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Exercise session not found",
         )
-    if not exercise_ai_enabled_for_user(user.id):
-        try:
-            return {"analysis": build_exercise_session_analysis(result)}
-        except ValueError as error:
-            raise HTTPException(409, detail=str(error)) from error
+    require_exercise_ai_access(user.id)
     try:
         ai_payload, metrics, feedback_summary = build_analysis_input(result)
     except ValueError as error:

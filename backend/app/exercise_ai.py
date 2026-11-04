@@ -198,6 +198,11 @@ def build_request(preferences: dict[str, Any], context: dict[str, Any]) -> dict[
     for field in ("goal_type", "experience_level"):
         if preferences.get(field) is not None:
             request[field] = preferences[field]
+    if preferences.get("goal_type") == "other":
+        custom_goal = preferences.get("custom_goal")
+        if not isinstance(custom_goal, str) or not 1 <= len(custom_goal.strip()) <= 200:
+            raise ExerciseAIError("Custom exercise goal is invalid")
+        request["custom_goal"] = custom_goal.strip()
     return request
 
 

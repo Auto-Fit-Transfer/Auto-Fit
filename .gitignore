@@ -22,3 +22,6 @@ deploy/ncp/.env
 deploy/ncp/api.env
 .worktrees/
 *.ipa
+
+# Supabase CLI local cache
+supabase/.temp/

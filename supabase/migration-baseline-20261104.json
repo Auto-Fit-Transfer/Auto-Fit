@@ -406,6 +406,7 @@
   ],
   "pending": [
     "20261104060214_reconcile_live_diet_functions.sql",
-    "20261104060215_cache_exercise_ai_analysis.sql"
+    "20261104060215_cache_exercise_ai_analysis.sql",
+    "20261104080053_retire_rules_v1_exercise_recommendations.sql"
   ]
 }

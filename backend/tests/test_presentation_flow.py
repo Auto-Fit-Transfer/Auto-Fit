@@ -9,11 +9,14 @@ from backend.tests.test_main import TEST_SETTINGS
 
 
 def test_presentation_flow_from_profile_to_progress(monkeypatch) -> None:
-    user_id = "presentation-user"
+    user_id = str(uuid4())
+    monkeypatch.setenv("EXERCISE_AI_ENABLED", "false")
+    monkeypatch.setenv("EXERCISE_AI_TEST_USER_IDS", user_id)
     chat_id = str(uuid4())
     client_message_id = str(uuid4())
     context_id = str(uuid4())
     recommendation_id = str(uuid4())
+    plan_session_id = str(uuid4())
     session_id = str(uuid4())
     state = {
         "profile": {
@@ -83,6 +86,11 @@ def test_presentation_flow_from_profile_to_progress(monkeypatch) -> None:
                 "status": "active",
             },
             "items": items,
+            "plan_sessions": [{
+                **plan["recommendation"]["plan_sessions"][0],
+                "exercise_plan_session_id": plan_session_id,
+                "status": "available",
+            }],
         }
         state["context"]["exercise_recommendation_id"] = recommendation_id
         return state["recommendation"]
@@ -97,9 +105,11 @@ def test_presentation_flow_from_profile_to_progress(monkeypatch) -> None:
         assert settings == TEST_SETTINGS
         return state["context"]
 
+
     async def exercise_rpc(name, payload, settings):
         assert payload["p_user_id"] == user_id
-        if name == "start_exercise_session":
+        if name == "start_exercise_plan_session":
+            assert payload["p_plan_session_id"] == plan_session_id
             state["session"] = {
                 "exercise_session_id": session_id,
                 "status": "in_progress",
@@ -152,6 +162,46 @@ def test_presentation_flow_from_profile_to_progress(monkeypatch) -> None:
     monkeypatch.setattr(main, "call_exercise_session_rpc", exercise_rpc)
     monkeypatch.setattr(main, "fetch_completed_exercise_sessions", completed_sessions)
     monkeypatch.setattr(ChatStore, "exchange", exchange)
+    monkeypatch.setattr(main, "get_ai_server_config", lambda: object())
+
+    class FakeAIClient:
+        def __init__(self, _config):
+            pass
+
+        async def post(self, endpoint, payload):
+            assert endpoint is main.AIEndpoint.EXERCISE
+            assert payload["available_minutes"] == 30
+            return {}
+
+    def fake_ai_plan(_response, _preferences, _context, recommendation_date):
+        return {
+            "recommendation": {
+                "generator": "auto-fit-ai",
+                "recommendation_date": recommendation_date,
+                "goal": "maintenance",
+                "intensity": "low",
+                "total_duration_minutes": 30,
+                "recommendation_summary": "오늘의 운동",
+                "ai_reason": "선택한 조건을 반영했습니다.",
+                "plan_sessions": [{
+                    "session_index": 1,
+                    "scheduled_date": recommendation_date,
+                    "name": "오늘의 운동",
+                    "duration_minutes": 30,
+                }],
+            },
+            "items": [
+                {
+                    "exercise_key": f"exercise-{index}",
+                    "exercise_name": name,
+                    "duration_minutes": 10,
+                }
+                for index, name in enumerate(("걷기", "스쿼트", "스트레칭"), 1)
+            ],
+        }
+
+    monkeypatch.setattr(main, "AIServerClient", FakeAIClient)
+    monkeypatch.setattr(main, "build_ai_exercise_plan", fake_ai_plan)
 
     try:
         client = TestClient(main.app)
@@ -186,6 +236,7 @@ def test_presentation_flow_from_profile_to_progress(monkeypatch) -> None:
 
         routine = client.get("/api/exercise/recommendations/latest").json()["result"]
         assert routine["recommendation"]["intensity"] == "low"
+        assert routine["recommendation"]["generator"] == "auto-fit-ai"
         assert routine["context"]["available_equipment"] == ["mat"]
         started = client.post("/api/exercise/sessions/start", json={}).json()["result"]
         for item in started["items"]:
