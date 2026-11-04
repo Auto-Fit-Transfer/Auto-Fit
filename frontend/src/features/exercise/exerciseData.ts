@@ -52,7 +52,7 @@ export interface ExerciseRoutine {
   estimatedCalories: number | null;
   totalDurationMinutes: number | null;
   exercises: ExerciseItem[];
-  generator: 'auto-fit-ai' | 'rules_v1' | null;
+  generator: 'auto-fit-ai';
   planSessions: ExercisePlanSession[];
   selectedPlanSessionId: string | null;
   reasons: string[];

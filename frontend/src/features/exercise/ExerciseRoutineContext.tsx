@@ -203,6 +203,7 @@ function mapExerciseRoutine(response: unknown): ExerciseRoutine | null {
   const result = getResult(response);
   if (!result) return null;
   const recommendation = readRecord(result, 'recommendation') ?? result;
+  if (readString(recommendation, ['generator']) !== 'auto-fit-ai') return null;
   const title = readString(recommendation, [
     'recommendation_summary',
     'title',
@@ -237,6 +238,7 @@ function mapExerciseRoutine(response: unknown): ExerciseRoutine | null {
       },
     ];
   });
+  if (!planSessions.length || planSessions.some((plan) => !plan.exercises.length)) return null;
   const today = getTodayDateKey();
   const selected =
     planSessions.find((plan) => plan.status === 'in_progress') ??
@@ -250,22 +252,16 @@ function mapExerciseRoutine(response: unknown): ExerciseRoutine | null {
       'estimated_kcal',
       'calories',
     ]),
-    exercises: selected?.exercises ?? items,
-    generator:
-      readString(recommendation, ['generator']) === 'auto-fit-ai'
-        ? 'auto-fit-ai'
-        : readString(recommendation, ['generator']) === 'rules_v1'
-          ? 'rules_v1'
-          : null,
+    exercises: selected.exercises,
+    generator: 'auto-fit-ai',
     id: readString(recommendation, ['exercise_recommendation_id', 'recommendation_id', 'id']),
     intensity: readString(recommendation, ['intensity', 'intensity_level']) ?? '',
     reasons: aiReason ? [aiReason] : readStringArray(recommendation, ['reasons', 'reason_list']),
     planSessions,
-    selectedPlanSessionId: selected?.id ?? null,
+    selectedPlanSessionId: selected.id,
     subtitle: readString(recommendation, ['subtitle', 'sub_title']) ?? '',
-    totalDurationMinutes:
-      selected?.durationMinutes ?? readNumber(recommendation, ['total_duration_minutes']),
-    title: selected?.name ?? title,
+    totalDurationMinutes: selected.durationMinutes,
+    title: selected.name,
   };
 }
 
@@ -601,11 +597,11 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
     const selectedPlan = routine.planSessions.find(
       (plan) => plan.id === routine.selectedPlanSessionId,
     );
+    if (!selectedPlan) throw new Error('운동 계획이 없어요. 새 AI 운동 추천을 받아주세요.');
     if (
-      selectedPlan &&
-      (selectedPlan.scheduledDate > getTodayDateKey() ||
-        selectedPlan.status === 'completed' ||
-        selectedPlan.status === 'skipped')
+      selectedPlan.scheduledDate > getTodayDateKey() ||
+      selectedPlan.status === 'completed' ||
+      selectedPlan.status === 'skipped'
     ) {
       throw new Error('선택한 날짜의 운동은 아직 시작할 수 없어요.');
     }
@@ -615,7 +611,7 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
     sessionRequestInFlight.current = true;
 
     try {
-      const response = await startExerciseSession(selectedPlan?.id);
+      const response = await startExerciseSession(selectedPlan.id);
       const startedSession = mapStartedExerciseSession(response);
       const nextSession = mapExerciseSession(response);
       if (!startedSession || !nextSession) {
@@ -625,18 +621,16 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
       setActiveSession(startedSession);
       setLatestSession(nextSession);
       setResultRecordCompleted(false);
-      if (selectedPlan) {
-        setRoutine((current) =>
-          current
-            ? {
-                ...current,
-                planSessions: current.planSessions.map((plan) =>
-                  plan.id === selectedPlan.id ? { ...plan, status: 'in_progress' } : plan,
-                ),
-              }
-            : current,
-        );
-      }
+      setRoutine((current) =>
+        current
+          ? {
+              ...current,
+              planSessions: current.planSessions.map((plan) =>
+                plan.id === selectedPlan.id ? { ...plan, status: 'in_progress' } : plan,
+              ),
+            }
+          : current,
+      );
       return startedSession;
     } finally {
       sessionRequestInFlight.current = false;

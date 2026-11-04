@@ -4,7 +4,7 @@ import { mapExerciseAnalysis } from '../src/features/exercise/exerciseAnalysis.t
 
 test('report preserves incomplete performance, discomfort and server guidance', () => {
   const report = mapExerciseAnalysis({
-    generator: 'rules_v1',
+    generator: 'auto-fit-ai',
     summary: '운동을 종료했습니다.',
     metrics: { completion_rate: 40, duration_minutes: 12, calories_burned: 50 },
     feedback_summary: {
