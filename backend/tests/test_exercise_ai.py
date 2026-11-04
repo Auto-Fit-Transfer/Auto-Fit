@@ -131,9 +131,9 @@ def test_build_plan_preserves_explicit_set_and_rep_prescription():
 
 
 @pytest.mark.parametrize(("minutes", "accepted"), [
-    (39, False), (40, True), (45, True), (50, True), (51, False),
+    (39, False), (44, False), (45, True), (50, True), (51, False),
 ])
-def test_build_plan_requires_each_session_within_five_minutes_of_target(minutes, accepted):
+def test_build_plan_requires_each_session_between_target_and_five_minutes_over(minutes, accepted):
     response = ai_response()
     for session in response["result"]["sessions"]:
         exercises = session["exercises"]
@@ -149,8 +149,21 @@ def test_build_plan_requires_each_session_within_five_minutes_of_target(minutes,
         with pytest.raises(ExerciseAIError) as error:
             build_plan(response, PREFERENCES, context, "2026-11-03")
         assert error.value.reason_codes == (
-            "session_duration_short" if minutes < 40 else "session_duration_exceeded",
+            "session_duration_short" if minutes < 45 else "session_duration_exceeded",
         )
+
+
+@pytest.mark.parametrize("target_minutes", [30, 60, 90, 120])
+def test_build_plan_accepts_exact_duration_for_each_other_target(target_minutes):
+    response = ai_response()
+    for session in response["result"]["sessions"]:
+        exercises = session["exercises"]
+        for exercise in exercises:
+            exercise["duration_minutes"] = target_minutes // len(exercises)
+    plan = build_plan(response, PREFERENCES,
+                      {**CONTEXT, "available_minutes": target_minutes}, "2026-11-03")
+    assert all(session["duration_minutes"] == target_minutes
+               for session in plan["recommendation"]["plan_sessions"])
 
 
 def test_build_plan_rejects_short_later_session():

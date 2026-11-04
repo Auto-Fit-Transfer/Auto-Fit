@@ -38,7 +38,7 @@ NCP 공식 문서: [Boto3 엔드포인트·업로드](https://guide.ncloud-docs.
 
 ## 담당자 작업 2: AI·Backend 배포
 
-2026-11-04 후속 [운동 AI 파일럿 PR #14](https://github.com/Auto-Fit-Transfer/Auto-Fit/pull/14)은 선택한 운동 시간을 목표로 삼아 각 세션에 ±5분을 요구한다. 현재 운영 AI의 45분 요청 → 35분 응답은 이 검증을 통과하지 않는다. AI 서버 담당자가 세션 시간 합계를 40~50분으로 생성하도록 응답 계약을 반영하고 같은 조건으로 재시험한 뒤에만 이 Backend PR을 배포한다. 세트·반복 처방도 둘 다 양수로 함께 반환해야 횟수 기반 운동으로 저장된다. 열량은 임의 추정하지 않고 앱에서 미산출로 표시한다.
+2026-11-04 후속 [운동 AI 파일럿 PR #14](https://github.com/Auto-Fit-Transfer/Auto-Fit/pull/14)은 각 세션의 운동 시간 합계가 선택 시간부터 +5분까지여야 한다. 45분 요청에는 45~50분을 허용한다. AI 서버 담당자는 `ai` 브랜치 `5d81427` 배포 후 같은 조건에서 정확히 45분인 계획 1개, Backend `93fefe1`의 추천 생성 200 및 운동 4개 저장을 보고했다. PR #14 코드로 직접 재시험한 결과는 아직 없다. 현재 운영 Backend는 선택 시간을 넘으면 거부하므로 AI 서버는 정확히 선택 시간에 맞춰 응답한다. 세트·반복 처방은 둘 다 양수로 함께 반환해야 횟수 기반 운동으로 저장된다. 열량은 임의 추정하지 않고 앱에서 미산출로 표시한다.
 
 1. 실제 AI 서버의 HTTPS origin과 서버 간 Bearer 키를 확인한다. 공용 Backend API `https://211-233-206-193.sslip.io`는 AI 서버 주소가 아니다.
 2. AI 서버에 `POST /recommend/exercise`, CSV 카탈로그, [PR #8](https://github.com/Auto-Fit-Transfer/Auto-Fit/pull/8)의 장비 필터 수정이 반영됐는지 확인한다. 공개 `/openapi.json`에서 경로를 확인하고, 서버 응답의 `catalog_version`이 `sha256:5e231250283742da2deee4e36da0308fb635409999ee8f6a29ff49274c5d97a1`인지 점검한다.

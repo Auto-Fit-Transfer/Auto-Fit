@@ -301,7 +301,7 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
                 "target_weight_kg": None,
                 "rest_seconds": None,
             })
-        if session_minutes < target_minutes - 5:
+        if session_minutes < target_minutes:
             raise ExerciseAIError("Exercise AI session is shorter than the target", reason_codes=("session_duration_short",))
         if session_minutes > target_minutes + 5:
             raise ExerciseAIError("Exercise AI exceeded the available time", reason_codes=("session_duration_exceeded",))
