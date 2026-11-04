@@ -18,7 +18,6 @@ import {
 import { API_BASE_URL, ApiError } from '@/src/api/client';
 import { awardTierActivity } from '@/src/api/tier';
 import { nutritionNumber, type NutritionSummary } from '@/src/features/nutritionSummary';
-import { Text } from '@/src/components/common';
 
 const dateWindowMin = -6;
 const dateWindowMax = 6;
@@ -42,6 +41,7 @@ type Meal = {
   note: string;
   usedIngredients: string[];
   intake: [string, string][];
+  macros: string;
 };
 
 type NutritionGoal = {
@@ -180,6 +180,20 @@ function foodAmount(food: unknown) {
   return `${displayQuantity ?? ''}${unit ?? ''}`.trim();
 }
 
+function macroLabel(items: { carbs?: number; protein?: number; fat?: number }[]) {
+  const total = (key: 'carbs' | 'protein' | 'fat', label: string) =>
+    items.some((item) => item[key] !== undefined)
+      ? `${label} ${Math.round(items.reduce((sum, item) => sum + (item[key] ?? 0), 0))}g`
+      : null;
+  return [total('carbs', '탄'), total('protein', '단'), total('fat', '지')].filter(Boolean).join(' ');
+}
+
+function localClock(value: string | undefined) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return undefined;
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
 function mapRecommendationMeals(result: unknown): Meal[] {
   if (!isApiRecord(result)) return [];
 
@@ -215,7 +229,12 @@ function mapRecommendationMeals(result: unknown): Meal[] {
 
     mappedByType.set(mealId, {
       dietMealId,
-      foods: foodNames.join(', ') || '등록된 음식이 없어요',
+      foods: foodNames.join(' · ') || '등록된 음식이 없어요',
+      macros: macroLabel(foods.filter(isApiRecord).map((food) => ({
+        carbs: readNumber(food, ['carbohydrates', 'carbs']),
+        fat: readNumber(food, ['fat']),
+        protein: readNumber(food, ['protein']),
+      }))),
       id: mealId,
       imageUrl: readString(apiMeal, ['image_url']),
       intake: foods
@@ -338,6 +357,9 @@ export default function DietScreen() {
   const [mealRecordsByDate, setMealRecordsByDate] = useState<
     Record<string, Partial<Record<MealType, MealRecordDraft>>>
   >({});
+  const [mealLogMetaByDate, setMealLogMetaByDate] = useState<
+    Record<string, Partial<Record<MealType, { photoUrl?: string; time?: string }>>>
+  >({});
   const feedbackRequestMealIdsRef = useRef(new Set<MealType>());
   const isMountedRef = useRef(true);
   const mealLogsRequestRef = useRef(0);
@@ -402,6 +424,7 @@ export default function DietScreen() {
     );
     const nextStatuses: Partial<MealStatuses> = {};
     const nextRecords: Partial<Record<MealType, MealRecordDraft>> = {};
+    const nextLogMeta: Partial<Record<MealType, { photoUrl?: string; time?: string }>> = {};
 
     entries.forEach((entry) => {
       if (!isApiRecord(entry)) return;
@@ -417,6 +440,10 @@ export default function DietScreen() {
       if (!targetMeal || !nextStatus) return;
 
       nextStatuses[targetMeal.id] = nextStatus;
+      nextLogMeta[targetMeal.id] = {
+        photoUrl: readString(entry, ['image_url']),
+        time: localClock(readString(entry, ['eaten_at', 'created_at'])),
+      };
       if (nextStatus === 'modified') {
         const draft = mapLogDraft(entry, targetMeal.id);
         if (draft) nextRecords[targetMeal.id] = draft;
@@ -425,6 +452,7 @@ export default function DietScreen() {
 
     setStatusesByDate((current) => ({ ...current, [dateKey]: nextStatuses }));
     setMealRecordsByDate((current) => ({ ...current, [dateKey]: nextRecords }));
+    setMealLogMetaByDate((current) => ({ ...current, [dateKey]: nextLogMeta }));
   }, []);
 
   const loadMealLogs = useCallback(
@@ -625,6 +653,7 @@ export default function DietScreen() {
           delete nextDateRecords[mealId];
           return { ...current, [dateKey]: nextDateRecords };
         });
+        void loadMealLogs(dateKey);
         void loadNutritionSummary(dateKey);
         return true;
       } catch (error) {
@@ -644,6 +673,7 @@ export default function DietScreen() {
       }
     },
     [
+      loadMealLogs,
       loadNutritionSummary,
       recommendedMeals,
       saveDietMealFeedback,
@@ -926,18 +956,26 @@ export default function DietScreen() {
         nutritionError={nutritionError}
         hasUnknownItems={nutritionSummary?.date === selectedDateKey && Boolean(nutritionSummary.has_unknown_items)}
         meals={recommendedMeals.map((meal) => {
-          const recordedFoods = mealRecordsByDate[selectedDateKey]?.[meal.id]?.foods;
+          const record = mealRecordsByDate[selectedDateKey]?.[meal.id];
+          const log = mealLogMetaByDate[selectedDateKey]?.[meal.id];
+          const recordedFoods = record?.foods;
+          const status = selectedStatuses[meal.id];
+          const photoUrl = record?.photoUri ?? log?.photoUrl;
+          const macros = status === 'modified' && recordedFoods ? macroLabel(recordedFoods) : meal.macros;
           const recordedKcal = recordedFoods?.every((food) => food.kcal !== undefined)
             ? recordedFoods.reduce((sum, food) => sum + (food.kcal ?? 0), 0)
             : null;
           return {
             id: meal.id,
             title: meal.title,
-            kcal: selectedStatuses[meal.id] === 'modified' && recordedFoods ? recordedKcal : meal.kcal,
-            foods: recordedFoods?.map((food) => food.name).join(', ') || meal.foods,
+            kcal: status === 'modified' && recordedFoods ? recordedKcal : meal.kcal,
+            foods: recordedFoods?.map((food) => food.name).join(' · ') || meal.foods,
             note: meal.note,
-            imageUrl: meal.imageUrl,
-            status: selectedStatuses[meal.id],
+            detail: status === 'eaten' || status === 'modified'
+              ? [[log?.time, photoUrl ? '사진으로 기록' : '기록'].filter(Boolean).join(' '), macros].filter(Boolean).join(' · ')
+              : null,
+            photoUrl: photoUrl ?? undefined,
+            status,
             canSave: feedbackEnabled && Boolean(meal.dietMealId),
             pending: feedbackMealIds.has(meal.id),
             regenerating: regeneratingMealIds.has(meal.id),

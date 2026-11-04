@@ -5,7 +5,9 @@ import HeartIcon from '@/assets/icons/deco/Heart.svg';
 import HeartFillIcon from '@/assets/icons/deco/Heart_Fill.svg';
 import ChatIcon from '@/assets/icons/feature/ChatCircle.svg';
 import RepeatIcon from '@/assets/icons/feature/Repeat.svg';
-import MoreIcon from '@/assets/icons/system/DotsThreeVertical.svg';
+import MoreIcon from '@/assets/icons/system/DotsThreeOutline.svg';
+import BarbellIcon from '@/assets/icons/ui/barbell.svg';
+import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import type { CommunityAuthor, CommunityPost, CommunityProfile } from '@/src/api/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
@@ -51,37 +53,24 @@ export function CommunityPostCard({
   const openAuthor = onAuthorPress ? () => onAuthorPress(post.author) : undefined;
   const postBody = (
     <>
-      {post.category ? <Text style={styles.category}>{CATEGORY_LABELS[post.category]}</Text> : null}
       {post.content ? (
         <Text numberOfLines={expanded || simple ? undefined : 10} style={[styles.content, expanded && styles.detailContent, simple && simpleStyles.content, isDark && dark.text]}>
           {post.content}
         </Text>
       ) : null}
-      <CommunityPostImages expanded={expanded} images={post.images} />
       {post.activity_snapshot ? <CommunityActivityCard snapshot={post.activity_snapshot} /> : null}
+      <CommunityPostImages expanded={expanded} images={post.images} />
       {post.tags?.length ? <Text style={styles.tags}>{post.tags.map((tag) => `#${tag}`).join('  ')}</Text> : null}
       <View style={[styles.actions, expanded && styles.detailActions]}>
-        {expanded ? (
-          <>
-            <ActionButton active={post.liked_by_me} color={colors.danger} count={post.like_count}
-              icon={post.liked_by_me ? <HeartFillIcon color={colors.danger} height={19} width={19} /> : <HeartIcon color={colors.textSecondary} height={19} width={19} />}
-              label={post.liked_by_me ? '좋아요 취소' : '좋아요'} onPress={onLike} />
-            <ActionButton count={post.comment_count} icon={<ChatIcon color={colors.textSecondary} height={19} width={19} />} label="댓글" onPress={onComment ?? onPress} />
-            <ActionButton active={post.reposted_by_me} color={colors.primaryDark} count={post.repost_count}
-              icon={<RepeatIcon color={post.reposted_by_me ? colors.primaryDark : colors.textSecondary} height={19} width={19} />}
-              label={post.reposted_by_me ? '공유 취소' : '공유'} onPress={onRepost} />
-          </>
-        ) : (
-          <>
-            <ActionButton count={post.comment_count} icon={<ChatIcon color={colors.textSecondary} height={19} width={19} />} label="댓글" onPress={onComment ?? onPress} />
-            <ActionButton active={post.reposted_by_me} color={colors.primaryDark} count={post.repost_count}
-              icon={<RepeatIcon color={post.reposted_by_me ? colors.primaryDark : colors.textSecondary} height={19} width={19} />}
-              label={post.reposted_by_me ? '공유 취소' : '공유'} onPress={onRepost} />
-            <ActionButton active={post.liked_by_me} color={colors.danger} count={post.like_count}
-              icon={post.liked_by_me ? <HeartFillIcon color={colors.danger} height={19} width={19} /> : <HeartIcon color={colors.textSecondary} height={19} width={19} />}
-              label={post.liked_by_me ? '좋아요 취소' : '좋아요'} onPress={onLike} />
-          </>
-        )}
+        <ActionButton active={post.liked_by_me} color={colors.danger} count={post.like_count}
+          icon={post.liked_by_me ? <HeartFillIcon color={colors.danger} height={20} width={20} /> : <HeartIcon color={colors.textBody} height={20} width={20} />}
+          label={post.liked_by_me ? '좋아요 취소' : '좋아요'} onPress={onLike} />
+        <ActionButton count={post.comment_count} icon={<ChatIcon color={colors.textBody} height={20} width={20} />} label="댓글" onPress={onComment ?? onPress} />
+        <View style={styles.actionsEnd}>
+          <ActionButton active={post.reposted_by_me} color={colors.primaryDark} end count={post.repost_count}
+            icon={<RepeatIcon color={post.reposted_by_me ? colors.primaryDark : colors.textBody} height={20} width={20} />}
+            label={post.reposted_by_me ? '공유 취소' : '공유'} onPress={onRepost} />
+        </View>
       </View>
     </>
   );
@@ -113,33 +102,32 @@ export function CommunityPostCard({
           disabled={!openAuthor}
           onPress={openAuthor}
         >
-          <CommunityAvatar author={post.author} />
+          <CommunityAvatar author={post.author} size={36} />
         </Pressable>
         <View style={styles.body}>
+          <Pressable disabled={!openAuthor} onPress={openAuthor} style={styles.nicknameButton}>
+            <Text numberOfLines={1} style={[styles.nickname, simple && simpleStyles.nickname, isDark && dark.text]}>
+              {post.author.nickname}
+            </Text>
+          </Pressable>
           <View style={styles.meta}>
-            <Pressable disabled={!openAuthor} onPress={openAuthor} style={styles.nicknameButton}>
-              <Text numberOfLines={1} style={[styles.nickname, simple && simpleStyles.nickname, isDark && dark.text]}>
-                {post.author.nickname}
-              </Text>
-            </Pressable>
-            <Text style={styles.time}>· {formatCommunityTime(post.created_at)}</Text>
-            {expanded && followProfile && !followProfile.is_me && onFollow ? (
-              <CommunityFollowButton following={followProfile.followed_by_me} followsMe={followProfile.follows_me} nickname={followProfile.nickname} onPress={onFollow} />
-            ) : null}
-            <Pressable
-              accessibilityLabel="더보기"
-              accessibilityRole="button"
-              hitSlop={10}
-              onPress={onMore}
-              style={styles.more}
-            >
-              <MoreIcon color={colors.textSecondary} height={20} width={20} />
-            </Pressable>
+            <Text style={styles.time}>{formatCommunityTime(post.created_at)}</Text>
+            {post.category ? <Text style={styles.category}>{CATEGORY_LABELS[post.category]}</Text> : null}
           </View>
-          {expanded ? null : postBody}
         </View>
+        {expanded && followProfile && !followProfile.is_me && onFollow ? (
+          <CommunityFollowButton following={followProfile.followed_by_me} followsMe={followProfile.follows_me} nickname={followProfile.nickname} onPress={onFollow} />
+        ) : null}
+        <Pressable
+          accessibilityLabel="더보기"
+          accessibilityRole="button"
+          hitSlop={10}
+          onPress={onMore}
+        >
+          <MoreIcon color={colors.textBody} height={20} width={20} />
+        </Pressable>
       </View>
-      {expanded ? <View style={styles.detailBody}>{postBody}</View> : null}
+      <View style={styles.detailBody}>{postBody}</View>
     </Pressable>
   );
 }
@@ -149,21 +137,25 @@ function CommunityActivityCard({ snapshot }: { snapshot: Record<string, unknown>
   const minutes = typeof snapshot.duration_minutes === 'number' && Number.isFinite(snapshot.duration_minutes)
     ? `${Math.round(snapshot.duration_minutes)}분` : null;
   const calories = typeof snapshot.calories === 'number' && Number.isFinite(snapshot.calories)
-    ? `약 ${Math.round(snapshot.calories)}kcal` : null;
-  const exercises = Array.isArray(snapshot.exercises)
-    ? snapshot.exercises.filter((item): item is string => typeof item === 'string').slice(0, 3) : [];
+    ? `${Math.round(snapshot.calories)}kcal` : null;
+  const count = Array.isArray(snapshot.exercises) && snapshot.exercises.length ? `${snapshot.exercises.length}가지` : null;
+  const meta = [minutes, count, calories].filter(Boolean).join(' · ');
   return (
     <View style={styles.activityCard}>
-      <Text style={styles.activityType}>운동 기록</Text>
-      <Text numberOfLines={1} style={styles.activityName}>{name}</Text>
-      {minutes || calories ? <Text style={styles.activityMeta}>{[minutes, calories].filter(Boolean).join(' · ')}</Text> : null}
-      {exercises.map((item, index) => <Text key={`${index}-${item}`} numberOfLines={1} style={styles.activityExercise}>{index + 1}  {item}</Text>)}
+      <View style={styles.activityIcon}><BarbellIcon color="#17161D" height={20} width={20} /></View>
+      <View style={styles.activityCopy}>
+        <Text style={styles.activityType}>운동 기록</Text>
+        <Text numberOfLines={1} style={styles.activityName}>{name}</Text>
+        {meta ? <Text style={styles.activityMeta}>{meta}</Text> : null}
+      </View>
+      <CaretRightIcon color="#5E5D66" height={20} width={20} />
     </View>
   );
 }
 
 function ActionButton({
   active = false,
+  end = false,
   color,
   count,
   icon,
@@ -171,6 +163,7 @@ function ActionButton({
   onPress,
 }: {
   active?: boolean;
+  end?: boolean;
   color?: string;
   count: number;
   icon: ReactNode;
@@ -184,7 +177,7 @@ function ActionButton({
       accessibilityState={{ selected: active }}
       hitSlop={6}
       onPress={onPress}
-      style={styles.action}
+      style={[styles.action, end && styles.actionEnd]}
     >
       {icon}
       <Text style={[styles.count, active && color ? { color } : null]}>
@@ -196,17 +189,15 @@ function ActionButton({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
   detailCard: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: 0 },
-  detailBody: { gap: spacing.md, paddingTop: spacing.md },
+  detailBody: { gap: 12, paddingTop: 12 },
   detailContent: { marginTop: 0, lineHeight: 24 },
-  detailActions: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, justifyContent: 'space-between', gap: 0, paddingVertical: spacing.sm },
-  pressed: { backgroundColor: colors.background },
+  detailActions: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, paddingVertical: spacing.sm },
+  pressed: { backgroundColor: '#FAFBFC' },
   repostHeader: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -219,44 +210,46 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.pretendardMedium,
     fontSize: 12,
   },
-  row: { flexDirection: 'row', gap: 10 },
-  body: { flex: 1, minWidth: 0 },
-  meta: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs },
+  row: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  body: { flex: 1, gap: 2, minWidth: 0 },
+  meta: { alignItems: 'center', flexDirection: 'row', gap: 8 },
   nicknameButton: { flexShrink: 1 },
   nickname: {
     color: colors.textPrimary,
     flexShrink: 1,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 15,
+    fontFamily: fontFamilies.pretendardMedium,
+    fontSize: 14,
+    lineHeight: 21,
   },
-  time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 13 },
-  more: { marginLeft: 'auto' },
+  time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
   content: {
     color: colors.textPrimary,
     fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 15,
-    lineHeight: 22,
-    marginTop: 2,
+    fontSize: 16,
+    lineHeight: 24,
   },
-  category: { color: colors.textSecondary, fontSize: 11, marginTop: 4, marginBottom: 3 },
-  tags: { color: colors.textSecondary, fontSize: 12, marginTop: 9 },
-  activityCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, marginTop: 10, gap: 5, backgroundColor: colors.surface },
-  activityType: { color: colors.textSecondary, fontSize: 11 },
-  activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  activityMeta: { color: colors.textSecondary, fontSize: 11 },
-  activityExercise: { color: colors.textPrimary, fontSize: 12 },
-  actions: { flexDirection: 'row', gap: 36, marginTop: 10 },
+  category: { backgroundColor: '#F2F4F6', borderRadius: 6, color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, overflow: 'hidden', paddingHorizontal: 6, paddingVertical: 1 },
+  tags: { color: colors.textSecondary, fontSize: 14 },
+  activityCard: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 12 },
+  activityIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 10, borderWidth: 1, height: 36, justifyContent: 'center', width: 36 },
+  activityCopy: { flex: 1, minWidth: 0 },
+  activityType: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 18 },
+  activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
+  activityMeta: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+  actions: { alignItems: 'center', flexDirection: 'row', gap: 16 },
+  actionsEnd: { marginLeft: 'auto' },
+  actionEnd: { justifyContent: 'flex-end' },
   action: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 28, minWidth: 44 },
-  count: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
+  count: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
 });
 
 const simpleStyles = StyleSheet.create({
   card: { paddingHorizontal: 20, paddingVertical: 20 },
   nickname: { fontSize: 18 },
-  content: { fontSize: 18, lineHeight: 27, marginTop: 8 },
+  content: { fontSize: 18, lineHeight: 27 },
 });
 
 const dark = StyleSheet.create({
-  card: { backgroundColor: darkColors.surface, borderBottomColor: darkColors.border },
+  card: { backgroundColor: darkColors.surface },
   text: { color: darkColors.textPrimary },
 });

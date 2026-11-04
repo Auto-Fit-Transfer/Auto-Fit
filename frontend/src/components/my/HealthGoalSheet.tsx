@@ -11,7 +11,7 @@ import { getApiErrorMessage } from '@/src/api/client';
 import { AppBottomSheet, Text } from '@/src/components/common';
 import { colors, fontFamilies } from '@/src/theme';
 
-const goals: { key: HealthGoalType; label: string }[] = [
+export const goals: { key: HealthGoalType; label: string }[] = [
   { key: 'fat_loss', label: '체지방 감량' },
   { key: 'muscle_gain', label: '근육량 증가' },
   { key: 'fitness', label: '체력 향상' },

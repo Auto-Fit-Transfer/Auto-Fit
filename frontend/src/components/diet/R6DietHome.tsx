@@ -1,10 +1,13 @@
 import { useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import CameraIcon from '@/assets/icons/ui/camera.svg';
+import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
+import CheckIcon from '@/assets/icons/ui/check.svg';
+import InfoIcon from '@/assets/icons/ui/info.svg';
 import { darkColors, fontFamilies } from '@/src/theme';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
-import { WeeklyDietContent } from '@/src/components/diet/WeeklyDietContent';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { Text } from '@/src/components/common';
 
@@ -14,7 +17,8 @@ export type R6Meal = {
   kcal: number | null;
   foods: string;
   note: string;
-  imageUrl?: string;
+  detail: string | null;
+  photoUrl?: string;
   status: 'recommended' | 'eaten' | 'modified' | 'skipped';
   canSave: boolean;
   pending: boolean;
@@ -50,10 +54,6 @@ const mealLabels: { id: R6Meal['id']; title: string }[] = [
   { id: 'dinner', title: '저녁' },
   { id: 'snack', title: '간식' },
 ];
-const viewTabs: { id: 'daily' | 'weekly'; label: string }[] = [
-  { id: 'daily', label: '일간' },
-  { id: 'weekly', label: '주간' },
-];
 const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
 
 function dateAtOffset(today: Date, offset: number) {
@@ -62,13 +62,13 @@ function dateAtOffset(today: Date, offset: number) {
   return date;
 }
 
-function ProgressLine({ value, target }: { value: number | null; target: number | null }) {
+function ProgressLine({ value, target, thick = false }: { value: number | null; target: number | null; thick?: boolean }) {
   const percent =
     value != null && target != null && target > 0
       ? Math.min(100, Math.max(0, Math.round((value / target) * 100)))
       : 0;
   return (
-    <View style={styles.track}>
+    <View style={[styles.track, thick && styles.trackThick]}>
       <View style={[styles.fill, { width: `${percent}%` }]} />
     </View>
   );
@@ -80,7 +80,6 @@ export function R6DietHome(props: Props) {
   const simple = preferences.simple_mode_enabled;
   const [pickerOpen, setPickerOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<R6Meal['id'] | null>(null);
-  const [view, setView] = useState<'daily' | 'weekly'>('daily');
   const canRecordPhoto = props.meals.some((meal) => meal.canSave);
   const selectedDate = dateAtOffset(props.today, props.selectedDateOffset);
   const week = useMemo(() => {
@@ -109,76 +108,31 @@ export function R6DietHome(props: Props) {
       >
         <View style={styles.titleRow}>
           <Text style={[styles.title, simple && simpleStyles.title, isDark && dark.text]}>식단</Text>
-          <SimpleReadButton text={view === 'weekly' ? '7일 식단을 확인할 수 있어요.' : `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 식단입니다. 먹은 양은 ${number(energy?.current)}킬로칼로리입니다.`} />
+          <SimpleReadButton text={`${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 식단입니다. 먹은 양은 ${number(energy?.current)}킬로칼로리입니다.`} />
         </View>
-        <View accessibilityRole="tablist" style={[styles.viewTabs, isDark && dark.card]}>
-          {viewTabs.map((tab) => (
-            <Pressable
-              accessibilityRole="tab"
-              aria-selected={tab.id === view}
-              key={tab.id}
-              onPress={() => setView(tab.id)}
-              style={[styles.viewTab, tab.id === view && styles.viewTabActive]}
-            >
-              <Text style={[styles.viewTabText, simple && simpleStyles.viewTabText, tab.id === view && styles.viewTabTextActive]}>
-                {tab.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        {view === 'weekly' ? (
-        <View style={[styles.weeklyContent, isDark && styles.weeklyDarkSurface]}>
-          <WeeklyDietContent />
-        </View>
-        ) : (
-        <>
-        <View style={styles.monthRow}>
-          <Text style={[styles.month, isDark && dark.text]}>
-            {selectedDate.getFullYear()}년 {selectedDate.getMonth() + 1}월
-          </Text>
-          <Pressable hitSlop={16} accessibilityRole="button" onPress={() => props.onSelectDateOffset(0)}>
-            <Text style={styles.today}>오늘</Text>
-          </Pressable>
-        </View>
-        <View style={styles.weekRow}>
-          {week.map(({ date, offset }) => (
-            <Pressable
-              key={offset}
-              accessibilityRole="button"
-              accessibilityState={{ selected: offset === props.selectedDateOffset }}
-              disabled={offset < -6 || offset > 6}
-              onPress={() => props.onSelectDateOffset(offset)}
-              style={[
-                styles.day,
-                offset === props.selectedDateOffset && styles.selectedDay,
-                (offset < -6 || offset > 6) && styles.disabledDay,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.dayName,
-                  offset === props.selectedDateOffset && styles.selectedDayText,
-                ]}
+        <View style={[styles.weekRow, isDark && dark.card]}>
+          {week.map(({ date, offset }) => {
+            const selected = offset === props.selectedDateOffset;
+            return (
+              <Pressable
+                key={offset}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                disabled={offset < -6 || offset > 6}
+                onPress={() => props.onSelectDateOffset(offset)}
+                style={[styles.day, selected && styles.selectedDay, selected && isDark && dark.root, (offset < -6 || offset > 6) && styles.disabledDay]}
               >
-                {weekdays[date.getDay()]}
-              </Text>
-              <Text
-                style={[
-                  styles.dayNumber,
-                  isDark && dark.text,
-                  offset === props.selectedDateOffset && styles.selectedDayText,
-                ]}
-              >
-                {date.getDate()}
-              </Text>
-            </Pressable>
-          ))}
+                <Text style={[styles.dayName, selected && styles.selectedDayName, isDark && dark.secondary]}>{weekdays[date.getDay()]}</Text>
+                <Text style={[styles.dayNumber, selected && styles.selectedDayNumber, isDark && dark.text]}>{date.getDate()}</Text>
+              </Pressable>
+            );
+          })}
         </View>
 
         <View style={[styles.energyCard, simple && simpleStyles.card, isDark && dark.card]}>
           <View style={styles.energyHeading}>
             <View>
-              <Text style={styles.caption}>
+              <Text style={[styles.caption, isDark && dark.secondary]}>
                 {props.selectedDateOffset === 0
                   ? '오늘'
                   : `${selectedDate.getMonth() + 1}/${selectedDate.getDate()}`}{' '}
@@ -186,24 +140,20 @@ export function R6DietHome(props: Props) {
               </Text>
               <Text style={[styles.energyValue, simple && simpleStyles.energyValue, isDark && dark.text]}>
                 {number(energy?.current)}
-                <Text style={styles.energyTarget}> / {number(energy?.target)} kcal</Text>
+                <Text style={[styles.energyTarget, isDark && dark.secondary]}> / {number(energy?.target)} kcal</Text>
               </Text>
             </View>
-            <Text style={styles.percent}>{energyPercent == null ? '—' : `${energyPercent}%`}</Text>
+            <Text style={[styles.percent, isDark && dark.text]}>{energyPercent == null ? '—' : `${energyPercent}%`}</Text>
           </View>
           <ProgressLine value={energy?.current ?? null} target={energy?.target ?? null} />
           <View style={[styles.macroRow, simple && simpleStyles.macroRow]}>
             {props.goals.slice(1).map((goal) => (
               <View key={goal.label} style={[styles.macro, simple && simpleStyles.macro]}>
-                <Text style={[styles.macroLabel, simple && simpleStyles.macroLabel]}>{goal.label}</Text>
+                <Text style={[styles.macroLabel, simple && simpleStyles.macroLabel, isDark && dark.secondary]}>{goal.label}</Text>
                 <Text style={[styles.macroValue, simple && simpleStyles.macroValue, isDark && dark.text]}>
-                  {number(goal.current)}
-                  <Text style={styles.macroTarget}>
-                    /{number(goal.target)}
-                    {goal.unit}
-                  </Text>
+                  {number(goal.current)} / {number(goal.target)}{goal.unit}
                 </Text>
-                <ProgressLine value={goal.current} target={goal.target} />
+                <ProgressLine thick value={goal.current} target={goal.target} />
               </View>
             ))}
           </View>
@@ -216,7 +166,7 @@ export function R6DietHome(props: Props) {
             </Pressable>
           )}
           <Pressable accessibilityRole="button" onPress={props.onOpenProteinGuide} style={styles.guideLink}>
-            <Text style={styles.guideLinkText}>단백질 가이드 보기  ›</Text>
+            <Text style={[styles.guideLinkText, isDark && dark.secondary]}>단백질 가이드 보기  ›</Text>
           </Pressable>
         </View>
 
@@ -227,12 +177,12 @@ export function R6DietHome(props: Props) {
             onPress={() => setPickerOpen(true)}
             style={[styles.photoButton, simple && simpleStyles.photoButton, isDark && dark.card, !canRecordPhoto && styles.photoDisabled]}
           >
-            <View style={styles.cameraIcon}>
-              <Text style={styles.cameraGlyph}>▣</Text>
+            <View style={[styles.cameraIcon, isDark && dark.card]}>
+              <CameraIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={22} width={22} />
             </View>
             <View style={styles.photoCopy}>
               <Text style={[styles.photoTitle, simple && simpleStyles.photoTitle, isDark && dark.text]}>사진으로 기록하기</Text>
-              <Text style={styles.photoHint}>
+              <Text style={[styles.photoHint, isDark && dark.secondary]}>
                 {canRecordPhoto
                   ? '먹은 음식을 사진과 함께 기록해요'
                   : props.selectedDateOffset < 0
@@ -240,7 +190,7 @@ export function R6DietHome(props: Props) {
                     : '오늘의 추천 식단을 불러오면 기록할 수 있어요'}
               </Text>
             </View>
-            <Text style={styles.chevron}>›</Text>
+            <CaretRightIcon color="#5E5D66" height={20} width={20} />
           </Pressable>
         )}
 
@@ -260,102 +210,76 @@ export function R6DietHome(props: Props) {
           </View>
         )}
         {props.meals.map((meal) => {
-          const expanded = expandedId === meal.id;
+          const recommended = meal.status === 'recommended';
+          const showActions = recommended || expandedId === meal.id;
+          const canRecord = props.showRecordControls && meal.canSave && !meal.pending;
+          const action = (label: string, onPress: () => void, disabled = false) => (
+            <Pressable
+              accessibilityLabel={`${meal.title} ${label}`}
+              accessibilityRole="button"
+              disabled={disabled}
+              key={label}
+              onPress={onPress}
+              style={[styles.smallAction, isDark && dark.card, disabled && styles.disabledDay]}
+            >
+              <Text style={[styles.smallActionText, isDark && dark.text]}>{label}</Text>
+            </Pressable>
+          );
           return (
             <View key={meal.id} style={[styles.mealCard, simple && simpleStyles.mealCard, isDark && dark.card]}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityState={{ expanded }}
-                onPress={() => setExpandedId(expanded ? null : meal.id)}
-                style={[styles.mealMain, simple && simpleStyles.mealMain]}
+                accessibilityState={{ expanded: showActions }}
+                disabled={recommended}
+                onPress={() => setExpandedId(expandedId === meal.id ? null : meal.id)}
+                style={styles.mealMain}
               >
-                <View style={styles.mealCopy}>
-                  <View style={styles.mealTop}>
-                    <Text style={[styles.mealName, simple && simpleStyles.mealName, isDark && dark.text]}>
-                      {meal.title}{' '}
-                      <Text style={styles.mealKcal}>
-                        {meal.kcal == null ? '' : `${number(meal.kcal)}kcal`}
-                      </Text>
+                <View style={styles.mealTop}>
+                  <Text style={[styles.mealName, simple && simpleStyles.mealName, isDark && dark.text]}>
+                    {meal.title}{' '}
+                    <Text style={[styles.mealKcal, isDark && dark.secondary]}>
+                      {meal.kcal == null ? '' : `${number(meal.kcal)}kcal`}
                     </Text>
-                    <Text
-                      style={[
-                        styles.status,
-                        meal.status === 'recommended'
-                          ? styles.recommended
-                          : meal.status === 'skipped'
-                            ? styles.skipped
-                            : styles.recorded,
-                      ]}
-                    >
-                      {meal.status === 'recommended'
-                        ? '추천'
-                        : meal.status === 'skipped'
-                          ? '건너뜀'
-                          : '먹었어요'}
-                    </Text>
-                  </View>
-                  <Text numberOfLines={simple ? undefined : 2} style={[styles.foods, simple && simpleStyles.foods, isDark && dark.secondary]}>
-                    {meal.foods}
                   </Text>
-                </View>
-                <Text style={styles.chevron}>{expanded ? '⌃' : '›'}</Text>
-              </Pressable>
-              {expanded && (
-                <View style={styles.mealDetail}>
-                  {meal.note ? <Text style={styles.detailText}>{meal.note}</Text> : null}
-                  <View style={styles.mealActions}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`${meal.title} 레시피 보기`}
-                      onPress={() => props.onOpenRecipe(meal.id)}
-                      style={styles.recipeAction}
-                    >
-                      <Text style={styles.recipeActionText}>레시피 보기  ›</Text>
-                    </Pressable>
-                    {props.showRecordControls && (
-                      <>
-                        <Pressable
-                          disabled={!meal.canSave || meal.pending}
-                          onPress={() => props.onStatusChange(meal.id, 'eaten')}
-                          style={styles.smallAction}
-                        >
-                          <Text style={styles.smallActionText}>먹었어요</Text>
-                        </Pressable>
-                        <Pressable
-                          disabled={!meal.canSave || meal.pending}
-                          onPress={() => props.onRecord(meal.id)}
-                          style={styles.smallAction}
-                        >
-                          <Text style={styles.smallActionText}>다른 음식 기록</Text>
-                        </Pressable>
-                        <Pressable
-                          disabled={!meal.canSave || meal.pending}
-                          onPress={() => props.onStatusChange(meal.id, 'skipped')}
-                          style={styles.smallAction}
-                        >
-                          <Text style={styles.smallActionText}>건너뛰기</Text>
-                        </Pressable>
-                      </>
-                    )}
-                    {meal.canSave && meal.status === 'recommended' && (
-                      <Pressable
-                        disabled={meal.regenerating}
-                        onPress={() => props.onAlternative(meal.id)}
-                        style={styles.alternative}
-                      >
-                        <Text style={styles.alternativeText}>
-                          {meal.regenerating ? '다른 식단을 찾는 중…' : '다른 식단 추천받기'}
-                        </Text>
-                      </Pressable>
-                    )}
+                  <View style={[styles.status, meal.status === 'eaten' || meal.status === 'modified' ? styles.recorded : null]}>
+                    {meal.status === 'eaten' || meal.status === 'modified' ? (
+                      <CheckIcon color="#0E7C48" height={14} width={14} />
+                    ) : recommended ? (
+                      <InfoIcon color="#5E5D66" height={14} width={14} />
+                    ) : null}
+                    <Text style={[styles.statusText, (meal.status === 'eaten' || meal.status === 'modified') && styles.recordedText]}>
+                      {recommended ? '추천' : meal.status === 'skipped' ? '건너뜀' : '먹었어요'}
+                    </Text>
                   </View>
                 </View>
-              )}
+                <View style={styles.mealBody}>
+                  {meal.photoUrl ? <Image source={{ uri: meal.photoUrl }} style={styles.mealPhoto} /> : null}
+                  <View style={styles.mealCopy}>
+                    <Text numberOfLines={simple ? undefined : 2} style={[styles.foods, simple && simpleStyles.foods, isDark && dark.text]}>
+                      {meal.foods}
+                    </Text>
+                    {meal.detail ? <Text style={[styles.detailText, isDark && dark.secondary]}>{meal.detail}</Text> : null}
+                  </View>
+                </View>
+                {recommended && meal.note ? (
+                  <View style={styles.noteRow}>
+                    <InfoIcon color="#5E5D66" height={16} width={16} />
+                    <Text style={[styles.note, isDark && dark.secondary]}>{meal.note}</Text>
+                  </View>
+                ) : null}
+              </Pressable>
+              {showActions ? (
+                <View style={styles.mealActions}>
+                  {meal.status !== 'eaten' && props.showRecordControls && meal.canSave ? action('먹었어요', () => props.onStatusChange(meal.id, 'eaten'), !canRecord) : null}
+                  {recommended && meal.canSave ? action(meal.regenerating ? '찾는 중…' : '바꾸기', () => props.onAlternative(meal.id), meal.regenerating) : null}
+                  {!recommended && props.showRecordControls && meal.canSave ? action('다른 음식 기록', () => props.onRecord(meal.id), !canRecord) : null}
+                  {meal.status !== 'skipped' && props.showRecordControls && meal.canSave ? action('건너뛰기', () => props.onStatusChange(meal.id, 'skipped'), !canRecord) : null}
+                  {action('레시피', () => props.onOpenRecipe(meal.id))}
+                </View>
+              ) : null}
             </View>
           );
         })}
-        </>
-        )}
       </ScrollView>
       <Modal
         animationType="fade"
@@ -382,7 +306,7 @@ export function R6DietHome(props: Props) {
                     {title}
                     {available ? '' : ' · 추천 없음'}
                   </Text>
-                  <Text style={styles.chevron}>›</Text>
+                  <CaretRightIcon color="#5E5D66" height={20} width={20} />
                 </Pressable>
               );
             })}
@@ -401,155 +325,60 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { paddingHorizontal: 20 },
   titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  title: { fontFamily: fontFamilies.pretendardBold, fontSize: 23, color: '#1C1D22' },
-  viewTabs: {
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 16,
-    padding: 4,
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  viewTab: { alignItems: 'center', borderRadius: 7, flex: 1, minHeight: 40, justifyContent: 'center' },
-  viewTabActive: { backgroundColor: '#ECE9FF' },
-  viewTabText: { color: '#6F7380', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
-  viewTabTextActive: { color: purple },
-  weeklyContent: { marginTop: 18 },
-  weeklyDarkSurface: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 12 },
-  monthRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 19,
-    marginBottom: 9,
-  },
-  month: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15, color: '#24252A' },
-  today: { color: purple, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
-  weekRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 2 },
-  day: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 12 },
-  selectedDay: { backgroundColor: '#25232C' },
+  title: { fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30, color: '#17161D' },
+  weekRow: { backgroundColor: '#F2F4F6', borderRadius: 16, flexDirection: 'row', gap: 2, marginTop: 16, padding: 4 },
+  day: { alignItems: 'center', borderRadius: 12, flex: 1, gap: 2, minHeight: 61, justifyContent: 'center' },
+  selectedDay: { backgroundColor: '#FFFFFF' },
   disabledDay: { opacity: 0.35 },
-  dayName: { color: '#85868E', fontSize: 11 },
-  dayNumber: {
-    color: '#292A30',
-    fontSize: 14,
-    fontFamily: fontFamilies.pretendardMedium,
-    marginTop: 6,
-  },
-  selectedDayText: { color: '#FFFFFF' },
-  energyCard: {
-    backgroundColor: '#FAFBFC',
-    borderWidth: 1,
-    borderColor: '#E0E2E8',
-    borderRadius: 15,
-    padding: 15,
-    marginTop: 12,
-  },
+  dayName: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  selectedDayName: { color: '#17161D' },
+  dayNumber: { color: '#3B3A42', fontSize: 16, lineHeight: 24 },
+  selectedDayNumber: { color: '#17161D', fontFamily: fontFamilies.pretendardBold },
+  energyCard: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, marginTop: 16, padding: 18 },
   energyHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  caption: { color: '#777982', fontSize: 11 },
-  energyValue: {
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 20,
-    color: '#24242A',
-    marginTop: 5,
-  },
-  energyTarget: { fontFamily: fontFamilies.pretendardRegular, color: '#70727A', fontSize: 12 },
-  percent: { color: '#303138', fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold },
-  track: {
-    height: 5,
-    backgroundColor: '#E1E2E8',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginTop: 8,
-  },
+  caption: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  energyValue: { fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30, color: '#17161D', marginTop: 2 },
+  energyTarget: { fontFamily: fontFamilies.pretendardRegular, color: '#5E5D66', fontSize: 14 },
+  percent: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  track: { height: 6, backgroundColor: '#E3E6EB', borderRadius: 3, overflow: 'hidden', marginTop: 10 },
+  trackThick: { borderRadius: 4, height: 8, marginTop: 6 },
   fill: { height: '100%', backgroundColor: purple, borderRadius: 4 },
-  macroRow: { flexDirection: 'row', gap: 12, marginTop: 12 },
+  macroRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
   macro: { flex: 1 },
-  macroLabel: { color: '#7A7C82', fontSize: 10 },
-  macroValue: {
-    color: '#25262D',
-    fontSize: 11,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    marginTop: 3,
-  },
-  macroTarget: { color: '#8A8B93', fontSize: 10, fontFamily: fontFamilies.pretendardRegular },
-  hint: { color: '#777982', fontSize: 10, marginTop: 9 },
-  retry: { color: purple, fontSize: 12, marginTop: 8, fontFamily: fontFamilies.pretendardSemiBold },
-  guideLink: { alignSelf: 'flex-start', paddingTop: 12, paddingBottom: 2 },
-  guideLinkText: { color: purple, fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold },
-  photoButton: {
-    backgroundColor: '#FAFBFC',
-    borderWidth: 1,
-    borderColor: '#E1E3E8',
-    borderRadius: 12,
-    minHeight: 55,
-    marginTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-  },
-  cameraIcon: {
-    width: 25,
-    height: 25,
-    borderRadius: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EDEFF2',
-    marginRight: 11,
-  },
-  cameraGlyph: { color: '#4F4E59', fontSize: 16 },
+  macroLabel: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  macroValue: { color: '#17161D', fontSize: 14, lineHeight: 21, fontFamily: fontFamilies.pretendardMedium, marginTop: 2 },
+  hint: { color: '#5E5D66', fontSize: 14, lineHeight: 21, marginTop: 10 },
+  retry: { color: purple, fontSize: 14, marginTop: 8, fontFamily: fontFamilies.pretendardMedium },
+  guideLink: { alignSelf: 'flex-start', paddingTop: 12 },
+  guideLinkText: { color: '#3B3A42', fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
+  photoButton: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, marginTop: 16, minHeight: 75, paddingHorizontal: 16 },
+  cameraIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
   photoCopy: { flex: 1 },
-  photoTitle: { color: '#28292F', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
-  photoHint: { color: '#96979D', fontSize: 10, marginTop: 3 },
-  chevron: { color: '#7E8088', fontSize: 19 },
+  photoTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+  photoHint: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
   photoDisabled: { opacity: 0.55 },
-  sectionTitle: {
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    color: '#1F2025',
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  stateCard: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E3E5E9', borderRadius: 11, padding: 16 },
-  stateText: { color: '#777981', fontSize: 13, lineHeight: 20 },
-  mealCard: {
-    borderWidth: 1,
-    borderColor: '#E1E3E8',
-    borderRadius: 12,
-    marginBottom: 8,
-    backgroundColor: '#FAFBFC',
-  },
-  mealMain: { minHeight: 62, padding: 11, flexDirection: 'row', alignItems: 'center' },
-  mealCopy: { flex: 1 },
-  mealTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  mealName: { color: '#28292E', fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold },
-  mealKcal: { color: '#74767D', fontSize: 10, fontFamily: fontFamilies.pretendardRegular },
-  status: { fontSize: 10, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 4 },
-  recommended: { color: '#696A72', backgroundColor: '#EDEFF2' },
-  recorded: { color: '#198557', backgroundColor: '#E6F7ED' },
-  skipped: { color: '#85868C', backgroundColor: '#F2F2F3' },
-  foods: { color: '#46474F', fontSize: 11, lineHeight: 16, marginTop: 4 },
-  mealDetail: { borderTopWidth: 1, borderTopColor: '#ECEEF1', padding: 12 },
-  detailText: { color: '#565860', fontSize: 12, lineHeight: 18 },
-  mealActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
-  smallAction: {
-    borderRadius: 7,
-    backgroundColor: '#F3F4F7',
-    paddingHorizontal: 9,
-    paddingVertical: 8,
-  },
-  smallActionText: { color: '#35363D', fontSize: 11 },
-  recipeAction: { borderRadius: 7, backgroundColor: '#ECE9FF', paddingHorizontal: 11, paddingVertical: 8 },
-  recipeActionText: { color: purple, fontSize: 11, fontFamily: fontFamilies.pretendardSemiBold },
-  alternative: {
-    borderRadius: 7,
-    backgroundColor: '#ECE9FF',
-    paddingHorizontal: 9,
-    paddingVertical: 8,
-  },
-  alternativeText: { color: purple, fontSize: 11 },
+  sectionTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, color: '#17161D', marginTop: 20, marginBottom: 12 },
+  stateCard: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, padding: 16 },
+  stateText: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  mealCard: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, marginBottom: 16, padding: 16 },
+  mealMain: { gap: 8 },
+  mealTop: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  mealName: { color: '#17161D', fontSize: 14, lineHeight: 21, fontFamily: fontFamilies.pretendardMedium },
+  mealKcal: { color: '#5E5D66', fontSize: 14, fontFamily: fontFamilies.pretendardRegular },
+  status: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 999, flexDirection: 'row', gap: 4, height: 26, paddingHorizontal: 10 },
+  statusText: { color: '#5E5D66', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+  recorded: { backgroundColor: '#E8F6EF' },
+  recordedText: { color: '#0E7C48' },
+  mealBody: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+  mealPhoto: { backgroundColor: '#FFFFFF', borderRadius: 12, height: 48, width: 48 },
+  mealCopy: { flex: 1, gap: 2, minWidth: 0 },
+  foods: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+  detailText: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  noteRow: { flexDirection: 'row', gap: 4 },
+  note: { color: '#5E5D66', flex: 1, fontSize: 12, lineHeight: 18 },
+  mealActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 12 },
+  smallAction: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+  smallActionText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
   modalOverlay: { flex: 1, backgroundColor: '#0007', justifyContent: 'flex-end' },
   picker: {
     backgroundColor: '#FFFFFF',
@@ -577,7 +406,6 @@ const styles = StyleSheet.create({
 });
 
 const simpleStyles = StyleSheet.create({
-  viewTabText: { fontSize: 19 },
   title: { fontSize: 29 },
   card: { padding: 20 },
   energyValue: { fontSize: 25 },
@@ -589,7 +417,6 @@ const simpleStyles = StyleSheet.create({
   photoTitle: { fontSize: 18 },
   sectionTitle: { fontSize: 20 },
   mealCard: { marginBottom: 12 },
-  mealMain: { minHeight: 84 },
   mealName: { fontSize: 17 },
   foods: { fontSize: 14, lineHeight: 21 },
 });

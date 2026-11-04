@@ -5,6 +5,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   useWindowDimensions,
   View,
@@ -12,16 +13,17 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError } from '@/src/api/client';
 
-import PencilIcon from '@/assets/icons/feature/Pencil_Fill.svg';
-import UserIcon from '@/assets/icons/input/User.svg';
-import BellIcon from '@/assets/icons/system/Bell.svg';
-import SearchIcon from '@/assets/icons/input/MagnifyingGlass.svg';
-import GearIcon from '@/assets/icons/system/GearSix.svg';
+import TrophyIcon from '@/assets/icons/deco/Trophy.svg';
+import BellIcon from '@/assets/icons/ui/bell.svg';
+import SearchIcon from '@/assets/icons/ui/magnifying-glass.svg';
+import PencilIcon from '@/assets/icons/ui/pencil-simple.svg';
 import {
+  getCommunityChallenges,
   getCommunityErrorMessage,
   getCommunityFeed,
   getCommunityUnreadCount,
   type CommunityAuthor,
+  type CommunityChallenge,
   type CommunityFeedScope,
   type CommunityPost,
   type CommunityPostCategory,
@@ -42,7 +44,7 @@ import {
 import { CommunityChallengesPane } from '@/src/features/community/CommunityChallengesPane';
 import { CommunityClubsPane } from '@/src/features/community/CommunityClubsPane';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, darkColors, fontFamilies, radius, shadows, spacing, typography } from '@/src/theme';
+import { colors, darkColors, fontFamilies, shadows, spacing, typography } from '@/src/theme';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -59,6 +61,17 @@ const CATEGORIES: { label: string; value: CommunityPostCategory | null }[] = [
   { label: '질문', value: 'question' }, { label: '후기', value: 'review' },
 ];
 
+function challengeSummary(challenge: CommunityChallenge) {
+  const unit = challenge.metric === 'workout_days' ? '회' : '일';
+  const end = new Date(`${challenge.ends_on}T23:59:59`).getTime();
+  const left = Math.ceil((end - Date.now()) / 86400000) - 1;
+  return [
+    challenge.joined ? `나 ${challenge.progress}/${challenge.goal}${unit}` : `목표 ${challenge.goal}${unit}`,
+    left <= 0 ? '오늘 마감' : `${left}일 남음`,
+    `${challenge.participant_count.toLocaleString()}명 참여`,
+  ].join(' · ');
+}
+
 export default function CommunityScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -73,6 +86,7 @@ export default function CommunityScreen() {
   const [pane, setPane] = useState<'clubs' | 'challenges' | null>(null);
   const activeTab: Tab = pane ?? scope;
   const [unread, setUnread] = useState(0);
+  const [challenge, setChallenge] = useState<CommunityChallenge | null>(null);
   const [items, setItems] = useState<CommunityPost[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [state, setState] = useState<LoadState>('loading');
@@ -151,6 +165,13 @@ export default function CommunityScreen() {
         (result) => setUnread(result.unread_count),
         () => undefined,
       );
+      getCommunityChallenges().then(
+        (list) => {
+          const ongoing = list.filter((item) => item.phase === 'ongoing');
+          setChallenge(ongoing.find((item) => item.joined) ?? ongoing[0] ?? null);
+        },
+        () => undefined,
+      );
     }, []),
   );
 
@@ -203,37 +224,19 @@ export default function CommunityScreen() {
         <View style={styles.headerActions}>
           <IconButton
             accessibilityLabel="커뮤니티 검색"
-            icon={<SearchIcon color={colors.textBody} height={24} width={24} />}
+            icon={<SearchIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={24} width={24} />}
             onPress={() => router.push('/community/search')}
             size={44}
           />
           <View>
             <IconButton
               accessibilityLabel={unread > 0 ? `알림, 읽지 않은 알림 ${unread}개` : '알림'}
-              icon={<BellIcon color={colors.textBody} height={24} width={24} />}
+              icon={<BellIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={24} width={24} />}
               onPress={() => router.push('/community/notifications')}
               size={44}
             />
-            {unread > 0 ? (
-              <View pointerEvents="none" style={styles.badge}>
-                <Text style={styles.badgeText}>{unread > 99 ? '99+' : unread}</Text>
-              </View>
-            ) : null}
+            {unread > 0 ? <View pointerEvents="none" style={styles.badge} /> : null}
           </View>
-          <IconButton
-            accessibilityLabel="내 프로필"
-            icon={<UserIcon color={colors.textBody} height={24} width={24} />}
-            onPress={() =>
-              router.push({ params: { userId: 'me' }, pathname: '/community/user/[userId]' })
-            }
-            size={44}
-          />
-          <IconButton
-            accessibilityLabel="차단한 사용자 관리"
-            icon={<GearIcon color={colors.textBody} height={24} width={24} />}
-            onPress={() => router.push('/community/blocks')}
-            size={44}
-          />
         </View>
       </View>
       {simple ? <View style={[simpleStyles.readRow, isDark && dark.card]}><Text style={[simpleStyles.readHint, isDark && dark.secondary]}>추천 글과 클럽을 둘러보세요</Text><SimpleReadButton text={`커뮤니티입니다. ${activeTab === 'clubs' ? '클럽' : activeTab === 'following' ? '팔로잉' : '추천'} 탭을 보고 있어요. ${items.length}개의 글이 있습니다.`} /></View> : null}
@@ -269,7 +272,7 @@ export default function CommunityScreen() {
           ListHeaderComponent={
             scope === 'all' ? (
               <View style={[styles.feedHeader, isDark && dark.card]}>
-                <View style={styles.categories}>
+                <ScrollView contentContainerStyle={styles.categories} horizontal showsHorizontalScrollIndicator={false}>
                   {CATEGORIES.map((category) => (
                     <Pressable
                       accessibilityRole="button"
@@ -281,14 +284,23 @@ export default function CommunityScreen() {
                       <Text style={[styles.categoryText, simple && simpleStyles.categoryText, activeCategory === category.value && styles.categoryTextActive]}>{category.label}</Text>
                     </Pressable>
                   ))}
-                </View>
+                </ScrollView>
                 <Pressable accessibilityRole="button" onPress={() => setPane('challenges')} style={[styles.challengeCard, simple && simpleStyles.challengeCard, isDark && dark.card]}>
-                  <View style={styles.challengeIcon}><Text style={styles.challengeIconText}>♧</Text></View>
+                  <View style={[styles.challengeIcon, isDark && dark.card]}><TrophyIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={22} width={22} /></View>
                   <View style={styles.challengeCopy}>
-                    <Text style={[styles.challengeTitle, simple && simpleStyles.challengeTitle, isDark && dark.text]}>커뮤니티 챌린지</Text>
-                    <Text style={styles.challengeDescription}>함께 운동하며 목표에 도전해 보세요</Text>
+                    <Text style={[styles.challengeTitle, simple && simpleStyles.challengeTitle, isDark && dark.text]}>{challenge?.title ?? '커뮤니티 챌린지'}</Text>
+                    {challenge && challenge.goal <= 7 ? (
+                      <View style={styles.challengeBars}>
+                        {Array.from({ length: challenge.goal }, (_, index) => (
+                          <View key={index} style={[styles.challengeBar, index < challenge.progress && challenge.joined && styles.challengeBarDone]} />
+                        ))}
+                      </View>
+                    ) : null}
+                    <Text style={[styles.challengeDescription, isDark && dark.secondary]}>{challenge ? challengeSummary(challenge) : '함께 운동하며 목표에 도전해 보세요'}</Text>
                   </View>
-                  <Text style={styles.challengeAction}>보기 ›</Text>
+                  <View style={[styles.challengeAction, isDark && dark.card]}>
+                    <Text style={[styles.challengeActionText, isDark && dark.text]}>{challenge?.joined ? '참여 중' : challenge ? '참여하기' : '보기'}</Text>
+                  </View>
                 </Pressable>
               </View>
             ) : null
@@ -346,7 +358,8 @@ export default function CommunityScreen() {
             pressed && styles.composePressed,
           ]}
         >
-          <PencilIcon color={colors.surface} height={26} width={26} />
+          <PencilIcon color="#FFFFFF" height={20} width={20} />
+          <Text style={styles.composeText}>글쓰기</Text>
         </Pressable>
       )}
       {actions.elements}
@@ -365,51 +378,55 @@ const styles = StyleSheet.create({
     paddingLeft: spacing.xl,
     paddingRight: spacing.sm,
   },
-  title: { ...typography.title, color: '#222127' },
+  title: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
   headerActions: { flexDirection: 'row' },
   badge: {
-    alignItems: 'center',
-    backgroundColor: colors.danger,
-    borderRadius: radius.round,
-    minWidth: 18,
-    paddingHorizontal: 4,
+    backgroundColor: '#C62828',
+    borderColor: '#FFFFFF',
+    borderRadius: 5,
+    borderWidth: 1,
+    height: 10,
     position: 'absolute',
-    right: 4,
-    top: 4,
+    right: 10,
+    top: 9,
+    width: 10,
   },
-  badgeText: { color: colors.surface, fontFamily: fontFamilies.pretendardBold, fontSize: 11 },
   tabs: {
     backgroundColor: '#FFFFFF',
-    borderBottomColor: '#E6E6EB',
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#DFE2E7',
+    borderBottomWidth: 1,
     flexDirection: 'row',
+    gap: 22,
+    paddingHorizontal: 20,
   },
   tab: {
     alignItems: 'center',
     borderBottomColor: 'transparent',
     borderBottomWidth: 2,
-    flex: 1,
-    paddingVertical: spacing.md,
+    marginBottom: -1,
+    paddingVertical: 10,
   },
-  tabActive: { borderBottomColor: '#5246C6' },
-  tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
-  tabTextActive: { color: '#222127', fontFamily: fontFamilies.pretendardBold },
-  list: { flexGrow: 1, gap: 10 },
-  feedHeader: { backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 14, gap: 16 },
-  categories: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  categoryChip: { backgroundColor: colors.surface, borderColor: '#E6E6EB', borderWidth: 1, borderRadius: 18, paddingHorizontal: 11, paddingVertical: 7 },
-  categoryActive: { backgroundColor: '#ECE9FF', borderColor: '#5246C6' },
-  categoryText: { color: '#666670', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  categoryTextActive: { color: '#5246C6' },
-  categoryNotice: { color: '#9998A1', fontSize: 10 },
-  challengeCard: { borderColor: '#E6E6EB', borderWidth: 1, borderRadius: 12, backgroundColor: '#FAFBFC', padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  challengeIcon: { backgroundColor: '#ECE9FF', width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
-  challengeIconText: { color: '#5246C6', fontSize: 18 },
-  challengeCopy: { flex: 1, gap: 2 },
-  challengeTitle: { color: '#25242B', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
-  challengeDescription: { color: '#8A8992', fontSize: 10 },
-  challengeAction: { color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 11 },
-  postWrap: { backgroundColor: '#FFFFFF', borderColor: '#E6E6EB', borderTopWidth: 1, borderBottomWidth: 1 },
+  tabActive: { borderBottomColor: '#17161D' },
+  tabText: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 16, lineHeight: 24 },
+  tabTextActive: { color: '#17161D', fontFamily: fontFamilies.pretendardBold },
+  list: { flexGrow: 1 },
+  feedHeader: { backgroundColor: '#FFFFFF', paddingVertical: 16, gap: 16 },
+  categories: { gap: 8, paddingHorizontal: 20 },
+  categoryChip: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 999, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
+  categoryActive: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
+  categoryText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  categoryTextActive: { color: '#FFFFFF' },
+  challengeCard: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, marginHorizontal: 20, minHeight: 89, padding: 14 },
+  challengeIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+  challengeCopy: { flex: 1, gap: 6 },
+  challengeTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+  challengeBars: { flexDirection: 'row', gap: 4 },
+  challengeBar: { backgroundColor: '#E3E6EB', borderRadius: 4, flex: 1, height: 8 },
+  challengeBarDone: { backgroundColor: '#5246C6' },
+  challengeDescription: { color: '#5E5D66', fontSize: 12, lineHeight: 18 },
+  challengeAction: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+  challengeActionText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  postWrap: { backgroundColor: '#FFFFFF', borderColor: '#F2F4F6', borderTopWidth: 8 },
   center: { flex: 1, justifyContent: 'center' },
   message: { alignItems: 'center', gap: spacing.md, padding: spacing.xxl },
   emptyTitle: {
@@ -422,13 +439,15 @@ const styles = StyleSheet.create({
   compose: {
     alignItems: 'center',
     backgroundColor: colors.primary,
-    borderRadius: radius.round,
-    height: 56,
-    justifyContent: 'center',
+    borderRadius: 999,
+    flexDirection: 'row',
+    gap: 6,
+    height: 47,
+    paddingHorizontal: 20,
     position: 'absolute',
-    right: spacing.xl,
-    width: 56,
+    right: 20,
   },
+  composeText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
   composePressed: { backgroundColor: colors.primaryDark },
 });
 

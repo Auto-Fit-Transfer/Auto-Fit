@@ -15,22 +15,13 @@ import type { CommunityImage } from '@/src/api/community';
 import { colors, fontFamilies, radius, spacing } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const GAP = 2;
+const GAP = 4;
 
-// X-style grids: 1 | 2 side by side | 1 big + 2 stacked | 2x2 | 2 over 3.
+// Grids: 1 | 2 side by side | 1 big + 2 stacked, with the rest behind a +N on the last photo.
 function groupsFor(count: number) {
   if (count === 1) return [[0]];
   if (count === 2) return [[0, 1]];
-  if (count === 3) return [[0], [1, 2]];
-  if (count === 4)
-    return [
-      [0, 1],
-      [2, 3],
-    ];
-  return [
-    [0, 1],
-    [2, 3, 4],
-  ];
+  return [[0], [1, 2]];
 }
 
 // Width / height of the whole grid. Known before layout, so the feed never jumps.
@@ -39,7 +30,7 @@ function gridAspectRatio(images: CommunityImage[]) {
     const [{ width, height }] = images;
     return 1 / Math.min(1.25, Math.max(0.6, height / Math.max(1, width)));
   }
-  return 1 / (images.length >= 4 ? 0.75 : 0.6);
+  return images.length >= 3 ? 372 / 184 : 1 / 0.6;
 }
 
 export function CommunityPostImages({ images, expanded = false }: { images: CommunityImage[]; expanded?: boolean }) {
@@ -67,7 +58,7 @@ export function CommunityPostImages({ images, expanded = false }: { images: Comm
   }
 
   const groups = groupsFor(images.length);
-  const columns = images.length === 3;
+  const columns = images.length >= 3;
 
   return (
     <>
@@ -96,6 +87,9 @@ export function CommunityPostImages({ images, expanded = false }: { images: Comm
                     source={{ uri: images[index].url }}
                     style={StyleSheet.absoluteFill}
                   />
+                ) : null}
+                {index === 2 && images.length > 3 ? (
+                  <View style={styles.moreOverlay}><Text style={styles.moreText}>+{images.length - 3}</Text></View>
                 ) : null}
               </Pressable>
             ))}
@@ -183,7 +177,9 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', alignSelf: 'center', gap: 5 },
   dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.border },
   activeDot: { backgroundColor: colors.textPrimary },
-  grid: { borderRadius: radius.lg, gap: GAP, marginTop: 10, overflow: 'hidden', width: '100%' },
+  grid: { borderRadius: radius.lg, gap: GAP, overflow: 'hidden', width: '100%' },
+  moreOverlay: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', bottom: 0, justifyContent: 'center', left: 0, position: 'absolute', right: 0, top: 0 },
+  moreText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
   group: { flex: 1, gap: GAP },
   cell: { backgroundColor: colors.border, flex: 1, overflow: 'hidden' },
   viewer: { backgroundColor: '#000000', flex: 1 },

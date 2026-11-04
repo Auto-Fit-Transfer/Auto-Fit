@@ -1,46 +1,58 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import UserIcon from '@/assets/icons/input/User.svg';
-import TargetIcon from '@/assets/icons/deco/Target.svg';
-import LeafIcon from '@/assets/icons/deco/Leaf.svg';
-import BarbellIcon from '@/assets/icons/deco/Barbell.svg';
-import BellIcon from '@/assets/icons/system/Bell.svg';
-import GearIcon from '@/assets/icons/system/GearSix.svg';
-import ChatIcon from '@/assets/icons/deco/ChatCircle.svg';
+import MoonIcon from '@/assets/icons/day/Moon.svg';
 import SignOutIcon from '@/assets/icons/system/SignOut.svg';
+import BarbellIcon from '@/assets/icons/ui/barbell.svg';
+import BellIcon from '@/assets/icons/ui/bell.svg';
+import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
+import ChartIcon from '@/assets/icons/ui/chart-line-up.svg';
+import ChatsIcon from '@/assets/icons/ui/chats-circle.svg';
+import ForkKnifeIcon from '@/assets/icons/ui/fork-knife.svg';
+import LockIcon from '@/assets/icons/ui/lock.svg';
+import ShieldIcon from '@/assets/icons/ui/shield-check.svg';
+import TargetIcon from '@/assets/icons/ui/target.svg';
+import UploadIcon from '@/assets/icons/ui/upload-simple.svg';
+import UserIcon from '@/assets/icons/ui/user.svg';
 import { getCommunityMileage, getCommunityProfile, type CommunityProfile } from '@/src/api/community';
 import { getProfile, getProfileName } from '@/src/api/home';
+import { getHabitTierProgress, type HabitTierProgress } from '@/src/api/tier';
+import { getActiveHealthGoal, type HealthGoal } from '@/src/api/userSettings';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { HealthGoalSheet } from '@/src/components/my/HealthGoalSheet';
+import { goals as healthGoals, HealthGoalSheet } from '@/src/components/my/HealthGoalSheet';
 import { AllergySettingsSheet } from '@/src/components/my/AllergySettingsSheet';
-import { WeeklyWorkoutCard } from '@/src/components/my/WeeklyWorkoutCard';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
+import { tierBadges } from '@/src/features/tier/tierBadges';
 import { darkColors, fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
+// Only FIT and ACTIVE have tinted pills in Figma; the other tiers stay neutral beside their badge.
+const tierPills: Partial<Record<HabitTierProgress['tier_code'], { backgroundColor: string; color: string }>> = {
+  ACTIVE: { backgroundColor: '#FCEFE5', color: '#94481A' },
+  FIT: { backgroundColor: '#ECE9FF', color: '#3A2DB5' },
+};
+
 type SettingRowProps = {
-  icon: ReactNode;
+  Icon: typeof TargetIcon;
   label: string;
   description?: string;
   onPress: () => void;
-  isDark?: boolean;
 };
 
-function SettingRow({ icon, label, description, onPress, isDark }: SettingRowProps) {
-  const { preferences } = useDisplayPreferences();
+function SettingRow({ Icon, label, description, onPress }: SettingRowProps) {
+  const { preferences, isDark } = useDisplayPreferences();
   const simple = preferences.simple_mode_enabled;
   return (
     <Pressable hitSlop={16} accessibilityRole="button" onPress={onPress} style={[styles.settingRow, simple && simpleStyles.settingRow]}>
-      <View style={styles.settingIcon}>{icon}</View>
+      <View style={[styles.settingIcon, isDark && dark.card]}><Icon color={isDark ? darkColors.textPrimary : '#17161D'} height={22} width={22} /></View>
       <View style={styles.settingCopy}>
         <Text style={[styles.settingLabel, isDark && dark.text, simple && simpleStyles.settingLabel]}>{label}</Text>
         {description ? <Text style={[styles.settingDescription, isDark && dark.secondary, simple && simpleStyles.settingDescription]}>{description}</Text> : null}
       </View>
-      <Text style={styles.chevron}>›</Text>
+      <CaretRightIcon color="#5E5D66" height={20} width={20} />
     </Pressable>
   );
 }
@@ -53,16 +65,24 @@ export default function MyScreen() {
   const [name, setName] = useState('회원');
   const [profile, setProfile] = useState<CommunityProfile | null>(null);
   const [mileage, setMileage] = useState<number | null>(null);
+  const [tier, setTier] = useState<HabitTierProgress | null>(null);
+  const [goal, setGoal] = useState<HealthGoal | null>(null);
+  const [joinedDays, setJoinedDays] = useState<number | null>(null);
   const [profileError, setProfileError] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState(false);
   const [healthGoalVisible, setHealthGoalVisible] = useState(false);
   const [allergySettingsVisible, setAllergySettingsVisible] = useState(false);
 
+  const loadGoal = useCallback(() => {
+    void getActiveHealthGoal().then(({ goal: active }) => setGoal(active), () => undefined);
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       let active = true;
       setProfileError(false);
+      loadGoal();
       void getProfile()
         .then((response) => {
           if (active) setName(getProfileName(response) ?? '회원');
@@ -86,10 +106,23 @@ export default function MyScreen() {
           if (active) setMileage(null);
         },
       );
+      void getHabitTierProgress().then(
+        ({ progress }) => {
+          if (active) setTier(progress);
+        },
+        () => undefined,
+      );
+      void getSupabaseClient().auth.getSession().then(
+        ({ data }) => {
+          const created = data.session?.user.created_at;
+          if (active && created) setJoinedDays(Math.floor((Date.now() - new Date(created).getTime()) / 86400000) + 1);
+        },
+        () => undefined,
+      );
       return () => {
         active = false;
       };
-    }, []),
+    }, [loadGoal]),
   );
 
   const openCommunityProfile = () =>
@@ -107,11 +140,16 @@ export default function MyScreen() {
       setSignOutError(true);
     }
   };
+  const Badge = tier ? tierBadges[tier.tier_code] : null;
+  const pill = tier ? tierPills[tier.tier_code] : undefined;
+  const goalLabel = goal?.goal_type === 'other' && goal.goal_text
+    ? goal.goal_text
+    : healthGoals.find((item) => item.key === goal?.goal_type)?.label;
 
   return (
     <>
     <ScrollView
-      contentContainerStyle={[styles.content, simple && simpleStyles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 116 }]}
+      contentContainerStyle={[styles.content, simple && simpleStyles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 116 }]}
       style={[styles.root, isDark && dark.root]}
     >
       <View style={styles.titleRow}>
@@ -120,12 +158,18 @@ export default function MyScreen() {
       </View>
 
       <View style={styles.profileRow}>
-        <View style={[styles.avatar, isDark && dark.card]}><UserIcon color={isDark ? '#F5F5F7' : '#62626B'} height={24} width={24} /></View>
+        <View style={[styles.avatar, isDark && dark.card]}><UserIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={26} width={26} /></View>
         <View style={styles.profileCopy}>
           <Text numberOfLines={1} style={[styles.name, isDark && dark.text, simple && simpleStyles.name]}>{name}</Text>
-          <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/tier')}>
-            <Text style={styles.tierLink}>건강 티어 확인 ›</Text>
-          </Pressable>
+          <View style={styles.profileMeta}>
+            {tier && Badge ? (
+              <Pressable accessibilityLabel={`내 티어 ${tier.tier_name} ${tier.sublevel}`} accessibilityRole="button" hitSlop={10} onPress={() => router.push('/tier')} style={[styles.tierPill, pill && { backgroundColor: pill.backgroundColor }]}>
+                <Badge height={16} width={16} />
+                <Text style={[styles.tierPillText, pill && { color: pill.color }]}>{tier.tier_name} {tier.sublevel}</Text>
+              </Pressable>
+            ) : null}
+            {joinedDays ? <Text style={[styles.muted, isDark && dark.secondary]}>함께한 지 {joinedDays}일</Text> : null}
+          </View>
         </View>
         <Pressable accessibilityRole="button" onPress={() => router.push('/profile')} style={[styles.profileEdit, isDark && dark.card, simple && simpleStyles.profileEdit]}>
           <Text style={[styles.profileEditText, isDark && dark.text, simple && simpleStyles.profileEditText]}>프로필 수정</Text>
@@ -139,11 +183,11 @@ export default function MyScreen() {
       ) : null}
 
       <Pressable accessibilityRole="button" onPress={openCommunityProfile} style={[styles.stats, isDark && dark.card, simple && simpleStyles.stats]}>
-        <View style={styles.stat}><Text style={[styles.statValue, isDark && dark.text]}>{profile?.post_count ?? '–'}</Text><Text style={[styles.statLabel, isDark && dark.secondary]}>글</Text></View>
+        <View style={styles.stat}><Text style={[styles.statValue, isDark && dark.text]}>{profile?.post_count ?? '–'}</Text><Text style={[styles.muted, isDark && dark.secondary]}>글</Text></View>
         <View style={styles.statDivider} />
-        <View style={styles.stat}><Text style={[styles.statValue, isDark && dark.text]}>{profile?.follower_count ?? '–'}</Text><Text style={[styles.statLabel, isDark && dark.secondary]}>팔로워</Text></View>
+        <View style={styles.stat}><Text style={[styles.statValue, isDark && dark.text]}>{profile?.follower_count ?? '–'}</Text><Text style={[styles.muted, isDark && dark.secondary]}>팔로워</Text></View>
         <View style={styles.statDivider} />
-        <View style={styles.stat}><Text style={[styles.statValue, isDark && dark.text]}>{profile?.following_count ?? '–'}</Text><Text style={[styles.statLabel, isDark && dark.secondary]}>팔로잉</Text></View>
+        <View style={styles.stat}><Text style={[styles.statValue, isDark && dark.text]}>{profile?.following_count ?? '–'}</Text><Text style={[styles.muted, isDark && dark.secondary]}>팔로잉</Text></View>
       </Pressable>
 
       <Pressable
@@ -152,52 +196,53 @@ export default function MyScreen() {
         onPress={() => router.push('/community/mileage')}
         style={[styles.mileage, isDark && dark.card, simple && simpleStyles.mileage]}
       >
-        <Text style={[styles.mileageLabel, isDark && dark.secondary, simple && simpleStyles.mileageText]}>마일리지</Text>
-        <Text style={[styles.mileageAmount, isDark && dark.text, simple && simpleStyles.mileageText]}>{mileage === null ? '확인하기' : `${mileage.toLocaleString()}P`}  ›</Text>
+        <Text style={[styles.mileageLabel, isDark && dark.text, simple && simpleStyles.mileageText]}>마일리지</Text>
+        <View style={styles.mileageRight}>
+          <Text style={[styles.mileageAmount, isDark && dark.text, simple && simpleStyles.mileageText]}>{mileage === null ? '확인하기' : `${mileage.toLocaleString()}P`}</Text>
+          <CaretRightIcon color="#5E5D66" height={20} width={20} />
+        </View>
       </Pressable>
 
-      <Text style={[styles.sectionTitle, isDark && dark.text, simple && simpleStyles.sectionTitle]}>내 건강</Text>
+      <Text style={[styles.sectionTitle, isDark && dark.secondary, simple && simpleStyles.sectionTitle]}>내 건강</Text>
       <View style={[styles.healthCards, simple && simpleStyles.healthCards]}>
         <Pressable accessibilityRole="button" onPress={() => router.push('/health-data-management')} style={[styles.healthCard, isDark && dark.card, simple && simpleStyles.healthCard]}>
-          <Text style={styles.healthIcon}>↥</Text>
+          <View style={[styles.settingIcon, isDark && dark.card]}><UploadIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={22} width={22} /></View>
           <Text style={[styles.healthCardTitle, isDark && dark.text, simple && simpleStyles.healthCardTitle]}>건강 데이터 올리기</Text>
-          <Text style={[styles.healthCardDescription, isDark && dark.secondary, simple && simpleStyles.healthCardDescription]}>새 검진표 · 체성분 기록</Text>
+          <Text style={[styles.healthCardDescription, isDark && dark.secondary, simple && simpleStyles.healthCardDescription]}>새 검진표 · 체성분 결과</Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => router.push('/health-report')} style={[styles.healthCard, isDark && dark.card, simple && simpleStyles.healthCard]}>
-          <Text style={styles.healthIcon}>▤</Text>
+          <View style={[styles.settingIcon, isDark && dark.card]}><ChartIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={22} width={22} /></View>
           <Text style={[styles.healthCardTitle, isDark && dark.text, simple && simpleStyles.healthCardTitle]}>건강 리포트</Text>
-          <Text style={[styles.healthCardDescription, isDark && dark.secondary, simple && simpleStyles.healthCardDescription]}>검진 · 인바디 내역</Text>
+          <Text style={[styles.healthCardDescription, isDark && dark.secondary, simple && simpleStyles.healthCardDescription]}>검진 · 인바디 변화</Text>
         </Pressable>
       </View>
 
-      <WeeklyWorkoutCard />
-
-      <Text style={[styles.sectionTitle, isDark && dark.text, simple && simpleStyles.sectionTitle]}>운동 추천</Text>
+      <Text style={[styles.sectionTitle, isDark && dark.secondary, simple && simpleStyles.sectionTitle]}>맞춤 추천</Text>
       <View style={[styles.group, isDark && dark.card]}>
-        <SettingRow isDark={isDark} icon={<TargetIcon color={isDark ? '#F5F5F7' : '#55555E'} height={20} width={20} />} label="건강 목표 설정" description="나의 건강 목표와 한 줄 설명" onPress={() => setHealthGoalVisible(true)} />
-        <View style={styles.rowDivider} />
-        <SettingRow isDark={isDark} icon={<LeafIcon color={isDark ? '#F5F5F7' : '#55555E'} height={20} width={20} />} label="식단 기록" description="오늘의 식사 확인하기" onPress={() => router.push('/diet')} />
-        <View style={styles.rowDivider} />
-        <SettingRow isDark={isDark} icon={<LeafIcon color={isDark ? '#F5F5F7' : '#55555E'} height={20} width={20} />} label="식단 설정" description="알레르기 음식 관리" onPress={() => setAllergySettingsVisible(true)} />
-        <View style={styles.rowDivider} />
-        <SettingRow isDark={isDark} icon={<BarbellIcon color={isDark ? '#F5F5F7' : '#55555E'} height={20} width={20} />} label="운동 설정" description="운동 빈도와 선호 운동" onPress={() => router.push('/exercise/goal')} />
+        <SettingRow Icon={TargetIcon} label="건강 목표 설정" description={goalLabel ? `지금 목표: ${goalLabel}` : '아직 정하지 않았어요'} onPress={() => setHealthGoalVisible(true)} />
+        <View style={[styles.rowDivider, isDark && dark.divider]} />
+        <SettingRow Icon={ForkKnifeIcon} label="식단 설정" description="알레르기" onPress={() => setAllergySettingsVisible(true)} />
+        <View style={[styles.rowDivider, isDark && dark.divider]} />
+        <SettingRow Icon={BarbellIcon} label="운동 설정" description="오늘의 운동 설정으로 이동" onPress={() => router.push('/exercise/condition')} />
       </View>
 
-      <Text style={[styles.sectionTitle, isDark && dark.text, simple && simpleStyles.sectionTitle]}>설정 · 도움</Text>
+      <Text style={[styles.sectionTitle, isDark && dark.secondary, simple && simpleStyles.sectionTitle]}>설정 · 활동</Text>
       {signOutError ? <Text style={styles.inlineErrorText}>로그아웃하지 못했어요. 다시 시도해 주세요.</Text> : null}
       <View style={[styles.group, isDark && dark.card]}>
-        <SettingRow isDark={isDark} icon={<UserIcon color={isDark ? '#F5F5F7' : '#55555E'} height={20} width={20} />} label="계정 설정" onPress={() => router.push('/account')} />
-        <View style={styles.rowDivider} />
-        <SettingRow isDark={isDark} icon={<BellIcon color={isDark ? '#F5F5F7' : '#55555E'} height={20} width={20} />} label="알림 설정" onPress={() => router.push('/notifications')} />
-        <View style={styles.rowDivider} />
-        <SettingRow isDark={isDark} icon={<GearIcon color={isDark ? '#F5F5F7' : '#55555E'} height={20} width={20} />} label="화면 설정" description="화면 모드 · 글자 크기" onPress={() => router.push('/display-settings')} />
-        <View style={styles.rowDivider} />
-        <SettingRow isDark={isDark} icon={<ChatIcon color={isDark ? '#F5F5F7' : '#55555E'} height={20} width={20} />} label="커뮤니티 활동" description="내 글 · 댓글 · 좋아요" onPress={() => router.push('/community/activity')} />
-        <View style={styles.rowDivider} />
-        <SettingRow isDark={isDark} icon={<SignOutIcon color={isDark ? '#F5F5F7' : '#55555E'} height={20} width={20} />} label={signingOut ? '로그아웃 중…' : '로그아웃'} onPress={() => void signOut()} />
+        <SettingRow Icon={LockIcon} label="계정 설정" onPress={() => router.push('/account')} />
+        <View style={[styles.rowDivider, isDark && dark.divider]} />
+        <SettingRow Icon={BellIcon} label="알림 설정" onPress={() => router.push('/notifications')} />
+        <View style={[styles.rowDivider, isDark && dark.divider]} />
+        <SettingRow Icon={MoonIcon} label="화면 설정" description="다크 모드 · 글자 크기 · 간편 모드" onPress={() => router.push('/display-settings')} />
+        <View style={[styles.rowDivider, isDark && dark.divider]} />
+        <SettingRow Icon={ChatsIcon} label="커뮤니티 활동" description="쓴 글 · 댓글 · 좋아요 · 스크랩" onPress={() => router.push('/community/activity')} />
+        <View style={[styles.rowDivider, isDark && dark.divider]} />
+        <SettingRow Icon={ShieldIcon} label="차단한 사용자" onPress={() => router.push('/community/blocks')} />
+        <View style={[styles.rowDivider, isDark && dark.divider]} />
+        <SettingRow Icon={SignOutIcon} label={signingOut ? '로그아웃 중…' : '로그아웃'} onPress={() => void signOut()} />
       </View>
     </ScrollView>
-    {healthGoalVisible ? <HealthGoalSheet visible onClose={() => setHealthGoalVisible(false)} /> : null}
+    {healthGoalVisible ? <HealthGoalSheet visible onClose={() => { setHealthGoalVisible(false); loadGoal(); }} /> : null}
     {allergySettingsVisible ? <AllergySettingsSheet visible onClose={() => setAllergySettingsVisible(false)} /> : null}
     </>
   );
@@ -207,38 +252,39 @@ const styles = StyleSheet.create({
   root: { backgroundColor: '#FFFFFF', flex: 1 },
   content: { gap: 14, paddingHorizontal: 20 },
   titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  title: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 24, marginBottom: 4 },
-  profileRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  avatar: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#E8E8EE', borderRadius: 25, borderWidth: 1, height: 50, justifyContent: 'center', width: 50 },
-  profileCopy: { flex: 1, gap: 3, minWidth: 0 },
-  name: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 17 },
-  tierLink: { color: '#5246C6', fontFamily: fontFamilies.pretendardMedium, fontSize: 11 },
-  profileEdit: { backgroundColor: '#FAFBFC', borderColor: '#E6E6ED', borderRadius: 8, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 8 },
-  profileEditText: { color: '#45454B', fontFamily: fontFamilies.pretendardMedium, fontSize: 11 },
+  title: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
+  profileRow: { alignItems: 'center', flexDirection: 'row', gap: 14 },
+  avatar: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 28, height: 56, justifyContent: 'center', width: 56 },
+  profileCopy: { flex: 1, gap: 2, minWidth: 0 },
+  name: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
+  profileMeta: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  tierPill: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 999, flexDirection: 'row', gap: 4, height: 22, paddingLeft: 4, paddingRight: 8 },
+  tierPillText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardBold, fontSize: 12 },
+  muted: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  profileEdit: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+  profileEditText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
   inlineError: { backgroundColor: '#FFF4F4', borderRadius: 8, padding: 10 },
-  inlineErrorText: { color: '#B34141', fontSize: 12 },
-  stats: { backgroundColor: '#FAFBFC', alignItems: 'center', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, flexDirection: 'row', height: 66 },
-  stat: { alignItems: 'center', flex: 1, gap: 4 },
-  statValue: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
-  statLabel: { color: '#8A8A92', fontFamily: fontFamilies.pretendardRegular, fontSize: 11 },
-  statDivider: { backgroundColor: '#ECECF1', height: 28, width: 1 },
-  mileage: { backgroundColor: '#FAFBFC', alignItems: 'center', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: 16 },
-  mileageLabel: { color: '#45454B', fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
-  mileageAmount: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  sectionTitle: { color: '#222227', fontFamily: fontFamilies.pretendardBold, fontSize: 16, marginTop: 4 },
-  healthCards: { flexDirection: 'row', gap: 8 },
-  healthCard: { backgroundColor: '#FAFBFC', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, flex: 1, minHeight: 100, padding: 13 },
-  healthIcon: { color: '#5246C6', fontSize: 21, lineHeight: 26 },
-  healthCardTitle: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13, marginTop: 8 },
-  healthCardDescription: { color: '#888891', fontFamily: fontFamilies.pretendardRegular, fontSize: 10, marginTop: 3 },
-  group: { backgroundColor: '#FAFBFC', borderColor: '#E6E6ED', borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
-  settingRow: { alignItems: 'center', flexDirection: 'row', minHeight: 57, paddingHorizontal: 13, paddingVertical: 8 },
-  settingIcon: { alignItems: 'center', justifyContent: 'center', width: 28 },
-  settingCopy: { flex: 1, gap: 3, marginLeft: 9 },
-  settingLabel: { color: '#333339', fontFamily: fontFamilies.pretendardMedium, fontSize: 13 },
-  settingDescription: { color: '#8A8A92', fontFamily: fontFamilies.pretendardRegular, fontSize: 10 },
-  chevron: { color: '#9B9BA3', fontSize: 24 },
-  rowDivider: { backgroundColor: '#EDEFF2', height: StyleSheet.hairlineWidth, marginLeft: 50 },
+  inlineErrorText: { color: '#B34141', fontSize: 14 },
+  stats: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', minHeight: 74 },
+  stat: { alignItems: 'center', flex: 1, gap: 2 },
+  statValue: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
+  statDivider: { backgroundColor: '#DFE2E7', height: 28, width: 1 },
+  mileage: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', minHeight: 58, paddingHorizontal: 18 },
+  mileageRight: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+  mileageLabel: { color: '#17161D', fontSize: 16 },
+  mileageAmount: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+  sectionTitle: { color: '#5E5D66', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21, marginTop: 4 },
+  healthCards: { flexDirection: 'row', gap: 10 },
+  healthCard: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flex: 1, minHeight: 131, padding: 16 },
+  healthCardTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24, marginTop: 10 },
+  healthCardDescription: { color: '#5E5D66', fontSize: 14, lineHeight: 21, marginTop: 2 },
+  group: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  settingRow: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 64, paddingHorizontal: 16, paddingVertical: 8 },
+  settingIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+  settingCopy: { flex: 1, gap: 2 },
+  settingLabel: { color: '#17161D', fontSize: 16, lineHeight: 24 },
+  settingDescription: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  rowDivider: { backgroundColor: '#DFE2E7', height: 1 },
 });
 
 const simpleStyles = StyleSheet.create({
@@ -246,7 +292,7 @@ const simpleStyles = StyleSheet.create({
   title: { fontSize: 30 },
   name: { fontSize: 21 },
   profileEdit: { justifyContent: 'center', minHeight: 48 },
-  profileEditText: { fontSize: 14 },
+  profileEditText: { fontSize: 16 },
   stats: { height: 82 },
   mileage: { minHeight: 64 },
   mileageText: { fontSize: 17 },
@@ -265,4 +311,5 @@ const dark = StyleSheet.create({
   card: { backgroundColor: darkColors.surface, borderColor: darkColors.border },
   text: { color: darkColors.textPrimary },
   secondary: { color: darkColors.textSecondary },
+  divider: { backgroundColor: darkColors.border },
 });
