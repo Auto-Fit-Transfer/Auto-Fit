@@ -1,5 +1,7 @@
 """Owner-scoped persistence for the complete AI diet result."""
 
+import json
+import logging
 from datetime import date
 from uuid import UUID
 
@@ -14,6 +16,7 @@ from backend.app.weekly_recipe_contract import has_unavailable_recipe
 
 
 FIELDS = "weekly_diet_plan_id,user_id,week_start_date,generator,result,request_context,last_replacement,version,created_at,updated_at"
+logger = logging.getLogger("uvicorn.error")
 
 
 def fail(code: str, status: int = 502):
@@ -155,7 +158,9 @@ class WeeklyDietStore:
         })
         if not isinstance(rows, list) or len(rows) != 1:
             fail("WEEKLY_DIET_STORAGE_ERROR")
-        return self.validate(rows[0])
+        row = self.validate(rows[0])
+        logger.info("[weekly-diet-save] %s", json.dumps({"operation": "create", "outcome": "saved"}))
+        return row
 
     async def replace(self, plan_id, version, day, meal_type, replacement, context):
         row = await self.request("POST", "rpc/replace_weekly_diet_meal", body={
@@ -163,14 +168,18 @@ class WeeklyDietStore:
             "p_day": day, "p_meal_type": meal_type,
             "p_replacement": replacement, "p_request_context": context,
         })
-        return self.validate(row)
+        row = self.validate(row)
+        logger.info("[weekly-diet-save] %s", json.dumps({"operation": "replace", "outcome": "saved"}))
+        return row
 
     async def refresh(self, plan_id, version, reply, context):
         row = await self.request("POST", "rpc/refresh_weekly_diet_plan", body={
             "p_user_id": self.user_id, "p_plan_id": str(plan_id), "p_expected_version": version,
             "p_reply": reply, "p_request_context": context,
         })
-        return self.validate(row)
+        row = self.validate(row)
+        logger.info("[weekly-diet-save] %s", json.dumps({"operation": "refresh", "outcome": "saved"}))
+        return row
 
 
 def public_plan(row: dict) -> dict:

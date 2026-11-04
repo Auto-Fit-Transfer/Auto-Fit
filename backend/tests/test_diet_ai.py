@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from datetime import date
 
 import pytest
@@ -7,9 +8,11 @@ import pytest
 from backend.app.diet_ai import (
     DietAIUnavailable,
     build_catalog_meals,
+    conflicts_allergy,
     daily_ai_meal_count,
     find_used_inventory_items,
     find_used_inventory_names,
+    food_matches_inventory,
     generate_ai_meals,
     generate_regenerated_meal,
     mix_meals,
@@ -23,13 +26,42 @@ BASE_MEALS = [
 ]
 
 
-def test_daily_ai_slots_always_select_two_or_three_meals() -> None:
+@pytest.mark.parametrize(
+    ("food_name", "allergy_name"),
+    [
+        ("계란말이", "달걀"),
+        ("새우볶음밥", "갑각류"),
+        ("식빵", "밀"),
+        ("크림 파스타", "wheat"),
+    ],
+)
+def test_allergy_aliases_block_common_menu_synonyms(
+    food_name: str, allergy_name: str
+) -> None:
+    assert conflicts_allergy(food_name, [allergy_name]) is True
+
+
+@pytest.mark.parametrize(
+    ("food_name", "inventory_name"),
+    [
+        ("계란말이", "달걀"),
+        ("삶은 달걀", "계란"),
+        ("그릭요거트", "요구르트"),
+    ],
+)
+def test_inventory_matching_supports_common_food_synonyms(
+    food_name: str, inventory_name: str
+) -> None:
+    assert food_matches_inventory(food_name, [inventory_name]) is True
+
+
+def test_daily_ai_slots_always_select_two_meals() -> None:
     target_date = date(2026, 9, 28)
     for user_number in range(20):
         user_id = f"user-{user_number}"
         count = daily_ai_meal_count(user_id, target_date)
         slots = select_ai_slots(BASE_MEALS, user_id, target_date)
-        assert count in (2, 3)
+        assert count == 2
         assert len(slots) == count
         assert len({slot["meal_order"] for slot in slots}) == count
 
@@ -39,8 +71,13 @@ def test_generate_ai_meals_accepts_only_requested_slots() -> None:
 
     async def fake_model(prompt: str) -> str:
         assert "user_id" not in prompt
+        assert "email" not in prompt
+        assert "phone" not in prompt
+        assert "두부" not in prompt
         assert "excluded_allergens" not in prompt
-        assert '"available_ingredients": []' in prompt
+        payload = json.loads(prompt.rsplit("\n", 1)[-1])
+        assert payload["food_allergens"] == ["우유"]
+        slot = payload["slot"]
         return json.dumps(
             {
                 "meals": [
@@ -50,7 +87,7 @@ def test_generate_ai_meals_accepts_only_requested_slots() -> None:
                         "recommendation_note": "AI 추천",
                         "foods": [
                             {
-                                "food_name": "채소 비빔밥",
+                                "food_name": f"채소 비빔밥 {slot['meal_order']}",
                                 "quantity": 300,
                                 "unit": "g",
                                 "calories": 400,
@@ -60,7 +97,6 @@ def test_generate_ai_meals_accepts_only_requested_slots() -> None:
                             }
                         ],
                     }
-                    for slot in slots
                 ]
             },
             ensure_ascii=False,
@@ -73,45 +109,138 @@ def test_generate_ai_meals_accepts_only_requested_slots() -> None:
     assert all(meal["recommended_calories"] == 400 for meal in meals)
 
 
-def test_generate_ai_meals_passes_deidentified_inventory_to_model() -> None:
-    slots = BASE_MEALS[:2]
+@pytest.mark.parametrize(
+    ("allergies", "expected"),
+    [
+        ([" 우유 ", "우유", " 대두 ", ""], ["우유", "대두"]),
+        (["  복숭아  "], ["복숭아"]),
+        ([], []),
+    ],
+)
+def test_generate_ai_meals_sends_only_normalized_allergen_names(
+    allergies: list[str], expected: list[str]
+) -> None:
+    async def fake_model(prompt: str) -> str:
+        payload = json.loads(prompt.rsplit("\n", 1)[-1])
+        assert payload["food_allergens"] == expected
+        assert set(payload) == {
+            "slot", "food_allergens", "attempt", "variation_token",
+            "avoid_food_names", "avoid_meal_compositions",
+            "available_ingredients", "retry_feedback",
+        }
+        assert "user_info" not in prompt
+        assert "사용자 알레르기를 추측하지 마세요" in prompt
+        slot = payload["slot"]
+        return json.dumps({"meals": [{
+            "meal_type": slot["meal_type"], "meal_order": slot["meal_order"],
+            "recommendation_note": "안전 식단",
+            "foods": [{
+                "food_name": "현미밥", "quantity": 200, "unit": "g",
+                "calories": 400, "carbohydrates": 70, "protein": 10, "fat": 5,
+            }],
+        }]}, ensure_ascii=False)
+
+    meals = asyncio.run(generate_ai_meals(BASE_MEALS[:1], allergies, fake_model))
+    assert meals[0]["foods"][0]["food_name"] == "현미밥"
+
+
+@pytest.mark.parametrize(
+    ("allergen", "unsafe_food"),
+    [
+        ("우유", "요거트"), ("우유", "치즈"), ("우유", "버터"),
+        ("대두", "두부"), ("대두", "콩"), ("대두", "된장"),
+    ],
+)
+def test_generate_ai_meals_rejects_allergen_derivatives(
+    allergen: str, unsafe_food: str, caplog
+) -> None:
+    attempts = 0
 
     async def fake_model(prompt: str) -> str:
-        assert "브로콜리" in prompt
-        assert "user_id" not in prompt
+        nonlocal attempts
+        attempts += 1
+        payload = json.loads(prompt.rsplit("\n", 1)[-1])
+        assert payload["food_allergens"] == [allergen]
+        slot = payload["slot"]
+        food_name = unsafe_food if attempts == 1 else "현미밥"
+        return json.dumps({"meals": [{
+            "meal_type": slot["meal_type"], "meal_order": slot["meal_order"],
+            "recommendation_note": "AI 추천",
+            "foods": [{
+                "food_name": food_name, "quantity": 200, "unit": "g",
+                "calories": 400, "carbohydrates": 70, "protein": 10, "fat": 5,
+            }],
+        }]}, ensure_ascii=False)
+
+    with caplog.at_level(logging.INFO, logger="uvicorn.error"):
+        meals = asyncio.run(generate_ai_meals(BASE_MEALS[:1], [allergen], fake_model))
+    assert attempts == 2
+    assert meals[0]["foods"][0]["food_name"] == "현미밥"
+    assert '"reason":"excluded_allergen"' in caplog.text
+    assert allergen not in caplog.text
+    assert unsafe_food not in caplog.text
+
+
+def test_generate_ai_meals_retries_with_calorie_feedback() -> None:
+    attempts = 0
+
+    async def fake_model(prompt: str) -> str:
+        nonlocal attempts
+        attempts += 1
+        payload = json.loads(prompt.rsplit("\n", 1)[-1])
+        slot = payload["slot"]
+        assert slot["minimum_calories"] == 340
+        assert slot["maximum_calories"] == 460
+        if attempts == 1:
+            assert payload["retry_feedback"] is None
+            calories = 500
+        else:
+            assert payload["retry_feedback"] == {
+                "reason": "calorie_target_miss",
+                "actual_total_calories": 500,
+                "allowed_minimum_calories": 340,
+                "allowed_maximum_calories": 460,
+            }
+            calories = 400
         return json.dumps(
             {
                 "meals": [
                     {
                         "meal_type": slot["meal_type"],
                         "meal_order": slot["meal_order"],
-                        "recommendation_note": "냉장고 활용",
+                        "recommendation_note": "열량 조정 식단",
                         "foods": [
                             {
-                                "food_name": "브로콜리 비빔밥",
+                                "food_name": "채소 덮밥",
                                 "quantity": 300,
                                 "unit": "g",
-                                "calories": 400,
+                                "calories": calories,
                                 "carbohydrates": 60,
-                                "protein": 18,
+                                "protein": 20,
                                 "fat": 10,
                             }
                         ],
                     }
-                    for slot in slots
                 ]
             },
             ensure_ascii=False,
         )
 
-    meals = asyncio.run(
-        generate_ai_meals(slots, [], fake_model, ["브로콜리"])
-    )
+    meals = asyncio.run(generate_ai_meals(BASE_MEALS[:1], [], fake_model))
 
-    assert find_used_inventory_names(meals, ["브로콜리"]) == ["브로콜리"]
+    assert attempts == 2
+    assert meals[0]["recommended_calories"] == 400
 
 
-def test_generate_regenerated_meal_uses_inventory_and_changes_representative() -> None:
+def test_generate_ai_meals_rejects_changed_slots() -> None:
+    async def fake_model(prompt: str) -> str:
+        return '{"meals": []}'
+
+    with pytest.raises(DietAIUnavailable):
+        asyncio.run(generate_ai_meals(BASE_MEALS[:2], [], fake_model))
+
+
+def test_generate_regenerated_meal_passes_deidentified_inventory() -> None:
     current = {
         "meal_type": "breakfast",
         "meal_order": 1,
@@ -120,15 +249,20 @@ def test_generate_regenerated_meal_uses_inventory_and_changes_representative() -
     }
 
     async def fake_model(prompt: str) -> str:
-        assert '"available_ingredients": ["두부"]' in prompt
-        assert '"excluded_representative_foods": ["기존 아침"]' in prompt
+        payload = json.loads(prompt.rsplit("\n", 1)[-1])
+        assert payload["food_allergens"] == ["우유"]
+        assert payload["available_ingredients"] == ["두부"]
+        assert payload["avoid_food_names"] == ["기존아침"]
+        assert "inventory-1" not in prompt
+        assert '"quantity": 1' not in prompt
+        slot = payload["slot"]
         return json.dumps(
             {
                 "meals": [
                     {
-                        "meal_type": "breakfast",
-                        "meal_order": 1,
-                        "recommendation_note": "냉장고 두부를 활용한 AI 재추천",
+                        "meal_type": slot["meal_type"],
+                        "meal_order": slot["meal_order"],
+                        "recommendation_note": "냉장고 두부 활용",
                         "foods": [
                             {
                                 "food_name": "두부구이",
@@ -147,7 +281,7 @@ def test_generate_regenerated_meal_uses_inventory_and_changes_representative() -
         )
 
     meal = asyncio.run(
-        generate_regenerated_meal(current, [], fake_model, ["두부"])
+        generate_regenerated_meal(current, ["우유"], fake_model, ["두부"])
     )
     used = find_used_inventory_items(
         [meal],
@@ -169,35 +303,42 @@ def test_generate_regenerated_meal_uses_inventory_and_changes_representative() -
             "matched_food_name": "두부구이",
             "quantity": 1,
             "unit": "모",
+            "planned_quantity": 200,
+            "planned_unit": "g",
+            "inventory_covers_planned_quantity": None,
         }
     ]
 
 
-def test_generate_regenerated_meal_rejects_same_representative() -> None:
+def test_generate_regenerated_meal_rejects_inventory_free_results(caplog) -> None:
     current = {
         "meal_type": "breakfast",
         "meal_order": 1,
         "recommended_calories": 400,
         "foods": [{"food_name": "현미밥"}],
     }
+    attempts = 0
 
     async def fake_model(prompt: str) -> str:
+        nonlocal attempts
+        attempts += 1
+        slot = json.loads(prompt.rsplit("\n", 1)[-1])["slot"]
         return json.dumps(
             {
                 "meals": [
                     {
-                        "meal_type": "breakfast",
-                        "meal_order": 1,
-                        "recommendation_note": "동일 메뉴",
+                        "meal_type": slot["meal_type"],
+                        "meal_order": slot["meal_order"],
+                        "recommendation_note": "냉장고 미사용",
                         "foods": [
                             {
-                                "food_name": "현미밥",
-                                "quantity": 200,
+                                "food_name": "닭가슴살 샐러드",
+                                "quantity": 300,
                                 "unit": "g",
                                 "calories": 400,
-                                "carbohydrates": 70,
-                                "protein": 8,
-                                "fat": 4,
+                                "carbohydrates": 20,
+                                "protein": 40,
+                                "fat": 15,
                             }
                         ],
                     }
@@ -206,16 +347,207 @@ def test_generate_regenerated_meal_rejects_same_representative() -> None:
             ensure_ascii=False,
         )
 
-    with pytest.raises(DietAIUnavailable, match="repeated"):
-        asyncio.run(generate_regenerated_meal(current, [], fake_model))
-
-
-def test_generate_ai_meals_rejects_changed_slots() -> None:
-    async def fake_model(prompt: str) -> str:
-        return '{"meals": []}'
-
+    caplog.set_level(logging.INFO, logger="uvicorn.error")
     with pytest.raises(DietAIUnavailable):
-        asyncio.run(generate_ai_meals(BASE_MEALS[:2], [], fake_model))
+        asyncio.run(generate_regenerated_meal(current, [], fake_model, ["두부"]))
+    assert attempts == 3
+    assert caplog.text.count('"reason":"inventory_not_used"') == 3
+    assert '"reason":"attempts_exhausted"' in caplog.text
+    assert "두부" not in caplog.text
+    assert "닭가슴살" not in caplog.text
+
+
+def test_used_inventory_reports_quantity_coverage_for_comparable_units() -> None:
+    used = find_used_inventory_items(
+        [
+            {
+                "foods": [
+                    {"food_name": "현미밥", "quantity": 150, "unit": "g"}
+                ]
+            }
+        ],
+        [
+            {
+                "user_food_inventory_id": "inventory-2",
+                "custom_name": "현미밥",
+                "quantity": 100,
+                "unit": "그램",
+            }
+        ],
+    )
+
+    assert used[0]["inventory_covers_planned_quantity"] is False
+
+
+def test_generate_ai_meals_selects_safe_candidate_per_slot() -> None:
+    slots = BASE_MEALS[:2]
+    attempts: dict[int, int] = {}
+
+    async def fake_model(prompt: str) -> str:
+        slot = json.loads(prompt.rsplit("\n", 1)[-1])["slot"]
+        order = slot["meal_order"]
+        attempts[order] = attempts.get(order, 0) + 1
+        food_name = (
+            "우유 오트밀"
+            if attempts[order] == 1
+            else f"채소 비빔밥 {order}"
+        )
+        return json.dumps(
+            {
+                "meals": [
+                    {
+                        "meal_type": slot["meal_type"],
+                        "meal_order": order,
+                        "recommendation_note": "AI 추천",
+                        "foods": [
+                            {
+                                "food_name": food_name,
+                                "quantity": 300,
+                                "unit": "g",
+                                "calories": 400,
+                                "carbohydrates": 60,
+                                "protein": 18,
+                                "fat": 10,
+                            }
+                        ],
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        )
+
+    meals = asyncio.run(generate_ai_meals(slots, ["우유"], fake_model))
+
+    assert len(meals) == 2
+    assert [meal["foods"][0]["food_name"] for meal in meals] == [
+        "채소 비빔밥 1",
+        "채소 비빔밥 2",
+    ]
+    assert attempts == {1: 2, 2: 2}
+
+
+def test_generate_ai_meals_retries_repeated_representative_food() -> None:
+    slots = BASE_MEALS[:2]
+    attempts: dict[int, int] = {}
+
+    async def fake_model(prompt: str) -> str:
+        payload = json.loads(prompt.rsplit("\n", 1)[-1])
+        slot = payload["slot"]
+        order = slot["meal_order"]
+        attempts[order] = attempts.get(order, 0) + 1
+        food_name = (
+            "채소 비빔밥"
+            if order == 1 or attempts[order] == 1
+            else "닭가슴살 포케"
+        )
+        return json.dumps(
+            {
+                "meals": [
+                    {
+                        "meal_type": slot["meal_type"],
+                        "meal_order": order,
+                        "recommendation_note": "AI 추천",
+                        "foods": [
+                            {
+                                "food_name": food_name,
+                                "quantity": 300,
+                                "unit": "g",
+                                "calories": 400,
+                                "carbohydrates": 60,
+                                "protein": 18,
+                                "fat": 10,
+                            }
+                        ],
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        )
+
+    meals = asyncio.run(generate_ai_meals(slots, [], fake_model))
+
+    assert [meal["foods"][0]["food_name"] for meal in meals] == [
+        "채소 비빔밥",
+        "닭가슴살 포케",
+    ]
+    assert attempts == {1: 1, 2: 2}
+
+
+def test_generate_ai_meals_avoids_previous_representative_food() -> None:
+    attempts = 0
+
+    async def fake_model(prompt: str) -> str:
+        nonlocal attempts
+        payload = json.loads(prompt.rsplit("\n", 1)[-1])
+        attempts += 1
+        assert "이전식단" in payload["avoid_food_names"]
+        food_name = "이전 식단" if attempts == 1 else "새로운 포케"
+        slot = payload["slot"]
+        return json.dumps(
+            {
+                "meals": [
+                    {
+                        "meal_type": slot["meal_type"],
+                        "meal_order": slot["meal_order"],
+                        "recommendation_note": "AI 추천",
+                        "foods": [
+                            {
+                                "food_name": food_name,
+                                "quantity": 300,
+                                "unit": "g",
+                                "calories": 400,
+                                "carbohydrates": 60,
+                                "protein": 18,
+                                "fat": 10,
+                            }
+                        ],
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        )
+
+    meals = asyncio.run(
+        generate_ai_meals(
+            BASE_MEALS[:1],
+            [],
+            fake_model,
+            avoid_food_names=["이전 식단"],
+        )
+    )
+
+    assert meals[0]["foods"][0]["food_name"] == "새로운 포케"
+    assert attempts == 2
+
+
+def test_generate_ai_meals_retries_reordered_previous_composition() -> None:
+    attempts = 0
+
+    async def fake_model(prompt: str) -> str:
+        nonlocal attempts
+        attempts += 1
+        slot = json.loads(prompt.rsplit("\n", 1)[-1])["slot"]
+        names = ["브로콜리", "현미밥"] if attempts == 1 else ["고구마", "닭가슴살"]
+        return json.dumps(
+            {"meals": [{
+                "meal_type": slot["meal_type"],
+                "meal_order": slot["meal_order"],
+                "recommendation_note": "AI 추천",
+                "foods": [{
+                    "food_name": name, "quantity": 150, "unit": "g",
+                    "calories": 200, "carbohydrates": 25, "protein": 15, "fat": 5,
+                } for name in names],
+            }]},
+            ensure_ascii=False,
+        )
+
+    meals = asyncio.run(generate_ai_meals(
+        BASE_MEALS[:1], [], fake_model,
+        avoid_meal_food_names=[["현미밥", "브로콜리"]],
+    ))
+
+    assert [food["food_name"] for food in meals[0]["foods"]] == ["고구마", "닭가슴살"]
+    assert attempts == 2
 
 
 def test_mix_meals_keeps_db_catalog_remainder() -> None:
@@ -226,7 +558,7 @@ def test_mix_meals_keeps_db_catalog_remainder() -> None:
             "recommendation_note": "AI 추천",
             "foods": [{"food_name": "AI 메뉴", "calories": 400}],
         }
-        for index in range(3)
+        for index in range(2)
     ]
     catalog = [
         {
@@ -243,8 +575,8 @@ def test_mix_meals_keeps_db_catalog_remainder() -> None:
 
     mixed = mix_meals(BASE_MEALS, ai_meals, catalog)
 
-    assert [meal["source_type"] for meal in mixed].count("ai_generated") == 3
-    assert [meal["source_type"] for meal in mixed].count("db_catalog") == 1
+    assert [meal["source_type"] for meal in mixed].count("ai_generated") == 2
+    assert [meal["source_type"] for meal in mixed].count("db_catalog") == 2
     assert mixed[-1]["foods"][0]["food_item_id"] == catalog[0]["food_item_id"]
 
 
@@ -276,108 +608,4 @@ def test_catalog_meals_prioritize_available_inventory() -> None:
     )
 
     assert meals[0]["foods"][0]["food_name"] == "브로콜리"
-
-
-def _answer(calories: int = 400, quantity: int = 300, name: str = "채소 비빔밥", **meal_fields) -> str:
-    return json.dumps(
-        {
-            "meals": [
-                {
-                    "meal_type": "breakfast",
-                    "meal_order": 1,
-                    "recommendation_note": "AI 추천",
-                    "foods": [
-                        {
-                            "food_name": name,
-                            "quantity": quantity,
-                            "unit": "g",
-                            "calories": calories,
-                            "carbohydrates": 60,
-                            "protein": 18,
-                            "fat": 10,
-                        }
-                    ],
-                    **meal_fields,
-                }
-            ]
-        },
-        ensure_ascii=False,
-    )
-
-
-def _requester(*answers: str):
-    remaining = list(answers)
-    calls = []
-
-    async def fake_model(prompt: str) -> str:
-        calls.append(prompt)
-        return remaining.pop(0)
-
-    return fake_model, calls
-
-
-def test_ignored_total_calories_needs_no_second_paid_request() -> None:
-    fake_model, calls = _requester(_answer(total_calories=9999))
-
-    meals = asyncio.run(generate_ai_meals(BASE_MEALS[:1], [], fake_model))
-
-    assert len(calls) == 1
-    assert meals[0]["recommended_calories"] == 400
-    assert "total_calories" not in meals[0]
-
-
-def test_other_unknown_meal_field_is_still_rejected_after_one_retry() -> None:
-    fake_model, calls = _requester(_answer(surprise=1), _answer(surprise=1))
-
-    with pytest.raises(DietAIUnavailable, match="invalid structured data"):
-        asyncio.run(generate_ai_meals(BASE_MEALS[:1], [], fake_model))
-
-    assert len(calls) == 2
-
-
-def test_zero_quantity_is_never_accepted() -> None:
-    fake_model, calls = _requester(_answer(quantity=0), _answer(quantity=0))
-
-    with pytest.raises(DietAIUnavailable, match="invalid structured data"):
-        asyncio.run(generate_ai_meals(BASE_MEALS[:1], [], fake_model))
-
-    assert len(calls) == 2
-
-
-def test_calorie_miss_is_requested_once_more_and_can_recover() -> None:
-    fake_model, calls = _requester(_answer(calories=900), _answer())
-
-    meals = asyncio.run(generate_ai_meals(BASE_MEALS[:1], [], fake_model))
-
-    assert len(calls) == 2
-    assert meals[0]["recommended_calories"] == 400
-
-
-def test_repeated_calorie_miss_stops_at_two_requests(caplog) -> None:
-    fake_model, calls = _requester(_answer(calories=900), _answer(calories=900))
-
-    with caplog.at_level("WARNING", logger="uvicorn.error"):
-        with pytest.raises(DietAIUnavailable, match="missed the calorie target"):
-            asyncio.run(generate_ai_meals(BASE_MEALS[:1], [], fake_model))
-
-    assert len(calls) == 2
-    assert "retry result: failed extra_calls=1" in caplog.text
-
-
-def test_recovered_retry_is_recorded_for_cost_checks(caplog) -> None:
-    fake_model, calls = _requester(_answer(calories=900), _answer())
-
-    with caplog.at_level("WARNING", logger="uvicorn.error"):
-        asyncio.run(generate_ai_meals(BASE_MEALS[:1], [], fake_model))
-
-    assert len(calls) == 2
-    assert "retry result: accepted extra_calls=1" in caplog.text
-
-
-def test_allergen_answer_is_blocked_without_a_retry() -> None:
-    fake_model, calls = _requester(_answer(name="우유 비빔밥"))
-
-    with pytest.raises(DietAIUnavailable, match="excluded allergen"):
-        asyncio.run(generate_ai_meals(BASE_MEALS[:1], ["우유"], fake_model))
-
-    assert len(calls) == 1
+    assert find_used_inventory_names(meals, ["브로콜리"]) == ["브로콜리"]

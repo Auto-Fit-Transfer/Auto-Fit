@@ -117,3 +117,68 @@ def test_active_diet_lookup_is_limited_to_the_target_date(monkeypatch) -> None:
     assert url.endswith("/rest/v1/diet_recommendations")
     assert params["recommendation_date"] == "eq.2026-11-03"
     assert params["status"] == "eq.active"
+
+
+def test_refresh_isolates_allergies_and_skips_unresolved_user(monkeypatch) -> None:
+    settings = main.Settings(
+        supabase_url="https://example.supabase.co",
+        supabase_publishable_key="publishable-test",
+        supabase_service_role_key="service-role-test",
+        frontend_origin="http://localhost:3000",
+    )
+    from unittest.mock import AsyncMock
+    monkeypatch.setattr(diet_refresh, "fetch_user_ids_with_active_diet", AsyncMock(return_value=set()))
+    expected = {"user-a": ["우유", "복숭아"], "user-b": ["대두"]}
+    captured: dict[str, list[str]] = {}
+    created: list[str] = []
+
+    async def fake_user_ids():
+        return [*expected, "user-unresolved"]
+
+    async def fake_allergy_catalog(_settings):
+        return [
+            {"allergy_type_id": "milk", "name": "우유"},
+            {"allergy_type_id": "soy", "name": "대두"},
+        ]
+
+    async def fake_food_catalog(_settings):
+        return []
+
+    async def fake_inventory(_user_id, _settings):
+        return []
+
+    async def fake_allergies(user_id, _settings):
+        if user_id == "user-a":
+            return [
+                {"allergy_type_id": "milk"},
+                {"allergy_type_id": None, "custom_name": "복숭아"},
+            ]
+        if user_id == "user-b":
+            return [{"allergy_type_id": "soy"}]
+        return [{"allergy_type_id": "missing"}]
+
+    async def fake_plan(user_id, _inventory, allergy_names, _catalog, **_kwargs):
+        captured[user_id] = allergy_names
+        return {"meals": []}
+
+    async def fake_images(_meals, _settings):
+        return None
+
+    async def fake_create(user_id, _plan, _settings):
+        created.append(user_id)
+        return {}
+
+    monkeypatch.setattr(diet_refresh, "get_settings", lambda: settings)
+    monkeypatch.setattr(diet_refresh, "fetch_refresh_user_ids", fake_user_ids)
+    monkeypatch.setattr(diet_refresh, "fetch_allergy_catalog", fake_allergy_catalog)
+    monkeypatch.setattr(diet_refresh, "fetch_food_catalog", fake_food_catalog)
+    monkeypatch.setattr(diet_refresh, "fetch_food_inventory", fake_inventory)
+    monkeypatch.setattr(diet_refresh, "fetch_user_allergies", fake_allergies)
+    monkeypatch.setattr(diet_refresh, "build_daily_diet_recommendation_plan", fake_plan)
+    monkeypatch.setattr(diet_refresh, "assign_menu_images", fake_images)
+    monkeypatch.setattr(diet_refresh, "generate_missing_menu_images", fake_images)
+    monkeypatch.setattr(diet_refresh, "create_diet_recommendation", fake_create)
+
+    assert asyncio.run(diet_refresh.refresh_daily_diets()) == (2, 1)
+    assert captured == expected
+    assert set(created) == set(expected)

@@ -109,10 +109,10 @@ class WeeklyPlanResponse(BaseModel):
 
 class MealTarget(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
-    calories_kcal: float = Field(gt=0)
-    protein_g: Nonnegative
-    fat_g: Nonnegative
-    carbohydrate_g: Nonnegative
+    calories_kcal: float = Field(ge=1, le=5000)
+    protein_g: float = Field(ge=1, le=1000)
+    fat_g: float = Field(ge=1, le=1000)
+    carbohydrate_g: float = Field(ge=1, le=1000)
 
 
 class DietRequestContext(BaseModel):

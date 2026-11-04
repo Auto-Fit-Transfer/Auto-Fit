@@ -159,6 +159,9 @@ def test_recommendation_restores_used_inventory_after_reload():
             "matched_food_name": "바나나",
             "quantity": 6,
             "unit": "개",
+            "planned_quantity": 1,
+            "planned_unit": "개(중간)",
+            "inventory_covers_planned_quantity": None,
         }]
 
     asyncio.run(run())

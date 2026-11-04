@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 
 import httpx
 from PIL import Image
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
 from backend.app.http_client import client_scope
 from backend.app.menu_image_dataset import (
@@ -62,6 +62,7 @@ class GeneratedImage:
         seed: int,
         prompt: str,
         metadata: dict[str, Any],
+        label: "GeneratedImageLabel | None" = None,
     ):
         self.content = content
         self.image_format = image_format
@@ -73,6 +74,7 @@ class GeneratedImage:
         self.seed = seed
         self.prompt = prompt
         self.metadata = metadata
+        self.label = label
 
 
 class ImagePayload(BaseModel):
@@ -93,6 +95,26 @@ class GenerationPayload(BaseModel):
     prompt: str = Field(min_length=1, max_length=10000)
 
 
+class GeneratedLabelFood(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
+
+    food_name: str = Field(min_length=1, max_length=100)
+    quantity: float | int | None = Field(default=None, gt=0, le=100000)
+    unit: str | None = Field(default=None, min_length=1, max_length=20)
+
+
+class GeneratedImageLabel(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
+
+    image_key: str | None = Field(default=None, min_length=1, max_length=200)
+    meal_type: Literal["breakfast", "lunch", "dinner", "snack"]
+    menu_name: str = Field(min_length=1, max_length=500)
+    foods: list[GeneratedLabelFood] = Field(min_length=1, max_length=20)
+    food_tags: list[str] = Field(min_length=1, max_length=50)
+    quality_status: Literal["approved", "rejected", "needs_review"]
+    labeler_note: str | None = Field(default=None, max_length=1000)
+
+
 class SuccessPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
@@ -103,6 +125,10 @@ class SuccessPayload(BaseModel):
     image: ImagePayload
     generation: GenerationPayload
     metadata: dict[str, Any]
+    label: GeneratedImageLabel | None = Field(
+        default=None,
+        validation_alias=AliasChoices("label", "labels", "labeling"),
+    )
 
 
 class ErrorPayload(BaseModel):
@@ -249,6 +275,29 @@ def parse_generation_response(
         raise FoodImageGenerationError(
             "INVALID_RESPONSE", "Food image response changed output format", False
         )
+    label = response.label
+    if label is None:
+        label_candidate = response.metadata.get("label")
+        if label_candidate is None and {
+            "meal_type", "menu_name", "foods", "food_tags", "quality_status"
+        } <= response.metadata.keys():
+            label_candidate = response.metadata
+        if label_candidate is not None:
+            try:
+                label = GeneratedImageLabel.model_validate(label_candidate)
+            except ValidationError as exc:
+                raise FoodImageGenerationError(
+                    "INVALID_RESPONSE", "Food image label is invalid", False
+                ) from exc
+    if label is not None:
+        if label.image_key is not None and label.image_key != image_key:
+            raise FoodImageGenerationError(
+                "INVALID_RESPONSE", "Food image label changed image_key", False
+            )
+        if label.quality_status != "approved":
+            raise FoodImageGenerationError(
+                "UNAPPROVED_LABEL", "Food image label was not approved", False
+            )
     try:
         content = base64.b64decode(response.image.base64_data, validate=True)
         dimensions = read_image_bytes_dimensions(content, "png")
@@ -279,6 +328,7 @@ def parse_generation_response(
         seed=response.generation.seed,
         prompt=response.generation.prompt,
         metadata=response.metadata,
+        label=label,
     )
 
 
@@ -328,6 +378,7 @@ def prepare_image_for_storage(
         seed=image.seed,
         prompt=image.prompt,
         metadata={**image.metadata, "source_format": "png"},
+        label=image.label,
     )
 
 
@@ -348,9 +399,13 @@ def _supabase_headers(
     return headers
 
 
-async def _claim_generation(image_key: str, settings: Any) -> bool:
-    async with client_scope() as client:
-        response = await client.post(
+async def _claim_generation(
+    image_key: str,
+    settings: Any,
+    client: httpx.AsyncClient | None = None,
+) -> bool:
+    async with client_scope(client) as request_client:
+        response = await request_client.post(
             f"{settings.supabase_url}/rest/v1/rpc/claim_menu_image_generation",
             headers=_supabase_headers(settings, content_type="application/json"),
             json={"p_image_key": image_key},
@@ -366,9 +421,10 @@ async def _update_cache(
     image_key: str,
     updates: dict[str, Any],
     settings: Any,
+    client: httpx.AsyncClient | None = None,
 ) -> None:
-    async with client_scope() as client:
-        response = await client.patch(
+    async with client_scope(client) as request_client:
+        response = await request_client.patch(
             f"{settings.supabase_url}/rest/v1/menu_images",
             headers=_supabase_headers(settings, content_type="application/json"),
             params={"image_key": f"eq.{image_key}"},
@@ -445,11 +501,12 @@ async def _store_generated_image(
     image_key: str,
     image: GeneratedImage,
     settings: Any,
+    client: httpx.AsyncClient | None = None,
 ) -> str:
     digest = hashlib.sha256(image_key.encode()).hexdigest()[:32]
     storage_path = f"generated/{digest}.{image.image_format}"
-    async with client_scope() as client:
-        response = await client.put(
+    async with client_scope(client) as request_client:
+        response = await request_client.put(
             f"{settings.supabase_url}/storage/v1/object/menu-images/{storage_path}",
             headers={
                 **_supabase_headers(settings, content_type=image.mime_type),
@@ -470,6 +527,7 @@ async def generate_missing_menu_images(
     *,
     image_settings: FoodImageSettings | None = None,
     model_client: httpx.AsyncClient | None = None,
+    supabase_client: httpx.AsyncClient | None = None,
 ) -> dict[str, int]:
     config = image_settings or get_food_image_settings()
     if not config.enabled:
@@ -495,7 +553,9 @@ async def generate_missing_menu_images(
             async with GENERATION_SEMAPHORE:
                 claimed = False
                 try:
-                    if not await _claim_generation(image_key, supabase_settings):
+                    if not await _claim_generation(
+                        image_key, supabase_settings, supabase_client
+                    ):
                         skipped += 1
                         continue
                     claimed = True
@@ -525,8 +585,16 @@ async def generate_missing_menu_images(
                         await _request_image(payload, config, client=client),
                         config,
                     )
+                    if image.label is not None and image.label.meal_type != meal.get(
+                        "meal_type"
+                    ):
+                        raise FoodImageGenerationError(
+                            "INVALID_RESPONSE",
+                            "Food image label changed meal_type",
+                            False,
+                        )
                     storage_path = await _store_generated_image(
-                        image_key, image, supabase_settings
+                        image_key, image, supabase_settings, supabase_client
                     )
                     metadata = {
                         **image.metadata,
@@ -536,18 +604,52 @@ async def generate_missing_menu_images(
                         "height": image.height,
                         "format": image.image_format,
                     }
+                    cache_updates: dict[str, Any] = {
+                        "storage_path": storage_path,
+                        "source_type": "generated",
+                        "generation_status": "completed",
+                        "model_name": image.model_name,
+                        "generation_prompt": image.prompt,
+                        "last_error": None,
+                    }
+                    if image.label is not None:
+                        label_foods = [
+                            food.model_dump(mode="json") for food in image.label.foods
+                        ]
+                        ingredient_tags = [
+                            "재료:"
+                            + "".join(
+                                character
+                                for character in food.food_name.casefold()
+                                if character.isalnum()
+                            )
+                            for food in image.label.foods
+                        ]
+                        label_tags = list(dict.fromkeys([
+                            *(
+                                tag.strip()
+                                for tag in image.label.food_tags
+                                if tag.strip()
+                            ),
+                            *ingredient_tags,
+                        ]))
+                        metadata.update({
+                            "foods": label_foods,
+                            "meal_type": image.label.meal_type,
+                            "quality_status": image.label.quality_status,
+                            "labeler_note": image.label.labeler_note,
+                        })
+                        cache_updates.update({
+                            "menu_name": image.label.menu_name,
+                            "food_tags": label_tags,
+                            "meal_type": image.label.meal_type,
+                        })
+                    cache_updates["metadata"] = metadata
                     await _update_cache(
                         image_key,
-                        {
-                            "storage_path": storage_path,
-                            "source_type": "generated",
-                            "generation_status": "completed",
-                            "model_name": image.model_name,
-                            "generation_prompt": image.prompt,
-                            "last_error": None,
-                            "metadata": metadata,
-                        },
+                        cache_updates,
                         supabase_settings,
+                        supabase_client,
                     )
                     meal.update({
                         "image_storage_path": storage_path,
@@ -573,6 +675,7 @@ async def generate_missing_menu_images(
                                 },
                             },
                                 supabase_settings,
+                                supabase_client,
                             )
                         except FoodImageGenerationError:
                             pass

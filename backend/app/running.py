@@ -18,6 +18,8 @@ from backend.app.running_ai import AIServerError, RunningAIClient, get_ai_server
 
 
 DistanceOption = Literal["3km", "5km", "10km", "custom"]
+RunningIntensity = Literal["light", "moderate", "hard"]
+DIFFICULTY_BY_INTENSITY = {"light": "easy", "moderate": "moderate", "hard": "hard"}
 
 
 def fail(code: str, status: int = 502):
@@ -258,6 +260,7 @@ def create_running_router(get_user, get_settings):
     @router.get("/courses/recommend")
     async def recommend(distance_option: DistanceOption = "5km",
                         custom_distance_km: float | None = Query(default=None, gt=0, le=100),
+                        intensity: RunningIntensity | None = None,
                         region: str | None = Query(default=None, min_length=1, max_length=120),
                         latitude: float | None = Query(default=None, ge=-90, le=90),
                         longitude: float | None = Query(default=None, ge=-180, le=180),
@@ -270,6 +273,8 @@ def create_running_router(get_user, get_settings):
             fail("RUNNING_DISTANCE_INVALID", 422)
         pace = pace_minutes_per_km if pace_minutes_per_km is not None else await store.pace()
         params = {"distance_option": distance_option, "limit": limit}
+        if intensity is not None:
+            params["desired_difficulty"] = DIFFICULTY_BY_INTENSITY[intensity]
         for key, value in {"region": region, "latitude": latitude, "longitude": longitude,
                            "custom_distance_km": custom_distance_km,
                            "pace_minutes_per_km": pace}.items():

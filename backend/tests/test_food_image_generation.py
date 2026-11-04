@@ -16,7 +16,6 @@ from backend.app.food_image_generation import (
     parse_generation_response,
     prepare_image_for_storage,
 )
-from backend.app.http_client import bind_request_client
 
 
 @pytest.fixture(autouse=True)
@@ -61,6 +60,21 @@ def success_payload(image_key: str = "foods:test") -> dict:
             "prompt": "food prompt",
         },
         "metadata": {"generation_time_ms": 10, "safety_checked": True},
+    }
+
+
+def approved_label(image_key: str = "foods:test") -> dict:
+    return {
+        "image_key": image_key,
+        "meal_type": "breakfast",
+        "menu_name": "현미밥, 닭가슴살",
+        "foods": [
+            {"food_name": "현미밥", "quantity": 150, "unit": "g"},
+            {"food_name": "닭가슴살", "quantity": 90, "unit": "g"},
+        ],
+        "food_tags": ["현미밥", "닭가슴살"],
+        "quality_status": "approved",
+        "labeler_note": None,
     }
 
 
@@ -174,6 +188,33 @@ def test_parse_generation_response_preserves_retryable_failure(monkeypatch) -> N
     assert captured.value.retryable is True
 
 
+def test_parse_generation_response_accepts_labeled_alias(monkeypatch) -> None:
+    settings = get_food_image_settings()
+    payload = success_payload()
+    payload["labels"] = approved_label()
+
+    image = parse_generation_response(
+        payload, image_key="foods:test", settings=settings
+    )
+
+    assert image.label is not None
+    assert image.label.meal_type == "breakfast"
+    assert image.label.food_tags == ["현미밥", "닭가슴살"]
+
+
+def test_parse_generation_response_rejects_unapproved_label(monkeypatch) -> None:
+    settings = get_food_image_settings()
+    payload = success_payload()
+    payload["label"] = {**approved_label(), "quality_status": "needs_review"}
+
+    with pytest.raises(FoodImageGenerationError) as captured:
+        parse_generation_response(
+            payload, image_key="foods:test", settings=settings
+        )
+
+    assert captured.value.code == "UNAPPROVED_LABEL"
+
+
 def enabled_settings() -> FoodImageSettings:
     return FoodImageSettings(
         enabled=True,
@@ -215,7 +256,9 @@ def test_generate_missing_menu_images_uploads_and_completes_cache() -> None:
         visual_spec = json.loads(request.content)["visual_spec"]
         assert visual_spec["format"] == "png"
         assert (visual_spec["width"], visual_spec["height"]) == (1024, 1024)
-        return httpx.Response(200, json=success_payload())
+        payload = success_payload()
+        payload["label"] = approved_label()
+        return httpx.Response(200, json=payload)
 
     async def run():
         meal = pending_meal()
@@ -223,16 +266,16 @@ def test_generate_missing_menu_images_uploads_and_completes_cache() -> None:
             httpx.AsyncClient(transport=httpx.MockTransport(supabase_handler)) as supabase,
             httpx.AsyncClient(transport=httpx.MockTransport(model_handler)) as model,
         ):
-            async with bind_request_client(supabase):
-                result = await generate_missing_menu_images(
-                    [meal],
-                    SimpleNamespace(
-                        supabase_url="https://supabase.example",
-                        supabase_service_role_key="service-secret",
-                    ),
-                    image_settings=enabled_settings(),
-                    model_client=model,
-                )
+            result = await generate_missing_menu_images(
+                [meal],
+                SimpleNamespace(
+                    supabase_url="https://supabase.example",
+                    supabase_service_role_key="service-secret",
+                ),
+                image_settings=enabled_settings(),
+                model_client=model,
+                supabase_client=supabase,
+            )
         return result, meal
 
     result, meal = asyncio.run(run())
@@ -249,6 +292,11 @@ def test_generate_missing_menu_images_uploads_and_completes_cache() -> None:
     ][0]
     assert completed["generation_status"] == "completed"
     assert completed["metadata"]["model_version"] == "1.0.0"
+    assert completed["menu_name"] == "현미밥, 닭가슴살"
+    assert completed["meal_type"] == "breakfast"
+    assert completed["food_tags"] == ["현미밥", "닭가슴살", "재료:현미밥", "재료:닭가슴살"]
+    assert completed["metadata"]["foods"][1]["food_name"] == "닭가슴살"
+    assert completed["metadata"]["quality_status"] == "approved"
 
 
 def test_generate_missing_menu_images_retries_retryable_failure_and_marks_failed() -> None:
@@ -284,16 +332,16 @@ def test_generate_missing_menu_images_retries_retryable_failure_and_marks_failed
             httpx.AsyncClient(transport=httpx.MockTransport(supabase_handler)) as supabase,
             httpx.AsyncClient(transport=httpx.MockTransport(model_handler)) as model,
         ):
-            async with bind_request_client(supabase):
-                result = await generate_missing_menu_images(
-                    [meal],
-                    SimpleNamespace(
-                        supabase_url="https://supabase.example",
-                        supabase_service_role_key="service-secret",
-                    ),
-                    image_settings=enabled_settings(),
-                    model_client=model,
-                )
+            result = await generate_missing_menu_images(
+                [meal],
+                SimpleNamespace(
+                    supabase_url="https://supabase.example",
+                    supabase_service_role_key="service-secret",
+                ),
+                image_settings=enabled_settings(),
+                model_client=model,
+                supabase_client=supabase,
+            )
         return result, meal
 
     result, meal = asyncio.run(run())
@@ -321,15 +369,15 @@ def test_generate_missing_menu_images_skips_when_cache_claim_is_lost() -> None:
             httpx.AsyncClient(transport=httpx.MockTransport(supabase_handler)) as supabase,
             httpx.AsyncClient(transport=httpx.MockTransport(model_handler)) as model,
         ):
-            async with bind_request_client(supabase):
-                return await generate_missing_menu_images(
-                    [pending_meal()],
-                    SimpleNamespace(
-                        supabase_url="https://supabase.example",
-                        supabase_service_role_key="service-secret",
-                    ),
-                    image_settings=enabled_settings(),
-                    model_client=model,
-                )
+            return await generate_missing_menu_images(
+                [pending_meal()],
+                SimpleNamespace(
+                    supabase_url="https://supabase.example",
+                    supabase_service_role_key="service-secret",
+                ),
+                image_settings=enabled_settings(),
+                model_client=model,
+                supabase_client=supabase,
+            )
 
     assert asyncio.run(run()) == {"completed": 0, "failed": 0, "skipped": 1}

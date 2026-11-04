@@ -19,6 +19,7 @@ from backend.app.main import (
     fetch_user_allergies,
     get_settings,
     service_headers,
+    resolve_daily_allergy_names,
 )
 
 
@@ -94,9 +95,6 @@ async def refresh_daily_diets() -> tuple[int, int]:
         len(pending_user_ids),
         len(user_ids) - len(pending_user_ids),
     )
-    allergy_names_by_id = {
-        row["allergy_type_id"]: row["name"] for row in allergy_catalog
-    }
     semaphore = asyncio.Semaphore(3)
 
     async def refresh_one(user_id: str) -> bool:
@@ -106,24 +104,20 @@ async def refresh_daily_diets() -> tuple[int, int]:
                     fetch_food_inventory(user_id, settings),
                     fetch_user_allergies(user_id, settings),
                 )
-                allergy_names = [
-                    row.get("custom_name")
-                    or allergy_names_by_id.get(row.get("allergy_type_id"))
-                    for row in selected
-                ]
+                allergy_names = resolve_daily_allergy_names(selected, allergy_catalog)
                 plan = await build_daily_diet_recommendation_plan(
                     user_id,
                     inventory,
-                    [name for name in allergy_names if name],
+                    allergy_names,
                     food_catalog,
-                    target_date,
+                    target_date=target_date,
                 )
                 await assign_menu_images(plan["meals"], settings)
                 await generate_missing_menu_images(plan["meals"], settings)
                 await create_diet_recommendation(user_id, plan, settings)
                 return True
-            except Exception:  # Keep refreshing other users after one isolated failure.
-                logger.exception("daily diet refresh failed for one user")
+            except Exception as exc:  # Keep refreshing other users after one isolated failure.
+                logger.warning("daily diet refresh failed for one user: exception_type=%s", type(exc).__name__)
                 return False
 
     results = await asyncio.gather(*(refresh_one(user_id) for user_id in pending_user_ids))

@@ -50,7 +50,8 @@ from backend.app.diet_ai import (
     generate_regenerated_meal,
     mix_meals,
     select_ai_slots,
-    usable_catalog_foods,
+    apply_inventory_to_ai_meals,
+    food_matches_inventory,
 )
 from backend.app.ai_server import AIEndpoint, AIServerClient, AIServerError, get_ai_server_config
 from backend.app.exercise_ai import ExerciseAIError, build_plan as build_ai_exercise_plan, build_request as build_ai_exercise_request, gif_url_for_exercise
@@ -90,6 +91,7 @@ from backend.app.security import (
 KST = ZoneInfo("Asia/Seoul")
 logger = logging.getLogger("uvicorn.error")
 CHAT_REQUEST_TIMEOUT_SECONDS = 70
+DIET_GENERATION_LOCKS: dict[tuple[str, date], asyncio.Lock] = defaultdict(asyncio.Lock)
 DUMMY_FOOD_NAME_PREFIX = re.compile(r"^\[DUMMY[^\]]*\]\s*", re.IGNORECASE)
 FOOD_NAME_PARENTHETICAL = re.compile(r"\s*(?:\([^()]*\)|（[^（）]*）)")
 
@@ -534,6 +536,9 @@ class UsedInventoryIngredientResponse(BaseModel):
     matched_food_name: str
     quantity: float | None = None
     unit: str | None = None
+    planned_quantity: float | None = None
+    planned_unit: str | None = None
+    inventory_covers_planned_quantity: bool | None = None
 
 
 class RegenerateDietMealResponse(BaseModel):
@@ -2657,6 +2662,9 @@ async def build_daily_diet_recommendation_plan(
     allergy_names: list[str],
     food_catalog: list[dict[str, Any]],
     target_date: date | None = None,
+    all_ai: bool = False,
+    avoid_food_names: list[str] | None = None,
+    avoid_meal_food_names: list[list[str]] | None = None,
 ) -> dict[str, Any]:
     recommendation_date = target_date or datetime.now(KST).date()
     resolved_inventory = resolve_safe_inventory_items(
@@ -2669,25 +2677,39 @@ async def build_daily_diet_recommendation_plan(
         resolved_inventory, allergy_names, recommendation_date
     )
     plan["recommendation"]["recommendation_date"] = recommendation_date.isoformat()
-    ai_slots = select_ai_slots(plan["meals"], user_id, recommendation_date)
+    ai_slots = (
+        plan["meals"]
+        if all_ai
+        else select_ai_slots(plan["meals"], user_id, recommendation_date)
+    )
     ai_meals = await generate_ai_meals(
         ai_slots,
         allergy_names,
         request_model,
-        inventory_names,
+        avoid_food_names,
+        avoid_meal_food_names,
+        available_ingredients=inventory_names,
     )
-    plan["meals"] = mix_meals(
+    plan["meals"] = (
+        sorted(ai_meals, key=lambda meal: int(meal["meal_order"]))
+        if all_ai
+        else mix_meals(
+            plan["meals"],
+            ai_meals,
+            food_catalog,
+            allergy_names,
+            inventory_names,
+        )
+    )
+    plan["meals"] = apply_inventory_to_ai_meals(
         plan["meals"],
-        ai_meals,
+        resolved_inventory,
         food_catalog,
         allergy_names,
-        inventory_names,
     )
     used_inventory_names = find_used_inventory_names(
         plan["meals"], inventory_names
     )
-    if inventory_names and not used_inventory_names:
-        raise DietAIUnavailable("Diet generator did not use available inventory")
     for meal in plan["meals"]:
         meal["used_ingredients"] = find_used_inventory_items(
             [meal], resolved_inventory
@@ -2700,18 +2722,42 @@ async def build_daily_diet_recommendation_plan(
     ai_count = sum(
         meal.get("source_type") == "ai_generated" for meal in plan["meals"]
     )
-    if usable_catalog_foods(food_catalog, allergy_names):
-        source_reason = f"DB 음식 영양정보와 AI 생성 식단 {ai_count}개를 혼합했습니다. "
-    else:
-        source_reason = f"규칙 기반 식단과 AI 생성 식단 {ai_count}개를 혼합했습니다. "
     plan["recommendation"]["ai_reason"] = (
-        source_reason
+        (
+            "4식을 모두 AI로 생성한 뒤 서버의 음식 카탈로그로 냉장고 재료를 반영했습니다. "
+            if food_catalog
+            else "DB 음식 카탈로그 조회 없이 4식을 모두 AI로 생성했습니다. "
+        )
         + (
             f"실제 메뉴에 반영된 냉장고 재료: {', '.join(used_inventory_names)}. "
             if used_inventory_names
-            else "사용 가능한 냉장고 재료가 없어 일반 식재료로 구성했습니다. "
+            else (
+                "냉장고 재료 중 음식 카탈로그와 일치하는 항목이 없어 "
+                "일반 식재료로 구성했습니다. "
+                if inventory_names
+                else "사용 가능한 냉장고 재료가 없어 일반 식재료로 구성했습니다. "
+            )
         )
-        + "알레르기 제외 조건을 반영했습니다."
+        + "알레르기 제외 조건은 서버에서 검증했습니다."
+        if all_ai
+        else (
+            (
+                f"DB 음식 영양정보와 AI 생성 식단 {ai_count}개를 혼합했습니다. "
+                if any(meal.get("source_type") == "db_catalog" for meal in plan["meals"])
+                else f"규칙 기반 식단과 AI 생성 식단 {ai_count}개를 혼합했습니다. "
+            )
+            + (
+                f"실제 메뉴에 반영된 냉장고 재료: {', '.join(used_inventory_names)}. "
+                if used_inventory_names
+                else (
+                    "냉장고 재료 중 음식 카탈로그와 일치하는 항목이 없어 "
+                    "일반 식재료로 구성했습니다. "
+                    if inventory_names
+                    else "사용 가능한 냉장고 재료가 없어 일반 식재료로 구성했습니다. "
+                )
+            )
+            + "알레르기 제외 조건을 반영했습니다."
+        )
     )
     plan["recommendation"]["target_calories"] = sum(
         int(meal["recommended_calories"]) for meal in plan["meals"]
@@ -2741,6 +2787,7 @@ async def fetch_diet_recommendation(
     *,
     client: httpx.AsyncClient | None = None,
     include_details: bool = True,
+    latest_date: date | None = None,
 ) -> dict[str, Any] | None:
     recommendation_params = {
         "select": (
@@ -2762,6 +2809,9 @@ async def fetch_diet_recommendation(
         )
     if recommendation_date is None:
         recommendation_params["status"] = "eq.active"
+        recommendation_params["recommendation_date"] = (
+            f"lte.{(latest_date or datetime.now(KST).date()).isoformat()}"
+        )
     else:
         recommendation_params["recommendation_date"] = f"eq.{recommendation_date.isoformat()}"
     shared_client = client
@@ -4356,41 +4406,71 @@ async def generate_diet_recommendation(
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
-    inventory, catalog, selected, food_catalog = await asyncio.gather(
-        fetch_food_inventory(user.id, settings),
-        fetch_allergy_catalog(settings),
-        fetch_user_allergies(user.id, settings),
-        fetch_food_catalog(settings),
-    )
-    catalog_names = {
-        row["allergy_type_id"]: row["name"] for row in catalog
-    }
-    allergy_names = [
-        row.get("custom_name") or catalog_names.get(row.get("allergy_type_id"))
-        for row in selected
-    ]
-    try:
-        plan = await build_daily_diet_recommendation_plan(
-            user.id,
-            inventory,
-            [name for name in allergy_names if name],
-            food_catalog,
+    target_date = datetime.now(KST).date()
+    observed = await fetch_diet_recommendation(user.id, settings, target_date)
+    lock = DIET_GENERATION_LOCKS[(user.id, target_date)]
+    async with lock:
+        previous = await fetch_diet_recommendation(user.id, settings, target_date)
+        observed_id = (
+            observed["recommendation"]["diet_recommendation_id"] if observed else None
         )
-    except DietAIUnavailable as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI diet generator is temporarily unavailable",
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Food catalog cannot build a mixed diet recommendation",
-        ) from exc
-    await assign_menu_images(plan["meals"], settings)
-    await generate_missing_menu_images(plan["meals"], settings)
-    await create_diet_recommendation(user.id, plan, settings)
-    result = await fetch_latest_diet_recommendation(user.id, settings)
-    return {"ok": True, "generator": "mixed_ai_v1", "result": result}
+        previous_id = (
+            previous["recommendation"]["diet_recommendation_id"] if previous else None
+        )
+        if previous_id != observed_id:
+            return {
+                "ok": True,
+                "generator": "mixed_ai_v1",
+                "reused_concurrent_result": True,
+                "result": previous,
+            }
+
+        inventory, catalog, selected, food_catalog, previous_before = await asyncio.gather(
+            fetch_food_inventory(user.id, settings),
+            fetch_allergy_catalog(settings),
+            fetch_user_allergies(user.id, settings),
+            fetch_food_catalog(settings),
+            fetch_diet_recommendation(
+                user.id, settings, None,
+                latest_date=target_date - timedelta(days=1),
+            ),
+        )
+        allergy_names = resolve_daily_allergy_names(selected, catalog)
+        try:
+            plan = await build_daily_diet_recommendation_plan(
+                user.id,
+                inventory,
+                allergy_names,
+                food_catalog,
+                target_date=target_date,
+                avoid_food_names=(
+                    representative_food_names(previous)
+                    + representative_food_names(previous_before)
+                ),
+                avoid_meal_food_names=meal_food_name_groups(
+                    previous, previous_before
+                ),
+            )
+        except DietAIUnavailable as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AI diet generator is temporarily unavailable",
+            ) from exc
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Food catalog cannot build a mixed diet recommendation",
+            ) from exc
+        await assign_menu_images(plan["meals"], settings)
+        await generate_missing_menu_images(plan["meals"], settings)
+        await create_diet_recommendation(user.id, plan, settings)
+        result = await fetch_diet_recommendation(user.id, settings, target_date)
+        return {
+            "ok": True,
+            "generator": "mixed_ai_v1",
+            "reused_concurrent_result": False,
+            "result": result,
+        }
 
 
 @app.post(
@@ -4420,14 +4500,7 @@ async def regenerate_recommended_diet_meal(
         fetch_user_allergies(user.id, settings),
         fetch_food_catalog(settings),
     )
-    catalog_names = {
-        row["allergy_type_id"]: row["name"] for row in catalog
-    }
-    allergy_names = [
-        row.get("custom_name") or catalog_names.get(row.get("allergy_type_id"))
-        for row in selected
-    ]
-    allergy_names = [name for name in allergy_names if name]
+    allergy_names = resolve_daily_allergy_names(selected, catalog)
     resolved_inventory = resolve_safe_inventory_items(
         inventory, food_catalog, allergy_names
     )
@@ -4683,3 +4756,86 @@ async def send_chat_message(
         chat_fail("DATA_SOURCE_ERROR")
     response.status_code = 200 if result["is_replay"] else 201
     return result
+
+
+def representative_food_names(
+    recommendation: dict[str, Any] | None,
+) -> list[str]:
+    if not recommendation:
+        return []
+    return [
+        str(meal["foods"][0]["food_name"])
+        for meal in recommendation.get("meals") or []
+        if meal.get("foods") and meal["foods"][0].get("food_name")
+    ]
+
+
+def meal_food_name_groups(
+    *recommendations: dict[str, Any] | None,
+) -> list[list[str]]:
+    return [
+        [str(food["food_name"]) for food in meal.get("foods") or []]
+        for recommendation in recommendations
+        if recommendation
+        for meal in recommendation.get("meals") or []
+        if meal.get("foods")
+    ]
+
+
+def resolve_daily_allergy_names(
+    selected: list[dict[str, Any]], catalog: list[dict[str, Any]]
+) -> list[str]:
+    names_by_id = {row["allergy_type_id"]: row["name"] for row in catalog}
+    names: list[str] = []
+    for row in selected:
+        name = row.get("custom_name") or names_by_id.get(row.get("allergy_type_id"))
+        if not isinstance(name, str) or not name.strip():
+            raise HTTPException(502, detail="Stored allergy could not be resolved")
+        names.append(name.strip())
+    return list(dict.fromkeys(names))
+
+
+@app.post("/api/diet/recommendations/generate-preview", tags=["Diet"])
+async def preview_all_ai_diet_recommendation(
+    body: GenerateDietRecommendationRequest,
+    user: AuthenticatedUser = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    target_date = datetime.now(KST).date()
+    inventory, catalog, selected, food_catalog, previous, previous_before = await asyncio.gather(
+        fetch_food_inventory(user.id, settings),
+        fetch_allergy_catalog(settings),
+        fetch_user_allergies(user.id, settings),
+        fetch_food_catalog(settings),
+        fetch_diet_recommendation(user.id, settings, target_date),
+        fetch_diet_recommendation(
+            user.id, settings, None,
+            latest_date=target_date - timedelta(days=1),
+        ),
+    )
+    allergy_names = resolve_daily_allergy_names(selected, catalog)
+    try:
+        plan = await build_daily_diet_recommendation_plan(
+            user.id,
+            inventory,
+            allergy_names,
+            food_catalog,
+            target_date=target_date,
+            all_ai=True,
+            avoid_food_names=(
+                representative_food_names(previous)
+                + representative_food_names(previous_before)
+            ),
+            avoid_meal_food_names=meal_food_name_groups(previous, previous_before),
+        )
+    except DietAIUnavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="AI diet generator is temporarily unavailable",
+        ) from exc
+    return {
+        "ok": True,
+        "generator": "all_ai_preview_v1",
+        "persisted": False,
+        "result": plan,
+    }

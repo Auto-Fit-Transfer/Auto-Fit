@@ -244,11 +244,23 @@ def test_legacy_ai_ingredients_without_items_never_save(harness):
             meal["ingredients"] = [{"name": "현미", "recommended_amount": 100, "unit": "g"}]
     response = generate(client)
     assert response.status_code == 502
-    assert response.json()["detail"]["code"] == "AI_INVALID_RESPONSE"
+    assert response.json()["detail"]["code"] == "AI_FOOD_ITEM_INVALID"
     assert not state["writes"]
 
 
-@pytest.mark.parametrize("mutation", ["missing_day", "duplicate_day", "reversed_days", "missing_meal", "empty_items", "blank_name", "bad_number", "allergen", "dislike", "false_ok"])
+def test_legacy_chat_fields_do_not_override_structured_food_items(harness):
+    client, state = harness
+    meal = state["reply"]["result"]["weekly_plan"][0]["meals"]["lunch"]
+    meal["total_calories"] = 165.5
+    meal["items"][0]["quantity"] = 0
+    response = generate(client)
+    assert response.status_code == 201, response.text
+    saved = state["rows"][0]["result"]["weekly_plan"][0]["meals"]["lunch"]
+    assert saved["items"][0]["portion_g"] == 100.25
+    assert saved["items"][0]["quantity"] == 0
+
+
+@pytest.mark.parametrize("mutation", ["missing_day", "duplicate_day", "reversed_days", "missing_meal", "empty_items", "blank_name", "bad_number", "allergen", "dislike", "repeated_menu", "false_ok"])
 def test_invalid_ai_results_never_write(harness, mutation):
     client, state = harness
     days = state["reply"]["result"]["weekly_plan"]
@@ -262,8 +274,20 @@ def test_invalid_ai_results_never_write(harness, mutation):
     elif mutation == "blank_name": food["food_name"] = "  "
     elif mutation == "allergen": food["food_name"] = "땅콩밥"
     elif mutation == "dislike": food["food_name"] = "가지무침"
+    elif mutation == "repeated_menu": days[1]["meals"]["lunch"]["menu_name"] = "  monday lunch  "
     elif mutation == "false_ok": state["reply"]["ok"] = False
-    assert generate(client).status_code == 502
+    response = generate(client)
+    assert response.status_code == 502
+    if mutation in {"missing_day", "duplicate_day", "reversed_days", "missing_meal"}:
+        assert response.json()["detail"]["code"] == "AI_WEEKLY_SHAPE_INVALID"
+    if mutation in {"empty_items", "blank_name", "bad_number"}:
+        assert response.json()["detail"]["code"] == "AI_FOOD_ITEM_INVALID"
+    if mutation in {"allergen", "dislike", "repeated_menu"}:
+        assert response.json()["detail"]["code"] == {
+            "allergen": "AI_ALLERGEN_CONFLICT",
+            "dislike": "AI_DISLIKED_FOOD_CONFLICT",
+            "repeated_menu": "AI_DUPLICATE_MENU",
+        }[mutation]
     assert state["writes"] == []
 
 
@@ -285,6 +309,17 @@ def test_duplicate_week_rejected_before_ai_call(harness):
 def test_invalid_client_inputs_never_reach_model(harness, body):
     client, state = harness
     assert client.post(BASE + "/generate", json=body).status_code == 422
+    assert not state["ai_calls"] and not state["writes"]
+
+
+@pytest.mark.parametrize("field", ["calories_kcal", "carbohydrate_g", "protein_g", "fat_g"])
+@pytest.mark.parametrize("invalid", [0, 0.5, 5001])
+def test_meal_target_respects_ai_server_bounds(harness, field, invalid):
+    client, state = harness
+    target = {"calories_kcal": 550, "carbohydrate_g": 70, "protein_g": 30, "fat_g": 18}
+    target[field] = invalid
+    response = client.post(BASE + "/generate", json={"week_start_date": "2026-10-19", "meal_target": target})
+    assert response.status_code == 422
     assert not state["ai_calls"] and not state["writes"]
 
 
@@ -314,6 +349,24 @@ def test_replace_only_one_slot_and_pass_all_existing_menus(harness):
     assert len(state["ai_calls"]) == 2
 
 
+def test_replace_passes_only_explicit_saved_ingredients(harness):
+    client, state = harness
+    state["reply"]["result"]["weekly_plan"][0]["meals"]["lunch"]["ingredients"] = [
+        {"name": " 현미 "}, "닭가슴살", {"name": "현미"}, {"amount_g": 50},
+    ]
+    assert generate(client).status_code == 201
+    assert client.post(SLOT, json={"expected_version": 1}).status_code == 200
+    assert state["ai_calls"][-1][1]["current_ingredients"] == ["현미", "닭가슴살"]
+
+
+def test_saved_ingredient_names_bounds_untrusted_extra_fields():
+    names = [{"name": " ".join(["가"] * 201)}, {"name": ""}, {"name": "현미"}]
+    names.extend({"name": f"재료{index}"} for index in range(100))
+    result = api.saved_ingredient_names({"ingredients": names})
+    assert result == ["현미", *(f"재료{index}" for index in range(29))]
+    assert api.saved_ingredient_names({"ingredients": "현미"}) == []
+
+
 @pytest.mark.parametrize("failure", ["wrong_day", "repeated_menu", "race"])
 def test_replace_rejects_wrong_target_duplicate_and_concurrent_change(harness, failure):
     client, state = harness
@@ -337,6 +390,25 @@ def test_ai_unavailable_has_safe_error_and_no_write(harness):
     state["ai_error"] = AIServerError("AI_UNAVAILABLE", 503)
     assert generate(client).status_code == 503
     assert state["writes"] == []
+
+
+def test_ai_call_metrics_exclude_request_and_response_text(harness, caplog):
+    client, state = harness
+    with caplog.at_level("INFO", logger="uvicorn.error"):
+        response = client.post(BASE + "/generate", json={
+            "week_start_date": "2026-10-19", "additional_input": "private-marker",
+        })
+    assert response.status_code == 201
+    records = [record.message for record in caplog.records if "[weekly-diet-ai]" in record.message]
+    assert len(records) == 1
+    assert '"endpoint":"/recommend/diet"' in records[0]
+    assert '"outcome":"validated"' in records[0]
+    assert "private-marker" not in records[0]
+    assert "합성 테스트 식단" not in records[0]
+    save_records = [record.message for record in caplog.records if "[weekly-diet-save]" in record.message]
+    assert len(save_records) == 1
+    assert '"operation": "create"' in save_records[0]
+    assert "private-marker" not in save_records[0]
 
 
 def test_authentication_required(harness):
