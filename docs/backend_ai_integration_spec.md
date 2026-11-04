@@ -623,7 +623,7 @@ Frontend에서 저장한 오늘의 운동 조건은 Backend가 `POST /recommend/
 
 | 필드 | 값 |
 |---|---|
-| `available_minutes` | `30`, `45`, `60`, `90`, `120` |
+| `available_minutes` | 기본 선택값은 `30`, `45`, `60`, `90`, `120`. 직접 입력을 포함해 `5~200`만 허용하며 모든 추천 세션의 목표 시간으로 사용 |
 | `location` | `gym`, `home`, `outdoor`, `other` |
 | `available_equipment` | `machine`, `band`, `dumbbell`, `mat`, `other`의 배열 |
 | `condition_level` | `좋음`, `보통`, `피곤해요`, `안 좋아요` |
@@ -677,6 +677,26 @@ OpenAI는 서버가 필터링한 `exercise_key` 후보 중 하나를 선택하�
 강도를 `moderate`로 고정하지 않는다. 한글 표시는 통신 계약 밖의 화면 계층에서
 변환한다.
 
+운동 시간은 세션마다 독립적으로 검증한다. 요청의 `available_minutes`를
+`target_minutes`로 보고 각 세션의 운동별 `duration_minutes` 합계가 다음 범위를
+만족해야 한다.
+
+```text
+maximum_minutes = min(target_minutes + 5, 200)
+target_minutes <= sum(session.exercises[*].duration_minutes) <= maximum_minutes
+```
+
+`estimated_duration_minutes`는 LLM이 임의로 정한 예상값이 아니라 해당 세션의 실제
+운동 시간 합계와 정확히 같아야 한다. AI Server는 최종 응답을 조립할 때 실제 합계로
+이 값을 설정한다. Backend도 저장 전에 각 세션 합계를 다시 계산하여 동일한 포함 범위를
+검증하고, 검증된 실제 합계를 세션 시간과 추천 총시간에 저장한다. 여러 세션의 시간을
+모아 한 번만 검사하지 않으며, 하나라도 목표 미달·`min(목표+5분, 200분)` 초과·예상 시간 불일치이면
+전체 AI 결과를 저장하지 않는다.
+
+30분 선택의 경계는 `29분=거부`, `30분=허용`, `35분=허용`, `36분=거부`다.
+절대 상한 경계는 `198분 요청에서 198~200분 허용·201분 거부`,
+`200분 요청에서 200분만 허용`, `201분 요청은 422 거부`다.
+
 ```json
 {
   "catalog_version": "sha256:<LF로 정규화한 CSV SHA-256>",
@@ -684,16 +704,39 @@ OpenAI는 서버가 필터링한 `exercise_key` 후보 중 하나를 선택하�
   "sessions": [
     {
       "name": "복부 운동",
+      "estimated_duration_minutes": 60,
       "exercises": [
         {
           "exercise_key": "ex_846f603683467e",
           "name": "45도 바이시클 트위스트 크런치",
           "catalog_name_en": "45 Degree Bycicle Twisting Crunch",
           "exercise_modes": ["gym"],
-          "duration_minutes": 5,
+          "duration_minutes": 20,
           "intensity": "moderate",
           "instructions": [
             "복부에 힘을 유지하고 천천히 수행하세요."
+          ]
+        },
+        {
+          "exercise_key": "ex_25ee07aa74fd15",
+          "name": "45도 트위스팅 하이퍼익스텐션",
+          "catalog_name_en": "45 Degree Twisting Hyperextension",
+          "exercise_modes": ["gym"],
+          "duration_minutes": 20,
+          "intensity": "moderate",
+          "instructions": [
+            "허리를 과도하게 꺾지 말고 천천히 수행하세요."
+          ]
+        },
+        {
+          "exercise_key": "ex_533a5992c70066",
+          "name": "45도 리버스 하이퍼익스텐션",
+          "catalog_name_en": "45 Degrees Reverse Hyperextension",
+          "exercise_modes": ["gym"],
+          "duration_minutes": 20,
+          "intensity": "moderate",
+          "instructions": [
+            "반동 없이 둔근과 허벅지 뒤쪽에 집중하세요."
           ]
         }
       ]
@@ -855,6 +898,8 @@ POST /running/routes/generate-loop
 - [ ] 식단 응답의 `weekly_plan.meals.*.items`를 누락하지 않고 저장한다.
 - [ ] 알레르기와 기피 음식 필드를 구분해 모든 Diet·Recipe 요청에 전달한다.
 - [ ] 식단 재추천 결과는 대상 슬롯 검증 후 transaction으로 반영한다.
+- [ ] 운동 추천 목표시간은 200분 이하이며, 모든 세션을 `available_minutes` 이상, `min(available_minutes + 5, 200)` 이하로 검증한다.
+- [ ] 운동 세션의 `estimated_duration_minutes`와 저장 시간은 운동별 시간의 실제 합계를 사용한다.
 - [ ] Chat의 `message`가 아니라 action과 status로 분기한다.
 - [ ] `401`, `422`, `500`, `503` 처리와 timeout을 구현한다.
 - [ ] 로그에 API Key와 원본 개인정보를 남기지 않는다.

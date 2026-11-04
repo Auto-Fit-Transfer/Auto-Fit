@@ -1,6 +1,7 @@
 # 운동 추천 AI 연동 요청 — Backend 담당자용
 
 > 작성일: 2026-11-03
+> 최종 갱신일: 2026-11-04
 > 대상: Backend 개발 담당자
 > 대상 API: `POST /recommend/exercise`
 
@@ -42,7 +43,7 @@ Backend가 저장하는 오늘의 운동 조건을 AI Server의 운동 추천 �
 
 | 필드 | 형식 | 허용값·정책 |
 |---|---|---|
-| `available_minutes` | 정수 | `30`, `45`, `60`, `90`, `120` 중 하나 |
+| `available_minutes` | 정수 | 기본 선택값은 `30`, `45`, `60`, `90`, `120`. 직접 입력을 포함해 `5~200`만 허용하며 모든 추천 세션의 목표 시간으로 사용 |
 | `location` | 문자열 | `gym`, `home`, `outdoor`, `other` |
 | `available_equipment` | 문자열 배열 | `machine`, `band`, `dumbbell`, `mat`, `other` |
 | `condition_level` | 문자열 | `좋음`, `보통`, `피곤해요`, `안 좋아요` |
@@ -60,6 +61,7 @@ Backend가 저장하는 오늘의 운동 조건을 AI Server의 운동 추천 �
 ### AI 요청 변환
 
 - 운동 추천 컨텍스트의 `available_equipment`를 누락하지 않습니다.
+- `available_minutes`는 저장과 AI 요청 전에 `5~200` 범위인지 검증합니다.
 - `condition_level`의 한글 표시값을 계약 그대로 전달합니다.
 - `discomfort_areas`가 없으면 반드시 빈 배열을 전달합니다.
 - `condition_note`가 없으면 빈 문자열이 아니라 `null`을 전달합니다.
@@ -109,10 +111,32 @@ AI Server는 구매한 운동 GIF CSV에 존재하는 운동만 추천하며 각
             "name": "45도 바이시클 트위스트 크런치",
             "catalog_name_en": "45 Degree Bycicle Twisting Crunch",
             "exercise_modes": ["gym"],
-            "duration_minutes": 5,
+            "duration_minutes": 20,
             "intensity": "moderate",
             "instructions": [
               "복부에 힘을 유지하고 천천히 수행하세요."
+            ]
+          },
+          {
+            "exercise_key": "ex_25ee07aa74fd15",
+            "name": "45도 트위스팅 하이퍼익스텐션",
+            "catalog_name_en": "45 Degree Twisting Hyperextension",
+            "exercise_modes": ["gym"],
+            "duration_minutes": 20,
+            "intensity": "moderate",
+            "instructions": [
+              "허리를 과도하게 꺾지 말고 천천히 수행하세요."
+            ]
+          },
+          {
+            "exercise_key": "ex_533a5992c70066",
+            "name": "45도 리버스 하이퍼익스텐션",
+            "catalog_name_en": "45 Degrees Reverse Hyperextension",
+            "exercise_modes": ["gym"],
+            "duration_minutes": 20,
+            "intensity": "moderate",
+            "instructions": [
+              "반동 없이 둔근과 허벅지 뒤쪽에 집중하세요."
             ]
           }
         ]
@@ -132,8 +156,48 @@ Backend는 응답 수신 후 다음 항목을 검증합니다.
 - 모든 `exercise_key`가 Backend CSV에 존재하는지
 - 요청 장소와 운동의 `exercise_modes`가 충돌하지 않는지
 - 요청한 장비로 수행할 수 있는 운동인지
-- 운동 시간이 유효한지
+- 각 세션의 운동별 `duration_minutes` 합계가 요청 시간 이상, `min(요청 시간 + 5분, 200분)` 이하인지
+- 각 세션의 `estimated_duration_minutes`가 운동별 시간의 실제 합계와 정확히 일치하는지
 - 빈 세션 또는 빈 운동 목록을 정상 추천으로 저장하지 않는지
+
+### 세션 시간 검증 및 저장 계약
+
+`target_minutes = available_minutes`로 정의합니다. Backend는 AI 응답의 각 세션을
+독립적으로 다시 계산하고 다음 조건을 모두 만족할 때만 저장합니다.
+
+```text
+actual_minutes = sum(session.exercises[*].duration_minutes)
+maximum_minutes = min(target_minutes + 5, 200)
+target_minutes <= actual_minutes <= maximum_minutes
+session.estimated_duration_minutes == actual_minutes
+```
+
+이 범위는 모든 세션을 합친 주간 총시간에 적용하는 값이 아닙니다. 세션이 여러 개면
+모든 세션이 각각 같은 범위를 만족해야 합니다. Backend는 AI가 제공한 예상 시간을
+그대로 신뢰하지 않고 운동별 시간을 합산하며, 저장하는 세션 시간과
+`recommendation.total_duration_minutes`도 검증된 실제 합계를 사용합니다. 범위를
+벗어나거나 예상 시간과 합계가 다르면 해당 결과를 저장하지 말고 AI 응답 검증 실패로
+처리합니다.
+
+30분 선택의 경계 예시는 다음과 같습니다.
+
+| 운동별 시간 합계 | 결과 | 이유 |
+|---:|---|---|
+| 29분 | 거부 | 목표 시간 미달 |
+| 30분 | 허용 | 하한 포함 |
+| 35분 | 허용 | `+5분` 상한 포함 |
+| 36분 | 거부 | 허용 상한 초과 |
+
+200분 절대 상한과 요청 경계는 다음과 같습니다.
+
+| 요청 시간 | 운동별 시간 합계 | 결과 | 이유 |
+|---:|---:|---|---|
+| 198분 | 198분 | 허용 | 하한 포함 |
+| 198분 | 200분 | 허용 | 절대 상한 이내 |
+| 198분 | 201분 | 거부 | 200분 절대 상한 초과 |
+| 200분 | 200분 | 허용 | 요청·절대 상한 일치 |
+| 200분 | 201분 | 거부 | 200분 절대 상한 초과 |
+| 201분 | - | 요청 거부 | 요청 가능한 목표시간 초과 |
 
 `condition_level="보통"`은 사용자의 현재 컨디션 입력이며 추천 결과의
 `intensity`를 `moderate`로 고정한다는 뜻이 아닙니다. AI Server는 운동 목표,
@@ -186,6 +250,12 @@ AI Server는 다음 기준으로 후보를 제한할 예정입니다.
 - [ ] AI `exercise_key`를 DB에 보존합니다.
 - [ ] CSV에 없는 `exercise_key`는 저장하지 않습니다.
 - [ ] `catalog_version` 불일치를 정상 결과로 처리하지 않습니다.
+- [ ] 30분 요청에서 세션 합계 29분은 거부하고 30분과 35분은 허용하며 36분은 거부합니다.
+- [ ] 198분 요청에서 198분과 200분은 허용하고 201분은 거부합니다.
+- [ ] 200분 요청에서는 200분만 허용하고 201분 요청은 요청 단계에서 거부합니다.
+- [ ] 세션이 여러 개일 때 각 세션의 합계를 독립적으로 검증합니다.
+- [ ] `estimated_duration_minutes`와 운동별 시간 합계가 다르면 저장하지 않습니다.
+- [ ] 저장되는 세션 시간과 `recommendation.total_duration_minutes`는 검증된 실제 합계를 사용합니다.
 - [ ] GIF 로컬 경로와 서버 secret이 Frontend 응답에 포함되지 않습니다.
 - [ ] 동일 입력을 여러 사용자가 동시에 보내도 context가 섞이지 않습니다.
 
@@ -194,10 +264,14 @@ AI Server는 다음 기준으로 후보를 제한할 예정입니다.
 - [ ] Frontend 선택값이 Backend 저장값과 AI 요청에서 동일합니다.
 - [ ] `available_equipment`가 실제 추천 후보에 반영됩니다.
 - [ ] 피곤함·좋지 않은 컨디션과 불편 부위가 안전 조건에 반영됩니다.
+- [ ] 모든 세션이 선택 시간 이상, `min(선택 시간 + 5분, 200분)` 이하이며 예상 시간이 실제 합계와 일치합니다.
 - [ ] AI 추천 운동이 구매한 CSV 카탈로그로 제한됩니다.
 - [ ] Backend가 `exercise_key`로 GIF 자산을 정확히 연결할 수 있습니다.
 - [ ] Frontend가 Backend의 HTTPS GIF URL을 받아 표시할 수 있습니다.
 
 ## 10. 코드 공유 요청
 
-현재 확인 가능한 원격 `backend` 브랜치에는 안내받은 `backend/app/exercise_ai.py`가 아직 존재하지 않습니다. 해당 변환 코드가 GitHub에 반영되면 AI Server 요청 Schema 및 E2E 계약과 최종 대조가 필요합니다.
+현재 확인 가능한 원격 `backend` 브랜치에는 `backend/app/exercise_ai.py`가 존재하지만,
+세션 시간이 목표시간을 초과하는지만 검사하는 이전 로직입니다. 목표 미달 방지와
+최대 5분 허용·200분 절대 상한을 같은 커밋에 반영한 뒤 AI Server 요청 Schema 및
+E2E 계약과 최종 대조해야 합니다.

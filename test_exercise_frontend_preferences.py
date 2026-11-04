@@ -30,7 +30,7 @@ class FakeResponses:
                             {
                                 "exercise_key": self.exercise_key,
                                 "name": "회복 운동",
-                                "duration_minutes": 5,
+                                "duration_minutes": 30,
                                 "intensity": None,
                             }
                         ],
@@ -88,6 +88,7 @@ async def run_service_test() -> None:
         service.rag_node = original_rag_node
 
     assert response.summary == "오늘의 설정을 반영한 홈트"
+    assert response.sessions[0].estimated_duration_minutes == 30
     assert '"location": "home"' in (
         fake_client.responses.input_text
     )

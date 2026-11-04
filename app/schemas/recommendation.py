@@ -330,7 +330,7 @@ class ExerciseRecommendationRequest(BaseModel):
 
         ge=5,
 
-        le=300,
+        le=200,
 
     )
 
@@ -639,7 +639,7 @@ class ExerciseItem(BaseModel):
 
         ge=1,
 
-        le=300,
+        le=200,
 
     )
 
@@ -677,7 +677,7 @@ class ExerciseSession(BaseModel):
 
         ge=1,
 
-        le=300,
+        le=200,
 
     )
 

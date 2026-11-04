@@ -8,7 +8,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 문서 버전 | 1.4 |
+| 문서 버전 | 1.5 |
 | 최초 작성일 | 2026-11-02 |
 | 최종 갱신일 | 2026-11-04 |
 | 대상 | Frontend, Backend, AI Server, 배포·인프라 담당자 |
@@ -958,3 +958,20 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - 테스트 결과: 관련 pytest `28 passed`, 기존 운동 화면 설정 스크립트 통과, syntax compile 통과
 - 남은 작업: AI Server 배포 후 Backend 동일 조건 재시험 및 후속 catalog·장비·세션 시간 검증 오류 확인
 - 알려진 제한: 실제 OpenAI 유료 호출은 수행하지 않았으며 fake structured response로 재생성 경계를 검증함
+
+## 2026-11-04 · 운동 추천 선택 시간 최소 충족·5분 허용·200분 상한 계약
+
+- 상태: AI Server 로컬 구현·결정론적 검증 완료, Backend 동일 검증 반영·통합 재시험 대기
+- 관련 커밋: 미커밋
+- 변경 목적: 사용자가 선택한 목표 운동시간보다 짧은 추천을 방지하면서 구성상 필요한 최대 5분의 초과를 허용하되, 추천 총시간은 절대 200분을 넘지 않도록 제한
+- 변경 API: `POST /recommend/exercise` 요청·응답 필드 추가 없음. 기존 `available_minutes`, `sessions[].exercises[].duration_minutes`, `sessions[].estimated_duration_minutes`의 검증 의미 강화
+- 요청 계약: `available_minutes`는 최대 200분이며 200분을 초과하는 요청은 정상 추천으로 처리하지 않음
+- 시간 계약: 모든 세션을 독립적으로 검사하며 `available_minutes <= 운동별 시간 합계 <= min(available_minutes + 5, 200)`을 포함 범위로 적용
+- 예상 시간 계약: `estimated_duration_minutes`를 LLM 추정값이 아닌 해당 세션 운동별 `duration_minutes`의 실제 합계로 설정하고, 목표 시간이 없는 레거시 요청도 200분 절대 상한을 적용
+- 기존 동작 영향: 운동 CSV 후보 강제, `exercise_key`·`catalog_version`, 강도 enum, 장소·장비·컨디션·불편 부위 정책은 유지
+- Frontend 작업: 기존 선택값을 유지하되 직접 입력에서도 200분을 초과하지 않도록 제한. 화면에는 Backend가 저장한 검증된 실제 합계를 표시
+- Backend 작업: 요청 목표시간을 200분 이하로 검증하고, 기존 `session_minutes > available_minutes` 검사 대신 하한과 `min(목표+5분, 200분)` 포함 상한을 각 세션에 적용. 예상 시간 불일치도 저장 전 거부하고 검증된 합계를 세션 시간과 추천 총시간에 저장
+- 경계 예시: 30분 선택 시 29분 거부·30~35분 허용·36분 거부. 198분 선택 시 198~200분 허용·201분 합계 거부. 200분 선택 시 200분만 허용하며 201분 목표 요청은 422 거부
+- 테스트 결과: 관련 pytest `55 passed`, 운동 화면 설정 스크립트 통과, syntax compile 통과. 45분 일반 경계, 195·198·200분 절대 상한 경계, 201분 요청 거부, 목표 없는 레거시 요청의 200분 상한, 다중 세션, 재생성 및 최종 503을 확인
+- 남은 작업: AI Server 배포, Backend 범위 검증·fixture 수정, 동일 요청으로 Frontend → Backend → AI Server E2E
+- 알려진 제한: Backend가 기존 상한 `available_minutes`를 유지하면 AI Server가 `min(available_minutes + 5, 200)` 범위에서 만든 정상 초과 결과가 502가 되므로 양쪽을 함께 배포해야 함

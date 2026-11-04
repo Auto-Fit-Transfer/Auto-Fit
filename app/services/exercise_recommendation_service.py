@@ -28,6 +28,8 @@ from app.services.exercise_context_service import (
 logger = logging.getLogger(__name__)
 
 EXERCISE_GENERATION_MAX_ATTEMPTS = 2
+EXERCISE_DURATION_TOLERANCE_MINUTES = 5
+EXERCISE_MAX_RECOMMENDED_MINUTES = 200
 
 
 SYSTEM_INSTRUCTIONS = """
@@ -56,6 +58,9 @@ SYSTEM_INSTRUCTIONS = """
 - 제공된 장비만 사용할 수 있는 것으로 간주하고 없는 장비를 가정하지 않는다.
 - 추천 결과의 intensity는 반드시 low, moderate, high 중 하나만 사용한다.
 - 사용자 컨디션 값 normal과 추천 결과 강도 moderate를 같은 값으로 간주하지 않는다.
+- available_minutes가 있으면 각 세션의 운동 시간 합계는 해당 시간 이상,
+  available_minutes + 5분과 200분 중 작은 값 이하여야 한다.
+- available_minutes 유무와 관계없이 어떤 세션도 총 200분을 초과하지 않는다.
 - 특정 전문 장비가 필요한 운동만으로 운동 계획을 구성하지 않는다.
 - 운동 장소 조건이 제공되면 해당 장소에서 현실적으로 수행 가능한 운동을 우선한다.
 - 검증된 RAG 근거가 없는 의학적 내용을 임의로 생성하지 않는다.
@@ -82,7 +87,7 @@ class _CatalogExerciseSelection(BaseModel):
     )
     duration_minutes: int = Field(
         ge=1,
-        le=300,
+        le=200,
     )
     intensity: ExerciseIntensity | None = None
     instructions: list[str] = Field(
@@ -97,7 +102,7 @@ class _CatalogExerciseSessionSelection(BaseModel):
     estimated_duration_minutes: int | None = Field(
         default=None,
         ge=1,
-        le=300,
+        le=200,
     )
     exercises: list[_CatalogExerciseSelection] = Field(
         min_length=1,
@@ -130,61 +135,50 @@ class _CatalogExerciseRecommendationSelection(BaseModel):
 class _ExerciseSelectionValidationError(RuntimeError):
     """OpenAI selection failed the catalog-backed response contract."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason: str,
+        details: dict[str, int] | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.reason = reason
+        self.details = details or {}
 
-def _fit_session_minutes(
-    minutes: list[int],
-    target_minutes: int,
-) -> list[int]:
-    """Scale a session to exactly the target, keeping exercise ratios.
 
-    Shorter reads as an unfinished workout, and longer is refused by the
-    backend, so the total always equals the selected time.
-    """
+def _maximum_session_duration_minutes(
+    target_duration_minutes: int | None,
+) -> int:
+    if target_duration_minutes is None:
+        return EXERCISE_MAX_RECOMMENDED_MINUTES
 
-    total = sum(minutes)
-    if total == target_minutes:
-        return minutes
-
-    fitted = [
-        max(1, value * target_minutes // total)
-        for value in minutes
-    ]
-    # Rounding leaves a few minutes over or under; the longest exercise absorbs them.
-    fitted[minutes.index(max(minutes))] += target_minutes - sum(fitted)
-    return fitted
+    return min(
+        target_duration_minutes + EXERCISE_DURATION_TOLERANCE_MINUTES,
+        EXERCISE_MAX_RECOMMENDED_MINUTES,
+    )
 
 
 def _hydrate_catalog_response(
     selection: _CatalogExerciseRecommendationSelection,
     candidates: tuple[ExerciseCatalogCandidate, ...],
-    available_minutes: int | None = None,
+    target_duration_minutes: int | None = None,
 ) -> ExerciseRecommendationResponse:
     allowed_candidates = candidates_by_key(candidates)
     sessions: list[ExerciseSession] = []
 
     for selected_session in selection.sessions:
         exercises: list[ExerciseItem] = []
-        session_minutes = [
-            selected_exercise.duration_minutes
-            for selected_exercise in selected_session.exercises
-        ]
-        if available_minutes is not None:
-            session_minutes = _fit_session_minutes(
-                session_minutes,
-                available_minutes,
-            )
 
-        for selected_exercise, duration_minutes in zip(
-            selected_session.exercises,
-            session_minutes,
-        ):
+        for selected_exercise in selected_session.exercises:
             candidate = allowed_candidates.get(
                 selected_exercise.exercise_key
             )
             if candidate is None:
                 raise _ExerciseSelectionValidationError(
                     "OpenAI selected an exercise outside the "
-                    "exercise catalog candidate set."
+                    "exercise catalog candidate set.",
+                    reason="catalog_candidate_invalid",
                 )
 
             exercises.append(
@@ -200,7 +194,9 @@ def _hydrate_catalog_response(
                             for asset in candidate.assets
                         }
                     ),
-                    duration_minutes=duration_minutes,
+                    duration_minutes=(
+                        selected_exercise.duration_minutes
+                    ),
                     intensity=selected_exercise.intensity,
                     instructions=(
                         selected_exercise.instructions
@@ -208,15 +204,44 @@ def _hydrate_catalog_response(
                 )
             )
 
+        session_duration_minutes = sum(
+            exercise.duration_minutes
+            for exercise in exercises
+        )
+
+        maximum_duration_minutes = _maximum_session_duration_minutes(
+            target_duration_minutes
+        )
+        is_below_target = (
+            target_duration_minutes is not None
+            and session_duration_minutes < target_duration_minutes
+        )
+        is_above_maximum = (
+            session_duration_minutes > maximum_duration_minutes
+        )
+
+        if is_below_target or is_above_maximum:
+            validation_details = {
+                "actual_minutes": session_duration_minutes,
+                "maximum_minutes": maximum_duration_minutes,
+            }
+            if target_duration_minutes is not None:
+                validation_details["target_minutes"] = (
+                    target_duration_minutes
+                )
+
+            raise _ExerciseSelectionValidationError(
+                "OpenAI generated a session outside the requested "
+                "duration range.",
+                reason="session_duration_out_of_range",
+                details=validation_details,
+            )
+
         sessions.append(
             ExerciseSession(
                 name=selected_session.name,
                 focus=selected_session.focus,
-                estimated_duration_minutes=(
-                    sum(session_minutes)
-                    if available_minutes is not None
-                    else selected_session.estimated_duration_minutes
-                ),
+                estimated_duration_minutes=session_duration_minutes,
                 exercises=exercises,
             )
         )
@@ -458,6 +483,20 @@ async def generate_exercise_recommendation(
                 else None
             ),
         },
+        "session_duration_policy": {
+            "target_minutes": (
+                request.available_minutes
+            ),
+            "maximum_minutes": (
+                _maximum_session_duration_minutes(
+                    request.available_minutes
+                )
+            ),
+            "absolute_maximum_minutes": (
+                EXERCISE_MAX_RECOMMENDED_MINUTES
+            ),
+            "applies_to_each_session": True,
+        },
         "rag_context": (
             safe_rag_context
         ),
@@ -529,10 +568,14 @@ exercise_mode, daily_condition, available_equipment, 모드별 설정은 사용�
 - 과도한 고강도 운동을 새롭게 시작하도록 권하지 마세요.
 
 개인화:
-- available_minutes가 있으면 session마다 모든 exercise의 duration_minutes 합계가
-  available_minutes와 정확히 같게 구성하세요. 예: 45분이면 session마다 합계 45분.
-- estimated_duration_minutes에는 그 합계를 작성하세요.
-- daily_condition이 tired 또는 poor여도 이 합계를 지키고, 운동량은 강도와 동작 난이도로 낮추세요.
+- available_minutes가 있으면 각 세션의 exercise.duration_minutes 합계를
+  available_minutes 이상,
+  min(available_minutes + 5분, 200분) 이하로 구성하세요.
+- available_minutes가 없어도 각 세션의 합계는 200분을 초과하지 마세요.
+- 여러 세션을 생성하더라도 전체 세션의 시간을 합산하여 목표를 맞추지 말고,
+  각 세션이 session_duration_policy의 범위를 각각 충족해야 합니다.
+- estimated_duration_minutes는 각 세션의 exercise.duration_minutes 합계와
+  정확히 일치하도록 작성하세요.
 - experience_level에 맞는 난이도로 구성하세요.
 - location이 제공되면 해당 장소에서 수행 가능한 운동을 우선하세요.
 - goal_type이 제공되면 운동 구성에 반영하세요.
@@ -582,6 +625,7 @@ exercise_mode, daily_condition, available_equipment, 모드별 설정은 사용�
             retry_instruction = (
                 "\n\n이전 응답이 출력 계약 검증에 실패했습니다. "
                 "강도 enum, 필수 시간, 비어 있지 않은 세션과 운동 목록, "
+                "각 세션의 session_duration_policy 범위, "
                 "catalog_candidates의 exercise_key를 지켜 다시 생성하세요."
             )
 
@@ -659,7 +703,9 @@ exercise_mode, daily_condition, available_equipment, 모드별 설정은 사용�
             return _hydrate_catalog_response(
                 validated_selection,
                 catalog_candidates,
-                request.available_minutes,
+                target_duration_minutes=(
+                    request.available_minutes
+                ),
             )
         except ValidationError as exc:
             last_validation_error = exc
@@ -673,10 +719,12 @@ exercise_mode, daily_condition, available_equipment, 모드별 설정은 사용�
         except _ExerciseSelectionValidationError as exc:
             last_validation_error = exc
             logger.warning(
-                "Exercise recommendation catalog selection validation "
-                "failed. attempt=%s/%s",
+                "Exercise recommendation selection validation failed. "
+                "attempt=%s/%s reason=%s details=%s",
                 attempt,
                 EXERCISE_GENERATION_MAX_ATTEMPTS,
+                exc.reason,
+                exc.details,
             )
 
     raise RuntimeError(

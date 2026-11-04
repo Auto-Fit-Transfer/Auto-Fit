@@ -4497,7 +4497,7 @@
           },
           "duration_minutes": {
             "type": "integer",
-            "maximum": 300.0,
+            "maximum": 200.0,
             "minimum": 1.0,
             "title": "Duration Minutes"
           },
@@ -4571,7 +4571,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 300.0,
+                "maximum": 200.0,
                 "minimum": 5.0
               },
               {
@@ -4803,7 +4803,7 @@
             "anyOf": [
               {
                 "type": "integer",
-                "maximum": 300.0,
+                "maximum": 200.0,
                 "minimum": 1.0
               },
               {
