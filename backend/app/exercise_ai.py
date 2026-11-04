@@ -127,7 +127,7 @@ class AIExercise(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     catalog_name_en: str = Field(min_length=1, max_length=300)
     exercise_modes: list[Literal["gym", "home_training"]] = Field(min_length=1, max_length=2)
-    duration_minutes: int = Field(ge=1, le=300)
+    duration_minutes: int = Field(ge=1, le=200)
     sets: int | None = Field(default=None, ge=1, le=20)
     repetitions: int | None = Field(default=None, ge=1, le=10000)
     intensity: str | None = None
@@ -137,6 +137,7 @@ class AIExercise(BaseModel):
 class AISession(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     focus: str | None = Field(default=None, max_length=200)
+    estimated_duration_minutes: int = Field(ge=1, le=200)
     exercises: list[AIExercise] = Field(min_length=1, max_length=4)
 
 
@@ -155,7 +156,7 @@ class AIEnvelope(BaseModel):
 
 
 class AIRequestContext(BaseModel):
-    available_minutes: Literal[30, 45, 60, 90, 120]
+    available_minutes: int = Field(ge=5, le=200)
     location: Literal["gym", "home", "outdoor", "other"]
     available_equipment: list[Literal["machine", "band", "dumbbell", "mat", "other"]] = Field(max_length=5)
     condition_level: Literal["좋음", "보통", "피곤해요", "안 좋아요"]
@@ -237,6 +238,14 @@ def _check_equipment(item: CatalogExercise, context: dict[str, Any]) -> None:
 def build_plan(response: dict[str, Any], preferences: dict[str, Any],
                context: dict[str, Any], recommendation_date: str) -> dict[str, Any]:
     try:
+        target_minutes = int(context["available_minutes"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ExerciseAIError("Exercise target time is out of range", reason_codes=("target_duration_invalid",)) from exc
+    if not 5 <= target_minutes <= 200:
+        raise ExerciseAIError("Exercise target time is out of range", reason_codes=("target_duration_invalid",))
+    maximum_minutes = min(target_minutes + 5, 200)
+
+    try:
         parsed = AIEnvelope.model_validate(response)
     except ValidationError as exc:
         raise ExerciseAIError("Exercise AI response has an invalid structure",
@@ -249,7 +258,6 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
     if not parsed.result.summary.strip():
         raise ExerciseAIError("Exercise AI response is missing text", reason_codes=("response_text_missing",))
     start_date = date.fromisoformat(recommendation_date)
-    target_minutes = int(context["available_minutes"])
     plan_sessions: list[dict[str, Any]] = []
     items: list[dict[str, Any]] = []
     for session_index, session in enumerate(parsed.result.sessions, start=1):
@@ -303,8 +311,10 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
             })
         if session_minutes < target_minutes:
             raise ExerciseAIError("Exercise AI session is shorter than the target", reason_codes=("session_duration_short",))
-        if session_minutes > target_minutes + 5:
+        if session_minutes > maximum_minutes:
             raise ExerciseAIError("Exercise AI exceeded the available time", reason_codes=("session_duration_exceeded",))
+        if session.estimated_duration_minutes != session_minutes:
+            raise ExerciseAIError("Exercise AI returned inconsistent session duration", reason_codes=("session_duration_mismatch",))
         plan_sessions.append({
             "session_index": session_index,
             "scheduled_date": (start_date + timedelta(days=(session_index - 1) * 7 // len(parsed.result.sessions))).isoformat(),

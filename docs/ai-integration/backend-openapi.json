@@ -2305,13 +2305,8 @@
         "properties": {
           "available_minutes": {
             "type": "integer",
-            "enum": [
-              30,
-              45,
-              60,
-              90,
-              120
-            ],
+            "maximum": 200.0,
+            "minimum": 5.0,
             "title": "Available Minutes"
           },
           "location": {

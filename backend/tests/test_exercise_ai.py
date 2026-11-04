@@ -38,7 +38,7 @@ def ai_response():
             "weekly_frequency": 3,
             "intensity": "낮음",
             "sessions": [
-                {"name": "오늘의 홈트", "exercises": [
+                {"name": "오늘의 홈트", "estimated_duration_minutes": 30, "exercises": [
                     {
                         "exercise_key": key,
                         "name": f"운동 {index}",
@@ -50,7 +50,7 @@ def ai_response():
                     }
                     for index, (key, record) in enumerate(selected)
                 ]},
-                {"name": "다음 운동", "exercises": [{
+                {"name": "다음 운동", "estimated_duration_minutes": 30, "exercises": [{
                     "exercise_key": selected[0][0],
                     "name": "다음 회차 운동",
                     "catalog_name_en": selected[0][1].name_en,
@@ -140,6 +140,7 @@ def test_build_plan_requires_each_session_between_target_and_five_minutes_over(m
         for exercise in exercises:
             exercise["duration_minutes"] = minutes // len(exercises)
         exercises[-1]["duration_minutes"] += minutes % len(exercises)
+        session["estimated_duration_minutes"] = minutes
     context = {**CONTEXT, "available_minutes": 45}
     if accepted:
         plan = build_plan(response, PREFERENCES, context, "2026-11-03")
@@ -160,6 +161,7 @@ def test_build_plan_accepts_exact_duration_for_each_other_target(target_minutes)
         exercises = session["exercises"]
         for exercise in exercises:
             exercise["duration_minutes"] = target_minutes // len(exercises)
+        session["estimated_duration_minutes"] = target_minutes
     plan = build_plan(response, PREFERENCES,
                       {**CONTEXT, "available_minutes": target_minutes}, "2026-11-03")
     assert all(session["duration_minutes"] == target_minutes
@@ -169,9 +171,86 @@ def test_build_plan_accepts_exact_duration_for_each_other_target(target_minutes)
 def test_build_plan_rejects_short_later_session():
     response = ai_response()
     response["result"]["sessions"][0]["exercises"][0]["duration_minutes"] = 30
+    response["result"]["sessions"][0]["estimated_duration_minutes"] = 45
     with pytest.raises(ExerciseAIError) as error:
         build_plan(response, PREFERENCES, {**CONTEXT, "available_minutes": 45}, "2026-11-03")
     assert error.value.reason_codes == ("session_duration_short",)
+
+
+@pytest.mark.parametrize("minutes", [5, 50, 198, 200])
+def test_build_request_accepts_duration_range(minutes):
+    assert build_request(PREFERENCES, {**CONTEXT, "available_minutes": minutes})["available_minutes"] == minutes
+
+
+@pytest.mark.parametrize("minutes", [4, 201])
+def test_build_request_rejects_out_of_range_duration(minutes):
+    with pytest.raises(ExerciseAIError, match="Stored exercise context"):
+        build_request(PREFERENCES, {**CONTEXT, "available_minutes": minutes})
+
+
+@pytest.mark.parametrize(("target", "actual", "accepted"), [
+    (5, 5, True), (5, 10, True), (5, 11, False),
+    (30, 29, False), (30, 30, True), (30, 35, True), (30, 36, False),
+    (195, 195, True), (195, 200, True),
+    (198, 198, True), (198, 200, True),
+    (200, 200, True),
+])
+def test_build_plan_enforces_duration_window(target, actual, accepted):
+    response = ai_response()
+    first, second = response["result"]["sessions"]
+    first["exercises"][0]["duration_minutes"] = actual // 2 or 1
+    first["exercises"][1]["duration_minutes"] = actual - (actual // 2 or 1)
+    first["estimated_duration_minutes"] = actual
+    second["exercises"][0]["duration_minutes"] = target
+    second["estimated_duration_minutes"] = target
+    context = {**CONTEXT, "available_minutes": target}
+    if accepted:
+        plan = build_plan(response, PREFERENCES, context, "2026-11-03")
+        assert [s["duration_minutes"] for s in plan["recommendation"]["plan_sessions"]] == [actual, target]
+        assert plan["recommendation"]["total_duration_minutes"] == actual
+    else:
+        with pytest.raises(ExerciseAIError):
+            build_plan(response, PREFERENCES, context, "2026-11-03")
+
+
+@pytest.mark.parametrize("target", [198, 200])
+def test_build_plan_caps_session_at_two_hundred_minutes(target):
+    response = ai_response()
+    first, second = response["result"]["sessions"]
+    first["exercises"][0]["duration_minutes"] = 100
+    first["exercises"][1]["duration_minutes"] = 101
+    first["estimated_duration_minutes"] = 200
+    second["exercises"][0]["duration_minutes"] = target
+    second["estimated_duration_minutes"] = target
+    with pytest.raises(ExerciseAIError) as error:
+        build_plan(response, PREFERENCES, {**CONTEXT, "available_minutes": target}, "2026-11-03")
+    assert error.value.reason_codes == ("session_duration_exceeded",)
+
+
+def test_build_plan_rejects_inconsistent_estimated_duration():
+    response = ai_response()
+    response["result"]["sessions"][0]["estimated_duration_minutes"] = 31
+    with pytest.raises(ExerciseAIError) as error:
+        build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
+    assert error.value.reason_codes == ("session_duration_mismatch",)
+
+
+@pytest.mark.parametrize("change", [
+    lambda session: session.pop("estimated_duration_minutes"),
+    lambda session: session["exercises"][0].update(duration_minutes=201),
+])
+def test_build_plan_rejects_invalid_duration_fields(change):
+    response = ai_response()
+    change(response["result"]["sessions"][0])
+    with pytest.raises(ExerciseAIError):
+        build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
+
+
+@pytest.mark.parametrize("minutes", [4, 201])
+def test_build_plan_rejects_invalid_target(minutes):
+    with pytest.raises(ExerciseAIError) as error:
+        build_plan(ai_response(), PREFERENCES, {**CONTEXT, "available_minutes": minutes}, "2026-11-03")
+    assert error.value.reason_codes == ("target_duration_invalid",)
 
 
 @pytest.mark.parametrize("partial", [{"sets": 3}, {"repetitions": 10}])

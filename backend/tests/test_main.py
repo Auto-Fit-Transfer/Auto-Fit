@@ -696,7 +696,8 @@ def test_exercise_context_rejects_unknown_equipment_and_blank_area() -> None:
 
 
 @pytest.mark.parametrize("field,value", [
-    ("available_minutes", 50),
+    ("available_minutes", 201),
+    ("available_minutes", 4),
     ("condition_level", "good"),
     ("discomfort_areas", ["허리", "무릎"]),
 ])
@@ -2754,5 +2755,68 @@ def test_meal_logs_validate_range_and_use_authenticated_user(monkeypatch) -> Non
         )
         assert response.status_code == 200
         assert response.json()["count"] == 1
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+@pytest.mark.parametrize("minutes, expected_status", [(5, 200), (50, 200), (200, 200), (201, 422)])
+def test_exercise_context_accepts_duration_range(monkeypatch, minutes, expected_status):
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_create(user_id, context, settings):
+        return {"user_id": user_id, **context.model_dump()}
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "create_exercise_context", fake_create)
+    try:
+        response = TestClient(main.app).post(
+            "/api/exercise/recommendation-contexts",
+            json={
+                "available_minutes": minutes,
+                "location": "home",
+                "available_equipment": [],
+                "condition_level": "좋음",
+                "discomfort_areas": [],
+            },
+        )
+        assert response.status_code == expected_status
+        if expected_status == 200:
+            assert response.json()["context"]["available_minutes"] == minutes
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+@pytest.mark.parametrize("ai_enabled", ["false", "true"])
+def test_generate_exercise_recommendation_rejects_stale_duration_before_storage(monkeypatch, ai_enabled):
+    monkeypatch.setenv("EXERCISE_AI_ENABLED", ai_enabled)
+
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_profile(*_args):
+        return {}
+
+    async def fake_preferences(*_args):
+        return {"goal_type": "maintenance", "experience_level": "beginner"}
+
+    async def fake_context(*_args):
+        return {"exercise_recommendation_context_id": "context-123", "available_minutes": 201}
+
+    async def forbidden_create(*_args):
+        raise AssertionError("stale exercise context reached storage")
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "fetch_profile", fake_profile)
+    monkeypatch.setattr(main, "fetch_exercise_preferences", fake_preferences)
+    monkeypatch.setattr(main, "fetch_latest_unlinked_exercise_context", fake_context)
+    monkeypatch.setattr(main, "create_exercise_recommendation", forbidden_create)
+    try:
+        response = TestClient(main.app).post("/api/exercise/recommendations/generate", json={})
+        assert response.status_code == 409
+        assert response.json()["detail"]["code"] == "EXERCISE_CONTEXT_INVALID"
+        assert "again" in response.json()["detail"]["message"]
     finally:
         main.app.dependency_overrides.clear()

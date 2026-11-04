@@ -299,7 +299,7 @@ class ExercisePreferencesRequest(BaseModel):
 class ExerciseRecommendationContextRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    available_minutes: Literal[30, 45, 60, 90, 120]
+    available_minutes: int = Field(ge=5, le=200)
     location: Literal["gym", "home", "outdoor", "other"]
     available_equipment: list[
         Literal["machine", "band", "dumbbell", "mat", "other"]
@@ -1236,6 +1236,15 @@ async def prepare_exercise_routine(
         return {"missing": ["recommendation_context"], "generated": False, "result": None}
     if not generate:
         return {"missing": [], "generated": False, "result": None}
+
+    if not 5 <= context["available_minutes"] <= 200:
+        raise HTTPException(
+            409,
+            detail={
+                "code": "EXERCISE_CONTEXT_INVALID",
+                "message": "Select an exercise duration between 5 and 200 minutes again",
+            },
+        )
 
     if exercise_ai_enabled_for_user(user_id):
         try:
