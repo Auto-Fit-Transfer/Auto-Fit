@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "eas-build-post-install": "node scripts/patch-expo-swift-compiler.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
