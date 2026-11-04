@@ -7,6 +7,7 @@ import { getSavedWorkoutRoutines, type SavedWorkoutRoutine } from '@/src/api/exe
 import { getApiErrorMessage } from '@/src/api/client';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 const purple = '#5246C6';
 type Filter = 'all' | 'recommendation' | 'custom';
@@ -37,7 +38,7 @@ export default function SavedRoutines() {
     <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 40 }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
         <Text style={styles.title}>내 운동</Text>
         <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="루틴 만들기" onPress={() => router.push('/exercise/routine-builder')}><Text style={styles.headerAction}>만들기</Text></Pressable>
       </View>
@@ -76,31 +77,31 @@ export default function SavedRoutines() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { paddingHorizontal: 20, gap: 17 },
-  header: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  back: { fontSize: 32, color: '#1E1D24', lineHeight: 36 },
-  title: { fontSize: 18, color: '#1E1D24', fontFamily: fontFamilies.pretendardBold },
-  headerAction: { color: '#1E1D24', fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
-  tabs: { flexDirection: 'row', backgroundColor: '#EDEFF2', borderRadius: 13, padding: 4 },
-  tab: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
+  header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  back: { fontSize: 32, color: '#17161D', lineHeight: 36 },
+  title: { fontSize: 16, color: '#17161D', fontFamily: fontFamilies.pretendardBold },
+  headerAction: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+  tabs: { flexDirection: 'row', backgroundColor: '#F2F4F6', borderRadius: 16, padding: 4 },
+  tab: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
   tabActive: { backgroundColor: '#FFF' },
-  tabText: { color: '#777681', fontSize: 13 },
-  tabTextActive: { color: '#1E1D24', fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
-  subtitle: { color: '#777681', fontSize: 13 },
+  tabText: { color: '#5E5D66', fontSize: 14 },
+  tabTextActive: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+  subtitle: { color: '#5E5D66', fontSize: 14 },
   filters: { flexDirection: 'row', gap: 8 },
-  chip: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 20, paddingHorizontal: 13, paddingVertical: 9 },
-  chipActive: { backgroundColor: '#ECE9FF', borderColor: purple },
-  chipText: { fontSize: 12, color: '#777681' },
-  chipTextActive: { color: purple },
-  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 15, padding: 16, gap: 10 },
+  chip: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 20, paddingHorizontal: 13, paddingVertical: 9 },
+  chipActive: { backgroundColor: purple, borderColor: purple },
+  chipText: { fontSize: 14, color: '#5E5D66' },
+  chipTextActive: { color: '#FFFFFF' },
+  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, padding: 16, gap: 10 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardTitle: { color: '#1E1D24', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  arrow: { color: purple, fontSize: 19 },
-  meta: { color: '#777681', fontSize: 12, marginTop: 4 },
-  body: { color: '#1E1D24', fontSize: 13, lineHeight: 19 },
-  itemList: { borderTopWidth: 1, borderTopColor: '#E4E5EB', paddingTop: 8, gap: 12 },
+  cardTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  arrow: { color: '#17161D', fontSize: 19 },
+  meta: { color: '#5E5D66', fontSize: 14, marginTop: 4 },
+  body: { color: '#17161D', fontSize: 14, lineHeight: 19 },
+  itemList: { borderTopWidth: 1, borderTopColor: '#DFE2E7', paddingTop: 8, gap: 12 },
   item: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  itemNumber: { color: purple, fontSize: 13, fontFamily: fontFamilies.pretendardBold },
-  button: { backgroundColor: purple, height: 50, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
-  buttonText: { color: '#FFF', fontSize: 15, fontFamily: fontFamilies.pretendardBold },
-  error: { color: '#A13A2F', fontSize: 13 },
+  itemNumber: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
+  button: { backgroundColor: purple, height: 56, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
+  buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  error: { color: '#A13A2F', fontSize: 14 },
 });

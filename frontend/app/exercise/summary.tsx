@@ -11,12 +11,20 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import BarbellIcon from '@/assets/icons/ui/barbell.svg';
+import CheckIcon from '@/assets/icons/ui/check.svg';
+import ClockIcon from '@/assets/icons/ui/clock.svg';
+import FireIcon from '@/assets/icons/ui/fire.svg';
+import HeartbeatIcon from '@/assets/icons/ui/heartbeat.svg';
+import MinusIcon from '@/assets/icons/ui/minus.svg';
+import PlusIcon from '@/assets/icons/ui/plus.svg';
 import { getExerciseApiErrorMessage } from '@/src/api/exercise';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
-import { exerciseIntensityLabels, exerciseLocationLabels } from '@/src/features/exercise/exerciseData';
+import { exerciseEquipmentLabels, exerciseIntensityLabels, exerciseLocationLabels } from '@/src/features/exercise/exerciseData';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 
 export default function ExerciseSummaryScreen() {
   const router = useRouter();
@@ -24,6 +32,7 @@ export default function ExerciseSummaryScreen() {
   const { condition, homeLoadState, refreshHome, routine, startRoutine } = useExerciseRoutine();
   const { beginSession } = useExerciseSession();
   const [isStarting, setIsStarting] = useState(false);
+  const [reasonsOpen, setReasonsOpen] = useState(false);
   const goBack = useCallback(() => router.dismissTo('/exercise'), [router]);
 
   useEffect(() => {
@@ -57,41 +66,37 @@ export default function ExerciseSummaryScreen() {
   };
 
   const duration = routine?.totalDurationMinutes ?? condition.availableMinutes;
-  const summary = [
-    duration === null ? null : String(duration) + '분',
-    routine?.estimatedCalories === null || routine?.estimatedCalories === undefined
-      ? null
-      : '약 ' + String(routine.estimatedCalories) + 'kcal',
-    routine?.intensity ? '강도 ' + (exerciseIntensityLabels[routine.intensity] ?? routine.intensity) : null,
-  ].filter((value): value is string => Boolean(value));
+  const summary: [typeof ClockIcon, string][] = [];
+  if (duration !== null) summary.push([ClockIcon, `${duration}분`]);
+  if (routine?.estimatedCalories != null) summary.push([FireIcon, `약 ${routine.estimatedCalories}kcal`]);
+  if (routine?.intensity) summary.push([HeartbeatIcon, `강도 ${exerciseIntensityLabels[routine.intensity] ?? routine.intensity}`]);
   const conditions = [
-    condition.availableMinutes === null ? null : String(condition.availableMinutes) + '분',
+    condition.availableMinutes === null ? null : `${condition.availableMinutes}분`,
     condition.location ? exerciseLocationLabels[condition.location] : null,
-    condition.equipment.length ? condition.equipment.length + '종 기구' : '기구 없음',
-    condition.condition,
+    condition.equipment.length ? condition.equipment.map((item) => exerciseEquipmentLabels[item]).join(', ') : '기구 없음',
+    condition.condition ? `컨디션 ${condition.condition}` : null,
   ].filter((value): value is string => Boolean(value));
+  const reasons = routine?.reasons.length
+    ? routine.reasons
+    : ['오늘 입력한 운동 시간과 장소, 컨디션을 바탕으로 추천했어요.'];
 
   return (
     <View style={styles.root}>
       <StatusBar style="dark" />
-      <View style={[styles.header, { paddingTop: insets.top + 5 }]}>
-        <Pressable hitSlop={16}
-          accessibilityLabel="뒤로 가기"
-          accessibilityRole="button"
-          onPress={goBack}
-          style={styles.back}
-        >
-          <Text style={styles.backText}>‹</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>오늘의 맞춤 운동</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenHeader onBack={goBack} title="오늘의 맞춤 운동" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {routine ? (
           <>
             <Text style={styles.heading}>{routine.title}</Text>
             {routine.subtitle ? <Text style={styles.subtitle}>{routine.subtitle}</Text> : null}
-            <Text style={styles.meta}>{summary.join('  ·  ')}</Text>
+            <View style={styles.metaRow}>
+              {summary.map(([Icon, label]) => (
+                <View key={label} style={styles.metaItem}>
+                  <Icon color="#3B3A42" height={18} width={18} />
+                  <Text style={styles.meta}>{label}</Text>
+                </View>
+              ))}
+            </View>
             <View style={styles.conditionBar}>
               <Text numberOfLines={2} style={styles.conditionText}>
                 {conditions.join(' · ')}
@@ -101,43 +106,41 @@ export default function ExerciseSummaryScreen() {
                 onPress={() =>
                   router.push({ pathname: '/exercise/condition', params: { source: 'summary' } })
                 }
-                style={styles.change}
+                style={styles.smallButton}
               >
-                <Text style={styles.changeText}>바꾸기</Text>
+                <Text style={styles.smallButtonText}>바꾸기</Text>
               </Pressable>
             </View>
             <View style={styles.reasonCard}>
-              <Text style={styles.reasonTitle}>이렇게 골랐어요</Text>
-              {routine.reasons.length ? (
-                routine.reasons.map((reason, index) => (
-                  <Text key={index} style={styles.reason}>
-                    • {reason}
-                  </Text>
-                ))
-              ) : (
-                <Text style={styles.reason}>
-                  오늘 입력한 운동 시간과 장소, 컨디션을 바탕으로 추천했어요.
-                </Text>
-              )}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: reasonsOpen }}
+                onPress={() => setReasonsOpen((value) => !value)}
+                style={styles.reasonHeading}
+              >
+                <View style={styles.grow}>
+                  <Text style={styles.rowTitle}>이렇게 골랐어요</Text>
+                  {reasonsOpen ? null : <Text numberOfLines={1} style={styles.reasonLine}>{reasons[0]}</Text>}
+                </View>
+                {reasonsOpen ? <MinusIcon color="#17161D" height={22} width={22} /> : <PlusIcon color="#17161D" height={22} width={22} />}
+              </Pressable>
+              {reasonsOpen ? reasons.map((reason, index) => (
+                <View key={index} style={styles.reasonRow}>
+                  <CheckIcon color="#17161D" height={18} width={18} />
+                  <Text style={styles.reason}>{reason}</Text>
+                </View>
+              )) : null}
             </View>
-            <View style={styles.listHeader}>
-              <Text style={styles.sectionTitle}>운동 {routine.exercises.length}개</Text>
-            </View>
+            <Text style={styles.sectionTitle}>운동 {routine.exercises.length}개</Text>
             <View style={styles.list}>
               {routine.exercises.map((exercise, index) => (
-                <View
-                  key={exercise.id}
-                  style={[
-                    styles.exerciseRow,
-                    index === routine.exercises.length - 1 && styles.lastRow,
-                  ]}
-                >
+                <View key={exercise.id} style={[styles.exerciseRow, index > 0 && styles.rowDivider]}>
                   <View style={styles.exerciseIcon}>
-                    <Text style={styles.exerciseIconText}>◉</Text>
+                    <BarbellIcon color="#17161D" height={22} width={22} />
                   </View>
-                  <View style={styles.exerciseCopy}>
-                    <Text style={styles.exerciseName}>{exercise.name}</Text>
-                    <Text style={styles.exercisePrescription}>
+                  <View style={styles.grow}>
+                    <Text style={styles.rowTitle}>{exercise.name}</Text>
+                    <Text style={styles.prescription}>
                       {exercise.prescription || '자세한 운동 방법은 시작 후 확인해 주세요.'}
                     </Text>
                   </View>
@@ -146,9 +149,9 @@ export default function ExerciseSummaryScreen() {
                       accessibilityLabel="스쿼트 자세 10초 촬영"
                       accessibilityRole="button"
                       onPress={() => router.push('/exercise/posture-capture' as Href)}
-                      style={styles.postureButton}
+                      style={styles.smallButton}
                     >
-                      <Text style={styles.postureButtonText}>자세 촬영</Text>
+                      <Text style={styles.smallButtonText}>자세 촬영</Text>
                     </Pressable>
                   ) : null}
                 </View>
@@ -168,9 +171,9 @@ export default function ExerciseSummaryScreen() {
             <Pressable
               accessibilityRole="button"
               onPress={() => router.push('/exercise/condition')}
-              style={styles.emptyAction}
+              style={styles.smallButton}
             >
-              <Text style={styles.emptyActionText}>운동 설정하기</Text>
+              <Text style={styles.smallButtonText}>운동 설정하기</Text>
             </Pressable>
           </View>
         )}
@@ -192,111 +195,32 @@ export default function ExerciseSummaryScreen() {
 
 const styles = StyleSheet.create({
   root: { alignSelf: 'center', backgroundColor: '#FFFFFF', flex: 1, maxWidth: 412, width: '100%' },
-  header: { alignItems: 'center', flexDirection: 'row', paddingHorizontal: 19 },
-  back: { height: 44, justifyContent: 'center', width: 38 },
-  backText: { color: '#222227', fontSize: 31, lineHeight: 36 },
-  headerTitle: {
-    color: '#222227',
-    flex: 1,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    textAlign: 'center',
-  },
-  headerSpacer: { width: 38 },
-  content: { paddingBottom: 25, paddingHorizontal: 20, paddingTop: 27 },
-  heading: {
-    color: '#222227',
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 23,
-    lineHeight: 30,
-  },
-  subtitle: { color: '#777780', fontSize: 12, marginTop: 5 },
-  meta: { color: '#777780', fontSize: 12, marginTop: 10 },
-  conditionBar: {
-    alignItems: 'center',
-    backgroundColor: '#FAFBFC',
-    borderColor: '#E7E7EC',
-    borderRadius: 8,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 7,
-    marginTop: 22,
-    minHeight: 48,
-    paddingHorizontal: 11,
-  },
-  conditionText: { color: '#66666F', flex: 1, fontSize: 11, lineHeight: 16 },
-  change: {
-    backgroundColor: '#FAFBFC',
-    borderColor: '#E7E7EC',
-    borderRadius: 5,
-    borderWidth: 1,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-  },
-  changeText: { color: '#55555D', fontSize: 11 },
-  reasonCard: {
-    backgroundColor: '#FAFBFC',
-    borderColor: '#E7E7EC',
-    borderRadius: 9,
-    borderWidth: 1,
-    gap: 9,
-    marginTop: 15,
-    padding: 15,
-  },
-  reasonTitle: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  reason: { color: '#66666F', fontSize: 12, lineHeight: 18 },
-  listHeader: { marginBottom: 10, marginTop: 23 },
-  sectionTitle: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  list: { backgroundColor: '#FAFBFC', borderColor: '#E7E7EC', borderRadius: 9, borderWidth: 1, overflow: 'hidden' },
-  exerciseRow: {
-    alignItems: 'center',
-    borderBottomColor: '#EEEEF1',
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    minHeight: 68,
-    paddingHorizontal: 10,
-  },
-  lastRow: { borderBottomWidth: 0 },
-  exerciseIcon: {
-    alignItems: 'center',
-    backgroundColor: '#EDEFF2',
-    borderRadius: 7,
-    height: 34,
-    justifyContent: 'center',
-    width: 34,
-  },
-  exerciseIconText: { color: '#777780', fontSize: 17 },
-  exerciseCopy: { flex: 1, gap: 4, marginLeft: 9 },
-  exerciseName: { color: '#333339', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 13 },
-  exercisePrescription: { color: '#9999A1', fontSize: 11 },
-  postureButton: {
-    backgroundColor: '#FAFBFC',
-    borderColor: '#E7E7EC',
-    borderRadius: 7,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 7,
-  },
-  postureButtonText: { color: '#5246C6', fontSize: 11, fontFamily: fontFamilies.pretendardSemiBold },
-  empty: { gap: 10, paddingTop: 40 },
-  emptyAction: {
-    backgroundColor: '#FAFBFC',
-    alignSelf: 'flex-start',
-    borderColor: '#E7E7EC',
-    borderRadius: 7,
-    borderWidth: 1,
-    marginTop: 9,
-    padding: 9,
-  },
-  emptyActionText: { color: '#5246C6', fontSize: 12 },
-  footer: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 10 },
-  startButton: {
-    alignItems: 'center',
-    backgroundColor: '#5246C6',
-    borderRadius: 8,
-    height: 49,
-    justifyContent: 'center',
-  },
-  disabled: { backgroundColor: '#DADAE1' },
-  startText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+  content: { gap: 12, paddingBottom: 20, paddingHorizontal: 20, paddingTop: 8 },
+  grow: { flex: 1, minWidth: 0 },
+  heading: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
+  subtitle: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+  metaItem: { alignItems: 'center', flexDirection: 'row', gap: 4 },
+  meta: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
+  conditionBar: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 8, marginTop: 4, minHeight: 56, paddingHorizontal: 14 },
+  conditionText: { color: '#3B3A42', flex: 1, fontSize: 14, lineHeight: 21 },
+  smallButton: { alignItems: 'center', alignSelf: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+  smallButtonText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  reasonCard: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, gap: 10, padding: 16 },
+  reasonHeading: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+  rowTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+  reasonLine: { color: '#5E5D66', fontSize: 12, lineHeight: 18 },
+  reasonRow: { flexDirection: 'row', gap: 8 },
+  reason: { color: '#3B3A42', flex: 1, fontSize: 14, lineHeight: 21 },
+  sectionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, marginTop: 8 },
+  list: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  exerciseRow: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 80, paddingHorizontal: 16, paddingVertical: 10 },
+  rowDivider: { borderTopColor: '#DFE2E7', borderTopWidth: 1 },
+  exerciseIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, height: 48, justifyContent: 'center', width: 48 },
+  prescription: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  empty: { alignItems: 'flex-start', gap: 10, paddingTop: 40 },
+  footer: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 8 },
+  startButton: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center' },
+  disabled: { opacity: 0.5 },
+  startText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
 });

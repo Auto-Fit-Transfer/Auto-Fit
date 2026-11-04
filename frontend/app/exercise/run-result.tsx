@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getRunningApiErrorMessage, getRunningSession, type RunningSession, type RunningTrackPoint } from '@/src/api/running';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 const purple = '#5246C6';
 const duration = (seconds: number) => {
@@ -41,7 +42,7 @@ export default function RunResult() {
     <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="운동 화면으로" onPress={() => router.replace('/exercise')}><Text style={styles.back}>‹</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="운동 화면으로" onPress={() => router.replace('/exercise')}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
         <Text style={styles.title}>러닝 완료</Text>
         <View style={{ width: 24 }} />
       </View>
@@ -65,19 +66,19 @@ export default function RunResult() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { paddingHorizontal: 20, gap: 18 },
-  header: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  back: { fontSize: 32, color: '#1E1D24', lineHeight: 36 },
-  title: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-  hero: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 16, alignItems: 'center', padding: 28, gap: 8 },
-  eyebrow: { color: '#777681', fontSize: 13 },
-  distance: { color: purple, fontSize: 38, fontFamily: fontFamilies.pretendardBold },
-  caption: { color: '#777681', fontSize: 12, lineHeight: 19 },
-  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 16, padding: 18, gap: 15 },
+  header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  back: { fontSize: 32, color: '#17161D', lineHeight: 36 },
+  title: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  hero: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, alignItems: 'center', padding: 28, gap: 8 },
+  eyebrow: { color: '#5E5D66', fontSize: 14 },
+  distance: { color: '#17161D', fontSize: 38, fontFamily: fontFamilies.pretendardBold },
+  caption: { color: '#5E5D66', fontSize: 14, lineHeight: 19 },
+  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, padding: 18, gap: 15 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  body: { color: '#777681', fontSize: 13 },
-  value: { color: '#1E1D24', fontSize: 15, fontFamily: fontFamilies.pretendardBold },
-  divider: { height: 1, backgroundColor: '#E4E5EB' },
-  error: { color: '#A13A2F', fontSize: 13 },
-  button: { backgroundColor: purple, borderRadius: 10, height: 51, justifyContent: 'center', alignItems: 'center' },
-  buttonText: { color: '#FFF', fontSize: 15, fontFamily: fontFamilies.pretendardBold },
+  body: { color: '#5E5D66', fontSize: 14 },
+  value: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  divider: { height: 1, backgroundColor: '#DFE2E7' },
+  error: { color: '#A13A2F', fontSize: 14 },
+  button: { backgroundColor: purple, borderRadius: 12, height: 56, justifyContent: 'center', alignItems: 'center' },
+  buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
 });

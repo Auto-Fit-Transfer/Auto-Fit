@@ -8,6 +8,7 @@ import { getActiveRunningSession, getRunningApiErrorMessage, getRunningRecommend
 import { courseDifficultyLabel, coursesWithRenderablePaths, hasRenderablePath } from '@/src/features/running/courseRoute';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 const purple = '#5246C6';
 const distanceOptions: RunningDistanceOption[] = ['3km', '5km', '10km'];
@@ -93,7 +94,7 @@ export default function RunningRecommendations() {
     <StatusBar style="dark" />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 38 }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
         <Text style={styles.title}>러닝 추천</Text>
         <View style={{ width: 24 }} />
       </View>
@@ -144,25 +145,25 @@ export default function RunningRecommendations() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { paddingHorizontal: 20, gap: 17 },
-  header: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  back: { fontSize: 32, color: '#1E1D24', lineHeight: 36 },
-  title: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-  sectionTitle: { color: '#1E1D24', fontSize: 17, fontFamily: fontFamilies.pretendardBold },
-  input: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 10, paddingHorizontal: 13, height: 49, fontSize: 14, color: '#1E1D24' },
+  header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  back: { fontSize: 32, color: '#17161D', lineHeight: 36 },
+  title: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  sectionTitle: { color: '#17161D', fontSize: 17, fontFamily: fontFamilies.pretendardBold },
+  input: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 12, paddingHorizontal: 13, height: 56, fontSize: 14, color: '#17161D' },
   options: { flexDirection: 'row', gap: 9 },
-  option: { flex: 1, borderWidth: 1, borderColor: '#E4E5EB', backgroundColor: '#FAFBFC', borderRadius: 10, paddingVertical: 13, alignItems: 'center' },
-  selected: { borderColor: purple, backgroundColor: '#ECE9FF' },
-  optionText: { color: '#777681', fontSize: 13 },
-  selectedText: { color: purple, fontFamily: fontFamilies.pretendardBold },
-  buttonOutline: { backgroundColor: '#FAFBFC', borderColor: purple, borderRadius: 10, borderWidth: 1, height: 50, justifyContent: 'center', alignItems: 'center' },
-  buttonOutlineText: { color: purple, fontSize: 15, fontFamily: fontFamilies.pretendardBold },
-  button: { backgroundColor: purple, borderRadius: 10, height: 50, justifyContent: 'center', alignItems: 'center' },
-  buttonText: { color: '#FFF', fontSize: 15, fontFamily: fontFamilies.pretendardBold },
-  notice: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 14, padding: 16 },
-  body: { color: '#1E1D24', fontSize: 13, lineHeight: 20 },
-  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 15, padding: 16, gap: 8 },
-  courseTitle: { color: '#1E1D24', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  courseLink: { color: purple, fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold, marginTop: 4 }, savedHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 }, savedBadge: { backgroundColor: '#ECE9FF', color: purple, borderRadius: 6, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, fontSize: 10 },
-  meta: { color: '#777681', fontSize: 12 },
-  caption: { color: '#777681', fontSize: 12, lineHeight: 18 },
+  option: { flex: 1, borderWidth: 1, borderColor: '#DFE2E7', backgroundColor: '#FAFBFC', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+  selected: { borderColor: purple, backgroundColor: purple },
+  optionText: { color: '#5E5D66', fontSize: 14 },
+  selectedText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold },
+  buttonOutline: { backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, height: 56, justifyContent: 'center', alignItems: 'center' },
+  buttonOutlineText: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  button: { backgroundColor: purple, borderRadius: 12, height: 56, justifyContent: 'center', alignItems: 'center' },
+  buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  notice: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, padding: 16 },
+  body: { color: '#17161D', fontSize: 14, lineHeight: 20 },
+  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, padding: 16, gap: 8 },
+  courseTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  courseLink: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold, marginTop: 4 }, savedHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 }, savedBadge: { backgroundColor: '#ECE9FF', color: '#17161D', borderRadius: 6, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, fontSize: 12 },
+  meta: { color: '#5E5D66', fontSize: 14 },
+  caption: { color: '#5E5D66', fontSize: 14, lineHeight: 18 },
 });

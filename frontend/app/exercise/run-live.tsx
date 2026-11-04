@@ -10,6 +10,7 @@ import { routePolyline } from '@/src/features/running/courseRoute';
 import type { RunningPlannedCourse, RunningTrackPoint } from '@/src/api/running';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 const purple = '#5246C6';
 const formatTime = (seconds: number) => {
@@ -39,11 +40,11 @@ const RouteCard = memo(function RouteCard({ points, plannedCourse, width }: { po
     {!plannedLine && !actualLine ? <View style={styles.routeEmpty}><Text style={styles.routeEmptyText}>위치 신호를 받으면 실제 이동 경로가 여기에 표시돼요.</Text></View> :
       <Svg width={width} height={height} accessibilityLabel={plannedLine ? '예정 경로와 실제 GPS 이동 경로' : '실제 GPS 이동 경로'}>
         {plannedLine ? <Polyline points={plannedLine} fill="none" stroke="#A9ACB3" strokeDasharray="6 5" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" /> : null}
-        {actualLine ? <><Polyline points={actualLine} fill="none" stroke="#74E3AE" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" />
+        {actualLine ? <><Polyline points={actualLine} fill="none" stroke="#17161D" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" />
           <Circle cx={Number(actualEnds[0].split(',')[0])} cy={Number(actualEnds[0].split(',')[1])} r={6} fill="#FFF" />
           <Circle cx={Number(actualEnds.at(-1)?.split(',')[0])} cy={Number(actualEnds.at(-1)?.split(',')[1])} r={7} fill="#5246C6" stroke="#FFF" strokeWidth={2} /></> : null}
       </Svg>}
-    <Text style={styles.routeCaption}>{plannedLine ? '점선: 예정 경로 · 초록색: 실제 이동' : `${points.length}개 위치 기록`} · 앱 사용 중에만 수집</Text>
+    <Text style={styles.routeCaption}>{plannedLine ? '점선: 예정 경로 · 실선: 실제 이동' : `${points.length}개 위치 기록`} · 앱 사용 중에만 수집</Text>
   </View>;
 });
 
@@ -68,7 +69,7 @@ export default function RunLive() {
     <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32 }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => void leave()}><Text style={styles.back}>‹</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => void leave()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
         <Text style={styles.headerTitle}>러닝하기</Text>
         <Text style={styles.liveBadge}>{session?.status === 'in_progress' ? '기록 중' : '일시정지'}</Text>
       </View>
@@ -97,25 +98,25 @@ export default function RunLive() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { paddingHorizontal: 20, gap: 18 },
-  header: { height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  back: { fontSize: 32, color: '#1E1D24', lineHeight: 36 },
-  headerTitle: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-  liveBadge: { backgroundColor: '#ECE9FF', color: purple, fontSize: 11, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 7 },
-  hero: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 16, padding: 22, alignItems: 'center', gap: 12 },
-  heroLabel: { color: '#777681', fontSize: 13 },
-  heroTime: { color: '#1E1D24', fontSize: 50, fontFamily: fontFamilies.pretendardBold, fontVariant: ['tabular-nums'] },
-  metrics: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', borderTopWidth: 1, borderTopColor: '#E4E5EB', paddingTop: 18 },
-  metric: { color: '#1E1D24', fontSize: 24, fontFamily: fontFamilies.pretendardBold, textAlign: 'center' },
-  metricLabel: { color: '#777681', fontSize: 12, textAlign: 'center', marginTop: 4 },
-  routeCard: { backgroundColor: '#1D2025', borderRadius: 16, padding: 16, overflow: 'hidden' },
-  routeTitle: { color: '#FFF', fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
+  header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  back: { fontSize: 32, color: '#17161D', lineHeight: 36 },
+  headerTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  liveBadge: { backgroundColor: '#ECE9FF', color: '#17161D', fontSize: 12, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 7 },
+  hero: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, padding: 22, alignItems: 'center', gap: 12 },
+  heroLabel: { color: '#5E5D66', fontSize: 14 },
+  heroTime: { color: '#17161D', fontSize: 64, fontFamily: fontFamilies.pretendardBold, fontVariant: ['tabular-nums'] },
+  metrics: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', borderTopWidth: 1, borderTopColor: '#DFE2E7', paddingTop: 18 },
+  metric: { color: '#17161D', fontSize: 24, fontFamily: fontFamilies.pretendardBold, textAlign: 'center' },
+  metricLabel: { color: '#5E5D66', fontSize: 14, textAlign: 'center', marginTop: 4 },
+  routeCard: { borderColor: '#DFE2E7', borderWidth: 1, backgroundColor: '#FAFBFC', borderRadius: 16, padding: 16, overflow: 'hidden' },
+  routeTitle: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
   routeEmpty: { height: 220, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
-  routeEmptyText: { color: '#B9BCC2', fontSize: 13, textAlign: 'center', lineHeight: 20 },
-  routeCaption: { color: '#B9BCC2', fontSize: 11 },
-  error: { color: '#A13A2F', fontSize: 13, lineHeight: 20 },
-  hint: { color: '#777681', fontSize: 12, lineHeight: 18 },
-  primary: { height: 51, backgroundColor: purple, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { color: '#FFF', fontSize: 15, fontFamily: fontFamilies.pretendardBold },
-  secondary: { height: 48, backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#E4E5EB', borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  secondaryText: { color: '#1E1D24', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+  routeEmptyText: { color: '#5E5D66', fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  routeCaption: { color: '#5E5D66', fontSize: 12 },
+  error: { color: '#A13A2F', fontSize: 14, lineHeight: 20 },
+  hint: { color: '#5E5D66', fontSize: 14, lineHeight: 18 },
+  primary: { height: 56, backgroundColor: purple, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  secondary: { height: 56, backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
 });

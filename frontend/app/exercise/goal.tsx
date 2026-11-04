@@ -7,6 +7,7 @@ import { getActiveExerciseGoal, saveExerciseGoal, type ExerciseGoalInput } from 
 import { getApiErrorMessage } from '@/src/api/client';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 const purple = '#5246C6';
 const goals: { key: ExerciseGoalInput['goal_type']; label: string }[] = [
@@ -83,7 +84,7 @@ export default function ExerciseGoal() {
     <StatusBar style="dark" />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 40 }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
         <Text style={styles.title}>운동 목표</Text>
         <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/exercise/goal-progress')}><Text style={styles.link}>진행 보기</Text></Pressable>
       </View>
@@ -125,28 +126,28 @@ export default function ExerciseGoal() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { paddingHorizontal: 20, gap: 17 },
-  header: { height: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  back: { color: '#1E1D24', fontSize: 32, lineHeight: 36 },
-  title: { color: '#1E1D24', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-  link: { color: purple, fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold },
-  sectionTitle: { color: '#1E1D24', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  card: { backgroundColor: '#FAFBFC', borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 15, padding: 16, gap: 10 },
-  smallLabel: { color: '#777681', fontSize: 12 },
-  cardTitle: { color: '#1E1D24', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  caption: { color: '#777681', fontSize: 12, lineHeight: 18 },
+  header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  back: { color: '#17161D', fontSize: 32, lineHeight: 36 },
+  title: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  link: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+  sectionTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  card: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 16, padding: 16, gap: 10 },
+  smallLabel: { color: '#5E5D66', fontSize: 14 },
+  cardTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  caption: { color: '#5E5D66', fontSize: 14, lineHeight: 18 },
   weekOptions: { flexDirection: 'row', gap: 8 },
-  weekChip: { backgroundColor: '#FAFBFC', flex: 1, borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 20, paddingVertical: 9, alignItems: 'center' },
+  weekChip: { backgroundColor: '#FAFBFC', flex: 1, borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 20, paddingVertical: 9, alignItems: 'center' },
   goalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  goalChip: { backgroundColor: '#FAFBFC', width: '48%', borderColor: '#E4E5EB', borderWidth: 1, borderRadius: 20, paddingVertical: 11, alignItems: 'center' },
-  selected: { backgroundColor: '#ECE9FF', borderColor: purple },
-  chipText: { color: '#1E1D24', fontSize: 12 },
-  selectedText: { color: purple, fontFamily: fontFamilies.pretendardSemiBold },
+  goalChip: { backgroundColor: '#FAFBFC', width: '48%', borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 20, paddingVertical: 11, alignItems: 'center' },
+  selected: { backgroundColor: purple, borderColor: purple },
+  chipText: { color: '#17161D', fontSize: 14 },
+  selectedText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold },
   minuteRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  minuteInput: { minWidth: 100, borderBottomWidth: 1, borderBottomColor: '#D5D5DC', color: '#1E1D24', fontSize: 20, fontFamily: fontFamilies.pretendardBold, paddingVertical: 5 },
+  minuteInput: { minWidth: 100, borderBottomWidth: 1, borderBottomColor: '#DFE2E7', color: '#17161D', fontSize: 20, fontFamily: fontFamilies.pretendardBold, paddingVertical: 5 },
   frequency: { flexDirection: 'row', justifyContent: 'space-between', gap: 5 },
-  frequencyChip: { backgroundColor: '#FAFBFC', flex: 1, aspectRatio: 1, borderRadius: 24, borderWidth: 1, borderColor: '#E4E5EB', alignItems: 'center', justifyContent: 'center' },
-  button: { height: 51, backgroundColor: purple, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 15 },
-  buttonText: { color: '#FFF', fontSize: 15, fontFamily: fontFamilies.pretendardBold },
-  error: { color: '#A13A2F', fontSize: 13 },
-  success: { color: '#24835E', fontSize: 13 },
+  frequencyChip: { backgroundColor: '#FAFBFC', flex: 1, aspectRatio: 1, borderRadius: 24, borderWidth: 1, borderColor: '#DFE2E7', alignItems: 'center', justifyContent: 'center' },
+  button: { height: 56, backgroundColor: purple, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 15 },
+  buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  error: { color: '#A13A2F', fontSize: 14 },
+  success: { color: '#24835E', fontSize: 14 },
 });

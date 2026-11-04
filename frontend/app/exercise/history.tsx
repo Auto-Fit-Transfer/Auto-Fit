@@ -9,12 +9,13 @@ import { getApiErrorMessage } from '@/src/api/client';
 import { sessionLocalDate, sessionMinutes } from '@/src/features/exercise/weeklyMetrics';
 import { fontFamilies } from '@/src/theme';
 import { Text } from '@/src/components/common';
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 type HistoryRow = Awaited<ReturnType<typeof getExerciseHistory>>['history'][number];
 const purple = '#5246C6';
-const ink = '#1E1D24';
-const muted = '#777681';
-const border = '#E4E5EB';
+const ink = '#17161D';
+const muted = '#5E5D66';
+const border = '#DFE2E7';
 const dayKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const number = (value: unknown) => {
@@ -94,7 +95,7 @@ export default function ExerciseHistory() {
       <StatusBar style="dark" />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
         <View style={styles.header}>
-          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><Text style={styles.back}>‹</Text></Pressable>
+          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
           <Text style={styles.title}>내 운동</Text>
           <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="루틴 만들기" onPress={() => router.push('/exercise/routine-builder')}><Text style={styles.link}>만들기</Text></Pressable>
         </View>
@@ -156,33 +157,33 @@ export default function ExerciseHistory() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FFFFFF' },
   content: { paddingHorizontal: 20, gap: 18 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 40 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 52 },
   back: { fontSize: 32, color: ink, lineHeight: 36 },
-  title: { fontSize: 18, color: ink, fontFamily: fontFamilies.pretendardBold },
-  tabs: { flexDirection: 'row', backgroundColor: '#EDEFF2', borderRadius: 13, padding: 4 },
-  tab: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
+  title: { fontSize: 16, color: ink, fontFamily: fontFamilies.pretendardBold },
+  tabs: { flexDirection: 'row', backgroundColor: '#F2F4F6', borderRadius: 16, padding: 4 },
+  tab: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
   tabActive: { backgroundColor: '#FFF' },
-  tabText: { color: muted, fontSize: 13 },
-  tabTextActive: { color: ink, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
+  tabText: { color: muted, fontSize: 14 },
+  tabTextActive: { color: ink, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
   sectionTitle: { fontSize: 17, color: ink, fontFamily: fontFamilies.pretendardBold },
   week: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 16, padding: 10, flexDirection: 'row', justifyContent: 'space-between' },
-  day: { flex: 1, alignItems: 'center', gap: 5, paddingVertical: 8, borderRadius: 10 },
-  daySelected: { backgroundColor: '#ECE9FF' },
-  dayText: { color: muted, fontSize: 12 },
-  dayTextSelected: { color: purple },
+  day: { flex: 1, alignItems: 'center', gap: 5, paddingVertical: 8, borderRadius: 12 },
+  daySelected: { backgroundColor: purple , borderColor: purple},
+  dayText: { color: muted, fontSize: 14 },
+  dayTextSelected: { color: '#FFFFFF' },
   dayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'transparent' },
   dayDotActive: { backgroundColor: '#76CE96' },
   summary: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 16, padding: 17, gap: 16 },
   summaryStats: { flexDirection: 'row', justifyContent: 'space-between' },
-  statNumber: { color: purple, fontSize: 22, fontFamily: fontFamilies.pretendardBold },
-  caption: { color: muted, fontSize: 12, lineHeight: 18 },
+  statNumber: { color: '#17161D', fontSize: 22, fontFamily: fontFamilies.pretendardBold },
+  caption: { color: muted, fontSize: 14, lineHeight: 18 },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  link: { color: purple, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
+  link: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
   card: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 16, padding: 16, gap: 9 },
   cardTitle: { fontSize: 16, color: ink, fontFamily: fontFamilies.pretendardBold },
-  badge: { color: purple, backgroundColor: '#ECE9FF', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6, fontSize: 11 },
-  body: { color: ink, fontSize: 13, lineHeight: 20 },
-  outlineButton: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 9, height: 42, alignItems: 'center', justifyContent: 'center', marginTop: 5 },
-  outlineText: { color: purple, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
-  error: { color: '#A13A2F', fontSize: 13 },
+  badge: { color: '#17161D', backgroundColor: '#ECE9FF', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6, fontSize: 12 },
+  body: { color: ink, fontSize: 14, lineHeight: 20 },
+  outlineButton: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 12, height: 42, alignItems: 'center', justifyContent: 'center', marginTop: 5 },
+  outlineText: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+  error: { color: '#A13A2F', fontSize: 14 },
 });

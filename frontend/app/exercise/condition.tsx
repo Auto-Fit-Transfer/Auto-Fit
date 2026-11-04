@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import HouseIcon from '@/assets/icons/ui/house.svg';
+import WarningIcon from '@/assets/icons/ui/warning-circle.svg';
 import { getExerciseApiErrorMessage } from '@/src/api/exercise';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import {
@@ -28,6 +30,8 @@ import { fontFamilies } from '@/src/theme';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { Text } from '@/src/components/common';
+import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 
 const timeOptions = [30, 45, 60, 90, 120];
 const locationOptions: ExerciseLocation[] = ['gym', 'home', 'outdoor', 'other'];
@@ -48,11 +52,13 @@ export default function ExerciseConditionScreen() {
   const { source, discomfortArea } = useLocalSearchParams<{ source?: string; discomfortArea?: string }>();
   const { condition: savedCondition, generateRoutine } = useExerciseRoutine();
   const isChanging = source === 'summary';
-  const [condition, setCondition] = useState<ExerciseCondition>(() =>
+  const [initial] = useState<ExerciseCondition>(() =>
     isChanging
       ? { ...savedCondition, equipment: [...savedCondition.equipment] }
       : { ...initialExerciseCondition, equipment: [], discomfortArea: discomfortArea?.slice(0, 50) ?? '' },
   );
+  const [condition, setCondition] = useState<ExerciseCondition>(initial);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const goBack = useCallback(
     () => (isChanging ? router.back() : router.replace('/exercise')),
@@ -68,6 +74,10 @@ export default function ExerciseConditionScreen() {
     return () => subscription.remove();
   }, [goBack]);
 
+  const goHome = () => {
+    setLeaveDialogOpen(false);
+    router.replace('/home');
+  };
   const toggleEquipment = (id: ExerciseEquipment) =>
     setCondition((current) => ({
       ...current,
@@ -113,18 +123,20 @@ export default function ExerciseConditionScreen() {
       style={styles.root}
     >
       <StatusBar style="dark" />
-      <View style={[styles.header, { paddingTop: insets.top + 5 }]}>
-        <Pressable hitSlop={16}
-          accessibilityLabel="뒤로 가기"
-          accessibilityRole="button"
-          onPress={goBack}
-          style={styles.back}
-        >
-          <Text style={styles.backText}>‹</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>오늘의 운동 설정</Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenHeader
+        onBack={goBack}
+        right={(
+          <Pressable
+            accessibilityLabel="홈으로 가기"
+            accessibilityRole="button"
+            hitSlop={12}
+            onPress={() => (JSON.stringify(condition) === JSON.stringify(initial) ? goHome() : setLeaveDialogOpen(true))}
+          >
+            <HouseIcon color="#17161D" height={24} width={24} />
+          </Pressable>
+        )}
+        title="오늘의 운동 설정"
+      />
       {simple ? <View style={styles.readRow}><SimpleReadButton text="오늘의 운동 설정입니다. 운동할 시간, 장소, 쓸 수 있는 기구, 오늘 컨디션을 차례로 고르세요. 불편한 곳은 선택 사항입니다." /></View> : null}
       <ScrollView
         contentContainerStyle={[styles.content, simple && simpleStyles.content]}
@@ -141,7 +153,7 @@ export default function ExerciseConditionScreen() {
             />
           ))}
         </ChoiceSection>
-        <ChoiceSection title="어디서 하나요?" hint="운동 장소">
+        <ChoiceSection title="어디서 하나요?">
           {locationOptions.map((location) => (
             <Chip
               key={location}
@@ -173,9 +185,7 @@ export default function ExerciseConditionScreen() {
           ))}
         </ChoiceSection>
         <View style={styles.discomfort}>
-          <Text style={styles.sectionTitle}>
-            불편한 곳 <Text style={styles.sectionHint}>(선택)</Text>
-          </Text>
+          <Text style={styles.discomfortTitle}>불편한 곳 (선택)</Text>
           <TextInput
             accessibilityLabel="불편한 부위"
             maxLength={50}
@@ -183,15 +193,18 @@ export default function ExerciseConditionScreen() {
               setCondition((current) => ({ ...current, discomfortArea: value }))
             }
             placeholder="예) 오른쪽 무릎, 허리"
-            placeholderTextColor="#A1A1A9"
+            placeholderTextColor="#8E8D95"
             style={[styles.input, simple && simpleStyles.input]}
             value={condition.discomfortArea}
           />
           <Text style={styles.helper}>적어 주시면 그 부위는 피해서 추천해요.</Text>
         </View>
         <View style={styles.notice}>
-          <Text style={styles.noticeIcon}>ⓘ</Text>
-          <Text style={styles.noticeText}>통증이 심하면 운동을 멈추고 전문가와 상담해 주세요.</Text>
+          <WarningIcon color="#B3690B" height={20} width={20} />
+          <View style={styles.noticeCopy}>
+            <Text style={styles.noticeTitle}>주의</Text>
+            <Text style={styles.noticeText}>통증이 심하면 운동을 멈추고 전문가와 상담해 주세요.</Text>
+          </View>
         </View>
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 18) }]}>
@@ -207,6 +220,15 @@ export default function ExerciseConditionScreen() {
           </Text>
         </Pressable>
       </View>
+      <ConfirmDialog
+        description="고른 내용은 저장되지 않아요."
+        onPrimary={goHome}
+        onSecondary={() => setLeaveDialogOpen(false)}
+        primaryLabel="나가기"
+        secondaryLabel="계속 고르기"
+        title="홈으로 나갈까요?"
+        visible={leaveDialogOpen}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -265,67 +287,27 @@ function Chip({
 
 const styles = StyleSheet.create({
   root: { alignSelf: 'center', backgroundColor: '#FFFFFF', flex: 1, maxWidth: 412, width: '100%' },
-  header: { alignItems: 'center', flexDirection: 'row', paddingHorizontal: 19 },
   readRow: { alignItems: 'flex-end', paddingHorizontal: 20, paddingTop: 4 },
-  back: { height: 44, justifyContent: 'center', width: 38 },
-  backText: { color: '#222227', fontSize: 31, lineHeight: 36 },
-  headerTitle: {
-    color: '#222227',
-    flex: 1,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 15,
-    textAlign: 'center',
-  },
-  headerSpacer: { width: 38 },
-  content: { gap: 22, paddingBottom: 25, paddingHorizontal: 20, paddingTop: 27 },
-  section: { gap: 12 },
-  sectionTitle: { color: '#222227', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
-  sectionHint: { color: '#9999A1', fontFamily: fontFamilies.pretendardRegular, fontSize: 11 },
+  content: { gap: 20, paddingBottom: 20, paddingHorizontal: 20, paddingTop: 8 },
+  section: { gap: 10 },
+  sectionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+  sectionHint: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    alignItems: 'center',
-    backgroundColor: '#FAFBFC',
-    borderColor: '#E6E6ED',
-    borderRadius: 18,
-    borderWidth: 1,
-    minHeight: 35,
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-  },
-  chipSelected: { backgroundColor: '#ECE9FF', borderColor: '#5246C6' },
-  chipText: { color: '#66666F', fontSize: 12 },
-  chipTextSelected: { color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold },
-  discomfort: { gap: 9 },
-  input: {
-    backgroundColor: '#FAFBFC',
-    borderColor: '#E6E6ED',
-    borderRadius: 8,
-    borderWidth: 1,
-    color: '#222227',
-    fontSize: 13,
-    height: 44,
-    paddingHorizontal: 12,
-  },
-  helper: { color: '#9999A1', fontSize: 11 },
-  notice: {
-    alignItems: 'flex-start',
-    backgroundColor: '#FFF6E8',
-    borderRadius: 9,
-    flexDirection: 'row',
-    gap: 8,
-    padding: 13,
-  },
-  noticeIcon: { color: '#B77E2C', fontSize: 16 },
-  noticeText: { color: '#8A704D', flex: 1, fontSize: 11, lineHeight: 16 },
-  footer: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 10 },
-  button: {
-    alignItems: 'center',
-    backgroundColor: '#5246C6',
-    borderRadius: 8,
-    height: 49,
-    justifyContent: 'center',
-  },
-  buttonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+  chip: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
+  chipSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
+  chipText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  chipTextSelected: { color: '#FFFFFF' },
+  discomfort: { gap: 8 },
+  discomfortTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
+  input: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, color: '#17161D', fontSize: 16, height: 52, paddingHorizontal: 16 },
+  helper: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
+  notice: { alignItems: 'flex-start', backgroundColor: '#FFF2E0', borderRadius: 16, flexDirection: 'row', gap: 8, padding: 16 },
+  noticeCopy: { flex: 1, gap: 2 },
+  noticeTitle: { color: '#8A5208', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
+  noticeText: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
+  footer: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 8 },
+  button: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center' },
+  buttonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
   pressed: { opacity: 0.75 },
 });
 
