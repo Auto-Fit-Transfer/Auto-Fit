@@ -88,7 +88,7 @@ Content-Type: application/json
 
 | 필드 | 형식 | 현재 전송 기준 |
 |---|---|---|
-| `metric_statuses` | object | 현재 `{}`. 건강 상태 매핑 전이며 질환을 추정하지 않음 |
+| `metric_statuses` | object | 현재 `{}`. 건강 평가 변경을 DB 저장 경계에서 검증하기 전까지 판정을 전달하지 않음 |
 | `food_allergens` | string[] | 인증 사용자의 최신 알레르기 |
 | `disliked_foods` | string[] | 해당 주 계획의 기피 음식. 알레르기와 별도 관리 |
 | `goal_type` | string 또는 null | 저장된 사용자 목표 |
@@ -97,7 +97,8 @@ Content-Type: application/json
 | `nearby_regions` | array | 현재 `[]` |
 | `meal_target` | object 또는 null | 사용자가 지정한 **한 끼** 열량·영양 목표 |
 
-`meal_target`의 열량 단위는 kcal, 영양소 단위는 g입니다.
+`meal_target`의 열량 단위는 kcal, 영양소 단위는 g입니다. 제공할 때 열량은 1~5000,
+각 영양소는 1~1000 범위여야 합니다.
 사용자 ID·plan ID·`week_start_date`·`expected_version`은 이 AI 요청에 포함하지 않습니다.
 
 ### 2. 한 끼 교체
@@ -112,7 +113,7 @@ Content-Type: application/json
 | `target_meal` | `lunch` | 교체할 끼니 |
 | `current_menu_name` | `monday lunch` | 현재 메뉴명. 예시는 fixture의 합성 이름 |
 | `excluded_menu_names` | 기존 주간 메뉴명 배열 | 중복 이름을 제거한 제외 목록 |
-| `current_ingredients` | `[]` | 확인된 재료가 없어 빈 배열 전달 |
+| `current_ingredients` | `[]` | 저장된 명시적 재료명만 전달(최대 30개, 각 200자). 없으면 빈 배열 |
 
 완전한 body는 [요청 예시의 두 번째 항목](ai-request-examples.json)에 있습니다.
 응답은 `{ok, generator, meal}`이며, `meal` 안에 `{day, meal_type, meal}`을 포함합니다.
@@ -231,7 +232,11 @@ jq '.requests[] | select(.path == "/recommend/diet") | .body' \
 | 중복 생성·버전·사용자 조건 충돌 | 409 |
 | 사용자 호출 한도 초과 | 429 + `Retry-After` |
 | AI 응답 형식 오류 | 502 `AI_INVALID_RESPONSE`, 저장하지 않음 |
-| AI 제한 음식 충돌 | 502 `AI_FOOD_RESTRICTION_CONFLICT`, 저장하지 않음 |
+| 주간 요일·끼니 구조 오류 | 502 `AI_WEEKLY_SHAPE_INVALID`, 저장하지 않음 |
+| 음식 item 구조·수치 오류 | 502 `AI_FOOD_ITEM_INVALID`, 저장하지 않음 |
+| AI 알레르기 충돌 | 502 `AI_ALLERGEN_CONFLICT`, 저장하지 않음 |
+| AI 기피 음식 충돌 | 502 `AI_DISLIKED_FOOD_CONFLICT`, 저장하지 않음 |
+| 주간 메뉴 중복 | 502 `AI_DUPLICATE_MENU`, 저장하지 않음 |
 | AI 인증·검증·내부 오류(401/422/500) | 백엔드 502 |
 | AI 503·연결 실패·timeout | 백엔드 503 |
 

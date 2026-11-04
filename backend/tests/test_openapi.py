@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from backend.app.main import app
 
 
@@ -27,3 +30,9 @@ def test_onboarding_status_has_boolean_response_schema() -> None:
     assert response == {"$ref": "#/components/schemas/OnboardingStatusResponse"}
     assert schema["components"]["schemas"]["OnboardingStatusResponse"]["properties"]["completed"]["type"] == "boolean"
     assert schema["components"]["schemas"]["OnboardingStatusResponse"]["required"] == ["completed"]
+
+
+def test_running_recommendation_parameters_match_published_openapi() -> None:
+    published = json.loads((Path(__file__).resolve().parents[2] / "docs/openapi.json").read_text())
+    path = "/api/running/courses/recommend"
+    assert published["paths"][path]["get"]["parameters"] == app.openapi()["paths"][path]["get"]["parameters"]

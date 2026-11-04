@@ -414,6 +414,27 @@
             }
           },
           {
+            "name": "intensity",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "light",
+                    "moderate",
+                    "hard"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Intensity"
+            }
+          },
+          {
             "name": "region",
             "in": "query",
             "required": false,
@@ -16256,22 +16277,26 @@
         "properties": {
           "calories_kcal": {
             "type": "number",
-            "exclusiveMinimum": 0.0,
+            "maximum": 5000.0,
+            "minimum": 1.0,
             "title": "Calories Kcal"
           },
           "protein_g": {
             "type": "number",
-            "minimum": 0.0,
+            "maximum": 1000.0,
+            "minimum": 1.0,
             "title": "Protein G"
           },
           "fat_g": {
             "type": "number",
-            "minimum": 0.0,
+            "maximum": 1000.0,
+            "minimum": 1.0,
             "title": "Fat G"
           },
           "carbohydrate_g": {
             "type": "number",
-            "minimum": 0.0,
+            "maximum": 1000.0,
+            "minimum": 1.0,
             "title": "Carbohydrate G"
           }
         },

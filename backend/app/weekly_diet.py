@@ -1,6 +1,9 @@
 """Weekly generation and atomic replacement using the structured AI endpoints."""
 
+import json
+import logging
 from datetime import date
+from time import perf_counter
 from typing import Any
 from uuid import UUID
 
@@ -17,6 +20,16 @@ from backend.app.weekly_diet_store import WeeklyDietStore, fail, public_plan
 from backend.app.weekly_recipe_contract import RecipeReply, RecipeRequest
 
 
+logger = logging.getLogger("uvicorn.error")
+MAX_CURRENT_INGREDIENTS = 30
+MAX_INGREDIENT_NAME_LENGTH = 200
+
+
+def reject_food_response(code: str):
+    logger.warning("[weekly-diet-validation] %s", json.dumps({"code": code}))
+    fail(code)
+
+
 def get_weekly_ai_client():
     try:
         config = get_ai_server_config()
@@ -28,6 +41,8 @@ def get_weekly_ai_client():
 
 
 async def call_ai(client, endpoint, payload, schema):
+    started = perf_counter()
+    outcome = "validated"
     try:
         data = await client.post(endpoint, payload)
         schema.model_validate(data)
@@ -37,18 +52,63 @@ async def call_ai(client, endpoint, payload, schema):
         return data
     except AIServerError as exc:
         code = exc.code
+        outcome = code
         status = 503 if code in {"AI_UNAVAILABLE", "AI_TIMEOUT", "AI_CONNECTION_ERROR"} else 502
         fail(code, status)
-    except (ValidationError, ValueError):
+    except ValidationError as exc:
+        code = "AI_INVALID_RESPONSE"
+        if schema in {WeeklyReply, ReplacementReply}:
+            locations = [error["loc"] for error in exc.errors()]
+            if any("items" in location for location in locations):
+                code = "AI_FOOD_ITEM_INVALID"
+            elif schema is WeeklyReply and any("weekly_plan" in location for location in locations):
+                code = "AI_WEEKLY_SHAPE_INVALID"
+        outcome = code
+        fail(code)
+    except ValueError:
+        outcome = "AI_INVALID_RESPONSE"
         fail("AI_INVALID_RESPONSE")
+    finally:
+        logger.info("[weekly-diet-ai] %s", json.dumps({
+            "endpoint": endpoint.value, "outcome": outcome,
+            "elapsed_ms": round((perf_counter() - started) * 1000, 2),
+        }, separators=(",", ":")))
 
 
 def check_restrictions(meals, context):
-    exclusions = context["food_allergens"] + context["disliked_foods"]
     for meal in meals:
         names = [meal["menu_name"], *(item["food_name"] for item in meal["items"])]
-        if any(conflicts_allergy(name, exclusions) for name in names):
-            fail("AI_FOOD_RESTRICTION_CONFLICT")
+        if any(conflicts_allergy(name, context["food_allergens"]) for name in names):
+            reject_food_response("AI_ALLERGEN_CONFLICT")
+        if any(conflicts_allergy(name, context["disliked_foods"]) for name in names):
+            reject_food_response("AI_DISLIKED_FOOD_CONFLICT")
+
+
+def check_unique_menus(meals):
+    names = [meal["menu_name"].strip().casefold() for meal in meals]
+    if len(names) != len(set(names)):
+        reject_food_response("AI_DUPLICATE_MENU")
+
+
+def saved_ingredient_names(meal):
+    ingredients = meal.get("ingredients")
+    if not isinstance(ingredients, list):
+        return []
+    names = []
+    for ingredient in ingredients[:MAX_CURRENT_INGREDIENTS * 2]:
+        if isinstance(ingredient, str):
+            name = ingredient
+        elif isinstance(ingredient, dict):
+            name = ingredient.get("name")
+        else:
+            name = None
+        if isinstance(name, str):
+            name = name.strip()
+            if 0 < len(name) <= MAX_INGREDIENT_NAME_LENGTH and name not in names:
+                names.append(name)
+                if len(names) == MAX_CURRENT_INGREDIENTS:
+                    break
+    return names
 
 
 def request_context(body: WeeklyGenerateRequest, latest: dict) -> dict:
@@ -151,9 +211,9 @@ def create_weekly_diet_router(get_user, get_settings, load_context):
         context = request_context(body, latest)
         await store.consume_generation_quota()
         reply = await call_ai(ai, AIEndpoint.DIET, context, WeeklyReply)
-        check_restrictions(
-            [meal for day in reply["result"]["weekly_plan"] for meal in day["meals"].values()], context
-        )
+        meals = [meal for day in reply["result"]["weekly_plan"] for meal in day["meals"].values()]
+        check_restrictions(meals, context)
+        check_unique_menus(meals)
         if latest != await load_context(store.user_id, settings):
             fail("WEEKLY_DIET_CONTEXT_CHANGED", 409)
         if existing is None:
@@ -182,8 +242,8 @@ def create_weekly_diet_router(get_user, get_settings, load_context):
         payload = {
             **context, "target_day": day, "target_meal": meal_type,
             "current_menu_name": current["menu_name"], "excluded_menu_names": excluded,
-            # Items are complete foods, not verified recipe ingredients.
-            "current_ingredients": [],
+            # Use explicit saved ingredients; food items are not recipe ingredients.
+            "current_ingredients": saved_ingredient_names(current),
         }
         await store.consume_generation_quota()
         reply = await call_ai(ai, AIEndpoint.REPLACE_MEAL, payload, ReplacementReply)

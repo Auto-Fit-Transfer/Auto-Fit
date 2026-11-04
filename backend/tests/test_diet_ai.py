@@ -71,9 +71,13 @@ def test_generate_ai_meals_accepts_only_requested_slots() -> None:
 
     async def fake_model(prompt: str) -> str:
         assert "user_id" not in prompt
+        assert "email" not in prompt
+        assert "phone" not in prompt
         assert "두부" not in prompt
         assert "excluded_allergens" not in prompt
-        slot = json.loads(prompt.rsplit("\n", 1)[-1])["slot"]
+        payload = json.loads(prompt.rsplit("\n", 1)[-1])
+        assert payload["food_allergens"] == ["우유"]
+        slot = payload["slot"]
         return json.dumps(
             {
                 "meals": [
@@ -103,6 +107,78 @@ def test_generate_ai_meals_accepts_only_requested_slots() -> None:
     assert len(meals) == 2
     assert {meal["source_type"] for meal in meals} == {"ai_generated"}
     assert all(meal["recommended_calories"] == 400 for meal in meals)
+
+
+@pytest.mark.parametrize(
+    ("allergies", "expected"),
+    [
+        ([" 우유 ", "우유", " 대두 ", ""], ["우유", "대두"]),
+        (["  복숭아  "], ["복숭아"]),
+        ([], []),
+    ],
+)
+def test_generate_ai_meals_sends_only_normalized_allergen_names(
+    allergies: list[str], expected: list[str]
+) -> None:
+    async def fake_model(prompt: str) -> str:
+        payload = json.loads(prompt.rsplit("\n", 1)[-1])
+        assert payload["food_allergens"] == expected
+        assert set(payload) == {
+            "slot", "food_allergens", "attempt", "variation_token",
+            "avoid_food_names", "avoid_meal_compositions",
+            "available_ingredients", "retry_feedback",
+        }
+        assert "user_info" not in prompt
+        assert "사용자 알레르기를 추측하지 마세요" in prompt
+        slot = payload["slot"]
+        return json.dumps({"meals": [{
+            "meal_type": slot["meal_type"], "meal_order": slot["meal_order"],
+            "recommendation_note": "안전 식단",
+            "foods": [{
+                "food_name": "현미밥", "quantity": 200, "unit": "g",
+                "calories": 400, "carbohydrates": 70, "protein": 10, "fat": 5,
+            }],
+        }]}, ensure_ascii=False)
+
+    meals = asyncio.run(generate_ai_meals(BASE_MEALS[:1], allergies, fake_model))
+    assert meals[0]["foods"][0]["food_name"] == "현미밥"
+
+
+@pytest.mark.parametrize(
+    ("allergen", "unsafe_food"),
+    [
+        ("우유", "요거트"), ("우유", "치즈"), ("우유", "버터"),
+        ("대두", "두부"), ("대두", "콩"), ("대두", "된장"),
+    ],
+)
+def test_generate_ai_meals_rejects_allergen_derivatives(
+    allergen: str, unsafe_food: str, caplog
+) -> None:
+    attempts = 0
+
+    async def fake_model(prompt: str) -> str:
+        nonlocal attempts
+        attempts += 1
+        payload = json.loads(prompt.rsplit("\n", 1)[-1])
+        assert payload["food_allergens"] == [allergen]
+        slot = payload["slot"]
+        food_name = unsafe_food if attempts == 1 else "현미밥"
+        return json.dumps({"meals": [{
+            "meal_type": slot["meal_type"], "meal_order": slot["meal_order"],
+            "recommendation_note": "AI 추천",
+            "foods": [{
+                "food_name": food_name, "quantity": 200, "unit": "g",
+                "calories": 400, "carbohydrates": 70, "protein": 10, "fat": 5,
+            }],
+        }]}, ensure_ascii=False)
+
+    with caplog.at_level(logging.INFO, logger="uvicorn.error"):
+        meals = asyncio.run(generate_ai_meals(BASE_MEALS[:1], [allergen], fake_model))
+    assert attempts == 2
+    assert meals[0]["foods"][0]["food_name"] == "현미밥"
+    assert '"reason":"excluded_allergen"' in caplog.text
+    assert allergen not in caplog.text
+    assert unsafe_food not in caplog.text
 
 
 def test_generate_ai_meals_retries_with_calorie_feedback() -> None:
@@ -174,6 +250,7 @@ def test_generate_regenerated_meal_passes_deidentified_inventory() -> None:
 
     async def fake_model(prompt: str) -> str:
         payload = json.loads(prompt.rsplit("\n", 1)[-1])
+        assert payload["food_allergens"] == ["우유"]
         assert payload["available_ingredients"] == ["두부"]
         assert payload["avoid_food_names"] == ["기존아침"]
         assert "inventory-1" not in prompt
@@ -204,7 +281,7 @@ def test_generate_regenerated_meal_passes_deidentified_inventory() -> None:
         )
 
     meal = asyncio.run(
-        generate_regenerated_meal(current, [], fake_model, ["두부"])
+        generate_regenerated_meal(current, ["우유"], fake_model, ["두부"])
     )
     used = find_used_inventory_items(
         [meal],

@@ -121,6 +121,33 @@ def test_concurrent_requests_keep_stages_separate(caplog, monkeypatch):
     assert len({record["trace_id"] for record in records}) == 2
 
 
+def test_weekly_write_timing_uses_static_route_names(caplog, monkeypatch):
+    caplog.set_level(logging.INFO, logger="uvicorn.error")
+    monkeypatch.setenv("DIET_TIMING_ENABLED", "true")
+
+    async def app(scope, receive, send):
+        await send({"type": "http.response.start", "status": 201, "headers": []})
+        await send({"type": "http.response.body", "body": b"{}"})
+
+    async def run():
+        middleware = diet_timing.DietTimingMiddleware(app)
+
+        async def send(message):
+            pass
+
+        for path in (
+            "/api/diet/weekly-recommendations/generate",
+            "/api/diet/weekly-recommendations/private-plan/meals/monday/lunch/regenerate",
+        ):
+            await middleware({"type": "http", "method": "POST", "path": path}, None, send)
+
+    asyncio.run(run())
+    records = timing_records(caplog)
+    assert [record["route"] for record in records] == ["weekly_generate", "weekly_replace"]
+    assert all(record["status"] == 201 and record["total_ms"] >= 0 for record in records)
+    assert "private-plan" not in json.dumps(records)
+
+
 def test_failed_scope_records_elapsed_time_and_preserves_exception(monkeypatch):
     stages = {}
     token = diet_timing._stages.set(stages)

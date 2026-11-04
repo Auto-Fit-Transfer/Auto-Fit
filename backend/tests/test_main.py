@@ -16,6 +16,123 @@ TEST_SETTINGS = main.Settings(
 )
 
 
+def test_resolve_daily_allergy_names_rejects_unresolved_selection() -> None:
+    catalog = [{"allergy_type_id": "milk", "name": "우유"}]
+    assert main.resolve_daily_allergy_names(
+        [
+            {"allergy_type_id": "milk"},
+            {"allergy_type_id": None, "custom_name": " 복숭아 "},
+            {"allergy_type_id": "milk"},
+        ],
+        catalog,
+    ) == ["우유", "복숭아"]
+
+    with pytest.raises(main.HTTPException) as error:
+        main.resolve_daily_allergy_names([{"allergy_type_id": "missing"}], catalog)
+    assert error.value.status_code == 502
+
+
+def test_daily_generation_does_not_save_when_ai_rejects_allergens(monkeypatch) -> None:
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def empty_recommendation(*_args, **_kwargs):
+        return None
+
+    async def fake_allergies(*_args, **_kwargs):
+        return [{"allergy_type_id": "milk"}]
+
+    async def fake_catalog(*_args, **_kwargs):
+        return [{"allergy_type_id": "milk", "name": "우유"}]
+
+    async def empty_rows(*_args, **_kwargs):
+        return []
+
+    async def reject_plan(_user_id, _inventory, allergy_names, _food_catalog, **_kwargs):
+        assert allergy_names == ["우유"]
+        raise main.DietAIUnavailable("unsafe food")
+
+    async def forbidden_save(*_args, **_kwargs):
+        raise AssertionError("unsafe diet must not be saved")
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "fetch_diet_recommendation", empty_recommendation)
+    monkeypatch.setattr(main, "fetch_food_inventory", empty_rows)
+    monkeypatch.setattr(main, "fetch_allergy_catalog", fake_catalog)
+    monkeypatch.setattr(main, "fetch_user_allergies", fake_allergies)
+    monkeypatch.setattr(main, "fetch_food_catalog", empty_rows)
+    monkeypatch.setattr(main, "build_daily_diet_recommendation_plan", reject_plan)
+    monkeypatch.setattr(main, "create_diet_recommendation", forbidden_save)
+    try:
+        response = TestClient(main.app).post("/api/diet/recommendations/generate", json={})
+        assert response.status_code == 503
+        assert response.json()["detail"] == "AI diet generator is temporarily unavailable"
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_meal_regeneration_does_not_save_allergen_conflict(monkeypatch, caplog) -> None:
+    meal_id = "11111111-1111-1111-1111-111111111111"
+
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_context(*_args, **_kwargs):
+        return {
+            "recommendation": {"status": "active"},
+            "meal": {
+                "meal_type": "lunch", "meal_order": 2,
+                "recommended_calories": 400, "status": "recommended",
+                "foods": [{"food_name": "현미밥"}],
+            },
+        }
+
+    async def fake_allergies(*_args, **_kwargs):
+        return [{"allergy_type_id": "milk"}]
+
+    async def fake_catalog(*_args, **_kwargs):
+        return [{"allergy_type_id": "milk", "name": "우유"}]
+
+    async def empty_rows(*_args, **_kwargs):
+        return []
+
+    async def unsafe_model(prompt):
+        slot = json.loads(prompt.rsplit("\n", 1)[-1])["slot"]
+        return json.dumps({"meals": [{
+            "meal_type": slot["meal_type"], "meal_order": slot["meal_order"],
+            "recommendation_note": "unsafe",
+            "foods": [{
+                "food_name": "치즈", "quantity": 100, "unit": "g",
+                "calories": 400, "carbohydrates": 20, "protein": 20, "fat": 20,
+            }],
+        }]}, ensure_ascii=False)
+
+    async def forbidden_save(*_args, **_kwargs):
+        raise AssertionError("unsafe replacement must not be saved")
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "fetch_diet_meal_context", fake_context)
+    monkeypatch.setattr(main, "fetch_food_inventory", empty_rows)
+    monkeypatch.setattr(main, "fetch_allergy_catalog", fake_catalog)
+    monkeypatch.setattr(main, "fetch_user_allergies", fake_allergies)
+    monkeypatch.setattr(main, "fetch_food_catalog", empty_rows)
+    monkeypatch.setattr(main, "request_model", unsafe_model)
+    monkeypatch.setattr(main, "regenerate_diet_meal", forbidden_save)
+    try:
+        with caplog.at_level("INFO", logger="uvicorn.error"):
+            response = TestClient(main.app).post(
+                f"/api/diet/meals/{meal_id}/regenerate", json={}
+            )
+        assert response.status_code == 503
+        assert caplog.text.count('"reason":"excluded_allergen"') == 3
+        assert "우유" not in caplog.text
+        assert "치즈" not in caplog.text
+    finally:
+        main.app.dependency_overrides.clear()
+
+
 def test_health() -> None:
     client = TestClient(main.app)
     response = client.get("/health")

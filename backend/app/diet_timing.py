@@ -18,8 +18,22 @@ READ_PATHS = frozenset({
     "/api/diet/meal-logs",
     "/api/diet/nutrition-summary",
 })
+WEEKLY_PREFIX = "/api/diet/weekly-recommendations/"
 _stages: ContextVar[dict | None] = ContextVar("diet_timing_stages", default=None)
 logger = logging.getLogger("uvicorn.error")
+
+
+def timed_route(scope) -> str | None:
+    path = scope.get("path")
+    method = scope.get("method")
+    if method == "GET" and path in READ_PATHS:
+        return path
+    if method == "POST" and path == WEEKLY_PREFIX + "generate":
+        return "weekly_generate"
+    if (method == "POST" and isinstance(path, str)
+            and path.startswith(WEEKLY_PREFIX) and path.endswith("/regenerate")):
+        return "weekly_replace"
+    return None
 
 
 @asynccontextmanager
@@ -51,8 +65,8 @@ class DietTimingMiddleware:
 
     async def __call__(self, scope, receive, send):
         enabled = os.getenv("DIET_TIMING_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
-        if (not enabled or scope["type"] != "http"
-                or scope.get("method") != "GET" or scope.get("path") not in READ_PATHS):
+        route = timed_route(scope) if scope["type"] == "http" else None
+        if not enabled or route is None:
             await self.app(scope, receive, send)
             return
 
@@ -79,7 +93,7 @@ class DietTimingMiddleware:
             _stages.reset(token)
             logger.info("[diet-timing] %s", json.dumps({
                 "trace_id": trace_id,
-                "route": scope["path"],
+                "route": route,
                 "status": status_code,
                 "total_ms": round(elapsed, 2),
                 "stages": {name: {"calls": value["calls"], "ms": round(value["ms"], 2)}

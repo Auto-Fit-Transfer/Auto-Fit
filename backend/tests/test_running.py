@@ -136,6 +136,30 @@ def test_unavailable_and_generation_required_are_not_candidates(harness):
     state["reply"] = {"status": "generation_required", "courses": [], "generation_recommended": True}
     response = client.get("/api/running/courses/recommend?region=성남시")
     assert response.status_code == 200 and response.json()["status"] == "generation_required"
+    assert "desired_difficulty" not in state["calls"][-1][1]["params"]
+
+
+@pytest.mark.parametrize("intensity,difficulty", [
+    ("light", "easy"), ("moderate", "moderate"), ("hard", "hard"),
+])
+def test_recommendation_forwards_mapped_intensity(harness, intensity, difficulty):
+    client, state = harness
+    state["reply"] = {"status": "generation_required", "courses": [], "generation_recommended": True}
+    response = client.get("/api/running/courses/recommend", params={
+        "region": "성남시", "intensity": intensity,
+    })
+    assert response.status_code == 200
+    assert state["calls"][-1][1]["params"]["desired_difficulty"] == difficulty
+
+
+def test_recommendation_rejects_invalid_intensity(harness):
+    client, state = harness
+    state["reply"] = {"status": "generation_required", "courses": [], "generation_recommended": True}
+    response = client.get("/api/running/courses/recommend", params={
+        "region": "성남시", "intensity": "extreme",
+    })
+    assert response.status_code == 422
+    assert state["calls"] == []
 
 
 def test_official_metadata_needs_signed_route_preview(harness):

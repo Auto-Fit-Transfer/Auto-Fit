@@ -2478,6 +2478,19 @@ def resolve_safe_inventory_items(
     return resolved
 
 
+def resolve_daily_allergy_names(
+    selected: list[dict[str, Any]], catalog: list[dict[str, Any]]
+) -> list[str]:
+    names_by_id = {row["allergy_type_id"]: row["name"] for row in catalog}
+    names: list[str] = []
+    for row in selected:
+        name = row.get("custom_name") or names_by_id.get(row.get("allergy_type_id"))
+        if not isinstance(name, str) or not name.strip():
+            raise HTTPException(502, detail="Stored allergy could not be resolved")
+        names.append(name.strip())
+    return list(dict.fromkeys(names))
+
+
 async def build_daily_diet_recommendation_plan(
     user_id: str,
     inventory: list[dict[str, Any]],
@@ -3476,6 +3489,7 @@ async def load_weekly_diet_context(user_id: str, settings: Settings) -> dict:
     return {
         "food_allergens": sorted(set(allergens)),
         "goal_type": preferences.get("goal_type") if preferences else None,
+        # Health assessments are not yet protected by the save-time DB context lock.
         "metric_statuses": {},
     }
 
@@ -4194,18 +4208,12 @@ async def generate_diet_recommendation(
                 latest_date=target_date - timedelta(days=1),
             ),
         )
-        catalog_names = {
-            row["allergy_type_id"]: row["name"] for row in catalog
-        }
-        allergy_names = [
-            row.get("custom_name") or catalog_names.get(row.get("allergy_type_id"))
-            for row in selected
-        ]
+        allergy_names = resolve_daily_allergy_names(selected, catalog)
         try:
             plan = await build_daily_diet_recommendation_plan(
                 user.id,
                 inventory,
-                [name for name in allergy_names if name],
+                allergy_names,
                 food_catalog,
                 target_date=target_date,
                 avoid_food_names=(
@@ -4256,18 +4264,12 @@ async def preview_all_ai_diet_recommendation(
             latest_date=target_date - timedelta(days=1),
         ),
     )
-    catalog_names = {
-        row["allergy_type_id"]: row["name"] for row in catalog
-    }
-    allergy_names = [
-        row.get("custom_name") or catalog_names.get(row.get("allergy_type_id"))
-        for row in selected
-    ]
+    allergy_names = resolve_daily_allergy_names(selected, catalog)
     try:
         plan = await build_daily_diet_recommendation_plan(
             user.id,
             inventory,
-            [name for name in allergy_names if name],
+            allergy_names,
             food_catalog,
             target_date=target_date,
             all_ai=True,
@@ -4317,14 +4319,7 @@ async def regenerate_recommended_diet_meal(
         fetch_user_allergies(user.id, settings),
         fetch_food_catalog(settings),
     )
-    catalog_names = {
-        row["allergy_type_id"]: row["name"] for row in catalog
-    }
-    allergy_names = [
-        row.get("custom_name") or catalog_names.get(row.get("allergy_type_id"))
-        for row in selected
-    ]
-    allergy_names = [name for name in allergy_names if name]
+    allergy_names = resolve_daily_allergy_names(selected, catalog)
     resolved_inventory = resolve_safe_inventory_items(
         inventory, food_catalog, allergy_names
     )

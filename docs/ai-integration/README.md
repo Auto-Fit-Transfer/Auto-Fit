@@ -2,7 +2,27 @@
 
 기준일: 2026-10-19. 첨부 `backend_ai_integration_spec.md`와 당시 로컬 백엔드 코드를 비교했다.
 2026-11-02 업데이트: 주간 식단의 한 끼 Recipe API를 로컬 백엔드에 연결했다.
+2026-11-03 확인: 현재 `Auto-Fit-Transfer/Auto-Fit`의 `ai` 브랜치
+([router](https://github.com/Auto-Fit-Transfer/Auto-Fit/blob/ai/app/routers/recommendation_router.py),
+[schema](https://github.com/Auto-Fit-Transfer/Auto-Fit/blob/ai/app/schemas/recommendation.py))에는
+식단 전용 3개 경로와 Food DB 기반 `items` 응답, 요청의 알레르기·기피 음식·지역·영양 목표 필드가 있다.
+배포 서버의 실제 동작 확인은 별도다.
+
+2026-11-03 요청서의 음식 목록 처리 실패 65건은 비식별 실패 fixture와 시험 당시 Backend
+리비전이 없어 원인을 확정하지 못했다. 현재 주간 저장 경로는 `items`를 JSONB로 보존하며
+음식명으로 Backend 카탈로그를 조회하지 않는다. 기존 일일 저장 RPC도 음식명을 자유 텍스트로
+저장한다. 따라서 해당 65건을 현재 코드의 특정 이름 매핑 단계에 귀속하지 않는다.
+
+주간 재검증 로그는 `[weekly-diet-ai]`의 endpoint·결과 코드·AI 응답 시간,
+`[weekly-diet-validation]`의 제한 음식·중복 코드, `[weekly-diet-save]`의 저장 성공 작업,
+`[diet-timing]`의 공개 API 전체 응답 시간으로 집계한다. 주간 쓰기 경로는 고정된
+`weekly_generate`/`weekly_replace` 이름만 기록한다. 요청·응답 원문, 음식명, 사용자 식별자,
+API Key는 이 로그에 넣지 않는다.
+
 사용자 결정: **하루 식단만 추출하지 않고, 7일 전체를 저장·조회한다.**
+2026-11-03 추가 결정: 기존 일일 생성·자정 자동 갱신은 유지한다. `/chat`을 대체할
+일일 전용 AI 계약은 [협의안](daily-diet-structured-contract-proposal.md)에 정리했으며
+AI Server 구현·Backend 저장 변경 전에는 기존 일일 경로를 임의로 제거하지 않는다.
 이 문서는 로컬 구현 상태이며 원격 DB 적용·배포·실제 AI 서버 검증을 의미하지 않는다.
 
 ## 전달할 파일
@@ -24,8 +44,9 @@
 - `/recommend/diet/replace-meal`: 동일 조건 + 대상 요일·끼니·현재 메뉴·기존 주간 메뉴 제외 목록.
 - `/recommend/diet/recipe`: 선택한 끼니의 메뉴 정보·원본 `items`·알레르기·기피 음식·관련 메뉴를 전달하고 응답을 검증한다.
 
-예시의 `metric_statuses={}`, `sido=null`, `sigungu=null`, `nearby_regions=[]`는
-현재 구현의 실제 전송값이다. `items`의 소수 수치는 반올림하지 않는다.
+`metric_statuses={}`는 현재 모든 사용자의 전송값이다. 건강 평가 변경을 DB 저장 경계에서
+검증하기 전까지 판정을 전달하지 않는다. `sido=null`, `sigungu=null`, `nearby_regions=[]`는 지역 정보가
+연결되지 않은 현재 구현의 전송값이다. `items`의 소수 수치는 반올림하지 않는다.
 요일은 `monday`~`sunday`, 끼니는 `breakfast/lunch/dinner/snack`이다.
 사용자 ID·plan ID·주 시작일·`expected_version`은 백엔드에서 관리하며 이 AI 요청 body에 포함하지 않는다.
 
@@ -122,7 +143,8 @@ JSON이 아닌 응답, 중복 JSON key, NaN/Infinity, object가 아닌 응답은
 모든 생성 필드는 선택이다. 날짜 기본값은 현재 주, 기피 음식은 `[]`, 추가 조건·영양 목표는 `null`.
 이미 있는 주 전체를 다시 생성할 때만 `expected_version`을 함께 보낸다. 이때 기피 음식·추가 조건·영양 목표를
 생략하면 기존 값을 유지한다. `disliked_foods: []` 또는 다른 선택 필드의 명시적 `null`은 값을 비운다.
-`meal_target`을 제공하면 4개 수치가 모두 필요하며 열량은 양수다. 이는 사용자가 지정하는 목표이지 건강 수치가 아니다.
+`meal_target`을 제공하면 4개 수치가 모두 필요하며 열량은 1~5000, 각 영양소는 1~1000이다.
+이는 사용자가 지정하는 목표이지 건강 수치가 아니다.
 기피 음식은 해당 주 계획의 조건으로 저장한다. 현재 별도 전역 기피 음식 설정 API는 없다.
 
 응답은 다음 키를 갖는다. 전체 `result` 형태는 [주간 fixture](weekly-diet-example.json)를 참조한다.
@@ -153,7 +175,7 @@ JSON이 아닌 응답, 중복 JSON key, NaN/Infinity, object가 아닌 응답은
 - DB에서도 사용자별 lock으로 알레르기·목표 변경과 저장을 직렬 처리하고 실제 저장 시 snapshot을 재검증한다.
   알레르기 기준정보 변경도 shared/exclusive catalog lock으로 조정한다.
 - 재추천은 28개 기존 메뉴명을 `excluded_menu_names`로 전달하고, 응답 슬롯·중복 메뉴·제한 음식을 확인한다.
-- 확정된 재료 정보가 없는 `current_ingredients`는 `[]`로 전달한다. 완성 음식 item 이름을 조리 재료로 추정하지 않는다.
+- 저장된 명시적 재료명이 없으면 `current_ingredients`는 `[]`로 전달한다. 최대 30개, 각 200자만 전달하며 완성 음식 item 이름을 조리 재료로 추정하지 않는다.
 
 ## 4. AI 입력 및 저장 매핑
 
@@ -162,7 +184,7 @@ JSON이 아닌 응답, 중복 JSON key, NaN/Infinity, object가 아닌 응답은
 | `food_allergens` | 인증 사용자 `user_allergies` + 활성 `allergy_types`의 이름. 조회 실패·해석 불가 시 생성 중단 |
 | `disliked_foods` | 신규 주간 생성 body → 계획의 `request_context`. 재추천·Recipe 입력에서도 별도 목록 유지 |
 | `goal_type` | 사용자 `user_exercise_profiles.goal_type`. 없는 경우 `null`; 식단에도 같은 목표 enum을 쓸지 모델 측 확인 필요 |
-| `metric_statuses` | 현재 `{}`. 저장된 평가 지표와 AI 상태 enum의 매핑이 미확정이므로 질환·판정 추정 안 함 |
+| `metric_statuses` | 현재 `{}`. 건강 평가 변경을 DB 저장 경계에서 검증하기 전까지 판정을 전달하지 않음 |
 | `additional_input` | 생성 body의 제한된 추가 조건. 사용자가 직접 기재한 개인정보까지 자동 익명화하는 것은 아님 |
 | `sido/sigungu/nearby_regions` | 현재 `null/null/[]`. 지역 저장·계산 흐름 미연결, GPS 전달 없음 |
 | `meal_target` | 생성 body의 한 끼 목표 또는 `null`. 기존 일일 식단의 고정 목표를 사용자 건강 목표로 추정하지 않음 |
