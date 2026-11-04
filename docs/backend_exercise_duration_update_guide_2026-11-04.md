@@ -4,7 +4,7 @@
 >
 > 대상: Backend 개발 담당자
 >
-> 기준 AI 코드 커밋: `e3f0f93`
+> 기준 AI 코드 커밋: `bee6a48`
 >
 > 대상 API: Backend 운동 추천 생성 → AI Server `POST /recommend/exercise`
 
@@ -29,6 +29,10 @@ target_minutes <= actual_minutes <= maximum_minutes
 ## 2. 현재 Backend에서 확인된 문제
 
 현재 원격 `backend` 브랜치 `b72181c` 기준으로 다음 차이가 있습니다.
+
+파일럿 Backend에는 `35094c9`가 배포됐지만 PR #14는 병합되지 않은 상태로 공유됐다.
+따라서 담당자는 배포 코드와 원격 `backend` 브랜치의 차이를 먼저 확인하고 아래 계약이
+실제 배포 코드에 모두 반영됐는지 대조해야 한다.
 
 1. `backend/app/main.py`
    - `ExerciseRecommendationContextRequest.available_minutes`가 최대 300분입니다.
@@ -110,6 +114,27 @@ if session.estimated_duration_minutes != actual_minutes:
 - 해당 값으로 추천을 생성하려 할 때 재선택이 필요하다는 오류를 반환합니다.
 - 필요하면 사용자 동의를 받는 별도 마이그레이션 정책을 정합니다.
 
+### 3.4 AI Server 보정과 Backend 검증의 책임 경계
+
+AI Server는 LLM 원본 시간을 다음 순서로 처리합니다.
+
+```text
+원본 합계가 target~min(target+5, 200)이면 그대로 유지
+범위 밖이면 운동 간 시간 비율을 최대한 유지해 target으로 보정
+보정된 운동별 시간 합계를 다시 검증
+estimated_duration_minutes를 보정 후 실제 합계로 설정
+```
+
+시간 범위 위반은 로컬 후처리로 해결하므로 이 사유만으로 OpenAI를 재호출하지 않습니다.
+구조 파싱, 강도 enum, 카탈로그 후보 등 다른 계약 위반의 기존 재생성 정책은 유지합니다.
+
+Backend는 다음 원칙을 지킵니다.
+
+- AI Server의 보정 여부와 관계없이 실제 합계를 다시 계산합니다.
+- Backend에서 운동 시간을 다시 비율 보정하지 않습니다.
+- 범위 또는 예상시간 일치 계약을 위반한 응답은 저장하지 않습니다.
+- 검증된 실제 합계만 세션 시간과 추천 총시간에 저장합니다.
+
 ## 4. 필수 테스트
 
 ### `backend/tests/test_exercise_ai.py`
@@ -138,6 +163,15 @@ if session.estimated_duration_minutes != actual_minutes:
 - 운동 하나의 `duration_minutes=201` 응답 거부
 - 검증된 실제 합계가 저장되는지 확인
 
+### 파일럿 재시험
+
+- `45분 / 헬스장 / 머신 / 컨디션 보통` 요청
+- LLM 원본 합계가 40분이면 AI Server 최종 응답 합계 45분
+- LLM 원본 합계가 37분이면 AI Server 최종 응답 합계 45분
+- LLM 원본 합계가 47분이면 허용 범위이므로 원본 유지
+- 시간 보정 성공 요청의 OpenAI 호출 횟수 1회
+- AI 계획 저장 후 조회·시작·항목 완료·세션 완료까지 성공
+
 ### Backend API Schema 테스트
 
 - `available_minutes=200`: 허용
@@ -150,7 +184,9 @@ if session.estimated_duration_minutes != actual_minutes:
 2. Backend 테스트를 통과시킵니다.
 3. AI Server의 최신 `ai` 브랜치를 배포합니다.
 4. `30`, `45`, `198`, `200`분 조건으로 Backend → AI Server 통합 테스트를 수행합니다.
-5. 실제 앱에서는 기본 선택값과 직접 입력값 모두 확인합니다.
+5. 파일럿의 `45분 / 헬스장 / 머신 / 컨디션 보통` 조건을 재현하고 OpenAI 호출이
+   1회인지 확인합니다.
+6. 실제 앱에서는 기본 선택값과 직접 입력값 모두 확인합니다.
 
 Backend가 기존 `session_minutes > available_minutes` 검사를 유지하면 AI Server가 반환한
 정상적인 `목표+1~5분` 결과가 502로 거부될 수 있으므로, 양쪽 배포 시점을 맞춰야 합니다.
