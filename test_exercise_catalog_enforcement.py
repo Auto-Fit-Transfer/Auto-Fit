@@ -641,3 +641,108 @@ def test_exercise_endpoint_returns_503_for_invalid_generation(
         )
 
     assert exc_info.value.status_code == 503
+
+
+@pytest.mark.parametrize(
+    ("minutes", "target"),
+    [
+        ([10, 10, 8, 7], 45),
+        ([60, 20], 45),
+        ([7, 7, 7], 30),
+        ([1, 1, 1, 1], 120),
+        ([100, 1, 1, 1], 5),
+    ],
+)
+def test_off_target_session_is_fitted_to_available_minutes(
+    minutes: list[int],
+    target: int,
+) -> None:
+    fitted = service._fit_session_minutes(minutes, target)
+
+    assert len(fitted) == len(minutes)
+    assert min(fitted) >= 1
+    assert abs(sum(fitted) - target) <= 5
+
+
+def test_on_target_session_is_left_as_generated() -> None:
+    assert service._fit_session_minutes([12, 10, 10, 10], 45) == [
+        12,
+        10,
+        10,
+        10,
+    ]
+
+
+def test_generate_fits_every_session_to_45_minutes(
+    monkeypatch,
+) -> None:
+    request = ExerciseRecommendationRequest(
+        available_minutes=45,
+        location="gym",
+        available_equipment=["machine"],
+        condition_level="보통",
+    )
+    keys = [
+        candidate.exercise_key
+        for candidate in select_exercise_candidates(request)[:4]
+    ]
+
+    class FakeResponses:
+        def __init__(self) -> None:
+            self.input_text = ""
+
+        async def parse(self, **kwargs):
+            self.input_text = kwargs["input"]
+            return SimpleNamespace(
+                output_parsed=(
+                    service._CatalogExerciseRecommendationSelection(
+                        summary="35분으로 생성된 계획",
+                        weekly_frequency=3,
+                        intensity="moderate",
+                        sessions=[
+                            {
+                                "name": f"세션 {session}",
+                                "estimated_duration_minutes": 35,
+                                "exercises": [
+                                    {
+                                        "exercise_key": key,
+                                        "name": "머신 운동",
+                                        "duration_minutes": minutes,
+                                    }
+                                    for key, minutes in zip(
+                                        keys,
+                                        [10, 10, 8, 7],
+                                    )
+                                ],
+                            }
+                            for session in (1, 2)
+                        ],
+                    )
+                )
+            )
+
+    fake_responses = FakeResponses()
+
+    async def fake_rag_node(_state):
+        return {"rag_context": []}
+
+    monkeypatch.setattr(
+        service,
+        "_get_openai_client",
+        lambda: SimpleNamespace(responses=fake_responses),
+    )
+    monkeypatch.setattr(service, "rag_node", fake_rag_node)
+
+    result = run_immediate(
+        service.generate_exercise_recommendation(request)
+    )
+
+    assert "합계 40~50분" in fake_responses.input_text
+    assert len(result.sessions) == 2
+    for session in result.sessions:
+        total = sum(
+            exercise.duration_minutes
+            for exercise in session.exercises
+        )
+        assert 40 <= total <= 50
+        assert session.estimated_duration_minutes == total
