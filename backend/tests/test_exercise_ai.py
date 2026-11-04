@@ -119,6 +119,25 @@ def test_build_plan_preserves_all_sessions_and_catalog_keys():
     assert all(item["execution_type"] == "time_based" for item in plan["items"])
 
 
+def test_build_plan_preserves_explicit_set_and_rep_prescription():
+    response = ai_response()
+    response["result"]["sessions"][0]["exercises"][0].update(sets=3, repetitions=10)
+    plan = build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
+    item = plan["items"][0]
+    assert (item["sets"], item["repetitions"]) == (3, 10)
+    assert item["execution_type"] == "count_based"
+    assert item["target_duration_seconds"] is None
+    assert plan["items"][1]["execution_type"] == "time_based"
+
+
+@pytest.mark.parametrize("partial", [{"sets": 3}, {"repetitions": 10}])
+def test_build_plan_rejects_incomplete_set_and_rep_prescription(partial):
+    response = ai_response()
+    response["result"]["sessions"][0]["exercises"][0].update(partial)
+    with pytest.raises(ExerciseAIError):
+        build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
+
+
 def test_build_plan_uses_training_type_for_selected_mode():
     response = ai_response()
     _, catalog = load_catalog()

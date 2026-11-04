@@ -128,6 +128,8 @@ class AIExercise(BaseModel):
     catalog_name_en: str = Field(min_length=1, max_length=300)
     exercise_modes: list[Literal["gym", "home_training"]] = Field(min_length=1, max_length=2)
     duration_minutes: int = Field(ge=1, le=300)
+    sets: int | None = Field(default=None, ge=1, le=20)
+    repetitions: int | None = Field(default=None, ge=1, le=10000)
     intensity: str | None = None
     instructions: list[str] = Field(default_factory=list, max_length=3)
 
@@ -277,6 +279,9 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
             type_name = EXERCISE_TYPE_NAMES.get(training_type)
             if type_name is None:
                 raise ExerciseAIError("Exercise AI returned an unknown training type", reason_codes=("training_type_unknown",))
+            if (exercise.sets is None) != (exercise.repetitions is None):
+                raise ExerciseAIError("Exercise AI returned an incomplete prescription", reason_codes=("prescription_incomplete",))
+            count_based = exercise.sets is not None
             seen.add(exercise.exercise_key)
             session_minutes += exercise.duration_minutes
             items.append({
@@ -285,13 +290,13 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
                 "exercise_type_name": type_name,
                 "exercise_name": exercise.name.strip(),
                 "duration_minutes": exercise.duration_minutes,
-                "sets": None,
-                "repetitions": None,
+                "sets": exercise.sets,
+                "repetitions": exercise.repetitions,
                 "calories_burned": None,
                 "intensity": _intensity(exercise.intensity or parsed.result.intensity),
                 "instruction": " ".join(part.strip() for part in exercise.instructions if part.strip()),
-                "execution_type": "time_based",
-                "target_duration_seconds": exercise.duration_minutes * 60,
+                "execution_type": "count_based" if count_based else "time_based",
+                "target_duration_seconds": None if count_based else exercise.duration_minutes * 60,
                 "target_weight_kg": None,
                 "rest_seconds": None,
             })
