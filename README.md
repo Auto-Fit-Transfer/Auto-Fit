@@ -30,7 +30,7 @@ AI는 `ai_service/`에서 `python -m pip install -r requirements.txt pytest pyte
 
 API는 `codex/backend-consolidation-20261104` (`8d3b70fb`), AI는 `ai` (`a5acc729`), OCR은 `ocr` (`d26fd502`)를 기준으로 삼았습니다. 다른 브랜치에서 필요한 식품명 응답 검증, 알레르기 오류의 안전한 진단 코드, AI 체성분 분석 인증을 이식했습니다. 로컬 `supabase/config.toml`의 인증 리디렉션 설정도 포함했습니다. 나머지 기능은 기준본과 대조해 이미 포함됐거나 더 오래된 구현으로 판단했습니다. 각 브랜치의 선택 근거는 [브랜치 통합 기록](docs/branch-consolidation.md)에 있습니다.
 
-이 로컬 통합본은 원격 저장소를 설정하지 않은 단일 커밋으로 관리합니다. 게시 대상은 기존 공용 GitHub의 새 `back-end` 브랜치입니다. 기존 `backend`와 정식 `front-end`는 유지하며, 나머지 브랜치 정리는 앱 테스트 결과를 확인한 뒤 결정합니다. 운영 DB는 변경하지 않았습니다.
+이 로컬 통합본은 공용 GitHub의 새 `back-end` 브랜치에 게시했습니다. 이 로컬 저장소에는 원격 저장소를 설정하지 않았습니다. 기존 `backend`와 정식 `front-end`는 유지했고, 나머지 브랜치는 앱 테스트의 남은 문제를 해결한 뒤 정리합니다. 운영 DB는 변경하지 않았습니다. 로컬 iOS 검증 결과는 [`docs/local-ios-staging-20261105.md`](docs/local-ios-staging-20261105.md)에 있습니다.
 
 ## 검증 범위
 
