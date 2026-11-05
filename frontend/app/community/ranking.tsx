@@ -271,7 +271,7 @@ function createStyles({ colors }: AppTheme) {
     nickname: {
       color: colors.textPrimary,
       flex: 1,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardBold,
       fontSize: 16,
     },
     score: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },

@@ -166,7 +166,7 @@ function createStyles({ colors }: AppTheme) {
     },
     tierLinkText: {
       color: colors.primary,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardBold,
       fontSize: 16,
     },
     container: {
@@ -232,10 +232,10 @@ function createStyles({ colors }: AppTheme) {
     },
     statusText: {
       color: colors.primary,
-      fontFamily: fontFamilies.pretendardSemiBold,
-      fontSize: 20,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 18,
       includeFontPadding: false,
-      lineHeight: 24,
+      lineHeight: 26,
     },
     starTop: {
       left: 7,

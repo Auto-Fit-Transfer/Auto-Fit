@@ -75,7 +75,7 @@ function createStyles({ colors }: AppTheme) {
     },
     badgeText: {
       color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardMedium,
       fontSize: 12,
       textAlign: 'center',
     },
@@ -89,7 +89,7 @@ function createStyles({ colors }: AppTheme) {
     },
     joined: {
       color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardMedium,
       fontSize: 12,
     },
     meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },

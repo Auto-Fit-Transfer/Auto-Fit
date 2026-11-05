@@ -267,7 +267,7 @@ function createStyles({ colors }: AppTheme) {
       flex: 1,
       paddingVertical: spacing.md,
     },
-    tabActive: { borderBottomColor: colors.primary },
+    tabActive: { borderBottomColor: colors.textPrimary },
     tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
     tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     note: {
@@ -291,7 +291,7 @@ function createStyles({ colors }: AppTheme) {
       backgroundColor: colors.dangerLight,
       borderRadius: 12,
       color: colors.danger,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardMedium,
       fontSize: 12,
       overflow: 'hidden',
       paddingHorizontal: 6,
@@ -303,7 +303,7 @@ function createStyles({ colors }: AppTheme) {
       fontFamily: fontFamilies.pretendardBold,
       fontSize: 16,
     },
-    count: { color: colors.danger, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    count: { color: colors.danger, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     reasons: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     snapshot: {
       ...typography.body,
@@ -324,7 +324,7 @@ function createStyles({ colors }: AppTheme) {
     },
     link: {
       color: colors.primary,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardMedium,
       fontSize: 14,
       marginRight: 'auto',
     },
@@ -338,7 +338,7 @@ function createStyles({ colors }: AppTheme) {
     },
     buttonDanger: { borderColor: colors.danger },
     pressed: { opacity: 0.7 },
-    buttonText: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    buttonText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     buttonTextDanger: { color: colors.danger },
     message: {
       alignItems: 'center',

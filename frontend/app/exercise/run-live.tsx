@@ -3,13 +3,13 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Polyline } from 'react-native-svg';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
 import { useRunningSession } from '@/src/features/running/useRunningSession';
 import { routePolyline } from '@/src/features/running/courseRoute';
 import type { RunningPlannedCourse, RunningTrackPoint } from '@/src/api/running';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 const formatTime = (seconds: number) => {
   const value = Math.max(0, Math.floor(seconds));
@@ -68,12 +68,8 @@ export default function RunLive() {
   };
 
   return <View style={styles.root}>
-    <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32 }]}>
-      <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => void leave()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
-        <Text style={styles.headerTitle}>러닝하기</Text>
-        <Text style={styles.liveBadge}>{session?.status === 'in_progress' ? '기록 중' : '일시정지'}</Text>
-      </View>
+    <ScreenHeader onBack={() => void leave()} title="러닝하기" right={<Text style={styles.liveBadge}>{session?.status === 'in_progress' ? '기록 중' : '일시정지'}</Text>} />
+    <ScrollView contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 32 }]}>
       {loading ? <ActivityIndicator color={colors.primaryText} /> : !session ? <Text style={styles.error}>{error || '러닝 기록을 찾지 못했어요.'}</Text> : <>
         <View style={styles.hero}>
           <Text style={styles.heroLabel}>운동 시간</Text>
@@ -100,18 +96,15 @@ function createStyles({ colors }: AppTheme) {
   return {
     root: { flex: 1, backgroundColor: colors.background },
     content: { paddingHorizontal: 20, gap: 18 },
-    header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    back: { fontSize: 32, color: colors.textPrimary, lineHeight: 36 },
-    headerTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    liveBadge: { backgroundColor: colors.primaryLight, color: colors.textPrimary, fontSize: 12, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 7 },
+    liveBadge: { backgroundColor: colors.primaryLight, color: colors.textPrimary, fontSize: 12, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 8 },
     hero: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 22, alignItems: 'center', gap: 12 },
     heroLabel: { color: colors.textSecondary, fontSize: 14 },
     heroTime: { color: colors.textPrimary, fontSize: 64, fontFamily: fontFamilies.pretendardBold, fontVariant: ['tabular-nums'] as ['tabular-nums'] },
     metrics: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 18 },
-    metric: { color: colors.textPrimary, fontSize: 24, fontFamily: fontFamilies.pretendardBold, textAlign: 'center' },
+    metric: { color: colors.textPrimary, fontSize: 22, fontFamily: fontFamilies.pretendardBold, textAlign: 'center' },
     metricLabel: { color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginTop: 4 },
     routeCard: { borderColor: colors.border, borderWidth: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16, overflow: 'hidden' },
-    routeTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    routeTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
     routeEmpty: { height: 220, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
     routeEmptyText: { color: colors.textSecondary, fontSize: 14, textAlign: 'center', lineHeight: 20 },
     routeCaption: { color: colors.textSecondary, fontSize: 12 },
@@ -120,6 +113,6 @@ function createStyles({ colors }: AppTheme) {
     primary: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
     primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
     secondary: { height: 56, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    secondaryText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    secondaryText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
   } as const;
 }

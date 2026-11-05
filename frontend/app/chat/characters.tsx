@@ -69,7 +69,7 @@ export default function ChatCharactersScreen() {
       </ScrollView>
       <View style={[s.bottom, { paddingBottom: Math.max(12, insets.bottom) }]}>
         <Pressable accessibilityRole="button" disabled={saving} onPress={() => void save()} style={[s.primaryButton, saving && s.disabled]}>
-          <Text style={s.primaryText}>{getChatCharacter(selected).name}와 이야기하기</Text>
+          <Text style={[s.primaryText, saving && s.disabledText]}>{getChatCharacter(selected).name}와 이야기하기</Text>
         </Pressable>
       </View>
     </View>
@@ -96,6 +96,6 @@ function createSStyles({ colors }: AppTheme) {
     bottom: { backgroundColor: colors.background, paddingHorizontal: 20, paddingTop: 8 },
     primaryButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center' },
     primaryText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-    disabled: { opacity: 0.5 },
+    disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled },
   } as const;
 }

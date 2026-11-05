@@ -3,6 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getPostureJob, type PostureJob } from '@/src/api/posture';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
@@ -65,12 +66,8 @@ export default function PostureProcessingScreen() {
   const currentStage = job ? stageIndex[job.analysis_stage] : 0;
   const isFailed = job?.status === 'failed';
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }] }>
-      <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityLabel="뒤로 가기" onPress={() => router.back()} style={styles.back}><Text style={styles.backText}>‹</Text></Pressable>
-        <Text style={styles.headerTitle}>자세 분석 중</Text>
-        <View style={styles.back} />
-      </View>
+    <View style={styles.screen}>
+      <ScreenHeader onBack={() => router.back()} title="자세 분석 중" />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
         <View style={styles.visual}>
           <View style={styles.visualPill}><Text style={styles.visualPillText}>{job?.detected_repetitions ?? 0}회 동작 확인</Text></View>
@@ -110,13 +107,10 @@ export default function PostureProcessingScreen() {
 function createStyles({ colors }: AppTheme) {
   return {
     screen: { flex: 1, backgroundColor: colors.background },
-    header: { height: 66, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
-    back: { width: 36, alignItems: 'flex-start', justifyContent: 'center' }, backText: { fontSize: 36, color: colors.textPrimary, lineHeight: 40 },
-    headerTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 16, color: colors.textPrimary },
     content: { paddingHorizontal: 20 },
     visual: { height: 250, backgroundColor: '#1B1E21', borderRadius: 16, overflow: 'hidden', marginTop: 8 },
-    visualPill: { position: 'absolute', zIndex: 1, top: 14, left: 14, backgroundColor: '#101114', borderRadius: 14, paddingVertical: 5, paddingHorizontal: 10 },
-    visualPillText: { color: '#FFFFFF', fontSize: 11, fontFamily: fontFamilies.pretendardMedium },
+    visualPill: { position: 'absolute', zIndex: 1, top: 14, left: 14, backgroundColor: '#101114', borderRadius: 999, paddingVertical: 5, paddingHorizontal: 10 },
+    visualPillText: { color: '#FFFFFF', fontSize: 12, fontFamily: fontFamilies.pretendardMedium },
     figure: { position: 'absolute', top: 32, left: '49%', width: 110, height: 180, transform: [{ rotate: '17deg' }] },
     head: { position: 'absolute', left: 44, top: 0, width: 25, height: 25, borderRadius: 13, backgroundColor: '#727477' },
     body: { position: 'absolute', left: 48, top: 22, width: 13, height: 74, borderRadius: 8, backgroundColor: '#727477' },
@@ -124,18 +118,18 @@ function createStyles({ colors }: AppTheme) {
     thigh: { position: 'absolute', left: 20, top: 92, width: 55, height: 12, borderRadius: 7, backgroundColor: '#727477', transform: [{ rotate: '22deg' }] },
     shin: { position: 'absolute', left: 17, top: 105, width: 12, height: 65, borderRadius: 7, backgroundColor: '#727477', transform: [{ rotate: '12deg' }] },
     floor: { position: 'absolute', bottom: 28, height: 2, width: '100%', backgroundColor: '#65D999' },
-    heading: { color: colors.textPrimary, fontSize: 19, fontFamily: fontFamilies.pretendardBold, marginTop: 24, marginBottom: 12 },
-    metaRow: { flexDirection: 'row', justifyContent: 'space-between' }, meta: { color: colors.textSecondary, fontSize: 13 }, metaStrong: { color: colors.textPrimary, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
+    heading: { color: colors.textPrimary, fontSize: 18, fontFamily: fontFamilies.pretendardBold, marginTop: 24, marginBottom: 12 },
+    metaRow: { flexDirection: 'row', justifyContent: 'space-between' }, meta: { color: colors.textSecondary, fontSize: 14 }, metaStrong: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
     track: { height: 7, borderRadius: 4, backgroundColor: colors.gaugeTrack, marginTop: 10, overflow: 'hidden' }, progress: { height: '100%', backgroundColor: colors.primary, borderRadius: 4 },
-    loading: { marginTop: 18 }, error: { color: colors.danger, fontSize: 13, marginTop: 16, lineHeight: 19 },
+    loading: { marginTop: 18 }, error: { color: colors.danger, fontSize: 14, marginTop: 16, lineHeight: 21 },
     stepCard: { marginTop: 20, borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 4, backgroundColor: colors.surface },
     step: { flexDirection: 'row', alignItems: 'center', minHeight: 62 }, stepBorder: { borderTopWidth: 1, borderTopColor: colors.border },
     stepIcon: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     stepDone: { backgroundColor: colors.successLight, borderColor: colors.successLight }, stepActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
     stepIconText: { color: colors.textSecondary, fontSize: 12 }, stepDoneText: { color: colors.success }, stepCopy: { flex: 1 },
-    stepTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold }, stepDescription: { color: colors.textSecondary, fontSize: 12, marginTop: 3 }, stepPercent: { color: colors.textPrimary, fontSize: 11 },
-    note: { color: colors.textSecondary, fontSize: 11, lineHeight: 17, marginTop: 16 },
-    button: { backgroundColor: colors.surfaceMuted, borderRadius: 12, minHeight: 54, alignItems: 'center', justifyContent: 'center', marginTop: 30 },
-    buttonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
+    stepTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, stepDescription: { color: colors.textSecondary, fontSize: 12, marginTop: 3 }, stepPercent: { color: colors.textPrimary, fontSize: 12 },
+    note: { color: colors.textSecondary, fontSize: 12, lineHeight: 17, marginTop: 16 },
+    button: { backgroundColor: colors.surfaceMuted, borderRadius: 12, minHeight: 56, alignItems: 'center', justifyContent: 'center', marginTop: 30 },
+    buttonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
   } as const;
 }

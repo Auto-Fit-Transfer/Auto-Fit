@@ -3,9 +3,9 @@ import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import CheckIcon from '@/assets/icons/ui/check.svg';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { type DisplayPreferences } from '@/src/api/userSettings';
 import { getApiErrorMessage } from '@/src/api/client';
 import { AppBottomSheet, Text } from '@/src/components/common';
@@ -46,17 +46,11 @@ export default function DisplaySettingsScreen() {
 
   return (
     <>
+    <ScreenHeader onBack={() => router.back()} title="화면 설정" right={<SimpleReadButton text="화면 설정입니다. 화면 모드, 글자 크기, 간편 모드를 바꿀 수 있어요. 간편 모드를 끄면 기본 화면으로 돌아갑니다." />} />
     <ScrollView
-      contentContainerStyle={[styles.content, simple && simpleStyles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 32 }]}
+      contentContainerStyle={[styles.content, simple && simpleStyles.content, { paddingTop: 8, paddingBottom: insets.bottom + 32 }]}
       style={[styles.root, isDark && dark.root]}
     >
-      <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityLabel="뒤로" accessibilityRole="button" onPress={() => router.back()} style={styles.back}>
-          <CaretLeftIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={24} width={24} />
-        </Pressable>
-        <Text style={[styles.title, isDark && dark.text]}>화면 설정</Text>
-        <View style={styles.headerRead}><SimpleReadButton text="화면 설정입니다. 화면 모드, 글자 크기, 간편 모드를 바꿀 수 있어요. 간편 모드를 끄면 기본 화면으로 돌아갑니다." /></View>
-      </View>
       <Text style={[styles.sectionTitle, isDark && dark.text, simple && simpleStyles.sectionTitle]}>화면 모드</Text>
       <View style={styles.modes}>
         {modes.map((mode) => (
@@ -151,10 +145,6 @@ export default function DisplaySettingsScreen() {
 const styles = StyleSheet.create({
   root: { backgroundColor: '#FFFFFF', flex: 1 },
   content: { gap: 16, paddingHorizontal: 20 },
-  header: { alignItems: 'center', height: 48, justifyContent: 'center', marginBottom: 10 },
-  headerRead: { position: 'absolute', right: 0, top: 0 },
-  back: { left: 0, position: 'absolute', top: 12 },
-  title: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
   sectionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
   modes: { flexDirection: 'row', gap: 8 },
   mode: { backgroundColor: '#FAFBFC', alignItems: 'center', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, flex: 1, gap: 8, padding: 10 },
@@ -192,11 +182,11 @@ const styles = StyleSheet.create({
   simplePreviewBar: { backgroundColor: '#5246C6', borderRadius: 2, height: 7, width: 23 },
   simplePreviewLine: { backgroundColor: '#E3E6EB', borderRadius: 2, height: 5, width: 30 },
   simpleCopy: { flex: 1, gap: 5 },
-  simpleTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+  simpleTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
   simpleDescription: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 12, lineHeight: 16 },
   simpleState: { color: '#5246C6', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
   simpleAction: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 12, minHeight: 48, justifyContent: 'center' },
-  simpleActionText: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+  simpleActionText: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
   confirmFooter: { gap: 8 },
   cancelButton: { alignItems: 'center', minHeight: 48, justifyContent: 'center' },
   cancelText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },

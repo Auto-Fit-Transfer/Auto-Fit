@@ -4,13 +4,13 @@ import * as Location from 'expo-location';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getRunningApiErrorMessage, getRunningCourseDetail, getSavedRunningCourses, previewRunningRoute, saveRunningCourse, startSavedCourseRun, type RunningCourse, type RunningRoutePreview } from '@/src/api/running';
 import { KakaoRouteMap } from '@/src/components/exercise/KakaoRouteMap';
 import { canPreviewRoute, courseDifficultyLabel, previewRouteInput, routePoints, routePolyline } from '@/src/features/running/courseRoute';
 import { KAKAO_MAP_JS_KEY } from '@/src/features/running/kakaoMap';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 const nameOf = (course: RunningCourse) => course.course_name || course.name || '이름 없는 코스';
 const sourceOf = (course: RunningCourse) => course.source?.source_type ?? course.source_type;
@@ -147,8 +147,8 @@ export default function RunningCourseScreen() {
   const canSave = !!course?.selection_token && !validationNeeded && !pathMissing && (!distanceAcceptanceNeeded || acceptDistanceError);
 
   return <View style={s.root}>
-    <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
-      <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={back}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable><Text style={s.title}>러닝 코스</Text><View style={{ width: 24 }} /></View>
+    <ScreenHeader onBack={back} title="러닝 코스" />
+    <ScrollView contentContainerStyle={[s.content, { paddingTop: 8, paddingBottom: insets.bottom + 36 }]}>
       {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
       {error && !course ? <Pressable accessibilityRole="button" onPress={() => { setError(''); setPreviewError(''); setLoading(true); setRetry((value) => value + 1); }} style={s.notice}><Text style={s.error}>{error} · 다시 시도</Text></Pressable> : null}
       {course ? <>
@@ -167,12 +167,12 @@ export default function RunningCourseScreen() {
         {pathMissing ? <View style={s.notice}><Text style={s.body}>경로 좌표가 없어 이 코스를 저장할 수 없어요.</Text></View> : null}
         {distanceAcceptanceNeeded ? <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: acceptDistanceError }} onPress={() => setAcceptDistanceError((value) => !value)} style={s.notice}><Text style={s.body}>{acceptDistanceError ? '☑' : '□'}  요청한 거리와 실제 코스가 {course.distance_error_percent ?? '다소'}% 차이 나는 것을 확인했어요.</Text></Pressable> : null}
         {error && course ? <Text style={s.error}>{error}</Text> : null}
-        <Pressable accessibilityRole="button" disabled={saved || !canSave || saving} onPress={() => void save()} style={[s.button, (saved || !canSave || saving) && s.disabled]}><Text style={s.buttonText}>{saved ? '저장된 코스예요' : saving ? '저장 중…' : '이 코스 저장하기'}</Text></Pressable>
+        <Pressable accessibilityRole="button" disabled={saved || !canSave || saving} onPress={() => void save()} style={[s.button, (saved || !canSave || saving) && s.disabled]}><Text style={[s.buttonText, (saved || !canSave || saving) && s.disabledText]}>{saved ? '저장된 코스예요' : saving ? '저장 중…' : '이 코스 저장하기'}</Text></Pressable>
         {saved && savedCourseId ? <View style={s.startCard}>
           <Text style={s.metricLabel}>목표 시간 · 분</Text><TextInput accessibilityLabel="목표 러닝 시간(분)" keyboardType="number-pad" value={targetMinutes} onChangeText={setTargetMinutes} style={s.input} />
           <Text style={s.metricLabel}>강도</Text><View style={s.choices}>{([['light', '가볍게'], ['moderate', '보통'], ['hard', '강하게']] as const).map(([key, label]) => <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: intensity === key }} onPress={() => setIntensity(key)} style={[s.choice, intensity === key && s.choiceSelected]}><Text style={[s.choiceText, intensity === key && s.choiceTextSelected]}>{label}</Text></Pressable>)}</View>
           <Text style={s.metricLabel}>오늘 컨디션</Text><View style={s.choices}>{([['good', '좋음'], ['normal', '보통'], ['tired', '피곤함']] as const).map(([key, label]) => <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: condition === key }} onPress={() => setCondition(key)} style={[s.choice, condition === key && s.choiceSelected]}><Text style={[s.choiceText, condition === key && s.choiceTextSelected]}>{label}</Text></Pressable>)}</View>
-          <Pressable accessibilityRole="button" disabled={starting || path.length < 2} onPress={() => void start()} style={[s.button, (starting || path.length < 2) && s.disabled]}><Text style={s.buttonText}>{starting ? '준비 중…' : '이 코스로 러닝 시작하기'}</Text></Pressable><Text style={s.metricLabel}>앱 사용 중 GPS로 실제 이동을 기록해요.</Text>{path.length < 2 ? <Text style={s.error}>경로 좌표가 없어 이 코스로 러닝을 시작할 수 없어요.</Text> : null}</View> : null}
+          <Pressable accessibilityRole="button" disabled={starting || path.length < 2} onPress={() => void start()} style={[s.button, (starting || path.length < 2) && s.disabled]}><Text style={[s.buttonText, (starting || path.length < 2) && s.disabledText]}>{starting ? '준비 중…' : '이 코스로 러닝 시작하기'}</Text></Pressable><Text style={s.metricLabel}>앱 사용 중 GPS로 실제 이동을 기록해요.</Text>{path.length < 2 ? <Text style={s.error}>경로 좌표가 없어 이 코스로 러닝을 시작할 수 없어요.</Text> : null}</View> : null}
         <Pressable accessibilityRole="button" onPress={back} style={s.outline}><Text style={s.outlineText}>다른 코스 보기</Text></Pressable>
       </> : null}
     </ScrollView>
@@ -182,14 +182,13 @@ export default function RunningCourseScreen() {
 function createSStyles({ colors }: AppTheme) {
   return {
     root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, gap: 16 },
-    header: { height: 52, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, back: { color: colors.textPrimary, fontSize: 32, lineHeight: 36 }, title: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    eyebrow: { color: colors.textSecondary, fontSize: 14, marginTop: 12 }, courseTitle: { color: colors.textPrimary, fontSize: 21, fontFamily: fontFamilies.pretendardBold }, body: { color: colors.textBody, fontSize: 14, lineHeight: 20 },
-    tags: { flexDirection: 'row', gap: 7 }, tag: { backgroundColor: colors.surfaceMuted, color: colors.textBody, borderRadius: 5, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 5, fontSize: 12 },
-    map: { height: 220, backgroundColor: colors.surfaceMuted, borderRadius: 16, overflow: 'hidden' }, mapEmpty: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' }, mapEmptyText: { color: colors.textSecondary, fontSize: 14 }, mapBadge: { position: 'absolute', right: 8, top: 8, backgroundColor: colors.surface, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 5 }, mapBadgeText: { color: colors.textBody, fontSize: 12 },
+    eyebrow: { color: colors.textSecondary, fontSize: 14, marginTop: 12 }, courseTitle: { color: colors.textPrimary, fontSize: 22, fontFamily: fontFamilies.pretendardBold }, body: { color: colors.textBody, fontSize: 14, lineHeight: 20 },
+    tags: { flexDirection: 'row', gap: 7 }, tag: { backgroundColor: colors.surfaceMuted, color: colors.textBody, borderRadius: 8, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 5, fontSize: 12 },
+    map: { height: 220, backgroundColor: colors.surfaceMuted, borderRadius: 16, overflow: 'hidden' }, mapEmpty: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' }, mapEmptyText: { color: colors.textSecondary, fontSize: 14 }, mapBadge: { position: 'absolute', right: 8, top: 8, backgroundColor: colors.surface, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 5 }, mapBadgeText: { color: colors.textBody, fontSize: 12 },
     metrics: { flexDirection: 'row', gap: 8 }, metric: { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 11, gap: 5 }, metricLabel: { color: colors.textSecondary, fontSize: 12 }, metricValue: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
     notice: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14 }, error: { color: colors.danger, fontSize: 14, lineHeight: 18 },
-    button: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, disabled: { opacity: 0.5 }, buttonText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, outline: { height: 56, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-    startCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, gap: 10 }, input: { backgroundColor: colors.surface, height: 45, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, fontSize: 14, color: colors.textPrimary },
+    button: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled }, buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, outline: { height: 56, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
+    startCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, gap: 10 }, input: { backgroundColor: colors.surface, height: 52, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, fontSize: 16, color: colors.textPrimary },
     choices: { flexDirection: 'row', gap: 7 }, choice: { backgroundColor: colors.surface, flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }, choiceSelected: { backgroundColor: colors.primary, borderColor: colors.primary }, choiceText: { color: colors.textSecondary, fontSize: 14 }, choiceTextSelected: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold },
   } as const;
 }

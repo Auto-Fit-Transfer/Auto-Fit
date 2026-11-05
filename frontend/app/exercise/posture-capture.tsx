@@ -466,7 +466,7 @@ function createStyles({ colors }: AppTheme) {
       paddingHorizontal: 9,
       paddingVertical: 9,
     },
-    badgeText: { color: '#FFF', fontSize: 11, fontFamily: fontFamilies.pretendardBold },
+    badgeText: { color: '#FFF', fontSize: 12, fontFamily: fontFamilies.pretendardBold },
     recordDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#81858A' },
     recordDotActive: { backgroundColor: recordingRed },
     progressTrack: {
@@ -506,10 +506,10 @@ function createStyles({ colors }: AppTheme) {
       paddingHorizontal: 20,
     },
     tip: { backgroundColor: '#11191A', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 7 },
-    tipText: { color: '#E2E8E7', fontSize: 11, fontFamily: fontFamilies.pretendardBold, textAlign: 'center' },
+    tipText: { color: '#E2E8E7', fontSize: 12, fontFamily: fontFamilies.pretendardBold, textAlign: 'center' },
     autoStop: {
       color: muted,
-      fontSize: 11,
+      fontSize: 12,
       backgroundColor: '#181A1D',
       paddingHorizontal: 11,
       paddingVertical: 7,
@@ -535,7 +535,7 @@ function createStyles({ colors }: AppTheme) {
       textAlign: 'center',
       overflow: 'hidden',
     },
-    sideLabel: { color: '#F1F1F1', fontSize: 11 },
+    sideLabel: { color: '#F1F1F1', fontSize: 12 },
     shutter: {
       width: 72,
       height: 72,
@@ -558,7 +558,7 @@ function createStyles({ colors }: AppTheme) {
       paddingHorizontal: 30,
       paddingVertical: 13,
     },
-    retakeText: { color: colors.textPrimary, fontSize: 15, fontFamily: fontFamilies.pretendardBold },
+    retakeText: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
     permissionPanel: {
       position: 'absolute',
       top: 0,
@@ -572,8 +572,8 @@ function createStyles({ colors }: AppTheme) {
       gap: 16,
     },
     permissionClose: { position: 'absolute', top: 55, right: 24, padding: 8 },
-    permissionCloseText: { color: '#FFF', fontSize: 15 },
-    permissionTitle: { color: '#FFF', fontSize: 20, fontFamily: fontFamilies.pretendardBold },
+    permissionCloseText: { color: '#FFF', fontSize: 16 },
+    permissionTitle: { color: '#FFF', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
     permissionCopy: { color: '#D6D9DC', fontSize: 14, textAlign: 'center', lineHeight: 22 },
     permissionButton: {
       backgroundColor: colors.background,
@@ -583,6 +583,6 @@ function createStyles({ colors }: AppTheme) {
     },
     permissionButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     albumFallback: { paddingVertical: 10, paddingHorizontal: 16 },
-    albumFallbackText: { color: '#FFF', fontSize: 13, textDecorationLine: 'underline' },
+    albumFallbackText: { color: '#FFF', fontSize: 14, textDecorationLine: 'underline' },
   } as const;
 }

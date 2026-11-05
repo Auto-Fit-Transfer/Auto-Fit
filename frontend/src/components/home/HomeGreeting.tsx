@@ -29,10 +29,10 @@ function createStyles({ colors }: AppTheme) {
     },
     greeting: {
       color: colors.onPrimary,
-      fontFamily: fontFamilies.pretendardSemiBold,
-      fontSize: 30,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 32,
       includeFontPadding: false,
-      lineHeight: 36,
+      lineHeight: 40,
     },
     userName: {
       color: colors.primary,
@@ -40,9 +40,9 @@ function createStyles({ colors }: AppTheme) {
     message: {
       color: colors.textDisabled,
       fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 15,
+      fontSize: 16,
       includeFontPadding: false,
-      lineHeight: 18,
+      lineHeight: 24,
     },
   } as const;
 }

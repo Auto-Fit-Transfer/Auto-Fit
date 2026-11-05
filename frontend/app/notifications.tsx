@@ -4,10 +4,10 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BarbellIcon from '@/assets/icons/ui/barbell.svg';
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import ChatsIcon from '@/assets/icons/ui/chats-circle.svg';
 import ForkKnifeIcon from '@/assets/icons/ui/fork-knife.svg';
 import HeartbeatIcon from '@/assets/icons/ui/heartbeat.svg';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getApiErrorMessage } from '@/src/api/client';
 import {
   getNotificationPreferences, saveNotificationPreferences, type NotificationPreferences,
@@ -133,12 +133,8 @@ export default function Notifications() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 32 }]}>
-        <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
-          <Text style={styles.title}>알림 설정</Text>
-          <View style={styles.back} />
-        </View>
+      <ScreenHeader onBack={() => router.back()} title="알림 설정" />
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 32 }]}>
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
         {error ? <Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text accessibilityRole="alert" style={styles.error}>{error} · 다시 시도하기</Text></Pressable> : null}
         {saved ? <Text accessibilityRole="alert" style={styles.saved}>설정을 저장했어요.</Text> : null}
@@ -167,18 +163,15 @@ export default function Notifications() {
 function createStyles({ colors }: AppTheme) {
   return {
     screen: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: 22, gap: 15 },
-    header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-    back: { width: 32, minHeight: 32, justifyContent: 'center' },
-    title: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16, color: colors.textPrimary },
-    sectionTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, marginTop: 13 },
+    content: { paddingHorizontal: 20, gap: 15 },
+    sectionTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, marginTop: 13 },
     card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 16 },
     row: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
     copy: { flex: 1, gap: 4 },
     label: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
     detail: { fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
     timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
-    timeInput: { backgroundColor: colors.surface, flex: 1, minWidth: 63, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 8, color: colors.textPrimary, textAlign: 'center' },
+    timeInput: { backgroundColor: colors.surface, flex: 1, minWidth: 63, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 8, color: colors.textPrimary, fontSize: 14, textAlign: 'center' },
     timeSave: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
     timeSaveText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     note: { color: colors.textSecondary, fontSize: 12, lineHeight: 19 },

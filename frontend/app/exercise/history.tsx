@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getExerciseHistory, saveRecommendedWorkout } from '@/src/api/exercise';
 import { getRunningApiErrorMessage, getRunningHistory, type RunningSession } from '@/src/api/running';
 import { getApiErrorMessage } from '@/src/api/client';
 import { sessionCalories, sessionLocalDate, sessionMinutes } from '@/src/features/exercise/weeklyMetrics';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 type HistoryRow = Awaited<ReturnType<typeof getExerciseHistory>>['history'][number];
 const dayKey = (date: Date) =>
@@ -93,12 +93,8 @@ export default function ExerciseHistory() {
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
-        <View style={styles.header}>
-          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
-          <Text style={styles.title}>내 운동</Text>
-          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="루틴 만들기" onPress={() => router.push('/exercise/routine-builder')}><Text style={styles.link}>만들기</Text></Pressable>
-        </View>
+      <ScreenHeader onBack={() => router.back()} title="내 운동" right={<Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="루틴 만들기" onPress={() => router.push('/exercise/routine-builder')}><Text style={styles.link}>만들기</Text></Pressable>} />
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 36 }]}>
         <View style={styles.tabs}>
           <View style={[styles.tab, styles.tabActive]}><Text style={styles.tabTextActive}>운동 기록</Text></View>
           <Pressable accessibilityRole="tab" accessibilityState={{ selected: false }} onPress={() => router.replace('/exercise/saved-routines')} style={styles.tab}><Text style={styles.tabText}>저장한 운동</Text></Pressable>
@@ -159,15 +155,12 @@ function createStyles({ colors }: AppTheme) {
   return {
     root: { flex: 1, backgroundColor: colors.background },
     content: { paddingHorizontal: 20, gap: 18 },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 52 },
-    back: { fontSize: 32, color: colors.textPrimary, lineHeight: 36 },
-    title: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     tabs: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: 16, padding: 4 },
     tab: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
     tabActive: { backgroundColor: colors.background },
     tabText: { color: colors.textSecondary, fontSize: 14 },
-    tabTextActive: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
-    sectionTitle: { fontSize: 17, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    tabTextActive: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
+    sectionTitle: { fontSize: 18, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     week: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 10, flexDirection: 'row', justifyContent: 'space-between' },
     day: { flex: 1, alignItems: 'center', gap: 5, paddingVertical: 8, borderRadius: 12 },
     daySelected: { backgroundColor: colors.primary , borderColor: colors.primary},
@@ -180,13 +173,13 @@ function createStyles({ colors }: AppTheme) {
     statNumber: { color: colors.textPrimary, fontSize: 22, fontFamily: fontFamilies.pretendardBold },
     caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 18 },
     sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    link: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    link: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
     card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 16, gap: 9 },
     cardTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-    badge: { color: colors.textPrimary, backgroundColor: colors.primaryLight, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6, fontSize: 12 },
+    badge: { color: colors.textPrimary, backgroundColor: colors.primaryLight, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8, fontSize: 12 },
     body: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
-    outlineButton: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 12, height: 42, alignItems: 'center', justifyContent: 'center', marginTop: 5 },
-    outlineText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    outlineButton: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 12, height: 48, alignItems: 'center', justifyContent: 'center', marginTop: 5 },
+    outlineText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
     error: { color: colors.danger, fontSize: 14 },
   } as const;
 }

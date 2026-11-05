@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { claimCommunityChallenge, getCommunityChallenges, getCommunityErrorMessage, isProvisionalNote, setCommunityChallengeParticipation, type CommunityChallenge } from '@/src/api/community';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
@@ -78,8 +78,8 @@ export default function ChallengeDetail() {
     || (challenge.joined && challenge.phase === 'upcoming' && !challenge.can_claim);
 
   return <View style={s.root}>
-    <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
-      <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable><Text style={s.title}>챌린지</Text><View style={{ width: 24 }} /></View>
+    <ScreenHeader onBack={() => router.back()} title="챌린지" />
+    <ScrollView contentContainerStyle={[s.content, { paddingTop: 8, paddingBottom: insets.bottom + 36 }]}>
       {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
       {error && !challenge ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); void load(); }} style={s.card}><Text style={s.error}>{error} · 다시 시도</Text></Pressable> : null}
       {challenge ? <>
@@ -101,7 +101,7 @@ export default function ChallengeDetail() {
         <View style={s.card}><Text style={s.section}>함께 도전해요</Text><Text style={s.body}>{challenge.participant_count.toLocaleString()}명이 이 챌린지에 참여하고 있어요.</Text></View>
         <View style={s.card}><Text style={s.section}>이렇게 진행돼요</Text>{[`기간 안에 ${metricLabel[challenge.metric]}을 기록해요.`, `${challenge.goal}일 목표를 채우면 완료 상태가 돼요.`, '보상을 받을 수 있을 때 신청해요.'].map((step, index) => <View key={step} style={s.stepRow}><View style={s.stepNumber}><Text style={s.stepNumberText}>{index + 1}</Text></View><Text style={s.step}>{step}</Text></View>)}</View>
         {notice ? <Text style={s.success}>{notice}</Text> : null}{error ? <Text style={s.error}>{error}</Text> : null}
-        <Pressable accessibilityRole="button" disabled={actionDisabled} onPress={action} style={[s.button, actionDisabled && s.disabled]}><Text style={s.buttonText}>{busy ? '처리 중…' : actionText}</Text></Pressable>
+        <Pressable accessibilityRole="button" disabled={actionDisabled} onPress={action} style={[s.button, actionDisabled && s.disabled]}><Text style={[s.buttonText, actionDisabled && s.disabledText]}>{busy ? '처리 중…' : actionText}</Text></Pressable>
         {challenge.joined && challenge.phase !== 'ended' && !challenge.completed ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => void act(() => setCommunityChallengeParticipation(challenge.challenge_id, false), '챌린지 참여를 취소했어요.')} style={s.outline}><Text style={s.outlineText}>참여 취소</Text></Pressable> : null}
       </> : null}
     </ScrollView>
@@ -111,12 +111,11 @@ export default function ChallengeDetail() {
 function createSStyles({ colors }: AppTheme) {
   return {
     root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, gap: 17 },
-    header: { height: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, title: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardSemiBold },
     phase: { alignSelf: 'flex-start', color: colors.success, backgroundColor: colors.successLight, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 5, fontSize: 12, marginTop: 10 },
-    hero: { color: colors.textPrimary, fontSize: 24, fontFamily: fontFamilies.pretendardBold }, body: { color: colors.textBody, fontSize: 14, lineHeight: 21 }, caption: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+    hero: { color: colors.textPrimary, fontSize: 22, fontFamily: fontFamilies.pretendardBold }, body: { color: colors.textBody, fontSize: 14, lineHeight: 21 }, caption: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
     stats: { flexDirection: 'row', gap: 8 }, stat: { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, gap: 6 }, statLabel: { color: colors.textSecondary, fontSize: 12 }, statValue: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
     card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16, gap: 12 }, row: { flexDirection: 'row', justifyContent: 'space-between' }, section: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold }, progressValue: { color: colors.primaryText, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-    track: { height: 7, borderRadius: 5, backgroundColor: colors.gaugeTrack, overflow: 'hidden' }, fill: { height: 7, backgroundColor: colors.primary }, stepRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 }, stepNumber: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 22, justifyContent: 'center', width: 22 }, stepNumberText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 }, step: { color: colors.textBody, flex: 1, fontSize: 14, lineHeight: 21 }, notice: { backgroundColor: colors.warningLight, borderRadius: 12, padding: 12 }, noticeText: { color: colors.warning, fontSize: 12 },
-    button: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 }, outline: { height: 46, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: colors.textSecondary, fontSize: 12 }, success: { color: colors.success, fontSize: 12 }, error: { color: colors.danger, fontSize: 12, lineHeight: 18 },
+    track: { height: 7, borderRadius: 5, backgroundColor: colors.gaugeTrack, overflow: 'hidden' }, fill: { height: 7, backgroundColor: colors.primary }, stepRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 }, stepNumber: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 22, justifyContent: 'center', width: 22 }, stepNumberText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 }, step: { color: colors.textBody, flex: 1, fontSize: 14, lineHeight: 21 }, notice: { backgroundColor: colors.warningLight, borderRadius: 12, padding: 12 }, noticeText: { color: colors.warning, fontSize: 12 },
+    button: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled }, outline: { height: 48, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: colors.textSecondary, fontSize: 12 }, success: { color: colors.success, fontSize: 12 }, error: { color: colors.danger, fontSize: 12, lineHeight: 18 },
   } as const;
 }

@@ -292,7 +292,7 @@ export default function CommunityComposeScreen() {
           onPress={() => void submit()}
           style={({ pressed }) => [styles.post, (!canSubmit || progress !== null) && styles.postDisabled, pressed && styles.postPressed]}
         >
-          <Text style={styles.postText}>올리기</Text>
+          <Text style={[styles.postText, (!canSubmit || progress !== null) && styles.disabledText]}>올리기</Text>
         </Pressable>
       </View>
 
@@ -324,7 +324,7 @@ function createStyles({ colors }: AppTheme) {
       minHeight: 56,
       paddingHorizontal: spacing.xl,
     },
-    cancel: { minWidth: 44, paddingVertical: spacing.sm },
+    cancel: { minWidth: 58, paddingVertical: spacing.sm },
     draftButton: { minWidth: 58, alignItems: 'flex-end', paddingVertical: spacing.sm },
     draftText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     title: {
@@ -341,7 +341,8 @@ function createStyles({ colors }: AppTheme) {
       minHeight: 56,
       paddingHorizontal: spacing.lg,
     },
-    postDisabled: { backgroundColor: colors.primary, opacity: 0.4 },
+    postDisabled: { backgroundColor: colors.surfaceMuted },
+    disabledText: { color: colors.textDisabled },
     postPressed: { opacity: 0.85 },
     postText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
     body: { gap: spacing.md, padding: spacing.xl },
@@ -349,7 +350,7 @@ function createStyles({ colors }: AppTheme) {
     categoryChip: { borderColor: colors.border, borderWidth: 1, borderRadius: 999, height: 40, justifyContent: 'center', paddingHorizontal: 16, backgroundColor: colors.background },
     categorySelected: { backgroundColor: colors.primary, borderColor: colors.primary },
     categoryText: { color: colors.textSecondary, fontSize: 14 },
-    categoryTextSelected: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold },
+    categoryTextSelected: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold },
     activityHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
     activityButton: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
     activityLink: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
@@ -357,10 +358,10 @@ function createStyles({ colors }: AppTheme) {
     visibilityValue: { color: colors.textSecondary, fontSize: 14 },
     activityOption: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, gap: 5 },
     activitySelected: { borderColor: colors.primary, backgroundColor: colors.surface },
-    activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     activityDisclosure: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
-    tagInput: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, minHeight: 48, color: colors.textPrimary },
-    fieldLabel: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    tagInput: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, minHeight: 52, color: colors.textPrimary, fontSize: 16 },
+    fieldLabel: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     fieldHint: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
     inputWrap: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, padding: spacing.md },
     input: {

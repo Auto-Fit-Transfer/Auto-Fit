@@ -139,7 +139,7 @@ function createStyles({ colors }: AppTheme) {
       backgroundColor: colors.primaryLight,
       borderRadius: 12,
       color: colors.primary,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardMedium,
       fontSize: 12,
       overflow: 'hidden',
       paddingHorizontal: 6,

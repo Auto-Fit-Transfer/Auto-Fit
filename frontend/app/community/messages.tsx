@@ -203,7 +203,7 @@ function createStyles({ colors }: AppTheme) {
       fontFamily: fontFamilies.pretendardRegular,
       fontSize: 14,
     },
-    previewUnread: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    previewUnread: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     badge: {
       alignItems: 'center',
       backgroundColor: colors.danger,

@@ -145,7 +145,7 @@ export default function ExerciseScreen() {
             <Text style={[styles.heroMeta, simple && simpleStyles.heroMeta, isDark && dark.secondary]}>오늘의 시간과 컨디션에 맞춰 추천받으세요</Text>
           )}
           <Pressable accessibilityRole="button" disabled={homeLoadState === 'loading'} onPress={mainAction} style={[styles.primaryButton, simple && simpleStyles.primaryButton, homeLoadState === 'loading' && styles.disabled]}>
-            <Text style={[styles.primaryText, simple && simpleStyles.primaryText]}>
+            <Text style={[styles.primaryText, simple && simpleStyles.primaryText, homeLoadState === 'loading' && styles.disabledText]}>
               {homeLoadState === 'loading' ? '운동 정보 확인 중' : status === 'completed' ? '결과 보기' : status === 'ready' ? routine?.planSessions.length ? futurePlan ? '운동 일정 보기' : '오늘 운동 보기' : '운동 시작하기' : '오늘 운동 추천받기'}
             </Text>
           </Pressable>
@@ -229,7 +229,7 @@ function createStyles({ colors }: AppTheme) {
     primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
     secondaryButton: { alignItems: 'center', paddingVertical: 8 },
     secondaryText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
-    disabled: { opacity: 0.5 },
+    disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled },
     errorCard: { backgroundColor: colors.dangerLight, borderRadius: 12, padding: 14 },
     errorText: { color: colors.danger, fontSize: 14 },
     rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },

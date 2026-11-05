@@ -198,7 +198,7 @@ function createStyles({ colors }: AppTheme) {
       flex: 1,
       paddingVertical: spacing.md,
     },
-    tabActive: { borderBottomColor: colors.primary },
+    tabActive: { borderBottomColor: colors.textPrimary },
     tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
     tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     message: {
@@ -222,7 +222,7 @@ function createStyles({ colors }: AppTheme) {
     nickname: {
       color: colors.textPrimary,
       flexShrink: 1,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardBold,
       fontSize: 16,
     },
   } as const;

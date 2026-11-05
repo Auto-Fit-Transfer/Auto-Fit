@@ -1,10 +1,10 @@
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import CameraIcon from '@/assets/icons/ui/camera.svg';
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import UploadIcon from '@/assets/icons/ui/upload-simple.svg';
 
 const exercises = ['스쿼트', '푸시업', '런지', '플랭크'];
@@ -15,8 +15,8 @@ export default function PostureCheck() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   return <View style={s.root}>
-    <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
-      <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable><Text style={s.title}>자세 점검</Text><View style={{ width: 24 }} /></View>
+    <ScreenHeader onBack={() => router.back()} title="자세 점검" />
+    <ScrollView contentContainerStyle={[s.content, { paddingTop: 8, paddingBottom: insets.bottom + 36 }]}>
       <Text style={s.hero}>옆에서 10초만 찍으면{ '\n' }자세를 확인할 수 있어요</Text>
       <Text style={s.body}>스쿼트 영상을 찍거나 골라 주세요. 자세 분석은 준비 중이에요.</Text>
       <View style={s.chips}>{exercises.map((name) => <View key={name} style={[s.chip, name === '스쿼트' && s.chipSelected]}><Text style={[s.chipText, name === '스쿼트' && s.chipTextSelected]}>{name}{name !== '스쿼트' ? ' · 준비 중' : ''}</Text></View>)}</View>
@@ -34,9 +34,8 @@ export default function PostureCheck() {
 function createSStyles({ colors }: AppTheme) {
   return {
     root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, gap: 16 },
-    header: { height: 52, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, back: { color: colors.textPrimary, fontSize: 32, lineHeight: 36 }, title: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    hero: { color: colors.textPrimary, fontSize: 24, lineHeight: 32, fontFamily: fontFamilies.pretendardBold, marginTop: 12 }, body: { color: colors.textSecondary, fontSize: 14, lineHeight: 19 },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 22, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface }, chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary }, chipText: { color: colors.textSecondary, fontSize: 14 }, chipTextSelected: { color: '#FFFFFF' },
+    hero: { color: colors.textPrimary, fontSize: 22, lineHeight: 30, fontFamily: fontFamilies.pretendardBold, marginTop: 12 }, body: { color: colors.textSecondary, fontSize: 14, lineHeight: 19 },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 }, chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface }, chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary }, chipText: { color: colors.textSecondary, fontSize: 14 }, chipTextSelected: { color: '#FFFFFF' },
     preview: { height: 190, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, alignItems: 'center', justifyContent: 'center', gap: 10 }, person: { backgroundColor: colors.surface, borderStyle: 'dashed', borderWidth: 1, borderColor: '#C3C5C8', borderRadius: 16, height: 136, width: 98, alignItems: 'center', justifyContent: 'center' }, personText: { color: '#9DA0A4', fontSize: 25, textAlign: 'center', lineHeight: 32 }, previewText: { color: colors.textSecondary, fontSize: 12 },
     options: { flexDirection: 'row', gap: 9 },
     option: { flex: 1, minHeight: 118, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, justifyContent: 'space-between', gap: 8 }, icon: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 }, iconText: { color: colors.textPrimary, fontSize: 19 }, optionCopy: { gap: 3 }, optionTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold }, optionDetail: { color: colors.textSecondary, fontSize: 12 },

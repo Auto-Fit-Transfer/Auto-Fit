@@ -167,9 +167,9 @@ function createStyles({ colors }: AppTheme) {
     },
     heading: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
     headerActions: { flexDirection: 'row', gap: spacing.xs },
-    switchButton: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.sm, borderWidth: 1, paddingHorizontal: spacing.sm, paddingVertical: 7 },
+    switchButton: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.sm, borderWidth: 1, justifyContent: 'center', minHeight: 34, paddingHorizontal: spacing.sm },
     switchText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-    createButton: { backgroundColor: colors.primaryLight, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 7 },
+    createButton: { backgroundColor: colors.primaryLight, borderRadius: radius.sm, justifyContent: 'center', minHeight: 34, paddingHorizontal: spacing.sm },
     createText: { color: colors.primary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
     message: {
       alignItems: 'center',

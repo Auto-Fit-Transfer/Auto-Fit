@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import {
   getCommunityErrorMessage,
   getCommunityMileage,
@@ -15,6 +14,7 @@ import {
   type CommunityMileageEntry,
   type CommunityRule,
 } from '@/src/api/community';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { AppButton, Text } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
@@ -126,19 +126,8 @@ export default function CommunityMileageScreen() {
   );
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <Pressable
-          accessibilityLabel="뒤로"
-          accessibilityRole="button"
-          hitSlop={12}
-          onPress={() => router.back()}
-          style={styles.back}
-        >
-          <CaretLeftIcon color={colors.textPrimary} height={24} width={24} />
-        </Pressable>
-        <Text style={styles.headerTitle}>마일리지</Text>
-      </View>
+    <View style={styles.root}>
+      <ScreenHeader onBack={() => router.back()} title="마일리지" />
       {errorMessage ? (
         <View style={styles.message}>
           <Text style={styles.messageText}>{errorMessage}</Text>
@@ -254,9 +243,6 @@ export default function CommunityMileageScreen() {
 function createStyles({ colors }: AppTheme) {
   return {
     root: { backgroundColor: colors.background, flex: 1 },
-    header: { alignItems: 'center', height: 56, justifyContent: 'center' },
-    back: { left: 20, position: 'absolute', top: 16 },
-    headerTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
     message: {
       alignItems: 'center',
       flex: 1,
@@ -278,12 +264,12 @@ function createStyles({ colors }: AppTheme) {
       fontFamily: fontFamilies.pretendardMedium,
       fontSize: 14,
     },
-    balance: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 30, marginTop: 2 },
+    balance: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 32, marginTop: 2 },
     balanceHelp: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12, marginTop: 2 },
     statRow: { flexDirection: 'row', gap: 6, marginTop: 16 },
     stat: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, flex: 1, minWidth: 0, padding: 9 },
     statLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-    statValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14, marginTop: 4 },
+    statValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, marginTop: 4 },
     rules: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, marginTop: -6, paddingHorizontal: 14 },
     rulesTitle: {
       color: colors.textPrimary,
@@ -292,7 +278,7 @@ function createStyles({ colors }: AppTheme) {
     },
     ruleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 48 },
     rule: { color: colors.textBody, flex: 1, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    ruleAmount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    ruleAmount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     divider: { backgroundColor: colors.border, height: StyleSheet.hairlineWidth },
     emptyRules: { color: colors.textSecondary, fontSize: 14, paddingVertical: 14 },
     rulesNote: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12, marginTop: -9 },
@@ -326,7 +312,7 @@ function createStyles({ colors }: AppTheme) {
     rowBody: { flex: 1, gap: 3 },
     reason: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-    amount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    amount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     spent: { color: colors.textSecondary },
   } as const;
 }

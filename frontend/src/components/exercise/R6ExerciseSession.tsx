@@ -273,7 +273,7 @@ export function R6ExerciseSession({
                 <TextInput accessibilityLabel="불편한 내용" maxLength={200} onChangeText={setNote} placeholder="예) 당길 때 오른쪽 어깨가 찌릿해요 (선택)" placeholderTextColor={colors.textDisabled} style={s.input} value={note} />
                 <View style={s.actions}>
                   <Pressable accessibilityRole="button" onPress={() => { setSheetOpen(false); setResumeAfterSheet(false); onBack(); }} style={s.secondaryButton}><Text style={s.secondaryText}>오늘은 그만하기</Text></Pressable>
-                  <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting || selectedParts.length === 0 }} disabled={submitting || selectedParts.length === 0} onPress={() => void submitDiscomfort()} style={[s.primaryButton, (submitting || selectedParts.length === 0) && s.disabled]}><Text style={s.primaryText}>{submitting ? '바꾸는 중…' : '남은 운동 바꾸기'}</Text></Pressable>
+                  <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting || selectedParts.length === 0 }} disabled={submitting || selectedParts.length === 0} onPress={() => void submitDiscomfort()} style={[s.primaryButton, (submitting || selectedParts.length === 0) && s.disabled]}><Text style={[s.primaryText, (submitting || selectedParts.length === 0) && s.disabledText]}>{submitting ? '바꾸는 중…' : '남은 운동 바꾸기'}</Text></Pressable>
                 </View>
               </>
             )}
@@ -336,7 +336,7 @@ function createSStyles({ colors }: AppTheme) {
     tipCard: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, flexDirection: 'row', gap: 8, padding: 14 },
     cardTitle: { color: colors.textPrimary, fontSize: 14, lineHeight: 21, fontFamily: fontFamilies.pretendardMedium }, cardText: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
     nextCard: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, flexDirection: 'row', gap: 10, padding: 14 },
-    nextIcon: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 10, borderWidth: 1, height: 36, justifyContent: 'center', width: 36 },
+    nextIcon: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 36, justifyContent: 'center', width: 36 },
     nextTitle: { color: colors.textPrimary, fontSize: 16, lineHeight: 24, fontFamily: fontFamilies.pretendardBold },
     smallButton: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
     smallButtonText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
@@ -344,7 +344,7 @@ function createSStyles({ colors }: AppTheme) {
     secondaryButton: { flex: 1, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceMuted },
     secondaryText: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
     primaryButton: { flex: 1, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
-    primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 },
+    primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled },
     sheetPrimary: { height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
     sheetOverlay: { flex: 1, justifyContent: 'flex-end' }, sheetDim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.45)' },
     sheet: { backgroundColor: colors.background, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, gap: 12 },
@@ -359,7 +359,7 @@ function createSStyles({ colors }: AppTheme) {
     chip: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
     selectedChip: { backgroundColor: colors.primary, borderColor: colors.primary }, chipText: { color: colors.textBody, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, selectedChipText: { color: '#FFF' },
     feelings: { flexDirection: 'row', gap: 8 }, feeling: { flex: 1, paddingHorizontal: 4 },
-    input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.textPrimary, fontSize: 14, height: 48, paddingHorizontal: 14 },
+    input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.textPrimary, fontSize: 16, height: 52, paddingHorizontal: 16 },
     voiceRow: { flexDirection: 'row', alignItems: 'center', minHeight: 52, gap: 12 },
     voiceTitle: { color: colors.textPrimary, fontSize: 16, lineHeight: 24, fontFamily: fontFamilies.pretendardBold }, smallText: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
     switch: { width: 46, height: 28, backgroundColor: colors.border, borderRadius: 14, padding: 3 }, switchOn: { backgroundColor: colors.primary }, switchThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.background }, switchThumbOn: { alignSelf: 'flex-end' },

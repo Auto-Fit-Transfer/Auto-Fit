@@ -73,7 +73,7 @@ function createStyles({ colors }: AppTheme) {
     nickname: {
       color: colors.textPrimary,
       flexShrink: 1,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardMedium,
       fontSize: 14,
     },
     time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },

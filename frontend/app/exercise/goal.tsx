@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getActiveExerciseGoal, saveExerciseGoal, type ExerciseGoalInput } from '@/src/api/exercise';
 import { getApiErrorMessage } from '@/src/api/client';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 const goals: { key: ExerciseGoalInput['goal_type']; label: string }[] = [
   { key: 'muscle_gain', label: '근육량 늘리기' },
@@ -81,12 +81,8 @@ export default function ExerciseGoal() {
   };
 
   return <View style={styles.root}>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 40 }]}>
-      <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
-        <Text style={styles.title}>운동 목표</Text>
-        <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/exercise/goal-progress')}><Text style={styles.link}>진행 보기</Text></Pressable>
-      </View>
+    <ScreenHeader onBack={() => router.back()} title="운동 목표" right={<Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/exercise/goal-progress')}><Text style={styles.link}>진행 보기</Text></Pressable>} />
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 40 }]}>
       {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
       {!loading && !loaded ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> : null}
       <View style={styles.card}>
@@ -115,8 +111,8 @@ export default function ExerciseGoal() {
       <Text style={styles.caption}>헬스·홈트·러닝 완료 기록을 합쳐 확인해요.</Text>
       {error && loaded ? <Text style={styles.error}>{error}</Text> : null}
       {saved ? <Text style={styles.success}>운동 목표를 저장했어요.</Text> : null}
-      <Pressable accessibilityRole="button" disabled={!loaded || saving} onPress={() => void save()} style={[styles.button, (!loaded || saving) && { opacity: 0.5 }]}>
-        <Text style={styles.buttonText}>{saving ? '저장 중…' : '목표 저장하기'}</Text>
+      <Pressable accessibilityRole="button" disabled={!loaded || saving} onPress={() => void save()} style={[styles.button, (!loaded || saving) && styles.buttonDisabled]}>
+        <Text style={[styles.buttonText, (!loaded || saving) && styles.disabledText]}>{saving ? '저장 중…' : '목표 저장하기'}</Text>
       </Pressable>
     </ScrollView>
   </View>;
@@ -126,27 +122,26 @@ function createStyles({ colors }: AppTheme) {
   return {
     root: { flex: 1, backgroundColor: colors.background },
     content: { paddingHorizontal: 20, gap: 17 },
-    header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    back: { color: colors.textPrimary, fontSize: 32, lineHeight: 36 },
-    title: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    link: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    link: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
     sectionTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
     card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 16, gap: 10 },
     smallLabel: { color: colors.textSecondary, fontSize: 14 },
     cardTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
     caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 18 },
     weekOptions: { flexDirection: 'row', gap: 8 },
-    weekChip: { backgroundColor: colors.surface, flex: 1, borderColor: colors.border, borderWidth: 1, borderRadius: 20, paddingVertical: 9, alignItems: 'center' },
+    weekChip: { backgroundColor: colors.surface, flex: 1, borderColor: colors.border, borderWidth: 1, borderRadius: 999, paddingVertical: 9, alignItems: 'center' },
     goalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    goalChip: { backgroundColor: colors.surface, width: '48%', borderColor: colors.border, borderWidth: 1, borderRadius: 20, paddingVertical: 11, alignItems: 'center' },
+    goalChip: { backgroundColor: colors.surface, width: '48%', borderColor: colors.border, borderWidth: 1, borderRadius: 999, paddingVertical: 11, alignItems: 'center' },
     selected: { backgroundColor: colors.primary, borderColor: colors.primary },
     chipText: { color: colors.textPrimary, fontSize: 14 },
-    selectedText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold },
+    selectedText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold },
     minuteRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    minuteInput: { minWidth: 100, borderBottomWidth: 1, borderBottomColor: colors.border, color: colors.textPrimary, fontSize: 20, fontFamily: fontFamilies.pretendardBold, paddingVertical: 5 },
+    minuteInput: { flex: 1, height: 52, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, color: colors.textPrimary, fontSize: 16 },
     frequency: { flexDirection: 'row', justifyContent: 'space-between', gap: 5 },
     frequencyChip: { backgroundColor: colors.surface, flex: 1, aspectRatio: 1, borderRadius: 24, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
     button: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 15 },
+    buttonDisabled: { backgroundColor: colors.surfaceMuted },
+    disabledText: { color: colors.textDisabled },
     buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
     error: { color: colors.danger, fontSize: 14 },
     success: { color: colors.success, fontSize: 14 },

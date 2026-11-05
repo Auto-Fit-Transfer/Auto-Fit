@@ -119,7 +119,7 @@ export default function ExerciseCompletionScreen() {
           </>
         ) : null}
         <Pressable accessibilityRole="button" disabled={saving || !sessionId} onPress={() => void save()} style={[s.primaryButton, (saving || !sessionId) && s.disabled]}>
-          <Text style={s.primaryText}>{saving ? '저장 중…' : resultRecordCompleted ? '분석 보기' : '완료'}</Text>
+          <Text style={[s.primaryText, (saving || !sessionId) && s.disabledText]}>{saving ? '저장 중…' : resultRecordCompleted ? '분석 보기' : '완료'}</Text>
         </Pressable>
       </ScrollView>
     </View>
@@ -148,6 +148,6 @@ function createSStyles({ colors }: AppTheme) {
     optionText: { color: colors.textBody, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
     selectedText: { color: '#FFFFFF' },
     primaryButton: { height: 56, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-    primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 },
+    primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled },
   } as const;
 }

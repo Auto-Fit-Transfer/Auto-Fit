@@ -416,7 +416,7 @@ function createStyles({ colors }: AppTheme) {
     checkbox: {
       alignItems: 'center',
       borderColor: colors.textDisabled,
-      borderRadius: 6,
+      borderRadius: 8,
       borderWidth: 1,
       height: 24,
       justifyContent: 'center',

@@ -391,7 +391,7 @@ function createStyles({ colors }: AppTheme) {
     },
     pickerTitle: {
       color: colors.textPrimary,
-      fontSize: 17,
+      fontSize: 18,
       fontFamily: fontFamilies.pretendardBold,
       marginBottom: 10,
     },
@@ -405,7 +405,7 @@ function createStyles({ colors }: AppTheme) {
     },
     pickerRowText: { color: colors.textPrimary, fontSize: 14 },
     cancel: { minHeight: 47, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-    cancelText: { color: colors.textSecondary, fontSize: 13 },
+    cancelText: { color: colors.textSecondary, fontSize: 14 },
   } as const;
 }
 

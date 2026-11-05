@@ -1,4 +1,3 @@
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
@@ -17,6 +16,7 @@ import {
   readCommunityNotifications,
   type CommunityNotification,
 } from '@/src/api/community';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { AppButton, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
@@ -132,8 +132,8 @@ export default function CommunityNotificationsScreen() {
   }, [items]);
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <View style={styles.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable><Text style={styles.headerTitle}>알림</Text><View style={{ width: 24 }} /></View>
+    <View style={styles.root}>
+      <ScreenHeader onBack={() => router.back()} title="알림" />
       <View style={styles.filters}>
         {([['all', '전체'], ['community', '커뮤니티']] as const).map(([key, label]) => <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={[styles.filter, tab === key && styles.filterSelected]}><Text style={[styles.filterText, tab === key && styles.filterTextSelected]}>{label}</Text></Pressable>)}
         <View accessibilityLabel="챌린지·티어 알림은 준비 중" style={styles.filter}><Text style={styles.filterText}>챌린지 · 티어</Text></View>
@@ -224,7 +224,6 @@ export default function CommunityNotificationsScreen() {
 function createStyles({ colors }: AppTheme) {
   return {
     root: { backgroundColor: colors.background, flex: 1 },
-    header: { height: 54, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, headerTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardSemiBold },
     filters: { paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }, filter: { backgroundColor: colors.background, borderRadius: 999, height: 34, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderColor: colors.border }, filterSelected: { backgroundColor: colors.primary, borderColor: colors.primary }, filterText: { color: colors.textSecondary, fontSize: 12 }, filterTextSelected: { color: '#FFFFFF' }, markReadButton: { marginLeft: 'auto' }, markRead: { color: colors.textSecondary, fontSize: 12 }, sectionTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8 }, readError: { color: colors.danger, fontSize: 12, paddingHorizontal: 20 },
     availability: { color: colors.textSecondary, fontSize: 12, paddingHorizontal: 20, paddingBottom: 8 },
     message: {

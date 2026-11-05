@@ -775,7 +775,7 @@ function createStyles({ colors }: AppTheme) {
     },
     title: {
       color: colors.textBody,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardBold,
       fontSize: 18,
       includeFontPadding: false,
       lineHeight: 24,
@@ -827,7 +827,7 @@ function createStyles({ colors }: AppTheme) {
     },
     botName: {
       color: colors.textBody,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardMedium,
       fontSize: 12,
       includeFontPadding: false,
       lineHeight: 17,
@@ -845,16 +845,16 @@ function createStyles({ colors }: AppTheme) {
     messageText: {
       color: colors.textBody,
       fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 13,
+      fontSize: 14,
       includeFontPadding: false,
-      lineHeight: 18,
+      lineHeight: 21,
     },
     time: {
       color: colors.textSecondary,
       fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 10,
+      fontSize: 12,
       includeFontPadding: false,
-      lineHeight: 15,
+      lineHeight: 17,
     },
     userDialog: {
       alignItems: 'flex-end',
@@ -877,9 +877,9 @@ function createStyles({ colors }: AppTheme) {
     errorText: {
       color: colors.danger,
       fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 11,
+      fontSize: 12,
       includeFontPadding: false,
-      lineHeight: 15,
+      lineHeight: 17,
       textAlign: 'center',
     },
     composer: {
@@ -898,10 +898,10 @@ function createStyles({ colors }: AppTheme) {
       color: colors.textBody,
       flex: 1,
       fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 13,
+      fontSize: 14,
       height: 40,
       includeFontPadding: false,
-      lineHeight: 18,
+      lineHeight: 21,
       paddingHorizontal: 16,
       paddingVertical: 10,
     },

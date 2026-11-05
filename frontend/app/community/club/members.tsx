@@ -160,14 +160,14 @@ function createStyles({ colors }: AppTheme) {
     nickname: {
       color: colors.textPrimary,
       flexShrink: 1,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardBold,
       fontSize: 16,
     },
     owner: {
       backgroundColor: colors.primaryLight,
       borderRadius: 12,
       color: colors.primary,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardMedium,
       fontSize: 12,
       overflow: 'hidden',
       paddingHorizontal: 6,
@@ -182,6 +182,6 @@ function createStyles({ colors }: AppTheme) {
       paddingVertical: 6,
     },
     pressed: { backgroundColor: colors.dangerLight },
-    removeText: { color: colors.danger, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    removeText: { color: colors.danger, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
   } as const;
 }

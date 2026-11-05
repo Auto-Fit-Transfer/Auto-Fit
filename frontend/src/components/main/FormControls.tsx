@@ -10,21 +10,21 @@ export function FormField({ label, ...props }: TextInputProps & { label: string 
   );
 }
 export const form = StyleSheet.create({
-  label: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
+  label: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
   input: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 10,
-    minHeight: 48,
-    paddingHorizontal: 14,
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 17,
+    borderRadius: 12,
+    minHeight: 52,
+    paddingHorizontal: 16,
+    color: colors.textPrimary,
+    fontFamily: fontFamilies.pretendardRegular,
+    fontSize: 16,
   },
   error: { color: colors.danger, fontSize: 14, lineHeight: 21 },
   success: { color: colors.primary, fontSize: 14 },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { backgroundColor: colors.surface, padding: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 15 },
+  chip: { backgroundColor: colors.surface, padding: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 999 },
   selected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
 });

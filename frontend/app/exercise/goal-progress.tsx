@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getActiveExerciseGoal, getExerciseHistory } from '@/src/api/exercise';
 import { getRunningApiErrorMessage, getRunningHistory } from '@/src/api/running';
 import { getApiErrorMessage } from '@/src/api/client';
@@ -10,7 +11,6 @@ import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 type Goal = { goal_type: string; weekly_frequency: number; weekly_duration_minutes: number; starts_on: string; ends_on: string };
 type Period = 'week' | 'month';
@@ -83,8 +83,8 @@ export default function GoalProgress() {
   const unit = metric === 'workouts' ? '회' : '분';
 
   return <View style={styles.root}>
-    <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 38 }]}>
-      <View style={styles.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable><Text style={[styles.title, styles.titleCentered]}>진행 현황</Text><SimpleReadButton text={`${period === 'week' ? '주간' : '월간'} 운동 진행 현황입니다. ${Math.round(summary.minutes)}분 운동했고 ${summary.workouts}회 완료했어요. 목표까지 남은 양을 화면에서 확인하세요.`} /></View>
+    <ScreenHeader onBack={() => router.back()} title="진행 현황" right={<SimpleReadButton text={`${period === 'week' ? '주간' : '월간'} 운동 진행 현황입니다. ${Math.round(summary.minutes)}분 운동했고 ${summary.workouts}회 완료했어요. 목표까지 남은 양을 화면에서 확인하세요.`} />} />
+    <ScrollView contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 38 }]}>
       <View style={styles.segment}>{([['week', '주간'], ['month', '월간']] as const).map(([key, label]) =>
         <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: period === key }} onPress={() => { if (period !== key || offset !== 0) setLoading(true); setPeriod(key); setOffset(0); }} style={[styles.segmentChoice, period === key && styles.segmentSelected]}><Text style={[styles.segmentText, period === key && styles.segmentTextSelected]}>{label}</Text></Pressable>)}</View>
       <View style={styles.dateRow}>
@@ -113,15 +113,13 @@ export default function GoalProgress() {
 function createStyles({ colors }: AppTheme) {
   return {
     root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, gap: 17 },
-    titleCentered: { flex: 1, marginRight: 10, textAlign: 'center' },
-    header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, back: { color: colors.textPrimary, fontSize: 32, lineHeight: 36 }, title: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    segment: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: 24, padding: 3 }, segmentChoice: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 20 }, segmentSelected: { backgroundColor: colors.background }, segmentText: { color: colors.textSecondary, fontSize: 14 }, segmentTextSelected: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    segment: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: 24, padding: 3 }, segmentChoice: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 999 }, segmentSelected: { backgroundColor: colors.background }, segmentText: { color: colors.textSecondary, fontSize: 14 }, segmentTextSelected: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, arrow: { fontSize: 28, color: colors.textPrimary }, disabled: { color: colors.textDisabled }, dateTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
     goalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, goalName: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold }, caption: { color: colors.textSecondary, fontSize: 12, lineHeight: 17 }, outline: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 9 }, outlineText: { color: colors.textPrimary, fontSize: 14 },
-    tabs: { flexDirection: 'row', gap: 6 }, tab: { borderColor: colors.border, borderWidth: 1, borderRadius: 20, paddingHorizontal: 11, paddingVertical: 9 }, selectedTab: { backgroundColor: colors.primary, borderColor: colors.primary }, tabText: { color: colors.textSecondary, fontSize: 14 }, selectedTabText: { color: '#FFF' },
+    tabs: { flexDirection: 'row', gap: 6 }, tab: { borderColor: colors.border, borderWidth: 1, borderRadius: 999, paddingHorizontal: 11, paddingVertical: 9 }, selectedTab: { backgroundColor: colors.primary, borderColor: colors.primary }, tabText: { color: colors.textSecondary, fontSize: 14 }, selectedTabText: { color: '#FFF' },
     card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 16, gap: 14 }, row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, sectionTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold }, delta: { color: colors.success, fontSize: 12 },
-    bigNumber: { color: colors.textPrimary, fontSize: 24, fontFamily: fontFamilies.pretendardBold }, target: { color: colors.textSecondary, fontSize: 14 }, progressTrack: { height: 7, borderRadius: 4, backgroundColor: colors.surfaceMuted, overflow: 'hidden' }, progressFill: { height: 7, backgroundColor: colors.primary },
-    chart: { height: 160, flexDirection: 'row', alignItems: 'flex-end', gap: 5, borderBottomWidth: 1, borderBottomColor: colors.border }, barColumn: { flex: 1, height: '100%', justifyContent: 'flex-end', alignItems: 'center', gap: 7 }, barTrack: { flex: 1, width: '78%', backgroundColor: colors.surfaceMuted, borderRadius: 7, justifyContent: 'flex-end', overflow: 'hidden' }, bar: { backgroundColor: '#24232A', borderRadius: 7, width: '100%' }, barLabel: { color: colors.textSecondary, fontSize: 12, marginBottom: 5 },
+    bigNumber: { color: colors.textPrimary, fontSize: 22, fontFamily: fontFamilies.pretendardBold }, target: { color: colors.textSecondary, fontSize: 14 }, progressTrack: { height: 7, borderRadius: 4, backgroundColor: colors.surfaceMuted, overflow: 'hidden' }, progressFill: { height: 7, backgroundColor: colors.primary },
+    chart: { height: 160, flexDirection: 'row', alignItems: 'flex-end', gap: 5, borderBottomWidth: 1, borderBottomColor: colors.border }, barColumn: { flex: 1, height: '100%', justifyContent: 'flex-end', alignItems: 'center', gap: 7 }, barTrack: { flex: 1, width: '78%', backgroundColor: colors.surfaceMuted, borderRadius: 8, justifyContent: 'flex-end', overflow: 'hidden' }, bar: { backgroundColor: '#24232A', borderRadius: 8, width: '100%' }, barLabel: { color: colors.textSecondary, fontSize: 12, marginBottom: 5 },
     stats: { flexDirection: 'row', justifyContent: 'space-between' }, statValue: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold }, button: { backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center', alignItems: 'center' }, buttonText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, error: { color: colors.danger, fontSize: 14 },
   } as const;
 }

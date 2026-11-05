@@ -12,7 +12,7 @@ export const typography = {
     letterSpacing: 2,
   },
   heading: {
-    fontFamily: fontFamilies.pretendardSemiBold,
+    fontFamily: fontFamilies.pretendardBold,
     fontSize: 32,
     lineHeight: 40,
   },
@@ -23,23 +23,23 @@ export const typography = {
   },
   title: {
     fontFamily: fontFamilies.pretendardBold,
-    fontSize: 20,
-    lineHeight: 28,
+    fontSize: 18,
+    lineHeight: 26,
   },
   sectionTitle: {
-    fontFamily: fontFamilies.pretendardSemiBold,
+    fontFamily: fontFamilies.pretendardBold,
     fontSize: 16,
     lineHeight: 24,
   },
   bodyEmphasis: {
-    fontFamily: fontFamilies.pretendardSemiBold,
+    fontFamily: fontFamilies.pretendardMedium,
     fontSize: 14,
     lineHeight: 22,
   },
   bodySmall: {
     fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 21,
   },
   label: {
     fontFamily: fontFamilies.pretendardMedium,
@@ -48,8 +48,8 @@ export const typography = {
   },
   caption: {
     fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 11,
-    lineHeight: 16,
+    fontSize: 12,
+    lineHeight: 17,
   },
   button: {
     fontFamily: fontFamilies.pretendardMedium,

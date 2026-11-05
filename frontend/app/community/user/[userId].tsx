@@ -367,7 +367,7 @@ function createStyles({ colors }: AppTheme) {
     },
     badge: {
       backgroundColor: colors.background,
-      borderRadius: 6,
+      borderRadius: 8,
       color: colors.textSecondary,
       fontFamily: fontFamilies.pretendardMedium,
       fontSize: 12,
@@ -401,7 +401,7 @@ function createStyles({ colors }: AppTheme) {
     myRowEnd: { alignItems: 'center', flexDirection: 'row', gap: 2 },
     myRowLabel: {
       color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardMedium,
       fontSize: 14,
     },
     myRowValue: {

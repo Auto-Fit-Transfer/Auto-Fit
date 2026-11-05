@@ -153,7 +153,7 @@ function createStyles({ colors }: AppTheme) {
     },
     noticeTitle: {
       color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardMedium,
       fontSize: 14,
     },
     noticeText: { ...typography.bodySmall, color: colors.textSecondary },

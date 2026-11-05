@@ -68,7 +68,7 @@ export default function CommunitySearchScreen() {
   const visibleCount = tab === 'all' ? tabs[0].count : tabs.find((item) => item.key === tab)?.count ?? 0;
 
   return <View style={s.root}>
-    <View style={[s.searchRow, { paddingTop: insets.top + 12 }]}>
+    <View style={[s.searchRow, { paddingTop: insets.top + 6 }]}>
       <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={s.backButton}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
       <View style={s.inputWrap}><SearchIcon color={colors.textSecondary} height={20} width={20} /><TextInput accessibilityLabel="커뮤니티 검색어" autoFocus autoCapitalize="none" autoCorrect={false} onChangeText={(value) => { setQuery(value); setLoading(value.trim().length >= 2); setError(''); if (value.trim().length < 2) setResults(empty); }} onSubmitEditing={() => Keyboard.dismiss()} placeholder="게시글, 루틴, 사람, 클럽 검색" returnKeyType="search" style={s.input} value={query} />{query ? <Pressable accessibilityRole="button" accessibilityLabel="검색어 지우기" onPress={() => { setQuery(''); setLoading(false); setResults(empty); setError(''); }}><CloseIcon color={colors.textSecondary} height={18} width={18} /></Pressable> : null}</View>
     </View>
@@ -101,15 +101,15 @@ function PostRow({ post, onPress, routine = false }: { post: CommunityPost; onPr
 function createSStyles({ colors }: AppTheme) {
   return {
     root: { flex: 1, backgroundColor: colors.background },
-    searchRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingBottom: 13, gap: 8 },
-    backButton: { width: 30, alignItems: 'center' },
+    searchRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 13, gap: 8 },
+    backButton: { width: 24, alignItems: 'center' },
     inputWrap: { flex: 1, height: 44, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 22, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 7 },
     input: { flex: 1, fontSize: 14, color: colors.textPrimary },
     tabsScroll: { flexGrow: 0, borderBottomColor: colors.border, borderBottomWidth: 1 },
-    tabs: { paddingHorizontal: 20, gap: 20, alignItems: 'center' }, tab: { paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' }, tabActive: { borderBottomColor: colors.textPrimary }, tabText: { fontSize: 14, color: colors.textSecondary }, tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    tabs: { paddingHorizontal: 20, gap: 20, alignItems: 'center' }, tab: { paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' }, tabActive: { borderBottomColor: colors.textPrimary }, tabText: { fontSize: 14, color: colors.textSecondary }, tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     content: { paddingHorizontal: 20, paddingTop: 16, gap: 10 }, hint: { color: colors.textSecondary, fontSize: 14, marginTop: 18 }, loading: { marginTop: 35 },
     sectionTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold, marginTop: 10 },
-    postRow: { borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', gap: 12, paddingVertical: 14 }, postCopy: { flex: 1, gap: 6 }, thumbnail: { backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 72, width: 72 }, category: { alignSelf: 'flex-start', backgroundColor: colors.surfaceMuted, borderRadius: 6, color: colors.textBody, fontSize: 12, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3 }, rowTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardSemiBold, lineHeight: 23 }, meta: { color: colors.textSecondary, fontSize: 12 },
+    postRow: { borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', gap: 12, paddingVertical: 14 }, postCopy: { flex: 1, gap: 6 }, thumbnail: { backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 72, width: 72 }, category: { alignSelf: 'flex-start', backgroundColor: colors.surfaceMuted, borderRadius: 8, color: colors.textBody, fontSize: 12, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3 }, rowTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold, lineHeight: 23 }, meta: { color: colors.textSecondary, fontSize: 12 },
     personRow: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }, personCopy: { flex: 1, gap: 3 }, clubIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
     empty: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 20, marginTop: 20, alignItems: 'center' }, emptyText: { color: colors.textSecondary, fontSize: 14 }, error: { color: colors.danger, fontSize: 12 },
   } as const;

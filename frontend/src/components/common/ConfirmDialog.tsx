@@ -51,7 +51,7 @@ function createStyles({ colors }: AppTheme) {
     },
     dialog: {
       backgroundColor: colors.background,
-      borderRadius: 20,
+      borderRadius: 24,
       maxWidth: 360,
       padding: 24,
       width: '100%',

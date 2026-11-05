@@ -3,7 +3,6 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { ActivityIndicator, FlatList, Image, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import HeartIcon from '@/assets/icons/deco/Heart.svg';
 import ChatIcon from '@/assets/icons/feature/ChatCircle.svg';
 import {
@@ -15,6 +14,7 @@ import {
   type CommunityActivityItem,
   type CommunityPost,
 } from '@/src/api/community';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { COMMUNITY_POST_CATEGORY_LABELS } from '@/src/components/community';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
@@ -120,11 +120,6 @@ export default function CommunityActivityScreen() {
 
   const header = (
     <>
-      <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
-        <Text style={styles.title}>커뮤니티 활동</Text>
-        <View style={styles.back} />
-      </View>
       <View style={styles.tabs}>{tabs.map(({ key, label }) => (
         <Pressable key={key} accessibilityRole="tab" accessibilityState={{ selected: tab === key }} onPress={() => { requestVersion.current += 1; setCursor(null); setLoading(true); setError(''); setTab(key); }} style={tab === key ? styles.activeTab : styles.inactiveTab}>
           <Text style={tab === key ? styles.activeTabText : styles.inactiveTabText}>{label}{key === 'posts' ? ` ${count ?? '–'}` : ''}</Text>
@@ -151,10 +146,11 @@ export default function CommunityActivityScreen() {
 
   return (
     <View style={styles.screen}>
+      <ScreenHeader onBack={() => router.back()} title="커뮤니티 활동" />
       <FlatList<CommunityPost | CommunityActivityItem>
         data={loading || error ? [] : tab === 'posts' ? posts : tab === 'scraps' ? bookmarks : activities}
         keyExtractor={(item) => tab === 'comments' || tab === 'likes' ? (item as CommunityActivityItem).activity_id : (item as CommunityPost).post_id}
-        contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 32 }]}
         ListHeaderComponent={header}
         ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.primary} /> : null}
         onEndReached={() => void loadMore()}
@@ -195,15 +191,15 @@ function createStyles({ colors }: AppTheme) {
     content: { paddingHorizontal: 20 },
     header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
     back: { width: 32, minHeight: 32, justifyContent: 'center' },
-    title: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    title: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     tabs: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: 12, padding: 4, gap: 2 },
     activeTab: { flex: 1, borderRadius: 12, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', height: 35 },
-    activeTabText: { color: colors.textPrimary, fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold },
+    activeTabText: { color: colors.textPrimary, fontSize: 12, fontFamily: fontFamilies.pretendardMedium },
     inactiveTab: { flex: 1, alignItems: 'center', justifyContent: 'center', height: 35 },
     inactiveTabText: { color: colors.textSecondary, fontSize: 12 },
     tabNote: { color: colors.textSecondary, fontSize: 12, lineHeight: 17, marginTop: 8 },
     listHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 8 },
-    listTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    listTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     sort: { fontSize: 12, color: colors.textSecondary },
     spinner: { marginVertical: 30 },
     errorBox: { marginVertical: 20, padding: 15, borderRadius: 12, backgroundColor: colors.dangerLight },
@@ -213,8 +209,8 @@ function createStyles({ colors }: AppTheme) {
     writeLink: { color: colors.primary, fontSize: 14 },
     post: { borderBottomWidth: 1, borderColor: colors.border, flexDirection: 'row', gap: 12, paddingVertical: 16 },
     postText: { flex: 1, gap: 5 },
-    postTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, lineHeight: 23 },
-    category: { alignSelf: 'flex-start', backgroundColor: colors.surfaceMuted, borderRadius: 6, color: colors.textBody, fontSize: 12, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3 },
+    postTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, lineHeight: 23 },
+    category: { alignSelf: 'flex-start', backgroundColor: colors.surfaceMuted, borderRadius: 8, color: colors.textBody, fontSize: 12, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3 },
     metaRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
     reactions: { alignItems: 'center', flexDirection: 'row', gap: 4 },
     postPreview: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },

@@ -1287,7 +1287,7 @@ export default function OCRResultScreen() {
                 pressed && styles.pressed,
               ]}
             >
-              <Text style={styles.nextButtonText}>
+              <Text style={[styles.nextButtonText, (isSaving || isReuploading || currentResult.ocrStatus !== 'completed') && styles.disabledText]}>
                 {isFromHealthDataManagement ? '완료' : '다음'}
               </Text>
             </Pressable>
@@ -1380,7 +1380,8 @@ function createStyles({ colors }: AppTheme) {
     privacyBox: { alignItems: 'center', flexDirection: 'row', gap: 6, left: 20, position: 'absolute', right: 20 },
     privacyText: { color: colors.textSecondary, flex: 1, fontSize: 14, lineHeight: 21 },
     nextButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center', left: 20, position: 'absolute', width: 372 },
-    nextButtonDisabled: { opacity: 0.5 },
+    nextButtonDisabled: { backgroundColor: colors.surfaceMuted },
+    disabledText: { color: colors.textDisabled },
     nextButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
     pressed: { opacity: 0.72 },
   } as const;

@@ -5,9 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
 import GoogleIcon from '@/assets/icons/auth-redesign/google-logo.svg';
 import KakaoIcon from '@/assets/icons/auth-redesign/kakao-symbol.svg';
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import LockIcon from '@/assets/icons/ui/lock.svg';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { apiRequest, getApiErrorMessage } from '@/src/api/client';
 import { FormField } from '@/src/components/main/FormControls';
@@ -77,12 +77,8 @@ export default function Account() {
 
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 35 }]}>
-        <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
-          <Text style={styles.title}>계정 설정</Text>
-          <View style={styles.back} />
-        </View>
+      <ScreenHeader onBack={() => router.back()} title="계정 설정" />
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 35 }]}>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>로그인 정보</Text>
@@ -167,38 +163,35 @@ export default function Account() {
 function createStyles({ colors }: AppTheme) {
   return {
     screen: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: 22 },
-    header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 },
-    back: { width: 32, minHeight: 32, justifyContent: 'center' },
-    title: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16, color: colors.textPrimary },
+    content: { paddingHorizontal: 20 },
     section: { gap: 11, marginBottom: 28 },
-    sectionTitle: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16, color: colors.textPrimary },
+    sectionTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 16, color: colors.textPrimary },
     card: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: colors.surface, paddingHorizontal: 16 },
     row: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
     divider: { height: 1, backgroundColor: colors.border },
     label: { fontFamily: fontFamilies.pretendardMedium, fontSize: 14, color: colors.textPrimary },
-    value: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, flexShrink: 1, textAlign: 'right' },
+    value: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, flexShrink: 1, textAlign: 'right' },
     kakaoMark: { alignItems: 'center', backgroundColor: '#FEE500', borderRadius: 11, height: 22, justifyContent: 'center', width: 22 },
     rowStart: { alignItems: 'center', flexDirection: 'row', flex: 1, gap: 12 },
     actionCopy: { flex: 1, gap: 2 },
     soon: { fontSize: 12, color: colors.textSecondary },
     connectedPill: { backgroundColor: colors.successLight, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
     signOut: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 48, justifyContent: 'center' },
-    signOutText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    signOutText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     withdrawButton: { alignItems: 'center', marginTop: 18, paddingVertical: 6 },
     version: { color: colors.textSecondary, fontSize: 12, marginTop: 6, textAlign: 'center' },
     note: { fontSize: 12, lineHeight: 18, color: colors.textSecondary },
-    connected: { fontSize: 12, color: colors.success, fontFamily: fontFamilies.pretendardSemiBold },
+    connected: { fontSize: 12, color: colors.success, fontFamily: fontFamilies.pretendardMedium },
     action: { backgroundColor: colors.surface, gap: 12, minHeight: 64, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
     withdraw: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, textDecorationLine: 'underline' },
     error: { color: colors.danger, fontSize: 14 },
     overlay: { flex: 1, padding: 22, backgroundColor: colors.overlay, justifyContent: 'center' },
     dialog: { padding: 22, borderRadius: 16, backgroundColor: colors.surface, gap: 16 },
-    dialogTitle: { fontSize: 18, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    dialogTitle: { fontSize: 18, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     dialogDescription: { fontSize: 14, lineHeight: 21, color: colors.textSecondary },
     deleteButton: { minHeight: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.danger },
     disabled: { opacity: 0.45 },
-    deleteText: { fontSize: 16, color: colors.onPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    deleteText: { fontSize: 16, color: colors.onPrimary, fontFamily: fontFamilies.pretendardBold },
     cancel: { alignItems: 'center', paddingVertical: 8 },
     cancelText: { fontSize: 14, color: colors.textSecondary },
   } as const;

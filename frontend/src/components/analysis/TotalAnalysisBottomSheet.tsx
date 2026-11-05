@@ -432,7 +432,7 @@ function createStyles({ colors }: AppTheme) {
     headingTitle: {
       flex: 1,
       color: colors.textBody,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardBold,
       fontSize: 22,
     },
     headingDescription: {
@@ -461,7 +461,7 @@ function createStyles({ colors }: AppTheme) {
     metricCard: {
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 15,
+      borderRadius: 16,
       padding: 14,
       gap: 10,
       backgroundColor: colors.surface,
@@ -475,27 +475,27 @@ function createStyles({ colors }: AppTheme) {
       justifyContent: 'center',
     },
     metricCopy: { flex: 1 },
-    metricName: { fontSize: 16, color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold },
+    metricName: { fontSize: 16, color: colors.textBody, fontFamily: fontFamilies.pretendardBold },
     metricValue: { fontSize: 22, color: colors.textBody, fontFamily: fontFamilies.pretendardBold },
     metricDescription: {
       alignSelf: 'stretch',
       marginHorizontal: -6,
-      fontSize: 13,
+      fontSize: 14,
       letterSpacing: -0.1,
-      lineHeight: 20,
+      lineHeight: 21,
       color: colors.textSecondary,
       fontFamily: fontFamilies.pretendardMedium,
     },
-    statusBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-    statusText: { fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
+    statusBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+    statusText: { fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
     statusBadgeLarge: { paddingHorizontal: 18, paddingVertical: 5 },
     statusTextLarge: { fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-    summaryBox: { borderRadius: 20, padding: 14, gap: 8, backgroundColor: colors.primaryLight },
+    summaryBox: { borderRadius: 16, padding: 14, gap: 8, backgroundColor: colors.primaryLight },
     summaryTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     summaryBoxTitle: {
       color: colors.primaryPressed,
       fontSize: 16,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardBold,
     },
     summaryBoxText: {
       color: colors.textSecondary,
@@ -506,7 +506,7 @@ function createStyles({ colors }: AppTheme) {
     sheetFootnote: {
       textAlign: 'center',
       color: colors.textSecondary,
-      fontSize: 15,
+      fontSize: 14,
       fontFamily: fontFamilies.pretendardMedium,
     },
     currentCard: {
@@ -523,7 +523,7 @@ function createStyles({ colors }: AppTheme) {
     currentInner: { flexDirection: 'row', alignItems: 'center', gap: 16, width: '100%' },
     currentColumn: { flex: 1, alignItems: 'center', gap: 6 },
     currentLabel: {
-      fontSize: 15,
+      fontSize: 14,
       color: colors.textSecondary,
       fontFamily: fontFamilies.pretendardMedium,
     },
@@ -543,8 +543,8 @@ function createStyles({ colors }: AppTheme) {
     currentUnit: {
       flexShrink: 0,
       color: colors.primaryPressed,
-      fontFamily: fontFamilies.pretendardSemiBold,
-      fontSize: 13,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 14,
     },
     currentDivider: { width: 1, height: 56, backgroundColor: colors.border },
     currentInfo: {
@@ -569,8 +569,8 @@ function createStyles({ colors }: AppTheme) {
     criteriaSection: { gap: 12 },
     sectionTitle: {
       color: colors.primaryPressed,
-      fontSize: 20,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 18,
+      fontFamily: fontFamilies.pretendardBold,
     },
     ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
     smallIconCircle: {
@@ -584,7 +584,7 @@ function createStyles({ colors }: AppTheme) {
     ruleText: {
       flex: 1,
       color: colors.textSecondary,
-      fontSize: 15,
+      fontSize: 14,
       lineHeight: 21,
       fontFamily: fontFamilies.pretendardMedium,
     },
@@ -599,7 +599,7 @@ function createStyles({ colors }: AppTheme) {
       backgroundColor: colors.surface,
       height: 45,
       borderWidth: 1,
-      borderRadius: 10,
+      borderRadius: 12,
       overflow: 'hidden',
       flexDirection: 'row',
       flexWrap: 'nowrap',
@@ -620,15 +620,15 @@ function createStyles({ colors }: AppTheme) {
       flex: 1,
       flexShrink: 1,
       paddingLeft: 10,
-      fontSize: 15,
+      fontSize: 14,
       color: colors.textSecondary,
       fontFamily: fontFamilies.pretendardMedium,
     },
-    currentPill: { marginRight: 10, borderRadius: 20, paddingHorizontal: 5, paddingVertical: 3 },
+    currentPill: { marginRight: 10, borderRadius: 999, paddingHorizontal: 5, paddingVertical: 3 },
     currentPillText: {
       color: colors.onPrimary,
-      fontSize: 13,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 14,
+      fontFamily: fontFamilies.pretendardMedium,
     },
     referenceButton: {
       height: 50,
@@ -643,7 +643,7 @@ function createStyles({ colors }: AppTheme) {
     referenceButtonText: {
       color: colors.primaryPressed,
       fontSize: 16,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardBold,
     },
     referenceDetailCard: {
       backgroundColor: colors.surface,
@@ -663,21 +663,21 @@ function createStyles({ colors }: AppTheme) {
       color: colors.textBody,
       fontSize: 16,
       lineHeight: 21,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardBold,
     },
     detailDivider: { height: 1, backgroundColor: colors.border },
     appliedChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 5, width: '100%' },
     appliedChip: {
       width: '49%',
-      borderRadius: 20,
+      borderRadius: 999,
       backgroundColor: colors.primaryLight,
       paddingHorizontal: 12,
       paddingVertical: 4,
     },
     appliedChipText: {
       color: colors.primaryPressed,
-      fontSize: 13,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 14,
+      fontFamily: fontFamilies.pretendardMedium,
     },
     pressed: { opacity: 0.72 },
   } as const;

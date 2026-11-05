@@ -32,7 +32,7 @@ function moveWeek(week: Date, amount: number) {
   return next;
 }
 
-export function WeeklyDietContent({ showHeader = false }: { showHeader?: boolean }) {
+export function WeeklyDietContent() {
   const { colors } = useAppTheme();
   const s = useThemedStyles(createSStyles);
   const router = useRouter();
@@ -97,7 +97,6 @@ export function WeeklyDietContent({ showHeader = false }: { showHeader?: boolean
   };
 
   return <View style={s.content}>
-    {showHeader && <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="식단으로 돌아가기" onPress={() => router.back()} style={s.back}><Text style={s.backText}>‹</Text></Pressable><Text style={s.headerTitle}>7일 식단</Text></View>}
     <View style={s.weekRow}>
       <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="이전 주" onPress={() => setWeek(moveWeek(week, -1))} style={s.weekButton}><Text style={s.weekArrow}>‹</Text></Pressable>
       <View style={s.weekText}><Text style={s.weekTitle}>{start}부터 7일</Text><Text style={s.muted}>한국 시간 기준</Text></View>
@@ -133,11 +132,10 @@ export function WeeklyDietContent({ showHeader = false }: { showHeader?: boolean
 function createSStyles({ colors }: AppTheme) {
   return {
     content: { gap: 14 },
-    header: { height: 48, flexDirection: 'row', alignItems: 'center' }, back: { width: 48, height: 48, justifyContent: 'center' }, backText: { fontSize: 34, color: colors.textPrimary }, headerTitle: { fontSize: 19, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-    weekRow: { backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 8 }, weekButton: { width: 40, height: 42, alignItems: 'center', justifyContent: 'center' }, weekArrow: { fontSize: 28, color: colors.primaryText }, weekText: { flex: 1, alignItems: 'center' }, weekTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold }, muted: { fontSize: 13, color: colors.textSecondary, lineHeight: 20 }, loading: { marginTop: 40 },
-    summary: { fontSize: 16, color: colors.textPrimary, lineHeight: 24, fontFamily: fontFamilies.pretendardSemiBold }, outline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary, padding: 12, borderRadius: 10, alignItems: 'center' }, outlineText: { color: colors.primaryText, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
-    daySection: { gap: 10, marginTop: 14 }, dayTitle: { fontSize: 19, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, date: { fontSize: 13, color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
-    mealCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, gap: 7 }, mealHead: { flexDirection: 'row', justifyContent: 'space-between' }, mealLabel: { fontSize: 13, color: colors.primaryText, fontFamily: fontFamilies.pretendardSemiBold }, kcal: { fontSize: 13, color: colors.textSecondary }, mealTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, foods: { fontSize: 13, color: colors.textBody, lineHeight: 20 }, guidance: { fontSize: 13, color: colors.textSecondary, lineHeight: 20 }, actions: { flexDirection: 'row', gap: 8, marginTop: 4 }, recipeButton: { backgroundColor: colors.primaryLight, borderRadius: 9, paddingHorizontal: 15, paddingVertical: 11, alignItems: 'center' }, recipeText: { color: colors.primaryText, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold }, smallOutline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 9, paddingHorizontal: 15, paddingVertical: 10 },
-    empty: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20, gap: 12 }, emptyTitle: { fontSize: 17, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, error: { padding: 14, backgroundColor: colors.dangerLight, borderRadius: 10, gap: 10 }, errorText: { color: colors.danger, fontSize: 13 },
+    weekRow: { backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 8 }, weekButton: { width: 40, height: 42, alignItems: 'center', justifyContent: 'center' }, weekArrow: { fontSize: 28, color: colors.primaryText }, weekText: { flex: 1, alignItems: 'center' }, weekTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, muted: { fontSize: 14, color: colors.textSecondary, lineHeight: 21 }, loading: { marginTop: 40 },
+    summary: { fontSize: 16, color: colors.textPrimary, lineHeight: 24, fontFamily: fontFamilies.pretendardBold }, outline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary, padding: 12, borderRadius: 12, alignItems: 'center' }, outlineText: { color: colors.primaryText, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
+    daySection: { gap: 10, marginTop: 14 }, dayTitle: { fontSize: 18, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, date: { fontSize: 14, color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
+    mealCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, gap: 7 }, mealHead: { flexDirection: 'row', justifyContent: 'space-between' }, mealLabel: { fontSize: 14, color: colors.primaryText, fontFamily: fontFamilies.pretendardMedium }, kcal: { fontSize: 14, color: colors.textSecondary }, mealTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, foods: { fontSize: 14, color: colors.textBody, lineHeight: 21 }, guidance: { fontSize: 14, color: colors.textSecondary, lineHeight: 21 }, actions: { flexDirection: 'row', gap: 8, marginTop: 4 }, recipeButton: { backgroundColor: colors.primaryLight, borderRadius: 8, minHeight: 34, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }, recipeText: { color: colors.primaryText, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, smallOutline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, minHeight: 34, paddingHorizontal: 16, justifyContent: 'center' },
+    empty: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20, gap: 12 }, emptyTitle: { fontSize: 18, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, error: { padding: 14, backgroundColor: colors.dangerLight, borderRadius: 12, gap: 10 }, errorText: { color: colors.danger, fontSize: 14 },
   } as const;
 }

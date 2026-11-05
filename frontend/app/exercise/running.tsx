@@ -3,11 +3,11 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getActiveRunningSession, getRunningApiErrorMessage, getRunningRecommendations, getSavedRunningCourses, startFreeRun, type RunningCourse, type RunningDistanceOption, type RunningSavedCourse, type RunningSession } from '@/src/api/running';
 import { courseDifficultyLabel, hasRenderablePath } from '@/src/features/running/courseRoute';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 const distanceOptions: RunningDistanceOption[] = ['3km', '5km', '10km'];
 const nameOf = (course: RunningCourse) => course.course_name || course.name || '이름 없는 코스';
@@ -91,12 +91,8 @@ export default function RunningRecommendations() {
   };
 
   return <View style={styles.root}>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 38 }]}>
-      <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
-        <Text style={styles.title}>러닝 추천</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <ScreenHeader onBack={() => router.back()} title="러닝 추천" />
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 38 }]}>
       <Text style={styles.sectionTitle}>어디서 달릴까요?</Text>
       <TextInput accessibilityLabel="러닝 지역" placeholder="예: 서울, 마포구, 부산" value={region} onChangeText={setRegion} maxLength={120} style={styles.input} />
       <Text style={styles.sectionTitle}>목표 거리</Text>
@@ -104,7 +100,7 @@ export default function RunningRecommendations() {
         <Pressable key={option} accessibilityRole="button" accessibilityState={{ selected: distance === option }} onPress={() => setDistance(option)} style={[styles.option, distance === option && styles.selected]}>
           <Text style={[styles.optionText, distance === option && styles.selectedText]}>{option}</Text>
         </Pressable>)}</View>
-      <Pressable accessibilityRole="button" disabled={loading} onPress={() => void search()} style={[styles.button, loading && { opacity: 0.6 }]}><Text style={styles.buttonText}>코스 추천받기</Text></Pressable>
+      <Pressable accessibilityRole="button" disabled={loading} onPress={() => void search()} style={[styles.button, loading && styles.buttonDisabled]}><Text style={[styles.buttonText, loading && styles.disabledText]}>코스 추천받기</Text></Pressable>
       {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
       {message ? <View style={styles.notice}><Text style={styles.body}>{message}</Text></View> : null}
       {courses.length > 0 ? <Text style={styles.sectionTitle}>추천 코스 {courses.length}개</Text> : null}
@@ -135,7 +131,7 @@ export default function RunningRecommendations() {
             <Text style={[styles.optionText, condition === value && styles.selectedText]}>{label}</Text>
           </Pressable>)}</View>
         {activeSession ? <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/exercise/run-live', params: { sessionId: activeSession.running_session_id } })} style={styles.button}><Text style={styles.buttonText}>진행 중인 러닝 이어하기</Text></Pressable> :
-          <Pressable accessibilityRole="button" disabled={starting} onPress={() => void start()} style={[styles.buttonOutline, starting && { opacity: 0.6 }]}><Text style={styles.buttonOutlineText}>{starting ? '준비 중…' : '자유 러닝 시작하기'}</Text></Pressable>}
+          <Pressable accessibilityRole="button" disabled={starting} onPress={() => void start()} style={[styles.buttonOutline, starting && styles.buttonDisabled]}><Text style={[styles.buttonOutlineText, starting && styles.disabledText]}>{starting ? '준비 중…' : '자유 러닝 시작하기'}</Text></Pressable>}
       </View>
     </ScrollView>
   </View>;
@@ -145,17 +141,16 @@ function createStyles({ colors }: AppTheme) {
   return {
     root: { flex: 1, backgroundColor: colors.background },
     content: { paddingHorizontal: 20, gap: 17 },
-    header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    back: { fontSize: 32, color: colors.textPrimary, lineHeight: 36 },
-    title: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    sectionTitle: { color: colors.textPrimary, fontSize: 17, fontFamily: fontFamilies.pretendardBold },
-    input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 13, height: 56, fontSize: 14, color: colors.textPrimary },
+    sectionTitle: { color: colors.textPrimary, fontSize: 18, fontFamily: fontFamilies.pretendardBold },
+    input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, height: 52, fontSize: 16, color: colors.textPrimary },
     options: { flexDirection: 'row', gap: 9 },
     option: { flex: 1, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
     selected: { borderColor: colors.primary, backgroundColor: colors.primary },
     optionText: { color: colors.textSecondary, fontSize: 14 },
     selectedText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold },
     buttonOutline: { backgroundColor: colors.background, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 56, justifyContent: 'center', alignItems: 'center' },
+    buttonDisabled: { backgroundColor: colors.surfaceMuted, borderColor: colors.surfaceMuted },
+    disabledText: { color: colors.textDisabled },
     buttonOutlineText: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
     button: { backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center', alignItems: 'center' },
     buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
@@ -163,7 +158,7 @@ function createStyles({ colors }: AppTheme) {
     body: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
     card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16, gap: 8 },
     courseTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    courseLink: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold, marginTop: 4 }, savedHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 }, savedBadge: { backgroundColor: colors.primaryLight, color: colors.textPrimary, borderRadius: 6, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, fontSize: 12 },
+    courseLink: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium, marginTop: 4 }, savedHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 }, savedBadge: { backgroundColor: colors.primaryLight, color: colors.textPrimary, borderRadius: 8, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, fontSize: 12 },
     meta: { color: colors.textSecondary, fontSize: 14 },
     caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 18 },
   } as const;

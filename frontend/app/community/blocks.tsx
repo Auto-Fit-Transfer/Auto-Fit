@@ -135,7 +135,7 @@ function createStyles({ colors }: AppTheme) {
     nickname: {
       color: colors.textPrimary,
       flex: 1,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardBold,
       fontSize: 16,
     },
     unblock: {
@@ -149,7 +149,7 @@ function createStyles({ colors }: AppTheme) {
     pressed: { backgroundColor: colors.primaryLight },
     unblockText: {
       color: colors.primary,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardMedium,
       fontSize: 14,
     },
   } as const;

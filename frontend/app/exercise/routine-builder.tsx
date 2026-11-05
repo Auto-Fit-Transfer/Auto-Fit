@@ -2,17 +2,16 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { createCustomWorkout, type CustomWorkoutItemInput } from '@/src/api/exercise';
 import { getApiErrorMessage } from '@/src/api/client';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 type DraftItem = { id: number; name: string; sets: string; repetitions: string };
 let nextId = 2;
 
 export default function RoutineBuilder() {
-  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -58,12 +57,8 @@ export default function RoutineBuilder() {
   };
 
   return <View style={styles.root}>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 40 }]}>
-      <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
-        <Text style={styles.title}>루틴 만들기</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <ScreenHeader onBack={() => router.back()} title="루틴 만들기" />
+    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 40 }]}>
       <Text style={styles.label}>루틴 이름</Text>
       <TextInput accessibilityLabel="루틴 이름" value={name} onChangeText={setName} maxLength={120} placeholder="예: 상체 집중 운동" style={styles.input} />
       <View style={styles.sectionRow}><Text style={styles.sectionTitle}>운동 순서</Text><Text style={styles.caption}>{items.length}개 운동</Text></View>
@@ -83,7 +78,7 @@ export default function RoutineBuilder() {
       </View>)}
       <Pressable accessibilityRole="button" disabled={items.length >= 30} onPress={() => setItems((current) => [...current, { id: nextId++, name: '', sets: '3', repetitions: '10' }])} style={styles.add}><Text style={styles.addText}>＋ 운동 추가</Text></Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Pressable accessibilityRole="button" disabled={saving} onPress={() => void save()} style={[styles.button, saving && { opacity: 0.6 }]}><Text style={styles.buttonText}>{saving ? '저장 중…' : '루틴 저장하기'}</Text></Pressable>
+      <Pressable accessibilityRole="button" disabled={saving} onPress={() => void save()} style={[styles.button, saving && styles.buttonDisabled]}><Text style={[styles.buttonText, saving && styles.disabledText]}>{saving ? '저장 중…' : '루틴 저장하기'}</Text></Pressable>
     </ScrollView>
   </View>;
 }
@@ -92,13 +87,10 @@ function createStyles({ colors }: AppTheme) {
   return {
     root: { flex: 1, backgroundColor: colors.background },
     content: { paddingHorizontal: 20, gap: 15 },
-    header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    back: { fontSize: 32, color: colors.textPrimary, lineHeight: 36 },
-    title: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-    label: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
-    input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 12, minHeight: 46, color: colors.textPrimary, fontSize: 14 },
+    label: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
+    input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, minHeight: 52, color: colors.textPrimary, fontSize: 16 },
     sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    sectionTitle: { color: colors.textPrimary, fontSize: 17, fontFamily: fontFamilies.pretendardBold },
+    sectionTitle: { color: colors.textPrimary, fontSize: 18, fontFamily: fontFamilies.pretendardBold },
     caption: { color: colors.textSecondary, fontSize: 14, marginBottom: 5 },
     card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 15, gap: 12 },
     itemTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
@@ -109,8 +101,10 @@ function createStyles({ colors }: AppTheme) {
     remove: { color: colors.danger, fontSize: 14 },
     inputRow: { flexDirection: 'row', gap: 10 },
     add: { backgroundColor: colors.surface, height: 56, borderWidth: 1, borderColor: colors.border, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-    addText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    addText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
     button: { backgroundColor: colors.primary, height: 56, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 6 },
+    buttonDisabled: { backgroundColor: colors.surfaceMuted },
+    disabledText: { color: colors.textDisabled },
     buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
     error: { color: colors.danger, fontSize: 14 },
   } as const;

@@ -215,7 +215,7 @@ function createStyles({ colors }: AppTheme) {
     },
     label: {
       color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardSemiBold,
+      fontFamily: fontFamilies.pretendardBold,
       fontSize: 16,
       marginTop: spacing.sm,
     },
@@ -227,7 +227,8 @@ function createStyles({ colors }: AppTheme) {
       color: colors.textPrimary,
       fontFamily: fontFamilies.pretendardRegular,
       fontSize: 16,
-      paddingHorizontal: spacing.md,
+      minHeight: 52,
+      paddingHorizontal: 16,
       paddingVertical: 12,
     },
     readOnly: { backgroundColor: colors.surface, color: colors.textSecondary },

@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line } from 'react-native-svg';
 
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getPostureResult, type PostureFinding, type PostureKeypoint, type PostureResult } from '@/src/api/posture';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
@@ -101,8 +102,8 @@ export default function PostureResultScreen() {
   const toggle = (id: string) => setExpandedIds((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]);
   const date = result?.assessment.assessed_at ? new Date(result.assessment.assessed_at).toLocaleDateString('ko-KR') : '';
 
-  return <View style={[styles.screen, { paddingTop: insets.top }]}>
-    <View style={styles.header}><Pressable hitSlop={16} accessibilityLabel="뒤로 가기" onPress={() => router.back()} style={styles.back}><Text style={styles.backText}>‹</Text></Pressable><Text style={styles.headerTitle}>자세 점검 결과</Text><View style={styles.back} /></View>
+  return <View style={styles.screen}>
+    <ScreenHeader onBack={() => router.back()} title="자세 점검 결과" />
     <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
       {loading && <ActivityIndicator color={colors.primaryText} style={{ marginTop: 60 }} />}
       {error && <View style={styles.empty}><Text style={styles.emptyTitle}>결과를 표시할 수 없어요</Text><Text style={styles.bodyText}>{error}</Text><Pressable onPress={() => router.back()} style={styles.secondaryButton}><Text style={styles.buttonText}>돌아가기</Text></Pressable></View>}
@@ -131,25 +132,23 @@ export default function PostureResultScreen() {
 
 function createStyles({ colors }: AppTheme) {
   return {
-    screen: { flex: 1, backgroundColor: colors.background }, header: { height: 66, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
-    back: { width: 36, alignItems: 'flex-start' }, backText: { fontSize: 36, color: colors.textPrimary, lineHeight: 40 }, headerTitle: { fontFamily: fontFamilies.pretendardBold, color: colors.textPrimary, fontSize: 16 },
-    content: { paddingHorizontal: 20 }, empty: { marginTop: 40 }, emptyTitle: { fontSize: 18, fontFamily: fontFamilies.pretendardBold, marginBottom: 12 },
+    screen: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20 }, empty: { marginTop: 40 }, emptyTitle: { fontSize: 18, fontFamily: fontFamilies.pretendardBold, marginBottom: 12 },
     scoreCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16, marginTop: 8 },
-    scoreRow: { flexDirection: 'row', alignItems: 'baseline' }, score: { fontSize: 34, fontFamily: fontFamilies.pretendardBold, color: colors.textPrimary }, scoreUnit: { fontSize: 15, marginLeft: 7, color: colors.textBody },
+    scoreRow: { flexDirection: 'row', alignItems: 'baseline' }, score: { fontSize: 32, fontFamily: fontFamilies.pretendardBold, color: colors.textPrimary }, scoreUnit: { fontSize: 16, marginLeft: 7, color: colors.textBody },
     summary: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, marginTop: 8 }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 },
-    chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 5, color: colors.textBody, fontSize: 11, paddingHorizontal: 8, paddingVertical: 5, backgroundColor: colors.surface },
-    sectionTitle: { fontSize: 15, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, marginTop: 25, marginBottom: 11 },
-    skeletonBox: { height: 202, backgroundColor: '#1B1E21', borderRadius: 15, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }, skeletonFloor: { position: 'absolute', bottom: 13, width: '100%', height: 2, backgroundColor: '#4D5255' }, noPoints: { color: '#FFFFFF', fontSize: 12 },
-    angleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }, angleChip: { borderRadius: 13, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: colors.successLight }, angleText: { color: '#16885A', fontSize: 11 }, angleTarget: { color: colors.success, fontSize: 10, marginTop: 2 },
-    repRow: { flexDirection: 'row', gap: 6, marginTop: 12 }, repButton: { flex: 1, minHeight: 39, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }, repSelected: { backgroundColor: colors.primaryLight, borderColor: colors.primary }, repText: { color: colors.textPrimary, fontSize: 12 }, repSelectedText: { color: colors.primaryText, fontFamily: fontFamilies.pretendardSemiBold },
+    chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, color: colors.textBody, fontSize: 12, paddingHorizontal: 8, paddingVertical: 5, backgroundColor: colors.surface },
+    sectionTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, marginTop: 25, marginBottom: 11 },
+    skeletonBox: { height: 202, backgroundColor: '#1B1E21', borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }, skeletonFloor: { position: 'absolute', bottom: 13, width: '100%', height: 2, backgroundColor: '#4D5255' }, noPoints: { color: '#FFFFFF', fontSize: 12 },
+    angleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }, angleChip: { borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: colors.successLight }, angleText: { color: '#16885A', fontSize: 12 }, angleTarget: { color: colors.success, fontSize: 12, marginTop: 2 },
+    repRow: { flexDirection: 'row', gap: 6, marginTop: 12 }, repButton: { flex: 1, minHeight: 39, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }, repSelected: { backgroundColor: colors.primaryLight, borderColor: colors.primary }, repText: { color: colors.textPrimary, fontSize: 12 }, repSelectedText: { color: colors.primaryText, fontFamily: fontFamilies.pretendardBold },
     chartCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16, marginTop: 19, backgroundColor: colors.surface }, chartHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    chart: { height: 145, flexDirection: 'row', gap: 10, alignItems: 'flex-end', justifyContent: 'center', marginTop: 19 }, barColumn: { flex: 1, height: 140, alignItems: 'center', justifyContent: 'flex-end' }, bar: { width: '60%', minWidth: 25, borderRadius: 5, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 5 }, barText: { color: '#FFFFFF', fontSize: 11 }, barLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 5 }, threshold: { color: colors.textSecondary, fontSize: 11, textAlign: 'right', marginTop: 7 },
-    findingCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 15, padding: 15, backgroundColor: colors.surface, marginBottom: 10 }, findingHeader: { flexDirection: 'row', alignItems: 'center' }, findingTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold }, findingSub: { color: colors.textSecondary, fontSize: 11, marginTop: 4 }, toggle: { color: colors.textBody, fontSize: 22, width: 26, textAlign: 'center' },
-    findingBody: { marginTop: 15 }, sectionLabel: { color: colors.textSecondary, fontSize: 11, marginBottom: 8, marginTop: 8 }, bodyText: { color: colors.textBody, fontSize: 13, lineHeight: 20 }, guidanceRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }, guidanceNumber: { width: 20, height: 20, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginRight: 8 }, guidanceNumberText: { color: colors.textBody, fontSize: 11 },
-    suggestion: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 12, padding: 12, marginTop: 12 }, suggestionStatus: { color: colors.primaryText, fontSize: 11, marginTop: 8 },
-    positiveCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 15, padding: 15, backgroundColor: colors.surface, marginTop: 16 }, positiveText: { color: colors.textBody, fontSize: 13, lineHeight: 20, marginTop: 9 },
-    privacy: { color: colors.textSecondary, fontSize: 11, marginTop: 20, lineHeight: 17 }, actions: { flexDirection: 'row', gap: 8, marginTop: 27 },
-    secondaryButton: { flex: 1, minHeight: 52, backgroundColor: colors.surfaceMuted, borderRadius: 11, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
-    primaryButton: { flex: 1, minHeight: 52, backgroundColor: colors.primary, borderRadius: 11, alignItems: 'center', justifyContent: 'center' }, primaryText: { color: '#FFFFFF', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    chart: { height: 145, flexDirection: 'row', gap: 10, alignItems: 'flex-end', justifyContent: 'center', marginTop: 19 }, barColumn: { flex: 1, height: 140, alignItems: 'center', justifyContent: 'flex-end' }, bar: { width: '60%', minWidth: 25, borderRadius: 8, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 5 }, barText: { color: '#FFFFFF', fontSize: 12 }, barLabel: { fontSize: 12, color: colors.textSecondary, marginTop: 5 }, threshold: { color: colors.textSecondary, fontSize: 12, textAlign: 'right', marginTop: 7 },
+    findingCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 15, backgroundColor: colors.surface, marginBottom: 10 }, findingHeader: { flexDirection: 'row', alignItems: 'center' }, findingTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, findingSub: { color: colors.textSecondary, fontSize: 12, marginTop: 4 }, toggle: { color: colors.textBody, fontSize: 22, width: 26, textAlign: 'center' },
+    findingBody: { marginTop: 15 }, sectionLabel: { color: colors.textSecondary, fontSize: 12, marginBottom: 8, marginTop: 8 }, bodyText: { color: colors.textBody, fontSize: 14, lineHeight: 21 }, guidanceRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }, guidanceNumber: { width: 20, height: 20, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginRight: 8 }, guidanceNumberText: { color: colors.textBody, fontSize: 12 },
+    suggestion: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 12, padding: 12, marginTop: 12 }, suggestionStatus: { color: colors.primaryText, fontSize: 12, marginTop: 8 },
+    positiveCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 15, backgroundColor: colors.surface, marginTop: 16 }, positiveText: { color: colors.textBody, fontSize: 14, lineHeight: 21, marginTop: 9 },
+    privacy: { color: colors.textSecondary, fontSize: 12, marginTop: 20, lineHeight: 17 }, actions: { flexDirection: 'row', gap: 8, marginTop: 27 },
+    secondaryButton: { flex: 1, minHeight: 56, backgroundColor: colors.surfaceMuted, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
+    primaryButton: { flex: 1, minHeight: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, primaryText: { color: '#FFFFFF', fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
   } as const;
 }

@@ -435,8 +435,8 @@ function createStyles({ colors }: AppTheme) {
     message: { alignItems: 'center', gap: spacing.md, padding: spacing.xxl },
     emptyTitle: {
       color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardSemiBold,
-      fontSize: 17,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 18,
     },
     messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
     footer: { paddingVertical: spacing.lg },

@@ -241,7 +241,7 @@ export default function ExerciseSummaryScreen() {
           onPress={() => void handleStart()}
           style={[styles.startButton, (!canStart || isStarting) && styles.disabled]}
         >
-          <Text style={styles.startText}>
+          <Text style={[styles.startText, (!canStart || isStarting) && styles.disabledText]}>
             {isStarting
               ? '운동 시작하는 중…'
               : selectedPlan?.status === 'completed'
@@ -285,7 +285,7 @@ function createStyles({ colors }: AppTheme) {
     empty: { alignItems: 'flex-start', gap: 10, paddingTop: 40 },
     footer: { backgroundColor: colors.background, paddingHorizontal: 20, paddingTop: 8 },
     startButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center' },
-    disabled: { opacity: 0.5 },
+    disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled },
     startText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
     sourceLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 18 },
     planSection: { gap: 8 },

@@ -45,7 +45,7 @@ function createStyles({ colors, text }: AppTheme) {
       backgroundColor: colors.background,
       flexDirection: 'row',
       minHeight: 56,
-      paddingHorizontal: 8,
+      paddingHorizontal: 10,
     },
     side: { alignItems: 'flex-start', justifyContent: 'center', minWidth: 44, width: 44 },
     collapsed: { minWidth: 12, width: 12 },
