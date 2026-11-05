@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 
 import {
   getActiveHealthGoal,
@@ -9,7 +9,7 @@ import {
 } from '@/src/api/userSettings';
 import { getApiErrorMessage } from '@/src/api/client';
 import { AppBottomSheet, Text } from '@/src/components/common';
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 export const goals: { key: HealthGoalType; label: string }[] = [
   { key: 'fat_loss', label: '체지방 감량' },
@@ -22,6 +22,8 @@ export const goals: { key: HealthGoalType; label: string }[] = [
 type Props = { visible: boolean; onClose: () => void };
 
 export function HealthGoalSheet({ visible, onClose }: Props) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const [current, setCurrent] = useState<HealthGoal | null>(null);
   const [goalType, setGoalType] = useState<HealthGoalType | null>(null);
   const [detail, setDetail] = useState('');
@@ -137,24 +139,26 @@ export function HealthGoalSheet({ visible, onClose }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  content: { gap: 16 },
-  current: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, padding: 13, gap: 6 },
-  currentLabel: { fontSize: 12, color: colors.textSecondary },
-  currentText: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
-  sectionTitle: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
-  choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  choice: { backgroundColor: colors.surface, width: '48%', minHeight: 36, borderRadius: 20, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  selected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  choiceText: { fontSize: 12, color: colors.textBody },
-  selectedText: { color: colors.primary, fontFamily: fontFamilies.pretendardSemiBold },
-  optional: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
-  input: { backgroundColor: colors.surface, height: 45, borderWidth: 1, borderColor: colors.border, borderRadius: 9, paddingHorizontal: 12, color: colors.textPrimary, fontSize: 13 },
-  note: { color: colors.textSecondary, fontSize: 13 },
-  retry: { color: colors.primaryDark, fontSize: 13 },
-  error: { color: colors.danger, fontSize: 12 },
-  success: { color: colors.success, fontSize: 12 },
-  save: { height: 48, borderRadius: 9, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
-  disabled: { opacity: 0.45 },
-  saveText: { color: colors.surface, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    content: { gap: 16 },
+    current: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, padding: 13, gap: 6 },
+    currentLabel: { fontSize: 12, color: colors.textSecondary },
+    currentText: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    sectionTitle: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    choice: { backgroundColor: colors.surface, width: '48%', minHeight: 36, borderRadius: 20, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+    selected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+    choiceText: { fontSize: 12, color: colors.textBody },
+    selectedText: { color: colors.primary, fontFamily: fontFamilies.pretendardSemiBold },
+    optional: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
+    input: { backgroundColor: colors.surface, height: 45, borderWidth: 1, borderColor: colors.border, borderRadius: 9, paddingHorizontal: 12, color: colors.textPrimary, fontSize: 13 },
+    note: { color: colors.textSecondary, fontSize: 13 },
+    retry: { color: colors.primaryPressed, fontSize: 13 },
+    error: { color: colors.danger, fontSize: 12 },
+    success: { color: colors.success, fontSize: 12 },
+    save: { height: 48, borderRadius: 9, backgroundColor: colors.primaryPressed, alignItems: 'center', justifyContent: 'center' },
+    disabled: { opacity: 0.45 },
+    saveText: { color: colors.surface, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+  } as const;
+}

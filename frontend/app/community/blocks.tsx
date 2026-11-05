@@ -12,9 +12,11 @@ import {
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 export default function CommunityBlocksScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const actions = useCommunityActions();
@@ -104,49 +106,51 @@ export default function CommunityBlocksScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.background, flex: 1 },
-  description: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  row: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  nickname: {
-    color: colors.textPrimary,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-  },
-  unblock: {
-    backgroundColor: colors.surface,
-    borderColor: colors.primary,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-  },
-  pressed: { backgroundColor: colors.primaryLight },
-  unblockText: {
-    color: colors.primary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    description: {
+      ...typography.bodySmall,
+      color: colors.textSecondary,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+    },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    row: {
+      alignItems: 'center',
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: spacing.md,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+    },
+    nickname: {
+      color: colors.textPrimary,
+      flex: 1,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 16,
+    },
+    unblock: {
+      backgroundColor: colors.surface,
+      borderColor: colors.primary,
+      borderRadius: radius.round,
+      borderWidth: 1,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 6,
+    },
+    pressed: { backgroundColor: colors.primaryLight },
+    unblockText: {
+      color: colors.primary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 14,
+    },
+  } as const;
+}

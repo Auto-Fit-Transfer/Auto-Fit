@@ -1,6 +1,6 @@
 import { useRef, useState, type ComponentType } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, TextInput, View } from 'react-native';
 import type { SvgProps } from 'react-native-svg';
 
 import EyeSlashIcon from '@/assets/icons/auth-redesign/5facc.svg';
@@ -14,7 +14,7 @@ import {
 } from '@/src/features/auth/socialOAuth';
 import { getPostLoginDestination } from '@/src/features/auth/postLoginDestination';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 type SocialLoginButtonProps = {
@@ -32,6 +32,7 @@ function SocialLoginButton({
   onPress,
   kakao = false,
 }: SocialLoginButtonProps) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -47,6 +48,7 @@ function SocialLoginButton({
 }
 
 export default function LoginScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { oauthError } = useLocalSearchParams<{ oauthError?: string | string[] }>();
   const passwordRef = useRef<TextInput>(null);
@@ -188,50 +190,52 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  loginCard: { gap: 16 },
-  loginButton: { marginTop: 8 },
-  accountLinks: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 4,
-    justifyContent: 'center',
-    marginTop: -8,
-  },
-  linkButton: { alignItems: 'center', height: 44, justifyContent: 'center', width: 120 },
-  linkDivider: { backgroundColor: colors.border, height: 12, width: 1 },
-  link: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  divider: { alignItems: 'center', flexDirection: 'row', gap: 12, marginBottom: 16, marginTop: 'auto', paddingTop: 24 },
-  dividerLine: { backgroundColor: colors.border, flex: 1, height: 1 },
-  dividerText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  socialGroup: { gap: 8 },
-  socialButton: {
-    alignItems: 'center',
-    backgroundColor: '#FAFBFC',
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    height: 56,
-    justifyContent: 'center',
-  },
-  kakaoButton: { backgroundColor: '#FEE500', borderWidth: 0 },
-  socialLabel: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-  },
-  kakaoLabel: { color: '#000000' },
-  pressed: { opacity: 0.75 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    loginCard: { gap: 16 },
+    loginButton: { marginTop: 8 },
+    accountLinks: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 4,
+      justifyContent: 'center',
+      marginTop: -8,
+    },
+    linkButton: { alignItems: 'center', height: 44, justifyContent: 'center', width: 120 },
+    linkDivider: { backgroundColor: colors.border, height: 12, width: 1 },
+    link: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    divider: { alignItems: 'center', flexDirection: 'row', gap: 12, marginBottom: 16, marginTop: 'auto', paddingTop: 24 },
+    dividerLine: { backgroundColor: colors.border, flex: 1, height: 1 },
+    dividerText: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    socialGroup: { gap: 8 },
+    socialButton: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 8,
+      height: 56,
+      justifyContent: 'center',
+    },
+    kakaoButton: { backgroundColor: '#FEE500', borderWidth: 0 },
+    socialLabel: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+    },
+    kakaoLabel: { color: '#000000' },
+    pressed: { opacity: 0.75 },
+  } as const;
+}

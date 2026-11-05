@@ -1,18 +1,16 @@
 import { memo, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
 import { useRunningSession } from '@/src/features/running/useRunningSession';
 import { routePolyline } from '@/src/features/running/courseRoute';
 import type { RunningPlannedCourse, RunningTrackPoint } from '@/src/api/running';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
-const purple = '#5246C6';
 const formatTime = (seconds: number) => {
   const value = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(value / 3600);
@@ -28,6 +26,8 @@ const formatPace = (seconds: number | null) => {
 };
 
 const RouteCard = memo(function RouteCard({ points, plannedCourse, width }: { points: RunningTrackPoint[]; plannedCourse: RunningPlannedCourse | null; width: number }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const height = 220;
   const actual = points.map(({ latitude, longitude }) => ({ latitude, longitude }));
   const planned = plannedCourse?.path ?? [];
@@ -40,15 +40,17 @@ const RouteCard = memo(function RouteCard({ points, plannedCourse, width }: { po
     {!plannedLine && !actualLine ? <View style={styles.routeEmpty}><Text style={styles.routeEmptyText}>위치 신호를 받으면 실제 이동 경로가 여기에 표시돼요.</Text></View> :
       <Svg width={width} height={height} accessibilityLabel={plannedLine ? '예정 경로와 실제 GPS 이동 경로' : '실제 GPS 이동 경로'}>
         {plannedLine ? <Polyline points={plannedLine} fill="none" stroke="#A9ACB3" strokeDasharray="6 5" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" /> : null}
-        {actualLine ? <><Polyline points={actualLine} fill="none" stroke="#17161D" strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" />
+        {actualLine ? <><Polyline points={actualLine} fill="none" stroke={colors.textPrimary} strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" />
           <Circle cx={Number(actualEnds[0].split(',')[0])} cy={Number(actualEnds[0].split(',')[1])} r={6} fill="#FFF" />
-          <Circle cx={Number(actualEnds.at(-1)?.split(',')[0])} cy={Number(actualEnds.at(-1)?.split(',')[1])} r={7} fill="#5246C6" stroke="#FFF" strokeWidth={2} /></> : null}
+          <Circle cx={Number(actualEnds.at(-1)?.split(',')[0])} cy={Number(actualEnds.at(-1)?.split(',')[1])} r={7} fill={colors.primary} stroke="#FFF" strokeWidth={2} /></> : null}
       </Svg>}
     <Text style={styles.routeCaption}>{plannedLine ? '점선: 예정 경로 · 실선: 실제 이동' : `${points.length}개 위치 기록`} · 앱 사용 중에만 수집</Text>
   </View>;
 });
 
 export default function RunLive() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const params = useLocalSearchParams<{ sessionId?: string }>();
   const sessionId = typeof params.sessionId === 'string' ? params.sessionId : '';
@@ -66,14 +68,13 @@ export default function RunLive() {
   };
 
   return <View style={styles.root}>
-    <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 32 }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => void leave()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => void leave()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
         <Text style={styles.headerTitle}>러닝하기</Text>
         <Text style={styles.liveBadge}>{session?.status === 'in_progress' ? '기록 중' : '일시정지'}</Text>
       </View>
-      {loading ? <ActivityIndicator color={purple} /> : !session ? <Text style={styles.error}>{error || '러닝 기록을 찾지 못했어요.'}</Text> : <>
+      {loading ? <ActivityIndicator color={colors.primaryText} /> : !session ? <Text style={styles.error}>{error || '러닝 기록을 찾지 못했어요.'}</Text> : <>
         <View style={styles.hero}>
           <Text style={styles.heroLabel}>운동 시간</Text>
           <Text style={styles.heroTime}>{formatTime(elapsedSeconds)}</Text>
@@ -95,28 +96,30 @@ export default function RunLive() {
   </View>;
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { paddingHorizontal: 20, gap: 18 },
-  header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  back: { fontSize: 32, color: '#17161D', lineHeight: 36 },
-  headerTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  liveBadge: { backgroundColor: '#ECE9FF', color: '#17161D', fontSize: 12, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 7 },
-  hero: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, padding: 22, alignItems: 'center', gap: 12 },
-  heroLabel: { color: '#5E5D66', fontSize: 14 },
-  heroTime: { color: '#17161D', fontSize: 64, fontFamily: fontFamilies.pretendardBold, fontVariant: ['tabular-nums'] },
-  metrics: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', borderTopWidth: 1, borderTopColor: '#DFE2E7', paddingTop: 18 },
-  metric: { color: '#17161D', fontSize: 24, fontFamily: fontFamilies.pretendardBold, textAlign: 'center' },
-  metricLabel: { color: '#5E5D66', fontSize: 14, textAlign: 'center', marginTop: 4 },
-  routeCard: { borderColor: '#DFE2E7', borderWidth: 1, backgroundColor: '#FAFBFC', borderRadius: 16, padding: 16, overflow: 'hidden' },
-  routeTitle: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
-  routeEmpty: { height: 220, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
-  routeEmptyText: { color: '#5E5D66', fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  routeCaption: { color: '#5E5D66', fontSize: 12 },
-  error: { color: '#A13A2F', fontSize: 14, lineHeight: 20 },
-  hint: { color: '#5E5D66', fontSize: 14, lineHeight: 18 },
-  primary: { height: 56, backgroundColor: purple, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  secondary: { height: 56, backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  secondaryText: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background },
+    content: { paddingHorizontal: 20, gap: 18 },
+    header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    back: { fontSize: 32, color: colors.textPrimary, lineHeight: 36 },
+    headerTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    liveBadge: { backgroundColor: colors.primaryLight, color: colors.textPrimary, fontSize: 12, paddingHorizontal: 9, paddingVertical: 6, borderRadius: 7 },
+    hero: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 22, alignItems: 'center', gap: 12 },
+    heroLabel: { color: colors.textSecondary, fontSize: 14 },
+    heroTime: { color: colors.textPrimary, fontSize: 64, fontFamily: fontFamilies.pretendardBold, fontVariant: ['tabular-nums'] as ['tabular-nums'] },
+    metrics: { flexDirection: 'row', justifyContent: 'space-around', width: '100%', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 18 },
+    metric: { color: colors.textPrimary, fontSize: 24, fontFamily: fontFamilies.pretendardBold, textAlign: 'center' },
+    metricLabel: { color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginTop: 4 },
+    routeCard: { borderColor: colors.border, borderWidth: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16, overflow: 'hidden' },
+    routeTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    routeEmpty: { height: 220, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
+    routeEmptyText: { color: colors.textSecondary, fontSize: 14, textAlign: 'center', lineHeight: 20 },
+    routeCaption: { color: colors.textSecondary, fontSize: 12 },
+    error: { color: colors.danger, fontSize: 14, lineHeight: 20 },
+    hint: { color: colors.textSecondary, fontSize: 14, lineHeight: 18 },
+    primary: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    secondary: { height: 56, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    secondaryText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+  } as const;
+}

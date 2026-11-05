@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { Alert, Keyboard, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Keyboard, Platform, Pressable, View } from 'react-native';
 
 import EmailIcon from '@/assets/icons/input/Email.svg';
 import InfoIcon from '@/assets/icons/auth-redesign/info-circle.svg';
 import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { PasswordAuthScreenLayout } from '@/src/components/auth';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 const resendSeconds = 60;
@@ -18,6 +18,7 @@ const formatSentAt = (date: Date) => {
 };
 
 export default function ForgotPasswordScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -151,45 +152,47 @@ export default function ForgotPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  backToLogin: { alignItems: 'center', height: 44, justifyContent: 'center', marginTop: 8 },
-  backToLoginText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  sentCard: {
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 12,
-    padding: 16,
-  },
-  sentRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  sentCopy: { flex: 1, gap: 2 },
-  sentEmail: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  sentTime: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  sentActions: { flexDirection: 'row', gap: 8 },
-  smallButton: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#DFE2E7',
-    borderRadius: 8,
-    borderWidth: 1,
-    flex: 1,
-    height: 44,
-    justifyContent: 'center',
-  },
-  smallButtonText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  smallButtonDisabled: { color: '#8E8D95' },
-  toast: { backgroundColor: '#17161D', borderRadius: 12, marginTop: -12, padding: 14 },
-  toastText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  notice: {
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 10,
-    padding: 16,
-  },
-  noticeTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 14, lineHeight: 21 },
-  noticeText: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    backToLogin: { alignItems: 'center', height: 44, justifyContent: 'center', marginTop: 8 },
+    backToLoginText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    sentCard: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      gap: 12,
+      padding: 16,
+    },
+    sentRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+    sentCopy: { flex: 1, gap: 2 },
+    sentEmail: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    sentTime: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    sentActions: { flexDirection: 'row', gap: 8 },
+    smallButton: {
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      borderColor: colors.border,
+      borderRadius: 8,
+      borderWidth: 1,
+      flex: 1,
+      height: 44,
+      justifyContent: 'center',
+    },
+    smallButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    smallButtonDisabled: { color: colors.textDisabled },
+    toast: { backgroundColor: colors.tabBar, borderRadius: 12, marginTop: -12, padding: 14 },
+    toastText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    notice: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 10,
+      padding: 16,
+    },
+    noticeTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14, lineHeight: 21 },
+    noticeText: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+  } as const;
+}

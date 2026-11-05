@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Image, Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Keyboard, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
@@ -14,16 +13,15 @@ import {
   type CommunityPost, type CommunitySearchResult,
 } from '@/src/api/community';
 import { CommunityAvatar } from '@/src/components/community';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 type SearchTab = 'all' | 'posts' | 'routines' | 'users' | 'clubs';
-const purple = '#5246C6';
-const ink = '#17161D';
-const muted = '#5E5D66';
 const empty: CommunitySearchResult = { posts: [], routines: [], users: [], clubs: [] };
 
 export default function CommunitySearchScreen() {
+  const { colors } = useAppTheme();
+  const s = useThemedStyles(createSStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
@@ -70,26 +68,26 @@ export default function CommunitySearchScreen() {
   const visibleCount = tab === 'all' ? tabs[0].count : tabs.find((item) => item.key === tab)?.count ?? 0;
 
   return <View style={s.root}>
-    <StatusBar style="dark" />
     <View style={[s.searchRow, { paddingTop: insets.top + 12 }]}>
-      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={s.backButton}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
-      <View style={s.inputWrap}><SearchIcon color="#5E5D66" height={20} width={20} /><TextInput accessibilityLabel="커뮤니티 검색어" autoFocus autoCapitalize="none" autoCorrect={false} onChangeText={(value) => { setQuery(value); setLoading(value.trim().length >= 2); setError(''); if (value.trim().length < 2) setResults(empty); }} onSubmitEditing={() => Keyboard.dismiss()} placeholder="게시글, 루틴, 사람, 클럽 검색" returnKeyType="search" style={s.input} value={query} />{query ? <Pressable accessibilityRole="button" accessibilityLabel="검색어 지우기" onPress={() => { setQuery(''); setLoading(false); setResults(empty); setError(''); }}><CloseIcon color="#5E5D66" height={18} width={18} /></Pressable> : null}</View>
+      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={s.backButton}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
+      <View style={s.inputWrap}><SearchIcon color={colors.textSecondary} height={20} width={20} /><TextInput accessibilityLabel="커뮤니티 검색어" autoFocus autoCapitalize="none" autoCorrect={false} onChangeText={(value) => { setQuery(value); setLoading(value.trim().length >= 2); setError(''); if (value.trim().length < 2) setResults(empty); }} onSubmitEditing={() => Keyboard.dismiss()} placeholder="게시글, 루틴, 사람, 클럽 검색" returnKeyType="search" style={s.input} value={query} />{query ? <Pressable accessibilityRole="button" accessibilityLabel="검색어 지우기" onPress={() => { setQuery(''); setLoading(false); setResults(empty); setError(''); }}><CloseIcon color={colors.textSecondary} height={18} width={18} /></Pressable> : null}</View>
     </View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabs} style={s.tabsScroll}>
       {tabs.map((item) => <Pressable key={item.key} accessibilityRole="tab" accessibilityState={{ selected: tab === item.key }} onPress={() => setTab(item.key)} style={[s.tab, tab === item.key && s.tabActive]}><Text style={[s.tabText, tab === item.key && s.tabTextActive]}>{item.label}{term.length >= 2 && !loading ? ` ${item.count}` : ''}</Text></Pressable>)}
     </ScrollView>
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 30 }]}>
-      {term.length < 2 ? <Text style={s.hint}>두 글자 이상 입력하면 커뮤니티에서 찾아드려요.</Text> : loading ? <ActivityIndicator color={purple} style={s.loading} /> : error ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={s.empty}><Text style={s.error}>{error} · 다시 시도</Text></Pressable> : visibleCount === 0 ? <View style={s.empty}><Text style={s.emptyText}>‘{term}’ 검색 결과가 없어요.</Text></View> : <>
+      {term.length < 2 ? <Text style={s.hint}>두 글자 이상 입력하면 커뮤니티에서 찾아드려요.</Text> : loading ? <ActivityIndicator color={colors.primaryText} style={s.loading} /> : error ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={s.empty}><Text style={s.error}>{error} · 다시 시도</Text></Pressable> : visibleCount === 0 ? <View style={s.empty}><Text style={s.emptyText}>‘{term}’ 검색 결과가 없어요.</Text></View> : <>
         {showRoutines && results.routines.length > 0 ? <><Text style={s.sectionTitle}>루틴 {results.routines.length}</Text>{results.routines.map((post) => <PostRow key={`routine-${post.post_id}`} post={post} onPress={() => openPost(post)} routine />)}</> : null}
         {showPosts && regularPosts.length > 0 ? <><Text style={s.sectionTitle}>게시글 {regularPosts.length}</Text>{regularPosts.map((post) => <PostRow key={`post-${post.post_id}`} post={post} onPress={() => openPost(post)} />)}</> : null}
-        {showUsers && results.users.length > 0 ? <><Text style={s.sectionTitle}>사람 {results.users.length}</Text>{results.users.map((user) => <Pressable hitSlop={16} key={user.user_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/community/user/[userId]', params: { userId: user.user_id } })} style={s.personRow}><CommunityAvatar author={user} size={38} /><View style={s.personCopy}><Text style={s.rowTitle}>{user.nickname}</Text><Text style={s.meta}>게시글 {user.post_count} · 팔로워 {user.follower_count}</Text></View><CaretRightIcon color="#5E5D66" height={18} width={18} /></Pressable>)}</> : null}
-        {showClubs && results.clubs.length > 0 ? <><Text style={s.sectionTitle}>클럽 {results.clubs.length}</Text>{results.clubs.map((club) => <Pressable hitSlop={16} key={club.club_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/community/club/[clubId]', params: { clubId: club.club_id } })} style={s.personRow}><View style={s.clubIcon}><ChatsIcon color="#17161D" height={22} width={22} /></View><View style={s.personCopy}><Text style={s.rowTitle}>{club.name}</Text><Text style={s.meta}>회원 {club.member_count}명 · 글 {club.post_count}개</Text></View><CaretRightIcon color="#5E5D66" height={18} width={18} /></Pressable>)}</> : null}
+        {showUsers && results.users.length > 0 ? <><Text style={s.sectionTitle}>사람 {results.users.length}</Text>{results.users.map((user) => <Pressable hitSlop={16} key={user.user_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/community/user/[userId]', params: { userId: user.user_id } })} style={s.personRow}><CommunityAvatar author={user} size={38} /><View style={s.personCopy}><Text style={s.rowTitle}>{user.nickname}</Text><Text style={s.meta}>게시글 {user.post_count} · 팔로워 {user.follower_count}</Text></View><CaretRightIcon color={colors.textSecondary} height={18} width={18} /></Pressable>)}</> : null}
+        {showClubs && results.clubs.length > 0 ? <><Text style={s.sectionTitle}>클럽 {results.clubs.length}</Text>{results.clubs.map((club) => <Pressable hitSlop={16} key={club.club_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/community/club/[clubId]', params: { clubId: club.club_id } })} style={s.personRow}><View style={s.clubIcon}><ChatsIcon color={colors.textPrimary} height={22} width={22} /></View><View style={s.personCopy}><Text style={s.rowTitle}>{club.name}</Text><Text style={s.meta}>회원 {club.member_count}명 · 글 {club.post_count}개</Text></View><CaretRightIcon color={colors.textSecondary} height={18} width={18} /></Pressable>)}</> : null}
       </>}
     </ScrollView>
   </View>;
 }
 
 function PostRow({ post, onPress, routine = false }: { post: CommunityPost; onPress: () => void; routine?: boolean }) {
+  const s = useThemedStyles(createSStyles);
   return <Pressable accessibilityRole="button" onPress={onPress} style={s.postRow}>
     <View style={s.postCopy}>
       <Text style={s.category}>{routine ? '루틴 공유' : '게시글'}</Text>
@@ -100,17 +98,19 @@ function PostRow({ post, onPress, routine = false }: { post: CommunityPost; onPr
   </Pressable>;
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' },
-  searchRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingBottom: 13, gap: 8 },
-  backButton: { width: 30, alignItems: 'center' },
-  inputWrap: { flex: 1, height: 44, backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 22, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 7 },
-  input: { flex: 1, fontSize: 14, color: ink },
-  tabsScroll: { flexGrow: 0, borderBottomColor: '#DFE2E7', borderBottomWidth: 1 },
-  tabs: { paddingHorizontal: 20, gap: 20, alignItems: 'center' }, tab: { paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' }, tabActive: { borderBottomColor: ink }, tabText: { fontSize: 14, color: muted }, tabTextActive: { color: ink, fontFamily: fontFamilies.pretendardSemiBold },
-  content: { paddingHorizontal: 20, paddingTop: 16, gap: 10 }, hint: { color: muted, fontSize: 14, marginTop: 18 }, loading: { marginTop: 35 },
-  sectionTitle: { color: ink, fontSize: 16, fontFamily: fontFamilies.pretendardBold, marginTop: 10 },
-  postRow: { borderBottomWidth: 1, borderBottomColor: '#DFE2E7', flexDirection: 'row', gap: 12, paddingVertical: 14 }, postCopy: { flex: 1, gap: 6 }, thumbnail: { backgroundColor: '#F2F4F6', borderRadius: 12, height: 72, width: 72 }, category: { alignSelf: 'flex-start', backgroundColor: '#F2F4F6', borderRadius: 6, color: '#3B3A42', fontSize: 12, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3 }, rowTitle: { color: ink, fontSize: 16, fontFamily: fontFamilies.pretendardSemiBold, lineHeight: 23 }, meta: { color: muted, fontSize: 12 },
-  personRow: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }, personCopy: { flex: 1, gap: 3 }, clubIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
-  empty: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 16, padding: 20, marginTop: 20, alignItems: 'center' }, emptyText: { color: muted, fontSize: 14 }, error: { color: '#A13A2F', fontSize: 12 },
-});
+function createSStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background },
+    searchRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, paddingBottom: 13, gap: 8 },
+    backButton: { width: 30, alignItems: 'center' },
+    inputWrap: { flex: 1, height: 44, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 22, paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 7 },
+    input: { flex: 1, fontSize: 14, color: colors.textPrimary },
+    tabsScroll: { flexGrow: 0, borderBottomColor: colors.border, borderBottomWidth: 1 },
+    tabs: { paddingHorizontal: 20, gap: 20, alignItems: 'center' }, tab: { paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' }, tabActive: { borderBottomColor: colors.textPrimary }, tabText: { fontSize: 14, color: colors.textSecondary }, tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    content: { paddingHorizontal: 20, paddingTop: 16, gap: 10 }, hint: { color: colors.textSecondary, fontSize: 14, marginTop: 18 }, loading: { marginTop: 35 },
+    sectionTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold, marginTop: 10 },
+    postRow: { borderBottomWidth: 1, borderBottomColor: colors.border, flexDirection: 'row', gap: 12, paddingVertical: 14 }, postCopy: { flex: 1, gap: 6 }, thumbnail: { backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 72, width: 72 }, category: { alignSelf: 'flex-start', backgroundColor: colors.surfaceMuted, borderRadius: 6, color: colors.textBody, fontSize: 12, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3 }, rowTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardSemiBold, lineHeight: 23 }, meta: { color: colors.textSecondary, fontSize: 12 },
+    personRow: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 10 }, personCopy: { flex: 1, gap: 3 }, clubIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
+    empty: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 20, marginTop: 20, alignItems: 'center' }, emptyText: { color: colors.textSecondary, fontSize: 14 }, error: { color: colors.danger, fontSize: 12 },
+  } as const;
+}

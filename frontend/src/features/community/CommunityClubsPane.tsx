@@ -5,9 +5,7 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  StyleSheet,
-  View,
-} from 'react-native';
+  View } from 'react-native';
 
 import {
   getCommunityClubs,
@@ -17,13 +15,15 @@ import {
 import { AppButton, Text } from '@/src/components/common';
 import { CommunityClubCard } from '@/src/components/community';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
-import { colors, darkColors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { darkColors, fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type Scope = 'all' | 'mine';
 
 // The 클럽 tab of the community screen. Reloads when the screen comes back into view, so a
 // club created or joined elsewhere shows up.
 export function CommunityClubsPane({ bottomSpace }: { bottomSpace: number }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { isDark } = useDisplayPreferences();
   const [scope, setScope] = useState<Scope>('mine');
@@ -155,27 +155,29 @@ export function CommunityClubsPane({ bottomSpace }: { bottomSpace: number }) {
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  heading: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  headerActions: { flexDirection: 'row', gap: spacing.xs },
-  switchButton: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.sm, borderWidth: 1, paddingHorizontal: spacing.sm, paddingVertical: 7 },
-  switchText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  createButton: { backgroundColor: colors.primaryLight, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 7 },
-  createText: { color: colors.primary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    header: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.lg,
+      paddingBottom: spacing.md,
+    },
+    heading: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    headerActions: { flexDirection: 'row', gap: spacing.xs },
+    switchButton: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.sm, borderWidth: 1, paddingHorizontal: spacing.sm, paddingVertical: 7 },
+    switchText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+    createButton: { backgroundColor: colors.primaryLight, borderRadius: radius.sm, paddingHorizontal: spacing.sm, paddingVertical: 7 },
+    createText: { color: colors.primary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  } as const;
+}

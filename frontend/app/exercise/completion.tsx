@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CheckIcon from '@/assets/icons/ui/check.svg';
 import { getExerciseApiErrorMessage, saveExerciseSessionFeedback, type ExerciseSessionFeedbackInput } from '@/src/api/exercise';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 
@@ -27,6 +26,8 @@ const areas = [
 ];
 
 export default function ExerciseCompletionScreen() {
+  const { colors } = useAppTheme();
+  const s = useThemedStyles(createSStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { latestSession, markResultRecordCompleted, refreshHome, resultRecordCompleted } = useExerciseRoutine();
@@ -69,10 +70,9 @@ export default function ExerciseCompletionScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar style="dark" />
       <ScreenHeader onBack={goHome} />
       <ScrollView contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 28 }]} showsVerticalScrollIndicator={false}>
-        <View style={s.check}><CheckIcon color="#0E7C48" height={28} width={28} /></View>
+        <View style={s.check}><CheckIcon color={colors.success} height={28} width={28} /></View>
         <View>
           <Text style={s.title}>오늘 운동을 마쳤어요</Text>
           <Text style={s.subtitle}>기록이 저장됐어요.</Text>
@@ -126,26 +126,28 @@ export default function ExerciseCompletionScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, paddingTop: 8, gap: 14 },
-  check: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#E8F6EF', alignItems: 'center', justifyContent: 'center' },
-  title: { color: '#17161D', fontSize: 22, lineHeight: 30, fontFamily: fontFamilies.pretendardBold },
-  subtitle: { color: '#3B3A42', fontSize: 16, lineHeight: 24 },
-  metrics: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', paddingVertical: 16 },
-  metric: { alignItems: 'center', flex: 1, gap: 2 },
-  metricLabel: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  metricValue: { color: '#17161D', fontSize: 18, lineHeight: 26, fontFamily: fontFamilies.pretendardBold },
-  metricNote: { color: '#5E5D66', fontSize: 12, lineHeight: 18 },
-  sectionTitle: { color: '#17161D', fontSize: 16, lineHeight: 24, fontFamily: fontFamilies.pretendardBold, marginTop: 4 },
-  optional: { color: '#5E5D66', fontSize: 14, fontFamily: fontFamilies.pretendardRegular },
-  helper: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
-  options: { flexDirection: 'row', gap: 8 },
-  option: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 999, borderWidth: 1, flex: 1, height: 44, justifyContent: 'center', paddingHorizontal: 4 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
-  selected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
-  optionText: { color: '#3B3A42', fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
-  selectedText: { color: '#FFFFFF' },
-  primaryButton: { height: 56, borderRadius: 12, backgroundColor: '#5246C6', alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 },
-});
+function createSStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, paddingTop: 8, gap: 14 },
+    check: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.successLight, alignItems: 'center', justifyContent: 'center' },
+    title: { color: colors.textPrimary, fontSize: 22, lineHeight: 30, fontFamily: fontFamilies.pretendardBold },
+    subtitle: { color: colors.textBody, fontSize: 16, lineHeight: 24 },
+    metrics: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: 'row', paddingVertical: 16 },
+    metric: { alignItems: 'center', flex: 1, gap: 2 },
+    metricLabel: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    metricValue: { color: colors.textPrimary, fontSize: 18, lineHeight: 26, fontFamily: fontFamilies.pretendardBold },
+    metricNote: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+    sectionTitle: { color: colors.textPrimary, fontSize: 16, lineHeight: 24, fontFamily: fontFamilies.pretendardBold, marginTop: 4 },
+    optional: { color: colors.textSecondary, fontSize: 14, fontFamily: fontFamilies.pretendardRegular },
+    helper: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    options: { flexDirection: 'row', gap: 8 },
+    option: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 999, borderWidth: 1, flex: 1, height: 44, justifyContent: 'center', paddingHorizontal: 4 },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
+    selected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    optionText: { color: colors.textBody, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
+    selectedText: { color: '#FFFFFF' },
+    primaryButton: { height: 56, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+    primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 },
+  } as const;
+}

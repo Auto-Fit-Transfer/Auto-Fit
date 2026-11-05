@@ -1,9 +1,9 @@
 import { useRouter, type Href } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader, Text } from '@/src/components/common';
-import { colors, fontFamilies, spacing, typography } from '@/src/theme';
+import { fontFamilies, spacing, typography, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const TOOLS: { title: string; description: string; href: Href }[] = [
   {
@@ -25,6 +25,7 @@ const TOOLS: { title: string; description: string; href: Href }[] = [
 
 // Shown from my profile to moderators only; every tool is checked again by the server.
 export default function CommunityAdminScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   return (
@@ -53,22 +54,24 @@ export default function CommunityAdminScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.background, flex: 1 },
-  body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-  note: { ...typography.bodySmall, color: colors.textSecondary },
-  card: {
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: 'row',
-    padding: spacing.lg,
-  },
-  pressed: { backgroundColor: colors.background },
-  cardBody: { flex: 1, gap: 4 },
-  title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  description: { ...typography.bodySmall, color: colors.textBody },
-  chevron: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold, fontSize: 22 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+    note: { ...typography.bodySmall, color: colors.textSecondary },
+    card: {
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      flexDirection: 'row',
+      padding: spacing.lg,
+    },
+    pressed: { backgroundColor: colors.background },
+    cardBody: { flex: 1, gap: 4 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    description: { ...typography.bodySmall, color: colors.textBody },
+    chevron: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold, fontSize: 22 },
+  } as const;
+}

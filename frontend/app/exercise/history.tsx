@@ -1,21 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getExerciseHistory, saveRecommendedWorkout } from '@/src/api/exercise';
 import { getRunningApiErrorMessage, getRunningHistory, type RunningSession } from '@/src/api/running';
 import { getApiErrorMessage } from '@/src/api/client';
 import { sessionCalories, sessionLocalDate, sessionMinutes } from '@/src/features/exercise/weeklyMetrics';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 type HistoryRow = Awaited<ReturnType<typeof getExerciseHistory>>['history'][number];
-const purple = '#5246C6';
-const ink = '#17161D';
-const muted = '#5E5D66';
-const border = '#DFE2E7';
 const dayKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 const number = (value: unknown) => {
@@ -25,6 +20,8 @@ const number = (value: unknown) => {
 };
 
 export default function ExerciseHistory() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [rows, setRows] = useState<HistoryRow[]>([]);
@@ -96,10 +93,9 @@ export default function ExerciseHistory() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
         <View style={styles.header}>
-          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
+          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
           <Text style={styles.title}>내 운동</Text>
           <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="루틴 만들기" onPress={() => router.push('/exercise/routine-builder')}><Text style={styles.link}>만들기</Text></Pressable>
         </View>
@@ -132,7 +128,7 @@ export default function ExerciseHistory() {
           <Text style={styles.sectionTitle}>{selectedDay ? `${selectedDay} 기록` : '운동 내역'}</Text>
           <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/exercise/saved-routines')}><Text style={styles.link}>저장한 운동 ›</Text></Pressable>
         </View>
-        {loading ? <ActivityIndicator color={purple} /> : error ? (
+        {loading ? <ActivityIndicator color={colors.primaryText} /> : error ? (
           <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable>
         ) : filtered.length === 0 ? <View style={styles.card}><Text style={styles.body}>이 기간에 기록한 운동이 없어요.</Text></View> : filtered.map(({ session, logs }, index) => {
           const id = typeof session.exercise_recommendation_id === 'string' ? session.exercise_recommendation_id : null;
@@ -147,7 +143,7 @@ export default function ExerciseHistory() {
         })}
         {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
         <Text style={styles.sectionTitle}>러닝 기록</Text>
-        {runningLoading ? <ActivityIndicator color={purple} /> : runningError ? (
+        {runningLoading ? <ActivityIndicator color={colors.primaryText} /> : runningError ? (
           <Pressable accessibilityRole="button" onPress={() => { setRunningLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{runningError} · 다시 시도</Text></Pressable>
         ) : filteredRuns.length === 0 ? <View style={styles.card}><Text style={styles.body}>이 기간에 완료한 러닝이 없어요.</Text></View> :
           filteredRuns.map((run) => <Pressable key={run.running_session_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercise/run-result', params: { sessionId: run.running_session_id } })} style={styles.card}>
@@ -159,36 +155,38 @@ export default function ExerciseHistory() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { paddingHorizontal: 20, gap: 18 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 52 },
-  back: { fontSize: 32, color: ink, lineHeight: 36 },
-  title: { fontSize: 16, color: ink, fontFamily: fontFamilies.pretendardBold },
-  tabs: { flexDirection: 'row', backgroundColor: '#F2F4F6', borderRadius: 16, padding: 4 },
-  tab: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
-  tabActive: { backgroundColor: '#FFF' },
-  tabText: { color: muted, fontSize: 14 },
-  tabTextActive: { color: ink, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
-  sectionTitle: { fontSize: 17, color: ink, fontFamily: fontFamilies.pretendardBold },
-  week: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 16, padding: 10, flexDirection: 'row', justifyContent: 'space-between' },
-  day: { flex: 1, alignItems: 'center', gap: 5, paddingVertical: 8, borderRadius: 12 },
-  daySelected: { backgroundColor: purple , borderColor: purple},
-  dayText: { color: muted, fontSize: 14 },
-  dayTextSelected: { color: '#FFFFFF' },
-  dayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'transparent' },
-  dayDotActive: { backgroundColor: '#76CE96' },
-  summary: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 16, padding: 17, gap: 16 },
-  summaryStats: { flexDirection: 'row', justifyContent: 'space-between' },
-  statNumber: { color: '#17161D', fontSize: 22, fontFamily: fontFamilies.pretendardBold },
-  caption: { color: muted, fontSize: 14, lineHeight: 18 },
-  sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  link: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
-  card: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 16, padding: 16, gap: 9 },
-  cardTitle: { fontSize: 16, color: ink, fontFamily: fontFamilies.pretendardBold },
-  badge: { color: '#17161D', backgroundColor: '#ECE9FF', paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6, fontSize: 12 },
-  body: { color: ink, fontSize: 14, lineHeight: 20 },
-  outlineButton: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 12, height: 42, alignItems: 'center', justifyContent: 'center', marginTop: 5 },
-  outlineText: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
-  error: { color: '#A13A2F', fontSize: 14 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background },
+    content: { paddingHorizontal: 20, gap: 18 },
+    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', height: 52 },
+    back: { fontSize: 32, color: colors.textPrimary, lineHeight: 36 },
+    title: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    tabs: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: 16, padding: 4 },
+    tab: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
+    tabActive: { backgroundColor: colors.background },
+    tabText: { color: colors.textSecondary, fontSize: 14 },
+    tabTextActive: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    sectionTitle: { fontSize: 17, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    week: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 10, flexDirection: 'row', justifyContent: 'space-between' },
+    day: { flex: 1, alignItems: 'center', gap: 5, paddingVertical: 8, borderRadius: 12 },
+    daySelected: { backgroundColor: colors.primary , borderColor: colors.primary},
+    dayText: { color: colors.textSecondary, fontSize: 14 },
+    dayTextSelected: { color: '#FFFFFF' },
+    dayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'transparent' },
+    dayDotActive: { backgroundColor: '#76CE96' },
+    summary: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 17, gap: 16 },
+    summaryStats: { flexDirection: 'row', justifyContent: 'space-between' },
+    statNumber: { color: colors.textPrimary, fontSize: 22, fontFamily: fontFamilies.pretendardBold },
+    caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 18 },
+    sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    link: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 16, gap: 9 },
+    cardTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    badge: { color: colors.textPrimary, backgroundColor: colors.primaryLight, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 6, fontSize: 12 },
+    body: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
+    outlineButton: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 12, height: 42, alignItems: 'center', justifyContent: 'center', marginTop: 5 },
+    outlineText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    error: { color: colors.danger, fontSize: 14 },
+  } as const;
+}

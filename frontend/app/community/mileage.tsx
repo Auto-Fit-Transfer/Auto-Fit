@@ -17,7 +17,7 @@ import {
 } from '@/src/api/community';
 import { AppButton, Text } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type HistoryFilter = '전체' | '적립' | '사용';
 const FILTERS: HistoryFilter[] = ['전체', '적립', '사용'];
@@ -52,6 +52,8 @@ function describeRule(rule: CommunityRule) {
 }
 
 export default function CommunityMileageScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [summary, setSummary] = useState<CommunityMileage | null>(null);
@@ -132,7 +134,7 @@ export default function CommunityMileageScreen() {
           onPress={() => router.back()}
           style={styles.back}
         >
-          <CaretLeftIcon color="#17161D" height={24} width={24} />
+          <CaretLeftIcon color={colors.textPrimary} height={24} width={24} />
         </Pressable>
         <Text style={styles.headerTitle}>마일리지</Text>
       </View>
@@ -248,80 +250,82 @@ export default function CommunityMileageScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
-  header: { alignItems: 'center', height: 56, justifyContent: 'center' },
-  back: { left: 20, position: 'absolute', top: 16 },
-  headerTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: 16,
-    justifyContent: 'center',
-    padding: 28,
-  },
-  messageText: { color: colors.textSecondary, fontSize: 14, textAlign: 'center' },
-  top: { gap: 17, paddingHorizontal: 20, paddingTop: 8 },
-  balanceCard: {
-    backgroundColor: colors.surface,
-    borderColor: '#DFE2E7',
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 18,
-  },
-  balanceLabel: {
-    color: '#5E5D66',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-  },
-  balance: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 30, marginTop: 2 },
-  balanceHelp: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 12, marginTop: 2 },
-  statRow: { flexDirection: 'row', gap: 6, marginTop: 16 },
-  stat: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, flex: 1, minWidth: 0, padding: 9 },
-  statLabel: { color: '#5E5D66', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  statValue: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14, marginTop: 4 },
-  rules: { backgroundColor: colors.surface, borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, marginTop: -6, paddingHorizontal: 14 },
-  rulesTitle: {
-    color: '#17161D',
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-  },
-  ruleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 48 },
-  rule: { color: '#3B3A42', flex: 1, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  ruleAmount: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  divider: { backgroundColor: '#DFE2E7', height: StyleSheet.hairlineWidth },
-  emptyRules: { color: '#5E5D66', fontSize: 14, paddingVertical: 14 },
-  rulesNote: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 12, marginTop: -9 },
-  historyTitle: {
-    color: '#17161D',
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-  },
-  historyHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
-  filters: { flexDirection: 'row', gap: 6 },
-  filter: { backgroundColor: '#FFFFFF', alignItems: 'center', borderColor: '#DFE2E7', borderRadius: 999, borderWidth: 1, height: 34, justifyContent: 'center', minWidth: 45, paddingHorizontal: 12 },
-  filterActive: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
-  filterText: { color: '#5E5D66', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  filterTextActive: { color: '#FFFFFF' },
-  empty: {
-    color: '#5E5D66',
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 14,
-    padding: 24,
-    textAlign: 'center',
-  },
-  row: {
-    alignItems: 'center',
-    borderBottomColor: '#DFE2E7',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    minHeight: 60,
-    paddingVertical: 8,
-  },
-  rowBody: { flex: 1, gap: 3 },
-  reason: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  time: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-  amount: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  spent: { color: '#5E5D66' },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    header: { alignItems: 'center', height: 56, justifyContent: 'center' },
+    back: { left: 20, position: 'absolute', top: 16 },
+    headerTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: 16,
+      justifyContent: 'center',
+      padding: 28,
+    },
+    messageText: { color: colors.textSecondary, fontSize: 14, textAlign: 'center' },
+    top: { gap: 17, paddingHorizontal: 20, paddingTop: 8 },
+    balanceCard: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      padding: 18,
+    },
+    balanceLabel: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 14,
+    },
+    balance: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 30, marginTop: 2 },
+    balanceHelp: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12, marginTop: 2 },
+    statRow: { flexDirection: 'row', gap: 6, marginTop: 16 },
+    stat: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, flex: 1, minWidth: 0, padding: 9 },
+    statLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+    statValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14, marginTop: 4 },
+    rules: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, marginTop: -6, paddingHorizontal: 14 },
+    rulesTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+    },
+    ruleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 48 },
+    rule: { color: colors.textBody, flex: 1, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    ruleAmount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    divider: { backgroundColor: colors.border, height: StyleSheet.hairlineWidth },
+    emptyRules: { color: colors.textSecondary, fontSize: 14, paddingVertical: 14 },
+    rulesNote: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12, marginTop: -9 },
+    historyTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+    },
+    historyHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+    filters: { flexDirection: 'row', gap: 6 },
+    filter: { backgroundColor: colors.background, alignItems: 'center', borderColor: colors.border, borderRadius: 999, borderWidth: 1, height: 34, justifyContent: 'center', minWidth: 45, paddingHorizontal: 12 },
+    filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    filterText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+    filterTextActive: { color: '#FFFFFF' },
+    empty: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 14,
+      padding: 24,
+      textAlign: 'center',
+    },
+    row: {
+      alignItems: 'center',
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      marginHorizontal: 20,
+      minHeight: 60,
+      paddingVertical: 8,
+    },
+    rowBody: { flex: 1, gap: 3 },
+    reason: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+    amount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    spent: { color: colors.textSecondary },
+  } as const;
+}

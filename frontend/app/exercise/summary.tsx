@@ -6,10 +6,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+  View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BarbellIcon from '@/assets/icons/ui/barbell.svg';
 import CheckIcon from '@/assets/icons/ui/check.svg';
@@ -22,11 +19,13 @@ import { getExerciseApiErrorMessage } from '@/src/api/exercise';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
 import { exerciseEquipmentLabels, exerciseIntensityLabels, exerciseLocationLabels } from '@/src/features/exercise/exerciseData';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 
 export default function ExerciseSummaryScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { condition, homeLoadState, refreshHome, routine, selectPlanSession, startRoutine } =
@@ -98,7 +97,6 @@ export default function ExerciseSummaryScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" />
       <ScreenHeader onBack={goBack} title={routine?.planSessions.length ? '요일별 운동 계획' : '오늘의 맞춤 운동'} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {routine ? (
@@ -111,7 +109,7 @@ export default function ExerciseSummaryScreen() {
             <View style={styles.metaRow}>
               {summary.map(([Icon, label]) => (
                 <View key={label} style={styles.metaItem}>
-                  <Icon color="#3B3A42" height={18} width={18} />
+                  <Icon color={colors.textBody} height={18} width={18} />
                   <Text style={styles.meta}>{label}</Text>
                 </View>
               ))}
@@ -141,11 +139,11 @@ export default function ExerciseSummaryScreen() {
                   <Text style={styles.rowTitle}>이렇게 골랐어요</Text>
                   {reasonsOpen ? null : <Text numberOfLines={1} style={styles.reasonLine}>{reasons[0]}</Text>}
                 </View>
-                {reasonsOpen ? <MinusIcon color="#17161D" height={22} width={22} /> : <PlusIcon color="#17161D" height={22} width={22} />}
+                {reasonsOpen ? <MinusIcon color={colors.textPrimary} height={22} width={22} /> : <PlusIcon color={colors.textPrimary} height={22} width={22} />}
               </Pressable>
               {reasonsOpen ? reasons.map((reason, index) => (
                 <View key={index} style={styles.reasonRow}>
-                  <CheckIcon color="#17161D" height={18} width={18} />
+                  <CheckIcon color={colors.textPrimary} height={18} width={18} />
                   <Text style={styles.reason}>{reason}</Text>
                 </View>
               )) : null}
@@ -193,7 +191,7 @@ export default function ExerciseSummaryScreen() {
               {routine.exercises.map((exercise, index) => (
                 <View key={exercise.id} style={[styles.exerciseRow, index > 0 && styles.rowDivider]}>
                   <View style={styles.exerciseIcon}>
-                    <BarbellIcon color="#17161D" height={22} width={22} />
+                    <BarbellIcon color={colors.textPrimary} height={22} width={22} />
                   </View>
                   <View style={styles.grow}>
                     <Text style={styles.rowTitle}>{exercise.name}</Text>
@@ -258,42 +256,44 @@ export default function ExerciseSummaryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { alignSelf: 'center', backgroundColor: '#FFFFFF', flex: 1, maxWidth: 412, width: '100%' },
-  content: { gap: 12, paddingBottom: 20, paddingHorizontal: 20, paddingTop: 8 },
-  grow: { flex: 1, minWidth: 0 },
-  heading: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
-  subtitle: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
-  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-  metaItem: { alignItems: 'center', flexDirection: 'row', gap: 4 },
-  meta: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
-  conditionBar: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 8, marginTop: 4, minHeight: 56, paddingHorizontal: 14 },
-  conditionText: { color: '#3B3A42', flex: 1, fontSize: 14, lineHeight: 21 },
-  smallButton: { alignItems: 'center', alignSelf: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-  smallButtonText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  reasonCard: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, gap: 10, padding: 16 },
-  reasonHeading: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  rowTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  reasonLine: { color: '#5E5D66', fontSize: 12, lineHeight: 18 },
-  reasonRow: { flexDirection: 'row', gap: 8 },
-  reason: { color: '#3B3A42', flex: 1, fontSize: 14, lineHeight: 21 },
-  sectionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, marginTop: 8 },
-  list: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-  exerciseRow: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 80, paddingHorizontal: 16, paddingVertical: 10 },
-  rowDivider: { borderTopColor: '#DFE2E7', borderTopWidth: 1 },
-  exerciseIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, height: 48, justifyContent: 'center', width: 48 },
-  prescription: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  empty: { alignItems: 'flex-start', gap: 10, paddingTop: 40 },
-  footer: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 8 },
-  startButton: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center' },
-  disabled: { opacity: 0.5 },
-  startText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  sourceLabel: { color: '#5E5D66', fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 18 },
-  planSection: { gap: 8 },
-  planHint: { color: '#5E5D66', fontSize: 12, lineHeight: 18 },
-  planRow: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 80, paddingHorizontal: 16, paddingVertical: 10 },
-  planRowSelected: { backgroundColor: '#FFFFFF', borderColor: '#5246C6', borderWidth: 2 },
-  planDate: { color: '#5E5D66', fontSize: 12, lineHeight: 18 },
-  planMeta: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  planStatus: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 412, width: '100%' },
+    content: { gap: 12, paddingBottom: 20, paddingHorizontal: 20, paddingTop: 8 },
+    grow: { flex: 1, minWidth: 0 },
+    heading: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
+    subtitle: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+    metaItem: { alignItems: 'center', flexDirection: 'row', gap: 4 },
+    meta: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    conditionBar: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 8, marginTop: 4, minHeight: 56, paddingHorizontal: 14 },
+    conditionText: { color: colors.textBody, flex: 1, fontSize: 14, lineHeight: 21 },
+    smallButton: { alignItems: 'center', alignSelf: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+    smallButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    reasonCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, gap: 10, padding: 16 },
+    reasonHeading: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+    rowTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    reasonLine: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+    reasonRow: { flexDirection: 'row', gap: 8 },
+    reason: { color: colors.textBody, flex: 1, fontSize: 14, lineHeight: 21 },
+    sectionTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, marginTop: 8 },
+    list: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+    exerciseRow: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 80, paddingHorizontal: 16, paddingVertical: 10 },
+    rowDivider: { borderTopColor: colors.border, borderTopWidth: 1 },
+    exerciseIcon: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 48, justifyContent: 'center', width: 48 },
+    prescription: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    empty: { alignItems: 'flex-start', gap: 10, paddingTop: 40 },
+    footer: { backgroundColor: colors.background, paddingHorizontal: 20, paddingTop: 8 },
+    startButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center' },
+    disabled: { opacity: 0.5 },
+    startText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    sourceLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 18 },
+    planSection: { gap: 8 },
+    planHint: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+    planRow: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 80, paddingHorizontal: 16, paddingVertical: 10 },
+    planRowSelected: { backgroundColor: colors.background, borderColor: colors.primary, borderWidth: 2 },
+    planDate: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+    planMeta: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    planStatus: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+  } as const;
+}

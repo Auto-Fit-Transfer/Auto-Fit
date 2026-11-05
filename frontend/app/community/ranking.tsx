@@ -15,7 +15,7 @@ import {
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { COMMUNITY_RANKING_ENABLED } from '@/src/features/community/communityFeatures';
 
 const METRICS: { label: string; unit: string; value: CommunityRankingMetric }[] = [
@@ -36,6 +36,8 @@ export default function CommunityRankingRoute() {
 }
 
 function CommunityRankingScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<{ scope?: string; clubId?: string; clubName?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -220,64 +222,66 @@ function CommunityRankingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.background, flex: 1 },
-  header: { gap: spacing.sm, padding: spacing.xl, paddingBottom: spacing.md },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  chip: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    maxWidth: 160,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-  },
-  chipActive: { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
-  chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  chipTextActive: { color: colors.surface },
-  week: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  optIn: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: 12,
-    gap: spacing.xs,
-    padding: spacing.lg,
-  },
-  optInText: { ...typography.body, color: colors.textPrimary },
-  optInButton: { color: colors.primary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  optOutButton: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium },
-  note: { ...typography.bodySmall, color: colors.textSecondary },
-  row: {
-    alignItems: 'center',
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  rowMe: { backgroundColor: colors.primaryLight },
-  rank: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-    textAlign: 'center',
-    width: 28,
-  },
-  rankTop: { color: colors.primary },
-  nickname: {
-    color: colors.textPrimary,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-  },
-  score: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    header: { gap: spacing.sm, padding: spacing.xl, paddingBottom: spacing.md },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    chip: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: radius.round,
+      borderWidth: 1,
+      maxWidth: 160,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 6,
+    },
+    chipActive: { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
+    chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    chipTextActive: { color: colors.surface },
+    week: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    optIn: {
+      backgroundColor: colors.primaryLight,
+      borderRadius: 12,
+      gap: spacing.xs,
+      padding: spacing.lg,
+    },
+    optInText: { ...typography.body, color: colors.textPrimary },
+    optInButton: { color: colors.primary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    optOutButton: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium },
+    note: { ...typography.bodySmall, color: colors.textSecondary },
+    row: {
+      alignItems: 'center',
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: spacing.md,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+    },
+    rowMe: { backgroundColor: colors.primaryLight },
+    rank: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+      textAlign: 'center',
+      width: 28,
+    },
+    rankTop: { color: colors.primary },
+    nickname: {
+      color: colors.textPrimary,
+      flex: 1,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 16,
+    },
+    score: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  } as const;
+}

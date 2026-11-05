@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 
 import BarbellIcon from '@/assets/icons/ui/barbell.svg';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
@@ -13,7 +12,7 @@ import { getApiErrorMessage } from '@/src/api/client';
 import {
   getNotificationPreferences, saveNotificationPreferences, type NotificationPreferences,
 } from '@/src/api/userSettings';
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 type ToggleKey = {
@@ -39,6 +38,8 @@ const validTime = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 const shortTime = (value: string | null) => value?.slice(0, 5) ?? '';
 
 export default function Notifications() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
@@ -112,7 +113,7 @@ export default function Notifications() {
     const Icon = categoryIcons[key];
     return (
     <View key={key} style={styles.row}>
-      {Icon ? <Icon color="#17161D" height={24} width={24} /> : null}
+      {Icon ? <Icon color={colors.textPrimary} height={24} width={24} /> : null}
       <View style={styles.copy}>
         <Text style={styles.label}>{label}</Text>
         <Text style={styles.detail}>{detail}</Text>
@@ -123,7 +124,7 @@ export default function Notifications() {
         onValueChange={() => toggle(key)}
         thumbColor="#FFFFFF"
         {...({ activeThumbColor: '#FFFFFF' } as object)}
-        trackColor={{ false: '#C9CCD2', true: '#17161D' }}
+        trackColor={{ false: colors.textDisabled, true: colors.textPrimary }}
         value={preferences?.[key] ?? false}
       />
     </View>
@@ -132,10 +133,9 @@ export default function Notifications() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="dark" />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 32 }]}>
         <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
           <Text style={styles.title}>알림 설정</Text>
           <View style={styles.back} />
         </View>
@@ -164,23 +164,25 @@ export default function Notifications() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 22, gap: 15 },
-  header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
-  back: { width: 32, minHeight: 32, justifyContent: 'center' },
-  title: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16, color: colors.textPrimary },
-  sectionTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, marginTop: 13 },
-  card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 16 },
-  row: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-  copy: { flex: 1, gap: 4 },
-  label: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
-  detail: { fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
-  timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
-  timeInput: { backgroundColor: colors.surface, flex: 1, minWidth: 63, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 8, color: colors.textPrimary, textAlign: 'center' },
-  timeSave: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-  timeSaveText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  note: { color: colors.textSecondary, fontSize: 12, lineHeight: 19 },
-  error: { color: colors.danger, fontSize: 12 },
-  saved: { color: colors.success, fontSize: 12 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    screen: { flex: 1, backgroundColor: colors.background },
+    content: { paddingHorizontal: 22, gap: 15 },
+    header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+    back: { width: 32, minHeight: 32, justifyContent: 'center' },
+    title: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16, color: colors.textPrimary },
+    sectionTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, marginTop: 13 },
+    card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 16 },
+    row: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
+    copy: { flex: 1, gap: 4 },
+    label: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
+    detail: { fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
+    timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
+    timeInput: { backgroundColor: colors.surface, flex: 1, minWidth: 63, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 8, color: colors.textPrimary, textAlign: 'center' },
+    timeSave: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+    timeSaveText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    note: { color: colors.textSecondary, fontSize: 12, lineHeight: 19 },
+    error: { color: colors.danger, fontSize: 12 },
+    saved: { color: colors.success, fontSize: 12 },
+  } as const;
+}

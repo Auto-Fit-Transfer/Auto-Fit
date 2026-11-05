@@ -1,10 +1,10 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import BarbellIcon from '@/assets/icons/deco/Barbell.svg';
 import RunningIcon from '@/assets/icons/deco/SneakerMove.svg';
 import DietIcon from '@/assets/icons/feature/navigator/Diet.svg';
 import { COMMUNITY_CLUB_CATEGORIES, type CommunityClub } from '@/src/api/community';
-import { colors, fontFamilies, spacing } from '@/src/theme';
+import { fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 
@@ -13,6 +13,8 @@ export function communityClubCategoryLabel(category: CommunityClub['category']) 
 }
 
 export function CommunityClubCard({ club, onPress }: { club: CommunityClub; onPress: () => void }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityLabel={`${club.name} 클럽, 회원 ${club.member_count}명`}
@@ -41,53 +43,55 @@ export function CommunityClubCard({ club, onPress }: { club: CommunityClub; onPr
           {communityClubCategoryLabel(club.category)} · 회원 {club.member_count.toLocaleString()}명 · 글 {club.post_count.toLocaleString()}개
         </Text>
       </View>
-      <CaretRightIcon color="#5E5D66" height={18} width={18} />
+      <CaretRightIcon color={colors.textSecondary} height={18} width={18} />
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 16,
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginHorizontal: spacing.xl,
-    marginBottom: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  pressed: { backgroundColor: colors.background },
-  badge: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    height: 40,
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    width: 40,
-  },
-  badgeText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-    textAlign: 'center',
-  },
-  body: { flex: 1, gap: 2, minWidth: 0 },
-  titleRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs },
-  name: {
-    color: colors.textPrimary,
-    flexShrink: 1,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-  },
-  joined: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-  },
-  meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    card: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderWidth: 1,
+      borderRadius: 16,
+      flexDirection: 'row',
+      gap: spacing.md,
+      marginHorizontal: spacing.xl,
+      marginBottom: spacing.sm,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.md,
+    },
+    pressed: { backgroundColor: colors.background },
+    badge: {
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      borderRadius: 20,
+      height: 40,
+      justifyContent: 'center',
+      paddingHorizontal: 4,
+      width: 40,
+    },
+    badgeText: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 12,
+      textAlign: 'center',
+    },
+    body: { flex: 1, gap: 2, minWidth: 0 },
+    titleRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs },
+    name: {
+      color: colors.textPrimary,
+      flexShrink: 1,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+    },
+    joined: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 12,
+    },
+    meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+  } as const;
+}

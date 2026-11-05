@@ -27,7 +27,7 @@ import {
 import { AppButton, AppHeader, IconButton, Text } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { COMMUNITY_MESSAGES_ENABLED } from '@/src/features/community/communityFeatures';
 
 // No real-time server: while this screen is shown it checks for new messages every few seconds.
@@ -50,6 +50,8 @@ export default function CommunityChatRoute() {
 }
 
 function CommunityChatScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<{
     conversationId: string;
     nickname?: string;
@@ -233,64 +235,66 @@ function CommunityChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.background, flex: 1 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  list: { flexGrow: 1, gap: spacing.sm, padding: spacing.lg },
-  empty: {
-    ...typography.body,
-    color: colors.textSecondary,
-    padding: spacing.xl,
-    textAlign: 'center',
-    transform: [{ scaleY: -1 }],
-  },
-  bubbleRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 6 },
-  bubbleRowMine: { flexDirection: 'row-reverse' },
-  bubble: { borderRadius: 16, maxWidth: '75%', paddingHorizontal: 14, paddingVertical: 9 },
-  bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
-  bubbleOther: { backgroundColor: colors.background, borderBottomLeftRadius: 4 },
-  bubbleText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 16,
-    lineHeight: 21,
-  },
-  bubbleTextMine: { color: colors.surface },
-  time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-  composer: {
-    alignItems: 'flex-end',
-    borderTopColor: colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    color: colors.textPrimary,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 16,
-    maxHeight: 120,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-  },
-  send: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: radius.round,
-    height: 42,
-    justifyContent: 'center',
-    width: 42,
-  },
-  sendDisabled: { opacity: 0.4 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    list: { flexGrow: 1, gap: spacing.sm, padding: spacing.lg },
+    empty: {
+      ...typography.body,
+      color: colors.textSecondary,
+      padding: spacing.xl,
+      textAlign: 'center',
+      transform: [{ scaleY: -1 }],
+    },
+    bubbleRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 6 },
+    bubbleRowMine: { flexDirection: 'row-reverse' },
+    bubble: { borderRadius: 16, maxWidth: '75%', paddingHorizontal: 14, paddingVertical: 9 },
+    bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
+    bubbleOther: { backgroundColor: colors.background, borderBottomLeftRadius: 4 },
+    bubbleText: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 16,
+      lineHeight: 21,
+    },
+    bubbleTextMine: { color: colors.surface },
+    time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+    composer: {
+      alignItems: 'flex-end',
+      borderTopColor: colors.border,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: spacing.sm,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.sm,
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      color: colors.textPrimary,
+      flex: 1,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 16,
+      maxHeight: 120,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 10,
+    },
+    send: {
+      alignItems: 'center',
+      backgroundColor: colors.primary,
+      borderRadius: radius.round,
+      height: 42,
+      justifyContent: 'center',
+      width: 42,
+    },
+    sendDisabled: { opacity: 0.4 },
+  } as const;
+}

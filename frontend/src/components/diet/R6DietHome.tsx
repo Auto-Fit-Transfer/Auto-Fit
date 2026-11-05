@@ -6,7 +6,7 @@ import CameraIcon from '@/assets/icons/ui/camera.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import CheckIcon from '@/assets/icons/ui/check.svg';
 import InfoIcon from '@/assets/icons/ui/info.svg';
-import { darkColors, fontFamilies } from '@/src/theme';
+import { darkColors, fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { Text } from '@/src/components/common';
@@ -63,6 +63,7 @@ function dateAtOffset(today: Date, offset: number) {
 }
 
 function ProgressLine({ value, target, thick = false }: { value: number | null; target: number | null; thick?: boolean }) {
+  const styles = useThemedStyles(createStyles);
   const percent =
     value != null && target != null && target > 0
       ? Math.min(100, Math.max(0, Math.round((value / target) * 100)))
@@ -75,6 +76,8 @@ function ProgressLine({ value, target, thick = false }: { value: number | null; 
 }
 
 export function R6DietHome(props: Props) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { preferences, isDark } = useDisplayPreferences();
   const simple = preferences.simple_mode_enabled;
@@ -178,7 +181,7 @@ export function R6DietHome(props: Props) {
             style={[styles.photoButton, simple && simpleStyles.photoButton, isDark && dark.card, !canRecordPhoto && styles.photoDisabled]}
           >
             <View style={[styles.cameraIcon, isDark && dark.card]}>
-              <CameraIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={22} width={22} />
+              <CameraIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={22} width={22} />
             </View>
             <View style={styles.photoCopy}>
               <Text style={[styles.photoTitle, simple && simpleStyles.photoTitle, isDark && dark.text]}>사진으로 기록하기</Text>
@@ -190,7 +193,7 @@ export function R6DietHome(props: Props) {
                     : '오늘의 추천 식단을 불러오면 기록할 수 있어요'}
               </Text>
             </View>
-            <CaretRightIcon color="#5E5D66" height={20} width={20} />
+            <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
           </Pressable>
         )}
 
@@ -243,9 +246,9 @@ export function R6DietHome(props: Props) {
                   </Text>
                   <View style={[styles.status, meal.status === 'eaten' || meal.status === 'modified' ? styles.recorded : null]}>
                     {meal.status === 'eaten' || meal.status === 'modified' ? (
-                      <CheckIcon color="#0E7C48" height={14} width={14} />
+                      <CheckIcon color={colors.success} height={14} width={14} />
                     ) : recommended ? (
-                      <InfoIcon color="#5E5D66" height={14} width={14} />
+                      <InfoIcon color={colors.textSecondary} height={14} width={14} />
                     ) : null}
                     <Text style={[styles.statusText, (meal.status === 'eaten' || meal.status === 'modified') && styles.recordedText]}>
                       {recommended ? '추천' : meal.status === 'skipped' ? '건너뜀' : '먹었어요'}
@@ -263,7 +266,7 @@ export function R6DietHome(props: Props) {
                 </View>
                 {recommended && meal.note ? (
                   <View style={styles.noteRow}>
-                    <InfoIcon color="#5E5D66" height={16} width={16} />
+                    <InfoIcon color={colors.textSecondary} height={16} width={16} />
                     <Text style={[styles.note, isDark && dark.secondary]}>{meal.note}</Text>
                   </View>
                 ) : null}
@@ -306,7 +309,7 @@ export function R6DietHome(props: Props) {
                     {title}
                     {available ? '' : ' · 추천 없음'}
                   </Text>
-                  <CaretRightIcon color="#5E5D66" height={20} width={20} />
+                  <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
                 </Pressable>
               );
             })}
@@ -320,105 +323,106 @@ export function R6DietHome(props: Props) {
   );
 }
 
-const purple = '#5246C6';
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { paddingHorizontal: 20 },
-  titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  title: { fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30, color: '#17161D' },
-  weekRow: { backgroundColor: '#F2F4F6', borderRadius: 16, flexDirection: 'row', gap: 2, marginTop: 16, padding: 4 },
-  day: { alignItems: 'center', borderRadius: 12, flex: 1, gap: 2, minHeight: 61, justifyContent: 'center' },
-  selectedDay: { backgroundColor: '#FFFFFF' },
-  disabledDay: { opacity: 0.35 },
-  dayName: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  selectedDayName: { color: '#17161D' },
-  dayNumber: { color: '#3B3A42', fontSize: 16, lineHeight: 24 },
-  selectedDayNumber: { color: '#17161D', fontFamily: fontFamilies.pretendardBold },
-  energyCard: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, marginTop: 16, padding: 18 },
-  energyHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
-  caption: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  energyValue: { fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30, color: '#17161D', marginTop: 2 },
-  energyTarget: { fontFamily: fontFamilies.pretendardRegular, color: '#5E5D66', fontSize: 14 },
-  percent: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  track: { height: 6, backgroundColor: '#E3E6EB', borderRadius: 3, overflow: 'hidden', marginTop: 10 },
-  trackThick: { borderRadius: 4, height: 8, marginTop: 6 },
-  fill: { height: '100%', backgroundColor: purple, borderRadius: 4 },
-  macroRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  macro: { flex: 1 },
-  macroLabel: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  macroValue: { color: '#17161D', fontSize: 14, lineHeight: 21, fontFamily: fontFamilies.pretendardMedium, marginTop: 2 },
-  hint: { color: '#5E5D66', fontSize: 14, lineHeight: 21, marginTop: 10 },
-  retry: { color: purple, fontSize: 14, marginTop: 8, fontFamily: fontFamilies.pretendardMedium },
-  guideLink: { alignSelf: 'flex-start', paddingTop: 12 },
-  guideLinkText: { color: '#3B3A42', fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
-  photoButton: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, marginTop: 16, minHeight: 75, paddingHorizontal: 16 },
-  cameraIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  photoCopy: { flex: 1 },
-  photoTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  photoHint: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  photoDisabled: { opacity: 0.55 },
-  sectionTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, color: '#17161D', marginTop: 20, marginBottom: 12 },
-  stateCard: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, padding: 16 },
-  stateText: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  mealCard: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, marginBottom: 16, padding: 16 },
-  mealMain: { gap: 8 },
-  mealTop: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  mealName: { color: '#17161D', fontSize: 14, lineHeight: 21, fontFamily: fontFamilies.pretendardMedium },
-  mealKcal: { color: '#5E5D66', fontSize: 14, fontFamily: fontFamilies.pretendardRegular },
-  status: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 999, flexDirection: 'row', gap: 4, height: 26, paddingHorizontal: 10 },
-  statusText: { color: '#5E5D66', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  recorded: { backgroundColor: '#E8F6EF' },
-  recordedText: { color: '#0E7C48' },
-  mealBody: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  mealPhoto: { backgroundColor: '#FFFFFF', borderRadius: 12, height: 48, width: 48 },
-  mealCopy: { flex: 1, gap: 2, minWidth: 0 },
-  foods: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  detailText: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  noteRow: { flexDirection: 'row', gap: 4 },
-  note: { color: '#5E5D66', flex: 1, fontSize: 12, lineHeight: 18 },
-  mealActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 12 },
-  smallAction: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-  smallActionText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  modalOverlay: { flex: 1, backgroundColor: '#0007', justifyContent: 'flex-end' },
-  picker: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-  },
-  pickerTitle: {
-    color: '#24242A',
-    fontSize: 17,
-    fontFamily: fontFamilies.pretendardBold,
-    marginBottom: 10,
-  },
-  pickerRow: {
-    minHeight: 51,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ECEEF1',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  pickerRowText: { color: '#292A30', fontSize: 14 },
-  cancel: { minHeight: 47, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  cancelText: { color: '#75777E', fontSize: 13 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background },
+    content: { paddingHorizontal: 20 },
+    titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    title: { fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30, color: colors.textPrimary },
+    weekRow: { backgroundColor: colors.surfaceMuted, borderRadius: 16, flexDirection: 'row', gap: 2, marginTop: 16, padding: 4 },
+    day: { alignItems: 'center', borderRadius: 12, flex: 1, gap: 2, minHeight: 61, justifyContent: 'center' },
+    selectedDay: { backgroundColor: colors.background },
+    disabledDay: { opacity: 0.35 },
+    dayName: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    selectedDayName: { color: colors.textPrimary },
+    dayNumber: { color: colors.textBody, fontSize: 16, lineHeight: 24 },
+    selectedDayNumber: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    energyCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, marginTop: 16, padding: 18 },
+    energyHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+    caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    energyValue: { fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30, color: colors.textPrimary, marginTop: 2 },
+    energyTarget: { fontFamily: fontFamilies.pretendardRegular, color: colors.textSecondary, fontSize: 14 },
+    percent: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    track: { height: 6, backgroundColor: colors.gaugeTrack, borderRadius: 3, overflow: 'hidden', marginTop: 10 },
+    trackThick: { borderRadius: 4, height: 8, marginTop: 6 },
+    fill: { height: '100%', backgroundColor: colors.primary, borderRadius: 4 },
+    macroRow: { flexDirection: 'row', gap: 8, marginTop: 12 },
+    macro: { flex: 1 },
+    macroLabel: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    macroValue: { color: colors.textPrimary, fontSize: 14, lineHeight: 21, fontFamily: fontFamilies.pretendardMedium, marginTop: 2 },
+    hint: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, marginTop: 10 },
+    retry: { color: colors.primaryText, fontSize: 14, marginTop: 8, fontFamily: fontFamilies.pretendardMedium },
+    guideLink: { alignSelf: 'flex-start', paddingTop: 12 },
+    guideLinkText: { color: colors.textBody, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
+    photoButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, marginTop: 16, minHeight: 75, paddingHorizontal: 16 },
+    cameraIcon: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+    photoCopy: { flex: 1 },
+    photoTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    photoHint: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    photoDisabled: { opacity: 0.55 },
+    sectionTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, color: colors.textPrimary, marginTop: 20, marginBottom: 12 },
+    stateCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16 },
+    stateText: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    mealCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, marginBottom: 16, padding: 16 },
+    mealMain: { gap: 8 },
+    mealTop: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    mealName: { color: colors.textPrimary, fontSize: 14, lineHeight: 21, fontFamily: fontFamilies.pretendardMedium },
+    mealKcal: { color: colors.textSecondary, fontSize: 14, fontFamily: fontFamilies.pretendardRegular },
+    status: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 999, flexDirection: 'row', gap: 4, height: 26, paddingHorizontal: 10 },
+    statusText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+    recorded: { backgroundColor: colors.successLight },
+    recordedText: { color: colors.success },
+    mealBody: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+    mealPhoto: { backgroundColor: colors.background, borderRadius: 12, height: 48, width: 48 },
+    mealCopy: { flex: 1, gap: 2, minWidth: 0 },
+    foods: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    detailText: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    noteRow: { flexDirection: 'row', gap: 4 },
+    note: { color: colors.textSecondary, flex: 1, fontSize: 12, lineHeight: 18 },
+    mealActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 12 },
+    smallAction: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+    smallActionText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    modalOverlay: { flex: 1, backgroundColor: '#0007', justifyContent: 'flex-end' },
+    picker: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      padding: 20,
+    },
+    pickerTitle: {
+      color: colors.textPrimary,
+      fontSize: 17,
+      fontFamily: fontFamilies.pretendardBold,
+      marginBottom: 10,
+    },
+    pickerRow: {
+      minHeight: 51,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.surfaceMuted,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    pickerRowText: { color: colors.textPrimary, fontSize: 14 },
+    cancel: { minHeight: 47, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+    cancelText: { color: colors.textSecondary, fontSize: 13 },
+  } as const;
+}
 
 const simpleStyles = StyleSheet.create({
-  title: { fontSize: 29 },
+  title: {},
   card: { padding: 20 },
-  energyValue: { fontSize: 25 },
+  energyValue: {},
   macroRow: { flexDirection: 'column', gap: 14 },
   macro: { flex: 0 },
-  macroLabel: { fontSize: 15 },
-  macroValue: { fontSize: 18 },
+  macroLabel: {},
+  macroValue: {},
   photoButton: { minHeight: 78 },
-  photoTitle: { fontSize: 18 },
-  sectionTitle: { fontSize: 20 },
+  photoTitle: {},
+  sectionTitle: {},
   mealCard: { marginBottom: 12 },
-  mealName: { fontSize: 17 },
-  foods: { fontSize: 14, lineHeight: 21 },
+  mealName: {},
+  foods: {},
 });
 
 const dark = StyleSheet.create({

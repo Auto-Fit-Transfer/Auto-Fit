@@ -37,7 +37,7 @@ import {
   subscribeCommunityEvents,
 } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, spacing, typography } from '@/src/theme';
+import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
@@ -51,6 +51,8 @@ function mergeComments(current: CommunityComment[], incoming: CommunityComment[]
 }
 
 export default function CommunityPostScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { postId } = useLocalSearchParams<{ postId: string }>();
   const router = useRouter();
   const openProfile = (author: CommunityAuthor) =>
@@ -271,7 +273,7 @@ export default function CommunityPostScreen() {
               multiline
               onChangeText={setDraft}
               placeholder="댓글을 남겨 보세요"
-              placeholderTextColor={colors.textNavigator}
+              placeholderTextColor={colors.textDisabled}
               style={[styles.input, simple && simpleStyles.input]}
               value={draft}
             />
@@ -290,51 +292,53 @@ export default function CommunityPostScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.background, flex: 1 },
-  readRow: { alignItems: 'flex-end', paddingHorizontal: spacing.xl, paddingVertical: spacing.xs },
-  center: { flex: 1, justifyContent: 'center' },
-  message: { alignItems: 'center', gap: spacing.md, padding: spacing.xxl },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-  },
-  commentsHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xs },
-  sortLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-  bookmarkButton: { alignItems: 'center', backgroundColor: '#FFFFFF', alignSelf: 'flex-end', borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', marginHorizontal: spacing.xl, marginTop: spacing.sm, paddingHorizontal: 12 },
-  bookmarkText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  empty: {
-    ...typography.body,
-    color: colors.textSecondary,
-    paddingVertical: spacing.xxl,
-    textAlign: 'center',
-  },
-  inputBar: {
-    alignItems: 'flex-end',
-    borderTopColor: colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-  },
-  input: {
-    ...typography.body,
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    color: colors.textPrimary,
-    flex: 1,
-    maxHeight: 110,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 11,
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    readRow: { alignItems: 'flex-end', paddingHorizontal: spacing.xl, paddingVertical: spacing.xs },
+    center: { flex: 1, justifyContent: 'center' },
+    message: { alignItems: 'center', gap: spacing.md, padding: spacing.xxl },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    sectionTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+    },
+    commentsHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xs },
+    sortLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+    bookmarkButton: { alignItems: 'center', backgroundColor: colors.background, alignSelf: 'flex-end', borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', marginHorizontal: spacing.xl, marginTop: spacing.sm, paddingHorizontal: 12 },
+    bookmarkText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    empty: {
+      ...typography.body,
+      color: colors.textSecondary,
+      paddingVertical: spacing.xxl,
+      textAlign: 'center',
+    },
+    inputBar: {
+      alignItems: 'flex-end',
+      borderTopColor: colors.border,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: spacing.xs,
+      paddingHorizontal: spacing.md,
+      paddingTop: spacing.sm,
+    },
+    input: {
+      ...typography.body,
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      color: colors.textPrimary,
+      flex: 1,
+      maxHeight: 110,
+      minHeight: 44,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 11,
+    },
+  } as const;
+}
 
 const simpleStyles = StyleSheet.create({
-  input: { fontSize: 18, lineHeight: 25, minHeight: 52 },
+  input: { minHeight: 52 },
 });

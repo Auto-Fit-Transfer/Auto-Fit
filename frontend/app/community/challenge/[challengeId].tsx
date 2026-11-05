@@ -1,14 +1,12 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import { claimCommunityChallenge, getCommunityChallenges, getCommunityErrorMessage, isProvisionalNote, setCommunityChallengeParticipation, type CommunityChallenge } from '@/src/api/community';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const purple = '#5246C6';
 const metricLabel: Record<CommunityChallenge['metric'], string> = {
   workout_days: '운동한 날', meal_log_days: '식단 기록한 날',
 };
@@ -21,6 +19,8 @@ const dateLabel = (value: string) => {
 };
 
 export default function ChallengeDetail() {
+  const { colors } = useAppTheme();
+  const s = useThemedStyles(createSStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { challengeId } = useLocalSearchParams<{ challengeId?: string }>();
@@ -78,10 +78,9 @@ export default function ChallengeDetail() {
     || (challenge.joined && challenge.phase === 'upcoming' && !challenge.can_claim);
 
   return <View style={s.root}>
-    <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
-      <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable><Text style={s.title}>챌린지</Text><View style={{ width: 24 }} /></View>
-      {loading ? <ActivityIndicator color={purple} /> : null}
+      <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable><Text style={s.title}>챌린지</Text><View style={{ width: 24 }} /></View>
+      {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
       {error && !challenge ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); void load(); }} style={s.card}><Text style={s.error}>{error} · 다시 시도</Text></Pressable> : null}
       {challenge ? <>
         <Text style={s.phase}>{phaseLabel[challenge.phase]}{challenge.phase === 'ongoing' ? ` · ${dateLabel(challenge.ends_on)}까지` : ''}</Text>
@@ -109,13 +108,15 @@ export default function ChallengeDetail() {
   </View>;
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, gap: 17 },
-  header: { height: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, title: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardSemiBold },
-  phase: { alignSelf: 'flex-start', color: '#0E7C48', backgroundColor: '#E8F6EF', borderRadius: 999, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 5, fontSize: 12, marginTop: 10 },
-  hero: { color: '#17161D', fontSize: 24, fontFamily: fontFamilies.pretendardBold }, body: { color: '#3B3A42', fontSize: 14, lineHeight: 21 }, caption: { color: '#5E5D66', fontSize: 12, lineHeight: 18 },
-  stats: { flexDirection: 'row', gap: 8 }, stat: { flex: 1, backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 12, padding: 12, gap: 6 }, statLabel: { color: '#5E5D66', fontSize: 12 }, statValue: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, padding: 16, gap: 12 }, row: { flexDirection: 'row', justifyContent: 'space-between' }, section: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, progressValue: { color: purple, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-  track: { height: 7, borderRadius: 5, backgroundColor: '#E3E6EB', overflow: 'hidden' }, fill: { height: 7, backgroundColor: purple }, stepRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 }, stepNumber: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 12, height: 22, justifyContent: 'center', width: 22 }, stepNumberText: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 }, step: { color: '#3B3A42', flex: 1, fontSize: 14, lineHeight: 21 }, notice: { backgroundColor: '#FFF2E0', borderRadius: 12, padding: 12 }, noticeText: { color: '#B3690B', fontSize: 12 },
-  button: { height: 56, backgroundColor: purple, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 }, outline: { height: 46, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: '#5E5D66', fontSize: 12 }, success: { color: '#0E7C48', fontSize: 12 }, error: { color: '#A13A2F', fontSize: 12, lineHeight: 18 },
-});
+function createSStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, gap: 17 },
+    header: { height: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, title: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardSemiBold },
+    phase: { alignSelf: 'flex-start', color: colors.success, backgroundColor: colors.successLight, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 5, fontSize: 12, marginTop: 10 },
+    hero: { color: colors.textPrimary, fontSize: 24, fontFamily: fontFamilies.pretendardBold }, body: { color: colors.textBody, fontSize: 14, lineHeight: 21 }, caption: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+    stats: { flexDirection: 'row', gap: 8 }, stat: { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, gap: 6 }, statLabel: { color: colors.textSecondary, fontSize: 12 }, statValue: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
+    card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16, gap: 12 }, row: { flexDirection: 'row', justifyContent: 'space-between' }, section: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold }, progressValue: { color: colors.primaryText, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
+    track: { height: 7, borderRadius: 5, backgroundColor: colors.gaugeTrack, overflow: 'hidden' }, fill: { height: 7, backgroundColor: colors.primary }, stepRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 }, stepNumber: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 22, justifyContent: 'center', width: 22 }, stepNumberText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 }, step: { color: colors.textBody, flex: 1, fontSize: 14, lineHeight: 21 }, notice: { backgroundColor: colors.warningLight, borderRadius: 12, padding: 12 }, noticeText: { color: colors.warning, fontSize: 12 },
+    button: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 }, outline: { height: 46, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: colors.textSecondary, fontSize: 12 }, success: { color: colors.success, fontSize: 12 }, error: { color: colors.danger, fontSize: 12, lineHeight: 18 },
+  } as const;
+}

@@ -43,7 +43,7 @@ import {
   updateChatSessionSnapshot,
 } from '@/src/features/chat/chatSessionCache';
 import { chatCharacters, chatWelcomes, displayChatAnswer, loadChatCharacter } from '@/src/features/chat/chatCharacters';
-import { colors, fontFamilies, radius } from '@/src/theme';
+import { fontFamilies, radius, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import type { ChatMessage as ServerChatMessage } from '@/src/types/chat';
 
 import type { AIChatButtonAnchor } from './DraggableAIChatButton';
@@ -186,6 +186,7 @@ function formatMessageTime(timestamp: number) {
 }
 
 function SendButtonGradient() {
+  const { colors } = useAppTheme();
   return (
     <Svg height={40} style={StyleSheet.absoluteFill} width={40}>
       <Defs>
@@ -207,6 +208,8 @@ export function ChatPopup({
   onRequestClose,
   visible,
 }: ChatPopupProps) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
@@ -725,198 +728,200 @@ export function ChatPopup({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFill,
-    overflow: 'hidden',
-    zIndex: 30,
-  },
-  dim: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: '#000000',
-  },
-  popupShell: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.xl,
-    elevation: Platform.OS === 'android' ? 7 : 0,
-    overflow: 'hidden',
-    position: 'absolute',
-    shadowColor: '#000000',
-    shadowOffset: { height: -4, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-  },
-  popupContent: {
-    backgroundColor: colors.surface,
-    height: referencePopupHeight,
-    left: 0,
-    position: 'absolute',
-    top: 0,
-    transformOrigin: 'top left',
-    width: referencePopupWidth,
-  },
-  topSection: {
-    gap: 15,
-    paddingTop: 16,
-  },
-  titleRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  titleLeft: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  title: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 18,
-    includeFontPadding: false,
-    lineHeight: 24,
-  },
-  closeButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.primary,
-    borderRadius: 16,
-    borderWidth: 1,
-    elevation: Platform.OS === 'android' ? 1 : 0,
-    height: 30,
-    justifyContent: 'center',
-    shadowColor: colors.primaryDark,
-    shadowOffset: { height: 2, width: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2.5,
-    width: 30,
-  },
-  divider: {
-    backgroundColor: colors.border,
-    height: 2,
-    width: '100%',
-  },
-  dialogs: {
-    flex: 1,
-  },
-  dialogsContainer: {
-    flex: 1,
-    position: 'relative',
-  },
-  dialogsContent: {
-    flexGrow: 1,
-    paddingHorizontal: 16,
-    paddingTop: 20,
-  },
-  messages: {
-    gap: 15,
-  },
-  botRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 10,
-    width: '100%',
-  },
-  botContents: {
-    flex: 1,
-    gap: 4,
-  },
-  botName: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-    includeFontPadding: false,
-    lineHeight: 17,
-  },
-  botBubble: {
-    backgroundColor: '#EDEFF2',
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    borderTopLeftRadius: 4,
-    borderTopRightRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    width: '100%',
-  },
-  messageText: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    includeFontPadding: false,
-    lineHeight: 18,
-  },
-  time: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 10,
-    includeFontPadding: false,
-    lineHeight: 15,
-  },
-  userDialog: {
-    alignItems: 'flex-end',
-    width: '100%',
-  },
-  userBubble: {
-    backgroundColor: colors.primaryLight,
-    borderBottomLeftRadius: 16,
-    borderBottomRightRadius: 16,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    width: 220,
-  },
-  userTime: {
-    textAlign: 'right',
-    width: '100%',
-  },
-  errorText: {
-    color: colors.danger,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 11,
-    includeFontPadding: false,
-    lineHeight: 15,
-    textAlign: 'center',
-  },
-  composer: {
-    alignItems: 'center',
-    backgroundColor: '#EDEFF2',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    flexDirection: 'row',
-    gap: 10,
-    height: 60,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-  },
-  input: {
-    backgroundColor: '#EDEFF2',
-    color: colors.textBody,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    height: 40,
-    includeFontPadding: false,
-    lineHeight: 18,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  sendButton: {
-    alignItems: 'center',
-    borderRadius: 20,
-    height: 40,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 40,
-  },
-  sendButtonDisabled: {
-    opacity: 0.45,
-  },
-  sendIcon: {
-    zIndex: 1,
-  },
-  pressed: {
-    opacity: 0.72,
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    overlay: {
+      ...StyleSheet.absoluteFill,
+      overflow: 'hidden',
+      zIndex: 30,
+    },
+    dim: {
+      ...StyleSheet.absoluteFill,
+      backgroundColor: '#000000',
+    },
+    popupShell: {
+      backgroundColor: colors.surface,
+      borderRadius: radius.xl,
+      elevation: Platform.OS === 'android' ? 7 : 0,
+      overflow: 'hidden',
+      position: 'absolute',
+      shadowColor: '#000000',
+      shadowOffset: { height: -4, width: 0 },
+      shadowOpacity: 0.08,
+      shadowRadius: 10,
+    },
+    popupContent: {
+      backgroundColor: colors.surface,
+      height: referencePopupHeight,
+      left: 0,
+      position: 'absolute',
+      top: 0,
+      transformOrigin: 'top left',
+      width: referencePopupWidth,
+    },
+    topSection: {
+      gap: 15,
+      paddingTop: 16,
+    },
+    titleRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+    },
+    titleLeft: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 10,
+    },
+    title: {
+      color: colors.textBody,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 18,
+      includeFontPadding: false,
+      lineHeight: 24,
+    },
+    closeButton: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.primary,
+      borderRadius: 16,
+      borderWidth: 1,
+      elevation: Platform.OS === 'android' ? 1 : 0,
+      height: 30,
+      justifyContent: 'center',
+      shadowColor: colors.primaryPressed,
+      shadowOffset: { height: 2, width: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 2.5,
+      width: 30,
+    },
+    divider: {
+      backgroundColor: colors.border,
+      height: 2,
+      width: '100%',
+    },
+    dialogs: {
+      flex: 1,
+    },
+    dialogsContainer: {
+      flex: 1,
+      position: 'relative',
+    },
+    dialogsContent: {
+      flexGrow: 1,
+      paddingHorizontal: 16,
+      paddingTop: 20,
+    },
+    messages: {
+      gap: 15,
+    },
+    botRow: {
+      alignItems: 'flex-start',
+      flexDirection: 'row',
+      gap: 10,
+      width: '100%',
+    },
+    botContents: {
+      flex: 1,
+      gap: 4,
+    },
+    botName: {
+      color: colors.textBody,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 12,
+      includeFontPadding: false,
+      lineHeight: 17,
+    },
+    botBubble: {
+      backgroundColor: colors.surfaceMuted,
+      borderBottomLeftRadius: 16,
+      borderBottomRightRadius: 16,
+      borderTopLeftRadius: 4,
+      borderTopRightRadius: 16,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      width: '100%',
+    },
+    messageText: {
+      color: colors.textBody,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 13,
+      includeFontPadding: false,
+      lineHeight: 18,
+    },
+    time: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 10,
+      includeFontPadding: false,
+      lineHeight: 15,
+    },
+    userDialog: {
+      alignItems: 'flex-end',
+      width: '100%',
+    },
+    userBubble: {
+      backgroundColor: colors.primaryLight,
+      borderBottomLeftRadius: 16,
+      borderBottomRightRadius: 16,
+      borderTopLeftRadius: 16,
+      borderTopRightRadius: 4,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      width: 220,
+    },
+    userTime: {
+      textAlign: 'right',
+      width: '100%',
+    },
+    errorText: {
+      color: colors.danger,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 11,
+      includeFontPadding: false,
+      lineHeight: 15,
+      textAlign: 'center',
+    },
+    composer: {
+      alignItems: 'center',
+      backgroundColor: colors.surfaceMuted,
+      borderBottomLeftRadius: 24,
+      borderBottomRightRadius: 24,
+      flexDirection: 'row',
+      gap: 10,
+      height: 60,
+      paddingHorizontal: 15,
+      paddingVertical: 10,
+    },
+    input: {
+      backgroundColor: colors.surfaceMuted,
+      color: colors.textBody,
+      flex: 1,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 13,
+      height: 40,
+      includeFontPadding: false,
+      lineHeight: 18,
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+    },
+    sendButton: {
+      alignItems: 'center',
+      borderRadius: 20,
+      height: 40,
+      justifyContent: 'center',
+      overflow: 'hidden',
+      width: 40,
+    },
+    sendButtonDisabled: {
+      opacity: 0.45,
+    },
+    sendIcon: {
+      zIndex: 1,
+    },
+    pressed: {
+      opacity: 0.72,
+    },
+  } as const;
+}

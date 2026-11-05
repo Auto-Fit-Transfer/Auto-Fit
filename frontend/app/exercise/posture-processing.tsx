@@ -1,11 +1,10 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getPostureJob, type PostureJob } from '@/src/api/posture';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 const steps = [
@@ -21,6 +20,8 @@ const stageIndex: Record<PostureJob['analysis_stage'], number> = {
 };
 
 export default function PostureProcessingScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { jobId } = useLocalSearchParams<{ jobId?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -65,7 +66,6 @@ export default function PostureProcessingScreen() {
   const isFailed = job?.status === 'failed';
   return (
     <View style={[styles.screen, { paddingTop: insets.top }] }>
-      <StatusBar style="dark" />
       <View style={styles.header}>
         <Pressable hitSlop={16} accessibilityLabel="뒤로 가기" onPress={() => router.back()} style={styles.back}><Text style={styles.backText}>‹</Text></Pressable>
         <Text style={styles.headerTitle}>자세 분석 중</Text>
@@ -86,7 +86,7 @@ export default function PostureProcessingScreen() {
           <Text style={styles.metaStrong}>{job ? `${job.progress_percent}%` : '대기 중'}</Text>
         </View>
         <View style={styles.track}><View style={[styles.progress, { width: `${job?.progress_percent ?? 0}%` }]} /></View>
-        {loading && <ActivityIndicator color="#5246C6" style={styles.loading} />}
+        {loading && <ActivityIndicator color={colors.primaryText} style={styles.loading} />}
         {(error || isFailed) && <Text style={styles.error}>{error ?? '분석 중 문제가 발생했습니다. 다시 촬영해 주세요.'}</Text>}
         <View style={styles.stepCard}>
           {steps.map((step, index) => {
@@ -107,33 +107,35 @@ export default function PostureProcessingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: { height: 66, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
-  back: { width: 36, alignItems: 'flex-start', justifyContent: 'center' }, backText: { fontSize: 36, color: '#19191D', lineHeight: 40 },
-  headerTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 16, color: '#19191D' },
-  content: { paddingHorizontal: 20 },
-  visual: { height: 250, backgroundColor: '#1B1E21', borderRadius: 16, overflow: 'hidden', marginTop: 8 },
-  visualPill: { position: 'absolute', zIndex: 1, top: 14, left: 14, backgroundColor: '#101114', borderRadius: 14, paddingVertical: 5, paddingHorizontal: 10 },
-  visualPillText: { color: '#FFFFFF', fontSize: 11, fontFamily: fontFamilies.pretendardMedium },
-  figure: { position: 'absolute', top: 32, left: '49%', width: 110, height: 180, transform: [{ rotate: '17deg' }] },
-  head: { position: 'absolute', left: 44, top: 0, width: 25, height: 25, borderRadius: 13, backgroundColor: '#727477' },
-  body: { position: 'absolute', left: 48, top: 22, width: 13, height: 74, borderRadius: 8, backgroundColor: '#727477' },
-  arm: { position: 'absolute', left: 50, top: 55, width: 50, height: 10, borderRadius: 5, backgroundColor: '#727477', transform: [{ rotate: '-14deg' }] },
-  thigh: { position: 'absolute', left: 20, top: 92, width: 55, height: 12, borderRadius: 7, backgroundColor: '#727477', transform: [{ rotate: '22deg' }] },
-  shin: { position: 'absolute', left: 17, top: 105, width: 12, height: 65, borderRadius: 7, backgroundColor: '#727477', transform: [{ rotate: '12deg' }] },
-  floor: { position: 'absolute', bottom: 28, height: 2, width: '100%', backgroundColor: '#65D999' },
-  heading: { color: '#19191D', fontSize: 19, fontFamily: fontFamilies.pretendardBold, marginTop: 24, marginBottom: 12 },
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between' }, meta: { color: '#686970', fontSize: 13 }, metaStrong: { color: '#19191D', fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
-  track: { height: 7, borderRadius: 4, backgroundColor: '#DFE0E3', marginTop: 10, overflow: 'hidden' }, progress: { height: '100%', backgroundColor: '#5246C6', borderRadius: 4 },
-  loading: { marginTop: 18 }, error: { color: '#C34543', fontSize: 13, marginTop: 16, lineHeight: 19 },
-  stepCard: { marginTop: 20, borderWidth: 1, borderColor: '#DDE0E6', borderRadius: 16, paddingHorizontal: 16, paddingVertical: 4, backgroundColor: '#FAFBFC' },
-  step: { flexDirection: 'row', alignItems: 'center', minHeight: 62 }, stepBorder: { borderTopWidth: 1, borderTopColor: '#E2E4E8' },
-  stepIcon: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: '#DFE2E6', backgroundColor: '#F1F3F5', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  stepDone: { backgroundColor: '#E5F7ED', borderColor: '#E5F7ED' }, stepActive: { borderColor: '#5246C6', backgroundColor: '#ECE9FF' },
-  stepIconText: { color: '#9699A0', fontSize: 12 }, stepDoneText: { color: '#16965E' }, stepCopy: { flex: 1 },
-  stepTitle: { color: '#222227', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold }, stepDescription: { color: '#85878D', fontSize: 11, marginTop: 3 }, stepPercent: { color: '#222227', fontSize: 11 },
-  note: { color: '#777982', fontSize: 11, lineHeight: 17, marginTop: 16 },
-  button: { backgroundColor: '#EDEFF2', borderRadius: 12, minHeight: 54, alignItems: 'center', justifyContent: 'center', marginTop: 30 },
-  buttonText: { color: '#1B1B20', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    screen: { flex: 1, backgroundColor: colors.background },
+    header: { height: 66, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 },
+    back: { width: 36, alignItems: 'flex-start', justifyContent: 'center' }, backText: { fontSize: 36, color: colors.textPrimary, lineHeight: 40 },
+    headerTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 16, color: colors.textPrimary },
+    content: { paddingHorizontal: 20 },
+    visual: { height: 250, backgroundColor: '#1B1E21', borderRadius: 16, overflow: 'hidden', marginTop: 8 },
+    visualPill: { position: 'absolute', zIndex: 1, top: 14, left: 14, backgroundColor: '#101114', borderRadius: 14, paddingVertical: 5, paddingHorizontal: 10 },
+    visualPillText: { color: '#FFFFFF', fontSize: 11, fontFamily: fontFamilies.pretendardMedium },
+    figure: { position: 'absolute', top: 32, left: '49%', width: 110, height: 180, transform: [{ rotate: '17deg' }] },
+    head: { position: 'absolute', left: 44, top: 0, width: 25, height: 25, borderRadius: 13, backgroundColor: '#727477' },
+    body: { position: 'absolute', left: 48, top: 22, width: 13, height: 74, borderRadius: 8, backgroundColor: '#727477' },
+    arm: { position: 'absolute', left: 50, top: 55, width: 50, height: 10, borderRadius: 5, backgroundColor: '#727477', transform: [{ rotate: '-14deg' }] },
+    thigh: { position: 'absolute', left: 20, top: 92, width: 55, height: 12, borderRadius: 7, backgroundColor: '#727477', transform: [{ rotate: '22deg' }] },
+    shin: { position: 'absolute', left: 17, top: 105, width: 12, height: 65, borderRadius: 7, backgroundColor: '#727477', transform: [{ rotate: '12deg' }] },
+    floor: { position: 'absolute', bottom: 28, height: 2, width: '100%', backgroundColor: '#65D999' },
+    heading: { color: colors.textPrimary, fontSize: 19, fontFamily: fontFamilies.pretendardBold, marginTop: 24, marginBottom: 12 },
+    metaRow: { flexDirection: 'row', justifyContent: 'space-between' }, meta: { color: '#686970', fontSize: 13 }, metaStrong: { color: colors.textPrimary, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
+    track: { height: 7, borderRadius: 4, backgroundColor: '#DFE0E3', marginTop: 10, overflow: 'hidden' }, progress: { height: '100%', backgroundColor: colors.primary, borderRadius: 4 },
+    loading: { marginTop: 18 }, error: { color: '#C34543', fontSize: 13, marginTop: 16, lineHeight: 19 },
+    stepCard: { marginTop: 20, borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 4, backgroundColor: colors.surface },
+    step: { flexDirection: 'row', alignItems: 'center', minHeight: 62 }, stepBorder: { borderTopWidth: 1, borderTopColor: '#E2E4E8' },
+    stepIcon: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: '#DFE2E6', backgroundColor: '#F1F3F5', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+    stepDone: { backgroundColor: colors.successLight, borderColor: colors.successLight }, stepActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+    stepIconText: { color: '#9699A0', fontSize: 12 }, stepDoneText: { color: '#16965E' }, stepCopy: { flex: 1 },
+    stepTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold }, stepDescription: { color: '#85878D', fontSize: 11, marginTop: 3 }, stepPercent: { color: colors.textPrimary, fontSize: 11 },
+    note: { color: colors.textSecondary, fontSize: 11, lineHeight: 17, marginTop: 16 },
+    button: { backgroundColor: colors.surfaceMuted, borderRadius: 12, minHeight: 54, alignItems: 'center', justifyContent: 'center', marginTop: 30 },
+    buttonText: { color: '#1B1B20', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 15 },
+  } as const;
+}

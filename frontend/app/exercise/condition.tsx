@@ -12,7 +12,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import HouseIcon from '@/assets/icons/ui/house.svg';
 import WarningIcon from '@/assets/icons/ui/warning-circle.svg';
@@ -26,7 +25,7 @@ import {
   type ExerciseEquipment,
   type ExerciseLocation,
 } from '@/src/features/exercise/exerciseData';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { Text } from '@/src/components/common';
@@ -45,6 +44,8 @@ const equipmentOptions: ExerciseEquipment[] = [
 const conditionOptions = ['좋음', '보통', '피곤해요', '안 좋아요'];
 
 export default function ExerciseConditionScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { preferences } = useDisplayPreferences();
@@ -122,7 +123,6 @@ export default function ExerciseConditionScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.root}
     >
-      <StatusBar style="dark" />
       <ScreenHeader
         onBack={goBack}
         right={(
@@ -132,7 +132,7 @@ export default function ExerciseConditionScreen() {
             hitSlop={12}
             onPress={() => (JSON.stringify(condition) === JSON.stringify(initial) ? goHome() : setLeaveDialogOpen(true))}
           >
-            <HouseIcon color="#17161D" height={24} width={24} />
+            <HouseIcon color={colors.textPrimary} height={24} width={24} />
           </Pressable>
         )}
         title="오늘의 운동 설정"
@@ -193,14 +193,14 @@ export default function ExerciseConditionScreen() {
               setCondition((current) => ({ ...current, discomfortArea: value }))
             }
             placeholder="예) 오른쪽 무릎, 허리"
-            placeholderTextColor="#8E8D95"
+            placeholderTextColor={colors.textDisabled}
             style={[styles.input, simple && simpleStyles.input]}
             value={condition.discomfortArea}
           />
           <Text style={styles.helper}>적어 주시면 그 부위는 피해서 추천해요.</Text>
         </View>
         <View style={styles.notice}>
-          <WarningIcon color="#B3690B" height={20} width={20} />
+          <WarningIcon color={colors.warning} height={20} width={20} />
           <View style={styles.noticeCopy}>
             <Text style={styles.noticeTitle}>주의</Text>
             <Text style={styles.noticeText}>통증이 심하면 운동을 멈추고 전문가와 상담해 주세요.</Text>
@@ -242,6 +242,7 @@ function ChoiceSection({
   hint?: string;
   children: React.ReactNode;
 }) {
+  const styles = useThemedStyles(createStyles);
   const { preferences } = useDisplayPreferences();
   const simple = preferences.simple_mode_enabled;
   return (
@@ -266,6 +267,7 @@ function Chip({
   selected: boolean;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   const { preferences } = useDisplayPreferences();
   const simple = preferences.simple_mode_enabled;
   return (
@@ -285,37 +287,39 @@ function Chip({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { alignSelf: 'center', backgroundColor: '#FFFFFF', flex: 1, maxWidth: 412, width: '100%' },
-  readRow: { alignItems: 'flex-end', paddingHorizontal: 20, paddingTop: 4 },
-  content: { gap: 20, paddingBottom: 20, paddingHorizontal: 20, paddingTop: 8 },
-  section: { gap: 10 },
-  sectionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  sectionHint: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
-  chipSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
-  chipText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  chipTextSelected: { color: '#FFFFFF' },
-  discomfort: { gap: 8 },
-  discomfortTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
-  input: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, color: '#17161D', fontSize: 16, height: 52, paddingHorizontal: 16 },
-  helper: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  notice: { alignItems: 'flex-start', backgroundColor: '#FFF2E0', borderRadius: 16, flexDirection: 'row', gap: 8, padding: 16 },
-  noticeCopy: { flex: 1, gap: 2 },
-  noticeTitle: { color: '#8A5208', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
-  noticeText: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
-  footer: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 8 },
-  button: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center' },
-  buttonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  pressed: { opacity: 0.75 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 412, width: '100%' },
+    readRow: { alignItems: 'flex-end', paddingHorizontal: 20, paddingTop: 4 },
+    content: { gap: 20, paddingBottom: 20, paddingHorizontal: 20, paddingTop: 8 },
+    section: { gap: 10 },
+    sectionTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    sectionHint: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
+    chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    chipTextSelected: { color: '#FFFFFF' },
+    discomfort: { gap: 8 },
+    discomfortTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
+    input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.textPrimary, fontSize: 16, height: 52, paddingHorizontal: 16 },
+    helper: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    notice: { alignItems: 'flex-start', backgroundColor: colors.warningLight, borderRadius: 16, flexDirection: 'row', gap: 8, padding: 16 },
+    noticeCopy: { flex: 1, gap: 2 },
+    noticeTitle: { color: colors.warning, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
+    noticeText: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    footer: { backgroundColor: colors.background, paddingHorizontal: 20, paddingTop: 8 },
+    button: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center' },
+    buttonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    pressed: { opacity: 0.75 },
+  } as const;
+}
 
 const simpleStyles = StyleSheet.create({
   content: { gap: 28 },
-  sectionTitle: { fontSize: 19 },
+  sectionTitle: {},
   chip: { borderRadius: 12, minHeight: 48, paddingHorizontal: 18 },
-  chipText: { fontSize: 16 },
-  input: { fontSize: 17, height: 54 },
+  chipText: {},
+  input: { height: 54 },
   button: { height: 60 },
 });

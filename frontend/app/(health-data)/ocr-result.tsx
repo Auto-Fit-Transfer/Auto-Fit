@@ -1,4 +1,3 @@
-import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -9,12 +8,10 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   TextInput,
   useWindowDimensions,
   View,
-  type ViewStyle,
-} from 'react-native';
+  type ViewStyle } from 'react-native';
 import type { SvgProps } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -63,7 +60,7 @@ import {
   mapHealthDocumentToOCRResult,
 } from '@/src/features/health-data/ocrResults';
 import { type SelectedHealthFile } from '@/src/features/health-data/useHealthFilePicker';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const referenceWidth = 412;
 const referenceHeight = 917;
@@ -510,6 +507,8 @@ function MetricRow({
   systolicDraft: string;
   value: string;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const box = isEditing ? (
     <View style={styles.metricInputBox}>
       {definition.inputKind === 'bloodPressure' ? (
@@ -521,7 +520,7 @@ function MetricRow({
             maxLength={3}
             onChangeText={(text) => onChangeSystolicDraft(text.replace(/[^0-9]/g, ''))}
             returnKeyType="next"
-            selectionColor="#5246C6"
+            selectionColor={colors.primary}
             style={[styles.metricInput, styles.bloodPressureInput]}
             value={systolicDraft}
           />
@@ -533,7 +532,7 @@ function MetricRow({
             onChangeText={(text) => onChangeDiastolicDraft(text.replace(/[^0-9]/g, ''))}
             onSubmitEditing={onToggleEdit}
             returnKeyType="done"
-            selectionColor="#5246C6"
+            selectionColor={colors.primary}
             style={[styles.metricInput, styles.bloodPressureInput]}
             value={diastolicDraft}
           />
@@ -547,7 +546,7 @@ function MetricRow({
           onChangeText={(text) => onChangeDraft(sanitizeMetricInput(text, definition.inputKind))}
           onSubmitEditing={onToggleEdit}
           returnKeyType="done"
-          selectionColor="#5246C6"
+          selectionColor={colors.primary}
           style={styles.metricInput}
           value={draftValue}
         />
@@ -571,13 +570,15 @@ function MetricRow({
         onPress={onToggleEdit}
         style={({ pressed }) => [isEditing ? styles.saveButton : styles.modifyButton, pressed && styles.pressed]}
       >
-        {isEditing ? <Text style={styles.saveText}>저장</Text> : <PencilIcon color="#17161D" height={20} width={20} />}
+        {isEditing ? <Text style={styles.saveText}>저장</Text> : <PencilIcon color={colors.textPrimary} height={20} width={20} />}
       </Pressable>
     </View>
   );
 }
 
 export default function OCRResultScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { source, uploads } = useLocalSearchParams<{
     source?: string;
@@ -1049,7 +1050,7 @@ export default function OCRResultScreen() {
   if (isLoadingResults || results.length === 0) {
     return (
       <View style={styles.loadingRoot}>
-        <ActivityIndicator color="#5246C6" />
+        <ActivityIndicator color={colors.primaryText} />
       </View>
     );
   }
@@ -1057,14 +1058,13 @@ export default function OCRResultScreen() {
   if (currentResult.ocrStatus === 'failed' || currentResult.status === 'failed') {
     return (
       <View style={styles.failureRoot}>
-        <StatusBar style="dark" />
         <View style={[styles.failureHeader, { paddingTop: insets.top + 4 }]}>
           <Pressable hitSlop={12} accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={handleBack} style={styles.failureBack}>
-            <CaretLeftIcon color="#17161D" height={24} width={24} />
+            <CaretLeftIcon color={colors.textPrimary} height={24} width={24} />
           </Pressable>
         </View>
         <ScrollView contentContainerStyle={styles.failureContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.failureIcon}><WarningIcon color="#B3690B" height={32} width={32} /></View>
+          <View style={styles.failureIcon}><WarningIcon color={colors.warning} height={32} width={32} /></View>
           <Text style={styles.failureTitle}>글자를 읽지 못했어요</Text>
           <Text style={styles.failureDescription}>사진이 흐리거나 결과지 일부가 잘렸을 수 있어요.</Text>
           <View style={styles.failureGuide}>
@@ -1107,7 +1107,6 @@ export default function OCRResultScreen() {
 
   return (
     <View ref={screenViewportRef} style={styles.root}>
-      <StatusBar style="dark" />
       <ScrollView
         bounces={false}
         contentContainerStyle={[
@@ -1144,7 +1143,7 @@ export default function OCRResultScreen() {
             ]}
           >
             <Pressable accessibilityLabel="뒤로 가기" accessibilityRole="button" hitSlop={12} onPress={handleBack} style={styles.backButton}>
-              <CaretLeftIcon color="#17161D" height={24} width={24} />
+              <CaretLeftIcon color={colors.textPrimary} height={24} width={24} />
             </Pressable>
             <Text style={styles.screenTitle}>판독 결과 확인</Text>
             <Pressable
@@ -1154,7 +1153,7 @@ export default function OCRResultScreen() {
               onPress={() => (hasUnsavedEdits ? setLeaveDialogOpen(true) : goHome())}
               style={styles.homeButton}
             >
-              <HouseIcon color="#17161D" height={24} width={24} />
+              <HouseIcon color={colors.textPrimary} height={24} width={24} />
             </Pressable>
 
             <Text style={[styles.completionTitle, { top: completionTop }]}>
@@ -1178,7 +1177,7 @@ export default function OCRResultScreen() {
                       style={styles.filePreviewImage}
                     />
                   ) : (
-                    <FileIcon color="#17161D" height={22} width={22} />
+                    <FileIcon color={colors.textPrimary} height={22} width={22} />
                   )}
                 </View>
                 <View style={styles.fileTexts}>
@@ -1252,7 +1251,7 @@ export default function OCRResultScreen() {
             </AppCard>
 
             <View style={[styles.privacyBox, { top: privacyTop }]}>
-              <ShieldCheckIcon color="#5E5D66" height={18} width={18} />
+              <ShieldCheckIcon color={colors.textSecondary} height={18} width={18} />
               <Text style={styles.privacyText}>
                 {currentResult.ocrStatus === 'completed'
                   ? '읽어 온 수치는 분석과 추천에만 써요.'
@@ -1323,64 +1322,66 @@ export default function OCRResultScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  failureRoot: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: 412, backgroundColor: '#FFFFFF' },
-  failureHeader: { minHeight: 52, justifyContent: 'center', paddingHorizontal: 20 },
-  failureBack: { justifyContent: 'center', minHeight: 44, width: 44 },
-  failureContent: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 12 },
-  failureIcon: { alignItems: 'center', backgroundColor: '#FFF2E0', borderRadius: 32, height: 64, justifyContent: 'center', width: 64 },
-  failureTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30, marginTop: 20 },
-  failureDescription: { color: '#3B3A42', fontSize: 16, lineHeight: 24, marginTop: 4 },
-  failureGuide: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, gap: 12, marginTop: 20, padding: 18 },
-  failureGuideTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  failureTipRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  failureTipNumber: { backgroundColor: '#FFFFFF', borderRadius: 12, color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 12, height: 24, lineHeight: 24, overflow: 'hidden', textAlign: 'center', width: 24 },
-  failureTipText: { color: '#3B3A42', flex: 1, fontSize: 14, lineHeight: 21 },
-  failureFooter: { gap: 8, paddingHorizontal: 20, paddingTop: 8 },
-  failureButton: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center' },
-  failureButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  failureSecondary: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 12, height: 56, justifyContent: 'center' },
-  failureSecondaryText: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  loadingRoot: { alignItems: 'center', backgroundColor: '#FFFFFF', flex: 1, justifyContent: 'center' },
-  root: { backgroundColor: '#FFFFFF', flex: 1, overflow: 'hidden' },
-  scrollContent: { alignItems: 'center' },
-  canvasSlot: { position: 'relative', width: '100%' },
-  canvas: { height: referenceHeight, position: 'absolute', transformOrigin: 'top left', width: referenceWidth },
-  backButton: { height: 44, justifyContent: 'center', left: 20, position: 'absolute', top: 20, width: 44 },
-  screenTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, left: 70, lineHeight: 24, position: 'absolute', right: 70, textAlign: 'center', top: 30 },
-  homeButton: { alignItems: 'flex-end', height: 44, justifyContent: 'center', position: 'absolute', right: 20, top: 20, width: 44 },
-  completionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, left: 20, lineHeight: 30, position: 'absolute', right: 20 },
-  uploadFileCard: { backgroundColor: '#FAFBFC', borderRadius: 16, left: 20, position: 'absolute', width: 372 },
-  uploadFileBottom: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 63, paddingHorizontal: 14 },
-  filePreview: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', overflow: 'hidden', width: 40 },
-  filePreviewImage: { height: '100%', width: '100%' },
-  fileTexts: { flex: 1, minWidth: 0 },
-  fileName: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
-  uploadTime: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  reuploadButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-  reuploadText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  resultTabs: { backgroundColor: '#F2F4F6', borderRadius: 16, flexDirection: 'row', height: 46, left: 20, padding: 4, position: 'absolute', width: 372 },
-  resultTab: { alignItems: 'center', borderRadius: 12, flex: 1, justifyContent: 'center' },
-  resultTabActive: { backgroundColor: '#FFFFFF' },
-  resultTabText: { color: '#5E5D66', fontSize: 14 },
-  resultTabTextActive: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium },
-  extractedCard: { backgroundColor: '#FAFBFC', borderRadius: 16, left: 20, overflow: 'hidden', position: 'absolute', width: 372 },
-  metricListViewport: { height: '100%', position: 'relative', width: '100%' },
-  metricList: { flex: 1, width: '100%' },
-  metricRow: { alignItems: 'center', borderBottomColor: '#DFE2E7', borderBottomWidth: 1, flexDirection: 'row', gap: 8, minHeight: 56, paddingHorizontal: 16 },
-  metricLabel: { color: '#3B3A42', fontSize: 14, lineHeight: 21, width: 96 },
-  metricValueText: { color: '#17161D', flex: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 16, textAlign: 'right' },
-  metricInputBox: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#5246C6', borderRadius: 12, borderWidth: 2, flex: 1, flexDirection: 'row', gap: 4, height: 44, minWidth: 0, paddingHorizontal: 10 },
-  metricInput: { color: '#17161D', flex: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 16, minWidth: 0, padding: 0 },
-  bloodPressureInput: { textAlign: 'center' },
-  metricUnit: { color: '#5E5D66', fontSize: 14 },
-  modifyButton: { alignItems: 'center', height: 34, justifyContent: 'center', width: 28 },
-  saveButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-  saveText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  privacyBox: { alignItems: 'center', flexDirection: 'row', gap: 6, left: 20, position: 'absolute', right: 20 },
-  privacyText: { color: '#5E5D66', flex: 1, fontSize: 14, lineHeight: 21 },
-  nextButton: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center', left: 20, position: 'absolute', width: 372 },
-  nextButtonDisabled: { opacity: 0.5 },
-  nextButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  pressed: { opacity: 0.72 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    failureRoot: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: 412, backgroundColor: colors.background },
+    failureHeader: { minHeight: 52, justifyContent: 'center', paddingHorizontal: 20 },
+    failureBack: { justifyContent: 'center', minHeight: 44, width: 44 },
+    failureContent: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 12 },
+    failureIcon: { alignItems: 'center', backgroundColor: colors.warningLight, borderRadius: 32, height: 64, justifyContent: 'center', width: 64 },
+    failureTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30, marginTop: 20 },
+    failureDescription: { color: colors.textBody, fontSize: 16, lineHeight: 24, marginTop: 4 },
+    failureGuide: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, gap: 12, marginTop: 20, padding: 18 },
+    failureGuideTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    failureTipRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+    failureTipNumber: { backgroundColor: colors.background, borderRadius: 12, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, height: 24, lineHeight: 24, overflow: 'hidden', textAlign: 'center', width: 24 },
+    failureTipText: { color: colors.textBody, flex: 1, fontSize: 14, lineHeight: 21 },
+    failureFooter: { gap: 8, paddingHorizontal: 20, paddingTop: 8 },
+    failureButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center' },
+    failureButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    failureSecondary: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 56, justifyContent: 'center' },
+    failureSecondaryText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    loadingRoot: { alignItems: 'center', backgroundColor: colors.background, flex: 1, justifyContent: 'center' },
+    root: { backgroundColor: colors.background, flex: 1, overflow: 'hidden' },
+    scrollContent: { alignItems: 'center' },
+    canvasSlot: { position: 'relative', width: '100%' },
+    canvas: { height: referenceHeight, position: 'absolute', transformOrigin: 'top left', width: referenceWidth },
+    backButton: { height: 44, justifyContent: 'center', left: 20, position: 'absolute', top: 20, width: 44 },
+    screenTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, left: 70, lineHeight: 24, position: 'absolute', right: 70, textAlign: 'center', top: 30 },
+    homeButton: { alignItems: 'flex-end', height: 44, justifyContent: 'center', position: 'absolute', right: 20, top: 20, width: 44 },
+    completionTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, left: 20, lineHeight: 30, position: 'absolute', right: 20 },
+    uploadFileCard: { backgroundColor: colors.surface, borderRadius: 16, left: 20, position: 'absolute', width: 372 },
+    uploadFileBottom: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 63, paddingHorizontal: 14 },
+    filePreview: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 20, height: 40, justifyContent: 'center', overflow: 'hidden', width: 40 },
+    filePreviewImage: { height: '100%', width: '100%' },
+    fileTexts: { flex: 1, minWidth: 0 },
+    fileName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
+    uploadTime: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    reuploadButton: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+    reuploadText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    resultTabs: { backgroundColor: colors.surfaceMuted, borderRadius: 16, flexDirection: 'row', height: 46, left: 20, padding: 4, position: 'absolute', width: 372 },
+    resultTab: { alignItems: 'center', borderRadius: 12, flex: 1, justifyContent: 'center' },
+    resultTabActive: { backgroundColor: colors.background },
+    resultTabText: { color: colors.textSecondary, fontSize: 14 },
+    resultTabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
+    extractedCard: { backgroundColor: colors.surface, borderRadius: 16, left: 20, overflow: 'hidden', position: 'absolute', width: 372 },
+    metricListViewport: { height: '100%', position: 'relative', width: '100%' },
+    metricList: { flex: 1, width: '100%' },
+    metricRow: { alignItems: 'center', borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: 'row', gap: 8, minHeight: 56, paddingHorizontal: 16 },
+    metricLabel: { color: colors.textBody, fontSize: 14, lineHeight: 21, width: 96 },
+    metricValueText: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 16, textAlign: 'right' },
+    metricInputBox: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.primary, borderRadius: 12, borderWidth: 2, flex: 1, flexDirection: 'row', gap: 4, height: 44, minWidth: 0, paddingHorizontal: 10 },
+    metricInput: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 16, minWidth: 0, padding: 0 },
+    bloodPressureInput: { textAlign: 'center' },
+    metricUnit: { color: colors.textSecondary, fontSize: 14 },
+    modifyButton: { alignItems: 'center', height: 34, justifyContent: 'center', width: 28 },
+    saveButton: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+    saveText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    privacyBox: { alignItems: 'center', flexDirection: 'row', gap: 6, left: 20, position: 'absolute', right: 20 },
+    privacyText: { color: colors.textSecondary, flex: 1, fontSize: 14, lineHeight: 21 },
+    nextButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center', left: 20, position: 'absolute', width: 372 },
+    nextButtonDisabled: { opacity: 0.5 },
+    nextButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    pressed: { opacity: 0.72 },
+  } as const;
+}

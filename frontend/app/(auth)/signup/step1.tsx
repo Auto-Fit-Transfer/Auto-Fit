@@ -12,7 +12,7 @@ import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
 import { useSignup, type SignupGender } from '@/src/features/signup/SignupContext';
 import { getSignupAuthErrorMessage } from '@/src/features/signup/signupAuthError';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 const consentItems = [
@@ -36,6 +36,7 @@ const formatDate = (date: Date) =>
   ].join('-');
 
 export default function SignUpStep1Screen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { flow } = useLocalSearchParams<{ flow?: string }>();
   const isPostLogin = flow === 'post-login';
@@ -331,94 +332,96 @@ export default function SignUpStep1Screen() {
   );
 }
 
-const styles = StyleSheet.create({
-  form: { gap: 20 },
-  hint: {
-    color: '#5E5D66',
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: -12,
-  },
-  label: {
-    color: '#17161D',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    lineHeight: 21,
-    marginBottom: 8,
-  },
-  select: {
-    alignItems: 'center',
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    height: 52,
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  selectText: { color: '#17161D', fontSize: 16 },
-  placeholder: { color: '#5E5D66' },
-  genderRow: { flexDirection: 'row', gap: 8 },
-  gender: {
-    alignItems: 'center',
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 999,
-    borderWidth: 1,
-    flex: 1,
-    height: 40,
-    justifyContent: 'center',
-  },
-  genderSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
-  genderText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  genderTextSelected: { color: '#FFFFFF' },
-  modalRoot: { flex: 1, justifyContent: 'flex-end' },
-  scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(13, 13, 20, 0.45)' },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    gap: 16,
-    paddingBottom: 34,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-  },
-  handle: {
-    alignSelf: 'center',
-    backgroundColor: '#DFE2E7',
-    borderRadius: 3,
-    height: 4,
-    width: 40,
-  },
-  sheetTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, marginTop: 4 },
-  sheetDescription: { color: '#5E5D66', fontSize: 14, lineHeight: 21, marginTop: -10 },
-  allRow: {
-    alignItems: 'center',
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 12,
-    padding: 16,
-  },
-  consentCopy: { flex: 1, gap: 2 },
-  allText: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  allHint: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  consentRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, minHeight: 24 },
-  consentText: { color: '#17161D', fontSize: 14, lineHeight: 24 },
-  consentDetail: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  required: { fontFamily: fontFamilies.pretendardBold },
-  checkbox: {
-    alignItems: 'center',
-    borderColor: '#8E8D95',
-    borderRadius: 6,
-    borderWidth: 1,
-    height: 24,
-    justifyContent: 'center',
-    width: 24,
-  },
-  checkboxOn: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    form: { gap: 20 },
+    hint: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 14,
+      lineHeight: 21,
+      marginTop: -12,
+    },
+    label: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 14,
+      lineHeight: 21,
+      marginBottom: 8,
+    },
+    select: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      flexDirection: 'row',
+      height: 52,
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+    },
+    selectText: { color: colors.textPrimary, fontSize: 16 },
+    placeholder: { color: colors.textSecondary },
+    genderRow: { flexDirection: 'row', gap: 8 },
+    gender: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 999,
+      borderWidth: 1,
+      flex: 1,
+      height: 40,
+      justifyContent: 'center',
+    },
+    genderSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    genderText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    genderTextSelected: { color: '#FFFFFF' },
+    modalRoot: { flex: 1, justifyContent: 'flex-end' },
+    scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(13, 13, 20, 0.45)' },
+    sheet: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      gap: 16,
+      paddingBottom: 34,
+      paddingHorizontal: 20,
+      paddingTop: 12,
+    },
+    handle: {
+      alignSelf: 'center',
+      backgroundColor: colors.border,
+      borderRadius: 3,
+      height: 4,
+      width: 40,
+    },
+    sheetTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, marginTop: 4 },
+    sheetDescription: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, marginTop: -10 },
+    allRow: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 12,
+      padding: 16,
+    },
+    consentCopy: { flex: 1, gap: 2 },
+    allText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    allHint: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    consentRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, minHeight: 24 },
+    consentText: { color: colors.textPrimary, fontSize: 14, lineHeight: 24 },
+    consentDetail: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    required: { fontFamily: fontFamilies.pretendardBold },
+    checkbox: {
+      alignItems: 'center',
+      borderColor: colors.textDisabled,
+      borderRadius: 6,
+      borderWidth: 1,
+      height: 24,
+      justifyContent: 'center',
+      width: 24,
+    },
+    checkboxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  } as const;
+}

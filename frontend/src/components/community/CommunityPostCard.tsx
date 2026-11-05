@@ -11,7 +11,7 @@ import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import type { CommunityAuthor, CommunityPost, CommunityProfile } from '@/src/api/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
-import { colors, darkColors, fontFamilies, spacing } from '@/src/theme';
+import { darkColors, fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { CommunityAvatar } from './CommunityAvatar';
 import { CommunityFollowButton } from './CommunityFollowButton';
@@ -48,6 +48,8 @@ export function CommunityPostCard({
   followProfile,
   onFollow,
 }: CommunityPostCardProps) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { preferences, isDark } = useDisplayPreferences();
   const simple = preferences.simple_mode_enabled;
   const openAuthor = onAuthorPress ? () => onAuthorPress(post.author) : undefined;
@@ -67,8 +69,8 @@ export function CommunityPostCard({
           label={post.liked_by_me ? '좋아요 취소' : '좋아요'} onPress={onLike} />
         <ActionButton count={post.comment_count} icon={<ChatIcon color={colors.textBody} height={20} width={20} />} label="댓글" onPress={onComment ?? onPress} />
         <View style={styles.actionsEnd}>
-          <ActionButton active={post.reposted_by_me} color={colors.primaryDark} end count={post.repost_count}
-            icon={<RepeatIcon color={post.reposted_by_me ? colors.primaryDark : colors.textBody} height={20} width={20} />}
+          <ActionButton active={post.reposted_by_me} color={colors.primaryPressed} end count={post.repost_count}
+            icon={<RepeatIcon color={post.reposted_by_me ? colors.primaryPressed : colors.textBody} height={20} width={20} />}
             label={post.reposted_by_me ? '공유 취소' : '공유'} onPress={onRepost} />
         </View>
       </View>
@@ -133,6 +135,8 @@ export function CommunityPostCard({
 }
 
 function CommunityActivityCard({ snapshot }: { snapshot: Record<string, unknown> }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const name = typeof snapshot.name === 'string' ? snapshot.name : '공유한 운동';
   const minutes = typeof snapshot.duration_minutes === 'number' && Number.isFinite(snapshot.duration_minutes)
     ? `${Math.round(snapshot.duration_minutes)}분` : null;
@@ -142,13 +146,13 @@ function CommunityActivityCard({ snapshot }: { snapshot: Record<string, unknown>
   const meta = [minutes, count, calories].filter(Boolean).join(' · ');
   return (
     <View style={styles.activityCard}>
-      <View style={styles.activityIcon}><BarbellIcon color="#17161D" height={20} width={20} /></View>
+      <View style={styles.activityIcon}><BarbellIcon color={colors.textPrimary} height={20} width={20} /></View>
       <View style={styles.activityCopy}>
         <Text style={styles.activityType}>운동 기록</Text>
         <Text numberOfLines={1} style={styles.activityName}>{name}</Text>
         {meta ? <Text style={styles.activityMeta}>{meta}</Text> : null}
       </View>
-      <CaretRightIcon color="#5E5D66" height={20} width={20} />
+      <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
     </View>
   );
 }
@@ -170,6 +174,7 @@ function ActionButton({
   label: string;
   onPress?: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityLabel={`${label} ${count}개`}
@@ -187,66 +192,68 @@ function ActionButton({
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  detailCard: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: 0 },
-  detailBody: { gap: 12, paddingTop: 12 },
-  detailContent: { marginTop: 0, lineHeight: 24 },
-  detailActions: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, paddingVertical: spacing.sm },
-  pressed: { backgroundColor: '#FAFBFC' },
-  repostHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.xs,
-    marginBottom: spacing.xs,
-    paddingLeft: 30,
-  },
-  repostText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 12,
-  },
-  row: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  body: { flex: 1, gap: 2, minWidth: 0 },
-  meta: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  nicknameButton: { flexShrink: 1 },
-  nickname: {
-    color: colors.textPrimary,
-    flexShrink: 1,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    lineHeight: 21,
-  },
-  time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-  content: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  category: { backgroundColor: '#F2F4F6', borderRadius: 6, color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, overflow: 'hidden', paddingHorizontal: 6, paddingVertical: 1 },
-  tags: { color: colors.textSecondary, fontSize: 14 },
-  activityCard: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 12 },
-  activityIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 10, borderWidth: 1, height: 36, justifyContent: 'center', width: 36 },
-  activityCopy: { flex: 1, minWidth: 0 },
-  activityType: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 18 },
-  activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
-  activityMeta: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
-  actions: { alignItems: 'center', flexDirection: 'row', gap: 16 },
-  actionsEnd: { marginLeft: 'auto' },
-  actionEnd: { justifyContent: 'flex-end' },
-  action: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 28, minWidth: 44 },
-  count: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    card: {
+      backgroundColor: colors.background,
+      paddingHorizontal: 20,
+      paddingVertical: 16,
+    },
+    detailCard: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: 0 },
+    detailBody: { gap: 12, paddingTop: 12 },
+    detailContent: { marginTop: 0, lineHeight: 24 },
+    detailActions: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, paddingVertical: spacing.sm },
+    pressed: { backgroundColor: colors.surface },
+    repostHeader: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: spacing.xs,
+      marginBottom: spacing.xs,
+      paddingLeft: 30,
+    },
+    repostText: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 12,
+    },
+    row: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+    body: { flex: 1, gap: 2, minWidth: 0 },
+    meta: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+    nicknameButton: { flexShrink: 1 },
+    nickname: {
+      color: colors.textPrimary,
+      flexShrink: 1,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 14,
+      lineHeight: 21,
+    },
+    time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+    content: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 16,
+      lineHeight: 24,
+    },
+    category: { backgroundColor: colors.surfaceMuted, borderRadius: 6, color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, overflow: 'hidden', paddingHorizontal: 6, paddingVertical: 1 },
+    tags: { color: colors.textSecondary, fontSize: 14 },
+    activityCard: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 12 },
+    activityIcon: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 10, borderWidth: 1, height: 36, justifyContent: 'center', width: 36 },
+    activityCopy: { flex: 1, minWidth: 0 },
+    activityType: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 18 },
+    activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
+    activityMeta: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+    actions: { alignItems: 'center', flexDirection: 'row', gap: 16 },
+    actionsEnd: { marginLeft: 'auto' },
+    actionEnd: { justifyContent: 'flex-end' },
+    action: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 28, minWidth: 44 },
+    count: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
+  } as const;
+}
 
 const simpleStyles = StyleSheet.create({
   card: { paddingHorizontal: 20, paddingVertical: 20 },
-  nickname: { fontSize: 18 },
-  content: { fontSize: 18, lineHeight: 27 },
+  nickname: {},
+  content: {},
 });
 
 const dark = StyleSheet.create({

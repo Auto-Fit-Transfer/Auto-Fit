@@ -33,7 +33,7 @@ import LightbulbIcon from '@/assets/icons/system/Lightbulb.svg';
 import PencilIcon from '@/assets/icons/feature/Pencil_Line.svg';
 import SearchIcon from '@/assets/icons/input/MagnifyingGlass.svg';
 import { AppBottomSheet, CustomScrollIndicator, useCustomScrollIndicator, Text as SharedText } from '@/src/components/common';
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 function Text(props: TextProps) {
   return <SharedText allowFontScaling={false} maxFontSizeMultiplier={1} {...props} />;
@@ -273,6 +273,7 @@ export const formatRecordedFoodAmount = (food: RecordedFood) => {
 };
 
 function AmountStepIcon({ operation }: { operation: 'decrease' | 'increase' }) {
+  const { colors } = useAppTheme();
   return (
     <Svg height={16} viewBox="0 0 16 16" width={16}>
       <Line
@@ -310,6 +311,7 @@ function PrimaryButton({
   gradient?: boolean;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -347,6 +349,7 @@ function OutlineAction({
   label: string;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.outlineAction, pressed && styles.pressed]}>
       {icon}
@@ -356,6 +359,7 @@ function OutlineAction({
 }
 
 function HighlightedName({ name, query }: { name: string; query: string }) {
+  const styles = useThemedStyles(createStyles);
   const normalizedQuery = query.trim();
   const index = name.toLocaleLowerCase().indexOf(normalizedQuery.toLocaleLowerCase());
   if (!normalizedQuery || index < 0) return <Text style={styles.searchResultName}>{name}</Text>;
@@ -382,6 +386,8 @@ function FoodSearch({
   selectionMade?: boolean;
   setSearchText: (value: string) => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const indicator = useCustomScrollIndicator({ showInitially: true });
   const query = searchText.trim();
   const results = useMemo(
@@ -477,6 +483,7 @@ function FoodRecommendationList({
   onSelect: (selection: FoodSelection) => void;
   selected: FoodSelection | null;
 }) {
+  const styles = useThemedStyles(createStyles);
   const indicator = useCustomScrollIndicator({ showInitially: false });
   return (
     <View style={styles.recommendationListWrap}>
@@ -518,7 +525,8 @@ function FoodRecommendationList({
 }
 
 function NutrientIcon({ nutrient }: { nutrient: NutrientKey }) {
-  const iconProps = { color: colors.primaryDark, height: 28, width: 28 };
+  const { colors } = useAppTheme();
+  const iconProps = { color: colors.primaryPressed, height: 28, width: 28 };
 
   if (nutrient === 'kcal') return <BmrIcon {...iconProps} />;
   if (nutrient === 'carbs') return <PlantIcon {...iconProps} />;
@@ -535,6 +543,7 @@ function NutritionPanel({
   macroRowRef?: RefObject<View | null>;
   valueNodes?: Partial<Record<NutrientKey, ReactNode>>;
 }) {
+  const styles = useThemedStyles(createStyles);
   const renderValue = (key: NutrientKey) =>
     valueNodes?.[key] ?? (
       <Text style={key === 'kcal' ? styles.totalKcalValue : styles.totalNutritionValue}>
@@ -589,6 +598,8 @@ function NutritionEditor({
   onInputFocus?: () => void;
   onRegisterApply?: (apply: (() => RecordedFood | null) | null) => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const [editing, setEditing] = useState(false);
   const [values, setValues] = useState<Record<NutrientKey, string>>({
     kcal: food.kcal === undefined ? '' : String(food.kcal),
@@ -662,7 +673,7 @@ function NutritionEditor({
           style={[styles.editNutritionButton, editing && styles.confirmNutritionButton]}
         >
           {editing ? (
-            <CheckFatIcon color="#17161D" height={17} width={17} />
+            <CheckFatIcon color={colors.textPrimary} height={17} width={17} />
           ) : (
             <PencilIcon color="#3E7DDD" fill="#3E7DDD" height={17} width={17} />
           )}
@@ -715,6 +726,7 @@ function FoodDetailsEditor({
   onNutritionInputFocus?: () => void;
   onRegisterApplyNutrition?: (apply: (() => RecordedFood | null) | null) => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   const [selectedPreset, setSelectedPreset] = useState<number | null>(food.serving === 1 ? 1 : null);
   const [nutritionEditing, setNutritionEditing] = useState(false);
   const baseAmount = food.baseAmount ?? 300;
@@ -780,6 +792,8 @@ function RecognizedFoodList({
   onAdd: () => void;
   onEdit: (food: RecordedFood) => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const indicator = useCustomScrollIndicator({
     enabled: foods.length > 3,
     showInitially: false,
@@ -823,7 +837,7 @@ function RecognizedFoodList({
               ))}
             </View>
           </ScrollView>
-          <CustomScrollIndicator {...indicator.indicatorProps} color="#17161D" rightInset={1} topInset={0} bottomInset={0} />
+          <CustomScrollIndicator {...indicator.indicatorProps} color={colors.textPrimary} rightInset={1} topInset={0} bottomInset={0} />
         </View>
       ) : (
         <Text style={styles.noFoodText}>인식된 음식이 없어요.</Text>
@@ -837,6 +851,8 @@ function RecognizedFoodList({
 }
 
 export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onComplete }: Props) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const [view, setView] = useState<SheetView>('photo');
@@ -1114,24 +1130,24 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
           ) : (
             <View style={styles.emptyPhoto}>
               <View style={styles.cameraCircle}>
-                <CameraIcon color="#17161D" fill={colors.primary} height={36} width={36} />
+                <CameraIcon color={colors.textPrimary} fill={colors.primary} height={36} width={36} />
               </View>
               <Text maxFontSizeMultiplier={1} style={styles.emptyPhotoText}>등록된 사진이 없어요</Text>
             </View>
           )}
         </View>
         <View style={styles.photoTip}>
-          <LightbulbIcon color="#17161D" fill={colors.primary} height={16} width={16} />
+          <LightbulbIcon color={colors.textPrimary} fill={colors.primary} height={16} width={16} />
           <Text maxFontSizeMultiplier={1} style={styles.photoTipText}><Text style={styles.photoTipLabel}>TIP </Text>밝은 곳에서 음식이 잘 보이도록 찍는게 좋아요!</Text>
         </View>
         <View style={styles.photoActions}>
-          <OutlineAction icon={<CameraIcon color="#17161D" fill={colors.primary} height={24} width={24} />} label="사진 촬영하기" onPress={() => void selectPhoto('camera')} />
-          <OutlineAction icon={<GalleryIcon color="#17161D" fill={colors.primary} height={24} width={24} />} label="갤러리에서 선택하기" onPress={() => void selectPhoto('gallery')} />
+          <OutlineAction icon={<CameraIcon color={colors.textPrimary} fill={colors.primary} height={24} width={24} />} label="사진 촬영하기" onPress={() => void selectPhoto('camera')} />
+          <OutlineAction icon={<GalleryIcon color={colors.textPrimary} fill={colors.primary} height={24} width={24} />} label="갤러리에서 선택하기" onPress={() => void selectPhoto('gallery')} />
           {draft?.photoUri ? (
             <PrimaryButton onPress={() => setView('recognition_failed')}>
               <View style={styles.analyzeButtonContent}>
                 <Text maxFontSizeMultiplier={1} style={styles.primaryButtonText}>음식 직접 찾기</Text>
-                <View style={styles.ctaArrowCircle}><ArrowRightIcon color="#17161D" height={16} width={16} /></View>
+                <View style={styles.ctaArrowCircle}><ArrowRightIcon color={colors.textPrimary} height={16} width={16} /></View>
               </View>
             </PrimaryButton>
           ) : <PrimaryButton onPress={() => setView('recognition_failed')}>사진 없이 음식 입력하기</PrimaryButton>}
@@ -1225,7 +1241,7 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
         <View style={styles.editorActions}>
           <PrimaryButton onPress={saveEditedFood}>고치기 완료</PrimaryButton>
           <Pressable onPress={deleteEditedFood} style={styles.deleteFoodButton}>
-            <TrashIcon color="#E45B5B" height={28} width={28} />
+            <TrashIcon color={colors.danger} height={28} width={28} />
             <Text style={styles.deleteFoodText}>지우기</Text>
           </Pressable>
         </View>
@@ -1276,7 +1292,7 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
                 <Text style={styles.selectedFoodMeta}>1인분 ({addFoodDraft.baseAmount ?? addFoodDraft.amount}{addFoodDraft.unit}) · 약 {addFoodDraft.kcal ?? '-'} kcal</Text>
               ) : null}
             </View>
-            <SearchIcon color="#17161D" height={20} width={20} />
+            <SearchIcon color={colors.textPrimary} height={20} width={20} />
           </Pressable>
         ) : (
           <FoodSearch
@@ -1330,9 +1346,9 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
       visible={visible}
     >
       <View style={styles.r6Header}>
-        <Pressable hitSlop={16} accessibilityLabel="이전" onPress={onBack ?? closeAll} style={styles.r6HeaderButton}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
+        <Pressable hitSlop={16} accessibilityLabel="이전" onPress={onBack ?? closeAll} style={styles.r6HeaderButton}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
         <Text style={styles.r6HeaderTitle}>{isSubSheet ? subSheetTitle : view === 'review' ? `${mealId === 'breakfast' ? '아침' : mealId === 'lunch' ? '점심' : mealId === 'dinner' ? '저녁' : '간식'} 기록` : view === 'recognition_failed' ? '음식 기록' : '음식 사진 기록'}</Text>
-        <Pressable accessibilityLabel="닫기" onPress={closeAll} style={styles.r6HeaderButton}><XIcon color="#17161D" height={24} width={24} /></Pressable>
+        <Pressable accessibilityLabel="닫기" onPress={closeAll} style={styles.r6HeaderButton}><XIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
       </View>
       <Animated.View
         style={[
@@ -1373,222 +1389,224 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
   );
 }
 
-const styles = StyleSheet.create({
-  r6Header: { height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  r6HeaderButton: { width: 34, height: 42, alignItems: 'center', justifyContent: 'center' },
-  r6HeaderTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  r6Fallback: { flex: 1, paddingTop: 18 },
-  r6FallbackIcon: { height: 38, width: 38, borderRadius: 9, backgroundColor: '#F2F4F6', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  r6FallbackTitle: { color: '#23242A', fontFamily: fontFamilies.pretendardBold, fontSize: 18, marginBottom: 6 },
-  r6FallbackDescription: { color: '#777981', fontSize: 14, lineHeight: 19, marginBottom: 18 },
-  r6FallbackLabel: { color: '#33343A', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14, marginTop: 20, marginBottom: 10 },
-  r6FallbackChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  r6FallbackChip: { borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, paddingHorizontal: 11, paddingVertical: 7, backgroundColor: '#FAFBFC' },
-  r6FallbackChipText: { color: '#55575E', fontSize: 12 },
-  r6FallbackSpacer: { flex: 1, minHeight: 120 },
-  r6RetryButton: { backgroundColor: '#F2F4F6', minHeight: 51, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  r6RetryText: { color: '#26272E', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  r6ReviewPhoto: { minHeight: 135, borderRadius: 11, backgroundColor: '#F2F4F6', overflow: 'hidden', marginBottom: 16 },
-  r6ReviewPhotoImage: { width: '100%', height: 135 },
-  r6ReviewPhotoPlaceholder: { height: 135, alignItems: 'center', justifyContent: 'center', gap: 7 },
-  r6ReviewPhotoText: { color: '#92949B', fontSize: 12 },
-  r6EditLabel: { color: '#2E2F35', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14, marginTop: 13, marginBottom: 8 },
-  r6EditSuggestions: { backgroundColor: colors.surface, height: 185, borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 10, overflow: 'hidden' },
-  overlay: { backgroundColor: 'rgba(0, 0, 0, 0.45)' },
-  sheet: { borderTopLeftRadius: 0, borderTopRightRadius: 0, boxSizing: 'border-box', overflow: 'hidden', paddingTop: 0 },
-  bottomSheetContent: { flex: 1, minHeight: 0, paddingHorizontal: 21, paddingTop: 0 },
-  chrome: { alignItems: 'center', height: 46, justifyContent: 'flex-start', position: 'relative' },
-  subSheetChrome: { alignItems: 'center', height: 55, justifyContent: 'flex-start', position: 'relative' },
-  dragHandle: { backgroundColor: '#D9D9D9', borderRadius: 2, height: 4, marginTop: 6, width: 40 },
-  stepRow: { alignItems: 'center', flexDirection: 'row', marginTop: 16 },
-  stepSegment: { alignItems: 'center', flexDirection: 'row' },
-  stepLine: { backgroundColor: colors.border, height: 1, width: 38 },
-  stepLineActive: { backgroundColor: colors.primary },
-  stepCircle: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.textDisabled, borderRadius: 9, borderWidth: 1, height: 18, justifyContent: 'center', width: 18 },
-  stepCircleActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  stepCircleComplete: { backgroundColor: '#F2F4F6', borderColor: '#DFE2E7' },
-  stepText: { color: colors.textDisabled, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
-  stepTextActive: { color: colors.surface },
-  stepTextComplete: { color: '#17161D' },
-  backButton: { alignItems: 'center', height: foodShotHeaderControlSize, justifyContent: 'center', left: 0, position: 'absolute', top: 20, width: foodShotHeaderControlSize },
-  closeButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.primary, borderRadius: foodShotHeaderControlSize / 2, borderWidth: 1, elevation: 2, height: foodShotHeaderControlSize, justifyContent: 'center', position: 'absolute', right: 0, shadowColor: colors.primaryDark, shadowOffset: { height: 2, width: 2 }, shadowOpacity: 0.2, shadowRadius: 2.5, top: 20, width: foodShotHeaderControlSize },
-  subSheetTitle: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 24, left: 30, lineHeight: 29, position: 'absolute', right: 30, textAlign: 'center', top: 26 },
-  subSheetBackButton: { alignItems: 'center', height: foodShotHeaderControlSize, justifyContent: 'center', left: 0, position: 'absolute', top: 26, width: foodShotHeaderControlSize },
-  subSheetCloseButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.primary, borderRadius: foodShotHeaderControlSize / 2, borderWidth: 1, elevation: 2, height: foodShotHeaderControlSize, justifyContent: 'center', position: 'absolute', right: 0, shadowColor: colors.primaryDark, shadowOffset: { height: 2, width: 2 }, shadowOpacity: 0.2, shadowRadius: 2.5, top: 26, width: foodShotHeaderControlSize },
-  flowBody: { minHeight: 0, flex: 1 },
-  stepSheetBody: { marginTop: 8 },
-  subSheetBody: { marginTop: 8 },
-  compactSheetBody: { flex: 1, height: undefined },
-  innerSheetScroll: { flex: 1 },
-  subSheetScrollContent: { flexGrow: 1 },
-  compactStepScrollContent: { flexGrow: 1, minHeight: STEP_SHEET_BODY_HEIGHT },
-  screenTitle: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 24, lineHeight: 29, textAlign: 'center' },
-  photoScreenTitle: { lineHeight: 29 },
-  photoContent: { flex: 1, gap: 20 },
-  photoFrame: { flex: 1, minHeight: 0 },
-  photoBox: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 10, borderStyle: 'dashed', borderWidth: 1, height: 180, overflow: 'hidden' },
-  emptyPhoto: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center' },
-  cameraCircle: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 33, height: 65, justifyContent: 'center', width: 65 },
-  emptyPhotoText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 18 },
-  photoTip: { alignItems: 'center', backgroundColor: '#FAFBFC', borderRadius: 10, flexDirection: 'row', gap: 5, height: 38, justifyContent: 'center', marginTop: 20, paddingHorizontal: 12 },
-  photoTipText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  photoTipLabel: { color: '#17161D', fontFamily: fontFamilies.pretendardBold },
-  photoActions: { gap: 10, marginTop: 'auto' },
-  outlineAction: { backgroundColor: colors.surface, alignItems: 'center', borderColor: '#DFE2E7', borderRadius: 10, borderWidth: 1, flexDirection: 'row', gap: 10, height: 48, justifyContent: 'center' },
-  outlineActionText: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
-  primaryButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 10, height: 48, justifyContent: 'center', width: '100%' },
-  gradientButton: { backgroundColor: 'transparent', elevation: 3, overflow: 'hidden', shadowColor: colors.primary, shadowOffset: { height: 4, width: 0 }, shadowOpacity: 0.25, shadowRadius: 6 },
-  primaryButtonDisabled: { backgroundColor: '#C8DED9' },
-  primaryButtonText: { color: colors.surface, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
-  analyzeButtonContent: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', position: 'relative', width: '100%' },
-  ctaArrowCircle: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, height: 24, justifyContent: 'center', position: 'absolute', right: 9, width: 24 },
-  pressed: { opacity: 0.72 },
-  analysisContent: { alignItems: 'center', flex: 1 },
-  analysisVisual: { height: 225, marginTop: 11, position: 'relative', width: 225 },
-  analysisImage: { borderRadius: 100, height: 190, left: 17.5, position: 'absolute', top: 17.5, width: 190 },
-  analysisProgress: { left: 0, position: 'absolute', top: 0 },
-  analysisPercentage: { color: '#17161D', lineHeight: 44, marginTop: 0 },
-  analysisPercentageNumber: { fontFamily: fontFamilies.pretendardBold, fontSize: 40 },
-  analysisPercentageUnit: { fontFamily: fontFamilies.pretendardBold, fontSize: 30 },
-  analysisStages: { backgroundColor: colors.surface, borderRadius: 10, elevation: 2, gap: 8, height: 100, justifyContent: 'center', marginTop: 10, paddingHorizontal: 14, shadowColor: '#000', shadowOffset: { height: 0, width: 0 }, shadowOpacity: 0.14, shadowRadius: 3, width: 240 },
-  analysisStageRow: { alignItems: 'center', flexDirection: 'row', gap: 9, height: 22 },
-  analysisStageText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  analysisStageTextActive: { color: colors.primaryDark, fontFamily: fontFamilies.pretendardSemiBold },
-  analysisStageTextPending: { color: colors.textDisabled },
-  processingDots: { height: 21, position: 'relative', width: 21 },
-  processingDot: { backgroundColor: colors.primary, borderRadius: 2, height: 3, position: 'absolute', width: 3 },
-  waitNotice: { alignItems: 'center', backgroundColor: '#FAFBFC', borderRadius: 10, flexDirection: 'row', gap: 6, height: 38, justifyContent: 'center', marginTop: 12, width: '100%' },
-  waitNoticeText: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  reviewContent: { flex: 1, justifyContent: 'space-between' },
-  reviewFoodGroup: { gap: 10 },
-  reviewCta: {},
-  recognizedCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, height: 220, padding: 15 },
-  recognizedListViewport: { height: recognizedListViewportHeight, position: 'relative' },
-  recognizedListScroll: { height: '100%' },
-  recognizedListContent: { paddingRight: 7 },
-  foodRow: { alignItems: 'center', flexDirection: 'row', gap: 9, height: 38 },
-  foodIndex: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 5, height: 30, justifyContent: 'center', width: 30 },
-  foodIndexText: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  foodCopy: { flex: 1, gap: 2 },
-  foodName: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  foodAmount: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  foodKcal: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  editFoodButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 5, borderWidth: 1, height: 30, justifyContent: 'center', width: 30 },
-  foodDivider: { backgroundColor: colors.border, height: StyleSheet.hairlineWidth, marginVertical: 6 },
-  addFoodButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, flexDirection: 'row', gap: 3, height: 38, justifyContent: 'center', marginTop: 10 },
-  addFoodButtonPlus: { color: '#17161D', fontFamily: fontFamilies.pretendardRegular, fontSize: 25, lineHeight: 25 },
-  addFoodButtonText: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  noFoodText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, padding: 24, textAlign: 'center' },
-  totalNutritionSection: {},
-  totalKcalBox: { alignItems: 'center', backgroundColor: '#FAFBFC', borderRadius: 10, flexDirection: 'row', gap: 10, height: 40, justifyContent: 'center', marginTop: 10 },
-  totalKcalValue: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 24 },
-  totalKcalUnit: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18 },
-  totalNutritionGrid: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', height: 70, marginTop: 5 },
-  totalNutritionItem: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 15, justifyContent: 'center' },
-  nutritionTextColumn: { alignItems: 'flex-start', gap: 3 },
-  totalNutritionLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
-  totalNutritionValue: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20 },
-  totalNutritionUnit: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20 },
-  nutritionDivider: { backgroundColor: colors.border, height: 35, width: 1 },
-  resultLoadingContent: { alignItems: 'center', flexDirection: 'row', gap: 14 },
-  loadingDots: { alignItems: 'center', flexDirection: 'row', gap: 5, height: 18 },
-  loadingDot: { backgroundColor: colors.surface, borderRadius: 4, height: 7, width: 7 },
-  editorContent: { flex: 1 },
-  editFoodSection: { gap: 8 },
-  editFoodDetails: { gap: 30, marginTop: 30 },
-  addContent: { flex: 1, paddingTop: 6 },
-  addFoodSelection: { width: '100%' },
-  addFoodDetails: { gap: 32, marginTop: 36 },
-  selectedFoodCard: { alignItems: 'center', backgroundColor: '#F7F7F7', borderRadius: 10, flexDirection: 'row', minHeight: 70, padding: 12 },
-  selectedFoodCopy: { flex: 1 },
-  selectedFoodInfoRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  selectedFoodName: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20 },
-  selectedFoodMeta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
-  changeFoodButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: '#DFE2E7', borderRadius: 10, borderWidth: 1, flexDirection: 'row', gap: 2, height: 38, justifyContent: 'center', paddingLeft: 10, paddingRight: 5 },
-  changeFoodText: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  detailsSection: { gap: 8 },
-  disabledSection: { opacity: 0.38 },
-  sectionHeadingRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  sectionHeading: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 27 },
-  presetRow: { flexDirection: 'row', gap: 6 },
-  presetButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 7, borderWidth: 1, flex: 1, gap: 3, height: 55, justifyContent: 'center' },
-  presetButtonSelected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  presetTitle: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  presetTitleSelected: { color: colors.primaryDark },
-  presetMeta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  presetMetaSelected: { color: colors.primary },
-  amountStepper: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', height: 58, justifyContent: 'space-between', paddingHorizontal: 16 },
-  stepButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, height: 32, justifyContent: 'center', width: 32 },
-  amountValue: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 22 },
-  nutritionSection: { gap: 0 },
-  editNutritionButton: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 20, flexDirection: 'row', gap: 3, minHeight: 25, paddingBottom: 4, paddingLeft: 10, paddingRight: 13, paddingTop: 4 },
-  confirmNutritionButton: { backgroundColor: '#F2F4F6' },
-  editNutritionText: { color: '#3E7DDD', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  confirmNutritionText: { color: '#17161D' },
-  nutritionValueRow: { alignItems: 'baseline', flexDirection: 'row', gap: 3, justifyContent: 'flex-start' },
-  nutritionKcalInput: { backgroundColor: colors.surface, borderColor: '#DFE2E7', borderRadius: 10, borderWidth: 1, color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, height: 32, padding: 0, textAlign: 'center', width: 90 },
-  nutritionMacroInput: { backgroundColor: colors.surface, borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20, height: 28, padding: 0, textAlign: 'center', width: 45 },
-  editorActions: { gap: 10, marginTop: 'auto' },
-  deleteFoodButton: { alignItems: 'center', backgroundColor: '#FFF0F0', borderRadius: 12, flexDirection: 'row', gap: 8, height: 48, justifyContent: 'center', width: '100%' },
-  deleteFoodText: { color: '#E45B5B', fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
-  replaceContent: { flex: 1, gap: 12 },
-  searchArea: { position: 'relative', zIndex: 20 },
-  searchField: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', gap: 8, height: 48, paddingHorizontal: 12 },
-  searchInput: { color: colors.textBody, flex: 1, fontFamily: fontFamilies.pretendardMedium, fontSize: 18, padding: 0 },
-  autocompleteOverlay: { backgroundColor: colors.surface, borderColor: colors.border, borderBottomLeftRadius: 10, borderBottomRightRadius: 10, borderWidth: 1, elevation: 10, left: 0, maxHeight: 220, overflow: 'hidden', position: 'absolute', right: 0, shadowColor: '#000', shadowOffset: { height: 4, width: 0 }, shadowOpacity: 0.14, shadowRadius: 8, top: 47, zIndex: 30 },
-  autocompleteListWrap: { maxHeight: 218, position: 'relative' },
-  searchResultRow: { alignItems: 'center', borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', height: 44, justifyContent: 'space-between', paddingHorizontal: 12 },
-  searchResultName: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
-  searchMatch: { fontFamily: fontFamilies.pretendardBold },
-  searchResultKcal: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  emptySearch: { alignItems: 'center', gap: 8, padding: 14 },
-  emptySearchText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  customFoodButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 38, justifyContent: 'center', width: '100%' },
-  customFoodButtonText: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  currentFoodBox: { backgroundColor: '#FAFBFC', borderRadius: 10, gap: 8, minHeight: 70, padding: 12 },
-  currentFoodLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  currentFoodInfoRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-  currentFoodName: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20 },
-  currentFoodMeta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
-  recommendationHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  recommendationSubtitle: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 17 },
-  recommendationListWrap: { flex: 1, minHeight: 0, position: 'relative' },
-  recommendationListContent: { gap: 8, width: '100%' },
-  recommendationCard: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', gap: 9, height: 60, paddingHorizontal: 12, width: '100%' },
-  recommendationBadge: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 8, height: 30, justifyContent: 'center', width: 30 },
-  recommendationBadgeText: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  recommendationCopy: { flex: 1, gap: 1 },
-  recommendationName: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  recommendationMeta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  radio: { alignItems: 'center', borderColor: colors.textDisabled, borderRadius: 11, borderWidth: 1, height: 22, justifyContent: 'center', width: 22 },
-  radioSelected: { borderColor: colors.primary },
-  radioDot: { backgroundColor: colors.primary, borderRadius: 7, height: 14, width: 14 },
-  customSelection: { backgroundColor: '#F2F4F6', borderRadius: 8, gap: 2, padding: 10 },
-  customSelectionLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  customSelectionName: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
-  bottomCta: { marginTop: 'auto' },
-  resultContent: { flex: 1, justifyContent: 'space-between' },
-  resultSummaryGroup: { gap: 10, width: '100%' },
-  resultRecommendationGroup: { alignItems: 'center', gap: 10, width: '100%' },
-  resultMealCard: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', height: 100, padding: 8 },
-  resultImage: { borderRadius: 8, height: 82, width: 100 },
-  resultMealCopy: { flex: 1, gap: 4, minWidth: 0, paddingLeft: 10 },
-  resultMealName: { color: colors.textBody, flexShrink: 1, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 18 },
-  resultMeta: { color: colors.textSecondary, flexShrink: 1, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  resultCard: { alignItems: 'center', borderRadius: 10, flexDirection: 'row', gap: 10, minHeight: 100, padding: 10, width: '100%' },
-  goodCard: { backgroundColor: '#FAFBFC' },
-  cautionCard: { backgroundColor: '#FFF2E0' },
-  resultIcon: { alignItems: 'center', borderRadius: 25, height: 50, justifyContent: 'center', width: 50 },
-  goodIcon: { backgroundColor: '#F2F4F6' },
-  resultMessageCopy: { flex: 1, gap: 10 },
-  resultTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20 },
-  cautionText: { color: '#FFA450' },
-  resultDescription: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16, lineHeight: 21 },
-  resultActionsTitle: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 24, lineHeight: 29 },
-  resultReasons: { paddingHorizontal: 0, width: '100%' },
-  resultReasonDivider: { backgroundColor: colors.border, height: StyleSheet.hairlineWidth, marginVertical: 7 },
-  reasonRow: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 26, width: '100%' },
-  reasonBadge: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 5, height: 26, justifyContent: 'center', width: 26 },
-  reasonBadgeText: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 14 },
-  reasonText: { color: colors.textBody, flex: 1, flexShrink: 1, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 18, minWidth: 0 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    r6Header: { height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    r6HeaderButton: { width: 34, height: 42, alignItems: 'center', justifyContent: 'center' },
+    r6HeaderTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+    r6Fallback: { flex: 1, paddingTop: 18 },
+    r6FallbackIcon: { height: 38, width: 38, borderRadius: 9, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+    r6FallbackTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, marginBottom: 6 },
+    r6FallbackDescription: { color: '#777981', fontSize: 14, lineHeight: 19, marginBottom: 18 },
+    r6FallbackLabel: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14, marginTop: 20, marginBottom: 10 },
+    r6FallbackChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+    r6FallbackChip: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 11, paddingVertical: 7, backgroundColor: colors.surface },
+    r6FallbackChipText: { color: colors.textSecondary, fontSize: 12 },
+    r6FallbackSpacer: { flex: 1, minHeight: 120 },
+    r6RetryButton: { backgroundColor: colors.surfaceMuted, minHeight: 51, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+    r6RetryText: { color: '#26272E', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    r6ReviewPhoto: { minHeight: 135, borderRadius: 11, backgroundColor: colors.surfaceMuted, overflow: 'hidden', marginBottom: 16 },
+    r6ReviewPhotoImage: { width: '100%', height: 135 },
+    r6ReviewPhotoPlaceholder: { height: 135, alignItems: 'center', justifyContent: 'center', gap: 7 },
+    r6ReviewPhotoText: { color: '#92949B', fontSize: 12 },
+    r6EditLabel: { color: '#2E2F35', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14, marginTop: 13, marginBottom: 8 },
+    r6EditSuggestions: { backgroundColor: colors.surface, height: 185, borderWidth: 1, borderColor: colors.border, borderRadius: 10, overflow: 'hidden' },
+    overlay: { backgroundColor: 'rgba(0, 0, 0, 0.45)' },
+    sheet: { borderTopLeftRadius: 0, borderTopRightRadius: 0, boxSizing: 'border-box', overflow: 'hidden', paddingTop: 0 },
+    bottomSheetContent: { flex: 1, minHeight: 0, paddingHorizontal: 21, paddingTop: 0 },
+    chrome: { alignItems: 'center', height: 46, justifyContent: 'flex-start', position: 'relative' },
+    subSheetChrome: { alignItems: 'center', height: 55, justifyContent: 'flex-start', position: 'relative' },
+    dragHandle: { backgroundColor: '#D9D9D9', borderRadius: 2, height: 4, marginTop: 6, width: 40 },
+    stepRow: { alignItems: 'center', flexDirection: 'row', marginTop: 16 },
+    stepSegment: { alignItems: 'center', flexDirection: 'row' },
+    stepLine: { backgroundColor: colors.border, height: 1, width: 38 },
+    stepLineActive: { backgroundColor: colors.primary },
+    stepCircle: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.textDisabled, borderRadius: 9, borderWidth: 1, height: 18, justifyContent: 'center', width: 18 },
+    stepCircleActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    stepCircleComplete: { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+    stepText: { color: colors.textDisabled, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
+    stepTextActive: { color: colors.surface },
+    stepTextComplete: { color: colors.textPrimary },
+    backButton: { alignItems: 'center', height: foodShotHeaderControlSize, justifyContent: 'center', left: 0, position: 'absolute', top: 20, width: foodShotHeaderControlSize },
+    closeButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.primary, borderRadius: foodShotHeaderControlSize / 2, borderWidth: 1, elevation: 2, height: foodShotHeaderControlSize, justifyContent: 'center', position: 'absolute', right: 0, shadowColor: colors.primaryPressed, shadowOffset: { height: 2, width: 2 }, shadowOpacity: 0.2, shadowRadius: 2.5, top: 20, width: foodShotHeaderControlSize },
+    subSheetTitle: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 24, left: 30, lineHeight: 29, position: 'absolute', right: 30, textAlign: 'center', top: 26 },
+    subSheetBackButton: { alignItems: 'center', height: foodShotHeaderControlSize, justifyContent: 'center', left: 0, position: 'absolute', top: 26, width: foodShotHeaderControlSize },
+    subSheetCloseButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.primary, borderRadius: foodShotHeaderControlSize / 2, borderWidth: 1, elevation: 2, height: foodShotHeaderControlSize, justifyContent: 'center', position: 'absolute', right: 0, shadowColor: colors.primaryPressed, shadowOffset: { height: 2, width: 2 }, shadowOpacity: 0.2, shadowRadius: 2.5, top: 26, width: foodShotHeaderControlSize },
+    flowBody: { minHeight: 0, flex: 1 },
+    stepSheetBody: { marginTop: 8 },
+    subSheetBody: { marginTop: 8 },
+    compactSheetBody: { flex: 1, height: undefined },
+    innerSheetScroll: { flex: 1 },
+    subSheetScrollContent: { flexGrow: 1 },
+    compactStepScrollContent: { flexGrow: 1, minHeight: STEP_SHEET_BODY_HEIGHT },
+    screenTitle: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 24, lineHeight: 29, textAlign: 'center' },
+    photoScreenTitle: { lineHeight: 29 },
+    photoContent: { flex: 1, gap: 20 },
+    photoFrame: { flex: 1, minHeight: 0 },
+    photoBox: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderStyle: 'dashed', borderWidth: 1, height: 180, overflow: 'hidden' },
+    emptyPhoto: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center' },
+    cameraCircle: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 33, height: 65, justifyContent: 'center', width: 65 },
+    emptyPhotoText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 18 },
+    photoTip: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 10, flexDirection: 'row', gap: 5, height: 38, justifyContent: 'center', marginTop: 20, paddingHorizontal: 12 },
+    photoTipText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    photoTipLabel: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    photoActions: { gap: 10, marginTop: 'auto' },
+    outlineAction: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', gap: 10, height: 48, justifyContent: 'center' },
+    outlineActionText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
+    primaryButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 10, height: 48, justifyContent: 'center', width: '100%' },
+    gradientButton: { backgroundColor: 'transparent', elevation: 3, overflow: 'hidden', shadowColor: colors.primary, shadowOffset: { height: 4, width: 0 }, shadowOpacity: 0.25, shadowRadius: 6 },
+    primaryButtonDisabled: { backgroundColor: '#C8DED9' },
+    primaryButtonText: { color: colors.surface, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
+    analyzeButtonContent: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', position: 'relative', width: '100%' },
+    ctaArrowCircle: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, height: 24, justifyContent: 'center', position: 'absolute', right: 9, width: 24 },
+    pressed: { opacity: 0.72 },
+    analysisContent: { alignItems: 'center', flex: 1 },
+    analysisVisual: { height: 225, marginTop: 11, position: 'relative', width: 225 },
+    analysisImage: { borderRadius: 100, height: 190, left: 17.5, position: 'absolute', top: 17.5, width: 190 },
+    analysisProgress: { left: 0, position: 'absolute', top: 0 },
+    analysisPercentage: { color: colors.textPrimary, lineHeight: 44, marginTop: 0 },
+    analysisPercentageNumber: { fontFamily: fontFamilies.pretendardBold, fontSize: 40 },
+    analysisPercentageUnit: { fontFamily: fontFamilies.pretendardBold, fontSize: 30 },
+    analysisStages: { backgroundColor: colors.surface, borderRadius: 10, elevation: 2, gap: 8, height: 100, justifyContent: 'center', marginTop: 10, paddingHorizontal: 14, shadowColor: '#000', shadowOffset: { height: 0, width: 0 }, shadowOpacity: 0.14, shadowRadius: 3, width: 240 },
+    analysisStageRow: { alignItems: 'center', flexDirection: 'row', gap: 9, height: 22 },
+    analysisStageText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    analysisStageTextActive: { color: colors.primaryPressed, fontFamily: fontFamilies.pretendardSemiBold },
+    analysisStageTextPending: { color: colors.textDisabled },
+    processingDots: { height: 21, position: 'relative', width: 21 },
+    processingDot: { backgroundColor: colors.primary, borderRadius: 2, height: 3, position: 'absolute', width: 3 },
+    waitNotice: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 10, flexDirection: 'row', gap: 6, height: 38, justifyContent: 'center', marginTop: 12, width: '100%' },
+    waitNoticeText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    reviewContent: { flex: 1, justifyContent: 'space-between' },
+    reviewFoodGroup: { gap: 10 },
+    reviewCta: {},
+    recognizedCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, height: 220, padding: 15 },
+    recognizedListViewport: { height: recognizedListViewportHeight, position: 'relative' },
+    recognizedListScroll: { height: '100%' },
+    recognizedListContent: { paddingRight: 7 },
+    foodRow: { alignItems: 'center', flexDirection: 'row', gap: 9, height: 38 },
+    foodIndex: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 5, height: 30, justifyContent: 'center', width: 30 },
+    foodIndexText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    foodCopy: { flex: 1, gap: 2 },
+    foodName: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+    foodAmount: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    foodKcal: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    editFoodButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 5, borderWidth: 1, height: 30, justifyContent: 'center', width: 30 },
+    foodDivider: { backgroundColor: colors.border, height: StyleSheet.hairlineWidth, marginVertical: 6 },
+    addFoodButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 8, borderWidth: 1, flexDirection: 'row', gap: 3, height: 38, justifyContent: 'center', marginTop: 10 },
+    addFoodButtonPlus: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardRegular, fontSize: 25, lineHeight: 25 },
+    addFoodButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+    noFoodText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, padding: 24, textAlign: 'center' },
+    totalNutritionSection: {},
+    totalKcalBox: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 10, flexDirection: 'row', gap: 10, height: 40, justifyContent: 'center', marginTop: 10 },
+    totalKcalValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 24 },
+    totalKcalUnit: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18 },
+    totalNutritionGrid: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', height: 70, marginTop: 5 },
+    totalNutritionItem: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 15, justifyContent: 'center' },
+    nutritionTextColumn: { alignItems: 'flex-start', gap: 3 },
+    totalNutritionLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
+    totalNutritionValue: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20 },
+    totalNutritionUnit: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20 },
+    nutritionDivider: { backgroundColor: colors.border, height: 35, width: 1 },
+    resultLoadingContent: { alignItems: 'center', flexDirection: 'row', gap: 14 },
+    loadingDots: { alignItems: 'center', flexDirection: 'row', gap: 5, height: 18 },
+    loadingDot: { backgroundColor: colors.surface, borderRadius: 4, height: 7, width: 7 },
+    editorContent: { flex: 1 },
+    editFoodSection: { gap: 8 },
+    editFoodDetails: { gap: 30, marginTop: 30 },
+    addContent: { flex: 1, paddingTop: 6 },
+    addFoodSelection: { width: '100%' },
+    addFoodDetails: { gap: 32, marginTop: 36 },
+    selectedFoodCard: { alignItems: 'center', backgroundColor: '#F7F7F7', borderRadius: 10, flexDirection: 'row', minHeight: 70, padding: 12 },
+    selectedFoodCopy: { flex: 1 },
+    selectedFoodInfoRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+    selectedFoodName: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20 },
+    selectedFoodMeta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
+    changeFoodButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', gap: 2, height: 38, justifyContent: 'center', paddingLeft: 10, paddingRight: 5 },
+    changeFoodText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+    detailsSection: { gap: 8 },
+    disabledSection: { opacity: 0.38 },
+    sectionHeadingRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    sectionHeading: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 27 },
+    presetRow: { flexDirection: 'row', gap: 6 },
+    presetButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 7, borderWidth: 1, flex: 1, gap: 3, height: 55, justifyContent: 'center' },
+    presetButtonSelected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+    presetTitle: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+    presetTitleSelected: { color: colors.primaryPressed },
+    presetMeta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    presetMetaSelected: { color: colors.primary },
+    amountStepper: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', height: 58, justifyContent: 'space-between', paddingHorizontal: 16 },
+    stepButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 16, borderWidth: 1, height: 32, justifyContent: 'center', width: 32 },
+    amountValue: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 22 },
+    nutritionSection: { gap: 0 },
+    editNutritionButton: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 20, flexDirection: 'row', gap: 3, minHeight: 25, paddingBottom: 4, paddingLeft: 10, paddingRight: 13, paddingTop: 4 },
+    confirmNutritionButton: { backgroundColor: colors.surfaceMuted },
+    editNutritionText: { color: '#3E7DDD', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+    confirmNutritionText: { color: colors.textPrimary },
+    nutritionValueRow: { alignItems: 'baseline', flexDirection: 'row', gap: 3, justifyContent: 'flex-start' },
+    nutritionKcalInput: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, height: 32, padding: 0, textAlign: 'center', width: 90 },
+    nutritionMacroInput: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20, height: 28, padding: 0, textAlign: 'center', width: 45 },
+    editorActions: { gap: 10, marginTop: 'auto' },
+    deleteFoodButton: { alignItems: 'center', backgroundColor: '#FFF0F0', borderRadius: 12, flexDirection: 'row', gap: 8, height: 48, justifyContent: 'center', width: '100%' },
+    deleteFoodText: { color: colors.danger, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
+    replaceContent: { flex: 1, gap: 12 },
+    searchArea: { position: 'relative', zIndex: 20 },
+    searchField: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', gap: 8, height: 48, paddingHorizontal: 12 },
+    searchInput: { color: colors.textBody, flex: 1, fontFamily: fontFamilies.pretendardMedium, fontSize: 18, padding: 0 },
+    autocompleteOverlay: { backgroundColor: colors.surface, borderColor: colors.border, borderBottomLeftRadius: 10, borderBottomRightRadius: 10, borderWidth: 1, elevation: 10, left: 0, maxHeight: 220, overflow: 'hidden', position: 'absolute', right: 0, shadowColor: '#000', shadowOffset: { height: 4, width: 0 }, shadowOpacity: 0.14, shadowRadius: 8, top: 47, zIndex: 30 },
+    autocompleteListWrap: { maxHeight: 218, position: 'relative' },
+    searchResultRow: { alignItems: 'center', borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', height: 44, justifyContent: 'space-between', paddingHorizontal: 12 },
+    searchResultName: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
+    searchMatch: { fontFamily: fontFamilies.pretendardBold },
+    searchResultKcal: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    emptySearch: { alignItems: 'center', gap: 8, padding: 14 },
+    emptySearchText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    customFoodButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 38, justifyContent: 'center', width: '100%' },
+    customFoodButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    currentFoodBox: { backgroundColor: colors.surface, borderRadius: 10, gap: 8, minHeight: 70, padding: 12 },
+    currentFoodLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    currentFoodInfoRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+    currentFoodName: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20 },
+    currentFoodMeta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
+    recommendationHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    recommendationSubtitle: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 17 },
+    recommendationListWrap: { flex: 1, minHeight: 0, position: 'relative' },
+    recommendationListContent: { gap: 8, width: '100%' },
+    recommendationCard: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', gap: 9, height: 60, paddingHorizontal: 12, width: '100%' },
+    recommendationBadge: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 8, height: 30, justifyContent: 'center', width: 30 },
+    recommendationBadgeText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    recommendationCopy: { flex: 1, gap: 1 },
+    recommendationName: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+    recommendationMeta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    radio: { alignItems: 'center', borderColor: colors.textDisabled, borderRadius: 11, borderWidth: 1, height: 22, justifyContent: 'center', width: 22 },
+    radioSelected: { borderColor: colors.primary },
+    radioDot: { backgroundColor: colors.primary, borderRadius: 7, height: 14, width: 14 },
+    customSelection: { backgroundColor: colors.surfaceMuted, borderRadius: 8, gap: 2, padding: 10 },
+    customSelectionLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+    customSelectionName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 16 },
+    bottomCta: { marginTop: 'auto' },
+    resultContent: { flex: 1, justifyContent: 'space-between' },
+    resultSummaryGroup: { gap: 10, width: '100%' },
+    resultRecommendationGroup: { alignItems: 'center', gap: 10, width: '100%' },
+    resultMealCard: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', height: 100, padding: 8 },
+    resultImage: { borderRadius: 8, height: 82, width: 100 },
+    resultMealCopy: { flex: 1, gap: 4, minWidth: 0, paddingLeft: 10 },
+    resultMealName: { color: colors.textBody, flexShrink: 1, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 18 },
+    resultMeta: { color: colors.textSecondary, flexShrink: 1, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    resultCard: { alignItems: 'center', borderRadius: 10, flexDirection: 'row', gap: 10, minHeight: 100, padding: 10, width: '100%' },
+    goodCard: { backgroundColor: colors.surface },
+    cautionCard: { backgroundColor: colors.warningLight },
+    resultIcon: { alignItems: 'center', borderRadius: 25, height: 50, justifyContent: 'center', width: 50 },
+    goodIcon: { backgroundColor: colors.surfaceMuted },
+    resultMessageCopy: { flex: 1, gap: 10 },
+    resultTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20 },
+    cautionText: { color: colors.warning },
+    resultDescription: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16, lineHeight: 21 },
+    resultActionsTitle: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 24, lineHeight: 29 },
+    resultReasons: { paddingHorizontal: 0, width: '100%' },
+    resultReasonDivider: { backgroundColor: colors.border, height: StyleSheet.hairlineWidth, marginVertical: 7 },
+    reasonRow: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 26, width: '100%' },
+    reasonBadge: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 5, height: 26, justifyContent: 'center', width: 26 },
+    reasonBadgeText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14 },
+    reasonText: { color: colors.textBody, flex: 1, flexShrink: 1, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 18, minWidth: 0 },
+  } as const;
+}

@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveExerciseGoal, saveExerciseGoal, type ExerciseGoalInput } from '@/src/api/exercise';
 import { getApiErrorMessage } from '@/src/api/client';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
-const purple = '#5246C6';
 const goals: { key: ExerciseGoalInput['goal_type']; label: string }[] = [
   { key: 'muscle_gain', label: '근육량 늘리기' },
   { key: 'weight_loss', label: '체중 감량하기' },
@@ -21,6 +19,8 @@ const weeksOptions = [2, 4, 8, 12];
 const formatDate = (date: Date) => `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}.`;
 
 export default function ExerciseGoal() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [goalType, setGoalType] = useState<ExerciseGoalInput['goal_type']>('endurance');
@@ -81,14 +81,13 @@ export default function ExerciseGoal() {
   };
 
   return <View style={styles.root}>
-    <StatusBar style="dark" />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 40 }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
         <Text style={styles.title}>운동 목표</Text>
         <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/exercise/goal-progress')}><Text style={styles.link}>진행 보기</Text></Pressable>
       </View>
-      {loading ? <ActivityIndicator color={purple} /> : null}
+      {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
       {!loading && !loaded ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> : null}
       <View style={styles.card}>
         <Text style={styles.smallLabel}>목표 기간</Text>
@@ -123,31 +122,33 @@ export default function ExerciseGoal() {
   </View>;
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { paddingHorizontal: 20, gap: 17 },
-  header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  back: { color: '#17161D', fontSize: 32, lineHeight: 36 },
-  title: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  link: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
-  sectionTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  card: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 16, padding: 16, gap: 10 },
-  smallLabel: { color: '#5E5D66', fontSize: 14 },
-  cardTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  caption: { color: '#5E5D66', fontSize: 14, lineHeight: 18 },
-  weekOptions: { flexDirection: 'row', gap: 8 },
-  weekChip: { backgroundColor: '#FAFBFC', flex: 1, borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 20, paddingVertical: 9, alignItems: 'center' },
-  goalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  goalChip: { backgroundColor: '#FAFBFC', width: '48%', borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 20, paddingVertical: 11, alignItems: 'center' },
-  selected: { backgroundColor: purple, borderColor: purple },
-  chipText: { color: '#17161D', fontSize: 14 },
-  selectedText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold },
-  minuteRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  minuteInput: { minWidth: 100, borderBottomWidth: 1, borderBottomColor: '#DFE2E7', color: '#17161D', fontSize: 20, fontFamily: fontFamilies.pretendardBold, paddingVertical: 5 },
-  frequency: { flexDirection: 'row', justifyContent: 'space-between', gap: 5 },
-  frequencyChip: { backgroundColor: '#FAFBFC', flex: 1, aspectRatio: 1, borderRadius: 24, borderWidth: 1, borderColor: '#DFE2E7', alignItems: 'center', justifyContent: 'center' },
-  button: { height: 56, backgroundColor: purple, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 15 },
-  buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  error: { color: '#A13A2F', fontSize: 14 },
-  success: { color: '#24835E', fontSize: 14 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background },
+    content: { paddingHorizontal: 20, gap: 17 },
+    header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    back: { color: colors.textPrimary, fontSize: 32, lineHeight: 36 },
+    title: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    link: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    sectionTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 16, gap: 10 },
+    smallLabel: { color: colors.textSecondary, fontSize: 14 },
+    cardTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 18 },
+    weekOptions: { flexDirection: 'row', gap: 8 },
+    weekChip: { backgroundColor: colors.surface, flex: 1, borderColor: colors.border, borderWidth: 1, borderRadius: 20, paddingVertical: 9, alignItems: 'center' },
+    goalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    goalChip: { backgroundColor: colors.surface, width: '48%', borderColor: colors.border, borderWidth: 1, borderRadius: 20, paddingVertical: 11, alignItems: 'center' },
+    selected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    chipText: { color: colors.textPrimary, fontSize: 14 },
+    selectedText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold },
+    minuteRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    minuteInput: { minWidth: 100, borderBottomWidth: 1, borderBottomColor: colors.border, color: colors.textPrimary, fontSize: 20, fontFamily: fontFamilies.pretendardBold, paddingVertical: 5 },
+    frequency: { flexDirection: 'row', justifyContent: 'space-between', gap: 5 },
+    frequencyChip: { backgroundColor: colors.surface, flex: 1, aspectRatio: 1, borderRadius: 24, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+    button: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 15 },
+    buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    error: { color: colors.danger, fontSize: 14 },
+    success: { color: colors.success, fontSize: 14 },
+  } as const;
+}

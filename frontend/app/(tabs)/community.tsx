@@ -44,7 +44,7 @@ import {
 import { CommunityChallengesPane } from '@/src/features/community/CommunityChallengesPane';
 import { CommunityClubsPane } from '@/src/features/community/CommunityClubsPane';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, darkColors, fontFamilies, shadows, spacing, typography } from '@/src/theme';
+import { darkColors, fontFamilies, shadows, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -73,6 +73,9 @@ function challengeSummary(challenge: CommunityChallenge) {
 }
 
 export default function CommunityScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+  const simpleStyles = useThemedStyles(createSimpleStylesStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { preferences, isDark } = useDisplayPreferences();
@@ -224,14 +227,14 @@ export default function CommunityScreen() {
         <View style={styles.headerActions}>
           <IconButton
             accessibilityLabel="커뮤니티 검색"
-            icon={<SearchIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={24} width={24} />}
+            icon={<SearchIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={24} width={24} />}
             onPress={() => router.push('/community/search')}
             size={44}
           />
           <View>
             <IconButton
               accessibilityLabel={unread > 0 ? `알림, 읽지 않은 알림 ${unread}개` : '알림'}
-              icon={<BellIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={24} width={24} />}
+              icon={<BellIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={24} width={24} />}
               onPress={() => router.push('/community/notifications')}
               size={44}
             />
@@ -286,7 +289,7 @@ export default function CommunityScreen() {
                   ))}
                 </ScrollView>
                 <Pressable accessibilityRole="button" onPress={() => setPane('challenges')} style={[styles.challengeCard, simple && simpleStyles.challengeCard, isDark && dark.card]}>
-                  <View style={[styles.challengeIcon, isDark && dark.card]}><TrophyIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={22} width={22} /></View>
+                  <View style={[styles.challengeIcon, isDark && dark.card]}><TrophyIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={22} width={22} /></View>
                   <View style={styles.challengeCopy}>
                     <Text style={[styles.challengeTitle, simple && simpleStyles.challengeTitle, isDark && dark.text]}>{challenge?.title ?? '커뮤니티 챌린지'}</Text>
                     {challenge && challenge.goal <= 7 ? (
@@ -367,101 +370,105 @@ export default function CommunityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
-  header: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingBottom: spacing.xs,
-    paddingLeft: spacing.xl,
-    paddingRight: spacing.sm,
-  },
-  title: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
-  headerActions: { flexDirection: 'row' },
-  badge: {
-    backgroundColor: '#C62828',
-    borderColor: '#FFFFFF',
-    borderRadius: 5,
-    borderWidth: 1,
-    height: 10,
-    position: 'absolute',
-    right: 10,
-    top: 9,
-    width: 10,
-  },
-  tabs: {
-    backgroundColor: '#FFFFFF',
-    borderBottomColor: '#DFE2E7',
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    gap: 22,
-    paddingHorizontal: 20,
-  },
-  tab: {
-    alignItems: 'center',
-    borderBottomColor: 'transparent',
-    borderBottomWidth: 2,
-    marginBottom: -1,
-    paddingVertical: 10,
-  },
-  tabActive: { borderBottomColor: '#17161D' },
-  tabText: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 16, lineHeight: 24 },
-  tabTextActive: { color: '#17161D', fontFamily: fontFamilies.pretendardBold },
-  list: { flexGrow: 1 },
-  feedHeader: { backgroundColor: '#FFFFFF', paddingVertical: 16, gap: 16 },
-  categories: { gap: 8, paddingHorizontal: 20 },
-  categoryChip: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 999, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
-  categoryActive: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
-  categoryText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  categoryTextActive: { color: '#FFFFFF' },
-  challengeCard: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, marginHorizontal: 20, minHeight: 89, padding: 14 },
-  challengeIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  challengeCopy: { flex: 1, gap: 6 },
-  challengeTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  challengeBars: { flexDirection: 'row', gap: 4 },
-  challengeBar: { backgroundColor: '#E3E6EB', borderRadius: 4, flex: 1, height: 8 },
-  challengeBarDone: { backgroundColor: '#5246C6' },
-  challengeDescription: { color: '#5E5D66', fontSize: 12, lineHeight: 18 },
-  challengeAction: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-  challengeActionText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  postWrap: { backgroundColor: '#FFFFFF', borderColor: '#F2F4F6', borderTopWidth: 8 },
-  center: { flex: 1, justifyContent: 'center' },
-  message: { alignItems: 'center', gap: spacing.md, padding: spacing.xxl },
-  emptyTitle: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 17,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  footer: { paddingVertical: spacing.lg },
-  compose: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 999,
-    flexDirection: 'row',
-    gap: 6,
-    height: 47,
-    paddingHorizontal: 20,
-    position: 'absolute',
-    right: 20,
-  },
-  composeText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  composePressed: { backgroundColor: colors.primaryDark },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    header: {
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingBottom: spacing.xs,
+      paddingLeft: spacing.xl,
+      paddingRight: spacing.sm,
+    },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
+    headerActions: { flexDirection: 'row' },
+    badge: {
+      backgroundColor: colors.danger,
+      borderColor: '#FFFFFF',
+      borderRadius: 5,
+      borderWidth: 1,
+      height: 10,
+      position: 'absolute',
+      right: 10,
+      top: 9,
+      width: 10,
+    },
+    tabs: {
+      backgroundColor: colors.background,
+      borderBottomColor: colors.border,
+      borderBottomWidth: 1,
+      flexDirection: 'row',
+      gap: 22,
+      paddingHorizontal: 20,
+    },
+    tab: {
+      alignItems: 'center',
+      borderBottomColor: 'transparent',
+      borderBottomWidth: 2,
+      marginBottom: -1,
+      paddingVertical: 10,
+    },
+    tabActive: { borderBottomColor: colors.textPrimary },
+    tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 16, lineHeight: 24 },
+    tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    list: { flexGrow: 1 },
+    feedHeader: { backgroundColor: colors.background, paddingVertical: 16, gap: 16 },
+    categories: { gap: 8, paddingHorizontal: 20 },
+    categoryChip: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 999, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
+    categoryActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    categoryText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    categoryTextActive: { color: '#FFFFFF' },
+    challengeCard: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, marginHorizontal: 20, minHeight: 89, padding: 14 },
+    challengeIcon: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+    challengeCopy: { flex: 1, gap: 6 },
+    challengeTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    challengeBars: { flexDirection: 'row', gap: 4 },
+    challengeBar: { backgroundColor: colors.gaugeTrack, borderRadius: 4, flex: 1, height: 8 },
+    challengeBarDone: { backgroundColor: colors.primary },
+    challengeDescription: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+    challengeAction: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+    challengeActionText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    postWrap: { backgroundColor: colors.background, borderColor: colors.surfaceMuted, borderTopWidth: 8 },
+    center: { flex: 1, justifyContent: 'center' },
+    message: { alignItems: 'center', gap: spacing.md, padding: spacing.xxl },
+    emptyTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 17,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    footer: { paddingVertical: spacing.lg },
+    compose: {
+      alignItems: 'center',
+      backgroundColor: colors.primary,
+      borderRadius: 999,
+      flexDirection: 'row',
+      gap: 6,
+      height: 47,
+      paddingHorizontal: 20,
+      position: 'absolute',
+      right: 20,
+    },
+    composeText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    composePressed: { backgroundColor: colors.primaryPressed },
+  } as const;
+}
 
-const simpleStyles = StyleSheet.create({
-  title: { fontSize: 26 },
-  readRow: { alignItems: 'center', backgroundColor: '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8 },
-  readHint: { color: '#777781', flex: 1, fontSize: 13 },
-  tab: { minHeight: 52 },
-  tabText: { fontSize: 17 },
-  categoryChip: { minHeight: 42, justifyContent: 'center', paddingHorizontal: 14 },
-  categoryText: { fontSize: 14 },
-  challengeCard: { minHeight: 82, padding: 16 },
-  challengeTitle: { fontSize: 17 },
-});
+function createSimpleStylesStyles({ colors }: AppTheme) {
+  return {
+    title: {},
+    readRow: { alignItems: 'center', backgroundColor: colors.background, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8 },
+    readHint: { color: colors.textSecondary, flex: 1 },
+    tab: { minHeight: 52 },
+    tabText: {},
+    categoryChip: { minHeight: 42, justifyContent: 'center', paddingHorizontal: 14 },
+    categoryText: {},
+    challengeCard: { minHeight: 82, padding: 16 },
+    challengeTitle: {},
+  } as const;
+}
 
 const dark = StyleSheet.create({
   root: { backgroundColor: darkColors.background },

@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import CloseIcon from '@/assets/icons/common/X.svg';
 import type { CommunityImage } from '@/src/api/community';
-import { colors, fontFamilies, radius, spacing } from '@/src/theme';
+import { fontFamilies, radius, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 const GAP = 4;
@@ -34,6 +34,7 @@ function gridAspectRatio(images: CommunityImage[]) {
 }
 
 export function CommunityPostImages({ images, expanded = false }: { images: CommunityImage[]; expanded?: boolean }) {
+  const styles = useThemedStyles(createStyles);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const { width: windowWidth } = useWindowDimensions();
@@ -116,6 +117,8 @@ function PhotoViewer({
   initialIndex: number;
   onClose: () => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
@@ -168,37 +171,39 @@ function PhotoViewer({
   );
 }
 
-const styles = StyleSheet.create({
-  carousel: { aspectRatio: 1.45, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.background },
-  carouselScroll: { flex: 1 },
-  carouselImage: { height: '100%', backgroundColor: colors.background },
-  imageCount: { position: 'absolute', right: 10, top: 10, borderRadius: radius.round, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4 },
-  imageCountText: { color: colors.surface, fontSize: 11 },
-  dots: { flexDirection: 'row', alignSelf: 'center', gap: 5 },
-  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.border },
-  activeDot: { backgroundColor: colors.textPrimary },
-  grid: { borderRadius: radius.lg, gap: GAP, overflow: 'hidden', width: '100%' },
-  moreOverlay: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', bottom: 0, justifyContent: 'center', left: 0, position: 'absolute', right: 0, top: 0 },
-  moreText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  group: { flex: 1, gap: GAP },
-  cell: { backgroundColor: colors.border, flex: 1, overflow: 'hidden' },
-  viewer: { backgroundColor: '#000000', flex: 1 },
-  fullImage: { flex: 1 },
-  viewerBar: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    left: 16,
-    position: 'absolute',
-    right: 16,
-  },
-  counter: { color: colors.surface, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
-  close: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    borderRadius: radius.round,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    carousel: { aspectRatio: 1.45, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.background },
+    carouselScroll: { flex: 1 },
+    carouselImage: { height: '100%', backgroundColor: colors.background },
+    imageCount: { position: 'absolute', right: 10, top: 10, borderRadius: radius.round, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4 },
+    imageCountText: { color: colors.surface, fontSize: 11 },
+    dots: { flexDirection: 'row', alignSelf: 'center', gap: 5 },
+    dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.border },
+    activeDot: { backgroundColor: colors.textPrimary },
+    grid: { borderRadius: radius.lg, gap: GAP, overflow: 'hidden', width: '100%' },
+    moreOverlay: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', bottom: 0, justifyContent: 'center', left: 0, position: 'absolute', right: 0, top: 0 },
+    moreText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    group: { flex: 1, gap: GAP },
+    cell: { backgroundColor: colors.border, flex: 1, overflow: 'hidden' },
+    viewer: { backgroundColor: '#000000', flex: 1 },
+    fullImage: { flex: 1 },
+    viewerBar: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      left: 16,
+      position: 'absolute',
+      right: 16,
+    },
+    counter: { color: colors.surface, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
+    close: {
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.45)',
+      borderRadius: radius.round,
+      height: 40,
+      justifyContent: 'center',
+      width: 40,
+    },
+  } as const;
+}

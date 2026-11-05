@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import CheckIcon from '@/assets/icons/ui/check.svg';
@@ -10,9 +9,11 @@ import { Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { mapExerciseAnalysis } from '@/src/features/exercise/exerciseAnalysis';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 export default function ExerciseAiReportScreen() {
+  const { colors } = useAppTheme();
+  const s = useThemedStyles(createSStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { latestSession, resultRecordCompleted } = useExerciseRoutine();
@@ -57,7 +58,6 @@ export default function ExerciseAiReportScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar style="dark" />
       <ScreenHeader onBack={returnHome} title="운동 결과" />
       <ScrollView contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 28 }]} showsVerticalScrollIndicator={false}>
         {!report ? (
@@ -69,7 +69,7 @@ export default function ExerciseAiReportScreen() {
                   <Text style={s.smallButtonText}>다시 시도</Text>
                 </Pressable>
               </>
-            ) : <ActivityIndicator color="#5246C6" />}
+            ) : <ActivityIndicator color={colors.primaryText} />}
           </View>
         ) : (
           <>
@@ -90,7 +90,7 @@ export default function ExerciseAiReportScreen() {
                 <Text style={s.cardTitle}>다음 운동에 반영해요</Text>
                 {report.nextWorkout.map(({ title }) => (
                   <View key={title} style={s.nextRow}>
-                    <CheckIcon color="#17161D" height={18} width={18} />
+                    <CheckIcon color={colors.textPrimary} height={18} width={18} />
                     <Text style={[s.body, s.grow]}>{title}</Text>
                   </View>
                 ))}
@@ -106,21 +106,23 @@ export default function ExerciseAiReportScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
-  content: { gap: 12, paddingHorizontal: 20, paddingTop: 8 },
-  grow: { flex: 1 },
-  card: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, gap: 8, padding: 18 },
-  state: { alignItems: 'center', gap: 12 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  metric: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, flexBasis: '48%', flexGrow: 1, gap: 2, padding: 14 },
-  metricLabel: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  metricValue: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  cardTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  body: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
-  nextRow: { flexDirection: 'row', gap: 8 },
-  smallButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-  smallButtonText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  primary: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center', marginTop: 8 },
-  primaryText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-});
+function createSStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    content: { gap: 12, paddingHorizontal: 20, paddingTop: 8 },
+    grow: { flex: 1 },
+    card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, gap: 8, padding: 18 },
+    state: { alignItems: 'center', gap: 12 },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    metric: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, flexBasis: '48%', flexGrow: 1, gap: 2, padding: 14 },
+    metricLabel: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    metricValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    cardTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    body: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    nextRow: { flexDirection: 'row', gap: 8 },
+    smallButton: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+    smallButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    primary: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center', marginTop: 8 },
+    primaryText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+  } as const;
+}

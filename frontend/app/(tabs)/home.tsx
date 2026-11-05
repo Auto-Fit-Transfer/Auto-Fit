@@ -19,11 +19,11 @@ import { nutritionNumber, type NutritionSummary } from '@/src/features/nutrition
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { CHAT_CHARACTER_KEY, chatCharacters } from '@/src/features/chat/chatCharacters';
 import { localDayKey, useWeekWorkouts } from '@/src/features/exercise/useWeekWorkouts';
-import { nextTierName, tierBadges, tierColors } from '@/src/features/tier/tierBadges';
+import { darkTierColors, nextTierName, tierBadges, tierColors } from '@/src/features/tier/tierBadges';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
-import { darkColors, fontFamilies } from '@/src/theme';
+import { darkColors, fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 type LoadState = 'loading' | 'ready' | 'error';
@@ -40,6 +40,8 @@ async function getSessionName() {
 }
 
 export default function HomeScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { onboardingSkip } = useLocalSearchParams<{ onboardingSkip?: string }>();
   const insets = useSafeAreaInsets();
@@ -142,7 +144,7 @@ export default function HomeScreen() {
           <View style={styles.headerActions}>
             <SimpleReadButton text={`${name}님, 반가워요. ${tier ? `현재 티어는 ${tier.tier_name} ${tier.sublevel}입니다.` : ''} 오늘 식단과 운동을 확인하고 기록해 보세요.`} />
             <Pressable accessibilityLabel="알림" accessibilityRole="button" hitSlop={10} onPress={() => router.push('/community/notifications')}>
-              <BellIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={24} width={24} />
+              <BellIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={24} width={24} />
             </Pressable>
           </View>
         </View>
@@ -150,7 +152,7 @@ export default function HomeScreen() {
         {!isInitialLoading ? <Text style={[styles.greeting, simple && simpleStyles.greeting, isDark && dark.text]}>{name}님, 반가워요</Text> : null}
         {isInitialLoading ? (
           <View style={[styles.initialLoading, isDark && dark.card]}>
-            <ActivityIndicator color="#5246C6" />
+            <ActivityIndicator color={colors.primaryText} />
             <Text style={styles.initialLoadingText}>홈 정보를 불러오는 중이에요</Text>
           </View>
         ) : isInitialError ? (
@@ -174,7 +176,7 @@ export default function HomeScreen() {
                   <Text style={[styles.smallButtonText, isDark && dark.text]}>내 티어</Text>
                 </Pressable>
               </View>
-              <View style={[styles.tierTrack, isDark && dark.track]}><View style={[styles.tierFill, { backgroundColor: tierColors[tier?.tier_code ?? 'CORE'], width: `${tierRatio}%` }]} /></View>
+              <View style={[styles.tierTrack, isDark && dark.track]}><View style={[styles.tierFill, { backgroundColor: (isDark ? darkTierColors : tierColors)[tier?.tier_code ?? 'CORE'], width: `${tierRatio}%` }]} /></View>
               <View style={styles.spread}>
                 <Text style={[styles.muted, isDark && dark.secondary]}>{tier ? `${tier.tier_name} ${tier.sublevel}` : ''}</Text>
                 {nextLabel ? <Text style={[styles.tierNext, isDark && dark.text]}>{nextLabel}</Text> : null}
@@ -219,12 +221,12 @@ export default function HomeScreen() {
               </Text>
             </Pressable>
             <Pressable accessibilityRole="button" onPress={() => router.push('/chat')} style={[styles.box, styles.chatRow, isDark && dark.card]}>
-              <View style={[styles.rowIcon, isDark && dark.card]}><ChatsIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={22} width={22} /></View>
+              <View style={[styles.rowIcon, isDark && dark.card]}><ChatsIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={22} width={22} /></View>
               <View style={styles.tierCopy}>
                 <Text style={[styles.rowTitle, isDark && dark.text]}>{characterName}에게 물어보기</Text>
                 <Text style={[styles.muted, isDark && dark.secondary]}>점수가 왜 바뀌었는지, 오늘 뭐 먹을지</Text>
               </View>
-              <CaretRightIcon color="#5E5D66" height={20} width={20} />
+              <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
             </Pressable>
           </>
         ) : (
@@ -273,6 +275,8 @@ function TaskRow({
   subtitle: string;
   onPress: () => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { preferences, isDark } = useDisplayPreferences();
   const simple = preferences.simple_mode_enabled;
   return (
@@ -281,81 +285,83 @@ function TaskRow({
       onPress={onPress}
       style={({ pressed }) => [styles.task, simple && simpleStyles.task, pressed && styles.pressed]}
     >
-      <View style={[styles.rowIcon, isDark && dark.card]}><Icon color={isDark ? darkColors.textPrimary : '#17161D'} height={22} width={22} /></View>
+      <View style={[styles.rowIcon, isDark && dark.card]}><Icon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={22} width={22} /></View>
       <View style={styles.tierCopy}>
         <Text style={[styles.rowTitle, simple && simpleStyles.taskTitle, isDark && dark.text]}>{title}</Text>
         <Text style={[styles.muted, simple && simpleStyles.taskSubtitle, isDark && dark.secondary]}>{subtitle}</Text>
       </View>
-      <CaretRightIcon color="#5E5D66" height={20} width={20} />
+      <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
-  content: { paddingBottom: 110, paddingHorizontal: 20, width: '100%' },
-  headerRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 44 },
-  headerActions: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  date: { color: '#5E5D66', fontSize: 14, lineHeight: 21, marginTop: 12 },
-  greeting: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30, marginTop: 4 },
-  initialLoading: { alignItems: 'center', backgroundColor: '#FAFBFC', borderRadius: 16, gap: 14, justifyContent: 'center', marginTop: 24, minHeight: 180 },
-  initialLoadingText: { color: '#5E5D66', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  box: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1 },
-  tierBox: { gap: 12, marginTop: 16, padding: 16 },
-  tierTop: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  tierCopy: { flex: 1, gap: 2, minWidth: 0 },
-  tierName: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 25 },
-  tierDetail: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  tierScore: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium },
-  tierNext: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
-  tierTrack: { backgroundColor: '#F2F4F6', borderRadius: 4, height: 8, overflow: 'hidden' },
-  tierFill: { borderRadius: 4, height: 8 },
-  smallButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-  smallButtonText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  spread: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  muted: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  stats: { flexDirection: 'row', gap: 12, marginTop: 16 },
-  stat: { flex: 1, gap: 8, minHeight: 136, padding: 16 },
-  statValue: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
-  unit: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
-  track: { backgroundColor: '#E3E6EB', borderRadius: 3, height: 6, overflow: 'hidden' },
-  fill: { backgroundColor: '#5246C6', borderRadius: 3, height: 6 },
-  hint: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
-  weekBox: { gap: 14, marginTop: 16, padding: 18 },
-  boxTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  weekDay: { alignItems: 'center', gap: 6 },
-  dot: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, height: 32, justifyContent: 'center', width: 32 },
-  dotDone: { backgroundColor: '#17161D', borderColor: '#17161D' },
-  dotToday: { borderColor: '#17161D' },
-  dayToday: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
-  chatRow: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 16, minHeight: 70, paddingHorizontal: 16 },
-  rowIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  rowTitle: { color: '#17161D', fontSize: 16, lineHeight: 24 },
-  rowTitleBold: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  sectionHead: { alignItems: 'center', flexDirection: 'row', gap: 8, marginBottom: 12, marginTop: 24 },
-  sectionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
-  tasks: { overflow: 'hidden' },
-  task: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 64, paddingHorizontal: 16 },
-  startTier: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 24, padding: 16 },
-  healthBox: { alignItems: 'flex-start', gap: 8, marginTop: 16, padding: 20 },
-  healthText: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
-  healthButton: { height: 44, marginTop: 8 },
-  pressed: { opacity: 0.75 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    content: { paddingBottom: 110, paddingHorizontal: 20, width: '100%' },
+    headerRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 44 },
+    headerActions: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+    date: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, marginTop: 12 },
+    greeting: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30, marginTop: 4 },
+    initialLoading: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 16, gap: 14, justifyContent: 'center', marginTop: 24, minHeight: 180 },
+    initialLoadingText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    box: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1 },
+    tierBox: { gap: 12, marginTop: 16, padding: 16 },
+    tierTop: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+    tierCopy: { flex: 1, gap: 2, minWidth: 0 },
+    tierName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 25 },
+    tierDetail: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    tierScore: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium },
+    tierNext: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
+    tierTrack: { backgroundColor: colors.surfaceMuted, borderRadius: 4, height: 8, overflow: 'hidden' },
+    tierFill: { borderRadius: 4, height: 8 },
+    smallButton: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+    smallButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    spread: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    muted: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    stats: { flexDirection: 'row', gap: 12, marginTop: 16 },
+    stat: { flex: 1, gap: 8, minHeight: 136, padding: 16 },
+    statValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
+    unit: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
+    track: { backgroundColor: colors.gaugeTrack, borderRadius: 3, height: 6, overflow: 'hidden' },
+    fill: { backgroundColor: colors.primary, borderRadius: 3, height: 6 },
+    hint: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    weekBox: { gap: 14, marginTop: 16, padding: 18 },
+    boxTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    weekRow: { flexDirection: 'row', justifyContent: 'space-between' },
+    weekDay: { alignItems: 'center', gap: 6 },
+    dot: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 16, borderWidth: 1, height: 32, justifyContent: 'center', width: 32 },
+    dotDone: { backgroundColor: colors.tabBar, borderColor: colors.textPrimary },
+    dotToday: { borderColor: colors.textPrimary },
+    dayToday: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
+    chatRow: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 16, minHeight: 70, paddingHorizontal: 16 },
+    rowIcon: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+    rowTitle: { color: colors.textPrimary, fontSize: 16, lineHeight: 24 },
+    rowTitleBold: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    sectionHead: { alignItems: 'center', flexDirection: 'row', gap: 8, marginBottom: 12, marginTop: 24 },
+    sectionTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
+    tasks: { overflow: 'hidden' },
+    task: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 64, paddingHorizontal: 16 },
+    startTier: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 24, padding: 16 },
+    healthBox: { alignItems: 'flex-start', gap: 8, marginTop: 16, padding: 20 },
+    healthText: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    healthButton: { height: 44, marginTop: 8 },
+    pressed: { opacity: 0.75 },
+  } as const;
+}
 
 const simpleStyles = StyleSheet.create({
   content: { paddingHorizontal: 20 },
-  greeting: { fontSize: 28 },
+  greeting: {},
   column: { flexDirection: 'column' },
   card: { minHeight: 82, padding: 20 },
-  cardTitle: { fontSize: 18 },
+  cardTitle: {},
   statCard: { flex: 0, minHeight: 100, padding: 18 },
-  statLabel: { fontSize: 17 },
-  sectionTitle: { fontSize: 20 },
+  statLabel: {},
+  sectionTitle: {},
   task: { minHeight: 82, paddingHorizontal: 16 },
-  taskTitle: { fontSize: 17 },
-  taskSubtitle: { fontSize: 13, lineHeight: 19 },
+  taskTitle: {},
+  taskSubtitle: {},
 });
 
 const dark = StyleSheet.create({

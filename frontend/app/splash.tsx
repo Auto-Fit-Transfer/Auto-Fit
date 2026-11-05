@@ -1,14 +1,18 @@
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import AutofitWordmark from '@/assets/icons/autofit-wordmark.svg';
+import AutofitWordmarkDark from '@/assets/icons/autofit-wordmark-dark.svg';
+import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const splashDuration = 3000;
 
 export default function SplashScreen() {
+  const { isDark } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const Wordmark = isDark ? AutofitWordmarkDark : AutofitWordmark;
 
   useEffect(() => {
     const timer = setTimeout(() => router.replace('/login'), splashDuration);
@@ -17,20 +21,21 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" />
-      <AutofitWordmark accessibilityLabel="autofit" height={41} width={151} />
+      <Wordmark accessibilityLabel="autofit" height={41} width={151} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    alignItems: 'center',
-    alignSelf: 'center',
-    backgroundColor: '#FAFBFC',
-    flex: 1,
-    justifyContent: 'center',
-    maxWidth: 412,
-    width: '100%',
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: {
+      alignItems: 'center',
+      alignSelf: 'center',
+      backgroundColor: colors.surface,
+      flex: 1,
+      justifyContent: 'center',
+      maxWidth: 412,
+      width: '100%',
+    },
+  } as const;
+}

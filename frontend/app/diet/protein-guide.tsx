@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import MinusIcon from '@/assets/icons/ui/minus.svg';
@@ -10,7 +9,7 @@ import WarningIcon from '@/assets/icons/ui/warning-circle.svg';
 import { getDietApiErrorMessage, getDietNutritionSummary, getDietRecommendationsByDate } from '@/src/api/diet';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { nutritionNumber, type NutritionSummary } from '@/src/features/nutritionSummary';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 
@@ -39,15 +38,19 @@ function readFoods(result: unknown): Food[] {
 }
 
 function Accordion(props: { title: string; subtitle: string; expanded: boolean; onPress: () => void; children: React.ReactNode }) {
+  const { colors } = useAppTheme();
+  const s = useThemedStyles(createSStyles);
   return <View style={s.card}>
     <Pressable accessibilityRole="button" accessibilityState={{ expanded: props.expanded }} accessibilityLabel={props.title + (props.expanded ? ' 접기' : ' 펼치기')} onPress={props.onPress} style={s.row}>
-      <View style={s.flex}><Text style={s.cardTitle}>{props.title}</Text><Text style={s.secondary}>{props.subtitle}</Text></View>{props.expanded ? <MinusIcon color="#17161D" height={22} width={22} /> : <PlusIcon color="#17161D" height={22} width={22} />}
+      <View style={s.flex}><Text style={s.cardTitle}>{props.title}</Text><Text style={s.secondary}>{props.subtitle}</Text></View>{props.expanded ? <MinusIcon color={colors.textPrimary} height={22} width={22} /> : <PlusIcon color={colors.textPrimary} height={22} width={22} />}
     </Pressable>
     {props.expanded && <View style={s.accordionBody}>{props.children}</View>}
   </View>;
 }
 
 export default function ProteinGuide() {
+  const { colors } = useAppTheme();
+  const s = useThemedStyles(createSStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ date?: string }>();
@@ -91,10 +94,9 @@ export default function ProteinGuide() {
   const back = () => router.canGoBack() ? router.back() : router.replace('/(tabs)/diet');
 
   return <View style={s.root}>
-    <StatusBar style="dark" />
     <ScreenHeader onBack={back} right={<SimpleReadButton text={'단백질 가이드. 이 날짜의 목표 ' + format(target) + ', 먹은 양 ' + format(consumed) + '.'} />} title="단백질 가이드" />
     <ScrollView contentContainerStyle={[s.content, { paddingTop: 8, paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}>
-      {invalid ? <Text style={s.secondary}>식단에서 단백질 가이드를 다시 열어 주세요.</Text> : loading ? <ActivityIndicator color={purple} style={s.loading} /> : error ? <View style={s.card}><Text style={s.secondary}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.link}>다시 시도</Text></Pressable></View> : <>
+      {invalid ? <Text style={s.secondary}>식단에서 단백질 가이드를 다시 열어 주세요.</Text> : loading ? <ActivityIndicator color={colors.primaryText} style={s.loading} /> : error ? <View style={s.card}><Text style={s.secondary}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.link}>다시 시도</Text></Pressable></View> : <>
         <View style={s.card}><Text style={s.caption}>이 날짜의 단백질 목표</Text><View style={s.targetRow}><Text style={s.target}>{format(target)}</Text>{perMeal != null && <Text style={s.targetHint}>세 끼로 나누면 한 끼 약 {perMeal}g</Text>}</View><Text style={s.body}>{target == null ? '이 날짜의 목표가 아직 설정되지 않았어요.' : '식단에 설정된 하루 목표를 표시해요.'}</Text></View>
 
         <View style={s.card}><View style={s.row}><Text style={s.sectionTitle}>먹은 단백질</Text><Text style={s.current}>{format(consumed)} <Text style={s.currentTarget}>/ {format(target)}</Text></Text></View><View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: percent }} style={s.track}><View style={[s.fill, { width: `${percent}%` }]} /></View>{mealTotals.length > 0 && <View style={s.chips}>{mealTotals.map((item) => <Text key={item.meal} style={s.chip}>{item.meal} 추천 {Math.round(item.protein)}g</Text>)}</View>}{summary?.has_unknown_items && <Text style={s.secondary}>영양 정보가 없는 기록은 합계에서 제외됐어요.</Text>}</View>
@@ -114,7 +116,7 @@ export default function ProteinGuide() {
           <View style={[s.tipRow, s.divider]}><Text style={s.tipLabel}>고깃집</Text><Text style={s.tipText}>살코기와 채소를 함께 고르고 드신 양을 기록해 보세요.</Text></View>
         </Accordion>
 
-        <View style={s.notice}><WarningIcon color="#B3690B" height={20} width={20} /><Text style={s.noticeText}>알레르기가 있는 식품은 피하고, 가공식품은 성분표를 확인해 주세요.</Text></View>
+        <View style={s.notice}><WarningIcon color={colors.warning} height={20} width={20} /><Text style={s.noticeText}>알레르기가 있는 식품은 피하고, 가공식품은 성분표를 확인해 주세요.</Text></View>
         <Text style={s.source}>목표는 식단 데이터, 먹은 양은 식사 기록 기준이에요. 음식별 영양 성분은 등록된 값과 실제 제품이 다를 수 있어요.</Text>
         <Pressable accessibilityRole="button" onPress={back} style={s.button}><Text style={s.buttonText}>저녁 식단 확인하기</Text></Pressable>
       </>}
@@ -122,12 +124,13 @@ export default function ProteinGuide() {
   </View>;
 }
 
-const purple = '#5246C6';
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, gap: 16 }, loading: { marginTop: 32 },
-  header: { height: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }, backHit: { width: 44, height: 44, justifyContent: 'center' }, back: { color: '#17161D', fontSize: 34, lineHeight: 38 }, headerTitle: { position: 'absolute', left: 54, right: 54, textAlign: 'center', color: '#17161D', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-  card: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 16, padding: 16, gap: 12 }, caption: { color: '#5E5D66', fontSize: 14, lineHeight: 19 }, body: { color: '#3B3A42', fontSize: 14, lineHeight: 22 }, secondary: { color: '#5E5D66', fontSize: 14, lineHeight: 20 }, targetRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: 10 }, target: { color: '#17161D', fontSize: 32, fontFamily: fontFamilies.pretendardBold }, targetHint: { color: '#5E5D66', fontSize: 14 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, flex: { flex: 1 }, sectionTitle: { color: '#17161D', fontSize: 18, fontFamily: fontFamilies.pretendardBold }, current: { color: '#17161D', fontSize: 18, fontFamily: fontFamilies.pretendardBold }, currentTarget: { color: '#5E5D66', fontSize: 14, fontFamily: fontFamilies.pretendardRegular }, track: { height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: '#E3E6EB' }, fill: { height: 8, backgroundColor: purple }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 }, chip: { paddingHorizontal: 8, paddingVertical: 5, backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 6, color: '#3B3A42', fontSize: 12 },
-  cardTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, circleButton: { width: 28, height: 28, borderWidth: 1, borderColor: '#DFE2E7', backgroundColor: '#FAFBFC', borderRadius: 14, justifyContent: 'center', alignItems: 'center' }, circleText: { fontSize: 21, lineHeight: 23, color: '#17161D' }, accordionBody: { gap: 5, paddingTop: 12 }, foodRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10 }, foodName: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold }, foodProtein: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, divider: { borderTopWidth: 1, borderTopColor: '#DFE2E7' }, tipRow: { flexDirection: 'row', gap: 10, paddingVertical: 10 }, tipLabel: { backgroundColor: '#F2F4F6', borderRadius: 5, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, color: '#3B3A42', fontSize: 12 }, tipText: { flex: 1, color: '#3B3A42', fontSize: 14, lineHeight: 21 },
-  notice: { flexDirection: 'row', gap: 10, alignItems: 'center', backgroundColor: '#FFF2E0', borderRadius: 12, padding: 14 }, noticeIcon: { color: '#A85B00', fontSize: 18 }, noticeText: { flex: 1, color: '#3B3A42', fontSize: 14, lineHeight: 19 }, source: { color: '#5E5D66', fontSize: 12, lineHeight: 19 }, link: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold }, button: { minHeight: 56, backgroundColor: purple, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 6 }, buttonText: { color: '#FFFFFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-});
+function createSStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, gap: 16 }, loading: { marginTop: 32 },
+    header: { height: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }, backHit: { width: 44, height: 44, justifyContent: 'center' }, back: { color: colors.textPrimary, fontSize: 34, lineHeight: 38 }, headerTitle: { position: 'absolute', left: 54, right: 54, textAlign: 'center', color: colors.textPrimary, fontSize: 18, fontFamily: fontFamilies.pretendardBold },
+    card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 16, gap: 12 }, caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 19 }, body: { color: colors.textBody, fontSize: 14, lineHeight: 22 }, secondary: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 }, targetRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: 10 }, target: { color: colors.textPrimary, fontSize: 32, fontFamily: fontFamilies.pretendardBold }, targetHint: { color: colors.textSecondary, fontSize: 14 },
+    row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, flex: { flex: 1 }, sectionTitle: { color: colors.textPrimary, fontSize: 18, fontFamily: fontFamilies.pretendardBold }, current: { color: colors.textPrimary, fontSize: 18, fontFamily: fontFamilies.pretendardBold }, currentTarget: { color: colors.textSecondary, fontSize: 14, fontFamily: fontFamilies.pretendardRegular }, track: { height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: colors.gaugeTrack }, fill: { height: 8, backgroundColor: colors.primary }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 }, chip: { paddingHorizontal: 8, paddingVertical: 5, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 6, color: colors.textBody, fontSize: 12 },
+    cardTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold }, circleButton: { width: 28, height: 28, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }, circleText: { fontSize: 21, lineHeight: 23, color: colors.textPrimary }, accordionBody: { gap: 5, paddingTop: 12 }, foodRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10 }, foodName: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold }, foodProtein: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold }, divider: { borderTopWidth: 1, borderTopColor: colors.border }, tipRow: { flexDirection: 'row', gap: 10, paddingVertical: 10 }, tipLabel: { backgroundColor: colors.surfaceMuted, borderRadius: 5, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, color: colors.textBody, fontSize: 12 }, tipText: { flex: 1, color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    notice: { flexDirection: 'row', gap: 10, alignItems: 'center', backgroundColor: colors.warningLight, borderRadius: 12, padding: 14 }, noticeIcon: { color: colors.warning, fontSize: 18 }, noticeText: { flex: 1, color: colors.textBody, fontSize: 14, lineHeight: 19 }, source: { color: colors.textSecondary, fontSize: 12, lineHeight: 19 }, link: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold }, button: { minHeight: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 6 }, buttonText: { color: '#FFFFFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+  } as const;
+}

@@ -1,9 +1,9 @@
-import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import TrendUpIcon from '@/assets/figma/main/97a4f.svg';
 import CaretRight from '@/assets/figma/main/4be55.svg';
 import { AppCard, Text } from '@/src/components/common';
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 
 interface WeeklyProgressCardProps {
   change: number | null;
@@ -13,6 +13,7 @@ interface WeeklyProgressCardProps {
 }
 
 export function WeeklyProgressCard({ change, message, style, onPress }: WeeklyProgressCardProps) {
+  const styles = useThemedStyles(createStyles);
   const changeText = change === null ? '-' : `${change > 0 ? '+' : ''}${change}`;
   const comparisonResult =
     change === null
@@ -53,41 +54,43 @@ export function WeeklyProgressCard({ change, message, style, onPress }: WeeklyPr
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    height: 70,
-    width: 300,
-  },
-  icon: {
-    left: 10,
-    position: 'absolute',
-    top: 10,
-  },
-  title: {
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 13,
-    includeFontPadding: false,
-    left: 66,
-    letterSpacing: 0.26,
-    lineHeight: 17,
-    position: 'absolute',
-    right: 32,
-    top: 14,
-  },
-  change: {
-    color: colors.primary,
-    letterSpacing: 0.26,
-  },
-  message: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 13,
-    includeFontPadding: false,
-    left: 66,
-    lineHeight: 17,
-    position: 'absolute',
-    right: 32,
-    top: 36,
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    card: {
+      height: 70,
+      width: 300,
+    },
+    icon: {
+      left: 10,
+      position: 'absolute',
+      top: 10,
+    },
+    title: {
+      color: colors.textBody,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 13,
+      includeFontPadding: false,
+      left: 66,
+      letterSpacing: 0.26,
+      lineHeight: 17,
+      position: 'absolute',
+      right: 32,
+      top: 14,
+    },
+    change: {
+      color: colors.primary,
+      letterSpacing: 0.26,
+    },
+    message: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 13,
+      includeFontPadding: false,
+      left: 66,
+      lineHeight: 17,
+      position: 'absolute',
+      right: 32,
+      top: 36,
+    },
+  } as const;
+}

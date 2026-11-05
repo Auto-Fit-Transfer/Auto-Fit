@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, Pressable, ScrollView, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Path, Polyline, Rect, Text as SvgText } from 'react-native-svg';
 
@@ -12,7 +11,7 @@ import {
   type HealthReport,
 } from '@/src/api/healthReport';
 import { getApiErrorMessage } from '@/src/api/client';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 
@@ -56,6 +55,7 @@ const formatValue = (value: number, unit: string) =>
 const signed = (value: number, unit: string) => `${value > 0 ? '+' : ''}${formatValue(value, unit)}`;
 
 function Chart({ entries, width, target, unit }: { entries: { date: string; value: number }[]; width: number; target?: number | null; unit: string }) {
+  const { colors } = useAppTheme();
   const height = 240;
   const left = 44;
   const right = width - 14;
@@ -87,31 +87,31 @@ function Chart({ entries, width, target, unit }: { entries: { date: string; valu
     <View accessible accessibilityLabel={`측정값 추이 그래프, 최근값 ${tooltip}`}>
     <Svg width={width} height={height}>
       {ticks.map((tick) => (
-        <Line key={tick} x1={left} x2={right} y1={yOf(tick)} y2={yOf(tick)} stroke="#DFE2E7" />
+        <Line key={tick} x1={left} x2={right} y1={yOf(tick)} y2={yOf(tick)} stroke={colors.border} />
       ))}
       {ticks.map((tick) => (
-        <SvgText key={tick} x={0} y={yOf(tick) + 4} fill="#5E5D66" fontSize={12}>{tick.toFixed(1)}</SvgText>
+        <SvgText key={tick} x={0} y={yOf(tick) + 4} fill={colors.textSecondary} fontSize={12}>{tick.toFixed(1)}</SvgText>
       ))}
-      {points.length > 1 ? <Path d={area} fill="#E3E6EB" opacity={0.6} /> : null}
+      {points.length > 1 ? <Path d={area} fill={colors.gaugeTrack} opacity={0.6} /> : null}
       {targetY !== null ? <>
-        <Line x1={left} x2={right} y1={targetY} y2={targetY} stroke="#5246C6" strokeDasharray="5 5" />
-        <Rect x={left} y={targetY - 22} width={86} height={20} rx={6} fill="#ECE9FF" />
+        <Line x1={left} x2={right} y1={targetY} y2={targetY} stroke={colors.primary} strokeDasharray="5 5" />
+        <Rect x={left} y={targetY - 22} width={86} height={20} rx={6} fill={colors.primaryLight} />
         <SvgText x={left + 8} y={targetY - 8} fill="#3A2DB5" fontSize={12}>목표 {target?.toFixed(1)}{unit}</SvgText>
       </> : null}
-      {points.length > 1 ? <Polyline points={line} fill="none" stroke="#17161D" strokeWidth={2} /> : null}
+      {points.length > 1 ? <Polyline points={line} fill="none" stroke={colors.textPrimary} strokeWidth={2} /> : null}
       {points.map((point, index) => {
         const isLast = index === points.length - 1;
-        return <Circle key={index} cx={point.x} cy={point.y} r={4} fill={isLast ? '#17161D' : '#FFFFFF'} stroke="#17161D" strokeWidth={2} />;
+        return <Circle key={index} cx={point.x} cy={point.y} r={4} fill={isLast ? colors.textPrimary : '#FFFFFF'} stroke={colors.textPrimary} strokeWidth={2} />;
       })}
       {labelled ? points.slice(0, -1).map((point, index) => (
-        <SvgText key={index} x={point.x} y={point.y + 20} textAnchor="middle" fill="#3B3A42" fontSize={12}>{formatValue(entries[index].value, unit)}</SvgText>
+        <SvgText key={index} x={point.x} y={point.y + 20} textAnchor="middle" fill={colors.textBody} fontSize={12}>{formatValue(entries[index].value, unit)}</SvgText>
       )) : null}
-      <Rect x={tooltipX} y={tooltipY} width={tooltipWidth} height={26} rx={8} fill="#17161D" />
+      <Rect x={tooltipX} y={tooltipY} width={tooltipWidth} height={26} rx={8} fill={colors.textPrimary} />
       <SvgText x={tooltipX + tooltipWidth / 2} y={tooltipY + 17} textAnchor="middle" fill="#FFFFFF" fontSize={12}>{tooltip}</SvgText>
       {points.map((point, index) => {
         const isLast = index === points.length - 1;
         if (!labelled && index !== 0 && !isLast) return null;
-        return <SvgText key={index} x={point.x} y={height - 14} textAnchor={isLast && points.length > 1 ? 'end' : index === 0 && points.length > 1 ? 'start' : 'middle'} fill={isLast ? '#17161D' : '#5E5D66'} fontWeight={isLast ? 'bold' : 'normal'} fontSize={12}>{formatDate(entries[index].date)}</SvgText>;
+        return <SvgText key={index} x={point.x} y={height - 14} textAnchor={isLast && points.length > 1 ? 'end' : index === 0 && points.length > 1 ? 'start' : 'middle'} fill={isLast ? colors.textPrimary : colors.textSecondary} fontWeight={isLast ? 'bold' : 'normal'} fontSize={12}>{formatDate(entries[index].date)}</SvgText>;
       })}
     </Svg>
     </View>
@@ -119,6 +119,8 @@ function Chart({ entries, width, target, unit }: { entries: { date: string; valu
 }
 
 export default function HealthReportScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const width = useWindowDimensions().width;
@@ -164,7 +166,6 @@ export default function HealthReportScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="dark" />
       <ScreenHeader onBack={() => router.back()} title="건강 리포트" />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 34 }]} showsVerticalScrollIndicator={false}>
         <View accessibilityRole="tablist" style={styles.tabs}>
@@ -182,7 +183,7 @@ export default function HealthReportScreen() {
             </Pressable>
           ))}
         </ScrollView>
-        {loading ? <ActivityIndicator color="#5246C6" style={styles.spinner} /> : null}
+        {loading ? <ActivityIndicator color={colors.primaryText} style={styles.spinner} /> : null}
         {error ? (
           <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setAttempt((value) => value + 1); }} style={styles.errorBox}>
             <Text accessibilityRole="alert" style={styles.error}>{error} · 다시 시도하기</Text>
@@ -230,41 +231,43 @@ export default function HealthReportScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { paddingHorizontal: 20, paddingTop: 8, gap: 16 },
-  tabs: { backgroundColor: '#F2F4F6', borderRadius: 16, flexDirection: 'row', padding: 4 },
-  tab: { alignItems: 'center', borderRadius: 12, flex: 1, height: 38, justifyContent: 'center' },
-  activeTab: { backgroundColor: '#FFFFFF' },
-  tabText: { color: '#5E5D66', fontSize: 14 },
-  activeTabText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium },
-  metricScroll: { flexGrow: 0, marginHorizontal: -20 },
-  metricRow: { gap: 8, paddingHorizontal: 20 },
-  metricChip: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
-  selectedChip: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
-  metricText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  selectedMetricText: { color: '#FFFFFF' },
-  spinner: { marginVertical: 40 },
-  errorBox: { backgroundColor: '#FFF4F4', borderRadius: 12, padding: 14 },
-  error: { color: '#B34141', fontSize: 14 },
-  empty: { alignItems: 'center', gap: 10, paddingVertical: 48 },
-  emptyTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, textAlign: 'center' },
-  note: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  upload: { backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, marginTop: 8, minHeight: 40, justifyContent: 'center', paddingHorizontal: 16 },
-  uploadText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  chartCard: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, padding: 18 },
-  chartHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
-  chartLabel: { color: '#5E5D66', fontSize: 14 },
-  period: { backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 6 },
-  valueRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8, marginTop: 10, width: '100%' },
-  value: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
-  unit: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
-  delta: { backgroundColor: '#F2F4F6', borderRadius: 999, color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 12, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 4 },
-  sectionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, marginTop: 4 },
-  records: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, paddingHorizontal: 16 },
-  record: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 56 },
-  recordDivider: { borderTopColor: '#DFE2E7', borderTopWidth: 1 },
-  recordDate: { color: '#17161D', flex: 1, fontSize: 16 },
-  recordValue: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  recordDelta: { color: '#5E5D66', fontSize: 14, minWidth: 38, textAlign: 'right' },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    screen: { flex: 1, backgroundColor: colors.background },
+    content: { paddingHorizontal: 20, paddingTop: 8, gap: 16 },
+    tabs: { backgroundColor: colors.surfaceMuted, borderRadius: 16, flexDirection: 'row', padding: 4 },
+    tab: { alignItems: 'center', borderRadius: 12, flex: 1, height: 38, justifyContent: 'center' },
+    activeTab: { backgroundColor: colors.background },
+    tabText: { color: colors.textSecondary, fontSize: 14 },
+    activeTabText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
+    metricScroll: { flexGrow: 0, marginHorizontal: -20 },
+    metricRow: { gap: 8, paddingHorizontal: 20 },
+    metricChip: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
+    selectedChip: { backgroundColor: colors.primary, borderColor: colors.primary },
+    metricText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    selectedMetricText: { color: '#FFFFFF' },
+    spinner: { marginVertical: 40 },
+    errorBox: { backgroundColor: colors.dangerLight, borderRadius: 12, padding: 14 },
+    error: { color: colors.danger, fontSize: 14 },
+    empty: { alignItems: 'center', gap: 10, paddingVertical: 48 },
+    emptyTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, textAlign: 'center' },
+    note: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    upload: { backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, marginTop: 8, minHeight: 40, justifyContent: 'center', paddingHorizontal: 16 },
+    uploadText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    chartCard: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, padding: 18 },
+    chartHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
+    chartLabel: { color: colors.textSecondary, fontSize: 14 },
+    period: { backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 6 },
+    valueRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8, marginTop: 10, width: '100%' },
+    value: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
+    unit: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
+    delta: { backgroundColor: colors.surfaceMuted, borderRadius: 999, color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 4 },
+    sectionTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, marginTop: 4 },
+    records: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, paddingHorizontal: 16 },
+    record: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 56 },
+    recordDivider: { borderTopColor: colors.border, borderTopWidth: 1 },
+    recordDate: { color: colors.textPrimary, flex: 1, fontSize: 16 },
+    recordValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    recordDelta: { color: colors.textSecondary, fontSize: 14, minWidth: 38, textAlign: 'right' },
+  } as const;
+}

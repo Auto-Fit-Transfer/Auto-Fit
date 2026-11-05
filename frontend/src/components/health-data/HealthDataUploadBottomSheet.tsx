@@ -1,5 +1,5 @@
 import { type ReactNode, useCallback } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 
 import CameraIcon from '@/assets/icons/ui/camera.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
@@ -9,7 +9,7 @@ import {
   type SelectedHealthFile,
   useHealthFilePicker,
 } from '@/src/features/health-data/useHealthFilePicker';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type Props = {
   children?: ReactNode;
@@ -53,6 +53,7 @@ export function HealthDataUploadBottomSheet({
   visible,
   variant = 'default',
 }: Props) {
+  const styles = useThemedStyles(createStyles);
   const { isSelecting, selectDocument, selectPhoto } = useHealthFileSelect(onSelectFile, isBusy);
   const disabled = isSelecting || isBusy;
 
@@ -78,27 +79,31 @@ export function HealthDataUploadBottomSheet({
 }
 
 function Option({ Icon, title, detail, disabled, onPress }: { Icon: typeof CameraIcon; title: string; detail: string; disabled: boolean; onPress: () => void }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable hitSlop={8} accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={styles.option}>
-      <View style={styles.icon}><Icon color="#17161D" height={22} width={22} /></View>
+      <View style={styles.icon}><Icon color={colors.textPrimary} height={22} width={22} /></View>
       <View style={styles.copy}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.detail}>{detail}</Text>
       </View>
-      <CaretRightIcon color="#5E5D66" height={20} width={20} />
+      <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  handle: { backgroundColor: '#DFE2E7', height: 4, marginTop: 11, width: 40 },
-  overlay: { backgroundColor: 'rgba(0, 0, 0, 0.45)' },
-  sheet: { borderTopLeftRadius: 22, borderTopRightRadius: 22, minHeight: 300 },
-  content: { gap: 12, paddingBottom: 16, paddingHorizontal: 20, paddingTop: 0 },
-  description: { color: '#3B3A42', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
-  option: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 75, paddingHorizontal: 16 },
-  icon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  copy: { flex: 1, minWidth: 0 },
-  title: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  detail: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    handle: { backgroundColor: colors.border, height: 4, marginTop: 11, width: 40 },
+    overlay: { backgroundColor: 'rgba(0, 0, 0, 0.45)' },
+    sheet: { borderTopLeftRadius: 22, borderTopRightRadius: 22, minHeight: 300 },
+    content: { gap: 12, paddingBottom: 16, paddingHorizontal: 20, paddingTop: 0 },
+    description: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
+    option: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 75, paddingHorizontal: 16 },
+    icon: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+    copy: { flex: 1, minWidth: 0 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    detail: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
+  } as const;
+}

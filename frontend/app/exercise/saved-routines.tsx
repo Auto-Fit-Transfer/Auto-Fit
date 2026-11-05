@@ -1,18 +1,18 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getSavedWorkoutRoutines, type SavedWorkoutRoutine } from '@/src/api/exercise';
 import { getApiErrorMessage } from '@/src/api/client';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
-const purple = '#5246C6';
 type Filter = 'all' | 'recommendation' | 'custom';
 
 export default function SavedRoutines() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [rows, setRows] = useState<SavedWorkoutRoutine[]>([]);
@@ -35,10 +35,9 @@ export default function SavedRoutines() {
   const shown = filter === 'all' ? rows : rows.filter((row) => row.source_type === filter);
 
   return <View style={styles.root}>
-    <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 40 }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
         <Text style={styles.title}>내 운동</Text>
         <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="루틴 만들기" onPress={() => router.push('/exercise/routine-builder')}><Text style={styles.headerAction}>만들기</Text></Pressable>
       </View>
@@ -53,7 +52,7 @@ export default function SavedRoutines() {
             <Text style={[styles.chipText, filter === key && styles.chipTextActive]}>{label}</Text>
           </Pressable>)}
       </View>
-      {loading ? <ActivityIndicator color={purple} /> : error ? <Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> :
+      {loading ? <ActivityIndicator color={colors.primaryText} /> : error ? <Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> :
         shown.length === 0 ? <View style={styles.card}><Text style={styles.body}>저장한 운동이 없어요. 운동 기록에서 추천 운동을 저장하거나 루틴을 만들어 보세요.</Text></View> :
           shown.map((routine) => {
             const open = expanded === routine.user_workout_routine_id;
@@ -74,34 +73,36 @@ export default function SavedRoutines() {
   </View>;
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { paddingHorizontal: 20, gap: 17 },
-  header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  back: { fontSize: 32, color: '#17161D', lineHeight: 36 },
-  title: { fontSize: 16, color: '#17161D', fontFamily: fontFamilies.pretendardBold },
-  headerAction: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
-  tabs: { flexDirection: 'row', backgroundColor: '#F2F4F6', borderRadius: 16, padding: 4 },
-  tab: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
-  tabActive: { backgroundColor: '#FFF' },
-  tabText: { color: '#5E5D66', fontSize: 14 },
-  tabTextActive: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
-  subtitle: { color: '#5E5D66', fontSize: 14 },
-  filters: { flexDirection: 'row', gap: 8 },
-  chip: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 20, paddingHorizontal: 13, paddingVertical: 9 },
-  chipActive: { backgroundColor: purple, borderColor: purple },
-  chipText: { fontSize: 14, color: '#5E5D66' },
-  chipTextActive: { color: '#FFFFFF' },
-  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, padding: 16, gap: 10 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  arrow: { color: '#17161D', fontSize: 19 },
-  meta: { color: '#5E5D66', fontSize: 14, marginTop: 4 },
-  body: { color: '#17161D', fontSize: 14, lineHeight: 19 },
-  itemList: { borderTopWidth: 1, borderTopColor: '#DFE2E7', paddingTop: 8, gap: 12 },
-  item: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  itemNumber: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-  button: { backgroundColor: purple, height: 56, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
-  buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  error: { color: '#A13A2F', fontSize: 14 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background },
+    content: { paddingHorizontal: 20, gap: 17 },
+    header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    back: { fontSize: 32, color: colors.textPrimary, lineHeight: 36 },
+    title: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    headerAction: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    tabs: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: 16, padding: 4 },
+    tab: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
+    tabActive: { backgroundColor: colors.background },
+    tabText: { color: colors.textSecondary, fontSize: 14 },
+    tabTextActive: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    subtitle: { color: colors.textSecondary, fontSize: 14 },
+    filters: { flexDirection: 'row', gap: 8 },
+    chip: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 13, paddingVertical: 9 },
+    chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+    chipText: { fontSize: 14, color: colors.textSecondary },
+    chipTextActive: { color: '#FFFFFF' },
+    card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16, gap: 10 },
+    cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    cardTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    arrow: { color: colors.textPrimary, fontSize: 19 },
+    meta: { color: colors.textSecondary, fontSize: 14, marginTop: 4 },
+    body: { color: colors.textPrimary, fontSize: 14, lineHeight: 19 },
+    itemList: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, gap: 12 },
+    item: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+    itemNumber: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
+    button: { backgroundColor: colors.primary, height: 56, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
+    buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    error: { color: colors.danger, fontSize: 14 },
+  } as const;
+}

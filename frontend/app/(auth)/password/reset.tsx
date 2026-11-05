@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Alert, Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Keyboard, Pressable, TextInput, View } from 'react-native';
 
 import CheckIcon from '@/assets/icons/system/Check.svg';
 import EyeSlashIcon from '@/assets/icons/auth-redesign/5facc.svg';
@@ -8,10 +8,12 @@ import EyeIcon from '@/assets/icons/input/Eye.svg';
 import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { PasswordAuthScreenLayout } from '@/src/components/auth';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 export default function ResetPasswordScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const confirmationRef = useRef<TextInput>(null);
   const [password, setPassword] = useState('');
@@ -89,7 +91,7 @@ export default function ResetPasswordScreen() {
       <View style={styles.conditions}>
         {conditions.map((condition) => (
           <View key={condition.label} style={styles.conditionRow}>
-            <CheckIcon color={condition.met ? '#0E7C48' : '#8E8D95'} height={18} width={18} />
+            <CheckIcon color={condition.met ? colors.success : colors.textDisabled} height={18} width={18} />
             <Text style={[styles.conditionText, condition.met && styles.conditionMet]}>{condition.label}</Text>
           </View>
         ))}
@@ -111,16 +113,18 @@ function VisibilityButton({ onPress, visible }: { onPress: () => void; visible: 
   );
 }
 
-const styles = StyleSheet.create({
-  conditions: {
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 10,
-    padding: 16,
-  },
-  conditionRow: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 21 },
-  conditionText: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
-  conditionMet: { color: '#17161D' },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    conditions: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      gap: 10,
+      padding: 16,
+    },
+    conditionRow: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 21 },
+    conditionText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
+    conditionMet: { color: colors.textPrimary },
+  } as const;
+}

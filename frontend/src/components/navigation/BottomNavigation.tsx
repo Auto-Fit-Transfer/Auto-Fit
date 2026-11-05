@@ -14,7 +14,7 @@ import HouseActiveIcon from '@/assets/icons/ui/house-fill.svg';
 import UserIcon from '@/assets/icons/ui/user.svg';
 import UserActiveIcon from '@/assets/icons/ui/user-fill.svg';
 import { Text } from '@/src/components/common';
-import { AppThemeProvider, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 // The Figma tab bar: a floating dark pill; the open tab is a purple pill inside it.
 export const BOTTOM_NAVIGATION_VISUAL_HEIGHT = 66;
@@ -55,15 +55,7 @@ interface BottomNavigationProps extends NativeTabsProps {
   onNavigationLayout?: (layout: BottomNavigationLayout) => void;
 }
 
-export function BottomNavigation(props: BottomNavigationProps) {
-  return (
-    <AppThemeProvider>
-      <NavigationBar {...props} />
-    </AppThemeProvider>
-  );
-}
-
-function NavigationBar({
+export function BottomNavigation({
   state,
   descriptors,
   emitter,

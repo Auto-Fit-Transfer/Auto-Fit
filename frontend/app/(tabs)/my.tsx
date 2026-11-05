@@ -26,7 +26,7 @@ import { AllergySettingsSheet } from '@/src/components/my/AllergySettingsSheet';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { tierBadges } from '@/src/features/tier/tierBadges';
-import { darkColors, fontFamilies } from '@/src/theme';
+import { darkColors, fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 // Only FIT and ACTIVE have tinted pills in Figma; the other tiers stay neutral beside their badge.
@@ -43,21 +43,25 @@ type SettingRowProps = {
 };
 
 function SettingRow({ Icon, label, description, onPress }: SettingRowProps) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { preferences, isDark } = useDisplayPreferences();
   const simple = preferences.simple_mode_enabled;
   return (
     <Pressable hitSlop={16} accessibilityRole="button" onPress={onPress} style={[styles.settingRow, simple && simpleStyles.settingRow]}>
-      <View style={[styles.settingIcon, isDark && dark.card]}><Icon color={isDark ? darkColors.textPrimary : '#17161D'} height={22} width={22} /></View>
+      <View style={[styles.settingIcon, isDark && dark.card]}><Icon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={22} width={22} /></View>
       <View style={styles.settingCopy}>
         <Text style={[styles.settingLabel, isDark && dark.text, simple && simpleStyles.settingLabel]}>{label}</Text>
         {description ? <Text style={[styles.settingDescription, isDark && dark.secondary, simple && simpleStyles.settingDescription]}>{description}</Text> : null}
       </View>
-      <CaretRightIcon color="#5E5D66" height={20} width={20} />
+      <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
     </Pressable>
   );
 }
 
 export default function MyScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isDark, preferences } = useDisplayPreferences();
@@ -158,7 +162,7 @@ export default function MyScreen() {
       </View>
 
       <View style={styles.profileRow}>
-        <View style={[styles.avatar, isDark && dark.card]}><UserIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={26} width={26} /></View>
+        <View style={[styles.avatar, isDark && dark.card]}><UserIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={26} width={26} /></View>
         <View style={styles.profileCopy}>
           <Text numberOfLines={1} style={[styles.name, isDark && dark.text, simple && simpleStyles.name]}>{name}</Text>
           <View style={styles.profileMeta}>
@@ -199,19 +203,19 @@ export default function MyScreen() {
         <Text style={[styles.mileageLabel, isDark && dark.text, simple && simpleStyles.mileageText]}>마일리지</Text>
         <View style={styles.mileageRight}>
           <Text style={[styles.mileageAmount, isDark && dark.text, simple && simpleStyles.mileageText]}>{mileage === null ? '확인하기' : `${mileage.toLocaleString()}P`}</Text>
-          <CaretRightIcon color="#5E5D66" height={20} width={20} />
+          <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
         </View>
       </Pressable>
 
       <Text style={[styles.sectionTitle, isDark && dark.secondary, simple && simpleStyles.sectionTitle]}>내 건강</Text>
       <View style={[styles.healthCards, simple && simpleStyles.healthCards]}>
         <Pressable accessibilityRole="button" onPress={() => router.push('/health-data-management')} style={[styles.healthCard, isDark && dark.card, simple && simpleStyles.healthCard]}>
-          <View style={[styles.settingIcon, isDark && dark.card]}><UploadIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={22} width={22} /></View>
+          <View style={[styles.settingIcon, isDark && dark.card]}><UploadIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={22} width={22} /></View>
           <Text style={[styles.healthCardTitle, isDark && dark.text, simple && simpleStyles.healthCardTitle]}>건강 데이터 올리기</Text>
           <Text style={[styles.healthCardDescription, isDark && dark.secondary, simple && simpleStyles.healthCardDescription]}>새 검진표 · 체성분 결과</Text>
         </Pressable>
         <Pressable accessibilityRole="button" onPress={() => router.push('/health-report')} style={[styles.healthCard, isDark && dark.card, simple && simpleStyles.healthCard]}>
-          <View style={[styles.settingIcon, isDark && dark.card]}><ChartIcon color={isDark ? darkColors.textPrimary : '#17161D'} height={22} width={22} /></View>
+          <View style={[styles.settingIcon, isDark && dark.card]}><ChartIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={22} width={22} /></View>
           <Text style={[styles.healthCardTitle, isDark && dark.text, simple && simpleStyles.healthCardTitle]}>건강 리포트</Text>
           <Text style={[styles.healthCardDescription, isDark && dark.secondary, simple && simpleStyles.healthCardDescription]}>검진 · 인바디 변화</Text>
         </Pressable>
@@ -248,62 +252,64 @@ export default function MyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
-  content: { gap: 14, paddingHorizontal: 20 },
-  titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  title: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
-  profileRow: { alignItems: 'center', flexDirection: 'row', gap: 14 },
-  avatar: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 28, height: 56, justifyContent: 'center', width: 56 },
-  profileCopy: { flex: 1, gap: 2, minWidth: 0 },
-  name: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
-  profileMeta: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  tierPill: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 999, flexDirection: 'row', gap: 4, height: 22, paddingLeft: 4, paddingRight: 8 },
-  tierPillText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardBold, fontSize: 12 },
-  muted: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  profileEdit: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-  profileEditText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  inlineError: { backgroundColor: '#FFF4F4', borderRadius: 8, padding: 10 },
-  inlineErrorText: { color: '#B34141', fontSize: 14 },
-  stats: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', minHeight: 74 },
-  stat: { alignItems: 'center', flex: 1, gap: 2 },
-  statValue: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
-  statDivider: { backgroundColor: '#DFE2E7', height: 28, width: 1 },
-  mileage: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', minHeight: 58, paddingHorizontal: 18 },
-  mileageRight: { alignItems: 'center', flexDirection: 'row', gap: 6 },
-  mileageLabel: { color: '#17161D', fontSize: 16 },
-  mileageAmount: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  sectionTitle: { color: '#5E5D66', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21, marginTop: 4 },
-  healthCards: { flexDirection: 'row', gap: 10 },
-  healthCard: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flex: 1, minHeight: 131, padding: 16 },
-  healthCardTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24, marginTop: 10 },
-  healthCardDescription: { color: '#5E5D66', fontSize: 14, lineHeight: 21, marginTop: 2 },
-  group: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-  settingRow: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 64, paddingHorizontal: 16, paddingVertical: 8 },
-  settingIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  settingCopy: { flex: 1, gap: 2 },
-  settingLabel: { color: '#17161D', fontSize: 16, lineHeight: 24 },
-  settingDescription: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  rowDivider: { backgroundColor: '#DFE2E7', height: 1 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    content: { gap: 14, paddingHorizontal: 20 },
+    titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
+    profileRow: { alignItems: 'center', flexDirection: 'row', gap: 14 },
+    avatar: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 28, height: 56, justifyContent: 'center', width: 56 },
+    profileCopy: { flex: 1, gap: 2, minWidth: 0 },
+    name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
+    profileMeta: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    tierPill: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 999, flexDirection: 'row', gap: 4, height: 22, paddingLeft: 4, paddingRight: 8 },
+    tierPillText: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 12 },
+    muted: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    profileEdit: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+    profileEditText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    inlineError: { backgroundColor: colors.dangerLight, borderRadius: 8, padding: 10 },
+    inlineErrorText: { color: colors.danger, fontSize: 14 },
+    stats: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: 'row', minHeight: 74 },
+    stat: { alignItems: 'center', flex: 1, gap: 2 },
+    statValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
+    statDivider: { backgroundColor: colors.border, height: 28, width: 1 },
+    mileage: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: 'row', justifyContent: 'space-between', minHeight: 58, paddingHorizontal: 18 },
+    mileageRight: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+    mileageLabel: { color: colors.textPrimary, fontSize: 16 },
+    mileageAmount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    sectionTitle: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21, marginTop: 4 },
+    healthCards: { flexDirection: 'row', gap: 10 },
+    healthCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flex: 1, minHeight: 131, padding: 16 },
+    healthCardTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24, marginTop: 10 },
+    healthCardDescription: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, marginTop: 2 },
+    group: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+    settingRow: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 64, paddingHorizontal: 16, paddingVertical: 8 },
+    settingIcon: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+    settingCopy: { flex: 1, gap: 2 },
+    settingLabel: { color: colors.textPrimary, fontSize: 16, lineHeight: 24 },
+    settingDescription: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    rowDivider: { backgroundColor: colors.border, height: 1 },
+  } as const;
+}
 
 const simpleStyles = StyleSheet.create({
   content: { gap: 20 },
-  title: { fontSize: 30 },
-  name: { fontSize: 21 },
+  title: {},
+  name: {},
   profileEdit: { justifyContent: 'center', minHeight: 48 },
-  profileEditText: { fontSize: 16 },
+  profileEditText: {},
   stats: { height: 82 },
   mileage: { minHeight: 64 },
-  mileageText: { fontSize: 17 },
-  sectionTitle: { fontSize: 20 },
+  mileageText: {},
+  sectionTitle: {},
   healthCards: { flexDirection: 'column' },
   healthCard: { flex: 0, minHeight: 96 },
-  healthCardTitle: { fontSize: 17 },
-  healthCardDescription: { fontSize: 13 },
+  healthCardTitle: {},
+  healthCardDescription: {},
   settingRow: { minHeight: 75, paddingVertical: 12 },
-  settingLabel: { fontSize: 17 },
-  settingDescription: { fontSize: 13, lineHeight: 18 },
+  settingLabel: {},
+  settingDescription: {},
 });
 
 const dark = StyleSheet.create({

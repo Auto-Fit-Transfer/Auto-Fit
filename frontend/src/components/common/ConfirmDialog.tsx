@@ -1,5 +1,5 @@
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
-import { fontFamilies } from '@/src/theme';
+import { Modal, Pressable, View } from 'react-native';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from './Text';
 
 export function ConfirmDialog({
@@ -19,6 +19,7 @@ export function ConfirmDialog({
   onSecondary: () => void;
   onPrimary: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Modal animationType="fade" onRequestClose={onSecondary} transparent visible={visible}>
       <View style={styles.overlay}>
@@ -39,40 +40,42 @@ export function ConfirmDialog({
   );
 }
 
-const styles = StyleSheet.create({
-  overlay: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(13, 13, 20, 0.45)',
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-  },
-  dialog: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    maxWidth: 360,
-    padding: 24,
-    width: '100%',
-  },
-  title: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
-  description: { color: '#5E5D66', fontSize: 14, lineHeight: 21, marginTop: 6 },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 20 },
-  secondary: {
-    alignItems: 'center',
-    backgroundColor: '#F2F4F6',
-    borderRadius: 12,
-    flex: 1,
-    height: 44,
-    justifyContent: 'center',
-  },
-  secondaryLabel: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  primary: {
-    alignItems: 'center',
-    backgroundColor: '#5246C6',
-    borderRadius: 12,
-    flex: 1,
-    height: 44,
-    justifyContent: 'center',
-  },
-  primaryLabel: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 14 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    overlay: {
+      alignItems: 'center',
+      backgroundColor: 'rgba(13, 13, 20, 0.45)',
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: 40,
+    },
+    dialog: {
+      backgroundColor: colors.background,
+      borderRadius: 20,
+      maxWidth: 360,
+      padding: 24,
+      width: '100%',
+    },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
+    description: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, marginTop: 6 },
+    actions: { flexDirection: 'row', gap: 8, marginTop: 20 },
+    secondary: {
+      alignItems: 'center',
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 12,
+      flex: 1,
+      height: 44,
+      justifyContent: 'center',
+    },
+    secondaryLabel: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    primary: {
+      alignItems: 'center',
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      flex: 1,
+      height: 44,
+      justifyContent: 'center',
+    },
+    primaryLabel: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 14 },
+  } as const;
+}

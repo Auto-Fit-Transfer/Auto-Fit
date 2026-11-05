@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
 
 import { ApiError } from '@/src/api/client';
 import {
@@ -9,7 +9,7 @@ import {
 } from '@/src/api/diet';
 import { Text } from '@/src/components/common';
 import { weeklyDietErrorCode } from '@/src/features/diet/weeklyDietErrors';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const days: Record<WeeklyDay, string> = { monday: '월', tuesday: '화', wednesday: '수', thursday: '목', friday: '금', saturday: '토', sunday: '일' };
 const meals: { key: WeeklyMealType; label: string }[] = [
@@ -32,6 +32,8 @@ function moveWeek(week: Date, amount: number) {
 }
 
 export function WeeklyDietContent({ showHeader = false }: { showHeader?: boolean }) {
+  const { colors } = useAppTheme();
+  const s = useThemedStyles(createSStyles);
   const router = useRouter();
   const [week, setWeek] = useState(mondayInKorea);
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);
@@ -101,7 +103,7 @@ export function WeeklyDietContent({ showHeader = false }: { showHeader?: boolean
       <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="다음 주" onPress={() => setWeek(moveWeek(week, 1))} style={s.weekButton}><Text style={s.weekArrow}>›</Text></Pressable>
     </View>
     {Boolean(error) && <View style={s.error}><Text style={s.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setReload((value) => value + 1)}><Text style={s.outlineText}>다시 불러오기</Text></Pressable></View>}
-    {loading && !shownPlan ? <ActivityIndicator color="#5246C6" style={s.loading} /> : shownPlan ? <>
+    {loading && !shownPlan ? <ActivityIndicator color={colors.primaryText} style={s.loading} /> : shownPlan ? <>
       {Boolean(shownPlan.result.summary) && <Text style={s.summary}>{shownPlan.result.summary}</Text>}
       {Boolean(shownPlan.result.strategy) && <Text style={s.muted}>{shownPlan.result.strategy}</Text>}
       {shownPlan.result.weekly_plan.map((entry) => <View key={entry.day} style={s.daySection}>
@@ -127,12 +129,14 @@ export function WeeklyDietContent({ showHeader = false }: { showHeader?: boolean
   </View>;
 }
 
-const s = StyleSheet.create({
-  content: { gap: 14 },
-  header: { height: 48, flexDirection: 'row', alignItems: 'center' }, back: { width: 48, height: 48, justifyContent: 'center' }, backText: { fontSize: 34, color: '#1B1B22' }, headerTitle: { fontSize: 19, color: '#1B1B22', fontFamily: fontFamilies.pretendardBold },
-  weekRow: { backgroundColor: '#FAFBFC', flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#DDE1E6', borderRadius: 12, padding: 8 }, weekButton: { width: 40, height: 42, alignItems: 'center', justifyContent: 'center' }, weekArrow: { fontSize: 28, color: '#5246C6' }, weekText: { flex: 1, alignItems: 'center' }, weekTitle: { fontSize: 16, color: '#1B1B22', fontFamily: fontFamilies.pretendardSemiBold }, muted: { fontSize: 13, color: '#646670', lineHeight: 20 }, loading: { marginTop: 40 },
-  summary: { fontSize: 16, color: '#1B1B22', lineHeight: 24, fontFamily: fontFamilies.pretendardSemiBold }, outline: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#5246C6', padding: 12, borderRadius: 10, alignItems: 'center' }, outlineText: { color: '#5246C6', fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
-  daySection: { gap: 10, marginTop: 14 }, dayTitle: { fontSize: 19, color: '#1B1B22', fontFamily: fontFamilies.pretendardBold }, date: { fontSize: 13, color: '#646670', fontFamily: fontFamilies.pretendardRegular },
-  mealCard: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DDE1E6', borderRadius: 12, padding: 14, gap: 7 }, mealHead: { flexDirection: 'row', justifyContent: 'space-between' }, mealLabel: { fontSize: 13, color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold }, kcal: { fontSize: 13, color: '#646670' }, mealTitle: { fontSize: 16, color: '#1B1B22', fontFamily: fontFamilies.pretendardBold }, foods: { fontSize: 13, color: '#454650', lineHeight: 20 }, guidance: { fontSize: 13, color: '#646670', lineHeight: 20 }, actions: { flexDirection: 'row', gap: 8, marginTop: 4 }, recipeButton: { backgroundColor: '#ECE9FF', borderRadius: 9, paddingHorizontal: 15, paddingVertical: 11, alignItems: 'center' }, recipeText: { color: '#5246C6', fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold }, smallOutline: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DDE1E6', borderRadius: 9, paddingHorizontal: 15, paddingVertical: 10 },
-  empty: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DDE1E6', borderRadius: 12, padding: 20, gap: 12 }, emptyTitle: { fontSize: 17, color: '#1B1B22', fontFamily: fontFamilies.pretendardBold }, error: { padding: 14, backgroundColor: '#FFF1F1', borderRadius: 10, gap: 10 }, errorText: { color: '#9A2525', fontSize: 13 },
-});
+function createSStyles({ colors }: AppTheme) {
+  return {
+    content: { gap: 14 },
+    header: { height: 48, flexDirection: 'row', alignItems: 'center' }, back: { width: 48, height: 48, justifyContent: 'center' }, backText: { fontSize: 34, color: colors.textPrimary }, headerTitle: { fontSize: 19, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    weekRow: { backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 8 }, weekButton: { width: 40, height: 42, alignItems: 'center', justifyContent: 'center' }, weekArrow: { fontSize: 28, color: colors.primaryText }, weekText: { flex: 1, alignItems: 'center' }, weekTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold }, muted: { fontSize: 13, color: colors.textSecondary, lineHeight: 20 }, loading: { marginTop: 40 },
+    summary: { fontSize: 16, color: colors.textPrimary, lineHeight: 24, fontFamily: fontFamilies.pretendardSemiBold }, outline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary, padding: 12, borderRadius: 10, alignItems: 'center' }, outlineText: { color: colors.primaryText, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
+    daySection: { gap: 10, marginTop: 14 }, dayTitle: { fontSize: 19, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, date: { fontSize: 13, color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
+    mealCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, gap: 7 }, mealHead: { flexDirection: 'row', justifyContent: 'space-between' }, mealLabel: { fontSize: 13, color: colors.primaryText, fontFamily: fontFamilies.pretendardSemiBold }, kcal: { fontSize: 13, color: colors.textSecondary }, mealTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, foods: { fontSize: 13, color: colors.textBody, lineHeight: 20 }, guidance: { fontSize: 13, color: colors.textSecondary, lineHeight: 20 }, actions: { flexDirection: 'row', gap: 8, marginTop: 4 }, recipeButton: { backgroundColor: colors.primaryLight, borderRadius: 9, paddingHorizontal: 15, paddingVertical: 11, alignItems: 'center' }, recipeText: { color: colors.primaryText, fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold }, smallOutline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 9, paddingHorizontal: 15, paddingVertical: 10 },
+    empty: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20, gap: 12 }, emptyTitle: { fontSize: 17, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, error: { padding: 14, backgroundColor: colors.dangerLight, borderRadius: 10, gap: 10 }, errorText: { color: colors.danger, fontSize: 13 },
+  } as const;
+}

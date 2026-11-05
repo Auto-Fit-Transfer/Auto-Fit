@@ -125,7 +125,6 @@ export default function DisplaySettingsScreen() {
           <Text style={[styles.simpleActionText, isDark && dark.text]}>{simple ? '기본 모드로 바꾸기' : '간편 모드로 바꾸기'}</Text>
         </Pressable>
       </View>
-      <Text style={[styles.note, isDark && dark.secondary]}>간편 모드는 홈·식단·운동·커뮤니티·마이의 주요 화면에 적용돼요.</Text>
     </ScrollView>
     <AppBottomSheet visible={confirmSimple} onClose={() => setConfirmSimple(false)} title={simple ? '기본 모드로 돌아갈까요?' : '간편 모드로 바꿀까요?'} scrollable="when-overflow" contentStyle={styles.confirmContent} footer={
       <View style={styles.confirmFooter}>
@@ -214,9 +213,9 @@ const styles = StyleSheet.create({
 
 const simpleStyles = StyleSheet.create({
   content: { gap: 20 },
-  sectionTitle: { fontSize: 20 },
-  simpleTitle: { fontSize: 18 },
-  simpleDescription: { fontSize: 14, lineHeight: 21 },
+  sectionTitle: {},
+  simpleTitle: {},
+  simpleDescription: {},
 });
 
 const dark = StyleSheet.create({

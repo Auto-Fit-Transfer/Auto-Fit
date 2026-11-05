@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable } from 'react-native';
 
-import { colors, fontFamilies, spacing } from '@/src/theme';
+import { fontFamilies, spacing, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 export interface CommunityFollowButtonProps {
@@ -18,6 +18,7 @@ export function CommunityFollowButton({
   onPress,
   wide = false,
 }: CommunityFollowButtonProps) {
+  const styles = useThemedStyles(createStyles);
   const label = following ? '팔로잉' : followsMe ? '맞팔로우' : '팔로우';
   return (
     <Pressable
@@ -40,21 +41,23 @@ export function CommunityFollowButton({
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    borderRadius: 8,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 34,
-    paddingHorizontal: spacing.md,
-  },
-  follow: { backgroundColor: '#FFFFFF', borderColor: colors.border },
-  following: { backgroundColor: colors.surfaceSoft, borderColor: colors.surfaceSoft },
-  wide: { alignSelf: 'stretch', borderRadius: 12, minHeight: 44 },
-  pressed: { opacity: 0.75 },
-  text: { fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  followText: { color: colors.textPrimary },
-  followingText: { color: colors.textPrimary },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    button: {
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      borderRadius: 8,
+      borderWidth: 1,
+      justifyContent: 'center',
+      minHeight: 34,
+      paddingHorizontal: spacing.md,
+    },
+    follow: { backgroundColor: colors.background, borderColor: colors.border },
+    following: { backgroundColor: colors.surfaceMuted, borderColor: colors.surfaceMuted },
+    wide: { alignSelf: 'stretch', borderRadius: 12, minHeight: 44 },
+    pressed: { opacity: 0.75 },
+    text: { fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    followText: { color: colors.textPrimary },
+    followingText: { color: colors.textPrimary },
+  } as const;
+}

@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line } from 'react-native-svg';
 import { Text } from '@/src/components/common';
+import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const RECORD_SECONDS = 10;
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
@@ -40,6 +41,8 @@ function deletePickedCache(uri: string | null) {
 }
 
 function FramingGuide({ height }: { height: number }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <View
       accessibilityElementsHidden
@@ -48,7 +51,7 @@ function FramingGuide({ height }: { height: number }) {
     >
       <Svg height="100%" viewBox="0 0 220 350" width="100%">
         <Line
-          stroke="#888A8E"
+          stroke={colors.textSecondary}
           strokeWidth="17"
           strokeLinecap="round"
           x1="119"
@@ -57,7 +60,7 @@ function FramingGuide({ height }: { height: number }) {
           y2="112"
         />
         <Line
-          stroke="#888A8E"
+          stroke={colors.textSecondary}
           strokeWidth="17"
           strokeLinecap="round"
           x1="112"
@@ -66,7 +69,7 @@ function FramingGuide({ height }: { height: number }) {
           y2="172"
         />
         <Line
-          stroke="#888A8E"
+          stroke={colors.textSecondary}
           strokeWidth="17"
           strokeLinecap="round"
           x1="112"
@@ -75,7 +78,7 @@ function FramingGuide({ height }: { height: number }) {
           y2="139"
         />
         <Line
-          stroke="#888A8E"
+          stroke={colors.textSecondary}
           strokeWidth="17"
           strokeLinecap="round"
           x1="94"
@@ -84,7 +87,7 @@ function FramingGuide({ height }: { height: number }) {
           y2="205"
         />
         <Line
-          stroke="#888A8E"
+          stroke={colors.textSecondary}
           strokeWidth="17"
           strokeLinecap="round"
           x1="158"
@@ -93,7 +96,7 @@ function FramingGuide({ height }: { height: number }) {
           y2="285"
         />
         <Line
-          stroke="#888A8E"
+          stroke={colors.textSecondary}
           strokeWidth="17"
           strokeLinecap="round"
           x1="132"
@@ -101,7 +104,7 @@ function FramingGuide({ height }: { height: number }) {
           y1="285"
           y2="289"
         />
-        <Circle cx="119" cy="65" fill="#888A8E" r="18" />
+        <Circle cx="119" cy="65" fill={colors.textSecondary} r="18" />
         {[
           [119, 65],
           [117, 92],
@@ -119,6 +122,7 @@ function FramingGuide({ height }: { height: number }) {
 }
 
 export default function PostureCaptureScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { source: initialSource } = useLocalSearchParams<{ source?: string }>();
   const insets = useSafeAreaInsets();
@@ -425,158 +429,160 @@ export default function PostureCaptureScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: cameraBackground },
-  scrim: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: 'rgba(12,14,16,0.38)',
-  },
-  top: { paddingHorizontal: 16, backgroundColor: 'rgba(12,14,16,0.86)', paddingBottom: 15 },
-  topRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  closeButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#151719',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  closeText: { color: '#FFF', fontSize: 29, lineHeight: 32 },
-  recordBadge: {
-    backgroundColor: '#101214',
-    borderRadius: 20,
-    paddingHorizontal: 11,
-    paddingVertical: 9,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  exerciseBadge: {
-    backgroundColor: '#101214',
-    borderRadius: 20,
-    paddingHorizontal: 9,
-    paddingVertical: 9,
-  },
-  badgeText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
-  recordDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#81858A' },
-  recordDotActive: { backgroundColor: recordingRed },
-  progressTrack: {
-    height: 4,
-    borderRadius: 2,
-    marginTop: 14,
-    backgroundColor: '#62666B',
-    overflow: 'hidden',
-  },
-  progressFill: { height: 4, backgroundColor: recordingRed },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
-  framingLabel: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '700',
-    backgroundColor: '#111316',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  guide: {
-    width: 240,
-    borderWidth: 2,
-    borderColor: '#D9DCDF',
-    borderStyle: 'dashed',
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 8,
-  },
-  bottom: {
-    backgroundColor: '#101113',
-    alignItems: 'center',
-    paddingTop: 16,
-    minHeight: 178,
-    paddingHorizontal: 20,
-  },
-  tip: { backgroundColor: '#11191A', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 7 },
-  tipText: { color: '#E2E8E7', fontSize: 11, fontWeight: '600', textAlign: 'center' },
-  autoStop: {
-    color: muted,
-    fontSize: 11,
-    backgroundColor: '#181A1D',
-    paddingHorizontal: 11,
-    paddingVertical: 7,
-    borderRadius: 14,
-    marginTop: 8,
-    overflow: 'hidden',
-  },
-  controls: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    marginTop: 15,
-  },
-  sideControl: { alignItems: 'center', minWidth: 60, gap: 4 },
-  sideIcon: {
-    width: 39,
-    height: 39,
-    borderRadius: 20,
-    backgroundColor: '#313337',
-    color: '#FFF',
-    fontSize: 27,
-    textAlign: 'center',
-    overflow: 'hidden',
-  },
-  sideLabel: { color: '#F1F1F1', fontSize: 11 },
-  shutter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 5,
-    borderColor: '#FFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shutterDisabled: { opacity: 0.45 },
-  shutterStart: { width: 30, height: 30, borderRadius: 7, backgroundColor: recordingRed },
-  shutterStop: { width: 25, height: 25, borderRadius: 5, backgroundColor: recordingRed },
-  review: { alignItems: 'center', gap: 10, paddingVertical: 7 },
-  reviewTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
-  reviewCopy: { color: '#D6D9DC', fontSize: 12, textAlign: 'center' },
-  retakeButton: {
-    marginTop: 8,
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    paddingHorizontal: 30,
-    paddingVertical: 13,
-  },
-  retakeText: { color: '#222', fontSize: 15, fontWeight: '700' },
-  permissionPanel: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: '#1B1E21',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 28,
-    gap: 16,
-  },
-  permissionClose: { position: 'absolute', top: 55, right: 24, padding: 8 },
-  permissionCloseText: { color: '#FFF', fontSize: 15 },
-  permissionTitle: { color: '#FFF', fontSize: 20, fontWeight: '700' },
-  permissionCopy: { color: '#D6D9DC', fontSize: 14, textAlign: 'center', lineHeight: 22 },
-  permissionButton: {
-    backgroundColor: '#FFF',
-    paddingVertical: 13,
-    paddingHorizontal: 22,
-    borderRadius: 12,
-  },
-  permissionButtonText: { color: '#222', fontWeight: '700' },
-  albumFallback: { paddingVertical: 10, paddingHorizontal: 16 },
-  albumFallbackText: { color: '#FFF', fontSize: 13, textDecorationLine: 'underline' },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: cameraBackground },
+    scrim: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      backgroundColor: 'rgba(12,14,16,0.38)',
+    },
+    top: { paddingHorizontal: 16, backgroundColor: 'rgba(12,14,16,0.86)', paddingBottom: 15 },
+    topRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+    closeButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: '#151719',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    closeText: { color: '#FFF', fontSize: 29, lineHeight: 32 },
+    recordBadge: {
+      backgroundColor: '#101214',
+      borderRadius: 20,
+      paddingHorizontal: 11,
+      paddingVertical: 9,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    exerciseBadge: {
+      backgroundColor: '#101214',
+      borderRadius: 20,
+      paddingHorizontal: 9,
+      paddingVertical: 9,
+    },
+    badgeText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+    recordDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#81858A' },
+    recordDotActive: { backgroundColor: recordingRed },
+    progressTrack: {
+      height: 4,
+      borderRadius: 2,
+      marginTop: 14,
+      backgroundColor: '#62666B',
+      overflow: 'hidden',
+    },
+    progressFill: { height: 4, backgroundColor: recordingRed },
+    center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+    framingLabel: {
+      color: '#FFF',
+      fontSize: 12,
+      fontWeight: '700',
+      backgroundColor: '#111316',
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      borderRadius: 16,
+      overflow: 'hidden',
+    },
+    guide: {
+      width: 240,
+      borderWidth: 2,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 8,
+    },
+    bottom: {
+      backgroundColor: '#101113',
+      alignItems: 'center',
+      paddingTop: 16,
+      minHeight: 178,
+      paddingHorizontal: 20,
+    },
+    tip: { backgroundColor: '#11191A', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 7 },
+    tipText: { color: '#E2E8E7', fontSize: 11, fontWeight: '600', textAlign: 'center' },
+    autoStop: {
+      color: muted,
+      fontSize: 11,
+      backgroundColor: '#181A1D',
+      paddingHorizontal: 11,
+      paddingVertical: 7,
+      borderRadius: 14,
+      marginTop: 8,
+      overflow: 'hidden',
+    },
+    controls: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-around',
+      marginTop: 15,
+    },
+    sideControl: { alignItems: 'center', minWidth: 60, gap: 4 },
+    sideIcon: {
+      width: 39,
+      height: 39,
+      borderRadius: 20,
+      backgroundColor: '#313337',
+      color: '#FFF',
+      fontSize: 27,
+      textAlign: 'center',
+      overflow: 'hidden',
+    },
+    sideLabel: { color: '#F1F1F1', fontSize: 11 },
+    shutter: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      borderWidth: 5,
+      borderColor: '#FFF',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    shutterDisabled: { opacity: 0.45 },
+    shutterStart: { width: 30, height: 30, borderRadius: 7, backgroundColor: recordingRed },
+    shutterStop: { width: 25, height: 25, borderRadius: 5, backgroundColor: recordingRed },
+    review: { alignItems: 'center', gap: 10, paddingVertical: 7 },
+    reviewTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+    reviewCopy: { color: '#D6D9DC', fontSize: 12, textAlign: 'center' },
+    retakeButton: {
+      marginTop: 8,
+      backgroundColor: colors.background,
+      borderRadius: 12,
+      paddingHorizontal: 30,
+      paddingVertical: 13,
+    },
+    retakeText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+    permissionPanel: {
+      position: 'absolute',
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      backgroundColor: '#1B1E21',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 28,
+      gap: 16,
+    },
+    permissionClose: { position: 'absolute', top: 55, right: 24, padding: 8 },
+    permissionCloseText: { color: '#FFF', fontSize: 15 },
+    permissionTitle: { color: '#FFF', fontSize: 20, fontWeight: '700' },
+    permissionCopy: { color: '#D6D9DC', fontSize: 14, textAlign: 'center', lineHeight: 22 },
+    permissionButton: {
+      backgroundColor: colors.background,
+      paddingVertical: 13,
+      paddingHorizontal: 22,
+      borderRadius: 12,
+    },
+    permissionButtonText: { color: colors.textPrimary, fontWeight: '700' },
+    albumFallback: { paddingVertical: 10, paddingHorizontal: 16 },
+    albumFallbackText: { color: '#FFF', fontSize: 13, textDecorationLine: 'underline' },
+  } as const;
+}

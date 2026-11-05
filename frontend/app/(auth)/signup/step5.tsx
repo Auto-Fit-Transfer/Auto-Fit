@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, Keyboard, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Keyboard, Pressable, View } from 'react-native';
 import { saveExerciseGoal, type ExerciseGoalInput } from '@/src/api/exercise';
 import {
   completeOnboarding,
@@ -13,7 +13,7 @@ import {
 import { AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import { useSignup, type SignupExerciseGoal } from '@/src/features/signup/SignupContext';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 const goalType: Record<SignupExerciseGoal, ExerciseGoalType> = {
@@ -49,6 +49,7 @@ const frequencyOptions = [
 ] as const;
 
 export default function SignUpStep5Screen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { flow } = useLocalSearchParams<{ flow?: string }>();
   const isPostLogin = flow === 'post-login';
@@ -187,6 +188,7 @@ export default function SignUpStep5Screen() {
 }
 
 function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityRole="radio"
@@ -199,30 +201,32 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
   );
 }
 
-const styles = StyleSheet.create({
-  form: { gap: 28 },
-  sectionTitle: {
-    color: '#17161D',
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 10,
-  },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    alignItems: 'center',
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 40,
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-  },
-  chipSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
-  chipText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  chipTextSelected: { color: '#FFFFFF' },
-  unit: { color: '#5E5D66', fontSize: 16 },
-  later: { alignItems: 'center', height: 44, justifyContent: 'center', marginTop: 8 },
-  laterText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    form: { gap: 28 },
+    sectionTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+      lineHeight: 24,
+      marginBottom: 10,
+    },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 999,
+      borderWidth: 1,
+      height: 40,
+      justifyContent: 'center',
+      paddingHorizontal: 16,
+    },
+    chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    chipTextSelected: { color: '#FFFFFF' },
+    unit: { color: colors.textSecondary, fontSize: 16 },
+    later: { alignItems: 'center', height: 44, justifyContent: 'center', marginTop: 8 },
+    laterText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  } as const;
+}

@@ -1,8 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
 
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import HeartIcon from '@/assets/icons/deco/Heart.svg';
@@ -17,7 +16,7 @@ import {
   type CommunityPost,
 } from '@/src/api/community';
 import { COMMUNITY_POST_CATEGORY_LABELS } from '@/src/components/community';
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 type Tab = 'posts' | 'comments' | 'likes' | 'scraps';
@@ -27,6 +26,8 @@ const tabs: { key: Tab; label: string }[] = [
 ];
 
 export default function CommunityActivityScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
@@ -120,7 +121,7 @@ export default function CommunityActivityScreen() {
   const header = (
     <>
       <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
         <Text style={styles.title}>커뮤니티 활동</Text>
         <View style={styles.back} />
       </View>
@@ -150,7 +151,6 @@ export default function CommunityActivityScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="dark" />
       <FlatList<CommunityPost | CommunityActivityItem>
         data={loading || error ? [] : tab === 'posts' ? posts : tab === 'scraps' ? bookmarks : activities}
         keyExtractor={(item) => tab === 'comments' || tab === 'likes' ? (item as CommunityActivityItem).activity_id : (item as CommunityPost).post_id}
@@ -176,8 +176,8 @@ export default function CommunityActivityScreen() {
               <View style={styles.metaRow}>
                 <Text style={styles.meta}>{(activity?.occurred_at ?? post.created_at).slice(0, 10).replace(/-/g, '.')}</Text>
                 <View style={styles.reactions}>
-                  <HeartIcon color="#5E5D66" height={14} width={14} /><Text style={styles.meta}>{post.like_count}</Text>
-                  <ChatIcon color="#5E5D66" height={14} width={14} /><Text style={styles.meta}>{post.comment_count}</Text>
+                  <HeartIcon color={colors.textSecondary} height={14} width={14} /><Text style={styles.meta}>{post.like_count}</Text>
+                  <ChatIcon color={colors.textSecondary} height={14} width={14} /><Text style={styles.meta}>{post.comment_count}</Text>
                 </View>
               </View>
             </View>
@@ -189,34 +189,36 @@ export default function CommunityActivityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 20 },
-  header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
-  back: { width: 32, minHeight: 32, justifyContent: 'center' },
-  title: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
-  tabs: { flexDirection: 'row', backgroundColor: colors.surfaceSoft, borderRadius: 12, padding: 4, gap: 2 },
-  activeTab: { flex: 1, borderRadius: 12, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', height: 35 },
-  activeTabText: { color: colors.textPrimary, fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold },
-  inactiveTab: { flex: 1, alignItems: 'center', justifyContent: 'center', height: 35 },
-  inactiveTabText: { color: colors.textSecondary, fontSize: 12 },
-  tabNote: { color: colors.textSecondary, fontSize: 12, lineHeight: 17, marginTop: 8 },
-  listHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 8 },
-  listTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
-  sort: { fontSize: 12, color: colors.textSecondary },
-  spinner: { marginVertical: 30 },
-  errorBox: { marginVertical: 20, padding: 15, borderRadius: 12, backgroundColor: colors.dangerLight },
-  error: { color: colors.danger, fontSize: 12 },
-  empty: { alignItems: 'center', paddingVertical: 50, gap: 12 },
-  emptyTitle: { color: colors.textSecondary, fontSize: 14 },
-  writeLink: { color: colors.primary, fontSize: 14 },
-  post: { borderBottomWidth: 1, borderColor: colors.border, flexDirection: 'row', gap: 12, paddingVertical: 16 },
-  postText: { flex: 1, gap: 5 },
-  postTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, lineHeight: 23 },
-  category: { alignSelf: 'flex-start', backgroundColor: colors.surfaceSoft, borderRadius: 6, color: colors.textBody, fontSize: 12, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3 },
-  metaRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
-  reactions: { alignItems: 'center', flexDirection: 'row', gap: 4 },
-  postPreview: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
-  meta: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
-  thumbnail: { width: 72, height: 72, borderRadius: 12, backgroundColor: colors.background },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    screen: { flex: 1, backgroundColor: colors.background },
+    content: { paddingHorizontal: 20 },
+    header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
+    back: { width: 32, minHeight: 32, justifyContent: 'center' },
+    title: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    tabs: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: 12, padding: 4, gap: 2 },
+    activeTab: { flex: 1, borderRadius: 12, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', height: 35 },
+    activeTabText: { color: colors.textPrimary, fontSize: 12, fontFamily: fontFamilies.pretendardSemiBold },
+    inactiveTab: { flex: 1, alignItems: 'center', justifyContent: 'center', height: 35 },
+    inactiveTabText: { color: colors.textSecondary, fontSize: 12 },
+    tabNote: { color: colors.textSecondary, fontSize: 12, lineHeight: 17, marginTop: 8 },
+    listHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 8 },
+    listTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    sort: { fontSize: 12, color: colors.textSecondary },
+    spinner: { marginVertical: 30 },
+    errorBox: { marginVertical: 20, padding: 15, borderRadius: 12, backgroundColor: colors.dangerLight },
+    error: { color: colors.danger, fontSize: 12 },
+    empty: { alignItems: 'center', paddingVertical: 50, gap: 12 },
+    emptyTitle: { color: colors.textSecondary, fontSize: 14 },
+    writeLink: { color: colors.primary, fontSize: 14 },
+    post: { borderBottomWidth: 1, borderColor: colors.border, flexDirection: 'row', gap: 12, paddingVertical: 16 },
+    postText: { flex: 1, gap: 5 },
+    postTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, lineHeight: 23 },
+    category: { alignSelf: 'flex-start', backgroundColor: colors.surfaceMuted, borderRadius: 6, color: colors.textBody, fontSize: 12, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3 },
+    metaRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
+    reactions: { alignItems: 'center', flexDirection: 'row', gap: 4 },
+    postPreview: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
+    meta: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
+    thumbnail: { width: 72, height: 72, borderRadius: 12, backgroundColor: colors.background },
+  } as const;
+}

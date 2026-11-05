@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, TextInput, View } from 'react-native';
 
 import {
   getAllergies,
@@ -8,11 +8,13 @@ import {
 } from '@/src/api/allergies';
 import { getApiErrorMessage } from '@/src/api/client';
 import { AppBottomSheet, Text } from '@/src/components/common';
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type Props = { visible: boolean; onClose: () => void };
 
 export function AllergySettingsSheet({ visible, onClose }: Props) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const [catalog, setCatalog] = useState<AllergyType[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [customNames, setCustomNames] = useState<string[]>([]);
@@ -174,25 +176,27 @@ export function AllergySettingsSheet({ visible, onClose }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
-  content: { gap: 14 },
-  sectionTitle: { fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold, color: colors.textPrimary },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { backgroundColor: colors.surface, minHeight: 31, borderWidth: 1, borderColor: colors.border, borderRadius: 17, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
-  selected: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-  chipText: { fontSize: 12, color: colors.textBody },
-  selectedText: { fontSize: 12, color: colors.primary, fontFamily: fontFamilies.pretendardMedium },
-  addRow: { flexDirection: 'row', gap: 8 },
-  input: { backgroundColor: colors.surface, flex: 1, height: 39, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, fontSize: 12, color: colors.textPrimary },
-  addButton: { backgroundColor: colors.surface, width: 45, height: 39, borderWidth: 1, borderColor: colors.border, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  addText: { fontSize: 12, color: colors.textBody },
-  reference: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, padding: 12, gap: 4 },
-  referenceTitle: { fontSize: 12, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
-  note: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
-  retry: { color: colors.primaryDark, fontSize: 13 },
-  error: { color: colors.danger, fontSize: 12 },
-  success: { color: colors.success, fontSize: 12 },
-  save: { height: 48, borderRadius: 9, backgroundColor: colors.primaryDark, alignItems: 'center', justifyContent: 'center' },
-  disabled: { opacity: 0.45 },
-  saveText: { color: colors.surface, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    content: { gap: 14 },
+    sectionTitle: { fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold, color: colors.textPrimary },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: { backgroundColor: colors.surface, minHeight: 31, borderWidth: 1, borderColor: colors.border, borderRadius: 17, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+    selected: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+    chipText: { fontSize: 12, color: colors.textBody },
+    selectedText: { fontSize: 12, color: colors.primary, fontFamily: fontFamilies.pretendardMedium },
+    addRow: { flexDirection: 'row', gap: 8 },
+    input: { backgroundColor: colors.surface, flex: 1, height: 39, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, fontSize: 12, color: colors.textPrimary },
+    addButton: { backgroundColor: colors.surface, width: 45, height: 39, borderWidth: 1, borderColor: colors.border, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+    addText: { fontSize: 12, color: colors.textBody },
+    reference: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, padding: 12, gap: 4 },
+    referenceTitle: { fontSize: 12, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
+    note: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+    retry: { color: colors.primaryPressed, fontSize: 13 },
+    error: { color: colors.danger, fontSize: 12 },
+    success: { color: colors.success, fontSize: 12 },
+    save: { height: 48, borderRadius: 9, backgroundColor: colors.primaryPressed, alignItems: 'center', justifyContent: 'center' },
+    disabled: { opacity: 0.45 },
+    saveText: { color: colors.surface, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+  } as const;
+}

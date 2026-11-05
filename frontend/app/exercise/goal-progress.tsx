@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveExerciseGoal, getExerciseHistory } from '@/src/api/exercise';
 import { getRunningApiErrorMessage, getRunningHistory } from '@/src/api/running';
@@ -9,14 +8,13 @@ import { getApiErrorMessage } from '@/src/api/client';
 import { chartActivity, collectActivityDays, localDayKey, shiftDay, summarizeActivity, type ActivityDay } from '@/src/features/exercise/goalProgress';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 type Goal = { goal_type: string; weekly_frequency: number; weekly_duration_minutes: number; starts_on: string; ends_on: string };
 type Period = 'week' | 'month';
 type Metric = 'minutes' | 'workouts' | 'runningMinutes';
-const purple = '#5246C6';
 const goalLabels: Record<string, string> = {
   muscle_gain: '근육량 늘리기', weight_loss: '체중 감량하기',
   endurance: '체력 기르기', maintenance: '꾸준히 운동하기',
@@ -25,6 +23,8 @@ const goalLabels: Record<string, string> = {
 const shortDate = (date: Date) => `${date.getMonth() + 1}월 ${date.getDate()}일`;
 
 export default function GoalProgress() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { preferences } = useDisplayPreferences();
@@ -83,9 +83,8 @@ export default function GoalProgress() {
   const unit = metric === 'workouts' ? '회' : '분';
 
   return <View style={styles.root}>
-    <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 38 }]}>
-      <View style={styles.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable><Text style={[styles.title, styles.titleCentered]}>진행 현황</Text><SimpleReadButton text={`${period === 'week' ? '주간' : '월간'} 운동 진행 현황입니다. ${Math.round(summary.minutes)}분 운동했고 ${summary.workouts}회 완료했어요. 목표까지 남은 양을 화면에서 확인하세요.`} /></View>
+      <View style={styles.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable><Text style={[styles.title, styles.titleCentered]}>진행 현황</Text><SimpleReadButton text={`${period === 'week' ? '주간' : '월간'} 운동 진행 현황입니다. ${Math.round(summary.minutes)}분 운동했고 ${summary.workouts}회 완료했어요. 목표까지 남은 양을 화면에서 확인하세요.`} /></View>
       <View style={styles.segment}>{([['week', '주간'], ['month', '월간']] as const).map(([key, label]) =>
         <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: period === key }} onPress={() => { if (period !== key || offset !== 0) setLoading(true); setPeriod(key); setOffset(0); }} style={[styles.segmentChoice, period === key && styles.segmentSelected]}><Text style={[styles.segmentText, period === key && styles.segmentTextSelected]}>{label}</Text></Pressable>)}</View>
       <View style={styles.dateRow}>
@@ -93,7 +92,7 @@ export default function GoalProgress() {
         <Text style={styles.dateTitle}>{shortDate(currentStart)} – {shortDate(currentEnd)}</Text>
         <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="다음 기간" disabled={offset >= 0} onPress={() => { setLoading(true); setOffset((value) => value + 1); }}><Text style={[styles.arrow, offset >= 0 && styles.disabled]}>›</Text></Pressable>
       </View>
-      {loading ? <ActivityIndicator color={purple} /> : error ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> : <>
+      {loading ? <ActivityIndicator color={colors.primaryText} /> : error ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> : <>
         <View style={styles.goalRow}><View><Text style={styles.goalName}>{goal ? goalLabels[goal.goal_type] ?? '운동 목표' : '설정한 목표가 없어요'}</Text><Text style={styles.caption}>{goal ? `${goal.starts_on} – ${goal.ends_on}` : '목표를 만들면 진행 상황을 비교할 수 있어요.'}</Text></View><Pressable accessibilityRole="button" onPress={() => router.push('/exercise/goal')} style={styles.outline}><Text style={styles.outlineText}>{goal ? '목표 바꾸기' : '목표 설정'}</Text></Pressable></View>
         <View style={styles.tabs}>{([['minutes', '운동 시간'], ['workouts', '운동 횟수'], ['runningMinutes', '러닝 시간']] as const).map(([key, label]) =>
           <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: metric === key }} onPress={() => setMetric(key)} style={[styles.tab, metric === key && styles.selectedTab]}><Text style={[styles.tabText, metric === key && styles.selectedTabText]}>{label}</Text></Pressable>)}</View>
@@ -111,22 +110,24 @@ export default function GoalProgress() {
   </View>;
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, gap: 17 },
-  titleCentered: { flex: 1, marginRight: 10, textAlign: 'center' },
-  header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, back: { color: '#17161D', fontSize: 32, lineHeight: 36 }, title: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  segment: { flexDirection: 'row', backgroundColor: '#F2F4F6', borderRadius: 24, padding: 3 }, segmentChoice: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 20 }, segmentSelected: { backgroundColor: '#FFF' }, segmentText: { color: '#5E5D66', fontSize: 14 }, segmentTextSelected: { color: '#17161D', fontFamily: fontFamilies.pretendardSemiBold },
-  dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, arrow: { fontSize: 28, color: '#17161D' }, disabled: { color: '#C9C9CF' }, dateTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  goalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, goalName: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, caption: { color: '#5E5D66', fontSize: 12, lineHeight: 17 }, outline: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 8, padding: 9 }, outlineText: { color: '#17161D', fontSize: 14 },
-  tabs: { flexDirection: 'row', gap: 6 }, tab: { borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 20, paddingHorizontal: 11, paddingVertical: 9 }, selectedTab: { backgroundColor: purple, borderColor: purple }, tabText: { color: '#5E5D66', fontSize: 14 }, selectedTabText: { color: '#FFF' },
-  card: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderWidth: 1, borderRadius: 16, padding: 16, gap: 14 }, row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, sectionTitle: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, delta: { color: '#24835E', fontSize: 12 },
-  bigNumber: { color: '#17161D', fontSize: 24, fontFamily: fontFamilies.pretendardBold }, target: { color: '#5E5D66', fontSize: 14 }, progressTrack: { height: 7, borderRadius: 4, backgroundColor: '#E9E9EE', overflow: 'hidden' }, progressFill: { height: 7, backgroundColor: purple },
-  chart: { height: 160, flexDirection: 'row', alignItems: 'flex-end', gap: 5, borderBottomWidth: 1, borderBottomColor: '#DFE2E7' }, barColumn: { flex: 1, height: '100%', justifyContent: 'flex-end', alignItems: 'center', gap: 7 }, barTrack: { flex: 1, width: '78%', backgroundColor: '#F2F4F6', borderRadius: 7, justifyContent: 'flex-end', overflow: 'hidden' }, bar: { backgroundColor: '#24232A', borderRadius: 7, width: '100%' }, barLabel: { color: '#5E5D66', fontSize: 12, marginBottom: 5 },
-  stats: { flexDirection: 'row', justifyContent: 'space-between' }, statValue: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, button: { backgroundColor: purple, borderRadius: 12, height: 56, justifyContent: 'center', alignItems: 'center' }, buttonText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, error: { color: '#A13A2F', fontSize: 14 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, gap: 17 },
+    titleCentered: { flex: 1, marginRight: 10, textAlign: 'center' },
+    header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, back: { color: colors.textPrimary, fontSize: 32, lineHeight: 36 }, title: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    segment: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: 24, padding: 3 }, segmentChoice: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 20 }, segmentSelected: { backgroundColor: colors.background }, segmentText: { color: colors.textSecondary, fontSize: 14 }, segmentTextSelected: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    dateRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, arrow: { fontSize: 28, color: colors.textPrimary }, disabled: { color: colors.textDisabled }, dateTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    goalRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, goalName: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold }, caption: { color: colors.textSecondary, fontSize: 12, lineHeight: 17 }, outline: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 9 }, outlineText: { color: colors.textPrimary, fontSize: 14 },
+    tabs: { flexDirection: 'row', gap: 6 }, tab: { borderColor: colors.border, borderWidth: 1, borderRadius: 20, paddingHorizontal: 11, paddingVertical: 9 }, selectedTab: { backgroundColor: colors.primary, borderColor: colors.primary }, tabText: { color: colors.textSecondary, fontSize: 14 }, selectedTabText: { color: '#FFF' },
+    card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 16, gap: 14 }, row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, sectionTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold }, delta: { color: colors.success, fontSize: 12 },
+    bigNumber: { color: colors.textPrimary, fontSize: 24, fontFamily: fontFamilies.pretendardBold }, target: { color: colors.textSecondary, fontSize: 14 }, progressTrack: { height: 7, borderRadius: 4, backgroundColor: colors.surfaceMuted, overflow: 'hidden' }, progressFill: { height: 7, backgroundColor: colors.primary },
+    chart: { height: 160, flexDirection: 'row', alignItems: 'flex-end', gap: 5, borderBottomWidth: 1, borderBottomColor: colors.border }, barColumn: { flex: 1, height: '100%', justifyContent: 'flex-end', alignItems: 'center', gap: 7 }, barTrack: { flex: 1, width: '78%', backgroundColor: colors.surfaceMuted, borderRadius: 7, justifyContent: 'flex-end', overflow: 'hidden' }, bar: { backgroundColor: '#24232A', borderRadius: 7, width: '100%' }, barLabel: { color: colors.textSecondary, fontSize: 12, marginBottom: 5 },
+    stats: { flexDirection: 'row', justifyContent: 'space-between' }, statValue: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold }, button: { backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center', alignItems: 'center' }, buttonText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, error: { color: colors.danger, fontSize: 14 },
+  } as const;
+}
 
 const simpleStyles = StyleSheet.create({
   card: { padding: 21 },
-  bigNumber: { fontSize: 30 },
+  bigNumber: {},
   stats: { flexDirection: 'column', gap: 14 },
 });

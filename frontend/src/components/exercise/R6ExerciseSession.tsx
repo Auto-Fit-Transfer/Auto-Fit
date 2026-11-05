@@ -10,7 +10,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SpeakerIcon from '@/assets/icons/system/SpeakerSimpleHigh.svg';
 import BarbellIcon from '@/assets/icons/ui/barbell.svg';
@@ -23,14 +22,9 @@ import WarningIcon from '@/assets/icons/ui/warning-circle.svg';
 import XIcon from '@/assets/icons/ui/x.svg';
 import type { ExerciseSessionExercise, ExerciseSessionState } from '@/src/features/exercise/ExerciseSessionContext';
 import { defaultVoiceGuideSettings, loadVoiceGuideSettings, saveVoiceGuideSettings, speakGuide, stopGuide, type VoiceGuideSettings } from '@/src/features/exercise/voiceGuide';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const purple = '#5246C6';
-const ink = '#17161D';
-const body = '#3B3A42';
-const muted = '#5E5D66';
-const border = '#DFE2E7';
 const parts = ['목', '어깨', '허리', '무릎', '손목', '발목', '기타'];
 const feelings = [
   { key: 'stiff', label: '뻐근해요', symptomType: 'fatigue', severity: 3 },
@@ -65,6 +59,8 @@ function time(seconds: number) {
 export function R6ExerciseSession({
   exercise, session, onAddRest, onBack, onCompleteSet, onReportDiscomfort, onSkip, onSkipRest, onTogglePause,
 }: Props) {
+  const { colors } = useAppTheme();
+  const s = useThemedStyles(createSStyles);
   const insets = useSafeAreaInsets();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [resumeAfterSheet, setResumeAfterSheet] = useState(false);
@@ -149,15 +145,14 @@ export function R6ExerciseSession({
 
   return (
     <View style={s.root}>
-      <StatusBar style="dark" />
       <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 4 }]} showsVerticalScrollIndicator={false}>
         <View style={s.header}>
-          <Pressable hitSlop={12} accessibilityRole="button" accessibilityLabel="운동 나가기" onPress={onBack} style={s.headerSide}><CaretLeftIcon color={ink} height={24} width={24} /></Pressable>
+          <Pressable hitSlop={12} accessibilityRole="button" accessibilityLabel="운동 나가기" onPress={onBack} style={s.headerSide}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
           <Text style={s.headerTitle}>운동하기</Text>
           <View style={[s.headerSide, s.headerActions]}>
-            <Pressable accessibilityRole="button" accessibilityLabel="음성 안내 설정" hitSlop={8} onPress={() => setVoiceOpen(true)}><SpeakerIcon color={ink} height={24} width={24} /></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel="음성 안내 설정" hitSlop={8} onPress={() => setVoiceOpen(true)}><SpeakerIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={session.paused ? '운동 재개' : '운동 일시정지'} hitSlop={8} onPress={onTogglePause}>
-              {session.paused ? <PlayIcon color={ink} height={24} width={24} /> : <PauseIcon color={ink} height={24} width={24} />}
+              {session.paused ? <PlayIcon color={colors.textPrimary} height={24} width={24} /> : <PauseIcon color={colors.textPrimary} height={24} width={24} />}
             </Pressable>
           </View>
         </View>
@@ -169,7 +164,7 @@ export function R6ExerciseSession({
           {imageUrl ? <Image accessibilityLabel={`${exercise.name} 동작 시범`} source={{ uri: imageUrl }} resizeMode="contain" style={s.mediaImage} /> : null}
           {videoUrl ? (
             <Pressable accessibilityLabel="동작 영상 보기" accessibilityRole="button" onPress={openVideo} style={s.videoAction}>
-              <View style={s.playCircle}><PlayIcon color={ink} height={22} width={22} /></View>
+              <View style={s.playCircle}><PlayIcon color={colors.textPrimary} height={22} width={22} /></View>
               <Text style={s.mediaText}>동작 영상</Text>
             </Pressable>
           ) : !imageUrl ? <Text style={s.mediaText}>동작 영상이 제공되지 않았어요</Text> : null}
@@ -204,7 +199,7 @@ export function R6ExerciseSession({
               <View key={index} style={s.setBar}>
                 <View style={s.setTrack}><View style={[s.fill, { width: `${ratio * 100}%` }]} /></View>
                 <View style={s.setLabelRow}>
-                  {done ? <CheckIcon color={muted} height={14} width={14} /> : null}
+                  {done ? <CheckIcon color={colors.textSecondary} height={14} width={14} /> : null}
                   <Text numberOfLines={1} style={[s.setLabel, number === session.currentSet && !done && s.setLabelNow]}>{setLabel(index)}</Text>
                 </View>
               </View>
@@ -212,14 +207,14 @@ export function R6ExerciseSession({
           })}
         </View>
         <View style={s.tipCard}>
-          <InfoIcon color={ink} height={20} width={20} />
+          <InfoIcon color={colors.textPrimary} height={20} width={20} />
           <View style={s.grow}>
             <Text style={s.cardTitle}>자세 팁</Text>
             <Text style={s.cardText}>{exercise.instruction ?? '무리하지 않고 천천히 움직여 주세요.'}</Text>
           </View>
         </View>
         <View style={s.nextCard}>
-          <View style={s.nextIcon}><BarbellIcon color={ink} height={22} width={22} /></View>
+          <View style={s.nextIcon}><BarbellIcon color={colors.textPrimary} height={22} width={22} /></View>
           <View style={s.grow}>
             <Text numberOfLines={1} style={s.nextTitle}>{next ? `다음 · ${next.name}` : '마지막 동작이에요'}</Text>
             {next?.prescription ? <Text numberOfLines={1} style={s.cardText}>{next.prescription}</Text> : null}
@@ -247,7 +242,7 @@ export function R6ExerciseSession({
           <View style={[s.sheet, { paddingBottom: Math.max(20, insets.bottom + 12) }]}>
             <View style={s.sheetHeading}>
               <Text style={s.sheetTitle}>{changedCount === null ? '어디가 불편했나요?' : '알려 주셔서 고마워요'}</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="닫기" hitSlop={10} onPress={continueWorkout}><XIcon color={ink} height={24} width={24} /></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="닫기" hitSlop={10} onPress={continueWorkout}><XIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
             </View>
             {changedCount !== null ? (
               <>
@@ -258,7 +253,7 @@ export function R6ExerciseSession({
               <>
                 <Text style={s.sheetDescription}>운동은 잠시 멈춰 있어요. 알려 주시면 남은 운동을 바꿔 드려요.</Text>
                 <View style={s.notice}>
-                  <WarningIcon color="#B3690B" height={20} width={20} />
+                  <WarningIcon color={colors.warning} height={20} width={20} />
                   <View style={s.grow}>
                     <Text style={s.noticeTitle}>통증이 심하면</Text>
                     <Text style={s.cardText}>바로 멈추고 전문가와 상담해 주세요.</Text>
@@ -276,7 +271,7 @@ export function R6ExerciseSession({
                     <Text style={[s.chipText, feeling === key && s.selectedChipText]}>{label}</Text>
                   </Pressable>
                 ))}</View>
-                <TextInput accessibilityLabel="불편한 내용" maxLength={200} onChangeText={setNote} placeholder="예) 당길 때 오른쪽 어깨가 찌릿해요 (선택)" placeholderTextColor="#8E8D95" style={s.input} value={note} />
+                <TextInput accessibilityLabel="불편한 내용" maxLength={200} onChangeText={setNote} placeholder="예) 당길 때 오른쪽 어깨가 찌릿해요 (선택)" placeholderTextColor={colors.textDisabled} style={s.input} value={note} />
                 <View style={s.actions}>
                   <Pressable accessibilityRole="button" onPress={() => { setSheetOpen(false); setResumeAfterSheet(false); onBack(); }} style={s.secondaryButton}><Text style={s.secondaryText}>오늘은 그만하기</Text></Pressable>
                   <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting || selectedParts.length === 0 }} disabled={submitting || selectedParts.length === 0} onPress={() => void submitDiscomfort()} style={[s.primaryButton, (submitting || selectedParts.length === 0) && s.disabled]}><Text style={s.primaryText}>{submitting ? '바꾸는 중…' : '남은 운동 바꾸기'}</Text></Pressable>
@@ -312,60 +307,62 @@ export function R6ExerciseSession({
   );
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
-  grow: { flex: 1, minWidth: 0 },
-  header: { minHeight: 52, flexDirection: 'row', alignItems: 'center' },
-  headerSide: { width: 64, justifyContent: 'center' },
-  headerTitle: { flex: 1, fontSize: 16, color: ink, fontFamily: fontFamilies.pretendardBold, textAlign: 'center' },
-  headerActions: { alignItems: 'center', flexDirection: 'row', gap: 16, justifyContent: 'flex-end' },
-  progressHeading: { flexDirection: 'row', justifyContent: 'space-between' }, progressLabel: { fontSize: 14, color: muted },
-  track: { height: 8, borderRadius: 4, backgroundColor: '#E3E6EB', overflow: 'hidden' },
-  fill: { height: 8, backgroundColor: purple, borderRadius: 4 },
-  exerciseTitle: { color: ink, fontSize: 22, lineHeight: 30, fontFamily: fontFamilies.pretendardBold, marginTop: 4 },
-  media: { height: 180, borderRadius: 16, backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  mediaImage: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
-  videoAction: { alignItems: 'center', gap: 6 },
-  playCircle: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
-  mediaText: { color: muted, fontSize: 14 },
-  caption: { alignItems: 'center', backgroundColor: 'rgba(23,22,29,0.75)', borderRadius: 999, bottom: 10, flexDirection: 'row', gap: 6, left: 12, paddingHorizontal: 12, paddingVertical: 6, position: 'absolute', right: 12 },
-  captionText: { color: '#FFFFFF', flex: 1, fontSize: 14 },
-  repArea: { alignItems: 'center', paddingTop: 4 },
-  restLabel: { color: muted, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  repNumber: { color: ink, fontSize: 64, lineHeight: 76, fontFamily: fontFamilies.pretendardBold },
-  repTotal: { color: muted, fontSize: 18, fontFamily: fontFamilies.pretendardMedium }, setText: { color: body, fontSize: 14, lineHeight: 21 },
-  setBars: { flexDirection: 'row', gap: 6 }, setBar: { flex: 1, gap: 4, minWidth: 0 },
-  setTrack: { height: 8, borderRadius: 4, backgroundColor: '#E3E6EB', overflow: 'hidden' },
-  setLabelRow: { alignItems: 'center', flexDirection: 'row', gap: 2 },
-  setLabel: { color: muted, flexShrink: 1, fontSize: 12 }, setLabelNow: { color: ink, fontFamily: fontFamilies.pretendardMedium },
-  tipCard: { backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 16, flexDirection: 'row', gap: 8, padding: 14 },
-  cardTitle: { color: ink, fontSize: 14, lineHeight: 21, fontFamily: fontFamilies.pretendardMedium }, cardText: { color: body, fontSize: 14, lineHeight: 21 },
-  nextCard: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: border, borderWidth: 1, borderRadius: 16, flexDirection: 'row', gap: 10, padding: 14 },
-  nextIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: border, borderRadius: 10, borderWidth: 1, height: 36, justifyContent: 'center', width: 36 },
-  nextTitle: { color: ink, fontSize: 16, lineHeight: 24, fontFamily: fontFamilies.pretendardBold },
-  smallButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-  smallButtonText: { color: ink, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
-  actions: { flexDirection: 'row', gap: 8 }, footer: { paddingHorizontal: 20, paddingTop: 8 },
-  secondaryButton: { flex: 1, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F2F4F6' },
-  secondaryText: { color: ink, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  primaryButton: { flex: 1, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: purple },
-  primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 },
-  sheetPrimary: { height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: purple },
-  sheetOverlay: { flex: 1, justifyContent: 'flex-end' }, sheetDim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.45)' },
-  sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, gap: 12 },
-  sheetHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sheetTitle: { color: ink, fontSize: 18, lineHeight: 26, fontFamily: fontFamilies.pretendardBold },
-  sheetDescription: { color: body, fontSize: 14, lineHeight: 21 },
-  notice: { alignItems: 'flex-start', backgroundColor: '#FFF2E0', borderRadius: 16, flexDirection: 'row', gap: 8, padding: 14 },
-  noticeTitle: { color: '#8A5208', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
-  fieldTitle: { color: ink, fontSize: 14, lineHeight: 21, fontFamily: fontFamilies.pretendardBold },
-  optional: { color: muted, fontFamily: fontFamilies.pretendardRegular },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: border, borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
-  selectedChip: { backgroundColor: purple, borderColor: purple }, chipText: { color: body, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, selectedChipText: { color: '#FFF' },
-  feelings: { flexDirection: 'row', gap: 8 }, feeling: { flex: 1, paddingHorizontal: 4 },
-  input: { backgroundColor: '#FAFBFC', borderColor: border, borderRadius: 12, borderWidth: 1, color: ink, fontSize: 14, height: 48, paddingHorizontal: 14 },
-  voiceRow: { flexDirection: 'row', alignItems: 'center', minHeight: 52, gap: 12 },
-  voiceTitle: { color: ink, fontSize: 16, lineHeight: 24, fontFamily: fontFamilies.pretendardBold }, smallText: { color: muted, fontSize: 12, lineHeight: 18 },
-  switch: { width: 46, height: 28, backgroundColor: '#DFE2E7', borderRadius: 14, padding: 3 }, switchOn: { backgroundColor: purple }, switchThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#FFF' }, switchThumbOn: { alignSelf: 'flex-end' },
-});
+function createSStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, paddingBottom: 16, gap: 12 },
+    grow: { flex: 1, minWidth: 0 },
+    header: { minHeight: 52, flexDirection: 'row', alignItems: 'center' },
+    headerSide: { width: 64, justifyContent: 'center' },
+    headerTitle: { flex: 1, fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, textAlign: 'center' },
+    headerActions: { alignItems: 'center', flexDirection: 'row', gap: 16, justifyContent: 'flex-end' },
+    progressHeading: { flexDirection: 'row', justifyContent: 'space-between' }, progressLabel: { fontSize: 14, color: colors.textSecondary },
+    track: { height: 8, borderRadius: 4, backgroundColor: colors.gaugeTrack, overflow: 'hidden' },
+    fill: { height: 8, backgroundColor: colors.primary, borderRadius: 4 },
+    exerciseTitle: { color: colors.textPrimary, fontSize: 22, lineHeight: 30, fontFamily: fontFamilies.pretendardBold, marginTop: 4 },
+    media: { height: 180, borderRadius: 16, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+    mediaImage: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
+    videoAction: { alignItems: 'center', gap: 6 },
+    playCircle: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
+    mediaText: { color: colors.textSecondary, fontSize: 14 },
+    caption: { alignItems: 'center', backgroundColor: 'rgba(23,22,29,0.75)', borderRadius: 999, bottom: 10, flexDirection: 'row', gap: 6, left: 12, paddingHorizontal: 12, paddingVertical: 6, position: 'absolute', right: 12 },
+    captionText: { color: '#FFFFFF', flex: 1, fontSize: 14 },
+    repArea: { alignItems: 'center', paddingTop: 4 },
+    restLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    repNumber: { color: colors.textPrimary, fontSize: 64, lineHeight: 76, fontFamily: fontFamilies.pretendardBold },
+    repTotal: { color: colors.textSecondary, fontSize: 18, fontFamily: fontFamilies.pretendardMedium }, setText: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    setBars: { flexDirection: 'row', gap: 6 }, setBar: { flex: 1, gap: 4, minWidth: 0 },
+    setTrack: { height: 8, borderRadius: 4, backgroundColor: colors.gaugeTrack, overflow: 'hidden' },
+    setLabelRow: { alignItems: 'center', flexDirection: 'row', gap: 2 },
+    setLabel: { color: colors.textSecondary, flexShrink: 1, fontSize: 12 }, setLabelNow: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
+    tipCard: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, flexDirection: 'row', gap: 8, padding: 14 },
+    cardTitle: { color: colors.textPrimary, fontSize: 14, lineHeight: 21, fontFamily: fontFamilies.pretendardMedium }, cardText: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    nextCard: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, flexDirection: 'row', gap: 10, padding: 14 },
+    nextIcon: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 10, borderWidth: 1, height: 36, justifyContent: 'center', width: 36 },
+    nextTitle: { color: colors.textPrimary, fontSize: 16, lineHeight: 24, fontFamily: fontFamilies.pretendardBold },
+    smallButton: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+    smallButtonText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
+    actions: { flexDirection: 'row', gap: 8 }, footer: { paddingHorizontal: 20, paddingTop: 8 },
+    secondaryButton: { flex: 1, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceMuted },
+    secondaryText: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    primaryButton: { flex: 1, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
+    primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { opacity: 0.5 },
+    sheetPrimary: { height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary },
+    sheetOverlay: { flex: 1, justifyContent: 'flex-end' }, sheetDim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.45)' },
+    sheet: { backgroundColor: colors.background, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, gap: 12 },
+    sheetHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    sheetTitle: { color: colors.textPrimary, fontSize: 18, lineHeight: 26, fontFamily: fontFamilies.pretendardBold },
+    sheetDescription: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    notice: { alignItems: 'flex-start', backgroundColor: colors.warningLight, borderRadius: 16, flexDirection: 'row', gap: 8, padding: 14 },
+    noticeTitle: { color: colors.warning, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
+    fieldTitle: { color: colors.textPrimary, fontSize: 14, lineHeight: 21, fontFamily: fontFamilies.pretendardBold },
+    optional: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
+    selectedChip: { backgroundColor: colors.primary, borderColor: colors.primary }, chipText: { color: colors.textBody, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, selectedChipText: { color: '#FFF' },
+    feelings: { flexDirection: 'row', gap: 8 }, feeling: { flex: 1, paddingHorizontal: 4 },
+    input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.textPrimary, fontSize: 14, height: 48, paddingHorizontal: 14 },
+    voiceRow: { flexDirection: 'row', alignItems: 'center', minHeight: 52, gap: 12 },
+    voiceTitle: { color: colors.textPrimary, fontSize: 16, lineHeight: 24, fontFamily: fontFamilies.pretendardBold }, smallText: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+    switch: { width: 46, height: 28, backgroundColor: colors.border, borderRadius: 14, padding: 3 }, switchOn: { backgroundColor: colors.primary }, switchThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.background }, switchThumbOn: { alignSelf: 'flex-end' },
+  } as const;
+}

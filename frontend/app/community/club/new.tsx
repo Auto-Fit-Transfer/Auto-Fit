@@ -5,10 +5,8 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   TextInput,
-  View,
-} from 'react-native';
+  View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -26,10 +24,12 @@ import {
 } from '@/src/api/community';
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 // Also the edit screen: with ?clubId= the owner changes name, interest and intro (no cost).
 export default function CommunityNewClubScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { clubId } = useLocalSearchParams<{ clubId?: string }>();
   const editing = Boolean(clubId);
   const router = useRouter();
@@ -194,58 +194,60 @@ export default function CommunityNewClubScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.background, flex: 1 },
-  form: { gap: spacing.sm, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-  cost: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: 12,
-    gap: 4,
-    marginBottom: spacing.md,
-    padding: spacing.lg,
-  },
-  costShort: { backgroundColor: colors.dangerLight },
-  costText: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-  },
-  costHint: { ...typography.bodySmall, color: colors.danger },
-  costNote: { ...typography.bodySmall, color: colors.textSecondary },
-  link: {
-    color: colors.primary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-    marginTop: 2,
-  },
-  label: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 16,
-    marginTop: spacing.sm,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 16,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-  },
-  multiline: { minHeight: 110, marginBottom: spacing.lg },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  chip: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-  },
-  chipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-  chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  chipTextActive: { color: colors.primary },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    form: { gap: spacing.sm, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+    cost: {
+      backgroundColor: colors.primaryLight,
+      borderRadius: 12,
+      gap: 4,
+      marginBottom: spacing.md,
+      padding: spacing.lg,
+    },
+    costShort: { backgroundColor: colors.dangerLight },
+    costText: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 16,
+    },
+    costHint: { ...typography.bodySmall, color: colors.danger },
+    costNote: { ...typography.bodySmall, color: colors.textSecondary },
+    link: {
+      color: colors.primary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 14,
+      marginTop: 2,
+    },
+    label: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 16,
+      marginTop: spacing.sm,
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 16,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 12,
+    },
+    multiline: { minHeight: 110, marginBottom: spacing.lg },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    chip: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: radius.round,
+      borderWidth: 1,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 8,
+    },
+    chipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
+    chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    chipTextActive: { color: colors.primary },
+  } as const;
+}

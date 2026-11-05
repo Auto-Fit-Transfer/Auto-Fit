@@ -5,11 +5,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleSheet,
   Switch,
   TextInput,
-  View,
-} from 'react-native';
+  View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -21,7 +19,7 @@ import {
 } from '@/src/api/community';
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, spacing, typography } from '@/src/theme';
+import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const RULES: Record<
   CommunityAdminRule['rule_key'],
@@ -44,6 +42,8 @@ const ORDER: CommunityAdminRule['rule_key'][] = [
 
 // Operators set the team's decided numbers here; saving clears the "provisional" label.
 export default function CommunityAdminRulesScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const actions = useCommunityActions();
@@ -125,6 +125,8 @@ function RuleCard({
   onSaved: (rule: CommunityAdminRule) => void;
   onError: (error: unknown) => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const meta = RULES[rule.rule_key];
   const [amount, setAmount] = useState(String(rule.amount));
   const [daily, setDaily] = useState(rule.daily_limit === null ? '' : String(rule.daily_limit));
@@ -226,56 +228,58 @@ function RuleCard({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.background, flex: 1 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-  note: { ...typography.bodySmall, color: colors.textSecondary },
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: spacing.xs,
-    padding: spacing.lg,
-  },
-  cardTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-  title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  provisional: {
-    backgroundColor: colors.dangerLight,
-    borderRadius: 12,
-    color: colors.danger,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-    overflow: 'hidden',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  ruleNote: { ...typography.bodySmall, color: colors.textSecondary },
-  label: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-    marginTop: spacing.xs,
-  },
-  input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 12,
-    borderWidth: 1,
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 16,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-  },
-  switchRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
-  switchLabel: { ...typography.bodySmall, color: colors.textBody, flex: 1 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+    note: { ...typography.bodySmall, color: colors.textSecondary },
+    card: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      gap: spacing.xs,
+      padding: spacing.lg,
+    },
+    cardTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    provisional: {
+      backgroundColor: colors.dangerLight,
+      borderRadius: 12,
+      color: colors.danger,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 12,
+      overflow: 'hidden',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+    },
+    ruleNote: { ...typography.bodySmall, color: colors.textSecondary },
+    label: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 14,
+      marginTop: spacing.xs,
+    },
+    input: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 16,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 10,
+    },
+    switchRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
+    switchLabel: { ...typography.bodySmall, color: colors.textBody, flex: 1 },
+  } as const;
+}

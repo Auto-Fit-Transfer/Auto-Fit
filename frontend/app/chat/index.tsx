@@ -10,7 +10,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SendIcon from '@/assets/icons/feature/PaperPlane_Fill.svg';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
@@ -24,7 +23,7 @@ import { useDisplayPreferences } from '@/src/features/settings/DisplayPreference
 import { getChatSessionSnapshot, mergeChatSessionMessages, prefetchActiveChat, updateChatSessionSnapshot } from '@/src/features/chat/chatSessionCache';
 import { chatCharacters, chatWelcomes, displayChatAnswer, loadChatCharacter } from '@/src/features/chat/chatCharacters';
 import type { ChatMessage } from '@/src/types/chat';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 const prompts = ['운동 기록 알려줘', '최근 건강 점수 알려줘'];
@@ -44,6 +43,8 @@ function messageTime(dateValue: string) {
 }
 
 export default function R6ChatScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { preferences } = useDisplayPreferences();
@@ -130,10 +131,9 @@ export default function R6ChatScreen() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
-      <StatusBar style="dark" />
       <View style={{ paddingTop: insets.top + 8 }}>
         <View style={styles.header}>
-          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
+          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
           <View style={styles.headerCenter}>
             <ChatCharacterAvatar characterId={character.id} size={28} />
             <Text style={[styles.headerName, simple && simpleStyles.headerName]}>{character.name}</Text>
@@ -141,10 +141,10 @@ export default function R6ChatScreen() {
           <Pressable accessibilityRole="button" onPress={() => router.push('/chat/characters')} style={styles.change}><Text style={styles.changeText}>바꾸기</Text></Pressable>
         </View>
       </View>
-      <View style={styles.disclaimer}><InfoIcon color="#3B3A42" height={18} width={18} /><Text style={styles.disclaimerText}>건강 판단은 참고용이에요. 증상이 있으면 병원에 문의해 주세요.</Text></View>
+      <View style={styles.disclaimer}><InfoIcon color={colors.textBody} height={18} width={18} /><Text style={styles.disclaimerText}>건강 판단은 참고용이에요. 증상이 있으면 병원에 문의해 주세요.</Text></View>
 
       {loading && messages.length === 0 ? (
-        <View style={styles.center}><ActivityIndicator color="#5246C6" /></View>
+        <View style={styles.center}><ActivityIndicator color={colors.primaryText} /></View>
       ) : initialLoadFailed && error && messages.length === 0 ? (
         <R6ConnectionError message={error} offline={offline} onRetry={() => void load()} preservesInput={Boolean(draft)} />
       ) : (
@@ -175,7 +175,7 @@ export default function R6ChatScreen() {
               </View>
             </View>
           ))}
-          {sending ? <ActivityIndicator color="#5246C6" style={styles.sending} /> : null}
+          {sending ? <ActivityIndicator color={colors.primaryText} style={styles.sending} /> : null}
           {error ? <View style={styles.inlineError}><Text style={styles.inlineErrorText}>{error}</Text></View> : null}
           <View style={styles.promptRow}>{prompts.map((prompt) => (
             <Pressable accessibilityRole="button" key={prompt} onPress={() => setDraft(prompt)} style={styles.prompt}><Text style={styles.promptText}>{prompt}</Text></Pressable>
@@ -183,47 +183,49 @@ export default function R6ChatScreen() {
         </ScrollView>
       )}
       <View style={[styles.composer, { paddingBottom: Math.max(12, insets.bottom) }]}>
-        <TextInput accessibilityLabel="챗봇 메시지" editable={Boolean(chatId) && !sending} maxLength={500} onChangeText={setDraft} onSubmitEditing={() => void send()} placeholder={`${character.name}에게 물어보세요`} placeholderTextColor="#8E8D95" returnKeyType="send" style={[styles.input, simple && simpleStyles.input]} value={draft} />
+        <TextInput accessibilityLabel="챗봇 메시지" editable={Boolean(chatId) && !sending} maxLength={500} onChangeText={setDraft} onSubmitEditing={() => void send()} placeholder={`${character.name}에게 물어보세요`} placeholderTextColor={colors.textDisabled} returnKeyType="send" style={[styles.input, simple && simpleStyles.input]} value={draft} />
         <Pressable accessibilityRole="button" accessibilityLabel="보내기" disabled={!chatId || !draft.trim() || sending} onPress={() => void send()} style={[styles.sendButton, (!chatId || !draft.trim() || sending) && styles.sendDisabled]}><SendIcon color="#FFFFFF" height={22} width={22} /></Pressable>
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
-  header: { alignItems: 'center', flexDirection: 'row', minHeight: 52, paddingHorizontal: 20 },
-  headerCenter: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 8, justifyContent: 'center' },
-  headerName: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  change: { padding: 8 },
-  changeText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  disclaimer: { backgroundColor: '#F2F4F6', flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 10 },
-  disclaimerText: { color: '#3B3A42', flex: 1, fontSize: 14, lineHeight: 21 },
-  center: { flex: 1, justifyContent: 'center' },
-  messages: { flexGrow: 1, gap: 14, paddingHorizontal: 20, paddingVertical: 16 },
-  assistantRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 8, maxWidth: '88%' },
-  assistantColumn: { flexShrink: 1, gap: 4 },
-  assistantBubble: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexShrink: 1, padding: 14 },
-  messageText: { color: '#17161D', fontSize: 16, lineHeight: 24 },
-  userRow: { alignItems: 'flex-end', gap: 4 },
-  userBubble: { backgroundColor: '#17161D', borderRadius: 16, maxWidth: '82%', padding: 14 },
-  userText: { color: '#FFFFFF', fontSize: 16, lineHeight: 24 },
-  time: { color: '#5E5D66', fontSize: 12 },
-  sending: { alignSelf: 'flex-start' },
-  inlineError: { backgroundColor: '#FFF4F4', borderRadius: 12, padding: 12 },
-  inlineErrorText: { color: '#B34141', fontSize: 14 },
-  promptRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginLeft: 36 },
-  prompt: { alignItems: 'center', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
-  promptText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  composer: { alignItems: 'center', borderTopColor: '#DFE2E7', borderTopWidth: 1, flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 10 },
-  input: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 24, borderWidth: 1, color: '#17161D', flex: 1, fontSize: 16, minHeight: 48, paddingHorizontal: 16 },
-  sendButton: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
-  sendDisabled: { opacity: 0.4 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    header: { alignItems: 'center', flexDirection: 'row', minHeight: 52, paddingHorizontal: 20 },
+    headerCenter: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 8, justifyContent: 'center' },
+    headerName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    change: { padding: 8 },
+    changeText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    disclaimer: { backgroundColor: colors.surfaceMuted, flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 10 },
+    disclaimerText: { color: colors.textBody, flex: 1, fontSize: 14, lineHeight: 21 },
+    center: { flex: 1, justifyContent: 'center' },
+    messages: { flexGrow: 1, gap: 14, paddingHorizontal: 20, paddingVertical: 16 },
+    assistantRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 8, maxWidth: '88%' },
+    assistantColumn: { flexShrink: 1, gap: 4 },
+    assistantBubble: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexShrink: 1, padding: 14 },
+    messageText: { color: colors.textPrimary, fontSize: 16, lineHeight: 24 },
+    userRow: { alignItems: 'flex-end', gap: 4 },
+    userBubble: { backgroundColor: colors.tabBar, borderRadius: 16, maxWidth: '82%', padding: 14 },
+    userText: { color: '#FFFFFF', fontSize: 16, lineHeight: 24 },
+    time: { color: colors.textSecondary, fontSize: 12 },
+    sending: { alignSelf: 'flex-start' },
+    inlineError: { backgroundColor: colors.dangerLight, borderRadius: 12, padding: 12 },
+    inlineErrorText: { color: colors.danger, fontSize: 14 },
+    promptRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginLeft: 36 },
+    prompt: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
+    promptText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    composer: { alignItems: 'center', borderTopColor: colors.border, borderTopWidth: 1, flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 10 },
+    input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 24, borderWidth: 1, color: colors.textPrimary, flex: 1, fontSize: 16, minHeight: 48, paddingHorizontal: 16 },
+    sendButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
+    sendDisabled: { opacity: 0.4 },
+  } as const;
+}
 
 const simpleStyles = StyleSheet.create({
-  headerName: { fontSize: 18 },
+  headerName: {},
   bubble: { padding: 16, maxWidth: '100%' },
-  messageText: { fontSize: 17, lineHeight: 26 },
-  input: { fontSize: 17, minHeight: 52 },
+  messageText: {},
+  input: { minHeight: 52 },
 });

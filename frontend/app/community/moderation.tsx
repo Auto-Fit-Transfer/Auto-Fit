@@ -21,7 +21,7 @@ import {
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type Status = 'open' | 'resolved';
 
@@ -40,6 +40,8 @@ const reasonLabel = (value: string) =>
 
 // Moderators only (the server refuses everyone else). Reporters are never shown.
 export default function CommunityModerationScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const actions = useCommunityActions();
@@ -234,6 +236,7 @@ function ActionButton({
   label: string;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -249,99 +252,101 @@ function ActionButton({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.background, flex: 1 },
-  tabs: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-  },
-  tab: {
-    alignItems: 'center',
-    borderBottomColor: 'transparent',
-    borderBottomWidth: 2,
-    flex: 1,
-    paddingVertical: spacing.md,
-  },
-  tabActive: { borderBottomColor: colors.primary },
-  tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
-  tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-  note: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: spacing.xs,
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.md,
-    padding: spacing.lg,
-  },
-  cardTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-  type: {
-    backgroundColor: colors.dangerLight,
-    borderRadius: 12,
-    color: colors.danger,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 12,
-    overflow: 'hidden',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  author: {
-    color: colors.textPrimary,
-    flex: 1,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-  },
-  count: { color: colors.danger, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  reasons: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  snapshot: {
-    ...typography.body,
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    color: colors.textPrimary,
-    padding: spacing.md,
-  },
-  detail: { ...typography.bodySmall, color: colors.textBody },
-  meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-  actions: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    justifyContent: 'flex-end',
-    marginTop: spacing.xs,
-  },
-  link: {
-    color: colors.primary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-    marginRight: 'auto',
-  },
-  button: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 6,
-  },
-  buttonDanger: { borderColor: colors.danger },
-  pressed: { opacity: 0.7 },
-  buttonText: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  buttonTextDanger: { color: colors.danger },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    tabs: {
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+    },
+    tab: {
+      alignItems: 'center',
+      borderBottomColor: 'transparent',
+      borderBottomWidth: 2,
+      flex: 1,
+      paddingVertical: spacing.md,
+    },
+    tabActive: { borderBottomColor: colors.primary },
+    tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
+    tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    note: {
+      ...typography.bodySmall,
+      color: colors.textSecondary,
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.md,
+    },
+    card: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      gap: spacing.xs,
+      marginHorizontal: spacing.xl,
+      marginTop: spacing.md,
+      padding: spacing.lg,
+    },
+    cardTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
+    type: {
+      backgroundColor: colors.dangerLight,
+      borderRadius: 12,
+      color: colors.danger,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 12,
+      overflow: 'hidden',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+    },
+    author: {
+      color: colors.textPrimary,
+      flex: 1,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+    },
+    count: { color: colors.danger, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    reasons: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    snapshot: {
+      ...typography.body,
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      color: colors.textPrimary,
+      padding: spacing.md,
+    },
+    detail: { ...typography.bodySmall, color: colors.textBody },
+    meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+    actions: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      justifyContent: 'flex-end',
+      marginTop: spacing.xs,
+    },
+    link: {
+      color: colors.primary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 14,
+      marginRight: 'auto',
+    },
+    button: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: radius.round,
+      borderWidth: 1,
+      paddingHorizontal: spacing.md,
+      paddingVertical: 6,
+    },
+    buttonDanger: { borderColor: colors.danger },
+    pressed: { opacity: 0.7 },
+    buttonText: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    buttonTextDanger: { color: colors.danger },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+  } as const;
+}

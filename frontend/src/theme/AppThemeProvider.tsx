@@ -47,9 +47,7 @@ const AppThemeContext = createContext<AppThemeContextValue>({
   updateSettings: () => {},
 });
 
-// Without this provider everything stays on the light theme: many screens still have fixed light
-// colors, and shared parts must not turn dark around them. A part or screen that reads all its
-// colors from the theme wraps itself in this to follow the saved display settings.
+// Wraps the whole app in app/_layout.tsx, so every screen follows the saved display settings.
 export function AppThemeProvider({ children }: PropsWithChildren) {
   const { preferences, isDark, save } = useDisplayPreferences();
   const easyMode = preferences.simple_mode_enabled;

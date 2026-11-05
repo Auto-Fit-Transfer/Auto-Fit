@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getDietApiErrorMessage, getWeeklyDietRecipe, type WeeklyDay, type WeeklyMealType, type WeeklyRecipe, type WeeklyRecipeItem } from '@/src/api/diet';
 import { Text } from '@/src/components/common';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const dayNames: Record<WeeklyDay, string> = { monday: '월', tuesday: '화', wednesday: '수', thursday: '목', friday: '금', saturday: '토', sunday: '일' };
 const mealNames: Record<WeeklyMealType, string> = { breakfast: '아침', lunch: '점심', dinner: '저녁', snack: '간식' };
@@ -21,6 +21,7 @@ const sourceNames: Record<WeeklyRecipeItem['recipe_source'], string> = {
 function formatNumber(value: number) { return Number.isInteger(value) ? String(value) : String(Math.round(value * 10) / 10); }
 
 function RecipeItemCard({ item }: { item: WeeklyRecipeItem }) {
+  const s = useThemedStyles(createSStyles);
   const detail = item.recipe_available ? item.recipe : null;
   const steps = detail?.step_details.length ? detail.step_details : detail?.steps.map((instruction, index) => ({ order: index + 1, instruction, duration_minutes: null, tip: null })) ?? [];
   return <View style={s.card}>
@@ -47,6 +48,8 @@ function RecipeItemCard({ item }: { item: WeeklyRecipeItem }) {
 }
 
 export default function WeeklyRecipeScreen() {
+  const { colors } = useAppTheme();
+  const s = useThemedStyles(createSStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ planId?: string; day?: string; mealType?: string }>();
@@ -82,7 +85,7 @@ export default function WeeklyRecipeScreen() {
   const meal = data?.meal;
   return <View style={s.root}><ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 40 }]}>
     <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="주간 식단으로 돌아가기" onPress={() => router.back()} style={s.back}><Text style={s.backText}>‹</Text></Pressable><Text style={s.headerTitle}>주간 식단 레시피</Text></View>
-    {!planId || !day || !mealType ? <Text style={s.muted}>주간 식단에서 레시피를 다시 열어 주세요.</Text> : loading ? <View style={s.loading}><ActivityIndicator color="#5246C6" /><Text style={s.muted}>음식별 조리법을 찾고 있어요. 시간이 꽤 걸릴 수 있어요.</Text></View> : error ? <View style={s.error}><Text style={s.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.source}>다시 시도</Text></Pressable></View> : meal ? <>
+    {!planId || !day || !mealType ? <Text style={s.muted}>주간 식단에서 레시피를 다시 열어 주세요.</Text> : loading ? <View style={s.loading}><ActivityIndicator color={colors.primaryText} /><Text style={s.muted}>음식별 조리법을 찾고 있어요. 시간이 꽤 걸릴 수 있어요.</Text></View> : error ? <View style={s.error}><Text style={s.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.source}>다시 시도</Text></Pressable></View> : meal ? <>
       <Text style={s.source}>{dayNames[day]}요일 · {mealNames[mealType]}</Text>
       <Text style={s.title}>{meal.menu_name || '추천 메뉴'}</Text>
       {Boolean(meal.menu_description) && <Text style={s.body}>{meal.menu_description}</Text>}
@@ -102,10 +105,12 @@ export default function WeeklyRecipeScreen() {
   </ScrollView></View>;
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, gap: 14 },
-  header: { height: 48, flexDirection: 'row', alignItems: 'center' }, back: { width: 48, height: 48, justifyContent: 'center' }, backText: { fontSize: 34, color: '#1B1B22' }, headerTitle: { fontSize: 19, color: '#1B1B22', fontFamily: fontFamilies.pretendardBold }, loading: { marginTop: 40, alignItems: 'center', gap: 12 },
-  title: { fontSize: 24, color: '#1B1B22', fontFamily: fontFamilies.pretendardBold }, body: { fontSize: 14, color: '#3D3D47', lineHeight: 22 }, muted: { fontSize: 13, color: '#646670', lineHeight: 20 }, source: { fontSize: 13, color: '#5246C6', fontFamily: fontFamilies.pretendardSemiBold }, sectionTitle: { fontSize: 16, color: '#1B1B22', fontFamily: fontFamilies.pretendardBold }, itemTitle: { fontSize: 17, color: '#1B1B22', fontFamily: fontFamilies.pretendardBold }, recipeName: { fontSize: 15, color: '#1B1B22', fontFamily: fontFamilies.pretendardSemiBold },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 }, tag: { backgroundColor: '#EDEFF2', color: '#454650', borderRadius: 6, paddingHorizontal: 9, paddingVertical: 5, fontSize: 12 }, meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 }, servings: { flexDirection: 'row', alignItems: 'center', gap: 12 }, servingButton: { backgroundColor: '#FAFBFC', width: 32, height: 32, borderRadius: 8, borderWidth: 1, borderColor: '#DDE1E6', alignItems: 'center', justifyContent: 'center' }, servingButtonText: { fontSize: 20, color: '#5246C6' },
-  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DDE1E6', borderRadius: 12, padding: 15, gap: 10 }, notice: { backgroundColor: '#FFF3DF', borderRadius: 12, padding: 15, gap: 7 }, warning: { color: '#9A2525', fontSize: 13, lineHeight: 20 }, ingredient: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 }, step: { flexDirection: 'row', gap: 12 }, stepIndex: { backgroundColor: '#1B1B22', color: '#FFFFFF', borderRadius: 14, overflow: 'hidden', width: 28, height: 28, textAlign: 'center', lineHeight: 28 }, stepCopy: { flex: 1, gap: 4 }, tip: { fontSize: 13, lineHeight: 20, color: '#454650', backgroundColor: '#EDEFF2', padding: 10, borderRadius: 8 }, related: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DDE1E6', borderRadius: 9, padding: 12, gap: 3 }, error: { padding: 14, backgroundColor: '#FFF1F1', borderRadius: 10, gap: 10 }, errorText: { color: '#9A2525', fontSize: 13 },
-});
+function createSStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, gap: 14 },
+    header: { height: 48, flexDirection: 'row', alignItems: 'center' }, back: { width: 48, height: 48, justifyContent: 'center' }, backText: { fontSize: 34, color: colors.textPrimary }, headerTitle: { fontSize: 19, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, loading: { marginTop: 40, alignItems: 'center', gap: 12 },
+    title: { fontSize: 24, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, body: { fontSize: 14, color: colors.textBody, lineHeight: 22 }, muted: { fontSize: 13, color: colors.textSecondary, lineHeight: 20 }, source: { fontSize: 13, color: colors.primaryText, fontFamily: fontFamilies.pretendardSemiBold }, sectionTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, itemTitle: { fontSize: 17, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, recipeName: { fontSize: 15, color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 }, tag: { backgroundColor: colors.surfaceMuted, color: colors.textBody, borderRadius: 6, paddingHorizontal: 9, paddingVertical: 5, fontSize: 12 }, meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 }, servings: { flexDirection: 'row', alignItems: 'center', gap: 12 }, servingButton: { backgroundColor: colors.surface, width: 32, height: 32, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }, servingButtonText: { fontSize: 20, color: colors.primaryText },
+    card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 15, gap: 10 }, notice: { backgroundColor: colors.warningLight, borderRadius: 12, padding: 15, gap: 7 }, warning: { color: colors.danger, fontSize: 13, lineHeight: 20 }, ingredient: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 }, step: { flexDirection: 'row', gap: 12 }, stepIndex: { backgroundColor: colors.tabBar, color: '#FFFFFF', borderRadius: 14, overflow: 'hidden', width: 28, height: 28, textAlign: 'center', lineHeight: 28 }, stepCopy: { flex: 1, gap: 4 }, tip: { fontSize: 13, lineHeight: 20, color: colors.textBody, backgroundColor: colors.surfaceMuted, padding: 10, borderRadius: 8 }, related: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 9, padding: 12, gap: 3 }, error: { padding: 14, backgroundColor: colors.dangerLight, borderRadius: 10, gap: 10 }, errorText: { color: colors.danger, fontSize: 13 },
+  } as const;
+}

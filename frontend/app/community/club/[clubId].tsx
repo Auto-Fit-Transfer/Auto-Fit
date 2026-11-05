@@ -29,10 +29,12 @@ import {
 } from '@/src/features/community/communityEvents';
 import { COMMUNITY_RANKING_ENABLED } from '@/src/features/community/communityFeatures';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, spacing, typography } from '@/src/theme';
+import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 
 export default function CommunityClubScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { clubId } = useLocalSearchParams<{ clubId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -220,7 +222,7 @@ export default function CommunityClubScreen() {
       </View>
       <Pressable accessibilityRole="button" onPress={openMembers} style={styles.membersCard}>
         <Text style={styles.membersCount}>회원 {club.member_count.toLocaleString()}명</Text>
-        <View style={styles.membersMore}><Text style={styles.membersLink}>전체 보기</Text><CaretRightIcon color="#5E5D66" height={18} width={18} /></View>
+        <View style={styles.membersMore}><Text style={styles.membersLink}>전체 보기</Text><CaretRightIcon color={colors.textSecondary} height={18} width={18} /></View>
       </Pressable>
       {COMMUNITY_RANKING_ENABLED ? (
         <Pressable
@@ -309,62 +311,64 @@ export default function CommunityClubScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.background, flex: 1 },
-  info: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: spacing.md,
-    paddingBottom: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
-  },
-  identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  categoryIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 22 },
-  categoryIconText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14 },
-  identityText: { flex: 1, gap: 2 },
-  category: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
-  description: { ...typography.body, color: colors.textBody },
-  meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
-  ownerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  ownerLabel: { color: colors.textSecondary, fontSize: 12 },
-  ownerName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  actionRow: { flexDirection: 'row', gap: spacing.sm },
-  action: { flex: 1 },
-  membersCard: { minHeight: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16 },
-  membersMore: { alignItems: 'center', flexDirection: 'row', gap: 2 },
-  membersCount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  membersLink: { color: colors.textSecondary, fontSize: 12 },
-  feedHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.md },
-  feedTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  sortLabel: { color: colors.textSecondary, fontSize: 12 },
-  rankingLink: {
-    color: colors.primary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-    marginTop: 2,
-  },
-  joinButton: {
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  join: { backgroundColor: colors.primary, borderColor: colors.primary },
-  joined: { backgroundColor: colors.surfaceSoft, borderColor: colors.surfaceSoft },
-  pressed: { opacity: 0.75 },
-  joinTextOn: { color: colors.surface, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  joinedText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  empty: { alignItems: 'center', padding: spacing.xxl },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    info: {
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      gap: spacing.md,
+      paddingBottom: spacing.lg,
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.sm,
+    },
+    identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+    categoryIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 22 },
+    categoryIconText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14 },
+    identityText: { flex: 1, gap: 2 },
+    category: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+    name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
+    description: { ...typography.body, color: colors.textBody },
+    meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
+    ownerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+    ownerLabel: { color: colors.textSecondary, fontSize: 12 },
+    ownerName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    actionRow: { flexDirection: 'row', gap: spacing.sm },
+    action: { flex: 1 },
+    membersCard: { minHeight: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16 },
+    membersMore: { alignItems: 'center', flexDirection: 'row', gap: 2 },
+    membersCount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    membersLink: { color: colors.textSecondary, fontSize: 12 },
+    feedHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.md },
+    feedTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    sortLabel: { color: colors.textSecondary, fontSize: 12 },
+    rankingLink: {
+      color: colors.primary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 14,
+      marginTop: 2,
+    },
+    joinButton: {
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      borderRadius: 12,
+      borderWidth: 1,
+      minHeight: 44,
+      justifyContent: 'center',
+    },
+    join: { backgroundColor: colors.primary, borderColor: colors.primary },
+    joined: { backgroundColor: colors.surfaceMuted, borderColor: colors.surfaceMuted },
+    pressed: { opacity: 0.75 },
+    joinTextOn: { color: colors.surface, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    joinedText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    empty: { alignItems: 'center', padding: spacing.xxl },
+  } as const;
+}

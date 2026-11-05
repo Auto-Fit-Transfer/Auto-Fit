@@ -20,7 +20,7 @@ import {
 import { AppButton, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
-import { colors, fontFamilies, spacing, typography } from '@/src/theme';
+import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 function describe(item: CommunityNotification) {
   switch (item.type) {
@@ -36,6 +36,8 @@ function describe(item: CommunityNotification) {
 }
 
 export default function CommunityNotificationsScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState<CommunityNotification[] | null>(null);
@@ -131,7 +133,7 @@ export default function CommunityNotificationsScreen() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <View style={styles.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable><Text style={styles.headerTitle}>알림</Text><View style={{ width: 24 }} /></View>
+      <View style={styles.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable><Text style={styles.headerTitle}>알림</Text><View style={{ width: 24 }} /></View>
       <View style={styles.filters}>
         {([['all', '전체'], ['community', '커뮤니티']] as const).map(([key, label]) => <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={[styles.filter, tab === key && styles.filterSelected]}><Text style={[styles.filterText, tab === key && styles.filterTextSelected]}>{label}</Text></Pressable>)}
         <View accessibilityLabel="챌린지·티어 알림은 준비 중" style={styles.filter}><Text style={styles.filterText}>챌린지 · 티어</Text></View>
@@ -219,43 +221,45 @@ export default function CommunityNotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.background, flex: 1 },
-  header: { height: 54, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, headerTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardSemiBold },
-  filters: { paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }, filter: { backgroundColor: '#FFFFFF', borderRadius: 999, height: 34, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderColor: '#DFE2E7' }, filterSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' }, filterText: { color: '#5E5D66', fontSize: 12 }, filterTextSelected: { color: '#FFFFFF' }, markReadButton: { marginLeft: 'auto' }, markRead: { color: '#5E5D66', fontSize: 12 }, sectionTitle: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardBold, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8 }, readError: { color: '#A13A2F', fontSize: 12, paddingHorizontal: 20 },
-  availability: { color: '#5E5D66', fontSize: 12, paddingHorizontal: 20, paddingBottom: 8 },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  row: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: spacing.md,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.md,
-  },
-  dot: { alignSelf: 'center', backgroundColor: '#17161D', borderRadius: 3, height: 6, marginLeft: -10, marginRight: -6, width: 6 },
-  dotRead: { backgroundColor: 'transparent' },
-  pressed: { opacity: 0.8 },
-  body: { flex: 1, gap: 2, minWidth: 0 },
-  text: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  actor: { fontFamily: fontFamilies.pretendardBold },
-  preview: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    header: { height: 54, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, headerTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardSemiBold },
+    filters: { paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }, filter: { backgroundColor: colors.background, borderRadius: 999, height: 34, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderColor: colors.border }, filterSelected: { backgroundColor: colors.primary, borderColor: colors.primary }, filterText: { color: colors.textSecondary, fontSize: 12 }, filterTextSelected: { color: '#FFFFFF' }, markReadButton: { marginLeft: 'auto' }, markRead: { color: colors.textSecondary, fontSize: 12 }, sectionTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8 }, readError: { color: colors.danger, fontSize: 12, paddingHorizontal: 20 },
+    availability: { color: colors.textSecondary, fontSize: 12, paddingHorizontal: 20, paddingBottom: 8 },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    row: {
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: spacing.md,
+      paddingHorizontal: spacing.xl,
+      paddingVertical: spacing.md,
+    },
+    dot: { alignSelf: 'center', backgroundColor: colors.tabBar, borderRadius: 3, height: 6, marginLeft: -10, marginRight: -6, width: 6 },
+    dotRead: { backgroundColor: 'transparent' },
+    pressed: { opacity: 0.8 },
+    body: { flex: 1, gap: 2, minWidth: 0 },
+    text: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 14,
+      lineHeight: 20,
+    },
+    actor: { fontFamily: fontFamilies.pretendardBold },
+    preview: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 12,
+      lineHeight: 18,
+    },
+    time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+  } as const;
+}

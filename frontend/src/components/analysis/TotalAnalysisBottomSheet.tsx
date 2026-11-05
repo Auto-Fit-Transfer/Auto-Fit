@@ -2,10 +2,8 @@ import {
   Alert,
   Linking,
   Pressable,
-  StyleSheet,
   useWindowDimensions,
-  View,
-} from 'react-native';
+  View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ChevronRightIcon from '@/assets/icons/common/chevrons/Right.svg';
@@ -18,7 +16,7 @@ import LightbulbIcon from '@/assets/icons/system/Lightbulb.svg';
 import ListIcon from '@/assets/icons/system/ListBullets.svg';
 import WarningCircleIcon from '@/assets/icons/system/WarningCircle.svg';
 import { AppBottomSheet, Text } from '@/src/components/common';
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme, type Palette } from '@/src/theme';
 
 import type {
   AnalysisMetric,
@@ -40,11 +38,13 @@ interface Props {
   onOpenReference: (referenceId: string) => void;
 }
 
-const toneStyles = {
-  normal: { color: colors.primaryDark, background: colors.primaryLight },
-  warning: { color: '#FFA450', background: '#FFF9F4' },
-  danger: { color: '#E57373', background: '#FFF1F1' },
-} satisfies Record<AnalysisTone, { color: string; background: string }>;
+function createToneStyles(colors: Palette) {
+  return {
+    normal: { color: colors.primaryText, background: colors.primaryLight },
+    warning: { color: colors.warning, background: colors.warningLight },
+    danger: { color: colors.danger, background: colors.dangerLight },
+  } satisfies Record<AnalysisTone, { color: string; background: string }>;
+}
 
 function SheetHeading({
   title,
@@ -55,6 +55,8 @@ function SheetHeading({
   description: string;
   onClose: () => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { width: viewportWidth } = useWindowDimensions();
   const headingContentWidth = Math.max(0, viewportWidth - 40);
   const descriptionScale = Math.min(1, headingContentWidth / 360);
@@ -98,8 +100,10 @@ function StatusBadge({
   tone?: AnalysisTone;
   large?: boolean;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   if (!label) return null;
-  const palette = toneStyles[tone];
+  const palette = createToneStyles(colors)[tone];
   return (
     <View
       style={[
@@ -116,8 +120,10 @@ function StatusBadge({
 }
 
 function MetricCard({ metric }: { metric: AnalysisMetric }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const Icon = metric.icon;
-  const palette = toneStyles[metric.tone ?? 'normal'];
+  const palette = createToneStyles(colors)[metric.tone ?? 'normal'];
   return (
     <View style={styles.metricCard}>
       <View style={styles.metricTop}>
@@ -147,6 +153,8 @@ function AdditionalMetricsContent({
   reason: AnalysisReason;
   onClose: () => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.sheetContent}>
       <SheetHeading
@@ -161,7 +169,7 @@ function AdditionalMetricsContent({
       </View>
       <View style={styles.summaryBox}>
         <View style={styles.summaryTitleRow}>
-          <LightbulbIcon color={colors.primaryDark} height={22} width={22} />
+          <LightbulbIcon color={colors.primaryPressed} height={22} width={22} />
           <Text style={styles.summaryBoxTitle}>해석 요약</Text>
         </View>
         <Text style={styles.summaryBoxText}>{reason.interpretation}</Text>
@@ -180,6 +188,8 @@ function CriterionContent({
   onClose: () => void;
   onOpenReference: (referenceId: string) => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.sheetContentWideGap}>
       <SheetHeading
@@ -209,7 +219,7 @@ function CriterionContent({
           </View>
         </View>
         <View style={styles.currentInfo}>
-          <WarningCircleIcon color={colors.primaryDark} height={16} width={16} />
+          <WarningCircleIcon color={colors.primaryPressed} height={16} width={16} />
           <Text numberOfLines={1} style={styles.currentInfoText}>
             {criterion.metricName} 판정 결과는 사용자 조건에 따라 달라질 수 있어요.
           </Text>
@@ -219,7 +229,7 @@ function CriterionContent({
         <Text style={styles.sectionTitle}>적용 기준</Text>
         <View style={styles.ruleRow}>
           <View style={styles.smallIconCircle}>
-            <DocumentIcon color={colors.primaryDark} height={18} width={18} />
+            <DocumentIcon color={colors.primaryPressed} height={18} width={18} />
           </View>
           <Text style={styles.ruleText}>{criterion.appliedRule}</Text>
         </View>
@@ -231,7 +241,7 @@ function CriterionContent({
         </Text>
         <View style={styles.rangeList}>
           {criterion.ranges.map((range) => {
-            const rangePalette = toneStyles[range.tone];
+            const rangePalette = createToneStyles(colors)[range.tone];
             return (
               <View key={range.id} style={[styles.rangeRow, { borderColor: rangePalette.color }]}>
                 <View style={[styles.rangeLabel, { backgroundColor: rangePalette.background }]}>
@@ -261,10 +271,10 @@ function CriterionContent({
           style={({ pressed }) => [styles.referenceButton, pressed && styles.pressed]}
         >
           <View style={styles.referenceButtonLeft}>
-            <DocumentIcon color={colors.primaryDark} height={18} width={18} />
+            <DocumentIcon color={colors.primaryPressed} height={18} width={18} />
             <Text style={styles.referenceButtonText}>참고 출처 보기</Text>
           </View>
-          <ChevronRightIcon color={colors.primaryDark} height={18} width={18} />
+          <ChevronRightIcon color={colors.primaryPressed} height={18} width={18} />
         </Pressable>
       ) : null}
     </View>
@@ -293,10 +303,12 @@ function DetailRow({
   label: string;
   value: string;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.detailRow}>
       <View style={styles.smallIconCircle}>
-        <Icon color={colors.primaryDark} height={18} width={18} />
+        <Icon color={colors.primaryPressed} height={18} width={18} />
       </View>
       <View style={styles.detailCopy}>
         <Text style={styles.detailLabel}>{label}</Text>
@@ -313,6 +325,8 @@ function ReferenceContent({
   reference: ReferenceSource;
   onClose: () => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={styles.sheetContentWideGap}>
       <SheetHeading
@@ -329,7 +343,7 @@ function ReferenceContent({
         <View style={styles.detailDivider} />
         <View style={styles.detailRow}>
           <View style={styles.smallIconCircle}>
-            <ListIcon color={colors.primaryDark} height={18} width={18} />
+            <ListIcon color={colors.primaryPressed} height={18} width={18} />
           </View>
           <View style={styles.detailCopy}>
             <Text style={styles.detailLabel}>Auto-Fit에서 활용한 항목</Text>
@@ -345,7 +359,7 @@ function ReferenceContent({
         <View style={styles.detailDivider} />
         <View style={styles.detailRow}>
           <View style={styles.smallIconCircle}>
-            <InfoIcon color={colors.primaryDark} height={18} width={18} />
+            <InfoIcon color={colors.primaryPressed} height={18} width={18} />
           </View>
           <View style={styles.detailCopy}>
             <Text style={styles.detailLabel}>이 분석에 적용된 부분</Text>
@@ -359,16 +373,17 @@ function ReferenceContent({
         style={({ pressed }) => [styles.referenceButton, pressed && styles.pressed]}
       >
         <View style={styles.referenceButtonLeft}>
-          <DocumentIcon color={colors.primaryDark} height={18} width={18} />
+          <DocumentIcon color={colors.primaryPressed} height={18} width={18} />
           <Text style={styles.referenceButtonText}>원문 확인</Text>
         </View>
-        <ChevronRightIcon color={colors.primaryDark} height={18} width={18} />
+        <ChevronRightIcon color={colors.primaryPressed} height={18} width={18} />
       </Pressable>
     </View>
   );
 }
 
 export function TotalAnalysisBottomSheet({ sheet, onClose, onOpenReference }: Props) {
+  const styles = useThemedStyles(createStyles);
   const { height: viewportHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const maxSheetHeight = Math.max(0, viewportHeight - Math.max(insets.top, 12));
@@ -400,268 +415,270 @@ export function TotalAnalysisBottomSheet({ sheet, onClose, onOpenReference }: Pr
   );
 }
 
-const styles = StyleSheet.create({
-  bottomSheet: {
-    borderColor: colors.border,
-    borderTopWidth: 1,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    overflow: 'hidden',
-  },
-  bottomSheetContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
-  sheetContent: { gap: 16 },
-  sheetContentWideGap: { gap: 24 },
-  heading: { gap: 5 },
-  headingTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 5 },
-  headingTitle: {
-    flex: 1,
-    color: colors.textBody,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 22,
-  },
-  headingDescription: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 16,
-    letterSpacing: -0.1,
-    lineHeight: 22,
-  },
-  close: {
-    width: 30,
-    height: 30,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.primaryDark,
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2.5,
-    elevation: 2,
-  },
-  metricList: { gap: 12 },
-  metricCard: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 15,
-    padding: 14,
-    gap: 10,
-    backgroundColor: colors.surface,
-  },
-  metricTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  metricIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  metricCopy: { flex: 1 },
-  metricName: { fontSize: 16, color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold },
-  metricValue: { fontSize: 22, color: colors.textBody, fontFamily: fontFamilies.pretendardBold },
-  metricDescription: {
-    alignSelf: 'stretch',
-    marginHorizontal: -6,
-    fontSize: 13,
-    letterSpacing: -0.1,
-    lineHeight: 20,
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-  },
-  statusBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  statusText: { fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
-  statusBadgeLarge: { paddingHorizontal: 18, paddingVertical: 5 },
-  statusTextLarge: { fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-  summaryBox: { borderRadius: 20, padding: 14, gap: 8, backgroundColor: colors.primaryLight },
-  summaryTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  summaryBoxTitle: {
-    color: colors.primaryDark,
-    fontSize: 16,
-    fontFamily: fontFamilies.pretendardSemiBold,
-  },
-  summaryBoxText: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: fontFamilies.pretendardMedium,
-  },
-  sheetFootnote: {
-    textAlign: 'center',
-    color: colors.textSecondary,
-    fontSize: 15,
-    fontFamily: fontFamilies.pretendardMedium,
-  },
-  currentCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 15,
-    paddingTop: 20,
-    paddingBottom: 10,
-    alignItems: 'center',
-    gap: 10,
-  },
-  currentInner: { flexDirection: 'row', alignItems: 'center', gap: 16, width: '100%' },
-  currentColumn: { flex: 1, alignItems: 'center', gap: 6 },
-  currentLabel: {
-    fontSize: 15,
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-  },
-  currentValue: {
-    fontSize: 32,
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardBold,
-  },
-  currentValueRow: {
-    maxWidth: '100%',
-    flexDirection: 'row',
-    flexWrap: 'nowrap',
-    alignItems: 'baseline',
-    justifyContent: 'center',
-    gap: 4,
-  },
-  currentUnit: {
-    flexShrink: 0,
-    color: colors.primaryDark,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 13,
-  },
-  currentDivider: { width: 1, height: 56, backgroundColor: '#D2EEE9' },
-  currentInfo: {
-    alignSelf: 'stretch',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderRadius: 8,
-    backgroundColor: colors.primaryLight,
-    marginHorizontal: -3,
-    paddingHorizontal: 6,
-    paddingVertical: 8,
-  },
-  currentInfoText: {
-    flexShrink: 1,
-    color: colors.textBody,
-    fontSize: 12,
-    letterSpacing: -0.15,
-    lineHeight: 17,
-    fontFamily: fontFamilies.pretendardMedium,
-  },
-  criteriaSection: { gap: 12 },
-  sectionTitle: {
-    color: colors.primaryDark,
-    fontSize: 20,
-    fontFamily: fontFamilies.pretendardSemiBold,
-  },
-  ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  smallIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  ruleText: {
-    flex: 1,
-    color: colors.textSecondary,
-    fontSize: 15,
-    lineHeight: 21,
-    fontFamily: fontFamilies.pretendardMedium,
-  },
-  rangeHelp: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: fontFamilies.pretendardMedium,
-  },
-  rangeList: { gap: 8 },
-  rangeRow: {
-    backgroundColor: colors.surface,
-    height: 45,
-    borderWidth: 1,
-    borderRadius: 10,
-    overflow: 'hidden',
-    flexDirection: 'row',
-    flexWrap: 'nowrap',
-    alignItems: 'center',
-  },
-  rangeLabel: {
-    flexBasis: '38%',
-    maxWidth: 150,
-    height: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingLeft: 12,
-  },
-  rangeDot: { width: 12, height: 12, borderRadius: 6 },
-  rangeLabelText: { fontSize: 16, color: colors.textBody, fontFamily: fontFamilies.pretendardBold },
-  rangeValue: {
-    flex: 1,
-    flexShrink: 1,
-    paddingLeft: 10,
-    fontSize: 15,
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-  },
-  currentPill: { marginRight: 10, borderRadius: 20, paddingHorizontal: 5, paddingVertical: 3 },
-  currentPillText: {
-    color: colors.surface,
-    fontSize: 13,
-    fontFamily: fontFamilies.pretendardSemiBold,
-  },
-  referenceButton: {
-    height: 50,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: colors.primaryLight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  referenceButtonLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  referenceButtonText: {
-    color: colors.primaryDark,
-    fontSize: 16,
-    fontFamily: fontFamilies.pretendardSemiBold,
-  },
-  referenceDetailCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 },
-  detailCopy: { flex: 1, gap: 2 },
-  detailLabel: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    fontFamily: fontFamilies.pretendardMedium,
-  },
-  detailValue: {
-    color: colors.textBody,
-    fontSize: 16,
-    lineHeight: 21,
-    fontFamily: fontFamilies.pretendardSemiBold,
-  },
-  detailDivider: { height: 1, backgroundColor: colors.border },
-  appliedChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 5, width: '100%' },
-  appliedChip: {
-    width: '49%',
-    borderRadius: 20,
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  appliedChipText: {
-    color: colors.primaryDark,
-    fontSize: 13,
-    fontFamily: fontFamilies.pretendardSemiBold,
-  },
-  pressed: { opacity: 0.72 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    bottomSheet: {
+      borderColor: colors.border,
+      borderTopWidth: 1,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      overflow: 'hidden',
+    },
+    bottomSheetContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8 },
+    sheetContent: { gap: 16 },
+    sheetContentWideGap: { gap: 24 },
+    heading: { gap: 5 },
+    headingTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 5 },
+    headingTitle: {
+      flex: 1,
+      color: colors.textBody,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 22,
+    },
+    headingDescription: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 16,
+      letterSpacing: -0.1,
+      lineHeight: 22,
+    },
+    close: {
+      width: 30,
+      height: 30,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: colors.primaryPressed,
+      shadowOffset: { width: 2, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 2.5,
+      elevation: 2,
+    },
+    metricList: { gap: 12 },
+    metricCard: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 15,
+      padding: 14,
+      gap: 10,
+      backgroundColor: colors.surface,
+    },
+    metricTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    metricIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    metricCopy: { flex: 1 },
+    metricName: { fontSize: 16, color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold },
+    metricValue: { fontSize: 22, color: colors.textBody, fontFamily: fontFamilies.pretendardBold },
+    metricDescription: {
+      alignSelf: 'stretch',
+      marginHorizontal: -6,
+      fontSize: 13,
+      letterSpacing: -0.1,
+      lineHeight: 20,
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardMedium,
+    },
+    statusBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
+    statusText: { fontSize: 13, fontFamily: fontFamilies.pretendardSemiBold },
+    statusBadgeLarge: { paddingHorizontal: 18, paddingVertical: 5 },
+    statusTextLarge: { fontSize: 18, fontFamily: fontFamilies.pretendardBold },
+    summaryBox: { borderRadius: 20, padding: 14, gap: 8, backgroundColor: colors.primaryLight },
+    summaryTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    summaryBoxTitle: {
+      color: colors.primaryPressed,
+      fontSize: 16,
+      fontFamily: fontFamilies.pretendardSemiBold,
+    },
+    summaryBoxText: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+      fontFamily: fontFamilies.pretendardMedium,
+    },
+    sheetFootnote: {
+      textAlign: 'center',
+      color: colors.textSecondary,
+      fontSize: 15,
+      fontFamily: fontFamilies.pretendardMedium,
+    },
+    currentCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 15,
+      paddingTop: 20,
+      paddingBottom: 10,
+      alignItems: 'center',
+      gap: 10,
+    },
+    currentInner: { flexDirection: 'row', alignItems: 'center', gap: 16, width: '100%' },
+    currentColumn: { flex: 1, alignItems: 'center', gap: 6 },
+    currentLabel: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardMedium,
+    },
+    currentValue: {
+      fontSize: 32,
+      color: colors.primaryPressed,
+      fontFamily: fontFamilies.pretendardBold,
+    },
+    currentValueRow: {
+      maxWidth: '100%',
+      flexDirection: 'row',
+      flexWrap: 'nowrap',
+      alignItems: 'baseline',
+      justifyContent: 'center',
+      gap: 4,
+    },
+    currentUnit: {
+      flexShrink: 0,
+      color: colors.primaryPressed,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 13,
+    },
+    currentDivider: { width: 1, height: 56, backgroundColor: '#D2EEE9' },
+    currentInfo: {
+      alignSelf: 'stretch',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      borderRadius: 8,
+      backgroundColor: colors.primaryLight,
+      marginHorizontal: -3,
+      paddingHorizontal: 6,
+      paddingVertical: 8,
+    },
+    currentInfoText: {
+      flexShrink: 1,
+      color: colors.textBody,
+      fontSize: 12,
+      letterSpacing: -0.15,
+      lineHeight: 17,
+      fontFamily: fontFamilies.pretendardMedium,
+    },
+    criteriaSection: { gap: 12 },
+    sectionTitle: {
+      color: colors.primaryPressed,
+      fontSize: 20,
+      fontFamily: fontFamilies.pretendardSemiBold,
+    },
+    ruleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    smallIconCircle: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
+      backgroundColor: colors.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    ruleText: {
+      flex: 1,
+      color: colors.textSecondary,
+      fontSize: 15,
+      lineHeight: 21,
+      fontFamily: fontFamilies.pretendardMedium,
+    },
+    rangeHelp: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 20,
+      fontFamily: fontFamilies.pretendardMedium,
+    },
+    rangeList: { gap: 8 },
+    rangeRow: {
+      backgroundColor: colors.surface,
+      height: 45,
+      borderWidth: 1,
+      borderRadius: 10,
+      overflow: 'hidden',
+      flexDirection: 'row',
+      flexWrap: 'nowrap',
+      alignItems: 'center',
+    },
+    rangeLabel: {
+      flexBasis: '38%',
+      maxWidth: 150,
+      height: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingLeft: 12,
+    },
+    rangeDot: { width: 12, height: 12, borderRadius: 6 },
+    rangeLabelText: { fontSize: 16, color: colors.textBody, fontFamily: fontFamilies.pretendardBold },
+    rangeValue: {
+      flex: 1,
+      flexShrink: 1,
+      paddingLeft: 10,
+      fontSize: 15,
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardMedium,
+    },
+    currentPill: { marginRight: 10, borderRadius: 20, paddingHorizontal: 5, paddingVertical: 3 },
+    currentPillText: {
+      color: colors.surface,
+      fontSize: 13,
+      fontFamily: fontFamilies.pretendardSemiBold,
+    },
+    referenceButton: {
+      height: 50,
+      paddingHorizontal: 16,
+      borderRadius: 12,
+      backgroundColor: colors.primaryLight,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    referenceButtonLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    referenceButtonText: {
+      color: colors.primaryPressed,
+      fontSize: 16,
+      fontFamily: fontFamilies.pretendardSemiBold,
+    },
+    referenceDetailCard: {
+      backgroundColor: colors.surface,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 16,
+      overflow: 'hidden',
+    },
+    detailRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 },
+    detailCopy: { flex: 1, gap: 2 },
+    detailLabel: {
+      color: colors.textSecondary,
+      fontSize: 14,
+      fontFamily: fontFamilies.pretendardMedium,
+    },
+    detailValue: {
+      color: colors.textBody,
+      fontSize: 16,
+      lineHeight: 21,
+      fontFamily: fontFamilies.pretendardSemiBold,
+    },
+    detailDivider: { height: 1, backgroundColor: colors.border },
+    appliedChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 5, width: '100%' },
+    appliedChip: {
+      width: '49%',
+      borderRadius: 20,
+      backgroundColor: colors.primaryLight,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+    },
+    appliedChipText: {
+      color: colors.primaryPressed,
+      fontSize: 13,
+      fontFamily: fontFamilies.pretendardSemiBold,
+    },
+    pressed: { opacity: 0.72 },
+  } as const;
+}

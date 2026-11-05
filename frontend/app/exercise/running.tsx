@@ -1,20 +1,20 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveRunningSession, getRunningApiErrorMessage, getRunningRecommendations, getSavedRunningCourses, startFreeRun, type RunningCourse, type RunningDistanceOption, type RunningSavedCourse, type RunningSession } from '@/src/api/running';
 import { courseDifficultyLabel, coursesWithRenderablePaths, hasRenderablePath } from '@/src/features/running/courseRoute';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
-const purple = '#5246C6';
 const distanceOptions: RunningDistanceOption[] = ['3km', '5km', '10km'];
 const nameOf = (course: RunningCourse) => course.course_name || course.name || '이름 없는 코스';
 
 export default function RunningRecommendations() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [region, setRegion] = useState('');
@@ -91,10 +91,9 @@ export default function RunningRecommendations() {
   };
 
   return <View style={styles.root}>
-    <StatusBar style="dark" />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 38 }]}>
       <View style={styles.header}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable>
+        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
         <Text style={styles.title}>러닝 추천</Text>
         <View style={{ width: 24 }} />
       </View>
@@ -124,7 +123,7 @@ export default function RunningRecommendations() {
           <Pressable accessibilityRole="button" disabled={starting} onPress={() => void start()} style={[styles.buttonOutline, starting && { opacity: 0.6 }]}><Text style={styles.buttonOutlineText}>{starting ? '준비 중…' : '자유 러닝 시작하기'}</Text></Pressable>}
       </View>
       <Pressable accessibilityRole="button" disabled={loading} onPress={() => void search()} style={[styles.button, loading && { opacity: 0.6 }]}><Text style={styles.buttonText}>코스 추천받기</Text></Pressable>
-      {loading ? <ActivityIndicator color={purple} /> : null}
+      {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
       {message ? <View style={styles.notice}><Text style={styles.body}>{message}</Text></View> : null}
       {courses.length > 0 ? <Text style={styles.sectionTitle}>추천 코스 {courses.length}개</Text> : null}
       {courses.map((course, index) => <Pressable accessibilityRole="button" accessibilityLabel={`${nameOf(course)} 코스 자세히 보기`} onPress={() => router.push({ pathname: '/exercise/running-course', params: { courseId: course.course_id } })} key={course.course_id || String(index)} style={styles.card}>
@@ -142,28 +141,30 @@ export default function RunningRecommendations() {
   </View>;
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { paddingHorizontal: 20, gap: 17 },
-  header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  back: { fontSize: 32, color: '#17161D', lineHeight: 36 },
-  title: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  sectionTitle: { color: '#17161D', fontSize: 17, fontFamily: fontFamilies.pretendardBold },
-  input: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 12, paddingHorizontal: 13, height: 56, fontSize: 14, color: '#17161D' },
-  options: { flexDirection: 'row', gap: 9 },
-  option: { flex: 1, borderWidth: 1, borderColor: '#DFE2E7', backgroundColor: '#FAFBFC', borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
-  selected: { borderColor: purple, backgroundColor: purple },
-  optionText: { color: '#5E5D66', fontSize: 14 },
-  selectedText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold },
-  buttonOutline: { backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, height: 56, justifyContent: 'center', alignItems: 'center' },
-  buttonOutlineText: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  button: { backgroundColor: purple, borderRadius: 12, height: 56, justifyContent: 'center', alignItems: 'center' },
-  buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  notice: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, padding: 16 },
-  body: { color: '#17161D', fontSize: 14, lineHeight: 20 },
-  card: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 16, padding: 16, gap: 8 },
-  courseTitle: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  courseLink: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold, marginTop: 4 }, savedHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 }, savedBadge: { backgroundColor: '#ECE9FF', color: '#17161D', borderRadius: 6, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, fontSize: 12 },
-  meta: { color: '#5E5D66', fontSize: 14 },
-  caption: { color: '#5E5D66', fontSize: 14, lineHeight: 18 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background },
+    content: { paddingHorizontal: 20, gap: 17 },
+    header: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    back: { fontSize: 32, color: colors.textPrimary, lineHeight: 36 },
+    title: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    sectionTitle: { color: colors.textPrimary, fontSize: 17, fontFamily: fontFamilies.pretendardBold },
+    input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 13, height: 56, fontSize: 14, color: colors.textPrimary },
+    options: { flexDirection: 'row', gap: 9 },
+    option: { flex: 1, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
+    selected: { borderColor: colors.primary, backgroundColor: colors.primary },
+    optionText: { color: colors.textSecondary, fontSize: 14 },
+    selectedText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold },
+    buttonOutline: { backgroundColor: colors.background, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 56, justifyContent: 'center', alignItems: 'center' },
+    buttonOutlineText: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    button: { backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center', alignItems: 'center' },
+    buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    notice: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16 },
+    body: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
+    card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16, gap: 8 },
+    courseTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    courseLink: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold, marginTop: 4 }, savedHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 }, savedBadge: { backgroundColor: colors.primaryLight, color: colors.textPrimary, borderRadius: 6, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, fontSize: 12 },
+    meta: { color: colors.textSecondary, fontSize: 14 },
+    caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 18 },
+  } as const;
+}

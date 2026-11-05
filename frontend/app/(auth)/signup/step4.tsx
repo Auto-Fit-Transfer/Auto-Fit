@@ -5,17 +5,15 @@ import {
   Keyboard,
   Platform,
   Pressable,
-  StyleSheet,
   TextInput,
-  View,
-} from 'react-native';
+  View } from 'react-native';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import {
   useSignup,
   type SignupExerciseExperience,
   type SignupExerciseGoal,
 } from '@/src/features/signup/SignupContext';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import CheckIcon from '@/assets/icons/auth-redesign/ab4c2.svg';
 import { Text } from '@/src/components/common';
 
@@ -45,6 +43,7 @@ const experienceOptions: ExperienceOption[] = [
 ];
 
 export default function SignUpStep4Screen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { flow } = useLocalSearchParams<{ flow?: string }>();
   const { draft, updateDraft } = useSignup();
@@ -203,6 +202,7 @@ function ChoiceRow({
   selected: boolean;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityRole="radio"
@@ -235,6 +235,8 @@ function CustomGoalInput({
   onBlur: () => void;
   onChangeText: (value: string) => void;
 }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <View>
       <Text style={styles.customLabel}>어떤 목표인가요?</Text>
@@ -247,7 +249,7 @@ function CustomGoalInput({
           onChangeText={onChangeText}
           onFocus={onFocus}
           placeholder="예) 무릎 수술 뒤 다시 오래 걷기"
-          placeholderTextColor="#5E5D66"
+          placeholderTextColor={colors.textSecondary}
           returnKeyType="done"
           style={styles.customInput}
           value={value}
@@ -259,101 +261,103 @@ function CustomGoalInput({
   );
 }
 
-const styles = StyleSheet.create({
-  sectionTitle: {
-    color: '#17161D',
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-    lineHeight: 24,
-    marginBottom: 10,
-  },
-  choiceList: { gap: 8 },
-  choice: {
-    alignItems: 'center',
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    height: 56,
-    justifyContent: 'space-between',
-    paddingHorizontal: 19,
-  },
-  selected: { borderColor: '#5246C6' },
-  choiceLabel: {
-    color: '#17161D',
-    flex: 1,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 16,
-    lineHeight: 24,
-  },
-  selectedLabel: { fontFamily: fontFamilies.pretendardBold },
-  radio: {
-    alignItems: 'center',
-    borderColor: '#8E8D95',
-    borderRadius: 12,
-    borderWidth: 1,
-    height: 24,
-    justifyContent: 'center',
-    width: 24,
-  },
-  radioSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
-  experienceRow: { flexDirection: 'row', gap: 8 },
-  chip: {
-    alignItems: 'center',
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 999,
-    borderWidth: 1,
-    flex: 1,
-    height: 40,
-    justifyContent: 'center',
-  },
-  chipSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
-  chipText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  chipTextSelected: { color: '#FFFFFF' },
-  experienceHint: {
-    color: '#5E5D66',
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: 10,
-  },
-  customLabel: {
-    color: '#17161D',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    lineHeight: 21,
-    marginBottom: 8,
-    marginTop: 8,
-  },
-  customField: {
-    alignItems: 'center',
-    backgroundColor: '#FAFBFC',
-    borderColor: '#5246C6',
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 8,
-    height: 52,
-    paddingHorizontal: 16,
-  },
-  customInput: {
-    color: '#17161D',
-    flex: 1,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 16,
-    height: '100%',
-    minWidth: 0,
-    padding: 0,
-  },
-  customCount: { color: '#5E5D66', fontSize: 14 },
-  customHint: {
-    color: '#5E5D66',
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 14,
-    lineHeight: 21,
-    marginTop: 8,
-  },
-  pressed: { opacity: 0.75 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    sectionTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+      lineHeight: 24,
+      marginBottom: 10,
+    },
+    choiceList: { gap: 8 },
+    choice: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      flexDirection: 'row',
+      height: 56,
+      justifyContent: 'space-between',
+      paddingHorizontal: 19,
+    },
+    selected: { borderColor: colors.primary },
+    choiceLabel: {
+      color: colors.textPrimary,
+      flex: 1,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 16,
+      lineHeight: 24,
+    },
+    selectedLabel: { fontFamily: fontFamilies.pretendardBold },
+    radio: {
+      alignItems: 'center',
+      borderColor: colors.textDisabled,
+      borderRadius: 12,
+      borderWidth: 1,
+      height: 24,
+      justifyContent: 'center',
+      width: 24,
+    },
+    radioSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    experienceRow: { flexDirection: 'row', gap: 8 },
+    chip: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 999,
+      borderWidth: 1,
+      flex: 1,
+      height: 40,
+      justifyContent: 'center',
+    },
+    chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    chipTextSelected: { color: '#FFFFFF' },
+    experienceHint: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 14,
+      lineHeight: 21,
+      marginTop: 10,
+    },
+    customLabel: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 14,
+      lineHeight: 21,
+      marginBottom: 8,
+      marginTop: 8,
+    },
+    customField: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.primary,
+      borderRadius: 12,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 8,
+      height: 52,
+      paddingHorizontal: 16,
+    },
+    customInput: {
+      color: colors.textPrimary,
+      flex: 1,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 16,
+      height: '100%',
+      minWidth: 0,
+      padding: 0,
+    },
+    customCount: { color: colors.textSecondary, fontSize: 14 },
+    customHint: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 14,
+      lineHeight: 21,
+      marginTop: 8,
+    },
+    pressed: { opacity: 0.75 },
+  } as const;
+}

@@ -1,12 +1,11 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CheckIcon from '@/assets/icons/ui/check.svg';
 import { ChatCharacterAvatar } from '@/src/components/chat/ChatCharacterAvatar';
 import { chatCharacters, getChatCharacter, loadChatCharacter, saveChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 
@@ -17,6 +16,7 @@ const samples: Record<ChatCharacterId, string> = {
 };
 
 export default function ChatCharactersScreen() {
+  const s = useThemedStyles(createSStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [selected, setSelected] = useState<ChatCharacterId>('quni');
@@ -40,7 +40,6 @@ export default function ChatCharactersScreen() {
   };
   return (
     <View style={s.root}>
-      <StatusBar style="dark" />
       <ScreenHeader onBack={() => router.back()} title="대화 상대 고르기" />
       <ScrollView contentContainerStyle={[s.content, { paddingBottom: 18 }]} showsVerticalScrollIndicator={false}>
         <Text style={s.title}>누구와 이야기할까요?</Text>
@@ -77,24 +76,26 @@ export default function ChatCharactersScreen() {
   );
 }
 
-const s = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
-  content: { gap: 12, paddingHorizontal: 20, paddingTop: 8 },
-  title: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
-  description: { color: '#3B3A42', fontSize: 16, lineHeight: 24 },
-  sampleLabel: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
-  list: { gap: 12 },
-  card: { alignItems: 'flex-start', backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 16 },
-  selectedCard: { borderColor: '#5246C6', borderWidth: 2 },
-  copy: { flex: 1, gap: 2, minWidth: 0 },
-  name: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  role: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
-  cardDescription: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  sample: { color: '#3B3A42', fontSize: 14, lineHeight: 21, marginTop: 2 },
-  radio: { alignItems: 'center', borderColor: '#5E5D66', borderRadius: 12, borderWidth: 1, height: 24, justifyContent: 'center', width: 24 },
-  radioSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
-  bottom: { backgroundColor: '#FFFFFF', paddingHorizontal: 20, paddingTop: 8 },
-  primaryButton: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center' },
-  primaryText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  disabled: { opacity: 0.5 },
-});
+function createSStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    content: { gap: 12, paddingHorizontal: 20, paddingTop: 8 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
+    description: { color: colors.textBody, fontSize: 16, lineHeight: 24 },
+    sampleLabel: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    list: { gap: 12 },
+    card: { alignItems: 'flex-start', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 16 },
+    selectedCard: { borderColor: colors.primary, borderWidth: 2 },
+    copy: { flex: 1, gap: 2, minWidth: 0 },
+    name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    role: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
+    cardDescription: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    sample: { color: colors.textBody, fontSize: 14, lineHeight: 21, marginTop: 2 },
+    radio: { alignItems: 'center', borderColor: colors.textSecondary, borderRadius: 12, borderWidth: 1, height: 24, justifyContent: 'center', width: 24 },
+    radioSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    bottom: { backgroundColor: colors.background, paddingHorizontal: 20, paddingTop: 8 },
+    primaryButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center' },
+    primaryText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    disabled: { opacity: 0.5 },
+  } as const;
+}

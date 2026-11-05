@@ -3,10 +3,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Alert,
   Pressable,
-  StyleSheet,
   TextInput,
-  View,
-} from 'react-native';
+  View } from 'react-native';
 
 import EmailIcon from '@/assets/icons/input/Email.svg';
 import NoticeIcon from '@/assets/icons/auth-redesign/info-circle.svg';
@@ -14,12 +12,13 @@ import { SignUpScreenLayout } from '@/src/components/auth';
 import { useSignup } from '@/src/features/signup/SignupContext';
 import { getSignupAuthErrorMessage } from '@/src/features/signup/signupAuthError';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 const verificationCodeLength = 6;
 
 export default function SignUpStep2Screen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { draft } = useSignup();
   const params = useLocalSearchParams<{ email?: string }>();
@@ -163,65 +162,67 @@ export default function SignUpStep2Screen() {
   );
 }
 
-const styles = StyleSheet.create({
-  emailCard: {
-    alignItems: 'center',
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 12,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 10,
-    height: 58,
-    paddingLeft: 16,
-    paddingRight: 8,
-  },
-  emailText: {
-    color: '#17161D',
-    flex: 1,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 16,
-  },
-  smallButton: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: '#DFE2E7',
-    borderRadius: 8,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  smallButtonText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  codeRow: { flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
-  codeInput: {
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 12,
-    borderWidth: 1,
-    color: '#17161D',
-    flex: 1,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 22,
-    height: 60,
-    minWidth: 0,
-    padding: 0,
-    textAlign: 'center',
-  },
-  codeInputFocused: { borderColor: '#5246C6', borderWidth: 2 },
-  resendRow: { alignItems: 'flex-end', marginTop: -16 },
-  resendDisabled: { opacity: 0.55 },
-  notice: {
-    alignItems: 'center',
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 10,
-    minHeight: 51,
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-  },
-  noticeText: { color: '#3B3A42', flex: 1, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    emailCard: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 10,
+      height: 58,
+      paddingLeft: 16,
+      paddingRight: 8,
+    },
+    emailText: {
+      color: colors.textPrimary,
+      flex: 1,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 16,
+    },
+    smallButton: {
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      borderColor: colors.border,
+      borderRadius: 8,
+      borderWidth: 1,
+      height: 44,
+      justifyContent: 'center',
+      paddingHorizontal: 12,
+    },
+    smallButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    codeRow: { flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
+    codeInput: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      color: colors.textPrimary,
+      flex: 1,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 22,
+      height: 60,
+      minWidth: 0,
+      padding: 0,
+      textAlign: 'center',
+    },
+    codeInputFocused: { borderColor: colors.primary, borderWidth: 2 },
+    resendRow: { alignItems: 'flex-end', marginTop: -16 },
+    resendDisabled: { opacity: 0.55 },
+    notice: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 10,
+      minHeight: 51,
+      paddingHorizontal: 16,
+      paddingVertical: 15,
+    },
+    noticeText: { color: colors.textBody, flex: 1, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
+  } as const;
+}

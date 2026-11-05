@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CalendarIcon from '@/assets/icons/ui/calendar-check.svg';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
@@ -10,7 +9,7 @@ import { getCommunityProfile, type CommunityProfile } from '@/src/api/community'
 import { getApiErrorMessage } from '@/src/api/client';
 import { CommunityAvatar } from '@/src/components/community';
 import { BirthDatePicker } from '@/src/components/auth';
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 function validBirthDate(value: string) {
@@ -25,6 +24,8 @@ function validBirthDate(value: string) {
 }
 
 export default function ProfileScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [profile, setProfile] = useState<Profile>({});
@@ -96,14 +97,13 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.screen}>
-      <StatusBar style="dark" />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 110 }]}
       >
         <View style={styles.header}>
           <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={() => router.back()} style={styles.back}>
-            <CaretLeftIcon color="#17161D" height={24} width={24} />
+            <CaretLeftIcon color={colors.textPrimary} height={24} width={24} />
           </Pressable>
           <Text style={styles.title}>프로필 수정</Text>
           <View style={styles.back} />
@@ -162,7 +162,7 @@ export default function ProfileScreen() {
                   <Text style={profile.birth_date ? styles.inputText : styles.helper}>
                     {profile.birth_date?.replace(/-/g, '.') ?? '생년월일을 선택해 주세요'}
                   </Text>
-                  <CalendarIcon color="#5E5D66" height={20} width={20} />
+                  <CalendarIcon color={colors.textSecondary} height={20} width={20} />
                 </Pressable>
               </View>
               <View style={styles.field}>
@@ -231,37 +231,39 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { paddingHorizontal: 22 },
-  header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  back: { width: 32, minHeight: 32, justifyContent: 'center' },
-  title: { fontFamily: fontFamilies.pretendardSemiBold, color: colors.textPrimary, fontSize: 16 },
-  avatarBlock: { alignItems: 'center', marginTop: 28, marginBottom: 32, gap: 8 },
-  avatarCaption: { fontFamily: fontFamilies.pretendardSemiBold, color: colors.textPrimary, fontSize: 14 },
-  form: { gap: 22 },
-  field: { gap: 9 },
-  label: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14, color: colors.textPrimary },
-  optional: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
-  input: { minHeight: 52, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', fontSize: 16, color: colors.textPrimary, backgroundColor: colors.surface },
-  dateInput: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-  inputText: { fontSize: 16, color: colors.textPrimary },
-  helper: { fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
-  unavailable: { backgroundColor: colors.surface, justifyContent: 'center' },
-  genderRow: { flexDirection: 'row', gap: 9 },
-  gender: { backgroundColor: colors.background, flex: 1, height: 40, borderWidth: 1, borderColor: colors.border, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-  genderSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
-  genderText: { fontSize: 14, color: colors.textSecondary },
-  genderTextSelected: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold },
-  healthLink: { backgroundColor: colors.surface, minHeight: 60, padding: 14, borderWidth: 1, borderColor: colors.border, borderRadius: 12, gap: 4 },
-  healthLinkText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
-  message: { color: colors.textSecondary, marginTop: 30 },
-  error: { color: colors.danger, marginTop: 18 },
-  success: { color: colors.success, marginTop: 18 },
-  retry: { paddingVertical: 14 },
-  retryText: { color: colors.primary },
-  footer: { backgroundColor: colors.background, paddingHorizontal: 22, paddingTop: 12 },
-  save: { height: 56, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  saveDisabled: { opacity: 0.45 },
-  saveText: { fontFamily: fontFamilies.pretendardSemiBold, color: colors.surface, fontSize: 16 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    screen: { flex: 1, backgroundColor: colors.background },
+    content: { paddingHorizontal: 22 },
+    header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+    back: { width: 32, minHeight: 32, justifyContent: 'center' },
+    title: { fontFamily: fontFamilies.pretendardSemiBold, color: colors.textPrimary, fontSize: 16 },
+    avatarBlock: { alignItems: 'center', marginTop: 28, marginBottom: 32, gap: 8 },
+    avatarCaption: { fontFamily: fontFamilies.pretendardSemiBold, color: colors.textPrimary, fontSize: 14 },
+    form: { gap: 22 },
+    field: { gap: 9 },
+    label: { fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14, color: colors.textPrimary },
+    optional: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
+    input: { minHeight: 52, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center', fontSize: 16, color: colors.textPrimary, backgroundColor: colors.surface },
+    dateInput: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    inputText: { fontSize: 16, color: colors.textPrimary },
+    helper: { fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
+    unavailable: { backgroundColor: colors.surface, justifyContent: 'center' },
+    genderRow: { flexDirection: 'row', gap: 9 },
+    gender: { backgroundColor: colors.background, flex: 1, height: 40, borderWidth: 1, borderColor: colors.border, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+    genderSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
+    genderText: { fontSize: 14, color: colors.textSecondary },
+    genderTextSelected: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold },
+    healthLink: { backgroundColor: colors.surface, minHeight: 60, padding: 14, borderWidth: 1, borderColor: colors.border, borderRadius: 12, gap: 4 },
+    healthLinkText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold },
+    message: { color: colors.textSecondary, marginTop: 30 },
+    error: { color: colors.danger, marginTop: 18 },
+    success: { color: colors.success, marginTop: 18 },
+    retry: { paddingVertical: 14 },
+    retryText: { color: colors.primary },
+    footer: { backgroundColor: colors.background, paddingHorizontal: 22, paddingTop: 12 },
+    save: { height: 56, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+    saveDisabled: { opacity: 0.45 },
+    saveText: { fontFamily: fontFamilies.pretendardSemiBold, color: colors.surface, fontSize: 16 },
+  } as const;
+}

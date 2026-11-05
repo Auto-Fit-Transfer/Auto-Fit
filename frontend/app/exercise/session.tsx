@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, BackHandler, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, BackHandler, Platform, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
 import { getExerciseApiErrorMessage, recordExerciseDiscomfort } from '@/src/api/exercise';
@@ -9,9 +9,10 @@ import { R6ExerciseSession, type DiscomfortReport } from '@/src/components/exerc
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
 import { loadVoiceGuideSettings, speakGuide } from '@/src/features/exercise/voiceGuide';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 
 export default function ExerciseSessionScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { markRoutineCompleted, resultRecordCompleted } = useExerciseRoutine();
   const {
@@ -214,10 +215,12 @@ export default function ExerciseSessionScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
-  saving: { alignItems: 'center', backgroundColor: '#FFFFFF', flex: 1, gap: 12, justifyContent: 'center', padding: 20 },
-  savingText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 16, textAlign: 'center' },
-  retry: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
-  retryText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    saving: { alignItems: 'center', backgroundColor: colors.background, flex: 1, gap: 12, justifyContent: 'center', padding: 20 },
+    savingText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16, textAlign: 'center' },
+    retry: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
+    retryText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+  } as const;
+}

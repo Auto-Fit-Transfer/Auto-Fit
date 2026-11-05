@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useCanGoBack, useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,15 +8,16 @@ import { getRunningApiErrorMessage, getRunningCourseDetail, getSavedRunningCours
 import { KakaoRouteMap } from '@/src/components/exercise/KakaoRouteMap';
 import { canPreviewRoute, courseDifficultyLabel, previewRouteInput, routePoints, routePolyline } from '@/src/features/running/courseRoute';
 import { KAKAO_MAP_JS_KEY } from '@/src/features/running/kakaoMap';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
-const purple = '#5246C6';
 const nameOf = (course: RunningCourse) => course.course_name || course.name || '이름 없는 코스';
 const sourceOf = (course: RunningCourse) => course.source?.source_type ?? course.source_type;
 
 function RouteDiagram({ course, preview }: { course: RunningCourse; preview: RunningRoutePreview | null }) {
+  const { colors } = useAppTheme();
+  const s = useThemedStyles(createSStyles);
   const points = preview?.path?.length ? preview.path : routePoints(course);
   const [mapFailed, setMapFailed] = useState(false);
   const handleMapFailure = useCallback(() => setMapFailed(true), []);
@@ -28,11 +28,11 @@ function RouteDiagram({ course, preview }: { course: RunningCourse; preview: Run
   const ends = line.split(' ');
   return <View style={s.map}>
     <Svg height="220" viewBox="0 0 320 220" width="100%">
-      {Array.from({ length: 9 }, (_, index) => <Line key={`h${index}`} x1="0" x2="320" y1={index * 26} y2={index * 26} stroke="#E7E8EA" strokeWidth="1" />)}
-      {Array.from({ length: 13 }, (_, index) => <Line key={`v${index}`} x1={index * 27} x2={index * 27} y1="0" y2="220" stroke="#E7E8EA" strokeWidth="1" />)}
-      {line ? <><Polyline points={line} fill="none" stroke="#252329" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
-        <Circle cx={Number(ends[0]?.split(',')[0])} cy={Number(ends[0]?.split(',')[1])} r="6" fill="#FFF" stroke="#252329" strokeWidth="3" />
-        <Circle cx={Number(ends.at(-1)?.split(',')[0])} cy={Number(ends.at(-1)?.split(',')[1])} r="6" fill={purple} stroke="#FFF" strokeWidth="2" /></> : null}
+      {Array.from({ length: 9 }, (_, index) => <Line key={`h${index}`} x1="0" x2="320" y1={index * 26} y2={index * 26} stroke={colors.border} strokeWidth="1" />)}
+      {Array.from({ length: 13 }, (_, index) => <Line key={`v${index}`} x1={index * 27} x2={index * 27} y1="0" y2="220" stroke={colors.border} strokeWidth="1" />)}
+      {line ? <><Polyline points={line} fill="none" stroke={colors.textPrimary} strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
+        <Circle cx={Number(ends[0]?.split(',')[0])} cy={Number(ends[0]?.split(',')[1])} r="6" fill="#FFF" stroke={colors.textPrimary} strokeWidth="3" />
+        <Circle cx={Number(ends.at(-1)?.split(',')[0])} cy={Number(ends.at(-1)?.split(',')[1])} r="6" fill={colors.primary} stroke="#FFF" strokeWidth="2" /></> : null}
     </Svg>
     {!line ? <View style={s.mapEmpty}><Text style={s.mapEmptyText}>제공된 경로 좌표가 없어요</Text></View> : null}
     <View style={s.mapBadge}><Text style={s.mapBadgeText}>경로 도식 · 실제 지도가 아니에요</Text></View>
@@ -40,6 +40,8 @@ function RouteDiagram({ course, preview }: { course: RunningCourse; preview: Run
 }
 
 export default function RunningCourseScreen() {
+  const { colors } = useAppTheme();
+  const s = useThemedStyles(createSStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ courseId?: string; savedId?: string }>();
@@ -143,10 +145,9 @@ export default function RunningCourseScreen() {
   const canSave = !!course?.selection_token && !validationNeeded && !pathMissing && (!distanceAcceptanceNeeded || acceptDistanceError);
 
   return <View style={s.root}>
-    <StatusBar style="dark" />
     <ScrollView contentContainerStyle={[s.content, { paddingTop: insets.top + 14, paddingBottom: insets.bottom + 36 }]}>
-      <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={back}><CaretLeftIcon color="#17161D" height={24} width={24} /></Pressable><Text style={s.title}>러닝 코스</Text><View style={{ width: 24 }} /></View>
-      {loading ? <ActivityIndicator color={purple} /> : null}
+      <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로" onPress={back}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable><Text style={s.title}>러닝 코스</Text><View style={{ width: 24 }} /></View>
+      {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
       {error && !course ? <Pressable accessibilityRole="button" onPress={() => { setError(''); setPreviewError(''); setLoading(true); setRetry((value) => value + 1); }} style={s.notice}><Text style={s.error}>{error} · 다시 시도</Text></Pressable> : null}
       {course ? <>
         <Text style={s.eyebrow}>{saved ? '저장한 코스' : '추천 코스'}</Text>
@@ -175,15 +176,17 @@ export default function RunningCourseScreen() {
   </View>;
 }
 
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' }, content: { paddingHorizontal: 20, gap: 16 },
-  header: { height: 52, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, back: { color: '#17161D', fontSize: 32, lineHeight: 36 }, title: { color: '#17161D', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  eyebrow: { color: '#5E5D66', fontSize: 14, marginTop: 12 }, courseTitle: { color: '#17161D', fontSize: 21, fontFamily: fontFamilies.pretendardBold }, body: { color: '#3B3A42', fontSize: 14, lineHeight: 20 },
-  tags: { flexDirection: 'row', gap: 7 }, tag: { backgroundColor: '#F2F4F6', color: '#3B3A42', borderRadius: 5, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 5, fontSize: 12 },
-  map: { height: 220, backgroundColor: '#F1F2F3', borderRadius: 16, overflow: 'hidden' }, mapEmpty: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' }, mapEmptyText: { color: '#5E5D66', fontSize: 14 }, mapBadge: { position: 'absolute', right: 8, top: 8, backgroundColor: '#FFFE', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 5 }, mapBadgeText: { color: '#3B3A42', fontSize: 12 },
-  metrics: { flexDirection: 'row', gap: 8 }, metric: { flex: 1, backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 12, padding: 11, gap: 5 }, metricLabel: { color: '#5E5D66', fontSize: 12 }, metricValue: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-  notice: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 12, padding: 14 }, error: { color: '#A13A2F', fontSize: 14, lineHeight: 18 },
-  button: { height: 56, backgroundColor: purple, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, disabled: { opacity: 0.5 }, buttonText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, outline: { height: 56, backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: '#17161D', fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-  startCard: { backgroundColor: '#FAFBFC', borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 12, padding: 14, gap: 10 }, input: { backgroundColor: '#FAFBFC', height: 45, borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 8, paddingHorizontal: 12, fontSize: 14, color: '#17161D' },
-  choices: { flexDirection: 'row', gap: 7 }, choice: { backgroundColor: '#FAFBFC', flex: 1, borderWidth: 1, borderColor: '#DFE2E7', borderRadius: 8, paddingVertical: 10, alignItems: 'center' }, choiceSelected: { backgroundColor: purple, borderColor: purple }, choiceText: { color: '#5E5D66', fontSize: 14 }, choiceTextSelected: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold },
-});
+function createSStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, gap: 16 },
+    header: { height: 52, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, back: { color: colors.textPrimary, fontSize: 32, lineHeight: 36 }, title: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    eyebrow: { color: colors.textSecondary, fontSize: 14, marginTop: 12 }, courseTitle: { color: colors.textPrimary, fontSize: 21, fontFamily: fontFamilies.pretendardBold }, body: { color: colors.textBody, fontSize: 14, lineHeight: 20 },
+    tags: { flexDirection: 'row', gap: 7 }, tag: { backgroundColor: colors.surfaceMuted, color: colors.textBody, borderRadius: 5, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 5, fontSize: 12 },
+    map: { height: 220, backgroundColor: '#F1F2F3', borderRadius: 16, overflow: 'hidden' }, mapEmpty: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' }, mapEmptyText: { color: colors.textSecondary, fontSize: 14 }, mapBadge: { position: 'absolute', right: 8, top: 8, backgroundColor: '#FFFE', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 5 }, mapBadgeText: { color: colors.textBody, fontSize: 12 },
+    metrics: { flexDirection: 'row', gap: 8 }, metric: { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 11, gap: 5 }, metricLabel: { color: colors.textSecondary, fontSize: 12 }, metricValue: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
+    notice: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14 }, error: { color: colors.danger, fontSize: 14, lineHeight: 18 },
+    button: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, disabled: { opacity: 0.5 }, buttonText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, outline: { height: 56, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
+    startCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, gap: 10 }, input: { backgroundColor: colors.surface, height: 45, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, fontSize: 14, color: colors.textPrimary },
+    choices: { flexDirection: 'row', gap: 7 }, choice: { backgroundColor: colors.surface, flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }, choiceSelected: { backgroundColor: colors.primary, borderColor: colors.primary }, choiceText: { color: colors.textSecondary, fontSize: 14 }, choiceTextSelected: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold },
+  } as const;
+}

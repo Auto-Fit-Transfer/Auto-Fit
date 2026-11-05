@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import BarbellIcon from '@/assets/icons/ui/barbell.svg';
@@ -14,8 +13,8 @@ import { Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
-import { nextTierName, tierBadges, tierColors, tierDescriptions, tierOrder } from '@/src/features/tier/tierBadges';
-import { fontFamilies } from '@/src/theme';
+import { darkTierColors, nextTierName, tierBadges, tierColors, tierDescriptions, tierOrder } from '@/src/features/tier/tierBadges';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 // Points and limits come from the habit tier policy in the database.
 const ways = [
@@ -25,6 +24,8 @@ const ways = [
 ];
 
 export default function TierScreen() {
+  const { colors, isDark } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { preferences } = useDisplayPreferences();
@@ -57,7 +58,6 @@ export default function TierScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" />
       <ScreenHeader
         onBack={() => router.back()}
         right={<SimpleReadButton text={`내 티어 화면입니다. ${tier ? `현재 ${tier.tier_name} ${tier.sublevel}, 활동 점수 ${tier.points}점입니다.` : '티어 정보를 확인하고 있어요.'}`} />}
@@ -84,7 +84,7 @@ export default function TierScreen() {
               <Text style={styles.left}>{tier.next_level_points === null ? '가장 높은 단계' : `${Math.max(0, tier.next_level_points - tier.points).toLocaleString()}점 남음`}</Text>
             </View>
             <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: tierRatio }} style={styles.track}>
-              <View style={[styles.fill, { backgroundColor: tierColors[code], width: `${tierRatio}%` }]} />
+              <View style={[styles.fill, { backgroundColor: (isDark ? darkTierColors : tierColors)[code], width: `${tierRatio}%` }]} />
             </View>
             <View style={styles.spread}>
               <Text style={styles.muted}>{tier.tier_name} {tier.sublevel} · {tier.level_start_points.toLocaleString()}점</Text>
@@ -97,16 +97,16 @@ export default function TierScreen() {
         <View style={styles.card}>
           {ways.map(({ title, detail, points, Icon, path }, index) => (
             <Pressable hitSlop={8} key={title} accessibilityRole="button" onPress={() => router.push(path)} style={[styles.way, simple && simpleStyles.way, index > 0 && styles.wayDivider]}>
-              <View style={styles.wayIcon}><Icon color="#17161D" height={22} width={22} /></View>
+              <View style={styles.wayIcon}><Icon color={colors.textPrimary} height={22} width={22} /></View>
               <View style={styles.wayCopy}>
                 <Text style={[styles.wayTitle, simple && simpleStyles.wayTitle]}>{title}</Text>
                 <Text style={styles.muted}>{detail}</Text>
               </View>
               <View style={styles.pill}>
-                <CheckIcon color="#0E7C48" height={14} width={14} />
+                <CheckIcon color={colors.success} height={14} width={14} />
                 <Text style={styles.pillText}>+{points}점</Text>
               </View>
-              <CaretRightIcon color="#5E5D66" height={20} width={20} />
+              <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
             </Pressable>
           ))}
         </View>
@@ -119,9 +119,9 @@ export default function TierScreen() {
               const current = name === tier?.tier_code;
               const size = current ? 56 : 40;
               return (
-                <View key={name} style={styles.step}>
+                <View key={name} style={simple ? simpleStyles.step : styles.step}>
                   <StepBadge height={size} width={size} />
-                  <Text numberOfLines={1} style={[styles.stepName, current && { color: tierColors[name] }]}>{name}</Text>
+                  <Text numberOfLines={1} style={[styles.stepName, current && { color: isDark ? colors.tier[name].fg : tierColors[name] }]}>{name}</Text>
                   {current ? <Text style={styles.now}>지금</Text> : null}
                 </View>
               );
@@ -134,41 +134,45 @@ export default function TierScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
-  content: { alignSelf: 'center', maxWidth: 412, paddingHorizontal: 20, width: '100%' },
-  hero: { alignItems: 'center', paddingTop: 8 },
-  heroTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 32, lineHeight: 42, marginTop: 8 },
-  heroDescription: { color: '#3B3A42', fontSize: 16, lineHeight: 24, marginTop: 2, textAlign: 'center' },
-  tierError: { backgroundColor: '#FFF4F4', borderRadius: 12, marginTop: 16, padding: 12 },
-  tierErrorText: { color: '#B34141', fontSize: 14 },
-  card: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-  pointsCard: { gap: 10, marginTop: 24, padding: 18 },
-  spread: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'space-between' },
-  points: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
-  left: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  muted: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
-  track: { backgroundColor: '#E3E6EB', borderRadius: 4, height: 8, overflow: 'hidden' },
-  fill: { borderRadius: 4, height: 8 },
-  sectionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, marginBottom: 12, marginTop: 24 },
-  way: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 80, paddingHorizontal: 16, paddingVertical: 10 },
-  wayDivider: { borderTopColor: '#DFE2E7', borderTopWidth: 1 },
-  wayIcon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  wayCopy: { flex: 1, gap: 2, minWidth: 0 },
-  wayTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  pill: { alignItems: 'center', backgroundColor: '#E8F6EF', borderRadius: 999, flexDirection: 'row', gap: 4, height: 26, paddingHorizontal: 8 },
-  pillText: { color: '#0E7C48', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  steps: { gap: 16, padding: 18 },
-  stepRow: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between' },
-  step: { alignItems: 'center', flex: 1, gap: 4 },
-  stepName: { color: '#5E5D66', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  now: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 12 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    content: { alignSelf: 'center', maxWidth: 412, paddingHorizontal: 20, width: '100%' },
+    hero: { alignItems: 'center', paddingTop: 8 },
+    heroTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 32, lineHeight: 42, marginTop: 8 },
+    heroDescription: { color: colors.textBody, fontSize: 16, lineHeight: 24, marginTop: 2, textAlign: 'center' },
+    tierError: { backgroundColor: colors.dangerLight, borderRadius: 12, marginTop: 16, padding: 12 },
+    tierErrorText: { color: colors.danger, fontSize: 14 },
+    card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+    pointsCard: { gap: 10, marginTop: 24, padding: 18 },
+    spread: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'space-between' },
+    points: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
+    left: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    muted: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
+    track: { backgroundColor: colors.gaugeTrack, borderRadius: 4, height: 8, overflow: 'hidden' },
+    fill: { borderRadius: 4, height: 8 },
+    sectionTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, marginBottom: 12, marginTop: 24 },
+    way: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 80, paddingHorizontal: 16, paddingVertical: 10 },
+    wayDivider: { borderTopColor: colors.border, borderTopWidth: 1 },
+    wayIcon: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+    wayCopy: { flex: 1, gap: 2, minWidth: 0 },
+    wayTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    pill: { alignItems: 'center', backgroundColor: colors.successLight, borderRadius: 999, flexDirection: 'row', gap: 4, height: 26, paddingHorizontal: 8 },
+    pillText: { color: colors.success, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+    steps: { gap: 16, padding: 18 },
+    stepRow: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between' },
+    step: { alignItems: 'center', flex: 1, gap: 4 },
+    stepName: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+    now: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 12 },
+  } as const;
+}
 
 const simpleStyles = StyleSheet.create({
-  heroTitle: { fontSize: 36 },
+  heroTitle: {},
   card: { padding: 20 },
-  sectionTitle: { fontSize: 20 },
+  sectionTitle: {},
   way: { minHeight: 96 },
-  wayTitle: { fontSize: 18 },
+  wayTitle: {},
+  // Equal columns clip BALANCE at the enlarged size; the row's space-between spreads natural widths instead.
+  step: { alignItems: 'center', gap: 4 },
 });

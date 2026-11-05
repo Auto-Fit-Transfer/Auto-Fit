@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import CheckIcon from '@/assets/icons/system/Check.svg';
-import { colors, radius, typography } from '@/src/theme';
+import { radius, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 export interface SignUpStepIndicatorProps {
@@ -13,6 +13,8 @@ export function SignUpStepIndicator({
   currentStep,
   totalSteps = 4,
 }: SignUpStepIndicatorProps) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const steps = Array.from({ length: totalSteps }, (_, index) => index + 1);
 
   return (
@@ -26,7 +28,7 @@ export function SignUpStepIndicator({
             {index > 0 ? <View style={styles.line} /> : null}
             <View style={[styles.step, completed && styles.completed, active && styles.active]}>
               {completed ? (
-                <CheckIcon color={colors.primaryDark} height={15} width={15} />
+                <CheckIcon color={colors.primaryPressed} height={15} width={15} />
               ) : (
                 <Text style={[styles.stepLabel, active && styles.activeLabel]}>{step}</Text>
               )}
@@ -38,51 +40,53 @@ export function SignUpStepIndicator({
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    height: 20,
-    justifyContent: 'center',
-  },
-  itemGroup: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 3,
-  },
-  line: {
-    backgroundColor: colors.textDisabled,
-    height: StyleSheet.hairlineWidth,
-    marginLeft: 3,
-    width: 37.6,
-  },
-  step: {
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    borderColor: colors.textDisabled,
-    borderRadius: radius.round,
-    borderWidth: 1,
-    height: 17,
-    justifyContent: 'center',
-    width: 17,
-  },
-  completed: {
-    backgroundColor: colors.primaryLight,
-    borderColor: colors.primaryLight,
-  },
-  active: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  stepLabel: {
-    ...typography.caption,
-    color: colors.textDisabled,
-    fontSize: 9,
-    includeFontPadding: false,
-    lineHeight: 11,
-    textAlign: 'center',
-  },
-  activeLabel: {
-    color: colors.surface,
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    container: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      height: 20,
+      justifyContent: 'center',
+    },
+    itemGroup: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: 3,
+    },
+    line: {
+      backgroundColor: colors.textDisabled,
+      height: StyleSheet.hairlineWidth,
+      marginLeft: 3,
+      width: 37.6,
+    },
+    step: {
+      backgroundColor: colors.surface,
+      alignItems: 'center',
+      borderColor: colors.textDisabled,
+      borderRadius: radius.round,
+      borderWidth: 1,
+      height: 17,
+      justifyContent: 'center',
+      width: 17,
+    },
+    completed: {
+      backgroundColor: colors.primaryLight,
+      borderColor: colors.primaryLight,
+    },
+    active: {
+      backgroundColor: colors.primary,
+      borderColor: colors.primary,
+    },
+    stepLabel: {
+      ...typography.caption,
+      color: colors.textDisabled,
+      fontSize: 9,
+      includeFontPadding: false,
+      lineHeight: 11,
+      textAlign: 'center',
+    },
+    activeLabel: {
+      color: colors.surface,
+    },
+  } as const;
+}

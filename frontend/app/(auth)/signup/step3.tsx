@@ -5,14 +5,12 @@ import {
   Keyboard,
   Platform,
   Pressable,
-  StyleSheet,
   TextInput,
-  View,
-} from 'react-native';
+  View } from 'react-native';
 import { getSignupApiErrorMessage, saveAllergies } from '@/src/api/onboarding';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import { useSignup } from '@/src/features/signup/SignupContext';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import NoticeIcon from '@/assets/icons/auth-redesign/info-circle.svg';
 import { Text } from '@/src/components/common';
 
@@ -39,6 +37,8 @@ const allergenOptions: AllergenOption[] = [
 const keyboardSafeGap = 20;
 
 export default function SignUpStep3Screen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { flow } = useLocalSearchParams<{ flow?: string }>();
   const isPostLoginOnboarding = flow === 'post-login';
@@ -157,7 +157,7 @@ export default function SignUpStep3Screen() {
           }}
           onFocus={() => setIsOtherAllergyFocused(true)}
           placeholder="예) 키위, 토마토"
-          placeholderTextColor="#5E5D66"
+          placeholderTextColor={colors.textSecondary}
           returnKeyType="done"
           style={styles.otherInput}
           value={otherAllergy}
@@ -183,6 +183,7 @@ function AllergenButton({
   selected: boolean;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityRole="checkbox"
@@ -201,57 +202,59 @@ function AllergenButton({
   );
 }
 
-const styles = StyleSheet.create({
-  allergenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  allergenButton: {
-    alignItems: 'center',
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 40,
-    justifyContent: 'center',
-    minWidth: 80,
-    paddingHorizontal: 10,
-  },
-  allergenButtonSelected: { backgroundColor: '#5246C6', borderColor: '#5246C6' },
-  allergenLabel: {
-    color: '#3B3A42',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    lineHeight: 21,
-    textAlign: 'center',
-  },
-  allergenLabelSelected: { color: '#FFFFFF' },
-  otherTitle: {
-    color: '#17161D',
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-    lineHeight: 21,
-    marginBottom: 8,
-  },
-  otherInput: {
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 12,
-    borderWidth: 1,
-    color: '#17161D',
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 16,
-    height: 52,
-    paddingHorizontal: 16,
-  },
-  notice: {
-    backgroundColor: '#FAFBFC',
-    borderColor: '#DFE2E7',
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: 10,
-    padding: 16,
-  },
-  noticeCopy: { flex: 1, gap: 2 },
-  noticeTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 14, lineHeight: 21 },
-  noticeText: { color: '#3B3A42', fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
-  pressed: { opacity: 0.75 },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    allergenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    allergenButton: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 999,
+      borderWidth: 1,
+      height: 40,
+      justifyContent: 'center',
+      minWidth: 80,
+      paddingHorizontal: 10,
+    },
+    allergenButtonSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    allergenLabel: {
+      color: colors.textBody,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 14,
+      lineHeight: 21,
+      textAlign: 'center',
+    },
+    allergenLabelSelected: { color: '#FFFFFF' },
+    otherTitle: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 14,
+      lineHeight: 21,
+      marginBottom: 8,
+    },
+    otherInput: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 12,
+      borderWidth: 1,
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 16,
+      height: 52,
+      paddingHorizontal: 16,
+    },
+    notice: {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderRadius: 16,
+      borderWidth: 1,
+      flexDirection: 'row',
+      gap: 10,
+      padding: 16,
+    },
+    noticeCopy: { flex: 1, gap: 2 },
+    noticeTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14, lineHeight: 21 },
+    noticeText: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
+    pressed: { opacity: 0.75 },
+  } as const;
+}

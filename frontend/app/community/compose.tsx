@@ -31,7 +31,7 @@ import {
 import { AppDialog, Text } from '@/src/components/common';
 import { emitCommunityEvent } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, radius, spacing, typography } from '@/src/theme';
+import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const CATEGORIES: { key: CommunityPostCategory; label: string }[] = [
@@ -41,6 +41,8 @@ const CATEGORIES: { key: CommunityPostCategory; label: string }[] = [
 ];
 
 export default function CommunityComposeScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   // Opened from a club: the post goes to that club only.
   const { clubId, clubName } = useLocalSearchParams<{ clubId?: string; clubName?: string }>();
@@ -181,7 +183,7 @@ export default function CommunityComposeScreen() {
     >
       <View style={styles.header}>
         <Pressable accessibilityLabel="글쓰기 닫기" accessibilityRole="button" hitSlop={8} onPress={close} style={styles.cancel}>
-          <CloseIcon color="#17161D" height={24} width={24} />
+          <CloseIcon color={colors.textPrimary} height={24} width={24} />
         </Pressable>
         <Text accessibilityRole="header" numberOfLines={1} style={styles.title}>
           {clubName ? `${clubName}에 글쓰기` : '새 글'}
@@ -202,7 +204,7 @@ export default function CommunityComposeScreen() {
             multiline
             onChangeText={setContent}
             placeholder="오늘의 운동, 식단, 작은 변화를 나눠 보세요"
-            placeholderTextColor={colors.textNavigator}
+            placeholderTextColor={colors.textDisabled}
             style={styles.input}
             textAlignVertical="top"
             value={content}
@@ -245,7 +247,7 @@ export default function CommunityComposeScreen() {
               onPress={() => void pickPhotos()}
               style={[styles.thumbnail, styles.addPhoto]}
             >
-              <ImageIcon color="#5E5D66" height={26} width={26} />
+              <ImageIcon color={colors.textSecondary} height={26} width={26} />
               <Text style={styles.addPhotoText}>
                 {photos.length}/{COMMUNITY_MAX_IMAGES}
               </Text>
@@ -313,98 +315,100 @@ export default function CommunityComposeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.background, flex: 1 },
-  header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    minHeight: 56,
-    paddingHorizontal: spacing.xl,
-  },
-  cancel: { minWidth: 44, paddingVertical: spacing.sm },
-  draftButton: { minWidth: 58, alignItems: 'flex-end', paddingVertical: spacing.sm },
-  draftText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  title: {
-    ...typography.sectionTitle,
-    color: colors.textPrimary,
-    flexShrink: 1,
-    marginHorizontal: spacing.sm,
-  },
-  post: {
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    justifyContent: 'center',
-    minHeight: 56,
-    paddingHorizontal: spacing.lg,
-  },
-  postDisabled: { backgroundColor: colors.primary, opacity: 0.4 },
-  postPressed: { opacity: 0.85 },
-  postText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  body: { gap: spacing.md, padding: spacing.xl },
-  categoryRow: { flexDirection: 'row', gap: 7 },
-  categoryChip: { borderColor: colors.border, borderWidth: 1, borderRadius: 999, height: 40, justifyContent: 'center', paddingHorizontal: 16, backgroundColor: colors.background },
-  categorySelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  categoryText: { color: colors.textSecondary, fontSize: 14 },
-  categoryTextSelected: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold },
-  activityHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
-  activityButton: { alignItems: 'center', backgroundColor: '#FFFFFF', borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-  activityLink: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  visibilityRow: { alignItems: 'center', borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm, paddingTop: spacing.md },
-  visibilityValue: { color: colors.textSecondary, fontSize: 14 },
-  activityOption: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, gap: 5 },
-  activitySelected: { borderColor: colors.primary, backgroundColor: colors.surface },
-  activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  activityDisclosure: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
-  tagInput: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, minHeight: 48, color: colors.textPrimary },
-  fieldLabel: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
-  fieldHint: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-  inputWrap: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, padding: spacing.md },
-  input: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardRegular,
-    fontSize: 16,
-    lineHeight: 24,
-    minHeight: 100,
-  },
-  counter: { ...typography.caption, alignSelf: 'flex-end', color: colors.textSecondary },
-  photoHeading: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  photos: { gap: spacing.sm },
-  thumbnail: {
-    backgroundColor: colors.surfaceSoft,
-    borderRadius: 12,
-    height: 84,
-    overflow: 'hidden',
-    width: 84,
-  },
-  remove: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    borderRadius: radius.round,
-    height: 22,
-    justifyContent: 'center',
-    position: 'absolute',
-    right: 4,
-    top: 4,
-    width: 22,
-  },
-  addPhoto: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    gap: 2,
-    justifyContent: 'center',
-  },
-  addPhotoText: { ...typography.label, color: colors.textSecondary },
-  notice: { ...typography.bodySmall, color: colors.textSecondary },
-  bottom: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-  progress: {
-    alignItems: 'center',
-    backgroundColor: colors.surfaceSoft,
-    paddingVertical: spacing.sm,
-  },
-  progressText: { ...typography.bodyEmphasis, color: colors.textPrimary },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    header: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      minHeight: 56,
+      paddingHorizontal: spacing.xl,
+    },
+    cancel: { minWidth: 44, paddingVertical: spacing.sm },
+    draftButton: { minWidth: 58, alignItems: 'flex-end', paddingVertical: spacing.sm },
+    draftText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    title: {
+      ...typography.sectionTitle,
+      color: colors.textPrimary,
+      flexShrink: 1,
+      marginHorizontal: spacing.sm,
+    },
+    post: {
+      alignItems: 'center',
+      backgroundColor: colors.primary,
+      borderRadius: 12,
+      justifyContent: 'center',
+      minHeight: 56,
+      paddingHorizontal: spacing.lg,
+    },
+    postDisabled: { backgroundColor: colors.primary, opacity: 0.4 },
+    postPressed: { opacity: 0.85 },
+    postText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    body: { gap: spacing.md, padding: spacing.xl },
+    categoryRow: { flexDirection: 'row', gap: 7 },
+    categoryChip: { borderColor: colors.border, borderWidth: 1, borderRadius: 999, height: 40, justifyContent: 'center', paddingHorizontal: 16, backgroundColor: colors.background },
+    categorySelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+    categoryText: { color: colors.textSecondary, fontSize: 14 },
+    categoryTextSelected: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardSemiBold },
+    activityHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.sm },
+    activityButton: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+    activityLink: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    visibilityRow: { alignItems: 'center', borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm, paddingTop: spacing.md },
+    visibilityValue: { color: colors.textSecondary, fontSize: 14 },
+    activityOption: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, gap: 5 },
+    activitySelected: { borderColor: colors.primary, backgroundColor: colors.surface },
+    activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    activityDisclosure: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+    tagInput: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, minHeight: 48, color: colors.textPrimary },
+    fieldLabel: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    fieldHint: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+    inputWrap: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, padding: spacing.md },
+    input: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardRegular,
+      fontSize: 16,
+      lineHeight: 24,
+      minHeight: 100,
+    },
+    counter: { ...typography.caption, alignSelf: 'flex-end', color: colors.textSecondary },
+    photoHeading: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+    photos: { gap: spacing.sm },
+    thumbnail: {
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 12,
+      height: 84,
+      overflow: 'hidden',
+      width: 84,
+    },
+    remove: {
+      alignItems: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.55)',
+      borderRadius: radius.round,
+      height: 22,
+      justifyContent: 'center',
+      position: 'absolute',
+      right: 4,
+      top: 4,
+      width: 22,
+    },
+    addPhoto: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      borderWidth: 1,
+      gap: 2,
+      justifyContent: 'center',
+    },
+    addPhotoText: { ...typography.label, color: colors.textSecondary },
+    notice: { ...typography.bodySmall, color: colors.textSecondary },
+    bottom: { paddingHorizontal: spacing.xl, paddingTop: spacing.md },
+    progress: {
+      alignItems: 'center',
+      backgroundColor: colors.surfaceMuted,
+      paddingVertical: spacing.sm,
+    },
+    progressText: { ...typography.bodyEmphasis, color: colors.textPrimary },
+  } as const;
+}

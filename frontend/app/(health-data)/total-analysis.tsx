@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CheckIcon from '@/assets/icons/ui/check.svg';
 import MinusIcon from '@/assets/icons/ui/minus.svg';
@@ -25,11 +24,13 @@ import {
   type AnalysisSheetState,
 } from '@/src/components/analysis/TotalAnalysisBottomSheet';
 import { nextTierName, tierBadges } from '@/src/features/tier/tierBadges';
-import { fontFamilies } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 
 export default function TotalAnalysisScreen() {
+  const { colors } = useAppTheme();
+  const s = useThemedStyles(createSStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [data, setData] = useState<AnalysisDisplayData | null>(null);
@@ -96,7 +97,6 @@ export default function TotalAnalysisScreen() {
   };
   return (
     <>
-      <StatusBar style="dark" />
       <View style={s.root}>
         <ScreenHeader onBack={() => router.back()} title="종합 건강 분석" />
         <ScrollView contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 28 }]} showsVerticalScrollIndicator={false}>
@@ -106,7 +106,7 @@ export default function TotalAnalysisScreen() {
               <Text style={s.score}>{score ?? '—'}<Text style={s.scoreTotal}>  / {total ?? '—'}</Text></Text>
               {delta ? (
                 <View style={[s.pill, delta > 0 && s.pillGood]}>
-                  {delta > 0 ? <CheckIcon color="#0E7C48" height={14} width={14} /> : null}
+                  {delta > 0 ? <CheckIcon color={colors.success} height={14} width={14} /> : null}
                   <Text style={[s.pillText, delta > 0 && s.pillGoodText]}>지난번보다 {delta > 0 ? '+' : ''}{delta}</Text>
                 </View>
               ) : null}
@@ -146,7 +146,7 @@ export default function TotalAnalysisScreen() {
           ) : (
             <>
               <View style={[s.card, s.goal]}>
-                <View style={s.icon}><TargetIcon color="#17161D" height={22} width={22} /></View>
+                <View style={s.icon}><TargetIcon color={colors.textPrimary} height={22} width={22} /></View>
                 <View style={s.grow}>
                   <Text style={s.muted}>내 목표</Text>
                   <Text style={s.rowTitle}>{data.goal || '건강 목표를 설정해 주세요.'}</Text>
@@ -187,7 +187,7 @@ export default function TotalAnalysisScreen() {
                     <Text style={s.rowTitle}>{delta ? `점수가 바뀐 이유 · ${delta > 0 ? '+' : ''}${delta}점` : '분석 지표 자세히 보기'}</Text>
                     <Text numberOfLines={expanded ? undefined : 2} style={s.small}>{data.summary.description}</Text>
                   </View>
-                  {expanded ? <MinusIcon color="#17161D" height={22} width={22} /> : <PlusIcon color="#17161D" height={22} width={22} />}
+                  {expanded ? <MinusIcon color={colors.textPrimary} height={22} width={22} /> : <PlusIcon color={colors.textPrimary} height={22} width={22} />}
                 </Pressable>
                 {expanded ? (
                   <>
@@ -209,7 +209,7 @@ export default function TotalAnalysisScreen() {
                             <Text style={s.muted}>{metric.value} {metric.unit}</Text>
                           </View>
                           <View style={[s.pill, metric.tone === 'normal' ? s.pillGood : s.pillWarn]}>
-                            {metric.tone === 'normal' ? <CheckIcon color="#0E7C48" height={14} width={14} /> : <WarningIcon color="#B3690B" height={14} width={14} />}
+                            {metric.tone === 'normal' ? <CheckIcon color={colors.success} height={14} width={14} /> : <WarningIcon color={colors.warning} height={14} width={14} />}
                             <Text style={[s.pillText, metric.tone === 'normal' ? s.pillGoodText : s.pillWarnText]}>{metric.status}</Text>
                           </View>
                         </Pressable>
@@ -237,7 +237,7 @@ export default function TotalAnalysisScreen() {
                   style={s.expand}
                 >
                   <Text style={[s.rowTitle, s.grow]}>분석 기준과 출처</Text>
-                  {sources ? <MinusIcon color="#17161D" height={22} width={22} /> : <PlusIcon color="#17161D" height={22} width={22} />}
+                  {sources ? <MinusIcon color={colors.textPrimary} height={22} width={22} /> : <PlusIcon color={colors.textPrimary} height={22} width={22} />}
                 </Pressable>
                 {sources ? (
                   <>
@@ -285,45 +285,47 @@ export default function TotalAnalysisScreen() {
     </>
   );
 }
-const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFFFFF' },
-  content: { gap: 16, paddingHorizontal: 20, paddingTop: 8 },
-  card: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-  grow: { flex: 1, minWidth: 0 },
-  muted: { color: '#5E5D66', fontSize: 14, lineHeight: 21 },
-  small: { color: '#5E5D66', fontSize: 12, lineHeight: 18 },
-  body: { color: '#3B3A42', fontSize: 14, lineHeight: 21 },
-  rowTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-  scoreCard: { gap: 10, padding: 18 },
-  scoreRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
-  score: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 32, lineHeight: 42 },
-  scoreTotal: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 16 },
-  pill: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 999, flexDirection: 'row', gap: 4, height: 26, paddingHorizontal: 10 },
-  pillText: { color: '#5E5D66', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  pillGood: { backgroundColor: '#E8F6EF' },
-  pillGoodText: { color: '#0E7C48' },
-  pillWarn: { backgroundColor: '#FFF2E0' },
-  pillWarnText: { color: '#8A5208' },
-  track: { backgroundColor: '#E3E6EB', borderRadius: 4, height: 8, overflow: 'hidden' },
-  fill: { backgroundColor: '#17161D', borderRadius: 4, height: 8 },
-  tierRow: { alignItems: 'center', flexDirection: 'row', gap: 10, marginTop: 4 },
-  message: { borderTopColor: '#DFE2E7', borderTopWidth: 1, color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21, marginTop: 4, paddingTop: 12 },
-  smallButton: { alignItems: 'center', alignSelf: 'flex-start', backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, justifyContent: 'center', minHeight: 34, paddingHorizontal: 12 },
-  smallButtonText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  empty: { alignItems: 'center', gap: 12, padding: 24 },
-  emptyTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 16, lineHeight: 24, textAlign: 'center' },
-  goal: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 75, paddingHorizontal: 16, paddingVertical: 10 },
-  icon: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-  strategy: { gap: 8, padding: 18 },
-  strategyTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  tag: { backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 8, borderWidth: 1, color: '#3B3A42', fontFamily: fontFamilies.pretendardMedium, fontSize: 12, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 4 },
-  plans: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  plan: { backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, flex: 1, gap: 6, minWidth: 0, padding: 12 },
-  expand: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 64, padding: 16 },
-  expandedText: { paddingBottom: 12, paddingHorizontal: 16 },
-  metric: { alignItems: 'center', borderTopColor: '#DFE2E7', borderTopWidth: 1, flexDirection: 'row', gap: 8, minHeight: 72, paddingHorizontal: 16, paddingVertical: 8 },
-  reason: { borderTopColor: '#DFE2E7', borderTopWidth: 1, gap: 4, paddingHorizontal: 16, paddingVertical: 12 },
-  primary: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center' },
-  primaryText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-});
+function createSStyles({ colors }: AppTheme) {
+  return {
+    root: { flex: 1, backgroundColor: colors.background },
+    content: { gap: 16, paddingHorizontal: 20, paddingTop: 8 },
+    card: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+    grow: { flex: 1, minWidth: 0 },
+    muted: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
+    small: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
+    body: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    rowTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
+    scoreCard: { gap: 10, padding: 18 },
+    scoreRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
+    score: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 32, lineHeight: 42 },
+    scoreTotal: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 16 },
+    pill: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 999, flexDirection: 'row', gap: 4, height: 26, paddingHorizontal: 10 },
+    pillText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
+    pillGood: { backgroundColor: colors.successLight },
+    pillGoodText: { color: colors.success },
+    pillWarn: { backgroundColor: colors.warningLight },
+    pillWarnText: { color: colors.warning },
+    track: { backgroundColor: colors.gaugeTrack, borderRadius: 4, height: 8, overflow: 'hidden' },
+    fill: { backgroundColor: colors.tabBar, borderRadius: 4, height: 8 },
+    tierRow: { alignItems: 'center', flexDirection: 'row', gap: 10, marginTop: 4 },
+    message: { borderTopColor: colors.border, borderTopWidth: 1, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21, marginTop: 4, paddingTop: 12 },
+    smallButton: { alignItems: 'center', alignSelf: 'flex-start', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, justifyContent: 'center', minHeight: 34, paddingHorizontal: 12 },
+    smallButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    empty: { alignItems: 'center', gap: 12, padding: 24 },
+    emptyTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16, lineHeight: 24, textAlign: 'center' },
+    goal: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 75, paddingHorizontal: 16, paddingVertical: 10 },
+    icon: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
+    strategy: { gap: 8, padding: 18 },
+    strategyTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
+    tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    tag: { backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 4 },
+    plans: { flexDirection: 'row', gap: 8, marginTop: 4 },
+    plan: { backgroundColor: colors.background, borderColor: colors.border, borderRadius: 12, borderWidth: 1, flex: 1, gap: 6, minWidth: 0, padding: 12 },
+    expand: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 64, padding: 16 },
+    expandedText: { paddingBottom: 12, paddingHorizontal: 16 },
+    metric: { alignItems: 'center', borderTopColor: colors.border, borderTopWidth: 1, flexDirection: 'row', gap: 8, minHeight: 72, paddingHorizontal: 16, paddingVertical: 8 },
+    reason: { borderTopColor: colors.border, borderTopWidth: 1, gap: 4, paddingHorizontal: 16, paddingVertical: 12 },
+    primary: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center' },
+    primaryText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+  } as const;
+}

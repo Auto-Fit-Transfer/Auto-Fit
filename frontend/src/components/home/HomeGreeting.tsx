@@ -1,6 +1,6 @@
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { colors, fontFamilies } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 interface HomeGreetingProps {
@@ -10,6 +10,7 @@ interface HomeGreetingProps {
 }
 
 export function HomeGreeting({ userName, message, style }: HomeGreetingProps) {
+  const styles = useThemedStyles(createStyles);
   return (
     <View style={[styles.container, style]}>
       <Text style={styles.greeting}>
@@ -20,26 +21,28 @@ export function HomeGreeting({ userName, message, style }: HomeGreetingProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    gap: 11,
-    width: 370,
-  },
-  greeting: {
-    color: colors.textWhite,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 30,
-    includeFontPadding: false,
-    lineHeight: 36,
-  },
-  userName: {
-    color: colors.primaryMedium,
-  },
-  message: {
-    color: colors.textWhiteSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 15,
-    includeFontPadding: false,
-    lineHeight: 18,
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    container: {
+      gap: 11,
+      width: 370,
+    },
+    greeting: {
+      color: colors.onPrimary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 30,
+      includeFontPadding: false,
+      lineHeight: 36,
+    },
+    userName: {
+      color: colors.primary,
+    },
+    message: {
+      color: colors.textDisabled,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 15,
+      includeFontPadding: false,
+      lineHeight: 18,
+    },
+  } as const;
+}

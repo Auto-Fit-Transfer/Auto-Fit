@@ -34,11 +34,13 @@ import {
   subscribeCommunityEvents,
 } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { colors, fontFamilies, spacing, typography } from '@/src/theme';
+import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 
 // userId may be 'me' (the server resolves it to the signed-in user).
 export default function CommunityProfileScreen() {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -303,6 +305,8 @@ export default function CommunityProfileScreen() {
 }
 
 function MyRow({ label, onPress, value }: { label: string; onPress: () => void; value: string }) {
+  const { colors } = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityLabel={`${label} ${value}`}
@@ -311,12 +315,13 @@ function MyRow({ label, onPress, value }: { label: string; onPress: () => void; 
       style={({ pressed }) => [styles.myRow, pressed && styles.myRowPressed]}
     >
       <Text style={styles.myRowLabel}>{label}</Text>
-      <View style={styles.myRowEnd}><Text style={styles.myRowValue}>{value}</Text><CaretRightIcon color="#5E5D66" height={18} width={18} /></View>
+      <View style={styles.myRowEnd}><Text style={styles.myRowValue}>{value}</Text><CaretRightIcon color={colors.textSecondary} height={18} width={18} /></View>
     </Pressable>
   );
 }
 
 function Stat({ label, onPress, value }: { label: string; onPress?: () => void; value: number }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityLabel={`${label} ${value}${label === '게시글' ? '개' : '명'}`}
@@ -331,76 +336,78 @@ function Stat({ label, onPress, value }: { label: string; onPress?: () => void; 
   );
 }
 
-const styles = StyleSheet.create({
-  root: { backgroundColor: colors.background, flex: 1 },
-  profile: {
-    borderBottomColor: colors.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: spacing.md,
-    paddingBottom: spacing.lg,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.sm,
-  },
-  otherProfile: { paddingTop: spacing.lg },
-  profileTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.lg },
-  bio: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
-  stats: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
-  stat: { alignItems: 'center', minWidth: 56, paddingVertical: spacing.xs },
-  statValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18 },
-  statLabel: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-  },
-  nameRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-  name: {
-    color: colors.textPrimary,
-    flexShrink: 1,
-    fontFamily: fontFamilies.pretendardBold,
-    fontSize: 18,
-  },
-  badge: {
-    backgroundColor: colors.background,
-    borderRadius: 6,
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 12,
-    overflow: 'hidden',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  message: {
-    alignItems: 'center',
-    flex: 1,
-    gap: spacing.md,
-    justifyContent: 'center',
-    padding: spacing.xxl,
-  },
-  messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-  empty: { alignItems: 'center', padding: spacing.xxl },
-  footer: { paddingVertical: spacing.lg },
-  myRows: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-  otherActions: { flexDirection: 'row', gap: spacing.sm },
-  otherAction: { flex: 1 },
-  postsHeading: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, marginHorizontal: -spacing.xl, marginTop: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.lg },
-  postsTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  myRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    minHeight: 48,
-    paddingHorizontal: spacing.lg,
-  },
-  myRowPressed: { backgroundColor: colors.surfaceSoft },
-  myRowEnd: { alignItems: 'center', flexDirection: 'row', gap: 2 },
-  myRowLabel: {
-    color: colors.textPrimary,
-    fontFamily: fontFamilies.pretendardSemiBold,
-    fontSize: 14,
-  },
-  myRowValue: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.pretendardMedium,
-    fontSize: 14,
-  },
-});
+function createStyles({ colors }: AppTheme) {
+  return {
+    root: { backgroundColor: colors.background, flex: 1 },
+    profile: {
+      borderBottomColor: colors.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      gap: spacing.md,
+      paddingBottom: spacing.lg,
+      paddingHorizontal: spacing.xl,
+      paddingTop: spacing.sm,
+    },
+    otherProfile: { paddingTop: spacing.lg },
+    profileTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.lg },
+    bio: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
+    stats: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
+    stat: { alignItems: 'center', minWidth: 56, paddingVertical: spacing.xs },
+    statValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18 },
+    statLabel: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 14,
+    },
+    nameRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
+    name: {
+      color: colors.textPrimary,
+      flexShrink: 1,
+      fontFamily: fontFamilies.pretendardBold,
+      fontSize: 18,
+    },
+    badge: {
+      backgroundColor: colors.background,
+      borderRadius: 6,
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 12,
+      overflow: 'hidden',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+    },
+    message: {
+      alignItems: 'center',
+      flex: 1,
+      gap: spacing.md,
+      justifyContent: 'center',
+      padding: spacing.xxl,
+    },
+    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    empty: { alignItems: 'center', padding: spacing.xxl },
+    footer: { paddingVertical: spacing.lg },
+    myRows: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+    otherActions: { flexDirection: 'row', gap: spacing.sm },
+    otherAction: { flex: 1 },
+    postsHeading: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, marginHorizontal: -spacing.xl, marginTop: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.lg },
+    postsTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    myRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      minHeight: 48,
+      paddingHorizontal: spacing.lg,
+    },
+    myRowPressed: { backgroundColor: colors.surfaceMuted },
+    myRowEnd: { alignItems: 'center', flexDirection: 'row', gap: 2 },
+    myRowLabel: {
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardSemiBold,
+      fontSize: 14,
+    },
+    myRowValue: {
+      color: colors.textSecondary,
+      fontFamily: fontFamilies.pretendardMedium,
+      fontSize: 14,
+    },
+  } as const;
+}
