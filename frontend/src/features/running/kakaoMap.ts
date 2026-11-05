@@ -5,6 +5,15 @@ export const KAKAO_MAP_JS_KEY = process.env.EXPO_PUBLIC_KAKAO_MAP_JS_KEY?.trim()
 export const KAKAO_MAP_ORIGIN = process.env.EXPO_PUBLIC_KAKAO_MAP_ORIGIN?.trim() || 'https://211-233-206-193.sslip.io';
 export const KAKAO_MAP_LOAD_TIMEOUT_MS = 8000;
 
+export function isMapPageUrl(url: string) {
+  if (url === 'about:blank') return true;
+  try {
+    return new URL(url).origin === new URL(KAKAO_MAP_ORIGIN).origin;
+  } catch {
+    return false;
+  }
+}
+
 export function kakaoMapHtml(appKey: string, points: RunningCoordinate[], lineColor = '#5246C6') {
   const path = JSON.stringify(points.map((point) => [Number(point.latitude), Number(point.longitude)]));
   return `<!doctype html>

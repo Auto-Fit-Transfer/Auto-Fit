@@ -1,3 +1,4 @@
+import { rememberUploadedFile } from '@/src/features/health-data/healthUploadSession';
 import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from 'react-native';
@@ -17,7 +18,6 @@ import {
 import { Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { HealthDataUploadBottomSheet } from '@/src/components/health-data/HealthDataUploadBottomSheet';
-import type { OCRUploadRouteItem } from '@/src/features/health-data/ocrResults';
 import type { SelectedHealthFile } from '@/src/features/health-data/useHealthFilePicker';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
@@ -69,24 +69,11 @@ export default function HealthDataManagementScreen() {
       setIsUploading(true);
       try {
         const response = await uploadHealthDocument(file);
-        const uploads: OCRUploadRouteItem[] = [
-          {
-            file: {
-              height: file.height,
-              mimeType: file.mimeType,
-              name: file.name,
-              size: file.size,
-              source: file.source,
-              uri: file.uri,
-              width: file.width,
-            },
-            uploadedFileId: response.uploaded_file_id,
-          },
-        ];
+        rememberUploadedFile(response.uploaded_file_id, file);
         setIsUploadSheetOpen(false);
         router.push({
           pathname: '/ocr-result',
-          params: { source: 'healthDataManagement', uploads: JSON.stringify(uploads) },
+          params: { source: 'healthDataManagement', uploads: response.uploaded_file_id },
         });
       } catch (error) {
         Alert.alert('건강 데이터 업로드에 실패했어요.', getHealthDocumentErrorMessage(error));

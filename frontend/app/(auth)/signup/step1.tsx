@@ -125,11 +125,7 @@ export default function SignUpStep1Screen() {
         gender,
       });
       setConsentVisible(false);
-      router.push(
-        data.session
-          ? '/signup/step3'
-          : { pathname: '/signup/step2', params: { email: normalizedEmail } },
-      );
+      router.push(data.session ? '/signup/step3' : '/signup/step2');
     } catch (error) {
       Alert.alert(
         '회원가입을 시작하지 못했습니다',

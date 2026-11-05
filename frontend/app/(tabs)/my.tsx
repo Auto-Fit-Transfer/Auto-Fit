@@ -1,3 +1,4 @@
+import { signOutOfApp } from '@/src/features/auth/accountSession';
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -137,8 +138,7 @@ export default function MyScreen() {
     setSigningOut(true);
     setSignOutError(false);
     try {
-      const { error } = await getSupabaseClient().auth.signOut();
-      if (error) throw error;
+      await signOutOfApp();
       router.replace('/login');
     } catch {
       setSigningOut(false);

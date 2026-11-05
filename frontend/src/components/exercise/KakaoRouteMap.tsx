@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 import type { RunningCoordinate } from '@/src/api/running';
-import { KAKAO_MAP_JS_KEY, KAKAO_MAP_LOAD_TIMEOUT_MS, KAKAO_MAP_ORIGIN, kakaoMapHtml } from '@/src/features/running/kakaoMap';
+import { isMapPageUrl, KAKAO_MAP_JS_KEY, KAKAO_MAP_LOAD_TIMEOUT_MS, KAKAO_MAP_ORIGIN, kakaoMapHtml } from '@/src/features/running/kakaoMap';
 
 type Props = { points: RunningCoordinate[]; onFailure: () => void };
 
@@ -27,8 +27,12 @@ export function KakaoRouteMap({ points, onFailure }: Props) {
         if (event.nativeEvent.data === 'ready') ready.current = true;
         else if (event.nativeEvent.data === 'error') onFailure();
       }}
-      onShouldStartLoadWithRequest={(request) => request.url === 'about:blank' || request.url.startsWith(KAKAO_MAP_ORIGIN)}
+      allowFileAccess={false}
+      mixedContentMode="never"
+      onShouldStartLoadWithRequest={(request) => isMapPageUrl(request.url)}
+      // The library hands any address outside this list to the phone's other apps, so the check above does the blocking.
       originWhitelist={['*']}
+      thirdPartyCookiesEnabled={false}
       scrollEnabled={false}
       setSupportMultipleWindows={false}
       source={{ html, baseUrl: KAKAO_MAP_ORIGIN }}

@@ -1,3 +1,4 @@
+import { logError } from '@/src/lib/logError';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, BackHandler, Platform, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -84,7 +85,7 @@ export default function ExerciseSessionScreen() {
         if (adjustedItems.length > 0) applyAdjustedItems(session.sessionId, adjustedItems);
         return adjustedItems.length;
       } catch (error) {
-        console.error('Exercise adjustment failed:', error);
+        logError('Exercise adjustment failed', error);
         Alert.alert('운동 조정 실패', getExerciseApiErrorMessage(error));
         return null;
       } finally {
@@ -114,7 +115,7 @@ export default function ExerciseSessionScreen() {
         requestAnimationFrame(() => router.replace('/exercise/completion'));
       }
     } catch (error) {
-      console.error('Exercise session completion failed:', error);
+      logError('Exercise session completion failed', error);
       setFinishFailed(true);
       Alert.alert('운동 결과 저장 실패', getExerciseApiErrorMessage(error));
     } finally {

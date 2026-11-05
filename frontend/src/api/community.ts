@@ -643,7 +643,7 @@ export function getCommunityModeratorStatus() {
 }
 
 export function getCommunityReportQueue(status: 'open' | 'resolved') {
-  return apiRequest<CommunityReportItem[]>(`/api/community/moderation/reports?status=${status}`);
+  return apiRequest<CommunityReportItem[]>(`/api/community/moderation/reports?status=${encodeURIComponent(status)}`);
 }
 
 export function moderateCommunityTarget(
@@ -736,7 +736,7 @@ export function updateCommunityAdminRule(
     note: string | null;
   },
 ) {
-  return apiRequest<CommunityAdminRule>(`/api/community/admin/rules/${ruleKey}`, {
+  return apiRequest<CommunityAdminRule>(`/api/community/admin/rules/${encodeURIComponent(ruleKey)}`, {
     body: JSON.stringify(input),
     method: 'PATCH',
   });

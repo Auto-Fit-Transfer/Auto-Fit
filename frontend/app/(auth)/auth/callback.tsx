@@ -1,3 +1,4 @@
+import { logError } from '@/src/lib/logError';
 import { useEffect } from 'react';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
@@ -24,14 +25,12 @@ export default function OAuthCallbackScreen() {
         const destination = await getPostLoginDestination();
         if (isActive) router.replace(destination);
       } catch (error) {
-        console.error('소셜 로그인 콜백 처리 실패:', error);
+        logError('소셜 로그인 콜백 처리 실패', error);
         if (!isActive) return;
 
         router.replace({
           pathname: '/login',
-          params: {
-            oauthError: error instanceof Error ? error.message : '소셜 로그인에 실패했습니다.',
-          },
+          params: { oauthError: '1' },
         });
       }
     };

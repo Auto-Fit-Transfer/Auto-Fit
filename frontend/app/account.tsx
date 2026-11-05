@@ -1,3 +1,4 @@
+import { signOutOfApp } from '@/src/features/auth/accountSession';
 import { useEffect, useState } from 'react';
 import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -50,8 +51,7 @@ export default function Account() {
     setBusy(true);
     setError('');
     try {
-      const { error: authError } = await getSupabaseClient().auth.signOut();
-      if (authError) throw authError;
+      await signOutOfApp();
       router.replace('/login');
     } catch (cause) {
       setError(getApiErrorMessage(cause));
@@ -66,7 +66,7 @@ export default function Account() {
     setError('');
     try {
       await apiRequest<void>('/api/account', { method: 'DELETE' });
-      await getSupabaseClient().auth.signOut({ scope: 'local' });
+      await signOutOfApp();
       router.replace('/login');
     } catch (cause) {
       setError(getApiErrorMessage(cause));

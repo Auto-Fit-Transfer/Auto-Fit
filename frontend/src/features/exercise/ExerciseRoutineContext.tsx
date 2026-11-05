@@ -1,3 +1,4 @@
+import { logError } from '@/src/lib/logError';
 import { mapWeeklyMetrics, sessionCalories, sessionMinutes, sessionLocalDate } from './weeklyMetrics';
 import {
   createContext,
@@ -452,7 +453,7 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
         (result): result is PromiseRejectedResult => result.status === 'rejected',
       );
       const error = failedResult?.reason;
-      console.error('Exercise home request failed:', error);
+      logError('Exercise home request failed', error);
       setHomeError(getExerciseApiErrorMessage(error));
       setHomeLoadState('error');
       return;
@@ -498,7 +499,7 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
         nextResultRecordCompleted = hasExerciseSessionFeedback(feedbackResponse);
       } catch (error) {
         if (!mountedRef.current || homeRequestId.current !== requestId) return;
-        console.error('Exercise feedback restore failed:', error);
+        logError('Exercise feedback restore failed', error);
         setHomeError(getExerciseApiErrorMessage(error));
         setHomeLoadState('error');
         return;

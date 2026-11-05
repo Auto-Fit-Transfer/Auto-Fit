@@ -1,3 +1,4 @@
+import { rememberConversationPeer } from '@/src/features/community/conversationPeers';
 import { useCallback, useRef, useState } from 'react';
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 import {
@@ -78,15 +79,10 @@ function CommunityMessagesScreen() {
     }
   };
 
-  const openChat = (item: CommunityConversation) =>
-    router.push({
-      params: {
-        conversationId: item.conversation_id,
-        nickname: item.other.nickname,
-        otherId: item.other.user_id,
-      },
-      pathname: '/community/chat/[conversationId]',
-    });
+  const openChat = (item: CommunityConversation) => {
+    rememberConversationPeer(item.conversation_id, item.other);
+    router.push({ params: { conversationId: item.conversation_id }, pathname: '/community/chat/[conversationId]' });
+  };
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>

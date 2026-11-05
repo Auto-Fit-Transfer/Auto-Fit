@@ -1,3 +1,4 @@
+import { logError } from '@/src/lib/logError';
 import { useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -108,7 +109,7 @@ export default function SignUpStep3Screen() {
           : '/signup/step4',
       );
     } catch (error) {
-      console.error('알레르기 저장 실패:', error);
+      logError('알레르기 저장 실패', error);
       Alert.alert('알레르기 정보를 저장하지 못했습니다', getSignupApiErrorMessage(error));
     } finally {
       saveInFlightRef.current = false;

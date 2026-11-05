@@ -7,6 +7,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AuthGate } from '@/src/features/auth/AuthGate';
 import { ExerciseRoutineProvider } from '@/src/features/exercise/ExerciseRoutineContext';
 import { ExerciseSessionProvider } from '@/src/features/exercise/ExerciseSessionContext';
 import { DisplayPreferencesProvider, useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
@@ -26,6 +27,7 @@ function AppShell() {
         {/* Nested stacks and tabs paint this behind their screens, so a light default would flash in dark mode. */}
         <ThemeProvider value={{ ...base, colors: { ...base.colors, background } }}>
           <Stack screenOptions={{ contentStyle: { backgroundColor: background }, headerShown: false }} />
+          <AuthGate background={background} />
         </ThemeProvider>
       </ExerciseSessionProvider>
     </ExerciseRoutineProvider>

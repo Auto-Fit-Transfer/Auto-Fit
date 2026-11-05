@@ -1,3 +1,4 @@
+import { logError } from '@/src/lib/logError';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
@@ -399,7 +400,7 @@ export function ChatPopup({
       );
     } catch (error) {
       if (requestId !== chatLoadRequestRef.current || !visibleRef.current) return;
-      console.error('채팅 초기화 실패:', error);
+      logError('채팅 초기화 실패', error);
       setErrorMessage(getApiErrorMessage(error));
     } finally {
       if (!cachedChatId && requestId === chatLoadRequestRef.current) {
@@ -452,7 +453,7 @@ export function ChatPopup({
       pendingMessageRef.current = null;
       setInputText((current) => (current.trim() === text ? '' : current));
     } catch (error) {
-      console.error('채팅 메시지 전송 실패:', error);
+      logError('채팅 메시지 전송 실패', error);
       setErrorMessage(getApiErrorMessage(error));
     } finally {
       setIsSending(false);

@@ -1,3 +1,4 @@
+import { logError } from '@/src/lib/logError';
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import {
   Alert,
@@ -999,7 +1000,7 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
         setView('recognition_failed');
       }
     } catch (error) {
-      console.error('푸드샷 이미지 선택 실패:', error);
+      logError('푸드샷 이미지 선택 실패', error);
       Alert.alert('사진을 불러오지 못했어요', '잠시 후 다시 시도해 주세요.');
     }
   };

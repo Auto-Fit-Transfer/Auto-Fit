@@ -1,3 +1,4 @@
+import { logError } from '@/src/lib/logError';
 import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Alert, Keyboard, Pressable, View } from 'react-native';
@@ -41,7 +42,7 @@ export default function ResetPasswordScreen() {
       if (error) throw error;
       router.replace('/login');
     } catch (error) {
-      console.error('비밀번호 변경 실패:', error);
+      logError('비밀번호 변경 실패', error);
       Alert.alert('비밀번호를 바꾸지 못했습니다', '메일의 링크를 다시 눌러 시도해 주세요.');
     } finally {
       setSaving(false);

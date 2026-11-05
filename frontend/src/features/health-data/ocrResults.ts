@@ -67,11 +67,6 @@ export type OCRResultItem =
       type: 'body_composition';
     });
 
-export type OCRUploadRouteItem = {
-  file: SelectedHealthFile;
-  uploadedFileId: string;
-};
-
 function displayValue(value: number | string | null | undefined) {
   return value === null || value === undefined ? '' : String(value);
 }

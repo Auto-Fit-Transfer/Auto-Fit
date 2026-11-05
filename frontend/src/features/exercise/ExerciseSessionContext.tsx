@@ -12,6 +12,7 @@ import {
 
 import { completeExerciseSession, recordExerciseItemResult } from '@/src/api/exercise';
 import { awardTierActivity } from '@/src/api/tier';
+import { getSupabaseClient } from '@/src/lib/supabase';
 import { mergeAdjustedExercises } from './exerciseAdjustment';
 
 import type { StartedExerciseSession } from './ExerciseRoutineContext';
@@ -594,6 +595,16 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     reportedResultsRef.current.clear();
     completedSessionRef.current = null;
   }, []);
+
+  useEffect(() => {
+    let owner: string | null | undefined;
+    const { data } = getSupabaseClient().auth.onAuthStateChange((_event, authSession) => {
+      const next = authSession?.user.id ?? null;
+      if (owner !== undefined && owner !== next) clearSession();
+      owner = next;
+    });
+    return () => data.subscription.unsubscribe();
+  }, [clearSession]);
 
   const completeSession = useCallback(async () => {
     const current = sessionRef.current;

@@ -1,3 +1,4 @@
+import { isHttpsUrl } from '@/src/lib/externalUrl';
 import {
   Alert,
   Linking,
@@ -287,7 +288,7 @@ async function openExternalUrl(url?: string) {
     return;
   }
   try {
-    if (!(await Linking.canOpenURL(url))) throw new Error('unsupported-url');
+    if (!isHttpsUrl(url) || !(await Linking.canOpenURL(url))) throw new Error('unsupported-url');
     await Linking.openURL(url);
   } catch {
     Alert.alert('링크를 열 수 없어요', '잠시 후 다시 시도해주세요.');

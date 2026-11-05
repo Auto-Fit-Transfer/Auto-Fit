@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,7 +10,7 @@ import HeartbeatIcon from '@/assets/icons/ui/heartbeat.svg';
 import LockIcon from '@/assets/icons/ui/lock.svg';
 import ScalesIcon from '@/assets/icons/ui/scales.svg';
 import { getHealthDocumentErrorMessage, uploadHealthDocument } from '@/src/api/healthDocuments';
-import type { OCRUploadRouteItem } from '@/src/features/health-data/ocrResults';
+import { deleteCachedFile, rememberUploadedFile } from '@/src/features/health-data/healthUploadSession';
 import {
   type SelectedHealthFile,
   useHealthFilePicker,
@@ -38,6 +38,10 @@ export default function HealthDataUploadScreen() {
   const { clearFiles, isSelecting, pickDocument, removeFile, selectedFiles, takePhoto } = useHealthFilePicker();
   const [isUploading, setIsUploading] = useState(false);
   const busy = isSelecting || isUploading;
+  const pickedFiles = useRef(selectedFiles);
+  useEffect(() => { pickedFiles.current = selectedFiles; }, [selectedFiles]);
+  // Files handed to the result screen are out of this list by then; the rest were never uploaded.
+  useEffect(() => () => pickedFiles.current.forEach((file) => deleteCachedFile(file.uri)), []);
 
   const handleContinue = useCallback(async () => {
     if (selectedFiles.length === 0) return;
@@ -58,21 +62,10 @@ export default function HealthDataUploadScreen() {
     setIsUploading(true);
     try {
       const responses = await Promise.all(selectedFiles.map((file) => uploadHealthDocument(file)));
-      const uploads: OCRUploadRouteItem[] = responses.map((response, index) => ({
-        file: {
-          height: selectedFiles[index].height,
-          mimeType: selectedFiles[index].mimeType,
-          name: selectedFiles[index].name,
-          size: selectedFiles[index].size,
-          source: selectedFiles[index].source,
-          uri: selectedFiles[index].uri,
-          width: selectedFiles[index].width,
-        },
-        uploadedFileId: response.uploaded_file_id,
-      }));
+      responses.forEach((response, index) => rememberUploadedFile(response.uploaded_file_id, selectedFiles[index]));
       router.push({
         pathname: '/ocr-result',
-        params: { source, uploads: JSON.stringify(uploads) },
+        params: { source, uploads: responses.map((response) => response.uploaded_file_id).join(',') },
       });
       clearFiles();
     } catch (error) {
@@ -119,7 +112,10 @@ export default function HealthDataUploadScreen() {
                   accessibilityLabel={file.name + ' 삭제'}
                   disabled={busy}
                   hitSlop={10}
-                  onPress={() => removeFile(index)}
+                  onPress={() => {
+                    deleteCachedFile(file.uri);
+                    removeFile(index);
+                  }}
                 >
                   <TrashIcon height={20} width={20} />
                 </Pressable>

@@ -1,3 +1,4 @@
+import { logError } from '@/src/lib/logError';
 import { useRef, useState, type ComponentType } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Keyboard, Pressable, View } from 'react-native';
@@ -56,8 +57,9 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordVisible, setPasswordVisible] = useState(false);
+  // Links can set this value, so it only ever selects our own sentence.
   const [loginError, setLoginError] = useState<string | undefined>(() =>
-    Array.isArray(oauthError) ? oauthError[0] : oauthError,
+    oauthError ? '소셜 로그인에 실패했어요. 다시 시도해 주세요.' : undefined,
   );
   const [activeLoginProvider, setActiveLoginProvider] = useState<
     'email' | SocialLoginProvider | null
@@ -77,7 +79,7 @@ export default function LoginScreen() {
       if (error) throw error;
       router.replace(await getPostLoginDestination());
     } catch (error) {
-      console.error('로그인 실패:', error);
+      logError('로그인 실패', error);
       setLoginError(error instanceof Error ? error.message : '로그인 정보를 확인해 주세요.');
     } finally {
       activeLoginProviderRef.current = null;
@@ -95,7 +97,7 @@ export default function LoginScreen() {
       const result = await signInWithSocialProvider(provider);
       if (result.status === 'success') router.replace(await getPostLoginDestination());
     } catch (error) {
-      console.error(`${provider} 로그인 실패:`, error);
+      logError(`${provider} 로그인 실패`, error);
       setLoginError(error instanceof Error ? error.message : '소셜 로그인에 실패했습니다.');
     } finally {
       activeLoginProviderRef.current = null;

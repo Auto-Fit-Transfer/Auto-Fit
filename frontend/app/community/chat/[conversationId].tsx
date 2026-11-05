@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
+import { conversationPeer } from '@/src/features/community/conversationPeers';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -22,6 +23,7 @@ import {
   readCommunityConversation,
   sendCommunityMessage,
   type CommunityMessage,
+  getCommunityConversations,
 } from '@/src/api/community';
 import { AppButton, AppHeader, IconButton, Text, TextInput } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
@@ -51,12 +53,8 @@ export default function CommunityChatRoute() {
 function CommunityChatScreen() {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const params = useLocalSearchParams<{
-    conversationId: string;
-    nickname?: string;
-    otherId?: string;
-  }>();
-  const conversationId = params.conversationId;
+  const { conversationId } = useLocalSearchParams<{ conversationId: string }>();
+  const [other, setOther] = useState(() => conversationPeer(conversationId));
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const actions = useCommunityActions();
@@ -147,9 +145,15 @@ function CommunityChatScreen() {
       title: '메시지를 삭제할까요?',
     });
 
-  const other = params.otherId
-    ? { nickname: params.nickname ?? '회원', profile_image_url: null, user_id: params.otherId }
-    : null;
+  useEffect(() => {
+    if (other) return undefined;
+    let active = true;
+    void getCommunityConversations().then((page) => {
+      const found = page.items.find((item) => item.conversation_id === conversationId);
+      if (active && found) setOther(found.other);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [conversationId, other]);
 
   return (
     <KeyboardAvoidingView
@@ -168,7 +172,7 @@ function CommunityChatScreen() {
             />
           ) : null
         }
-        title={params.nickname ?? '메시지'}
+        title={other?.nickname ?? '메시지'}
       />
       {closedMessage ? (
         <View style={styles.message}>

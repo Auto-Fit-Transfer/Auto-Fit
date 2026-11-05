@@ -1,5 +1,6 @@
+import { logError } from '@/src/lib/logError';
 import { useRef, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import {
   Alert,
   Pressable,
@@ -20,8 +21,7 @@ export default function SignUpStep2Screen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { draft } = useSignup();
-  const params = useLocalSearchParams<{ email?: string }>();
-  const email = typeof params.email === 'string' ? params.email : draft.email;
+  const { email } = draft;
   const inputRefs = useRef<(TextInput | null)[]>([]);
   const verifyInFlightRef = useRef(false);
   const resendInFlightRef = useRef(false);
@@ -62,7 +62,7 @@ export default function SignUpStep2Screen() {
       if (error) throw error;
       router.push('/signup/step3');
     } catch (error) {
-      console.error('이메일 인증 실패:', error);
+      logError('이메일 인증 실패', error);
       Alert.alert(
         '이메일 인증에 실패했습니다',
         getSignupAuthErrorMessage(error, '인증번호를 다시 확인해 주세요.'),
@@ -89,7 +89,7 @@ export default function SignUpStep2Screen() {
       inputRefs.current[0]?.focus();
       Alert.alert('인증 메일을 다시 보냈습니다', '새로 받은 인증번호 6자리를 입력해 주세요.');
     } catch (error) {
-      console.error('인증 메일 재발송 실패:', error);
+      logError('인증 메일 재발송 실패', error);
       Alert.alert(
         '인증 메일을 보내지 못했습니다',
         getSignupAuthErrorMessage(error, '잠시 후 다시 시도해 주세요.'),

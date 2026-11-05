@@ -1,3 +1,4 @@
+import { logError } from '@/src/lib/logError';
 import { useEffect, useState } from 'react';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
@@ -50,7 +51,7 @@ export default function ForgotPasswordScreen() {
       setSentAt(new Date());
       setWait(resendSeconds);
     } catch (error) {
-      console.error('비밀번호 재설정 메일 요청 실패:', error);
+      logError('비밀번호 재설정 메일 요청 실패', error);
       Alert.alert('메일을 보내지 못했습니다', '잠시 후 다시 시도해 주세요.');
     } finally {
       setIsSending(false);

@@ -87,7 +87,7 @@ export function getLatestHealthAnalysis() {
 }
 
 export function getHealthAssessmentPopups(assessmentId: string) {
-  return apiRequest<PopupResponse>(`/api/health-assessments/${assessmentId}/popups`);
+  return apiRequest<PopupResponse>(`/api/health-assessments/${encodeURIComponent(assessmentId)}/popups`);
 }
 
 export function isHealthAnalysisNotFound(error: unknown) {

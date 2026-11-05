@@ -24,6 +24,7 @@ export function KakaoRouteMap({ points, onFailure }: Props) {
   return (
     <iframe
       ref={frame}
+      sandbox="allow-scripts"
       srcDoc={html}
       title="러닝 코스 지도"
       style={{ border: 0, height: '100%', left: 0, position: 'absolute', top: 0, width: '100%' }}

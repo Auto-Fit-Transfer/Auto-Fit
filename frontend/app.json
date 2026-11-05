@@ -15,6 +15,7 @@
       }
     },
     "android": {
+      "allowBackup": false,
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.gogosi.autofit.test"
@@ -24,7 +25,7 @@
       "output": "static"
     },
     "plugins": [
-      "expo-router",
+      ["expo-router", { "sitemap": false }],
       [
         "expo-image-picker",
         {

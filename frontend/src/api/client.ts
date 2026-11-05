@@ -1,3 +1,4 @@
+import { isAllowedApiOrigin } from '@/src/api/apiOrigin';
 import { getSupabaseClient } from '@/src/lib/supabase';
 
 const DEFAULT_API_BASE_URL = 'https://211-233-206-193.sslip.io';
@@ -7,6 +8,7 @@ const DEFAULT_API_BASE_URL = 'https://211-233-206-193.sslip.io';
 const configuredApiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL?.trim().replace(/\/+$/, '');
 
 export const API_BASE_URL = configuredApiBaseUrl || DEFAULT_API_BASE_URL;
+const apiOriginAllowed = isAllowedApiOrigin(API_BASE_URL, __DEV__);
 
 type ApiErrorBody = {
   code?: unknown;
@@ -90,6 +92,7 @@ export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
+  if (!apiOriginAllowed) throw new ApiError(0, '앱 서버 주소 설정이 올바르지 않아요.');
   const finalUrl = `${API_BASE_URL}${path}`;
 
   let supabase;
@@ -117,7 +120,8 @@ export async function apiRequest<T>(
 
   let response: Response;
   try {
-    response = await fetch(finalUrl, { ...init, headers });
+    // A redirect could carry the token to another server, and this API never needs one.
+    response = await fetch(finalUrl, { ...init, headers, redirect: 'error' });
   } catch (error) {
     throw new ApiError(
       0,

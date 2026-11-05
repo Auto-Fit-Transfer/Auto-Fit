@@ -1,3 +1,5 @@
+import { forgetUploadedFile, rememberUploadedFile, uploadedFileFor } from '@/src/features/health-data/healthUploadSession';
+import { logError } from '@/src/lib/logError';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -56,7 +58,6 @@ import {
   type HealthCheckupOCRResult,
   type InbodyOCRResult,
   type OCRResultItem,
-  type OCRUploadRouteItem,
   mapHealthDocumentToOCRResult,
 } from '@/src/features/health-data/ocrResults';
 import { type SelectedHealthFile } from '@/src/features/health-data/useHealthFilePicker';
@@ -111,29 +112,8 @@ function formatUploadDate(value: string) {
   return `${date.getMonth() + 1}월 ${date.getDate()}일 ${clock} 올림`;
 }
 
-function parseUploadRouteItems(value?: string): OCRUploadRouteItem[] {
-  if (!value) return [];
-
-  try {
-    const parsed: unknown = JSON.parse(value);
-    if (!Array.isArray(parsed)) return [];
-
-    return parsed.filter((item): item is OCRUploadRouteItem => {
-      if (!item || typeof item !== 'object') return false;
-      const candidate = item as Partial<OCRUploadRouteItem>;
-      const file = candidate.file;
-      return (
-        typeof candidate.uploadedFileId === 'string' &&
-        typeof file === 'object' &&
-        file !== null &&
-        typeof file.name === 'string' &&
-        typeof file.uri === 'string' &&
-        (file.source === 'camera' || file.source === 'document')
-      );
-    });
-  } catch {
-    return [];
-  }
+function parseUploadRouteItems(value?: string) {
+  return (value ?? '').split(',').filter(Boolean).map((uploadedFileId) => ({ file: uploadedFileFor(uploadedFileId), uploadedFileId }));
 }
 
 function selectedFileFromResult(result: OCRResultItem): SelectedHealthFile {
@@ -587,6 +567,12 @@ export default function OCRResultScreen() {
   const insets = useSafeAreaInsets();
   const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const uploadItems = useMemo(() => parseUploadRouteItems(uploads), [uploads]);
+  const uploadedFileIds = useRef<string[]>([]);
+  useEffect(() => {
+    uploadedFileIds.current = uploadItems.map((item) => item.uploadedFileId);
+    // Leaving this screen ends the only use of the local copies of these health documents.
+    return () => uploadedFileIds.current.forEach(forgetUploadedFile);
+  }, [uploadItems]);
   const isFromHealthDataManagement = source === 'healthDataManagement';
   const [results, setResults] = useState<OCRResultItem[]>([]);
   const [isLoadingResults, setIsLoadingResults] = useState(true);
@@ -637,7 +623,7 @@ export default function OCRResultScreen() {
         setCurrentIndex(0);
         setMetricValues({ ...nextResults[0].data });
       } catch (error) {
-        console.error('Health document result load failed:', error);
+        logError('Health document result load failed', error);
         if (isActive) {
           Alert.alert('OCR 결과를 불러오지 못했어요.', getHealthDocumentErrorMessage(error));
           router.back();
@@ -676,7 +662,7 @@ export default function OCRResultScreen() {
           setResults((current) => current.map((result) => byId.get(result.id) ?? result));
         })
         .catch((error) => {
-          if (__DEV__) console.error('Health document OCR status refresh failed:', error);
+          logError('Health document OCR status refresh failed', error);
         });
     }, 2000);
 
@@ -876,6 +862,8 @@ export default function OCRResultScreen() {
     setIsReuploading(true);
     try {
       const uploaded = await uploadHealthDocument(file);
+      rememberUploadedFile(uploaded.uploaded_file_id, file);
+      uploadedFileIds.current.push(uploaded.uploaded_file_id);
       const response = await getHealthDocument(uploaded.uploaded_file_id);
       const nextResult = mapHealthDocumentToOCRResult(response, file);
       setResults((current) =>
@@ -885,7 +873,7 @@ export default function OCRResultScreen() {
       setEditingMetricKey(null);
       setIsReuploadSheetOpen(false);
     } catch (error) {
-      console.error('Health document reupload failed:', error);
+      logError('Health document reupload failed', error);
       Alert.alert('다시 업로드하지 못했어요.', getHealthDocumentErrorMessage(error));
     } finally {
       setIsReuploading(false);
@@ -977,7 +965,7 @@ export default function OCRResultScreen() {
         setMetricValues({ ...savedResult.data });
       }
     } catch (error) {
-      console.error('Health document save or confirm failed:', error);
+      logError('Health document save or confirm failed', error);
       Alert.alert('OCR 결과를 저장하지 못했어요.', getHealthDocumentErrorMessage(error));
       return;
     } finally {

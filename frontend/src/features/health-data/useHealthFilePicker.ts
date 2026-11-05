@@ -1,3 +1,4 @@
+import { logError } from '@/src/lib/logError';
 import { useCallback, useState } from 'react';
 import { Alert } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
@@ -71,7 +72,7 @@ export function useHealthFilePicker() {
       appendFile(file);
       return file;
     } catch (error) {
-      console.error('카메라 실행 실패:', error);
+      logError('카메라 실행 실패', error);
       Alert.alert('카메라를 열 수 없어요', '잠시 후 다시 시도해주세요.');
       return null;
     } finally {
@@ -104,7 +105,7 @@ export function useHealthFilePicker() {
       appendFile(file);
       return file;
     } catch (error) {
-      console.error('파일 선택 실패:', error);
+      logError('파일 선택 실패', error);
       Alert.alert('파일을 선택할 수 없어요', '잠시 후 다시 시도해주세요.');
       return null;
     } finally {

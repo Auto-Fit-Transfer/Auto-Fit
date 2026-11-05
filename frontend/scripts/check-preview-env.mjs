@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer';
+import { pathToFileURL } from 'node:url';
 
 const required = [
   'EXPO_PUBLIC_API_BASE_URL',
@@ -42,7 +43,7 @@ export function validatePreviewEnv(env) {
   return errors;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const errors = validatePreviewEnv(process.env);
   if (errors.length) {
     console.error(errors.join('\n'));

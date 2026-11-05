@@ -11,28 +11,23 @@ export interface ChatSessionSnapshot {
   status: ChatPrefetchStatus;
 }
 
-let snapshot: ChatSessionSnapshot = {
+const emptySnapshot: ChatSessionSnapshot = {
   chatId: null,
   hasMore: false,
   messages: [],
   nextCursor: null,
   status: 'idle',
 };
+
+let snapshot = emptySnapshot;
 let inFlight: Promise<ChatSessionSnapshot> | null = null;
+let generation = 0;
 
-function logDuration(label: string, startedAt: number) {
-  if (__DEV__) {
-    //console.info(`[ChatPrefetch] ${label}: ${Date.now() - startedAt}ms`);
-  }
-}
-
-async function withDuration<T>(label: string, request: () => Promise<T>) {
-  const startedAt = Date.now();
-  try {
-    return await request();
-  } finally {
-    logDuration(label, startedAt);
-  }
+// Called when the signed-in person changes. A reply still on its way for the old person is thrown away.
+export function resetChatSessionCache() {
+  generation += 1;
+  snapshot = emptySnapshot;
+  inFlight = null;
 }
 
 export function getChatSessionSnapshot() {
@@ -70,45 +65,32 @@ export function prefetchActiveChat() {
   if (inFlight) return inFlight;
   if (snapshot.status === 'ready') return Promise.resolve(snapshot);
 
+  const startedIn = generation;
   snapshot = { ...snapshot, status: 'loading' };
-  inFlight = (async () => {
+  const request = (async () => {
     try {
-      const chatList = await withDuration('GET /api/chats?status=active', () =>
-        getChats({ limit: 20, status: 'active' }),
-      );
-
+      const chatList = await getChats({ limit: 20, status: 'active' });
       const activeChat = chatList.chats[0];
-      if (!activeChat) {
-        snapshot = {
-          chatId: null,
-          hasMore: false,
-          messages: [],
-          nextCursor: null,
-          status: 'ready',
-        };
-        return snapshot;
-      }
+      const history = activeChat ? await getChatMessages(activeChat.chat_id) : null;
+      if (startedIn !== generation) return snapshot;
 
-      const history = await withDuration('GET /api/chats/{chat_id}/messages', () =>
-        getChatMessages(activeChat.chat_id),
-      );
-
-      snapshot = {
-        chatId: activeChat.chat_id,
-        hasMore: history.has_more,
-        messages: history.messages,
-        nextCursor: history.next_cursor,
-        status: 'ready',
-      };
+      snapshot = activeChat && history
+        ? {
+            chatId: activeChat.chat_id,
+            hasMore: history.has_more,
+            messages: history.messages,
+            nextCursor: history.next_cursor,
+            status: 'ready',
+          }
+        : { ...emptySnapshot, status: 'ready' };
       return snapshot;
     } catch {
-      //if (__DEV__) console.warn('[ChatPrefetch] background prefetch failed', error);
-      snapshot = { ...snapshot, status: 'error' };
+      if (startedIn === generation) snapshot = { ...snapshot, status: 'error' };
       return snapshot;
     } finally {
-      inFlight = null;
+      if (startedIn === generation) inFlight = null;
     }
   })();
-
-  return inFlight;
+  inFlight = request;
+  return request;
 }
