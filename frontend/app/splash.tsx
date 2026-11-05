@@ -4,6 +4,9 @@ import { View } from 'react-native';
 
 import AutofitWordmark from '@/assets/icons/autofit-wordmark.svg';
 import AutofitWordmarkDark from '@/assets/icons/autofit-wordmark-dark.svg';
+import { getPostLoginDestination } from '@/src/features/auth/postLoginDestination';
+import { startDestination } from '@/src/features/auth/startDestination';
+import { getSupabaseClient } from '@/src/lib/supabase';
 import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const splashDuration = 3000;
@@ -15,8 +18,17 @@ export default function SplashScreen() {
   const Wordmark = isDark ? AutofitWordmarkDark : AutofitWordmark;
 
   useEffect(() => {
-    const timer = setTimeout(() => router.replace('/login'), splashDuration);
-    return () => clearTimeout(timer);
+    let active = true;
+    const shown = new Promise((resolve) => setTimeout(resolve, splashDuration));
+    void Promise.all([
+      startDestination(() => getSupabaseClient().auth.getSession(), getPostLoginDestination),
+      shown,
+    ]).then(([destination]) => {
+      if (active) router.replace(destination);
+    });
+    return () => {
+      active = false;
+    };
   }, [router]);
 
   return (
