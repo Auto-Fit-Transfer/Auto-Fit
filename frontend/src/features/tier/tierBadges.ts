@@ -8,8 +8,8 @@ import type { HabitTierProgress } from '@/src/api/tier';
 export const tierBadges = { CORE: CoreBadge, BALANCE: BalanceBadge, ACTIVE: ActiveBadge, FIT: FitBadge, PEAK: PeakBadge };
 export const tierOrder = ['CORE', 'BALANCE', 'ACTIVE', 'FIT', 'PEAK'] as const;
 export const tierColors = { CORE: '#557447', BALANCE: '#1C7186', ACTIVE: '#B35A1E', FIT: '#3A2DB5', PEAK: '#94701A' };
-// Figma's dark bar exists for FIT only; the other tiers use their dark tier color from the palette.
-export const darkTierColors = { CORE: '#A9CC98', BALANCE: '#7FCBDD', ACTIVE: '#F2AE7E', FIT: '#5B4BE6', PEAK: '#E8C766' };
+// CORE is the app's dark success color and FIT its dark primary; the rest match their saturation on the dark track.
+export const darkTierColors = { CORE: '#45C086', BALANCE: '#3FB6D3', ACTIVE: '#EE9A5B', FIT: '#6A5CF0', PEAK: '#E5B93F' };
 export const tierDescriptions = {
   CORE: '건강관리를 시작했어요',
   BALANCE: '건강의 균형을 잡아 가고 있어요',
