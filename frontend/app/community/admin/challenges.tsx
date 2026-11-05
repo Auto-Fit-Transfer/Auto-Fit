@@ -8,6 +8,7 @@ import {
   getCommunityErrorMessage,
   type CommunityAdminChallenge,
 } from '@/src/api/community';
+import { koreanDate } from '@/src/lib/koreanDate';
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
@@ -82,7 +83,7 @@ export default function CommunityAdminChallengesScreen() {
                 </Text>
               </View>
               <Text style={styles.meta}>
-                {item.starts_on} ~ {item.ends_on} · {METRIC[item.metric]} {item.goal}일 · 보상 +
+                {koreanDate(item.starts_on)} ~ {koreanDate(item.ends_on)} · {METRIC[item.metric]} {item.goal}일 · 보상 +
                 {item.reward_mileage.toLocaleString()}
               </Text>
               <Text style={styles.meta}>

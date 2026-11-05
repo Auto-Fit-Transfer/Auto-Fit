@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { koreanDate } from '@/src/lib/koreanDate';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getActiveExerciseGoal, saveExerciseGoal, type ExerciseGoalInput } from '@/src/api/exercise';
 import { getApiErrorMessage } from '@/src/api/client';
@@ -16,7 +17,6 @@ const goals: { key: ExerciseGoalInput['goal_type']; label: string }[] = [
   { key: 'rehabilitation', label: '무리 없이 회복하기' },
 ];
 const weeksOptions = [2, 4, 8, 12];
-const formatDate = (date: Date) => `${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}.`;
 
 export default function ExerciseGoal() {
   const { colors } = useAppTheme();
@@ -87,7 +87,7 @@ export default function ExerciseGoal() {
       {!loading && !loaded ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> : null}
       <View style={styles.card}>
         <Text style={styles.smallLabel}>목표 기간</Text>
-        <Text style={styles.cardTitle}>{formatDate(startDate)} – {formatDate(endDate)}</Text>
+        <Text style={styles.cardTitle}>{koreanDate(startDate)} – {koreanDate(endDate)}</Text>
         <View style={styles.weekOptions}>{weeksOptions.map((value) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: weeks === value }} onPress={() => { setWeeks(value); setSaved(false); }} style={[styles.weekChip, weeks === value && styles.selected]}>
           <Text style={[styles.chipText, weeks === value && styles.selectedText]}>{value}주</Text>
         </Pressable>)}</View>

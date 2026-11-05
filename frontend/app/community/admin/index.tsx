@@ -2,8 +2,9 @@ import { useRouter, type Href } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import { AppHeader, Text } from '@/src/components/common';
-import { fontFamilies, spacing, typography, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const TOOLS: { title: string; description: string; href: Href }[] = [
   {
@@ -25,6 +26,7 @@ const TOOLS: { title: string; description: string; href: Href }[] = [
 
 // Shown from my profile to moderators only; every tool is checked again by the server.
 export default function CommunityAdminScreen() {
+  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -46,7 +48,7 @@ export default function CommunityAdminScreen() {
               <Text style={styles.title}>{tool.title}</Text>
               <Text style={styles.description}>{tool.description}</Text>
             </View>
-            <Text style={styles.chevron}>›</Text>
+            <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
           </Pressable>
         ))}
       </ScrollView>
@@ -72,6 +74,5 @@ function createStyles({ colors }: AppTheme) {
     cardBody: { flex: 1, gap: 4 },
     title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
     description: { ...typography.bodySmall, color: colors.textBody },
-    chevron: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold, fontSize: 22 },
   } as const;
 }

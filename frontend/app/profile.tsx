@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { koreanDate } from '@/src/lib/koreanDate';
 import CalendarIcon from '@/assets/icons/ui/calendar-check.svg';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getProfile, updateProfile, type Profile } from '@/src/api/home';
@@ -112,7 +113,7 @@ export default function ProfileScreen() {
                 size={90}
               />
               <Text style={styles.avatarCaption}>프로필 사진</Text>
-              <Text style={styles.helper}>사진 변경은 공개 범위를 정한 뒤 제공될 예정이에요.</Text>
+              <Text style={styles.helper}>사진 변경은 준비 중이에요.</Text>
             </View>
             <View style={styles.form}>
               <View style={styles.field}>
@@ -154,7 +155,7 @@ export default function ProfileScreen() {
                 <Text style={styles.label}>생년월일</Text>
                 <Pressable accessibilityRole="button" accessibilityLabel="생년월일 선택" onPress={() => setPickerVisible(true)} style={[styles.input, styles.dateInput]}>
                   <Text style={profile.birth_date ? styles.inputText : styles.helper}>
-                    {profile.birth_date?.replace(/-/g, '.') ?? '생년월일을 선택해 주세요'}
+                    {profile.birth_date ? koreanDate(profile.birth_date) : '생년월일을 선택해 주세요'}
                   </Text>
                   <CalendarIcon color={colors.textSecondary} height={20} width={20} />
                 </Pressable>

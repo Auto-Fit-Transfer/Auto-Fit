@@ -151,7 +151,7 @@ export default function ExerciseSummaryScreen() {
             {routine.planSessions.length > 0 ? (
               <View style={styles.planSection}>
                 <Text style={styles.sectionTitle}>이번 추천의 운동 일정</Text>
-                <Text style={styles.planHint}>날짜를 눌러 운동을 확인하세요. 예정일이 되면 시작할 수 있어요.</Text>
+                <Text style={styles.planHint}>예정일이 되면 시작할 수 있어요.</Text>
                 {routine.planSessions.map((plan) => {
                   const selected = plan.id === routine.selectedPlanSessionId;
                   const dateLabel = new Date(`${plan.scheduledDate}T12:00:00`).toLocaleDateString(

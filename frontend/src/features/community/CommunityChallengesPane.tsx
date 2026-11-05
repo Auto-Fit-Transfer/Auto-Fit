@@ -7,6 +7,8 @@ import {
   RefreshControl,
   View } from 'react-native';
 
+import { koreanDate } from '@/src/lib/koreanDate';
+import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import {
   claimCommunityChallenge,
@@ -26,11 +28,6 @@ const METRIC_UNIT: Record<CommunityChallenge['metric'], string> = {
   meal_log_days: '식단 기록한 날',
   workout_days: '운동한 날',
 };
-
-function shortDate(value: string) {
-  const [, month, day] = value.split('-').map(Number);
-  return `${month}/${day}`;
-}
 
 // The 챌린지 tab: provisional challenges counted from workout and meal records, and the way
 // into the weekly ranking.
@@ -154,7 +151,7 @@ export function CommunityChallengesPane({ bottomSpace, onBack }: { bottomSpace: 
             <Text style={styles.rankingTitle}>이번 주 랭킹</Text>
             <Text style={styles.rankingText}>운동 횟수·마일리지 순위 (참여한 사람만 보여요)</Text>
           </View>
-          <Text style={styles.chevron}>›</Text>
+          <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
         </Pressable>
       ) : null}
       <Text style={styles.note}>
@@ -212,7 +209,7 @@ export function CommunityChallengesPane({ bottomSpace, onBack }: { bottomSpace: 
             </Pressable>
             {item.description ? <Text style={styles.description}>{item.description}</Text> : null}
             <Text style={styles.meta}>
-              {shortDate(item.starts_on)}~{shortDate(item.ends_on)} · 보상 +
+              {koreanDate(item.starts_on)}~{koreanDate(item.ends_on)} · 보상 +
               {item.reward_mileage.toLocaleString()} · {item.participant_count.toLocaleString()}명
               참여
             </Text>
@@ -258,7 +255,6 @@ function createStyles({ colors }: AppTheme) {
       fontSize: 16,
     },
     rankingText: { ...typography.bodySmall, color: colors.textBody },
-    chevron: { color: colors.primaryPressed, fontFamily: fontFamilies.pretendardBold, fontSize: 22 },
     note: { ...typography.bodySmall, color: colors.textSecondary },
     card: {
       backgroundColor: colors.surface,

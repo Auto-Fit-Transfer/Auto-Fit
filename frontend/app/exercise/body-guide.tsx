@@ -17,7 +17,6 @@ export default function BodyGuide() {
     <ScreenHeader onBack={() => router.back()} title="부위별 운동 가이드" />
     <ScrollView contentContainerStyle={[s.content, { paddingTop: 8, paddingBottom: insets.bottom + 36 }]}>
       <Text style={s.hero}>몸 상태에 맞춰 운동을 살펴봐요</Text>
-      <Text style={s.caption}>불편한 부위를 선택하면 해당 부위의 가이드가 표시됩니다.</Text>
       <View style={s.chips}>{parts.map((part) => <Pressable key={part} accessibilityRole="button" accessibilityState={{ selected: selected === part }} onPress={() => setSelected(part)} style={[s.chip, selected === part && s.chipSelected]}><Text style={[s.chipText, selected === part && s.chipTextSelected]}>{part}</Text></Pressable>)}</View>
       <View style={s.card}><Text style={s.cardTitle}>{selected} 운동 가이드</Text><Text style={s.body}>아직 {selected} 부위에 연결된 개인별 운동 가이드가 없어요. 불편한 부위를 반영해 오늘 할 운동을 추천받을 수 있습니다.</Text></View>
       <View style={s.card}><Text style={s.cardTitle}>운동할 때 참고하세요</Text><Text style={s.body}>운동 중 불편함이 생기면 잠시 멈추고 상태를 확인해 주세요. 운동 추천은 현재 컨디션과 불편 부위를 입력해 다시 받을 수 있어요.</Text></View>

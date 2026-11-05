@@ -14,14 +14,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError } from '@/src/api/client';
 
 import TrophyIcon from '@/assets/icons/deco/Trophy.svg';
-import BellIcon from '@/assets/icons/ui/bell.svg';
 import SearchIcon from '@/assets/icons/ui/magnifying-glass.svg';
 import PencilIcon from '@/assets/icons/ui/pencil-simple.svg';
 import {
   getCommunityChallenges,
   getCommunityErrorMessage,
   getCommunityFeed,
-  getCommunityUnreadCount,
   type CommunityAuthor,
   type CommunityChallenge,
   type CommunityFeedScope,
@@ -29,6 +27,7 @@ import {
   type CommunityPostCategory,
 } from '@/src/api/community';
 import { IconButton, Text } from '@/src/components/common';
+import { NotificationBell } from '@/src/components/community/NotificationBell';
 import { R6ConnectionError } from '@/src/components/common/R6ConnectionError';
 import { CommunityPostCard } from '@/src/components/community';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
@@ -88,7 +87,6 @@ export default function CommunityScreen() {
   // Clubs and challenges replace the feed list; the feed keeps its scope underneath.
   const [pane, setPane] = useState<'clubs' | 'challenges' | null>(null);
   const activeTab: Tab = pane === 'clubs' ? pane : scope;
-  const [unread, setUnread] = useState(0);
   const [challenge, setChallenge] = useState<CommunityChallenge | null>(null);
   const [items, setItems] = useState<CommunityPost[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -161,13 +159,8 @@ export default function CommunityScreen() {
     }
   }, [activeCategory, cursor, notify, scope]);
 
-  // The badge refreshes whenever the tab comes back into view (e.g. after reading them).
   useFocusEffect(
     useCallback(() => {
-      getCommunityUnreadCount().then(
-        (result) => setUnread(result.unread_count),
-        () => undefined,
-      );
       getCommunityChallenges().then(
         (list) => {
           const ongoing = list.filter((item) => item.phase === 'ongoing');
@@ -231,15 +224,7 @@ export default function CommunityScreen() {
             onPress={() => router.push('/community/search')}
             size={44}
           />
-          <View>
-            <IconButton
-              accessibilityLabel={unread > 0 ? `알림, 읽지 않은 알림 ${unread}개` : '알림'}
-              icon={<BellIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={24} width={24} />}
-              onPress={() => router.push('/community/notifications')}
-              size={44}
-            />
-            {unread > 0 ? <View pointerEvents="none" style={styles.badge} /> : null}
-          </View>
+          <NotificationBell />
         </View>
       </View>
       {simple ? <View style={[simpleStyles.readRow, isDark && dark.card]}><Text style={[simpleStyles.readHint, isDark && dark.secondary]}>추천 글과 클럽을 둘러보세요</Text><SimpleReadButton text={`커뮤니티입니다. ${activeTab === 'clubs' ? '클럽' : activeTab === 'following' ? '팔로잉' : '추천'} 탭을 보고 있어요. ${items.length}개의 글이 있습니다.`} /></View> : null}
@@ -312,9 +297,6 @@ export default function CommunityScreen() {
             scope === 'following' ? (
               <View style={[styles.center, styles.message]}>
                 <Text style={styles.emptyTitle}>팔로우한 사람의 글이 여기에 보여요</Text>
-                <Text style={styles.messageText}>
-                  전체 피드에서 닉네임을 눌러 마음에 드는 사람을 팔로우해 보세요.
-                </Text>
               </View>
             ) : (
               <View style={[styles.center, styles.message]}>
@@ -384,17 +366,6 @@ function createStyles({ colors }: AppTheme) {
     },
     title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
     headerActions: { flexDirection: 'row' },
-    badge: {
-      backgroundColor: colors.danger,
-      borderColor: colors.background,
-      borderRadius: 5,
-      borderWidth: 1,
-      height: 10,
-      position: 'absolute',
-      right: 10,
-      top: 9,
-      width: 10,
-    },
     tabs: {
       backgroundColor: colors.background,
       borderBottomColor: colors.border,

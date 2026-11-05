@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import SendIcon from '@/assets/icons/feature/PaperPlane_Fill.svg';
-import MoreIcon from '@/assets/icons/system/DotsThreeVertical.svg';
+import MoreIcon from '@/assets/icons/system/DotsThree.svg';
 import {
   COMMUNITY_MAX_MESSAGE_LENGTH,
   deleteCommunityMessage,

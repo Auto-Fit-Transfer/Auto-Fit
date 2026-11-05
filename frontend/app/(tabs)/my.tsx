@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CaretText } from '@/src/components/common/CaretText';
 import MoonIcon from '@/assets/icons/day/Moon.svg';
 import SignOutIcon from '@/assets/icons/system/SignOut.svg';
 import BarbellIcon from '@/assets/icons/ui/barbell.svg';
@@ -182,7 +183,7 @@ export default function MyScreen() {
 
       {profileError ? (
         <Pressable accessibilityRole="button" onPress={() => router.push('/profile')} style={styles.inlineError}>
-          <Text style={styles.inlineErrorText}>프로필을 불러오지 못했어요. 다시 확인하기 ›</Text>
+          <CaretText style={styles.inlineErrorText}>프로필을 불러오지 못했어요. 다시 확인하기</CaretText>
         </Pressable>
       ) : null}
 
@@ -304,7 +305,7 @@ const simpleStyles = StyleSheet.create({
   mileageText: {},
   sectionTitle: {},
   healthCards: { flexDirection: 'column' },
-  healthCard: { flex: 0, minHeight: 96 },
+  healthCard: { flexBasis: 'auto', flexGrow: 0, flexShrink: 0, minHeight: 96 },
   healthCardTitle: {},
   healthCardDescription: {},
   settingRow: { minHeight: 75, paddingVertical: 12 },

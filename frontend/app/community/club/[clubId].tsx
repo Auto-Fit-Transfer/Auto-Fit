@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import MoreIcon from '@/assets/icons/system/DotsThreeVertical.svg';
+import { CaretText } from '@/src/components/common/CaretText';
+import MoreIcon from '@/assets/icons/system/DotsThree.svg';
 import {
   deleteCommunityClub,
   getCommunityClub,
@@ -234,7 +235,7 @@ export default function CommunityClubScreen() {
             })
           }
         >
-          <Text style={styles.rankingLink}>이번 주 클럽 랭킹 보기 ›</Text>
+          <CaretText style={styles.rankingLink}>이번 주 클럽 랭킹 보기</CaretText>
         </Pressable>
       ) : null}
       <View style={styles.feedHeading}><Text style={styles.feedTitle}>클럽 글 {club.post_count.toLocaleString()}</Text><Text style={styles.sortLabel}>최신순</Text></View>

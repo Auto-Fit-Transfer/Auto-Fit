@@ -55,6 +55,8 @@ export default function CommunityNotificationsScreen() {
       setItems(page.items);
       setCursor(page.next_cursor);
       setErrorMessage(undefined);
+      // Opening the list counts as checking it: the bell's dot clears, and the dots in this list stay until the next visit.
+      if (page.items.some((item) => !item.is_read)) void readCommunityNotifications().catch(() => undefined);
     } catch (error) {
       setErrorMessage(getCommunityErrorMessage(error));
     } finally {

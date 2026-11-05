@@ -5,6 +5,7 @@ export * from './AppDialog';
 export * from './AppHeader';
 export * from './AppTextField';
 export * from './BackButton';
+export * from './CaretText';
 export * from './Badge';
 export * from './Chip';
 export * from './CustomScrollIndicator';

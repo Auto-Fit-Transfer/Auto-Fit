@@ -17,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import PlusIcon from '@/assets/icons/ui/plus.svg';
 import ArrowRightIcon from '@/assets/icons/common/ArrowRight_Short.svg';
 import TrashIcon from '@/assets/icons/common/Trash.svg';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
@@ -33,7 +34,7 @@ import PencilIcon from '@/assets/icons/feature/Pencil_Line.svg';
 import SearchIcon from '@/assets/icons/input/MagnifyingGlass.svg';
 import { AppBottomSheet, CustomScrollIndicator, noWebFocusRing, useCustomScrollIndicator, Text as SharedText, TextInput } from '@/src/components/common';
 import { amountFromInput, scaleFromSource, type AmountScale } from '@/src/features/diet/foodAmount';
-import { fontFamilies, scaleForEasyMode, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 function Text(props: TextProps) {
   return <SharedText allowFontScaling={false} maxFontSizeMultiplier={1} {...props} />;
@@ -680,7 +681,7 @@ function FoodDetailsEditor({
   onNutritionInputFocus?: () => void;
   onRegisterApplyNutrition?: (apply: (() => RecordedFood | null) | null) => void;
 }) {
-  const { colors, easyMode } = useAppTheme();
+  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const [selectedPreset, setSelectedPreset] = useState<number | null>(food.serving === 1 ? 1 : null);
   const [nutritionEditing, setNutritionEditing] = useState(false);
@@ -740,7 +741,7 @@ function FoodDetailsEditor({
             placeholderTextColor={colors.textSecondary}
             ref={amountInput}
             selectTextOnFocus
-            style={easyMode ? scaleForEasyMode(styles.amountInput) : styles.amountInput}
+            style={styles.amountInput}
             value={amountDraft ?? (food.amount > 0 ? String(food.amount) : '')}
           />
           <Text style={styles.amountUnit}>{food.unit}</Text>
@@ -824,7 +825,7 @@ function RecognizedFoodList({
         <Text style={styles.noFoodText}>인식된 음식이 없어요.</Text>
       )}
       <Pressable onPress={onAdd} style={styles.addFoodButton}>
-        <Text style={styles.addFoodButtonPlus}>+</Text>
+        <PlusIcon color={colors.textPrimary} height={18} width={18} />
         <Text style={styles.addFoodButtonText}>음식 추가하기</Text>
       </Pressable>
     </View>
@@ -1475,7 +1476,6 @@ function createStyles({ colors }: AppTheme) {
     editFoodButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 30, justifyContent: 'center', width: 30 },
     foodDivider: { backgroundColor: colors.border, height: StyleSheet.hairlineWidth, marginVertical: 6 },
     addFoodButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 8, borderWidth: 1, flexDirection: 'row', gap: 3, height: 38, justifyContent: 'center', marginTop: 10 },
-    addFoodButtonPlus: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardRegular, fontSize: 25, lineHeight: 25 },
     addFoodButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
     noFoodText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, padding: 24, textAlign: 'center' },
     totalNutritionSection: {},

@@ -2,16 +2,19 @@ import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import PlusIcon from '@/assets/icons/ui/plus.svg';
+import CaretDownIcon from '@/assets/icons/ui/caret-down.svg';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { createCustomWorkout, type CustomWorkoutItemInput } from '@/src/api/exercise';
 import { getApiErrorMessage } from '@/src/api/client';
-import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
 
 type DraftItem = { id: number; name: string; sets: string; repetitions: string };
 let nextId = 2;
 
 export default function RoutineBuilder() {
+  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -65,8 +68,8 @@ export default function RoutineBuilder() {
       {items.map((item, index) => <View key={item.id} style={styles.card}>
         <View style={styles.sectionRow}><Text style={styles.itemTitle}>{index + 1}. 운동</Text>
           <View style={styles.itemActions}>
-            <Pressable accessibilityRole="button" accessibilityLabel={`${index + 1}번째 운동 위로 이동`} disabled={index === 0} onPress={() => move(index, -1)} style={styles.move}><Text style={[styles.moveText, index === 0 && styles.moveDisabled]}>↑</Text></Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel={`${index + 1}번째 운동 아래로 이동`} disabled={index === items.length - 1} onPress={() => move(index, 1)} style={styles.move}><Text style={[styles.moveText, index === items.length - 1 && styles.moveDisabled]}>↓</Text></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={`${index + 1}번째 운동 위로 이동`} disabled={index === 0} onPress={() => move(index, -1)} style={styles.move}><View style={styles.flip}><CaretDownIcon color={index === 0 ? colors.textDisabled : colors.textPrimary} height={16} width={16} /></View></Pressable>
+            <Pressable accessibilityRole="button" accessibilityLabel={`${index + 1}번째 운동 아래로 이동`} disabled={index === items.length - 1} onPress={() => move(index, 1)} style={styles.move}><CaretDownIcon color={index === items.length - 1 ? colors.textDisabled : colors.textPrimary} height={16} width={16} /></Pressable>
             {items.length > 1 ? <Pressable accessibilityRole="button" accessibilityLabel={`${index + 1}번째 운동 삭제`} onPress={() => setItems((current) => current.filter((row) => row.id !== item.id))}><Text style={styles.remove}>삭제</Text></Pressable> : null}
           </View>
         </View>
@@ -76,7 +79,7 @@ export default function RoutineBuilder() {
           <View style={{ flex: 1 }}><Text style={styles.caption}>횟수</Text><TextInput accessibilityLabel={`${index + 1}번째 운동 횟수`} value={item.repetitions} onChangeText={(text) => change(item.id, { repetitions: text })} keyboardType="number-pad" style={styles.input} /></View>
         </View>
       </View>)}
-      <Pressable accessibilityRole="button" disabled={items.length >= 30} onPress={() => setItems((current) => [...current, { id: nextId++, name: '', sets: '3', repetitions: '10' }])} style={styles.add}><Text style={styles.addText}>＋ 운동 추가</Text></Pressable>
+      <Pressable accessibilityRole="button" disabled={items.length >= 30} onPress={() => setItems((current) => [...current, { id: nextId++, name: '', sets: '3', repetitions: '10' }])} style={styles.add}><PlusIcon color={colors.textPrimary} height={18} width={18} /><Text style={styles.addText}>운동 추가</Text></Pressable>
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Pressable accessibilityRole="button" disabled={saving} onPress={() => void save()} style={[styles.button, saving && styles.buttonDisabled]}><Text style={[styles.buttonText, saving && styles.disabledText]}>{saving ? '저장 중…' : '루틴 저장하기'}</Text></Pressable>
     </ScrollView>
@@ -95,12 +98,10 @@ function createStyles({ colors }: AppTheme) {
     card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 15, gap: 12 },
     itemTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
     itemActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    move: { backgroundColor: colors.surface, width: 29, height: 29, borderColor: colors.border, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-    moveText: { color: colors.textPrimary, fontSize: 18, lineHeight: 22 },
-    moveDisabled: { color: '#C8C9CE' },
+    flip: { transform: [{ rotate: '180deg' }] }, move: { backgroundColor: colors.surface, width: 34, height: 34, borderColor: colors.border, borderWidth: 1, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
     remove: { color: colors.danger, fontSize: 14 },
     inputRow: { flexDirection: 'row', gap: 10 },
-    add: { backgroundColor: colors.surface, height: 56, borderWidth: 1, borderColor: colors.border, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    add: { backgroundColor: colors.surface, height: 56, borderWidth: 1, borderColor: colors.border, borderRadius: 12, flexDirection: 'row', gap: 6, justifyContent: 'center', alignItems: 'center' },
     addText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
     button: { backgroundColor: colors.primary, height: 56, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginTop: 6 },
     buttonDisabled: { backgroundColor: colors.surfaceMuted },

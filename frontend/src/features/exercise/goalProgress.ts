@@ -65,6 +65,13 @@ export function summarizeActivity(days: ActivityDay[], from: Date, to: Date) {
   return { minutes, runningMinutes, workouts, activeDays, longestStreak, bestDay };
 }
 
+// The top of a chart's scale: a round number at or above the largest value, with a whole number at its half.
+export function chartTop(value: number, smallest: number) {
+  const wanted = Math.max(value, smallest);
+  const tops = [2, 4, 6, 10, 20, 30, 60, 90, 120, 180, 240, 300, 600, 900, 1200, 1800, 2400, 3000];
+  return tops.find((top) => top >= wanted) ?? Math.ceil(wanted / 600) * 600;
+}
+
 export function chartActivity(days: ActivityDay[], from: Date, to: Date, period: 'week' | 'month') {
   if (period === 'week') {
     return Array.from({ length: 7 }, (_, index) => {

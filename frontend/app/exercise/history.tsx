@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { koreanDate } from '@/src/lib/koreanDate';
+import { CaretText } from '@/src/components/common/CaretText';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getExerciseHistory, saveRecommendedWorkout } from '@/src/api/exercise';
 import { getRunningApiErrorMessage, getRunningHistory, type RunningSession } from '@/src/api/running';
@@ -39,7 +41,7 @@ export default function ExerciseHistory() {
   const days = useMemo(() => Array.from({ length: 7 }, (_, index) => {
     const date = new Date(today);
     date.setDate(date.getDate() - 6 + index);
-    return { key: dayKey(date), label: `${date.getMonth() + 1}/${date.getDate()}`, weekday: ['일', '월', '화', '수', '목', '금', '토'][date.getDay()] };
+    return { key: dayKey(date), label: String(date.getDate()), weekday: ['일', '월', '화', '수', '목', '금', '토'][date.getDay()] };
   }), [today]);
 
   useEffect(() => {
@@ -82,7 +84,7 @@ export default function ExerciseHistory() {
     setSavingId(id);
     setSaveError('');
     try {
-      await saveRecommendedWorkout(id, `${sessionLocalDate(session.started_at)} 운동`);
+      await saveRecommendedWorkout(id, `${koreanDate(sessionLocalDate(session.started_at))} 운동`);
       setSavedIds((current) => [...current, id]);
     } catch (cause) {
       setSaveError(getApiErrorMessage(cause));
@@ -122,7 +124,7 @@ export default function ExerciseHistory() {
         </View>
         <View style={styles.sectionRow}>
           <Text style={styles.sectionTitle}>{selectedDay ? `${selectedDay} 기록` : '운동 내역'}</Text>
-          <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/exercise/saved-routines')}><Text style={styles.link}>저장한 운동 ›</Text></Pressable>
+          <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/exercise/saved-routines')}><CaretText style={styles.link}>저장한 운동</CaretText></Pressable>
         </View>
         {loading ? <ActivityIndicator color={colors.primaryText} /> : error ? (
           <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable>
@@ -131,7 +133,7 @@ export default function ExerciseHistory() {
           const complete = session.status === 'completed';
           const calories = sessionCalories(session.total_calories_burned, session.completed_item_count);
           return <View key={String(session.exercise_session_id ?? index)} style={styles.card}>
-            <View style={styles.sectionRow}><Text style={styles.cardTitle}>{sessionLocalDate(session.started_at)} 운동</Text><Text style={styles.badge}>{complete ? '완료' : '중단'}</Text></View>
+            <View style={styles.sectionRow}><Text style={styles.cardTitle}>{koreanDate(sessionLocalDate(session.started_at))} 운동</Text><Text style={styles.badge}>{complete ? '완료' : '중단'}</Text></View>
             <Text style={styles.body}>{[sessionMinutes(session.total_duration_seconds) ? `${sessionMinutes(session.total_duration_seconds)}분` : null, `${number(session.completed_item_count)}개 완료`, calories ? `${Math.round(calories)}kcal` : null].filter(Boolean).join(' · ')}</Text>
             {logs.length > 0 ? <Text style={styles.caption} numberOfLines={2}>{logs.map((log) => typeof log === 'object' && log && 'exercise_name' in log ? String(log.exercise_name) : '').filter(Boolean).join(' · ')}</Text> : null}
             {complete && id ? <Pressable accessibilityRole="button" disabled={savingId === id || savedIds.includes(id)} onPress={() => void save(session)} style={styles.outlineButton}><Text style={styles.outlineText}>{savedIds.includes(id) ? '저장 완료' : savingId === id ? '저장 중…' : '내 루틴으로 저장'}</Text></Pressable> : null}
@@ -143,7 +145,7 @@ export default function ExerciseHistory() {
           <Pressable accessibilityRole="button" onPress={() => { setRunningLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{runningError} · 다시 시도</Text></Pressable>
         ) : filteredRuns.length === 0 ? <View style={styles.card}><Text style={styles.body}>이 기간에 완료한 러닝이 없어요.</Text></View> :
           filteredRuns.map((run) => <Pressable key={run.running_session_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercise/run-result', params: { sessionId: run.running_session_id } })} style={styles.card}>
-            <View style={styles.sectionRow}><Text style={styles.cardTitle}>{sessionLocalDate(run.started_at)} 자유 러닝</Text><Text style={styles.link}>결과 보기 ›</Text></View>
+            <View style={styles.sectionRow}><Text style={styles.cardTitle}>{koreanDate(sessionLocalDate(run.started_at))} 자유 러닝</Text><CaretText style={styles.link}>결과 보기</CaretText></View>
             <Text style={styles.body}>{(number(run.distance_meters) / 1000).toFixed(2)}km · {Math.round(number(run.elapsed_seconds) / 60)}분</Text>
           </Pressable>)}
       </ScrollView>

@@ -195,8 +195,8 @@ function RuleCard({
         <Switch
           accessibilityLabel={`${meta.title} 켜기`}
           onValueChange={setEnabled}
-          thumbColor={colors.surface}
-          trackColor={{ false: colors.border, true: colors.primary }}
+          thumbColor={colors.background}
+          trackColor={{ false: colors.textDisabled, true: colors.textPrimary }}
           value={enabled}
         />
       </View>
@@ -206,8 +206,8 @@ function RuleCard({
           <Switch
             accessibilityLabel={`${meta.title} 지금 이후 활동만 적립`}
             onValueChange={setRestart}
-            thumbColor={colors.surface}
-            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor={colors.background}
+            trackColor={{ false: colors.textDisabled, true: colors.textPrimary }}
             value={restart}
           />
         </View>

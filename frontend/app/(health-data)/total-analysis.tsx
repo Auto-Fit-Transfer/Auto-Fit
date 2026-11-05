@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CaretText } from '@/src/components/common/CaretText';
 import CheckIcon from '@/assets/icons/ui/check.svg';
 import MinusIcon from '@/assets/icons/ui/minus.svg';
 import PlusIcon from '@/assets/icons/ui/plus.svg';
@@ -251,7 +252,7 @@ export default function TotalAnalysisScreen() {
                         onPress={() => setSheet({ type: 'criterion', criterion })}
                         style={s.reason}
                       >
-                        <Text style={s.body}>{criterion.metricName} 판정 기준 ›</Text>
+                        <CaretText style={s.body}>{criterion.metricName} 판정 기준</CaretText>
                       </Pressable>
                     ))}
                     {data.references.map((reference) => (
@@ -261,7 +262,7 @@ export default function TotalAnalysisScreen() {
                         onPress={() => openReference(reference.id)}
                         style={s.reason}
                       >
-                        <Text style={s.body}>{reference.title} ›</Text>
+                        <CaretText style={s.body}>{reference.title}</CaretText>
                       </Pressable>
                     ))}
                     {data.references.length === 0 ? (

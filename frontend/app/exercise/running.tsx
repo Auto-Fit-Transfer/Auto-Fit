@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { CaretText } from '@/src/components/common/CaretText';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getActiveRunningSession, getRunningApiErrorMessage, getRunningRecommendations, getSavedRunningCourses, startFreeRun, type RunningCourse, type RunningDistanceOption, type RunningSavedCourse, type RunningSession } from '@/src/api/running';
 import { courseDifficultyLabel, hasRenderablePath } from '@/src/features/running/courseRoute';
@@ -26,7 +27,7 @@ export default function RunningRecommendations() {
   const [starting, setStarting] = useState(false);
   const [courses, setCourses] = useState<RunningCourse[]>([]);
   const [savedCourses, setSavedCourses] = useState<RunningSavedCourse[]>([]);
-  const [message, setMessage] = useState('지역과 거리를 선택하면 실제 코스를 찾아드려요.');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -108,7 +109,7 @@ export default function RunningRecommendations() {
         <Text style={styles.courseTitle}>{nameOf(course)}</Text>
         <Text style={styles.meta}>{[course.region, typeof course.distance_km === 'number' ? `${course.distance_km}km` : null, typeof course.estimated_duration_minutes === 'number' ? `약 ${Math.round(course.estimated_duration_minutes)}분` : null, courseDifficultyLabel(course.difficulty)].filter(Boolean).join(' · ')}</Text>
         {course.description ? <Text style={styles.body}>{course.description}</Text> : null}
-        <Text style={styles.courseLink}>코스 보기 · 경로 확인 · 저장  ›</Text>
+        <View style={styles.courseLinkRow}><CaretText style={styles.courseLink}>코스 보기 · 경로 확인 · 저장</CaretText></View>
       </Pressable>)}
       {savedCourses.length > 0 ? <Text style={styles.sectionTitle}>저장한 러닝 코스</Text> : null}
       {savedCourses.map((saved) => <Pressable key={saved.running_saved_course_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercise/running-course', params: { savedId: saved.running_saved_course_id } })} style={styles.card}>
@@ -158,7 +159,8 @@ function createStyles({ colors }: AppTheme) {
     body: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
     card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16, gap: 8 },
     courseTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    courseLink: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium, marginTop: 4 }, savedHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 }, savedBadge: { backgroundColor: colors.primaryLight, color: colors.textPrimary, borderRadius: 8, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, fontSize: 12 },
+    courseLinkRow: { marginTop: 4 },
+    courseLink: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, savedHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 }, savedBadge: { backgroundColor: colors.primaryLight, color: colors.textPrimary, borderRadius: 8, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, fontSize: 12 },
     meta: { color: colors.textSecondary, fontSize: 14 },
     caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 18 },
   } as const;

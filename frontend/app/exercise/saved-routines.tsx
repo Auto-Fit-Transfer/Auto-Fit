@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CaretDownIcon from '@/assets/icons/ui/caret-down.svg';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getSavedWorkoutRoutines, type SavedWorkoutRoutine } from '@/src/api/exercise';
 import { getApiErrorMessage } from '@/src/api/client';
@@ -54,7 +55,7 @@ export default function SavedRoutines() {
             const open = expanded === routine.user_workout_routine_id;
             return <View key={routine.user_workout_routine_id} style={styles.card}>
               <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setExpanded(open ? null : routine.user_workout_routine_id)}>
-                <View style={styles.cardHeader}><Text style={styles.cardTitle}>{routine.name}</Text><Text style={styles.arrow}>{open ? '⌃' : '⌄'}</Text></View>
+                <View style={styles.cardHeader}><Text style={styles.cardTitle}>{routine.name}</Text><View style={open ? styles.flip : undefined}><CaretDownIcon color={colors.textPrimary} height={20} width={20} /></View></View>
                 <Text style={styles.meta}>{routine.source_type === 'custom' ? '내 루틴' : '추천 운동'} · {routine.items.length}개 운동</Text>
               </Pressable>
               {open ? <View style={styles.itemList}>{routine.items.map((item) =>
@@ -88,7 +89,7 @@ function createStyles({ colors }: AppTheme) {
     card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16, gap: 10 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     cardTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    arrow: { color: colors.textPrimary, fontSize: 19 },
+    flip: { transform: [{ rotate: '180deg' }] },
     meta: { color: colors.textSecondary, fontSize: 14, marginTop: 4 },
     body: { color: colors.textPrimary, fontSize: 14, lineHeight: 19 },
     itemList: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 8, gap: 12 },

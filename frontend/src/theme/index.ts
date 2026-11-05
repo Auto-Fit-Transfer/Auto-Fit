@@ -7,7 +7,7 @@ export {
   type DisplaySettings,
 } from './AppThemeProvider';
 export { colors, darkColors } from './colors';
-export { scaleForEasyMode, toEasyFontSize } from './easyMode';
+export { scaleForFontStep, scaleText, toEasyFontSize } from './easyMode';
 export { fontAssets, fontFamilies } from './fonts';
 export { darkPalette, lightPalette, type Palette } from './palette';
 export { radius } from './radius';

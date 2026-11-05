@@ -78,7 +78,7 @@ function Chart({ entries, width, target, unit }: { entries: { date: string; valu
   const lastEntry = entries[entries.length - 1];
   const area = `M${points[0].x},${bottom} ` + points.map((point) => `L${point.x},${point.y}`).join(' ') + ` L${last.x},${bottom} Z`;
   const targetY = target ? yOf(target) : null;
-  const tooltip = `${formatDate(lastEntry.date)} · ${formatValue(lastEntry.value, unit)}${unit}`;
+  const tooltip = `${formatLongDate(lastEntry.date)} · ${formatValue(lastEntry.value, unit)}${unit}`;
   const tooltipWidth = tooltip.length * 7.4 + 16;
   const tooltipX = Math.min(width - tooltipWidth, Math.max(0, last.x - tooltipWidth / 2));
   const tooltipY = Math.max(0, last.y - 36);

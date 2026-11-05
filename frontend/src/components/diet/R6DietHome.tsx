@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CaretText } from '@/src/components/common/CaretText';
 import CameraIcon from '@/assets/icons/ui/camera.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import CheckIcon from '@/assets/icons/ui/check.svg';
@@ -138,7 +139,7 @@ export function R6DietHome(props: Props) {
               <Text style={[styles.caption, isDark && dark.secondary]}>
                 {props.selectedDateOffset === 0
                   ? '오늘'
-                  : `${selectedDate.getMonth() + 1}/${selectedDate.getDate()}`}{' '}
+                  : `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일`}{' '}
                 먹은 양
               </Text>
               <Text style={[styles.energyValue, simple && simpleStyles.energyValue, isDark && dark.text]}>
@@ -169,7 +170,7 @@ export function R6DietHome(props: Props) {
             </Pressable>
           )}
           <Pressable accessibilityRole="button" onPress={props.onOpenProteinGuide} style={styles.guideLink}>
-            <Text style={[styles.guideLinkText, isDark && dark.secondary]}>단백질 가이드 보기  ›</Text>
+            <CaretText style={[styles.guideLinkText, isDark && dark.secondary]}>단백질 가이드 보기</CaretText>
           </Pressable>
         </View>
 
@@ -414,7 +415,7 @@ const simpleStyles = StyleSheet.create({
   card: { padding: 20 },
   energyValue: {},
   macroRow: { flexDirection: 'column', gap: 14 },
-  macro: { flex: 0 },
+  macro: { flexBasis: 'auto', flexGrow: 0, flexShrink: 0 },
   macroLabel: {},
   macroValue: {},
   photoButton: { minHeight: 78 },

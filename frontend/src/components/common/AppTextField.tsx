@@ -9,7 +9,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { radius, scaleForEasyMode, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { radius, scaleText, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { Text } from './Text';
 
@@ -101,9 +101,9 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
 });
 
 // The Figma "Input": label, a 52px field with a thin border, and a helper line.
-function createStyles({ colors, text, easyMode }: AppTheme) {
-  // TextInput is not the shared Text, so it is enlarged here for the easy mode.
-  const inputText = easyMode ? scaleForEasyMode(text.body1) : text.body1;
+function createStyles({ colors, text, easyMode, fontStep }: AppTheme) {
+  // This field uses the react-native TextInput, so it is resized here.
+  const inputText = scaleText(text.body1, easyMode, fontStep);
   return {
     label: { ...text.body2Strong, color: colors.textPrimary, marginBottom: 8 },
     field: {

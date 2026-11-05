@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { koreanDate } from '@/src/lib/koreanDate';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { claimCommunityChallenge, getCommunityChallenges, getCommunityErrorMessage, isProvisionalNote, setCommunityChallengeParticipation, type CommunityChallenge } from '@/src/api/community';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
@@ -12,10 +13,6 @@ const metricLabel: Record<CommunityChallenge['metric'], string> = {
 };
 const phaseLabel: Record<CommunityChallenge['phase'], string> = {
   ongoing: '진행 중', upcoming: '예정', ended: '종료',
-};
-const dateLabel = (value: string) => {
-  const parts = value.split('-').map(Number);
-  return parts.length === 3 && parts.every(Number.isFinite) ? `${parts[1]}.${parts[2]}` : value;
 };
 
 export default function ChallengeDetail() {
@@ -83,11 +80,11 @@ export default function ChallengeDetail() {
       {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
       {error && !challenge ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); void load(); }} style={s.card}><Text style={s.error}>{error} · 다시 시도</Text></Pressable> : null}
       {challenge ? <>
-        <Text style={s.phase}>{phaseLabel[challenge.phase]}{challenge.phase === 'ongoing' ? ` · ${dateLabel(challenge.ends_on)}까지` : ''}</Text>
+        <Text style={s.phase}>{phaseLabel[challenge.phase]}{challenge.phase === 'ongoing' ? ` · ${koreanDate(challenge.ends_on)}까지` : ''}</Text>
         <Text style={s.hero}>{challenge.title}</Text>
         {challenge.description ? <Text style={s.body}>{challenge.description}</Text> : null}
         <View style={s.stats}>
-          <View style={s.stat}><Text style={s.statLabel}>기간</Text><Text style={s.statValue}>{dateLabel(challenge.starts_on)}~{dateLabel(challenge.ends_on)}</Text></View>
+          <View style={s.stat}><Text style={s.statLabel}>기간</Text><Text style={s.statValue}>{koreanDate(challenge.starts_on)}~{koreanDate(challenge.ends_on)}</Text></View>
           <View style={s.stat}><Text style={s.statLabel}>보상</Text><Text style={s.statValue}>+{challenge.reward_mileage.toLocaleString()}P</Text></View>
           <View style={s.stat}><Text style={s.statLabel}>참여</Text><Text style={s.statValue}>{challenge.participant_count.toLocaleString()}명</Text></View>
         </View>

@@ -27,7 +27,7 @@ const categories: ToggleKey[] = [
   { key: 'diet_enabled', label: '식단 알림', detail: '끼니 기록 · 영양 알림' },
   { key: 'exercise_enabled', label: '운동 알림', detail: '추천 · 목표 달성 알림' },
   { key: 'health_report_enabled', label: '건강 데이터 알림', detail: '새 자료를 올릴 때가 되면' },
-  { key: 'community_enabled', label: '커뮤니티 알림', detail: '좋아요 · 댓글 · 팔로우 · 서버 반영 예정' },
+  { key: 'community_enabled', label: '커뮤니티 알림', detail: '좋아요 · 댓글 · 팔로우' },
 ];
 
 const categoryIcons: Partial<Record<ToggleKey['key'], typeof BarbellIcon>> = {
@@ -122,8 +122,8 @@ export default function Notifications() {
         accessibilityLabel={label}
         disabled={!preferences || saving}
         onValueChange={() => toggle(key)}
-        thumbColor="#FFFFFF"
-        {...({ activeThumbColor: '#FFFFFF' } as object)}
+        thumbColor={colors.background}
+        {...({ activeThumbColor: colors.background } as object)}
         trackColor={{ false: colors.textDisabled, true: colors.textPrimary }}
         value={preferences?.[key] ?? false}
       />
@@ -154,7 +154,7 @@ export default function Notifications() {
           {row({ key: 'push_enabled', label: '푸시 알림', detail: '기기 알림 허용 시 받기' })}
           {row({ key: 'foreground_push_enabled', label: '앱 실행 중 알림', detail: '앱을 닫지 않아도 알림을 받기' })}
         </View>
-        <Text style={styles.note}>알림 수신 설정이 저장됩니다. 기기 푸시 전송은 서버 알림 서비스가 연결된 뒤 동작해요.</Text>
+        <Text style={styles.note}>기기 푸시 알림은 준비 중이에요. 고른 설정은 저장돼요.</Text>
       </ScrollView>
     </View>
   );

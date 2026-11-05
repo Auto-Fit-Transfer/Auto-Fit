@@ -5,7 +5,7 @@ import HeartIcon from '@/assets/icons/deco/Heart.svg';
 import HeartFillIcon from '@/assets/icons/deco/Heart_Fill.svg';
 import ChatIcon from '@/assets/icons/feature/ChatCircle.svg';
 import RepeatIcon from '@/assets/icons/feature/Repeat.svg';
-import MoreIcon from '@/assets/icons/system/DotsThreeOutline.svg';
+import MoreIcon from '@/assets/icons/system/DotsThree.svg';
 import BarbellIcon from '@/assets/icons/ui/barbell.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import type { CommunityAuthor, CommunityPost, CommunityProfile } from '@/src/api/community';

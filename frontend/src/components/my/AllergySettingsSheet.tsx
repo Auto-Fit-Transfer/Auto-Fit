@@ -6,6 +6,7 @@ import {
   saveAllergySelection,
   type AllergyType,
 } from '@/src/api/allergies';
+import XIcon from '@/assets/icons/ui/x.svg';
 import { getApiErrorMessage } from '@/src/api/client';
 import { AppBottomSheet, Text, TextInput } from '@/src/components/common';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
@@ -146,7 +147,7 @@ export function AllergySettingsSheet({ visible, onClose }: Props) {
                 onPress={() => { setCustomNames((values) => values.filter((value) => value !== name)); setSaved(false); }}
                 style={[styles.chip, styles.selected]}
               >
-                <Text style={styles.selectedText}>{name} ×</Text>
+                <View style={styles.customChip}><Text style={styles.selectedText}>{name}</Text><XIcon color={colors.primary} height={14} width={14} /></View>
               </Pressable>
             ))}
           </View>
@@ -184,6 +185,7 @@ function createStyles({ colors }: AppTheme) {
     chip: { backgroundColor: colors.surface, minHeight: 31, borderWidth: 1, borderColor: colors.border, borderRadius: 17, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
     selected: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
     chipText: { fontSize: 12, color: colors.textBody },
+    customChip: { alignItems: 'center', flexDirection: 'row', gap: 4 },
     selectedText: { fontSize: 12, color: colors.primary, fontFamily: fontFamilies.pretendardMedium },
     addRow: { flexDirection: 'row', gap: 8 },
     input: { backgroundColor: colors.surface, flex: 1, height: 52, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, fontSize: 16, color: colors.textPrimary },

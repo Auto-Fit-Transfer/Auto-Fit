@@ -2,7 +2,7 @@ import { createContext, createElement, forwardRef, useContext, type ReactNode } 
 import { Platform, StyleSheet, Text as NativeText, type TextProps } from 'react-native';
 
 import { keepKoreanWords } from '@/src/lib/koreanLineBreak';
-import { fontFamilies, scaleForEasyMode, useAppTheme } from '@/src/theme';
+import { fontFamilies, scaleText, useAppTheme } from '@/src/theme';
 
 // Use this instead of the react-native Text: Korean then wraps at spaces, never mid-word.
 // iOS does it natively; Android and the web get word joiners inside each Korean word.
@@ -32,7 +32,7 @@ export const Text = forwardRef<NativeText, TextProps>(function Text(
   { children, style, ...props },
   ref,
 ) {
-  const { colors, easyMode } = useAppTheme();
+  const { colors, easyMode, fontStep } = useAppTheme();
   const nested = useContext(InsideText);
   const flat = StyleSheet.flatten(style) ?? {};
   // Without these, text shows the device font and stays black on dark screens. Nested text inherits
@@ -42,8 +42,8 @@ export const Text = forwardRef<NativeText, TextProps>(function Text(
     color: flat.color ?? colors.textPrimary,
     fontFamily: flat.fontFamily ?? fontFamilies.pretendardRegular,
   };
-  // The easy (senior) mode enlarges every text by the same steps as the Figma "Easy" styles.
-  const textStyle = easyMode ? scaleForEasyMode(base) : base;
+  // The easy (senior) mode and the font size setting resize every text here.
+  const textStyle = scaleText(base, easyMode, fontStep);
   const textProps = {
     lineBreakStrategyIOS: 'hangul-word' as const,
     ...props,

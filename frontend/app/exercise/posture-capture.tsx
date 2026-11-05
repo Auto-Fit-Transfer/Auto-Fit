@@ -15,6 +15,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line } from 'react-native-svg';
+import RetryIcon from '@/assets/icons/system/ArrowsClockwise.svg';
+import UploadIcon from '@/assets/icons/ui/upload-simple.svg';
+import XIcon from '@/assets/icons/ui/x.svg';
 import { Text } from '@/src/components/common';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
@@ -310,7 +313,7 @@ export default function PostureCaptureScreen() {
             onPress={close}
             style={styles.closeButton}
           >
-            <Text style={styles.closeText}>×</Text>
+            <XIcon color="#FFF" height={24} width={24} />
           </Pressable>
           <View style={styles.recordBadge}>
             <View style={[styles.recordDot, phase === 'recording' && styles.recordDotActive]} />
@@ -340,7 +343,7 @@ export default function PostureCaptureScreen() {
               {source === 'camera' ? '10초 촬영을 마쳤어요' : '앨범 영상을 선택했어요'}
             </Text>
             <Text style={styles.reviewCopy}>
-              분석 서버 연결 전이라 전송하지 않아요. 화면을 나가면 임시 영상을 지웁니다.
+              분석 기능을 준비 중이라 영상을 보내지 않아요. 화면을 나가면 영상을 지워요.
             </Text>
             <Pressable
               accessibilityRole="button"
@@ -364,7 +367,7 @@ export default function PostureCaptureScreen() {
                 onPress={() => void pickVideo()}
                 style={styles.sideControl}
               >
-                <Text style={styles.sideIcon}>⇧</Text>
+                <View style={styles.sideIcon}><UploadIcon color="#FFF" height={22} width={22} /></View>
                 <Text style={styles.sideLabel}>앨범</Text>
               </Pressable>
               <Pressable
@@ -384,7 +387,7 @@ export default function PostureCaptureScreen() {
                 onPress={resetCapture}
                 style={styles.sideControl}
               >
-                <Text style={styles.sideIcon}>↻</Text>
+                <View style={styles.sideIcon}><RetryIcon color="#FFF" height={22} width={22} /></View>
                 <Text style={styles.sideLabel}>다시</Text>
               </Pressable>
             </View>
@@ -450,7 +453,6 @@ function createStyles({ colors }: AppTheme) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    closeText: { color: '#FFF', fontSize: 29, lineHeight: 32 },
     recordBadge: {
       backgroundColor: '#101214',
       borderRadius: 20,
@@ -530,10 +532,8 @@ function createStyles({ colors }: AppTheme) {
       height: 39,
       borderRadius: 20,
       backgroundColor: '#313337',
-      color: '#FFF',
-      fontSize: 27,
-      textAlign: 'center',
-      overflow: 'hidden',
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     sideLabel: { color: '#F1F1F1', fontSize: 12 },
     shutter: {

@@ -187,7 +187,7 @@ export default function CommunityMileageScreen() {
                 {earnRules.length === 0 ? <Text style={styles.emptyRules}>적립 규칙이 없어요.</Text> : null}
               </View>
               {earnRules.some((rule) => isProvisionalNote(rule.note)) ? (
-                <Text style={styles.rulesNote}>적립 기준은 실사용 테스트를 거쳐 조정할 예정이에요.</Text>
+                <Text style={styles.rulesNote}>적립 기준은 바뀔 수 있어요.</Text>
               ) : null}
               <View style={styles.historyHeading}>
               <Text style={styles.historyTitle}>내역</Text>

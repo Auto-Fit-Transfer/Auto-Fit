@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { koreanDate } from '@/src/lib/koreanDate';
 import DownIcon from '@/assets/icons/common/chevrons/Down.svg';
 import UpIcon from '@/assets/icons/common/chevrons/Up.svg';
 import BarbellIcon from '@/assets/icons/ui/barbell.svg';
@@ -75,7 +76,6 @@ export default function ExerciseScreen() {
   start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
-  const day = (date: Date) => `${date.getMonth() + 1}.${String(date.getDate()).padStart(2, '0')}`;
   const progress = Math.min(100, Math.max(0, homeMetrics.goalAchievementRate ?? 0));
   const target = homeMetrics.targetWorkoutCount;
   const doneCount = homeMetrics.currentWeekWorkoutCount ?? 0;
@@ -165,7 +165,7 @@ export default function ExerciseScreen() {
         <View style={[styles.card, simple && simpleStyles.card, isDark && dark.card]}>
           <View style={styles.rowBetween}>
             <Text style={[styles.sectionSmall, isDark && dark.text]}>이번 주 목표</Text>
-            <Text style={[styles.caption, isDark && dark.secondary]}>{day(start)} ~ {day(end)}</Text>
+            <Text style={[styles.caption, isDark && dark.secondary]}>{koreanDate(start)} ~ {koreanDate(end)}</Text>
           </View>
           <View style={styles.rowBetween}>
             <Text style={[styles.bigCount, isDark && dark.text]}>{value(homeMetrics.currentWeekWorkoutCount)}<Text style={[styles.countUnit, isDark && dark.secondary]}> / {value(target)}회</Text></Text>

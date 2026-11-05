@@ -15,10 +15,11 @@ export interface DisplaySettings {
 
 export interface AppTheme {
   colors: Palette;
-  // Base sizes; the shared Text enlarges them in the easy mode.
+  // Base sizes; the shared Text resizes them for the easy mode and the font size setting.
   text: TextStyles;
   isDark: boolean;
   easyMode: boolean;
+  fontStep: number;
 }
 
 interface AppThemeContextValue extends AppTheme {
@@ -30,10 +31,10 @@ const defaultSettings: DisplaySettings = { colorMode: 'light', easyMode: false }
 
 // Four fixed theme objects, so styles built from a theme are only rebuilt when it really changes.
 const themes = {
-  light: { colors: lightPalette, text: textStyles, isDark: false, easyMode: false },
-  lightEasy: { colors: lightPalette, text: textStyles, isDark: false, easyMode: true },
-  dark: { colors: darkPalette, text: textStyles, isDark: true, easyMode: false },
-  darkEasy: { colors: darkPalette, text: textStyles, isDark: true, easyMode: true },
+  light: { colors: lightPalette, text: textStyles, isDark: false, easyMode: false, fontStep: 3 },
+  lightEasy: { colors: lightPalette, text: textStyles, isDark: false, easyMode: true, fontStep: 3 },
+  dark: { colors: darkPalette, text: textStyles, isDark: true, easyMode: false, fontStep: 3 },
+  darkEasy: { colors: darkPalette, text: textStyles, isDark: true, easyMode: true, fontStep: 3 },
 } satisfies Record<string, AppTheme>;
 
 function pickTheme(isDark: boolean, easyMode: boolean): AppTheme {
@@ -66,9 +67,10 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
   );
 
   const theme = pickTheme(isDark, easyMode);
+  const fontStep = preferences.font_size_step;
   const value = useMemo(
-    () => ({ ...theme, settings, updateSettings }),
-    [theme, settings, updateSettings],
+    () => ({ ...theme, fontStep, settings, updateSettings }),
+    [theme, fontStep, settings, updateSettings],
   );
 
   return <AppThemeContext.Provider value={value}>{children}</AppThemeContext.Provider>;
@@ -82,9 +84,9 @@ export function useAppTheme(): AppThemeContextValue {
 export function useThemedStyles<T extends StyleSheet.NamedStyles<T>>(
   create: (theme: AppTheme) => T,
 ): T {
-  const { colors, text, isDark, easyMode } = useAppTheme();
+  const { colors, text, isDark, easyMode, fontStep } = useAppTheme();
   return useMemo(
-    () => StyleSheet.create(create({ colors, text, isDark, easyMode })),
-    [create, colors, text, isDark, easyMode],
+    () => StyleSheet.create(create({ colors, text, isDark, easyMode, fontStep })),
+    [create, colors, text, isDark, easyMode, fontStep],
   );
 }

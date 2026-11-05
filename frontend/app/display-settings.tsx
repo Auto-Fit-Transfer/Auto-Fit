@@ -69,9 +69,9 @@ export default function DisplaySettingsScreen() {
         ))}
       </View>
       {saveError ? <Text accessibilityRole="alert" style={styles.error}>{saveError}</Text> : null}
-      {serverSynced === false ? <Text style={[styles.note, isDark && dark.secondary]}>기기에 저장됐어요. 서버 연결 후 동기화할 예정이에요.</Text> : null}
-      <Text style={[styles.note, isDark && dark.secondary]}>기기 설정대로를 고르면 휴대폰의 화면 모드를 따라요.</Text>
-      <Text style={[styles.sectionTitle, isDark && dark.text, simple && simpleStyles.sectionTitle]}>글자 크기</Text>
+      {serverSynced === false ? <Text style={[styles.note, isDark && dark.secondary]}>이 기기에 저장했어요.</Text> : null}
+      {simple ? null : <>
+      <Text style={[styles.sectionTitle, isDark && dark.text]}>글자 크기</Text>
       <View style={[styles.fontCard, isDark && dark.card]}>
         <View style={styles.fontSliderRow}>
           <Text style={[styles.fontSample, isDark && dark.text]}>가</Text>
@@ -97,10 +97,10 @@ export default function DisplaySettingsScreen() {
         <View style={styles.fontScaleLabels}><Text style={[styles.note, isDark && dark.secondary]}>작게</Text><Text style={[styles.note, isDark && dark.secondary]}>기본</Text><Text style={[styles.note, isDark && dark.secondary]}>크게</Text></View>
         <View style={[styles.fontPreview, isDark && dark.action]}>
           <Text style={[styles.fontPreviewCaption, isDark && dark.secondary]}>미리 보기</Text>
-          <Text style={[styles.fontPreviewText, isDark && dark.text, { fontSize: 13 + preferences.font_size_step * 1.5 }]}>오늘 저녁은 그릭요거트 볼 어때요? 단백질 25g을 채울 수 있어요.</Text>
+          <Text style={[styles.fontPreviewText, isDark && dark.text]}>오늘 저녁은 그릭요거트 볼 어때요? 단백질 25g을 채울 수 있어요.</Text>
         </View>
       </View>
-      <Text style={[styles.note, isDark && dark.secondary]}>글자 크기는 일부 화면부터 적용돼요.</Text>
+      </>}
       <Text style={[styles.sectionTitle, isDark && dark.text, simple && simpleStyles.sectionTitle]}>간편 모드</Text>
       <View style={[styles.simpleCard, isDark && dark.card]}>
         <View style={styles.simpleIntro}>
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
   fontScaleLabels: { flexDirection: 'row', justifyContent: 'space-between' },
   fontPreview: { backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, gap: 6, padding: 13 },
   fontPreviewCaption: { color: '#5E5D66', fontSize: 12 },
-  fontPreviewText: { color: '#17161D', fontFamily: fontFamilies.pretendardRegular, lineHeight: 26 },
+  fontPreviewText: { color: '#17161D', fontFamily: fontFamilies.pretendardRegular, fontSize: 16, lineHeight: 24 },
   simpleCard: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, gap: 16, padding: 15 },
   simpleIntro: { alignItems: 'center', flexDirection: 'row', gap: 14 },
   simplePreview: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 7, borderWidth: 1, gap: 7, height: 74, padding: 9, width: 52 },

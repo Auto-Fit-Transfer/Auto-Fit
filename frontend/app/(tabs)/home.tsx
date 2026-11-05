@@ -8,7 +8,6 @@ import AutofitWordmark from '@/assets/icons/autofit-wordmark.svg';
 import AutofitWordmarkDark from '@/assets/icons/autofit-wordmark-dark.svg';
 import CheckIcon from '@/assets/icons/system/Check.svg';
 import BarbellIcon from '@/assets/icons/ui/barbell.svg';
-import BellIcon from '@/assets/icons/ui/bell.svg';
 import ChatsIcon from '@/assets/icons/ui/chats-circle.svg';
 import ForkKnifeIcon from '@/assets/icons/ui/fork-knife.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
@@ -21,6 +20,7 @@ import { CHAT_CHARACTER_KEY, chatCharacters } from '@/src/features/chat/chatChar
 import { localDayKey, useWeekWorkouts } from '@/src/features/exercise/useWeekWorkouts';
 import { darkTierColors, nextTierName, tierBadges, tierColors } from '@/src/features/tier/tierBadges';
 import { getSupabaseClient } from '@/src/lib/supabase';
+import { NotificationBell } from '@/src/components/community/NotificationBell';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { darkColors, fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
@@ -143,9 +143,7 @@ export default function HomeScreen() {
           <Wordmark accessibilityLabel="autofit" height={24} width={88} />
           <View style={styles.headerActions}>
             <SimpleReadButton text={`${name}님, 반가워요. ${tier ? `현재 티어는 ${tier.tier_name} ${tier.sublevel}입니다.` : ''} 오늘 식단과 운동을 확인하고 기록해 보세요.`} />
-            <Pressable accessibilityLabel="알림" accessibilityRole="button" hitSlop={10} onPress={() => router.push('/community/notifications')}>
-              <BellIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={24} width={24} />
-            </Pressable>
+            <NotificationBell />
           </View>
         </View>
         <Text style={[styles.date, isDark && dark.secondary]}>{dateLabel}</Text>
@@ -300,7 +298,7 @@ function createStyles({ colors }: AppTheme) {
     root: { backgroundColor: colors.background, flex: 1 },
     content: { paddingBottom: 110, paddingHorizontal: 20, width: '100%' },
     headerRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 44 },
-    headerActions: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+    headerActions: { alignItems: 'center', flexDirection: 'row', gap: 10, marginRight: -10 },
     date: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, marginTop: 12 },
     greeting: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30, marginTop: 4 },
     initialLoading: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 16, gap: 14, justifyContent: 'center', marginTop: 24, minHeight: 180 },
@@ -356,7 +354,7 @@ const simpleStyles = StyleSheet.create({
   column: { flexDirection: 'column' },
   card: { minHeight: 82, padding: 20 },
   cardTitle: {},
-  statCard: { flex: 0, minHeight: 100, padding: 18 },
+  statCard: { flexBasis: 'auto', flexGrow: 0, flexShrink: 0, minHeight: 100, padding: 18 },
   statLabel: {},
   sectionTitle: {},
   task: { minHeight: 82, paddingHorizontal: 16 },

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import MoreIcon from '@/assets/icons/system/DotsThreeVertical.svg';
+import MoreIcon from '@/assets/icons/system/DotsThree.svg';
 import {
   getCommunityErrorMessage,
   getCommunityMembership,

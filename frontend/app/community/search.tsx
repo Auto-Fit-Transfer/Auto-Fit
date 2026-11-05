@@ -42,7 +42,7 @@ export default function CommunitySearchScreen() {
         if (active) setResults(next);
       }).catch((cause) => {
         if (active) setError(cause instanceof ApiError && cause.status === 404
-          ? '검색 API가 서버에 아직 배포되지 않았어요.' : getCommunityErrorMessage(cause));
+          ? '지금은 검색할 수 없어요. 잠시 뒤 다시 시도해 주세요.' : getCommunityErrorMessage(cause));
       }).finally(() => { if (active) setLoading(false); });
     }, 350);
     return () => { active = false; clearTimeout(timer); };

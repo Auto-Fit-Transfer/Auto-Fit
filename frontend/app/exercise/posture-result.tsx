@@ -4,6 +4,10 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line } from 'react-native-svg';
 
+import { koreanDate } from '@/src/lib/koreanDate';
+import CheckIcon from '@/assets/icons/ui/check.svg';
+import PlusIcon from '@/assets/icons/ui/plus.svg';
+import MinusIcon from '@/assets/icons/ui/minus.svg';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getPostureResult, type PostureFinding, type PostureKeypoint, type PostureResult } from '@/src/api/posture';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
@@ -48,13 +52,14 @@ function Skeleton({ points }: { points: PostureKeypoint[] }) {
 function FindingCard({ finding, expanded, onToggle, result }: {
   finding: PostureFinding; expanded: boolean; onToggle: () => void; result: PostureResult;
 }) {
+  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const suggestion = result.routine_suggestions.find((item) => item.posture_finding_id === finding.posture_finding_id);
   return <View style={styles.findingCard}>
     <Pressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={onToggle} style={styles.findingHeader}>
       <View style={{ flex: 1 }}><Text style={styles.findingTitle}>{finding.title}</Text>
         {finding.repetition_start != null && <Text style={styles.findingSub}>{finding.repetition_start}{finding.repetition_end && finding.repetition_end !== finding.repetition_start ? `~${finding.repetition_end}` : ''}회째</Text>}
-      </View><Text style={styles.toggle}>{expanded ? '−' : '+'}</Text>
+      </View><View style={styles.toggle}>{expanded ? <MinusIcon color={colors.textBody} height={20} width={20} /> : <PlusIcon color={colors.textBody} height={20} width={20} />}</View>
     </Pressable>
     {expanded && <View style={styles.findingBody}>
       <Text style={styles.sectionLabel}>왜 그럴까요</Text><Text style={styles.bodyText}>{finding.explanation}</Text>
@@ -100,7 +105,7 @@ export default function PostureResultScreen() {
   const corrections = result?.findings.filter((finding) => finding.finding_type === 'correction') ?? [];
   const positives = result?.findings.filter((finding) => finding.finding_type === 'positive') ?? [];
   const toggle = (id: string) => setExpandedIds((ids) => ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]);
-  const date = result?.assessment.assessed_at ? new Date(result.assessment.assessed_at).toLocaleDateString('ko-KR') : '';
+  const date = result?.assessment.assessed_at ? koreanDate(result.assessment.assessed_at) : '';
 
   return <View style={styles.screen}>
     <ScreenHeader onBack={() => router.back()} title="자세 점검 결과" />
@@ -121,7 +126,7 @@ export default function PostureResultScreen() {
           {result.assessment.passing_score != null && <Text style={styles.threshold}>기준 {result.assessment.passing_score}점</Text>}
         </View>
         {corrections.length > 0 && <><Text style={styles.sectionTitle}>고칠 점 {corrections.length}</Text>{corrections.map((finding) => <FindingCard key={finding.posture_finding_id} finding={finding} expanded={expandedIds.includes(finding.posture_finding_id)} onToggle={() => toggle(finding.posture_finding_id)} result={result} />)}</>}
-        {positives.length > 0 && <View style={styles.positiveCard}><Text style={styles.findingTitle}>잘한 점</Text>{positives.map((finding) => <Text key={finding.posture_finding_id} style={styles.positiveText}>✓  {finding.title}</Text>)}</View>}
+        {positives.length > 0 && <View style={styles.positiveCard}><Text style={styles.findingTitle}>잘한 점</Text>{positives.map((finding) => <View key={finding.posture_finding_id} style={styles.positiveRow}><CheckIcon color={colors.success} height={16} width={16} style={styles.positiveIcon} /><Text style={styles.positiveText}>{finding.title}</Text></View>)}</View>}
         {result.routine_suggestions.filter((item) => !item.posture_finding_id).map((item) => <View key={item.posture_routine_suggestion_id} style={styles.findingCard}><Text style={styles.findingTitle}>{item.exercise_name}</Text><Text style={styles.bodyText}>{item.prescription}</Text><Text style={styles.suggestionStatus}>{item.applied_at ? '루틴에 반영됨' : '루틴 연결 준비 중'}</Text></View>)}
         <Text style={styles.privacy}>임시 영상의 삭제 처리가 기록됐어요. 관절 위치와 결과만 저장됩니다.</Text>
         <View style={styles.actions}><Pressable onPress={() => router.replace('/exercise/posture-capture')} style={styles.secondaryButton}><Text style={styles.buttonText}>다시 찍기</Text></Pressable><Pressable onPress={() => router.back()} style={styles.primaryButton}><Text style={styles.primaryText}>운동으로 돌아가기</Text></Pressable></View>
@@ -143,10 +148,10 @@ function createStyles({ colors }: AppTheme) {
     repRow: { flexDirection: 'row', gap: 6, marginTop: 12 }, repButton: { flex: 1, minHeight: 39, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }, repSelected: { backgroundColor: colors.primaryLight, borderColor: colors.primary }, repText: { color: colors.textPrimary, fontSize: 12 }, repSelectedText: { color: colors.primaryText, fontFamily: fontFamilies.pretendardBold },
     chartCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16, marginTop: 19, backgroundColor: colors.surface }, chartHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     chart: { height: 145, flexDirection: 'row', gap: 10, alignItems: 'flex-end', justifyContent: 'center', marginTop: 19 }, barColumn: { flex: 1, height: 140, alignItems: 'center', justifyContent: 'flex-end' }, bar: { width: '60%', minWidth: 25, borderRadius: 8, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 5 }, barText: { color: '#FFFFFF', fontSize: 12 }, barLabel: { fontSize: 12, color: colors.textSecondary, marginTop: 5 }, threshold: { color: colors.textSecondary, fontSize: 12, textAlign: 'right', marginTop: 7 },
-    findingCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 15, backgroundColor: colors.surface, marginBottom: 10 }, findingHeader: { flexDirection: 'row', alignItems: 'center' }, findingTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, findingSub: { color: colors.textSecondary, fontSize: 12, marginTop: 4 }, toggle: { color: colors.textBody, fontSize: 22, width: 26, textAlign: 'center' },
+    findingCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 15, backgroundColor: colors.surface, marginBottom: 10 }, findingHeader: { flexDirection: 'row', alignItems: 'center' }, findingTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, findingSub: { color: colors.textSecondary, fontSize: 12, marginTop: 4 }, toggle: { alignItems: 'center', width: 26 },
     findingBody: { marginTop: 15 }, sectionLabel: { color: colors.textSecondary, fontSize: 12, marginBottom: 8, marginTop: 8 }, bodyText: { color: colors.textBody, fontSize: 14, lineHeight: 21 }, guidanceRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 8 }, guidanceNumber: { width: 20, height: 20, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', marginRight: 8 }, guidanceNumberText: { color: colors.textBody, fontSize: 12 },
     suggestion: { borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 12, padding: 12, marginTop: 12 }, suggestionStatus: { color: colors.primaryText, fontSize: 12, marginTop: 8 },
-    positiveCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 15, backgroundColor: colors.surface, marginTop: 16 }, positiveText: { color: colors.textBody, fontSize: 14, lineHeight: 21, marginTop: 9 },
+    positiveCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 15, backgroundColor: colors.surface, marginTop: 16 }, positiveRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 6, marginTop: 9 }, positiveIcon: { marginTop: 3 }, positiveText: { color: colors.textBody, flex: 1, fontSize: 14, lineHeight: 21 },
     privacy: { color: colors.textSecondary, fontSize: 12, marginTop: 20, lineHeight: 17 }, actions: { flexDirection: 'row', gap: 8, marginTop: 27 },
     secondaryButton: { flex: 1, minHeight: 56, backgroundColor: colors.surfaceMuted, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
     primaryButton: { flex: 1, minHeight: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, primaryText: { color: '#FFFFFF', fontSize: 14, fontFamily: fontFamilies.pretendardMedium },

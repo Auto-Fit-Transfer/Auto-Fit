@@ -3,6 +3,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import CheckIcon from '@/assets/icons/ui/check.svg';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getPostureJob, type PostureJob } from '@/src/api/posture';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
@@ -90,7 +91,7 @@ export default function PostureProcessingScreen() {
             const completed = job?.status === 'completed' || (job?.status !== 'failed' && index < currentStage);
             const active = !isFailed && index === currentStage;
             return <View key={step.stage} style={[styles.step, index > 0 && styles.stepBorder]}>
-              <View style={[styles.stepIcon, completed && styles.stepDone, active && styles.stepActive]}><Text style={[styles.stepIconText, completed && styles.stepDoneText]}>{completed ? '✓' : index + 1}</Text></View>
+              <View style={[styles.stepIcon, completed && styles.stepDone, active && styles.stepActive]}>{completed ? <CheckIcon color={colors.success} height={14} width={14} /> : <Text style={styles.stepIconText}>{index + 1}</Text>}</View>
               <View style={styles.stepCopy}><Text style={styles.stepTitle}>{step.title}</Text><Text style={styles.stepDescription}>{step.description}</Text></View>
               {active && job && <Text style={styles.stepPercent}>{step.stage === 'joint_detection' && job.total_frames ? `${job.processed_frames}/${job.total_frames}` : `${job.progress_percent}%`}</Text>}
             </View>;
@@ -126,7 +127,7 @@ function createStyles({ colors }: AppTheme) {
     step: { flexDirection: 'row', alignItems: 'center', minHeight: 62 }, stepBorder: { borderTopWidth: 1, borderTopColor: colors.border },
     stepIcon: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
     stepDone: { backgroundColor: colors.successLight, borderColor: colors.successLight }, stepActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-    stepIconText: { color: colors.textSecondary, fontSize: 12 }, stepDoneText: { color: colors.success }, stepCopy: { flex: 1 },
+    stepIconText: { color: colors.textSecondary, fontSize: 12 }, stepCopy: { flex: 1 },
     stepTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, stepDescription: { color: colors.textSecondary, fontSize: 12, marginTop: 3 }, stepPercent: { color: colors.textPrimary, fontSize: 12 },
     note: { color: colors.textSecondary, fontSize: 12, lineHeight: 17, marginTop: 16 },
     button: { backgroundColor: colors.surfaceMuted, borderRadius: 12, minHeight: 56, alignItems: 'center', justifyContent: 'center', marginTop: 30 },

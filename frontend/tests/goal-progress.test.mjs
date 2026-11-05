@@ -1,6 +1,16 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { chartActivity, collectActivityDays, summarizeActivity } from '../src/features/exercise/goalProgress.ts';
+import { chartActivity, chartTop, collectActivityDays, summarizeActivity } from '../src/features/exercise/goalProgress.ts';
+
+test('the chart scale is a round number that holds the largest value', () => {
+  assert.equal(chartTop(0, 30), 30);
+  assert.equal(chartTop(13, 30), 30);
+  assert.equal(chartTop(60, 30), 60);
+  assert.equal(chartTop(61, 30), 90);
+  assert.equal(chartTop(1, 2), 2);
+  assert.equal(chartTop(5, 2), 6);
+  assert.equal(chartTop(3100, 30), 3600);
+});
 
 test('goal progress combines only completed exercise and running sessions', () => {
   const exercises = [

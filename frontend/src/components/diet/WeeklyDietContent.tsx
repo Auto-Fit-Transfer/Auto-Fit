@@ -2,6 +2,9 @@ import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
 
+import { koreanDate } from '@/src/lib/koreanDate';
+import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import { ApiError } from '@/src/api/client';
 import { plainFoodName } from '@/src/features/diet/foodName';
 import {
@@ -45,6 +48,7 @@ export function WeeklyDietContent() {
   const [error, setError] = useState('');
   const [mealError, setMealError] = useState<{ slot: string; message: string } | null>(null);
   const [reload, setReload] = useState(0);
+  const [detailOpen, setDetailOpen] = useState(false);
   const start = weekKey(week);
   // A failed refresh keeps what is on screen; only this week's plan may be shown.
   const shownPlan = plan?.week_start_date === start ? plan : null;
@@ -98,16 +102,19 @@ export function WeeklyDietContent() {
 
   return <View style={s.content}>
     <View style={s.weekRow}>
-      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="이전 주" onPress={() => setWeek(moveWeek(week, -1))} style={s.weekButton}><Text style={s.weekArrow}>‹</Text></Pressable>
-      <View style={s.weekText}><Text style={s.weekTitle}>{start}부터 7일</Text><Text style={s.muted}>한국 시간 기준</Text></View>
-      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="다음 주" onPress={() => setWeek(moveWeek(week, 1))} style={s.weekButton}><Text style={s.weekArrow}>›</Text></Pressable>
+      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="이전 주" onPress={() => setWeek(moveWeek(week, -1))} style={s.weekButton}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
+      <View style={s.weekText}><Text style={s.weekTitle}>{koreanDate(start)}부터 7일</Text></View>
+      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="다음 주" onPress={() => setWeek(moveWeek(week, 1))} style={s.weekButton}><CaretRightIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
     </View>
     {Boolean(error) && <View style={s.error}><Text style={s.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setReload((value) => value + 1)}><Text style={s.outlineText}>다시 불러오기</Text></Pressable></View>}
     {loading && !shownPlan ? <ActivityIndicator color={colors.primaryText} style={s.loading} /> : shownPlan ? <>
-      {Boolean(shownPlan.result.summary) && <Text style={s.summary}>{shownPlan.result.summary}</Text>}
-      {Boolean(shownPlan.result.strategy) && <Text style={s.muted}>{shownPlan.result.strategy}</Text>}
+      {Boolean(shownPlan.result.summary) && <Text numberOfLines={shownPlan.result.strategy && !detailOpen ? 3 : undefined} style={s.summary}>{shownPlan.result.summary}</Text>}
+      {Boolean(shownPlan.result.strategy) && <>
+        {detailOpen && <Text style={s.muted}>{shownPlan.result.strategy}</Text>}
+        <Pressable accessibilityRole="button" accessibilityState={{ expanded: detailOpen }} onPress={() => setDetailOpen((value) => !value)} style={[s.smallOutline, s.detailButton]}><Text style={s.outlineText}>{detailOpen ? '접기' : '자세히 보기'}</Text></Pressable>
+      </>}
       {shownPlan.result.weekly_plan.map((entry) => <View key={entry.day} style={s.daySection}>
-        <Text style={s.dayTitle}>{days[entry.day]}요일 <Text style={s.date}>{entry.date}</Text></Text>
+        <Text style={s.dayTitle}>{days[entry.day]}요일 <Text style={s.date}>{koreanDate(entry.date)}</Text></Text>
         {meals.map(({ key, label }) => {
           const meal = entry.meals[key];
           return <View key={key} style={s.mealCard}>
@@ -132,10 +139,10 @@ export function WeeklyDietContent() {
 function createSStyles({ colors }: AppTheme) {
   return {
     content: { gap: 14 },
-    weekRow: { backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 8 }, weekButton: { width: 40, height: 42, alignItems: 'center', justifyContent: 'center' }, weekArrow: { fontSize: 28, color: colors.primaryText }, weekText: { flex: 1, alignItems: 'center' }, weekTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, muted: { fontSize: 14, color: colors.textSecondary, lineHeight: 21 }, loading: { marginTop: 40 },
+    weekRow: { backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 8 }, weekButton: { width: 40, height: 42, alignItems: 'center', justifyContent: 'center' }, weekText: { flex: 1, alignItems: 'center' }, weekTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, muted: { fontSize: 14, color: colors.textSecondary, lineHeight: 21 }, loading: { marginTop: 40 },
     summary: { fontSize: 16, color: colors.textPrimary, lineHeight: 24, fontFamily: fontFamilies.pretendardBold }, outline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary, padding: 12, borderRadius: 12, alignItems: 'center' }, outlineText: { color: colors.primaryText, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
     daySection: { gap: 10, marginTop: 14 }, dayTitle: { fontSize: 18, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, date: { fontSize: 14, color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
-    mealCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, gap: 7 }, mealHead: { flexDirection: 'row', justifyContent: 'space-between' }, mealLabel: { fontSize: 14, color: colors.primaryText, fontFamily: fontFamilies.pretendardMedium }, kcal: { fontSize: 14, color: colors.textSecondary }, mealTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, foods: { fontSize: 14, color: colors.textBody, lineHeight: 21 }, guidance: { fontSize: 14, color: colors.textSecondary, lineHeight: 21 }, actions: { flexDirection: 'row', gap: 8, marginTop: 4 }, recipeButton: { backgroundColor: colors.primaryLight, borderRadius: 8, minHeight: 34, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }, recipeText: { color: colors.primaryText, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, smallOutline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, minHeight: 34, paddingHorizontal: 16, justifyContent: 'center' },
+    mealCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, gap: 7 }, mealHead: { flexDirection: 'row', justifyContent: 'space-between' }, mealLabel: { fontSize: 14, color: colors.primaryText, fontFamily: fontFamilies.pretendardMedium }, kcal: { fontSize: 14, color: colors.textSecondary }, mealTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, foods: { fontSize: 14, color: colors.textBody, lineHeight: 21 }, guidance: { fontSize: 14, color: colors.textSecondary, lineHeight: 21 }, actions: { flexDirection: 'row', gap: 8, marginTop: 4 }, recipeButton: { backgroundColor: colors.primaryLight, borderRadius: 8, minHeight: 34, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }, recipeText: { color: colors.primaryText, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, smallOutline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, minHeight: 34, paddingHorizontal: 16, justifyContent: 'center' }, detailButton: { alignSelf: 'flex-start' },
     empty: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20, gap: 12 }, emptyTitle: { fontSize: 18, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, error: { padding: 14, backgroundColor: colors.dangerLight, borderRadius: 12, gap: 10 }, errorText: { color: colors.danger, fontSize: 14 },
   } as const;
 }
