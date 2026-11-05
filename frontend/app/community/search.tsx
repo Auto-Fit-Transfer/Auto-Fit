@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Image, Keyboard, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Keyboard, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
@@ -14,7 +14,7 @@ import {
 } from '@/src/api/community';
 import { CommunityAvatar } from '@/src/components/community';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text } from '@/src/components/common';
+import { Text, TextInput } from '@/src/components/common';
 
 type SearchTab = 'all' | 'posts' | 'routines' | 'users' | 'clubs';
 const empty: CommunitySearchResult = { posts: [], routines: [], users: [], clubs: [] };

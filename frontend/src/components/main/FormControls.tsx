@@ -1,6 +1,6 @@
-import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
+import { StyleSheet, View, type TextInputProps } from 'react-native';
 import { colors, fontFamilies } from '@/src/theme';
-import { Text } from '@/src/components/common';
+import { Text, TextInput } from '@/src/components/common';
 export function FormField({ label, ...props }: TextInputProps & { label: string }) {
   return (
     <View style={{ gap: 7 }}>

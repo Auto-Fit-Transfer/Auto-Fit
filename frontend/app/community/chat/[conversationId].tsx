@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,7 +23,7 @@ import {
   sendCommunityMessage,
   type CommunityMessage,
 } from '@/src/api/community';
-import { AppButton, AppHeader, IconButton, Text } from '@/src/components/common';
+import { AppButton, AppHeader, IconButton, Text, TextInput } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';

@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BarbellIcon from '@/assets/icons/ui/barbell.svg';
@@ -13,7 +13,7 @@ import {
   getNotificationPreferences, saveNotificationPreferences, type NotificationPreferences,
 } from '@/src/api/userSettings';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text } from '@/src/components/common';
+import { Text, TextInput } from '@/src/components/common';
 
 type ToggleKey = {
   key: keyof Pick<NotificationPreferences,

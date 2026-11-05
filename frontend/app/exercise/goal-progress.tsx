@@ -88,9 +88,9 @@ export default function GoalProgress() {
       <View style={styles.segment}>{([['week', '주간'], ['month', '월간']] as const).map(([key, label]) =>
         <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: period === key }} onPress={() => { if (period !== key || offset !== 0) setLoading(true); setPeriod(key); setOffset(0); }} style={[styles.segmentChoice, period === key && styles.segmentSelected]}><Text style={[styles.segmentText, period === key && styles.segmentTextSelected]}>{label}</Text></Pressable>)}</View>
       <View style={styles.dateRow}>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="이전 기간" onPress={() => { setLoading(true); setOffset((value) => value - 1); }}><Text style={styles.arrow}>‹</Text></Pressable>
+        <Pressable hitSlop={18} accessibilityRole="button" accessibilityLabel="이전 기간" onPress={() => { setLoading(true); setOffset((value) => value - 1); }}><Text style={styles.arrow}>‹</Text></Pressable>
         <Text style={styles.dateTitle}>{shortDate(currentStart)} – {shortDate(currentEnd)}</Text>
-        <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="다음 기간" disabled={offset >= 0} onPress={() => { setLoading(true); setOffset((value) => value + 1); }}><Text style={[styles.arrow, offset >= 0 && styles.disabled]}>›</Text></Pressable>
+        <Pressable hitSlop={18} accessibilityRole="button" accessibilityLabel="다음 기간" disabled={offset >= 0} onPress={() => { setLoading(true); setOffset((value) => value + 1); }}><Text style={[styles.arrow, offset >= 0 && styles.disabled]}>›</Text></Pressable>
       </View>
       {loading ? <ActivityIndicator color={colors.primaryText} /> : error ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> : <>
         <View style={styles.goalRow}><View><Text style={styles.goalName}>{goal ? goalLabels[goal.goal_type] ?? '운동 목표' : '설정한 목표가 없어요'}</Text><Text style={styles.caption}>{goal ? `${goal.starts_on} – ${goal.ends_on}` : '목표를 만들면 진행 상황을 비교할 수 있어요.'}</Text></View><Pressable accessibilityRole="button" onPress={() => router.push('/exercise/goal')} style={styles.outline}><Text style={styles.outlineText}>{goal ? '목표 바꾸기' : '목표 설정'}</Text></Pressable></View>

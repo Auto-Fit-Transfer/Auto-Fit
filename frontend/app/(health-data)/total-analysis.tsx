@@ -134,11 +134,11 @@ export default function TotalAnalysisScreen() {
                     : error}
               </Text>
               {state === 'empty' ? (
-                <Pressable accessibilityRole="button" onPress={() => router.push('/upload')} style={s.smallButton}>
+                <Pressable accessibilityRole="button" onPress={() => router.push('/upload')} style={[s.smallButton, s.emptyButton]}>
                   <Text style={s.smallButtonText}>건강 데이터 올리기</Text>
                 </Pressable>
               ) : state === 'error' ? (
-                <Pressable accessibilityRole="button" onPress={() => setAttempt((v) => v + 1)} style={s.smallButton}>
+                <Pressable accessibilityRole="button" onPress={() => setAttempt((v) => v + 1)} style={[s.smallButton, s.emptyButton]}>
                   <Text style={s.smallButtonText}>다시 시도</Text>
                 </Pressable>
               ) : null}
@@ -312,6 +312,7 @@ function createSStyles({ colors }: AppTheme) {
     smallButton: { alignItems: 'center', alignSelf: 'flex-start', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, justifyContent: 'center', minHeight: 34, paddingHorizontal: 12 },
     smallButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     empty: { alignItems: 'center', gap: 12, padding: 24 },
+    emptyButton: { alignSelf: 'center' },
     emptyTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16, lineHeight: 24, textAlign: 'center' },
     goal: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 75, paddingHorizontal: 16, paddingVertical: 10 },
     icon: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },

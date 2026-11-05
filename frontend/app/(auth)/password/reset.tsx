@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Alert, Keyboard, Pressable, TextInput, View } from 'react-native';
+import { Alert, Keyboard, Pressable, View } from 'react-native';
 
 import CheckIcon from '@/assets/icons/system/Check.svg';
 import EyeSlashIcon from '@/assets/icons/auth-redesign/5facc.svg';
@@ -9,7 +9,7 @@ import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { PasswordAuthScreenLayout } from '@/src/components/auth';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text } from '@/src/components/common';
+import { Text, TextInput } from '@/src/components/common';
 
 export default function ResetPasswordScreen() {
   const { colors } = useAppTheme();

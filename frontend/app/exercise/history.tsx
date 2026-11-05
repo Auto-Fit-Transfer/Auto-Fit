@@ -121,7 +121,7 @@ export default function ExerciseHistory() {
           <View style={styles.summaryStats}>
             <View><Text style={styles.statNumber}>{completed.length + runningRows.length}</Text><Text style={styles.caption}>완료 횟수</Text></View>
             <View><Text style={styles.statNumber}>{Math.round(minutes)}</Text><Text style={styles.caption}>운동 시간 · 분</Text></View>
-            <View><Text style={styles.statNumber}>{hasUnknownCalories && recordedCalories === 0 ? '—' : `${Math.round(recordedCalories)}${hasUnknownCalories ? '+' : ''}`}</Text><Text style={styles.caption}>{hasUnknownCalories ? '기록된 열량 · 일부 미산출' : '열량 · 러닝 제외'}</Text></View>
+            <View><Text style={styles.statNumber}>{hasUnknownCalories && recordedCalories === 0 ? '—' : Math.round(recordedCalories)}</Text><Text style={styles.caption}>기록된 열량 · kcal</Text></View>
           </View>
         </View>
         <View style={styles.sectionRow}>
@@ -136,7 +136,7 @@ export default function ExerciseHistory() {
           const calories = sessionCalories(session.total_calories_burned, session.completed_item_count);
           return <View key={String(session.exercise_session_id ?? index)} style={styles.card}>
             <View style={styles.sectionRow}><Text style={styles.cardTitle}>{sessionLocalDate(session.started_at)} 운동</Text><Text style={styles.badge}>{complete ? '완료' : '중단'}</Text></View>
-            <Text style={styles.body}>{sessionMinutes(session.total_duration_seconds) ?? 0}분 · {number(session.completed_item_count)}개 완료 · {calories === null ? '열량 미산출' : `${Math.round(calories)}kcal`}</Text>
+            <Text style={styles.body}>{[sessionMinutes(session.total_duration_seconds) ? `${sessionMinutes(session.total_duration_seconds)}분` : null, `${number(session.completed_item_count)}개 완료`, calories ? `${Math.round(calories)}kcal` : null].filter(Boolean).join(' · ')}</Text>
             {logs.length > 0 ? <Text style={styles.caption} numberOfLines={2}>{logs.map((log) => typeof log === 'object' && log && 'exercise_name' in log ? String(log.exercise_name) : '').filter(Boolean).join(' · ')}</Text> : null}
             {complete && id ? <Pressable accessibilityRole="button" disabled={savingId === id || savedIds.includes(id)} onPress={() => void save(session)} style={styles.outlineButton}><Text style={styles.outlineText}>{savedIds.includes(id) ? '저장 완료' : savingId === id ? '저장 중…' : '내 루틴으로 저장'}</Text></Pressable> : null}
           </View>;

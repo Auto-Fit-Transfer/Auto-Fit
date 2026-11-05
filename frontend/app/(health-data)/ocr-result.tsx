@@ -8,7 +8,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  TextInput,
   useWindowDimensions,
   View,
   type ViewStyle } from 'react-native';
@@ -49,6 +48,7 @@ import {
   CustomScrollIndicator,
   useCustomScrollIndicator,
   Text,
+  TextInput,
 } from '@/src/components/common';
 import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
 import { HealthDataUploadBottomSheet, useHealthFileSelect } from '@/src/components/health-data/HealthDataUploadBottomSheet';

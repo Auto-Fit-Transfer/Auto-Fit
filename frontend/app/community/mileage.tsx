@@ -21,6 +21,7 @@ import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src
 
 type HistoryFilter = '전체' | '적립' | '사용';
 const FILTERS: HistoryFilter[] = ['전체', '적립', '사용'];
+const signedPoints = (amount: number, sign: '+' | '-') => `${amount ? sign : ''}${amount.toLocaleString()}P`;
 
 const REASONS: Record<CommunityMileageEntry['reason'], string> = {
   challenge: '챌린지 보상',
@@ -171,15 +172,15 @@ export default function CommunityMileageScreen() {
                 <View style={styles.statRow}>
                   <View style={styles.stat}>
                     <Text style={styles.statLabel}>이번 달 적립</Text>
-                    <Text style={styles.statValue}>{monthly ? `+${monthly.earned_this_month.toLocaleString()}P` : '—'}</Text>
+                    <Text style={styles.statValue}>{monthly ? signedPoints(monthly.earned_this_month, '+') : '—'}</Text>
                   </View>
                   <View style={styles.stat}>
                     <Text style={styles.statLabel}>지난달 적립</Text>
-                    <Text style={styles.statValue}>{monthly ? `+${monthly.earned_last_month.toLocaleString()}P` : '—'}</Text>
+                    <Text style={styles.statValue}>{monthly ? signedPoints(monthly.earned_last_month, '+') : '—'}</Text>
                   </View>
                   <View style={styles.stat}>
                     <Text style={styles.statLabel}>이번 달 사용</Text>
-                    <Text style={styles.statValue}>{monthly ? `-${monthly.spent_this_month.toLocaleString()}P` : '—'}</Text>
+                    <Text style={styles.statValue}>{monthly ? signedPoints(monthly.spent_this_month, '-') : '—'}</Text>
                   </View>
                 </View>
               </View>

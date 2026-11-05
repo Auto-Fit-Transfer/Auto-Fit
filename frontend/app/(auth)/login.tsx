@@ -1,6 +1,6 @@
 import { useRef, useState, type ComponentType } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Keyboard, Pressable, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, View } from 'react-native';
 import type { SvgProps } from 'react-native-svg';
 
 import EyeSlashIcon from '@/assets/icons/auth-redesign/5facc.svg';
@@ -15,7 +15,7 @@ import {
 import { getPostLoginDestination } from '@/src/features/auth/postLoginDestination';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text } from '@/src/components/common';
+import { Text, TextInput } from '@/src/components/common';
 
 type SocialLoginButtonProps = {
   disabled: boolean;

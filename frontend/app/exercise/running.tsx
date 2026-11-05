@@ -1,12 +1,12 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveRunningSession, getRunningApiErrorMessage, getRunningRecommendations, getSavedRunningCourses, startFreeRun, type RunningCourse, type RunningDistanceOption, type RunningSavedCourse, type RunningSession } from '@/src/api/running';
 import { courseDifficultyLabel, hasRenderablePath } from '@/src/features/running/courseRoute';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text } from '@/src/components/common';
+import { Text, TextInput } from '@/src/components/common';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 const distanceOptions: RunningDistanceOption[] = ['3km', '5km', '10km'];
@@ -104,6 +104,21 @@ export default function RunningRecommendations() {
         <Pressable key={option} accessibilityRole="button" accessibilityState={{ selected: distance === option }} onPress={() => setDistance(option)} style={[styles.option, distance === option && styles.selected]}>
           <Text style={[styles.optionText, distance === option && styles.selectedText]}>{option}</Text>
         </Pressable>)}</View>
+      <Pressable accessibilityRole="button" disabled={loading} onPress={() => void search()} style={[styles.button, loading && { opacity: 0.6 }]}><Text style={styles.buttonText}>코스 추천받기</Text></Pressable>
+      {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
+      {message ? <View style={styles.notice}><Text style={styles.body}>{message}</Text></View> : null}
+      {courses.length > 0 ? <Text style={styles.sectionTitle}>추천 코스 {courses.length}개</Text> : null}
+      {courses.map((course, index) => <Pressable accessibilityRole="button" accessibilityLabel={`${nameOf(course)} 코스 자세히 보기`} onPress={() => router.push({ pathname: '/exercise/running-course', params: { courseId: course.course_id } })} key={course.course_id || String(index)} style={styles.card}>
+        <Text style={styles.courseTitle}>{nameOf(course)}</Text>
+        <Text style={styles.meta}>{[course.region, typeof course.distance_km === 'number' ? `${course.distance_km}km` : null, typeof course.estimated_duration_minutes === 'number' ? `약 ${Math.round(course.estimated_duration_minutes)}분` : null, courseDifficultyLabel(course.difficulty)].filter(Boolean).join(' · ')}</Text>
+        {course.description ? <Text style={styles.body}>{course.description}</Text> : null}
+        <Text style={styles.courseLink}>코스 보기 · 경로 확인 · 저장  ›</Text>
+      </Pressable>)}
+      {savedCourses.length > 0 ? <Text style={styles.sectionTitle}>저장한 러닝 코스</Text> : null}
+      {savedCourses.map((saved) => <Pressable key={saved.running_saved_course_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercise/running-course', params: { savedId: saved.running_saved_course_id } })} style={styles.card}>
+        <View style={styles.savedHeading}><Text style={styles.courseTitle}>{saved.course_name}</Text>{saved.is_selected ? <Text style={styles.savedBadge}>선택됨</Text> : null}</View>
+        <Text style={styles.meta}>{[saved.snapshot.region, typeof saved.snapshot.distance_km === 'number' ? `${saved.snapshot.distance_km}km` : null].filter(Boolean).join(' · ') || '경로 자세히 보기'}</Text>
+      </Pressable>)}
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>코스 없이 자유 러닝</Text>
         <Text style={styles.caption}>앱이 열려 있는 동안 GPS로 이동 거리와 시간을 기록해요.</Text>
@@ -122,21 +137,6 @@ export default function RunningRecommendations() {
         {activeSession ? <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/exercise/run-live', params: { sessionId: activeSession.running_session_id } })} style={styles.button}><Text style={styles.buttonText}>진행 중인 러닝 이어하기</Text></Pressable> :
           <Pressable accessibilityRole="button" disabled={starting} onPress={() => void start()} style={[styles.buttonOutline, starting && { opacity: 0.6 }]}><Text style={styles.buttonOutlineText}>{starting ? '준비 중…' : '자유 러닝 시작하기'}</Text></Pressable>}
       </View>
-      <Pressable accessibilityRole="button" disabled={loading} onPress={() => void search()} style={[styles.button, loading && { opacity: 0.6 }]}><Text style={styles.buttonText}>코스 추천받기</Text></Pressable>
-      {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
-      {message ? <View style={styles.notice}><Text style={styles.body}>{message}</Text></View> : null}
-      {courses.length > 0 ? <Text style={styles.sectionTitle}>추천 코스 {courses.length}개</Text> : null}
-      {courses.map((course, index) => <Pressable accessibilityRole="button" accessibilityLabel={`${nameOf(course)} 코스 자세히 보기`} onPress={() => router.push({ pathname: '/exercise/running-course', params: { courseId: course.course_id } })} key={course.course_id || String(index)} style={styles.card}>
-        <Text style={styles.courseTitle}>{nameOf(course)}</Text>
-        <Text style={styles.meta}>{[course.region, typeof course.distance_km === 'number' ? `${course.distance_km}km` : null, typeof course.estimated_duration_minutes === 'number' ? `약 ${course.estimated_duration_minutes}분` : null, courseDifficultyLabel(course.difficulty)].filter(Boolean).join(' · ')}</Text>
-        {course.description ? <Text style={styles.body}>{course.description}</Text> : null}
-        <Text style={styles.courseLink}>코스 보기 · 경로 확인 · 저장  ›</Text>
-      </Pressable>)}
-      {savedCourses.length > 0 ? <Text style={styles.sectionTitle}>저장한 러닝 코스</Text> : null}
-      {savedCourses.map((saved) => <Pressable key={saved.running_saved_course_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercise/running-course', params: { savedId: saved.running_saved_course_id } })} style={styles.card}>
-        <View style={styles.savedHeading}><Text style={styles.courseTitle}>{saved.course_name}</Text>{saved.is_selected ? <Text style={styles.savedBadge}>선택됨</Text> : null}</View>
-        <Text style={styles.meta}>{[saved.snapshot.region, typeof saved.snapshot.distance_km === 'number' ? `${saved.snapshot.distance_km}km` : null].filter(Boolean).join(' · ') || '경로 자세히 보기'}</Text>
-      </Pressable>)}
     </ScrollView>
   </View>;
 }

@@ -5,7 +5,6 @@ import {
   Keyboard,
   Platform,
   Pressable,
-  TextInput,
   View } from 'react-native';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import {
@@ -15,7 +14,7 @@ import {
 } from '@/src/features/signup/SignupContext';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import CheckIcon from '@/assets/icons/auth-redesign/ab4c2.svg';
-import { Text } from '@/src/components/common';
+import { Text, TextInput } from '@/src/components/common';
 
 type ExerciseGoal = SignupExerciseGoal;
 

@@ -9,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +27,7 @@ import {
   type CommunityPostCategory,
   type CommunityPhoto,
 } from '@/src/api/community';
-import { AppDialog, Text } from '@/src/components/common';
+import { AppDialog, Text, TextInput } from '@/src/components/common';
 import { emitCommunityEvent } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
@@ -261,7 +260,7 @@ export default function CommunityComposeScreen() {
         </View>
         {activityLoading ? <Text style={styles.fieldHint}>운동 기록을 불러오는 중…</Text> : null}
         {activities?.length === 0 ? <Text style={styles.fieldHint}>완료한 운동 기록이 없어요.</Text> : null}
-        {activities?.map((activity) => <Pressable key={activity.session_id} accessibilityRole="button" accessibilityState={{ selected: selectedActivity?.session_id === activity.session_id }} onPress={() => setSelectedActivity((current) => current?.session_id === activity.session_id ? null : activity)} style={[styles.activityOption, selectedActivity?.session_id === activity.session_id && styles.activitySelected]}><Text style={styles.activityName}>{activity.snapshot.name}</Text><Text style={styles.fieldHint}>{new Date(activity.completed_at).toLocaleDateString('ko-KR')} · {activity.snapshot.duration_minutes}분 · 약 {activity.snapshot.calories}kcal</Text></Pressable>)}
+        {activities?.map((activity) => <Pressable key={activity.session_id} accessibilityRole="button" accessibilityState={{ selected: selectedActivity?.session_id === activity.session_id }} onPress={() => setSelectedActivity((current) => current?.session_id === activity.session_id ? null : activity)} style={[styles.activityOption, selectedActivity?.session_id === activity.session_id && styles.activitySelected]}><Text style={styles.activityName}>{activity.snapshot.name}</Text><Text style={styles.fieldHint}>{[new Date(activity.completed_at).toLocaleDateString('ko-KR'), activity.snapshot.duration_minutes ? `${activity.snapshot.duration_minutes}분` : null, activity.snapshot.calories ? `약 ${activity.snapshot.calories}kcal` : null].filter(Boolean).join(' · ')}</Text></Pressable>)}
         {selectedActivity ? <Text style={styles.activityDisclosure}>선택한 운동 시간·열량·운동명이 글과 함께 공개됩니다.</Text> : null}
 
         <Text style={styles.fieldLabel}>태그 · 최대 5개</Text>

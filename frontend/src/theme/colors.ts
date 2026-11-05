@@ -1,4 +1,4 @@
-import { lightPalette as palette } from './palette';
+import { darkPalette, lightPalette as palette } from './palette';
 
 // Fixed light colors for screens that are not redesigned yet. The old names are kept so those
 // screens pick up the new palette; redesigned code reads colors from useAppTheme() instead.
@@ -33,10 +33,10 @@ export const colors = {
 } as const;
 
 export const darkColors = {
-  background: '#111214',
-  surface: '#1A1C1F',
-  surfaceRaised: '#25282D',
-  border: '#363A41',
-  textPrimary: '#F5F5F7',
-  textSecondary: '#B6B8BF',
+  background: darkPalette.background,
+  surface: darkPalette.surface,
+  surfaceRaised: darkPalette.surfaceMuted,
+  border: darkPalette.border,
+  textPrimary: darkPalette.textPrimary,
+  textSecondary: darkPalette.textSecondary,
 } as const;

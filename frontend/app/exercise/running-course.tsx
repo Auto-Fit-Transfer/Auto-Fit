@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useCanGoBack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 import { getRunningApiErrorMessage, getRunningCourseDetail, getSavedRunningCourses, previewRunningRoute, saveRunningCourse, startSavedCourseRun, type RunningCourse, type RunningRoutePreview } from '@/src/api/running';
@@ -9,7 +9,7 @@ import { KakaoRouteMap } from '@/src/components/exercise/KakaoRouteMap';
 import { canPreviewRoute, courseDifficultyLabel, previewRouteInput, routePoints, routePolyline } from '@/src/features/running/courseRoute';
 import { KAKAO_MAP_JS_KEY } from '@/src/features/running/kakaoMap';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text } from '@/src/components/common';
+import { Text, TextInput } from '@/src/components/common';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 
 const nameOf = (course: RunningCourse) => course.course_name || course.name || '이름 없는 코스';

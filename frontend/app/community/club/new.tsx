@@ -5,7 +5,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  TextInput,
   View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -22,7 +21,7 @@ import {
   type CommunityMileage,
   updateCommunityClub,
 } from '@/src/api/community';
-import { AppButton, AppHeader, Text } from '@/src/components/common';
+import { AppButton, AppHeader, Text, TextInput } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 

@@ -16,7 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line } from 'react-native-svg';
 import { Text } from '@/src/components/common';
-import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const RECORD_SECONDS = 10;
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
@@ -466,7 +466,7 @@ function createStyles({ colors }: AppTheme) {
       paddingHorizontal: 9,
       paddingVertical: 9,
     },
-    badgeText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+    badgeText: { color: '#FFF', fontSize: 11, fontFamily: fontFamilies.pretendardBold },
     recordDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#81858A' },
     recordDotActive: { backgroundColor: recordingRed },
     progressTrack: {
@@ -481,7 +481,7 @@ function createStyles({ colors }: AppTheme) {
     framingLabel: {
       color: '#FFF',
       fontSize: 12,
-      fontWeight: '700',
+      fontFamily: fontFamilies.pretendardBold,
       backgroundColor: '#111316',
       paddingHorizontal: 12,
       paddingVertical: 7,
@@ -506,7 +506,7 @@ function createStyles({ colors }: AppTheme) {
       paddingHorizontal: 20,
     },
     tip: { backgroundColor: '#11191A', borderRadius: 16, paddingHorizontal: 10, paddingVertical: 7 },
-    tipText: { color: '#E2E8E7', fontSize: 11, fontWeight: '600', textAlign: 'center' },
+    tipText: { color: '#E2E8E7', fontSize: 11, fontFamily: fontFamilies.pretendardBold, textAlign: 'center' },
     autoStop: {
       color: muted,
       fontSize: 11,
@@ -549,7 +549,7 @@ function createStyles({ colors }: AppTheme) {
     shutterStart: { width: 30, height: 30, borderRadius: 7, backgroundColor: recordingRed },
     shutterStop: { width: 25, height: 25, borderRadius: 5, backgroundColor: recordingRed },
     review: { alignItems: 'center', gap: 10, paddingVertical: 7 },
-    reviewTitle: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+    reviewTitle: { color: '#FFF', fontSize: 18, fontFamily: fontFamilies.pretendardBold },
     reviewCopy: { color: '#D6D9DC', fontSize: 12, textAlign: 'center' },
     retakeButton: {
       marginTop: 8,
@@ -558,7 +558,7 @@ function createStyles({ colors }: AppTheme) {
       paddingHorizontal: 30,
       paddingVertical: 13,
     },
-    retakeText: { color: colors.textPrimary, fontSize: 15, fontWeight: '700' },
+    retakeText: { color: colors.textPrimary, fontSize: 15, fontFamily: fontFamilies.pretendardBold },
     permissionPanel: {
       position: 'absolute',
       top: 0,
@@ -573,7 +573,7 @@ function createStyles({ colors }: AppTheme) {
     },
     permissionClose: { position: 'absolute', top: 55, right: 24, padding: 8 },
     permissionCloseText: { color: '#FFF', fontSize: 15 },
-    permissionTitle: { color: '#FFF', fontSize: 20, fontWeight: '700' },
+    permissionTitle: { color: '#FFF', fontSize: 20, fontFamily: fontFamilies.pretendardBold },
     permissionCopy: { color: '#D6D9DC', fontSize: 14, textAlign: 'center', lineHeight: 22 },
     permissionButton: {
       backgroundColor: colors.background,
@@ -581,7 +581,7 @@ function createStyles({ colors }: AppTheme) {
       paddingHorizontal: 22,
       borderRadius: 12,
     },
-    permissionButtonText: { color: colors.textPrimary, fontWeight: '700' },
+    permissionButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     albumFallback: { paddingVertical: 10, paddingHorizontal: 16 },
     albumFallbackText: { color: '#FFF', fontSize: 13, textDecorationLine: 'underline' },
   } as const;

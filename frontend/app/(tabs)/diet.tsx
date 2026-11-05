@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MealRecordSheets, type MealRecordDraft } from '@/src/components/diet/MealRecordSheets';
+import { plainFoodName } from '@/src/features/diet/foodName';
 import { R6DietHome } from '@/src/components/diet/R6DietHome';
 import {
   getDietApiErrorMessage,
@@ -229,7 +230,7 @@ function mapRecommendationMeals(result: unknown): Meal[] {
 
     mappedByType.set(mealId, {
       dietMealId,
-      foods: foodNames.join(' · ') || '등록된 음식이 없어요',
+      foods: plainFoodName(foodNames.join(' · ')) || '등록된 음식이 없어요',
       macros: macroLabel(foods.filter(isApiRecord).map((food) => ({
         carbs: readNumber(food, ['carbohydrates', 'carbs']),
         fat: readNumber(food, ['fat']),

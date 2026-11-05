@@ -5,14 +5,13 @@ import {
   Keyboard,
   Platform,
   Pressable,
-  TextInput,
   View } from 'react-native';
 import { getSignupApiErrorMessage, saveAllergies } from '@/src/api/onboarding';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import { useSignup } from '@/src/features/signup/SignupContext';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import NoticeIcon from '@/assets/icons/auth-redesign/info-circle.svg';
-import { Text } from '@/src/components/common';
+import { Text, TextInput } from '@/src/components/common';
 
 interface AllergenOption {
   id: string;

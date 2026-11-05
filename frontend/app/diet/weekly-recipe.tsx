@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getDietApiErrorMessage, getWeeklyDietRecipe, type WeeklyDay, type WeeklyMealType, type WeeklyRecipe, type WeeklyRecipeItem } from '@/src/api/diet';
+import { plainFoodName } from '@/src/features/diet/foodName';
 import { Text } from '@/src/components/common';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
@@ -25,7 +26,7 @@ function RecipeItemCard({ item }: { item: WeeklyRecipeItem }) {
   const detail = item.recipe_available ? item.recipe : null;
   const steps = detail?.step_details.length ? detail.step_details : detail?.steps.map((instruction, index) => ({ order: index + 1, instruction, duration_minutes: null, tip: null })) ?? [];
   return <View style={s.card}>
-    <Text style={s.itemTitle}>{item.food_name}</Text>
+    <Text style={s.itemTitle}>{plainFoodName(item.food_name)}</Text>
     <Text style={s.muted}>{formatNumber(item.portion_g)}g · {Math.round(item.calories_kcal)} kcal</Text>
     <Text style={s.source}>{sourceNames[item.recipe_source]}</Text>
     {item.recipe_source === 'official_similar' && item.matched_recipe_name && <Text style={s.muted}>매칭된 메뉴: {item.matched_recipe_name}{item.match_score != null ? ` · 유사도 ${Math.round(item.match_score * 100)}%` : ''}</Text>}
@@ -87,7 +88,7 @@ export default function WeeklyRecipeScreen() {
     <View style={s.header}><Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="주간 식단으로 돌아가기" onPress={() => router.back()} style={s.back}><Text style={s.backText}>‹</Text></Pressable><Text style={s.headerTitle}>주간 식단 레시피</Text></View>
     {!planId || !day || !mealType ? <Text style={s.muted}>주간 식단에서 레시피를 다시 열어 주세요.</Text> : loading ? <View style={s.loading}><ActivityIndicator color={colors.primaryText} /><Text style={s.muted}>음식별 조리법을 찾고 있어요. 시간이 꽤 걸릴 수 있어요.</Text></View> : error ? <View style={s.error}><Text style={s.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.source}>다시 시도</Text></Pressable></View> : meal ? <>
       <Text style={s.source}>{dayNames[day]}요일 · {mealNames[mealType]}</Text>
-      <Text style={s.title}>{meal.menu_name || '추천 메뉴'}</Text>
+      <Text style={s.title}>{plainFoodName(meal.menu_name || '추천 메뉴')}</Text>
       {Boolean(meal.menu_description) && <Text style={s.body}>{meal.menu_description}</Text>}
       <View style={s.tags}>{meal.tags.map((tag, index) => <Text key={`${tag}:${index}`} style={s.tag}>{tag}</Text>)}</View>
       <View style={s.meta}><Text style={s.body}>{Math.round(meal.estimated_calories_kcal)} kcal</Text><Text style={s.body}>{meal.estimated_duration_minutes == null ? '조리시간 정보 없음' : `약 ${formatNumber(meal.estimated_duration_minutes)}분`}</Text></View>
@@ -99,7 +100,7 @@ export default function WeeklyRecipeScreen() {
       {meal.items.map((item, index) => <RecipeItemCard key={`${item.food_name}:${index}`} item={item} />)}
       {meal.related_menus.length > 0 && <><Text style={s.sectionTitle}>관련 메뉴</Text>{meal.related_menus.map((related, index) => {
         const canOpen = related.day != null && related.meal_type != null;
-        return <Pressable key={`${related.menu_name}:${index}`} accessibilityRole={canOpen ? 'button' : undefined} disabled={!canOpen} onPress={() => { if (related.day && related.meal_type) { setServings(1); router.replace({ pathname: '/diet/weekly-recipe', params: { planId, day: related.day, mealType: related.meal_type } }); } }} style={s.related}><Text style={s.body}>{related.menu_name}</Text><Text style={s.muted}>{related.day && related.meal_type ? `${dayNames[related.day]}요일 ${mealNames[related.meal_type]}` : ''}{related.estimated_calories_kcal == null ? '' : ` · ${formatNumber(related.estimated_calories_kcal)} kcal`}</Text></Pressable>;
+        return <Pressable key={`${related.menu_name}:${index}`} accessibilityRole={canOpen ? 'button' : undefined} disabled={!canOpen} onPress={() => { if (related.day && related.meal_type) { setServings(1); router.replace({ pathname: '/diet/weekly-recipe', params: { planId, day: related.day, mealType: related.meal_type } }); } }} style={s.related}><Text style={s.body}>{plainFoodName(related.menu_name)}</Text><Text style={s.muted}>{related.day && related.meal_type ? `${dayNames[related.day]}요일 ${mealNames[related.meal_type]}` : ''}{related.estimated_calories_kcal == null ? '' : ` · ${formatNumber(related.estimated_calories_kcal)} kcal`}</Text></Pressable>;
       })}</>}
     </> : null}
   </ScrollView></View>;

@@ -16,3 +16,4 @@ export * from './SectionHeader';
 export * from './SegmentedControl';
 export * from './SelectField';
 export * from './Text';
+export * from './TextInput';

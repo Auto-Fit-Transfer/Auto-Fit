@@ -3,6 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
 
 import { ApiError } from '@/src/api/client';
+import { plainFoodName } from '@/src/features/diet/foodName';
 import {
   generateWeeklyDiet, getDietApiErrorMessage, getWeeklyDiet, regenerateWeeklyDietMeal,
   type WeeklyDay, type WeeklyMealType, type WeeklyPlan,
@@ -112,9 +113,9 @@ export function WeeklyDietContent({ showHeader = false }: { showHeader?: boolean
           const meal = entry.meals[key];
           return <View key={key} style={s.mealCard}>
             <View style={s.mealHead}><Text style={s.mealLabel}>{label}</Text><Text style={s.kcal}>{Math.round(meal.estimated_calories_kcal)} kcal</Text></View>
-            <Text style={s.mealTitle}>{meal.menu_name}</Text>
+            <Text style={s.mealTitle}>{plainFoodName(meal.menu_name)}</Text>
             {Boolean(meal.menu_description) && <Text style={s.muted}>{meal.menu_description}</Text>}
-            <Text style={s.foods}>{meal.items.map((item) => `${item.food_name} ${item.portion_g}g`).join(' · ')}</Text>
+            <Text style={s.foods}>{meal.items.map((item) => `${plainFoodName(item.food_name)} ${item.portion_g}g`).join(' · ')}</Text>
             <Text style={s.foods}>탄수화물 {Math.round(meal.nutrition.carbohydrate_g)}g · 단백질 {Math.round(meal.nutrition.protein_g)}g · 지방 {Math.round(meal.nutrition.fat_g)}g</Text>
             {Boolean(meal.guidance) && <Text style={s.guidance}>{meal.guidance}</Text>}
             {mealError?.slot === `${entry.day}:${key}` && <Text accessibilityRole="alert" style={s.errorText}>{mealError.message}</Text>}

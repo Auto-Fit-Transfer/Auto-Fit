@@ -9,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   type TextProps,
   useWindowDimensions,
   View,
@@ -32,7 +31,7 @@ import CheckFatIcon from '@/assets/icons/system/Check_Fat.svg';
 import LightbulbIcon from '@/assets/icons/system/Lightbulb.svg';
 import PencilIcon from '@/assets/icons/feature/Pencil_Line.svg';
 import SearchIcon from '@/assets/icons/input/MagnifyingGlass.svg';
-import { AppBottomSheet, CustomScrollIndicator, noWebFocusRing, useCustomScrollIndicator, Text as SharedText } from '@/src/components/common';
+import { AppBottomSheet, CustomScrollIndicator, noWebFocusRing, useCustomScrollIndicator, Text as SharedText, TextInput } from '@/src/components/common';
 import { amountFromInput, scaleFromSource, type AmountScale } from '@/src/features/diet/foodAmount';
 import { fontFamilies, scaleForEasyMode, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import {
   getActiveHealthGoal,
@@ -8,7 +8,7 @@ import {
   type HealthGoalType,
 } from '@/src/api/userSettings';
 import { getApiErrorMessage } from '@/src/api/client';
-import { AppBottomSheet, Text } from '@/src/components/common';
+import { AppBottomSheet, Text, TextInput } from '@/src/components/common';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 export const goals: { key: HealthGoalType; label: string }[] = [
@@ -157,7 +157,7 @@ function createStyles({ colors }: AppTheme) {
     retry: { color: colors.primaryPressed, fontSize: 13 },
     error: { color: colors.danger, fontSize: 12 },
     success: { color: colors.success, fontSize: 12 },
-    save: { height: 48, borderRadius: 9, backgroundColor: colors.primaryPressed, alignItems: 'center', justifyContent: 'center' },
+    save: { height: 48, borderRadius: 9, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
     disabled: { opacity: 0.45 },
     saveText: { color: colors.onPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
   } as const;

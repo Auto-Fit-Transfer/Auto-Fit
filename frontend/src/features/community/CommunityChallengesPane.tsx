@@ -7,6 +7,7 @@ import {
   RefreshControl,
   View } from 'react-native';
 
+import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import {
   claimCommunityChallenge,
   getCommunityChallenges,
@@ -33,7 +34,7 @@ function shortDate(value: string) {
 
 // The 챌린지 tab: provisional challenges counted from workout and meal records, and the way
 // into the weekly ranking.
-export function CommunityChallengesPane({ bottomSpace }: { bottomSpace: number }) {
+export function CommunityChallengesPane({ bottomSpace, onBack }: { bottomSpace: number; onBack: () => void }) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
@@ -139,6 +140,10 @@ export function CommunityChallengesPane({ bottomSpace }: { bottomSpace: number }
 
   const header = (
     <View style={styles.header}>
+      <Pressable accessibilityLabel="뒤로" accessibilityRole="button" hitSlop={10} onPress={onBack} style={styles.backRow}>
+        <CaretLeftIcon color={colors.textPrimary} height={24} width={24} />
+        <Text style={styles.paneTitle}>커뮤니티 챌린지</Text>
+      </Pressable>
       {COMMUNITY_RANKING_ENABLED ? (
         <Pressable hitSlop={16}
           accessibilityRole="button"
@@ -236,6 +241,8 @@ function createStyles({ colors }: AppTheme) {
   return {
     root: { flex: 1 },
     header: { gap: spacing.sm, padding: spacing.xl, paddingBottom: spacing.sm },
+    backRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, minHeight: 44 },
+    paneTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
     rankingCard: {
       alignItems: 'center',
       backgroundColor: colors.primaryLight,

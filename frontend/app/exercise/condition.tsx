@@ -9,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +27,7 @@ import {
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
-import { Text } from '@/src/components/common';
+import { Text, TextInput } from '@/src/components/common';
 import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 

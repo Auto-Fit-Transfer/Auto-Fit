@@ -3,7 +3,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Alert,
   Pressable,
-  TextInput,
   View } from 'react-native';
 
 import EmailIcon from '@/assets/icons/input/Email.svg';
@@ -13,7 +12,7 @@ import { useSignup } from '@/src/features/signup/SignupContext';
 import { getSignupAuthErrorMessage } from '@/src/features/signup/signupAuthError';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text } from '@/src/components/common';
+import { Text, TextInput } from '@/src/components/common';
 
 const verificationCodeLength = 6;
 

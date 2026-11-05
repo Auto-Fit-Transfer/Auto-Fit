@@ -6,7 +6,6 @@ import {
   Platform,
   ScrollView,
   Switch,
-  TextInput,
   View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -17,7 +16,7 @@ import {
   updateCommunityAdminRule,
   type CommunityAdminRule,
 } from '@/src/api/community';
-import { AppButton, AppHeader, Text } from '@/src/components/common';
+import { AppButton, AppHeader, Text, TextInput } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
 import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 

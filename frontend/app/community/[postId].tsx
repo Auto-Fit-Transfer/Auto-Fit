@@ -7,7 +7,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +27,7 @@ import {
   type CommunityPost,
   type CommunityProfile,
 } from '@/src/api/community';
-import { AppButton, AppHeader, IconButton, Text } from '@/src/components/common';
+import { AppButton, AppHeader, IconButton, Text, TextInput } from '@/src/components/common';
 import { CommunityCommentRow, CommunityPostCard } from '@/src/components/community';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';

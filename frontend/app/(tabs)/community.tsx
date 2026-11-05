@@ -87,7 +87,7 @@ export default function CommunityScreen() {
   const [activeCategory, setActiveCategory] = useState<CommunityPostCategory | null>(null);
   // Clubs and challenges replace the feed list; the feed keeps its scope underneath.
   const [pane, setPane] = useState<'clubs' | 'challenges' | null>(null);
-  const activeTab: Tab = pane ?? scope;
+  const activeTab: Tab = pane === 'clubs' ? pane : scope;
   const [unread, setUnread] = useState(0);
   const [challenge, setChallenge] = useState<CommunityChallenge | null>(null);
   const [items, setItems] = useState<CommunityPost[]>([]);
@@ -262,7 +262,7 @@ export default function CommunityScreen() {
       {pane === 'clubs' ? (
         <CommunityClubsPane bottomSpace={bottomSpace} />
       ) : pane === 'challenges' ? (
-        <CommunityChallengesPane bottomSpace={bottomSpace} />
+        <CommunityChallengesPane bottomSpace={bottomSpace} onBack={() => setPane(null)} />
       ) : state === 'loading' ? (
         <ActivityIndicator color={colors.primary} style={styles.center} />
       ) : state === 'error' ? (
