@@ -1,0 +1,112 @@
+{
+  "version": "1.0",
+  "updated": "2026-09-18",
+  "owner": "이승현 (AI/데이터)",
+  "purpose": "Auto-Fit OCR이 건강문서에서 추출할 표준 항목 정의. OCR 파서 / 백엔드 DB / 건강분석 규칙 엔진이 모두 이 파일의 key와 unit을 따른다.",
+  "priority_legend": {
+    "P1": "필수 - 건강분석·식단·운동 추천에 직접 사용. 정확도 목표 최우선.",
+    "P2": "권장 - 분석 품질을 높이는 보조 항목.",
+    "P3": "참고 - 화면 표시용. 추출 실패해도 서비스 진행 가능."
+  },
+  "docs": {
+    "common": {
+      "doc_name": "공통(문서 상단 인적사항)",
+      "fields": [
+        { "key": "name",          "name_ko": "성명",       "anchors": ["성명", "성  명", "이름"],                 "type": "string", "unit": null,     "priority": "P2", "label_path": "name",   "note": "개인정보. 저장 정책은 백엔드와 협의." },
+        { "key": "sex",           "name_ko": "성별",       "anchors": ["성별", "성별/나이"],                      "type": "enum",   "unit": null,     "enum": ["M", "F"], "raw_map": { "남": "M", "남성": "M", "여": "F", "여성": "F" }, "priority": "P1", "label_path": "sex",   "note": "BMR 계산식에 필수." },
+        { "key": "age",           "name_ko": "나이",       "anchors": ["나이", "성별/나이", "연령"],               "type": "int",    "unit": "세",     "min": 1,   "max": 120, "priority": "P1", "label_path": "age",   "note": "BMR 계산식에 필수." },
+        { "key": "birth",         "name_ko": "생년월일",   "anchors": ["생년월일", "주민등록번호"],                "type": "date",   "unit": null,     "priority": "P3", "label_path": "birth", "only_docs": ["checkup", "rx"], "note": "체성분 결과지에는 인쇄되지 않는다. 주민번호에서 앞 6자리만 쓰고 뒷자리는 절대 저장하지 않는다." },
+        { "key": "measured_date", "name_ko": "측정일",     "anchors": ["검사일시", "측정일", "검진일", "조제연월일"], "type": "date", "unit": null,  "priority": "P1", "label_path": "inbody.date / checkup.date / rx.date", "note": "시계열 비교의 기준. 문서별로 따로 저장." }
+      ]
+    },
+
+    "inbody": {
+      "doc_name": "체성분 분석 결과지",
+      "fields": [
+        { "key": "height",   "name_ko": "신장",         "anchors": ["신장", "키", "Height"],                    "type": "float", "unit": "cm",     "min": 100, "max": 220,  "decimals": 1, "priority": "P1", "label_path": "height",         "used_by": ["BMI", "BMR", "식단"], "also_docs": ["checkup"] },
+        { "key": "weight",   "name_ko": "체중",         "anchors": ["체중", "체중 (kg)", "Weight"],             "type": "float", "unit": "kg",     "min": 20,  "max": 250,  "decimals": 1, "priority": "P1", "label_path": "weight",         "used_by": ["BMI", "BMR", "식단", "운동"], "also_docs": ["checkup"] },
+        { "key": "bmi",      "name_ko": "체질량지수",   "anchors": ["BMI", "비만도", "체질량지수"],             "type": "float", "unit": "kg/m2",  "min": 8,   "max": 70,   "decimals": 1, "priority": "P1", "label_path": "bmi",            "used_by": ["건강분석"], "note": "키·체중으로 재계산해 교차검증할 것.", "also_docs": ["checkup"] },
+        { "key": "pbf",      "name_ko": "체지방률",     "anchors": ["체지방률", "체지방률 (%)", "PBF"],         "type": "float", "unit": "%",      "min": 2,   "max": 70,   "decimals": 1, "priority": "P1", "label_path": "inbody.pbf",     "used_by": ["건강분석", "식단"] },
+        { "key": "smm",      "name_ko": "골격근량",     "anchors": ["골격근량", "골격근량 (kg)", "SMM"],        "type": "float", "unit": "kg",     "min": 8,   "max": 70,   "decimals": 1, "priority": "P1", "label_path": "inbody.smm",     "used_by": ["건강분석", "운동", "단백질 목표"] },
+        { "key": "bmr",      "name_ko": "기초대사량",   "anchors": ["기초대사량", "BMR"],                        "type": "int",   "unit": "kcal",   "min": 700, "max": 3500,               "priority": "P1", "label_path": "inbody.bmr",     "used_by": ["식단"], "note": "문서값이 없으면 Mifflin-St Jeor로 계산." },
+        { "key": "fat",      "name_ko": "체지방량",     "anchors": ["체지방량", "체지방"],                       "type": "float", "unit": "kg",     "min": 1,   "max": 120,  "decimals": 1, "priority": "P2", "label_path": "inbody.fat",     "used_by": ["건강분석"] },
+        { "key": "ffm",      "name_ko": "제지방량",     "anchors": ["제지방량", "FFM"],                          "type": "float", "unit": "kg",     "min": 15,  "max": 120,  "decimals": 1, "priority": "P2", "label_path": "inbody.ffm",     "used_by": ["식단"] },
+        { "key": "tbw",      "name_ko": "체수분",       "anchors": ["체수분", "TBW"],                            "type": "float", "unit": "L",      "min": 10,  "max": 80,   "decimals": 1, "priority": "P2", "label_path": "inbody.tbw" },
+        { "key": "protein",  "name_ko": "단백질",       "anchors": ["단백질"],                                   "type": "float", "unit": "kg",     "min": 3,   "max": 30,   "decimals": 1, "priority": "P3", "label_path": "inbody.protein" },
+        { "key": "mineral",  "name_ko": "무기질",       "anchors": ["무기질"],                                   "type": "float", "unit": "kg",     "min": 1,   "max": 10,   "decimals": 2, "priority": "P3", "label_path": "inbody.mineral" },
+        { "key": "whr",      "name_ko": "복부지방률",   "anchors": ["복부지방률", "복부지방률(WHR)", "WHR"],     "type": "float", "unit": null,     "min": 0.5, "max": 1.5,  "decimals": 2, "priority": "P2", "label_path": "inbody.whr",     "used_by": ["건강분석"] },
+        { "key": "vfl",      "name_ko": "내장지방레벨", "anchors": ["내장지방레벨", "내장지방"],                 "type": "int",   "unit": "level",  "min": 1,   "max": 30,                 "priority": "P2", "label_path": "inbody.vfl",     "used_by": ["건강분석"] },
+        { "key": "score",    "name_ko": "종합점수",     "anchors": ["종합점수", "InBody점수"],                   "type": "int",   "unit": "점",     "min": 0,   "max": 100,                "priority": "P3", "label_path": "inbody.score" },
+        { "key": "ideal_wt", "name_ko": "적정체중",     "anchors": ["적정체중", "표준체중"],                     "type": "float", "unit": "kg",     "min": 20,  "max": 200,  "decimals": 1, "priority": "P3", "label_path": "inbody.ideal_wt" },
+        { "key": "wt_ctrl",  "name_ko": "체중조절",     "anchors": ["체중조절"],                                 "type": "float", "unit": "kg",     "min": -80, "max": 80,   "decimals": 1, "priority": "P2", "label_path": "inbody.wt_ctrl", "note": "음수(감량)/양수(증량) 부호 파싱 주의." },
+        { "key": "fat_ctrl", "name_ko": "지방조절",     "anchors": ["지방조절"],                                 "type": "float", "unit": "kg",     "min": -80, "max": 80,   "decimals": 1, "priority": "P2", "label_path": "inbody.fat_ctrl" },
+        { "key": "mus_ctrl", "name_ko": "근육조절",     "anchors": ["근육조절"],                                 "type": "float", "unit": "kg",     "min": -40, "max": 40,   "decimals": 1, "priority": "P2", "label_path": "inbody.mus_ctrl" },
+        { "key": "seg_ra",   "name_ko": "오른팔 근육",  "anchors": ["오른팔"],                                   "type": "float", "unit": "%",      "min": 30,  "max": 200,  "decimals": 1, "priority": "P3", "label_path": "inbody.seg.ra",  "note": "부위별근육분석. 좌우 불균형 감지에 사용 가능." },
+        { "key": "seg_la",   "name_ko": "왼팔 근육",    "anchors": ["왼팔"],                                     "type": "float", "unit": "%",      "min": 30,  "max": 200,  "decimals": 1, "priority": "P3", "label_path": "inbody.seg.la" },
+        { "key": "seg_tr",   "name_ko": "몸통 근육",    "anchors": ["몸통"],                                     "type": "float", "unit": "%",      "min": 30,  "max": 200,  "decimals": 1, "priority": "P3", "label_path": "inbody.seg.tr" },
+        { "key": "seg_rl",   "name_ko": "오른다리 근육","anchors": ["오른다리"],                                 "type": "float", "unit": "%",      "min": 30,  "max": 200,  "decimals": 1, "priority": "P3", "label_path": "inbody.seg.rl" },
+        { "key": "seg_ll",   "name_ko": "왼다리 근육",  "anchors": ["왼다리"],                                   "type": "float", "unit": "%",      "min": 30,  "max": 200,  "decimals": 1, "priority": "P3", "label_path": "inbody.seg.ll" }
+      ]
+    },
+
+    "checkup": {
+      "doc_name": "건강검진 결과통보서",
+      "fields": [
+        { "key": "waist",         "name_ko": "허리둘레",       "anchors": ["허리둘레", "허리둘레 (cm)"],                 "type": "float", "unit": "cm",     "min": 40, "max": 200, "decimals": 1, "priority": "P1", "label_path": "checkup.waist",   "used_by": ["건강분석"] },
+        { "key": "sbp",           "name_ko": "수축기혈압",     "anchors": ["혈압", "혈압 (mmHg)", "수축기"],             "type": "int",   "unit": "mmHg",   "min": 60, "max": 250,                "priority": "P1", "label_path": "checkup.sbp",     "used_by": ["건강분석", "운동강도"], "note": "'129/77' 형태로 한 칸에 인쇄됨. 슬래시 분리 필요." },
+        { "key": "dbp",           "name_ko": "이완기혈압",     "anchors": ["혈압", "혈압 (mmHg)", "이완기"],             "type": "int",   "unit": "mmHg",   "min": 30, "max": 150, "value_index": 1, "priority": "P1", "label_path": "checkup.dbp",     "used_by": ["건강분석", "운동강도"], "note": "'129 77' 처럼 한 줄에 두 값이 나오므로 두 번째 값을 쓴다." },
+        { "key": "glucose",       "name_ko": "공복혈당",       "anchors": ["공복혈당", "공복혈당 (mg/dL)"],              "type": "int",   "unit": "mg/dL",  "min": 40, "max": 500,                "priority": "P1", "label_path": "checkup.glucose", "used_by": ["건강분석", "식단"] },
+        { "key": "tc",            "name_ko": "총콜레스테롤",   "anchors": ["총콜레스테롤", "총콜레스테롤 (mg/dL)"],       "type": "int",   "unit": "mg/dL",  "min": 50, "max": 500,                "priority": "P1", "label_path": "checkup.tc",      "used_by": ["건강분석", "식단"] },
+        { "key": "tg",            "name_ko": "중성지방",       "anchors": ["중성지방", "중성지방 (mg/dL)"],              "type": "int",   "unit": "mg/dL",  "min": 20, "max": 1000,               "priority": "P1", "label_path": "checkup.tg",      "used_by": ["건강분석", "식단"] },
+        { "key": "hdl",           "name_ko": "HDL콜레스테롤",  "anchors": ["HDL-콜레스테롤", "HDL"],                     "type": "int",   "unit": "mg/dL",  "min": 10, "max": 150,                "priority": "P1", "label_path": "checkup.hdl",     "used_by": ["건강분석"] },
+        { "key": "ldl",           "name_ko": "LDL콜레스테롤",  "anchors": ["LDL-콜레스테롤", "LDL"],                     "type": "int",   "unit": "mg/dL",  "min": 10, "max": 350,                "priority": "P1", "label_path": "checkup.ldl",     "used_by": ["건강분석", "식단"] },
+        { "key": "ast",           "name_ko": "AST",            "anchors": ["AST", "AST (U/L)", "SGOT"],                 "type": "int",   "unit": "U/L",    "min": 5,  "max": 500,                "priority": "P2", "label_path": "checkup.ast",     "used_by": ["건강분석"] },
+        { "key": "alt",           "name_ko": "ALT",            "anchors": ["ALT", "ALT (U/L)", "SGPT"],                 "type": "int",   "unit": "U/L",    "min": 5,  "max": 500,                "priority": "P2", "label_path": "checkup.alt",     "used_by": ["건강분석"] },
+        { "key": "ggt",           "name_ko": "감마지티피",     "anchors": ["감마지티피", "감마지티피 (U/L)", "γ-GTP"],   "type": "int",   "unit": "U/L",    "min": 5,  "max": 1000,               "priority": "P2", "label_path": "checkup.ggt" },
+        { "key": "hb",            "name_ko": "혈색소",         "anchors": ["혈색소", "혈색소 (g/dL)", "Hb"],             "type": "float", "unit": "g/dL",   "min": 5,  "max": 22,  "decimals": 1, "priority": "P2", "label_path": "checkup.hb" },
+        { "key": "cr",            "name_ko": "혈청크레아티닌", "anchors": ["혈청크레아티닌", "크레아티닌"],              "type": "float", "unit": "mg/dL",  "min": 0.2,"max": 15,  "decimals": 2, "priority": "P2", "label_path": "checkup.cr" },
+        { "key": "egfr",          "name_ko": "eGFR",           "anchors": ["eGFR", "사구체여과율"],                      "type": "int",   "unit": "mL/min", "min": 5,  "max": 200,                "priority": "P2", "label_path": "checkup.egfr" },
+        { "key": "urine_protein", "name_ko": "요단백",         "anchors": ["요단백", "요검사"],                          "type": "enum",  "unit": null,     "enum": ["음성", "약양성", "양성"],           "priority": "P3", "label_path": "checkup.urine_protein" },
+        { "key": "vision",        "name_ko": "시력",           "anchors": ["시력", "시력 (좌/우)"],                      "type": "string","unit": null,                                            "priority": "P3", "label_path": "checkup.vision", "note": "'1.3/1.0' 형태." },
+        { "key": "verdict",       "name_ko": "종합판정",       "anchors": ["종합판정", "판정"],                          "type": "enum",  "unit": null,     "enum": ["정상A", "정상B(경계)", "일반 질환의심", "유질환자"], "priority": "P2", "label_path": "checkup.verdict" },
+        { "key": "center",        "name_ko": "검진기관",       "anchors": ["검진기관"],                                  "type": "string","unit": null,                                            "priority": "P3", "label_path": "checkup.center" }
+      ]
+    },
+
+    "rx": {
+      "doc_name": "처방전",
+      "fields": [
+        { "key": "hospital",  "name_ko": "의료기관",     "anchors": ["의료기관", "명  칭", "조제기관의 명칭"],   "type": "string", "unit": null,                    "priority": "P3", "label_path": "rx.hospital" },
+        { "key": "doctor",    "name_ko": "처방 의료인",  "anchors": ["처방 의료인의 성명"],                      "type": "string", "unit": null,                    "priority": "P3", "label_path": "rx.doctor" },
+        { "key": "icd",       "name_ko": "질병분류기호", "anchors": ["질병분류기호"],                            "type": "list<string>", "unit": null,              "priority": "P2", "label_path": "rx.icd", "used_by": ["건강분석", "운동 금기"], "note": "ICD-10 코드. 예: E63.9. 대문자1자+숫자2자(+.숫자) 패턴." },
+        { "key": "drugs",     "name_ko": "처방 의약품",  "anchors": ["처방 의약품의 명칭", "조제내역"],           "type": "list<object>", "unit": null,              "priority": "P2", "label_path": "rx.drugs",
+          "item_schema": {
+            "name":  { "name_ko": "약품명",          "type": "string" },
+            "dose":  { "name_ko": "1회 투약량",      "type": "float", "min": 0.1, "max": 20 },
+            "times": { "name_ko": "1일 투여횟수",    "type": "int",   "min": 1,   "max": 10 },
+            "days":  { "name_ko": "총 투약일수",     "type": "int",   "min": 1,   "max": 365 },
+            "usage": { "name_ko": "용법",            "type": "string" }
+          },
+          "note": "표 구조 파싱이 필요한 유일한 항목. 다른 항목보다 난이도가 높아 후순위로 둔다."
+        }
+      ]
+    }
+  },
+
+  "output_contract": {
+    "description": "OCR 파이프라인이 백엔드에 돌려주는 응답 형식. 모든 항목은 값과 신뢰도를 함께 반환한다.",
+    "example": {
+      "doc_type": "inbody",
+      "measured_date": { "value": "2026-03-16", "confidence": 0.97, "status": "ok" },
+      "weight":        { "value": 73.5,         "confidence": 0.99, "status": "ok" },
+      "smm":           { "value": 35.7,         "confidence": 0.61, "status": "review", "raw_text": "35.7" },
+      "pbf":           { "value": null,         "confidence": 0.0,  "status": "fail",   "raw_text": "1a.5" },
+      "_meta": { "engine": "paddleocr", "elapsed_ms": 2140, "image": "P1201_inbody_0_clean.jpg" }
+    },
+    "status_rule": {
+      "ok": "confidence >= 0.85 이고 유효범위 통과 - 자동 저장",
+      "review": "confidence 0.5~0.85 또는 값이 의심스러움 - 사용자 확인 화면에서 강조 표시",
+      "fail": "추출 실패 또는 유효범위 밖 - 사용자가 직접 입력"
+    }
+  }
+}

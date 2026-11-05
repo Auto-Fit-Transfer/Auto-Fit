@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Auto-Fit 전체 서비스 · 로컬 검증</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="review-page">
+    <header class="review-header">
+      <div class="wordmark"><span class="wordmark-icon">AF</span><span>Auto-Fit</span></div>
+      <span class="local-tag">로컬 미리보기 · 운영 환경 변경 없음</span>
+    </header>
+
+    <div class="review-heading">
+      <div>
+        <p class="eyebrow">실제 서비스 UI 기반 미리보기</p>
+        <h1>서비스 전체를 한 화면에서 확인하세요</h1>
+        <p>왼쪽에서 홈·식단·운동·커뮤니티·마이를 둘러보고, 오른쪽에서 통합 백엔드의 실제 로컬 테스트를 실행할 수 있습니다. 앱 화면의 개인 기록은 예시 데이터입니다.</p>
+      </div>
+      <span class="source-label">UI 기준 · front-end d06a63b</span>
+    </div>
+
+    <main class="review-grid">
+      <section class="phone" aria-label="Auto-Fit 서비스 화면 미리보기">
+        <div class="phone-scroll">
+          <div id="screen-home" class="app-screen">
+            <div class="app-title-row"><div><p class="screen-kicker">11월 5일 목요일</p><h2 class="screen-title">안녕하세요, 회원님</h2></div><span class="sample-tag">예시 화면</span></div>
+            <article class="app-card tier-card"><div class="row-between"><span class="card-eyebrow">나의 건강 상태</span><span class="state-badge">건강 등급</span></div><div class="tier-main"><strong>좋음</strong><span>건강 점수 <b>78점</b></span></div><p class="app-subtitle">건강 기록을 바탕으로 오늘의 계획을 확인해 보세요.</p></article>
+            <h3 class="app-section-title">오늘의 맞춤 플랜</h3>
+            <button type="button" class="app-list-row preview-link" data-go="diet"><span class="row-icon"><img src="/icons/fork-knife.svg" alt=""></span><span class="row-copy"><strong>오늘 식단</strong><small>아침·점심·저녁 추천 보기</small></span><span class="chevron" aria-hidden="true">›</span></button>
+            <button type="button" class="app-list-row preview-link" data-go="exercise"><span class="row-icon"><img src="/icons/barbell-fill.svg" alt=""></span><span class="row-copy"><strong>오늘 운동</strong><small>맞춤 운동과 주간 목표 보기</small></span><span class="chevron" aria-hidden="true">›</span></button>
+            <article class="app-card"><div class="row-between"><h3 class="card-title">오늘 할 일</h3><span class="muted-small">예시</span></div><div class="todo-item"><span class="todo-check" aria-hidden="true"></span>점심 식사 기록하기</div><div class="todo-item"><span class="todo-check" aria-hidden="true"></span>오늘의 운동 확인하기</div></article>
+            <article class="app-card chat-prompt"><span class="card-eyebrow">Auto-Fit 챗</span><h3 class="card-title">궁금한 건강 정보를 물어보세요</h3><p class="app-subtitle">대화 기능은 실제 인증·AI 연결 후 사용할 수 있습니다.</p></article>
+            <p class="preview-footnote">건강 점수와 할 일은 실제 회원 데이터가 아닌 화면 예시입니다.</p>
+          </div>
+
+          <div id="screen-diet" class="app-screen" hidden>
+            <div class="app-title-row"><h2 class="screen-title">식단</h2><span class="sample-tag">예시 화면</span></div>
+            <div class="date-strip"><span>‹</span><strong>11월 5일 목요일</strong><span>›</span></div>
+            <article class="app-card nutrition-card"><div class="row-between"><h3 class="card-title">오늘의 영양 요약</h3><span class="muted-small">예시</span></div><div class="nutrition-total"><strong>1,420</strong><span> / 1,850 kcal</span></div><div class="progress-track"><span></span></div><div class="nutrition-macros"><span>탄수화물 <b>180g</b></span><span>단백질 <b>86g</b></span><span>지방 <b>48g</b></span></div></article>
+            <h3 class="app-section-title">오늘 식사</h3>
+            <details class="app-card meal-card" open><summary><span><strong>아침</strong><small>기록 완료 · 420 kcal</small></span><span class="chevron" aria-hidden="true">⌄</span></summary><p>현미밥 · 삶은 달걀 · 샐러드</p><span class="state-badge completed">식사 기록</span></details>
+            <details class="app-card meal-card"><summary><span><strong>점심</strong><small>추천 식단 · 560 kcal</small></span><span class="chevron" aria-hidden="true">⌄</span></summary><p>닭가슴살 채소 비빔밥</p><span class="state-badge">추천</span></details>
+            <details class="app-card meal-card"><summary><span><strong>저녁</strong><small>추천 식단 · 440 kcal</small></span><span class="chevron" aria-hidden="true">⌄</span></summary><p>연어구이 · 구운 채소</p><span class="state-badge">추천</span></details>
+            <article class="app-card"><h3 class="card-title">내게 맞는 식단</h3><p class="app-subtitle">건강 목표와 선호 재료를 반영한 추천·피드백 흐름입니다.</p><button type="button" class="app-primary" disabled>식단 다시 추천받기</button><p class="disabled-note">실제 추천은 로그인과 AI 서버 연결 후 사용할 수 있어요.</p></article>
+            <p class="preview-footnote">식사·영양 수치는 실제 회원 데이터가 아닌 화면 예시입니다.</p>
+          </div>
+
+          <div id="screen-exercise" class="app-screen" hidden>
+            <div class="app-title-row">
+              <div>
+                <button type="button" class="kind-box" id="kind-toggle" aria-expanded="false" aria-controls="kind-menu">운동 <span aria-hidden="true">⌄</span></button>
+                <div class="kind-menu" id="kind-menu" hidden>
+                  <span class="kind-current">오늘의 운동 <small>맞춤 운동 추천</small></span>
+                  <span class="kind-unavailable">러닝 <small>이 미리보기에서는 열지 않음</small></span>
+                </div>
+              </div>
+              <span class="sample-tag">화면 예시</span>
+            </div>
+
+            <article class="app-card hero-card">
+              <p class="card-eyebrow">오늘의 운동</p>
+              <h2>오늘의 맞춤 운동을 준비해요</h2>
+              <p class="app-subtitle">오늘의 시간과 컨디션에 맞춰 추천받으세요</p>
+              <button type="button" class="app-primary" disabled aria-describedby="login-note">오늘 운동 추천받기</button>
+              <p class="disabled-note" id="login-note">실제 추천은 앱 로그인과 AI 서버 연결 후 사용할 수 있어요.</p>
+            </article>
+
+            <article class="app-card goal-card">
+              <div class="row-between"><h2>이번 주 목표</h2><span class="muted-small">샘플 데이터</span></div>
+              <div class="row-between goal-count"><strong>0 <span>/ 3회</span></strong><b>0%</b></div>
+              <div class="progress-track" role="progressbar" aria-label="이번 주 운동 목표" aria-valuemin="0" aria-valuemax="3" aria-valuenow="0"><span></span></div>
+              <div class="goal-stats"><span>운동 시간 <strong>0분</strong></span><span>목표까지 <strong>3회</strong></span></div>
+            </article>
+
+            <h2 class="app-section-title">최근 운동</h2>
+            <button type="button" class="app-list-row" id="open-history">
+              <span class="row-icon"><img src="/icons/barbell-fill.svg" alt=""></span>
+              <span class="row-copy"><strong>지난 운동 기록</strong><small>이전 추천 기록 2건 · 조회 가능</small></span>
+              <span class="chevron" aria-hidden="true">›</span>
+            </button>
+            <p class="preview-footnote">이 미리보기의 운동 기록은 개인 데이터가 아닌 테스트용 예시입니다.</p>
+          </div>
+
+          <div id="screen-history" class="app-screen" hidden>
+            <div class="history-header">
+              <button type="button" class="back-button" id="back-exercise" aria-label="운동 화면으로 돌아가기">‹</button>
+              <h2>내 운동</h2>
+              <span class="header-spacer" aria-hidden="true"></span>
+            </div>
+            <div class="segmented-tabs" role="tablist" aria-label="운동 기록 화면 예시">
+              <button type="button" role="tab" aria-selected="true">운동 기록</button>
+              <button type="button" role="tab" aria-selected="false" disabled>저장한 운동</button>
+            </div>
+            <div class="section-row"><h3>최근 7일</h3><span class="muted-small">샘플 기록</span></div>
+            <div class="week-strip" aria-label="최근 7일 날짜 예시">
+              <span>금<br>10/30</span><span>토<br>10/31</span><span>일<br>11/1</span><span>월<br>11/2</span><span>화<br>11/3</span><span>수<br>11/4</span><span class="day-selected">목<br>11/5</span>
+            </div>
+            <div class="app-card history-summary">
+              <h3>최근 30일 운동</h3>
+              <div class="summary-stats"><span><strong>1</strong><small>완료 횟수</small></span><span><strong>30</strong><small>운동 시간 · 분</small></span><span><strong>—</strong><small>기록된 열량</small></span></div>
+            </div>
+            <h3 class="app-section-title">운동 내역</h3>
+            <article class="app-card history-card">
+              <div class="row-between"><h4>10월 30일 운동</h4><span class="state-badge completed">완료</span></div>
+              <p>30분 · 3개 완료 · 열량 미산출</p>
+              <p class="history-exercises">스쿼트 · 걷기 · 스트레칭</p>
+              <div class="archive-note"><span class="archive-dot" aria-hidden="true"></span><span>보관된 추천 · 과거 기록만 볼 수 있어요</span></div>
+              <button type="button" class="app-outline" disabled aria-describedby="save-note">내 루틴으로 저장</button>
+              <p class="disabled-note" id="save-note">새 백엔드에서는 보관된 추천의 저장을 거부합니다.</p>
+            </article>
+            <article class="app-card history-card">
+              <div class="row-between"><h4>11월 5일 운동</h4><span class="state-badge stopped">중단</span></div>
+              <p>10분 · 1개 기록 · 열량 미산출</p>
+              <p class="history-exercises">과거 운동</p>
+              <div class="archive-note"><span class="archive-dot" aria-hidden="true"></span><span>전환 시 중단 · 기록은 보존돼요</span></div>
+            </article>
+            <p class="preview-footnote">화면 구성은 정식 앱을 따르고, 보관 상태 안내는 백엔드 전환을 설명하기 위한 미리보기입니다. 정식 프런트엔드 코드는 변경하지 않았습니다.</p>
+          </div>
+
+          <div id="screen-community" class="app-screen" hidden>
+            <div class="app-title-row"><h2 class="screen-title">커뮤니티</h2><span class="sample-tag">예시 화면</span></div>
+            <div class="segmented-tabs community-tabs" role="tablist" aria-label="커뮤니티 피드"><button type="button" role="tab" aria-selected="true" data-feed="recommend">추천</button><button type="button" role="tab" aria-selected="false" data-feed="following">팔로잉</button><button type="button" role="tab" aria-selected="false" data-feed="club">클럽</button></div>
+            <article class="app-card challenge-card"><span class="card-eyebrow">이번 주 챌린지</span><h3 class="card-title">함께 건강한 습관 만들기</h3><p class="app-subtitle">운동과 식단 기록으로 목표를 채워 보세요.</p><button type="button" class="app-outline" disabled>참여하기</button></article>
+            <div id="feed-recommend" class="feed-panel"><h3 class="app-section-title">추천 게시글</h3><article class="app-card feed-card"><div class="feed-author"><span class="avatar">AF</span><span><strong>건강한 하루</strong><small>오늘 · 식단</small></span></div><p>오늘은 점심 식단을 기록했어요. 작은 습관부터 꾸준히!</p><div class="feed-meta">♡ 12　댓글 3</div></article><article class="app-card feed-card"><div class="feed-author"><span class="avatar">AF</span><span><strong>움직이는 하루</strong><small>어제 · 운동</small></span></div><p>이번 주 운동 목표를 하나씩 달성하고 있어요.</p><div class="feed-meta">♡ 8　댓글 1</div></article></div>
+            <div id="feed-following" class="feed-panel" hidden><div class="empty-feed"><strong>팔로잉 피드</strong><p>팔로우한 사람의 게시글이 이곳에 표시됩니다.</p></div></div>
+            <div id="feed-club" class="feed-panel" hidden><div class="empty-feed"><strong>클럽 피드</strong><p>가입한 클럽의 활동이 이곳에 표시됩니다.</p></div></div>
+            <button type="button" class="app-primary" disabled>글쓰기</button><p class="preview-footnote">게시글·챌린지 내용은 예시입니다. 실제 게시·참여는 로그인 후 가능합니다.</p>
+          </div>
+
+          <div id="screen-my" class="app-screen" hidden>
+            <div class="app-title-row"><h2 class="screen-title">마이</h2><span class="sample-tag">예시 화면</span></div>
+            <article class="app-card profile-card"><div class="profile-top"><span class="profile-avatar">AF</span><div><h3>회원님</h3><p>나의 건강 여정</p></div><span class="state-badge">좋음</span></div><div class="profile-stats"><span><strong>3</strong><small>게시물</small></span><span><strong>12</strong><small>팔로워</small></span><span><strong>8</strong><small>팔로잉</small></span></div></article>
+            <article class="app-card mileage-card"><div><p class="card-eyebrow">나의 마일리지</p><strong>1,250 P</strong></div><span class="mileage-icon" aria-hidden="true">P</span></article>
+            <h3 class="app-section-title">내 건강</h3><div class="my-list"><div><span>건강 리포트</span><span class="chevron">›</span></div><div><span>체성분·건강검진 기록</span><span class="chevron">›</span></div><div><span>운동 기록</span><span class="chevron">›</span></div></div>
+            <h3 class="app-section-title">맞춤 추천</h3><div class="my-list"><div><span>식단 추천</span><span class="chevron">›</span></div><div><span>운동 추천</span><span class="chevron">›</span></div></div>
+            <h3 class="app-section-title">설정</h3><div class="my-list"><div><span>계정·알림 설정</span><span class="chevron">›</span></div><div><span>커뮤니티 설정</span><span class="chevron">›</span></div></div>
+            <p class="preview-footnote">프로필·마일리지·관계 수치는 실제 회원 데이터가 아닌 예시입니다.</p>
+          </div>
+        </div>
+        <nav class="bottom-nav" aria-label="앱 하단 내비게이션">
+          <button type="button" data-tab="home" aria-current="page"><img src="/icons/house.svg" alt="">홈</button>
+          <button type="button" data-tab="diet"><img src="/icons/fork-knife.svg" alt="">식단</button>
+          <button type="button" data-tab="exercise"><img src="/icons/barbell-fill.svg" alt="">운동</button>
+          <button type="button" data-tab="community"><img src="/icons/chats-circle.svg" alt="">커뮤니티</button>
+          <button type="button" data-tab="my"><img src="/icons/user.svg" alt="">마이</button>
+        </nav>
+      </section>
+
+      <section class="verification" aria-labelledby="verification-title">
+        <div class="verification-heading">
+          <p class="eyebrow">통합 백엔드 · 실제 로컬 실행</p>
+          <h2 id="verification-title">전체 영역 로컬 검증</h2>
+          <p>왼쪽 화면은 예시입니다. 검증 버튼은 현재 통합본 코드로 이미지를 다시 빌드하고, 로컬 API·AI·OCR 회귀 테스트와 SQL 검사를 실행합니다. 운영 DB나 기존 GitHub에는 쓰지 않습니다.</p>
+          <div class="connection"><span class="connection-dot" aria-hidden="true"></span><span id="connection-label" role="status">로컬 DB 상태 확인 중</span></div>
+        </div>
+        <div class="status-heading"><h3>로컬 통합 상태</h3><button type="button" class="text-button" id="refresh-status">다시 확인</button></div>
+        <dl class="status-grid" aria-live="polite">
+          <div><dt>마이그레이션</dt><dd id="migration-count">확인 중</dd></div>
+          <div><dt>이전 시작 경로</dt><dd id="old-start">확인 중</dd></div>
+          <div><dt>AI 시작 경로</dt><dd id="ai-start">확인 중</dd></div>
+          <div><dt>보관 기록 보호</dt><dd id="archive-guard">확인 중</dd></div>
+        </dl>
+
+        <div class="domain-check"><div><p class="eyebrow">선택한 탭의 API</p><h3 id="domain-title">홈·계정 검증</h3><p id="domain-description">홈, 건강 리포트, 사용자 설정 API 테스트</p></div><button type="button" class="test-button" id="run-domain">이 영역 검사</button></div>
+        <div class="status-heading checks-heading"><h3>전체 테스트</h3><span class="muted-small">미실행은 통과를 뜻하지 않습니다</span></div>
+        <button type="button" id="run-all" class="run-all-button">전체 검증 실행 <span>API · AI · OCR · SQL · 배포</span></button>
+        <div class="test-list" id="suite-list">
+          <div class="test-row" data-suite="api_all"><div><strong>API 전체</strong><p>홈·식단·운동·커뮤니티·마이 포함</p></div><span class="suite-state">미실행</span><button type="button" class="test-button" data-case="api_all">실행</button></div>
+          <div class="test-row" data-suite="ai_all"><div><strong>AI 서비스</strong><p>식단·운동·러닝·채팅·건강 분석, 외부 실호출 제외</p></div><span class="suite-state">미실행</span><button type="button" class="test-button" data-case="ai_all">실행</button></div>
+          <div class="test-row" data-suite="ocr_all"><div><strong>OCR 서버</strong><p>문서 인증·파일 변환, 공급자 실호출 제외</p></div><span class="suite-state">미실행</span><button type="button" class="test-button" data-case="ocr_all">실행</button></div>
+          <div class="test-row" data-suite="sql_domains"><div><strong>도메인 DB 14종</strong><p>식단·채팅·커뮤니티·건강·운동 SQL 격리 검사</p></div><span class="suite-state">미실행</span><button type="button" class="test-button" data-case="sql_domains">실행</button></div>
+          <div class="test-row" data-suite="archive"><div><strong>DB 보관 정책</strong><p>과거 운동 기록 보존·재사용 차단</p></div><span class="suite-state">미실행</span><button type="button" class="test-button" data-case="archive">실행</button></div>
+          <div class="test-row" data-suite="upgrade"><div><strong>DB 업그레이드</strong><p>이전 추천 취소·세션 중단·로그 보존</p></div><span class="suite-state">미실행</span><button type="button" class="test-button" data-case="upgrade">실행</button></div>
+          <div class="test-row" data-suite="stack"><div><strong>배포 설정</strong><p>API·AI·OCR·Caddy Compose 구성 검사</p></div><span class="suite-state">미실행</span><button type="button" class="test-button" data-case="stack">실행</button></div>
+        </div>
+
+        <div class="result-panel" id="result-panel" tabindex="-1">
+          <div class="result-heading"><strong id="result-title">실행 결과</strong><span id="result-state" class="result-state" role="status">아직 실행하지 않음</span></div>
+          <p id="result-description">탭별 검사 또는 전체 검증을 실행하면 실제 로컬 결과가 표시됩니다.</p>
+          <pre id="result-output" aria-label="테스트 출력" hidden></pre>
+        </div>
+
+        <div class="limit-note"><strong>실서비스 확인이 필요한 항목</strong><p>API 테스트는 가짜 의존성을 사용하는 회귀 테스트입니다. 도메인 SQL 14종은 격리 DB에서, 보관·업그레이드 SQL은 로컬 Supabase에서 실행합니다. 로그인한 회원 흐름, OpenAI·CLOVA·지도 API 실호출, 실제 문서 판독, DNS·TLS를 통한 서비스 간 연결은 별도 확인이 필요합니다.</p></div>
+        <div class="impact-note">
+          <strong>운영 적용 전 확인</strong>
+          <p>11월 5일 읽기 전용 조회 당시 과거 추천 75건, 진행 중 세션 20건이 있었습니다. 운영에 적용하면 해당 세션은 중단됩니다. 기존 마일리지 잔액과 티어 점수는 소급 회수하지 않습니다.</p>
+        </div>
+      </section>
+    </main>
+    <footer>서비스 UI 기준: 정식 <code>front-end</code> 브랜치 d06a63b · 앱 데이터는 예시 · 검증 버튼은 로컬에서만 실행 · 기존 GitHub 푸시 없음</footer>
+  </div>
+</body>
+</html>

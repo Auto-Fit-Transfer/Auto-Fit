@@ -1,0 +1,8 @@
+{
+  "document_type": null,
+  "extracted_data": null,
+  "error": {
+    "code": "UNSUPPORTED_FILE_TYPE",
+    "message": "지원 형식은 JPEG, PNG, HEIC, PDF 입니다."
+  }
+}

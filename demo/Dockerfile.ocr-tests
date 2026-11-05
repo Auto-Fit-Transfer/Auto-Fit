@@ -1,0 +1,6 @@
+FROM auto-fit-integrated-ocr:verify
+
+USER root
+RUN pip install --no-cache-dir pytest==9.0.2 httpx==0.28.1
+COPY --chown=app:app ocr_service/tests/ /app/tests/
+USER app

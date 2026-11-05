@@ -1,0 +1,11 @@
+{$API_DOMAIN} {
+    reverse_proxy api:8000
+}
+
+{$AI_DOMAIN} {
+    reverse_proxy ai:8001
+}
+
+{$OCR_DOMAIN} {
+    reverse_proxy ocr:8000
+}

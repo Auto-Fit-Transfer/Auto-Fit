@@ -1,0 +1,15 @@
+.venv/
+.pytest_cache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.git/
+.env*
+food_image_server/
+.tmp_docs/
+artifacts/
+app/models/**/*.task
+data/rag_temp/
+data/chroma/
+data/tabpfn/context.csv

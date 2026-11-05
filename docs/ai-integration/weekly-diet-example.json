@@ -1,0 +1,691 @@
+{
+  "ok": true,
+  "generator": "auto-fit-ai",
+  "result": {
+    "summary": "합성 테스트 식단",
+    "strategy": "계약 검증",
+    "weekly_plan": [
+      {
+        "day": "monday",
+        "meals": {
+          "breakfast": {
+            "menu_name": "monday breakfast",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "lunch": {
+            "menu_name": "monday lunch",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "dinner": {
+            "menu_name": "monday dinner",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "snack": {
+            "menu_name": "monday snack",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          }
+        }
+      },
+      {
+        "day": "tuesday",
+        "meals": {
+          "breakfast": {
+            "menu_name": "tuesday breakfast",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "lunch": {
+            "menu_name": "tuesday lunch",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "dinner": {
+            "menu_name": "tuesday dinner",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "snack": {
+            "menu_name": "tuesday snack",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          }
+        }
+      },
+      {
+        "day": "wednesday",
+        "meals": {
+          "breakfast": {
+            "menu_name": "wednesday breakfast",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "lunch": {
+            "menu_name": "wednesday lunch",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "dinner": {
+            "menu_name": "wednesday dinner",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "snack": {
+            "menu_name": "wednesday snack",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          }
+        }
+      },
+      {
+        "day": "thursday",
+        "meals": {
+          "breakfast": {
+            "menu_name": "thursday breakfast",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "lunch": {
+            "menu_name": "thursday lunch",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "dinner": {
+            "menu_name": "thursday dinner",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "snack": {
+            "menu_name": "thursday snack",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          }
+        }
+      },
+      {
+        "day": "friday",
+        "meals": {
+          "breakfast": {
+            "menu_name": "friday breakfast",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "lunch": {
+            "menu_name": "friday lunch",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "dinner": {
+            "menu_name": "friday dinner",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "snack": {
+            "menu_name": "friday snack",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          }
+        }
+      },
+      {
+        "day": "saturday",
+        "meals": {
+          "breakfast": {
+            "menu_name": "saturday breakfast",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "lunch": {
+            "menu_name": "saturday lunch",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "dinner": {
+            "menu_name": "saturday dinner",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "snack": {
+            "menu_name": "saturday snack",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          }
+        }
+      },
+      {
+        "day": "sunday",
+        "meals": {
+          "breakfast": {
+            "menu_name": "sunday breakfast",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "lunch": {
+            "menu_name": "sunday lunch",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "dinner": {
+            "menu_name": "sunday dinner",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          },
+          "snack": {
+            "menu_name": "sunday snack",
+            "menu_description": "합성 음식",
+            "estimated_calories_kcal": 165.5,
+            "nutrition": {
+              "carbohydrate_g": 35.25,
+              "protein_g": 3.5,
+              "fat_g": 1.25
+            },
+            "items": [
+              {
+                "food_name": "현미밥",
+                "portion_g": 100.25,
+                "calories_kcal": 165.5,
+                "carbohydrate_g": 35.25,
+                "protein_g": 3.5,
+                "fat_g": 1.25
+              }
+            ],
+            "image_prompt": null,
+            "ingredients": null,
+            "guidance": "합성 예시"
+          }
+        }
+      }
+    ],
+    "cautions": [],
+    "sources": []
+  }
+}

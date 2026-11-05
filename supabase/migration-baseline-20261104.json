@@ -1,0 +1,418 @@
+{
+  "project": "Auto-Fit",
+  "captured_on": "2026-11-04",
+  "source": "Production migration versions captured read-only; SHA-256 values track canonical local replay files",
+  "canonical_updated_on": "2026-11-05",
+  "applied": [
+    {
+      "version": "20260901055003",
+      "name": "remote_schema",
+      "sha256": "0e6a46bd901e139abd783ea5ce6a0b03d1fe4cf96d4e7e200aa0817f0bad17c0"
+    },
+    {
+      "version": "20260901061252",
+      "name": "enforce_fastapi_only_data_access",
+      "sha256": "3ad7b190f9f932a8287f569627d20585be3897655625d67879087c99fe041b8b"
+    },
+    {
+      "version": "20260902013319",
+      "name": "replace_user_allergies",
+      "sha256": "16b12c07e73238ba69080945c8734bcad3ea4c0e17f0a7a503f32d1d91f8c223"
+    },
+    {
+      "version": "20260902020953",
+      "name": "create_user_exercise_profiles",
+      "sha256": "daf19beb17cf03d98789129be526cddf1280961b48bb0382a9e953d1bb042003"
+    },
+    {
+      "version": "20260902023736",
+      "name": "allow_pending_exercise_recommendation_contexts",
+      "sha256": "0e5daf76a1f17481bcd23ca3fc903cfaf038819895735ffa146b55c48522d800"
+    },
+    {
+      "version": "20260902041419",
+      "name": "create_exercise_recommendation_rpc",
+      "sha256": "54561e99cbaa170a62a1560d31a0def09bcb52ebc9ce7b8a0b5184cebb3a6cbe"
+    },
+    {
+      "version": "20260902043732",
+      "name": "create_exercise_session_rpcs",
+      "sha256": "88153f5458cf042a16adf6cfdac789454a8eb265ff1d71939ab06dc8cf33d778"
+    },
+    {
+      "version": "20260902045508",
+      "name": "create_exercise_discomfort_rpc",
+      "sha256": "903d3462d9132c19ae103d36faafc190f5b72ff256336d85359ae1729ae2d0da"
+    },
+    {
+      "version": "20260903003457",
+      "name": "create_exercise_session_feedback_rpc",
+      "sha256": "1b9dcabf42cc5761d53baecafb25532058eaa4216d03d6b203a54e59e99472db"
+    },
+    {
+      "version": "20260903013645",
+      "name": "create_exercise_goal_rpc",
+      "sha256": "a05c4a0872a82d938ead4c3f12ba96ebddcc4dfe4f2a1c730bce0ab9970356ec"
+    },
+    {
+      "version": "20260903023055",
+      "name": "create_diet_rpcs",
+      "sha256": "b8ddb1d57779b9d75834d1365254febb9df96cac8fd21cd1962cb0b566a410b9"
+    },
+    {
+      "version": "20260908012312",
+      "name": "chat_message_storage",
+      "sha256": "09c2dda3de6a1e627073a2b94296ff2bfa37a4c6ce9070bb20bfe11737fb3217"
+    },
+    {
+      "version": "20260908023614",
+      "name": "chat_retention_30_days",
+      "sha256": "ebccd62f920b00b0385c6ff54faa65633719ee4fd5709740c20e014789830480"
+    },
+    {
+      "version": "20260908023656",
+      "name": "schedule_chat_retention_30_days",
+      "sha256": "f35c052200f26ddacddb25e6a49e5bbfd9d897a43676f5a017292c4781006daa"
+    },
+    {
+      "version": "20260908033403",
+      "name": "chat_rate_limits",
+      "sha256": "95d162c8e16cdae0e8032ac3b60e0f5aecf78f8b1e42b7a74af644bea959808c"
+    },
+    {
+      "version": "20260908083210",
+      "name": "remove_user_exercise_profile_foreign_key",
+      "sha256": "e21edf991cba6ab0834e5ba614fb5fdd4fe506dc2d94303a780e79b29fbd6af4"
+    },
+    {
+      "version": "20260915043649",
+      "name": "add_custom_exercise_goal",
+      "sha256": "20c6dfae6cf15a87b17633302fcf88095acaf16f5d8d8b05c60f2acf29a73614"
+    },
+    {
+      "version": "20260916042556",
+      "name": "replace_diet_meal",
+      "sha256": "da436cefa67d7253c33e3fd46f8e8502e785560f36a8a73ba58cc8c68a43b1d1"
+    },
+    {
+      "version": "20260916061521",
+      "name": "add_diet_meal_images",
+      "sha256": "dd2cf5241eabf3557fd33557dbc50528c8b28c5b12db1d7903b1a195145c6d33"
+    },
+    {
+      "version": "20260916062232",
+      "name": "add_menu_image_cache",
+      "sha256": "d77f6c8710b74030524eb07efbbaece27d459923e395b571521e834e5c438928"
+    },
+    {
+      "version": "20260916064109",
+      "name": "add_menu_image_matching",
+      "sha256": "02cd8b759a44b96e293b54263f3777654d0e5c9643c3f09e65c1c9a065369551"
+    },
+    {
+      "version": "20260916064111",
+      "name": "health_document_storage",
+      "sha256": "030371b82b122f3218e03f79e9c102c8480834b11d84ba1914d2bbeb94c51c10"
+    },
+    {
+      "version": "20260916072413",
+      "name": "update_diet_meal_feedback",
+      "sha256": "8b40a6285174a4b883f83c07a1ba4da6adc360d4288c8aba7994718c9032a5a9"
+    },
+    {
+      "version": "20260917002551",
+      "name": "add_meal_log_photos",
+      "sha256": "31e8dd44f72256fca689e9e98405a62b0338f624d3dc3a532d3cc87f2d1a3dde"
+    },
+    {
+      "version": "20260917014100",
+      "name": "enforce_notification_settings_integrity",
+      "sha256": "662a9850428aa425812dffb1d22baadc003f2faa2f438e31c2892a67ef405046"
+    },
+    {
+      "version": "20260917014900",
+      "name": "enforce_user_reference_integrity",
+      "sha256": "3a2c7ff0330fe24bfa2191bb939e218c96fd44cb32ef1f6c972346bdb988f9eb"
+    },
+    {
+      "version": "20260917015231",
+      "name": "remove_duplicate_diet_meal_foods_index",
+      "sha256": "134b4a1a1b0ccfc9484b02c500ddf19131c189c5c17eaf119f3578075173e426"
+    },
+    {
+      "version": "20260917015823",
+      "name": "enforce_business_reference_integrity",
+      "sha256": "f43f0b30b3143792e96b49dd25f92d982357a3082a0a0562aae10af5f5452abd"
+    },
+    {
+      "version": "20260917021623",
+      "name": "enforce_semantic_reference_integrity",
+      "sha256": "acbea1fbbc73b9d0e417ac3ade2eee33951e2c1d04a46dfb4c5001755129f352"
+    },
+    {
+      "version": "20260917022453",
+      "name": "cascade_account_deletion",
+      "sha256": "8bfd31341bcb04583503b0b2ff0e333d3e9cf0593360157e5335b5243b842f2a"
+    },
+    {
+      "version": "20260928044131",
+      "name": "refresh_health_assessment_personalization",
+      "sha256": "11f26b2e6ea21db3461b66a119f87be84dc6198b8dec1cd20683c15b4064d430"
+    },
+    {
+      "version": "20260929044540",
+      "name": "update_regenerated_meal_source_type",
+      "sha256": "7de37b6bc121322e270b80c1d2bee1a77bafd31e171db86669a75d8f82fc5e64"
+    },
+    {
+      "version": "20260930002750",
+      "name": "preserve_diet_food_order",
+      "sha256": "404fc4e88b9d018061b4f866a9e85fea61857b767943ba317737216c4e5c8b24"
+    },
+    {
+      "version": "20260930055817",
+      "name": "persist_diet_used_ingredients",
+      "sha256": "25ebb9d13eca31d1d70b78a6a643c83ef70ca0aef62325a17e1cfd8a48f4b2b9"
+    },
+    {
+      "version": "20260930090000",
+      "name": "menu_image_dataset_matching",
+      "sha256": "f170c986a2f19c8cd741fb6b8f0fb5abd509f5b0a69489512815b5f4d8c5d903"
+    },
+    {
+      "version": "20261014062855",
+      "name": "community_feed",
+      "sha256": "9f9e5459ec78fe64d1d6922df71e062895efdbb2e18eb7a775218a3c502f1252"
+    },
+    {
+      "version": "20261015005534",
+      "name": "community_comment_delete_lock_order",
+      "sha256": "df173218599710981aad694323adc95ffbeec3fedbd7de99bc9ed7e8e163361a"
+    },
+    {
+      "version": "20261015012742",
+      "name": "create_versioned_health_tiers",
+      "sha256": "3cb2ae650937ac1587725317fa00022fb088692f5944a6301ed5d20ee52a081e"
+    },
+    {
+      "version": "20261015014915",
+      "name": "community_follows_notifications",
+      "sha256": "da3625d3fe925f8e6b0f966bb00a36b4adc847960629f57119243e23e46363a8"
+    },
+    {
+      "version": "20261015023015",
+      "name": "archive_user_food_inventory",
+      "sha256": "b83d003e1bfabd3eae71aa8475c627124290de00d1969a15997d122d1f6c4c73"
+    },
+    {
+      "version": "20261015062629",
+      "name": "community_mileage_membership_clubs",
+      "sha256": "5c80af284bd6f785eebf296a115846d92edb08ee47d0bce4a63c34a487eade91"
+    },
+    {
+      "version": "20261015064753",
+      "name": "community_challenges_rankings",
+      "sha256": "6ee682b79ab64e0fd6ea51ffa4c1159cbbe75d151e8e6ba785bf7c1ee3ff0c58"
+    },
+    {
+      "version": "20261019022924",
+      "name": "community_club_management",
+      "sha256": "b8ace5d89d074fa1273a267401fcdbb55a590b36f74491f9c00dfb8d8374c66c"
+    },
+    {
+      "version": "20261019022935",
+      "name": "community_moderation",
+      "sha256": "01c71f3f0e96b30d6aad00bfe6408ee7ea56253b0ad55b502c25f4e069741914"
+    },
+    {
+      "version": "20261019023132",
+      "name": "community_direct_messages",
+      "sha256": "2e155b9a097018cc7e85dc9c0e6710cba7cdc463f7cd15bc1c75f2dd283f616c"
+    },
+    {
+      "version": "20261020003021",
+      "name": "create_running_domain",
+      "sha256": "06c350ff93812e80710e22c82edfb27e1064f106a4dd7943d0764a274a56a180"
+    },
+    {
+      "version": "20261020003855",
+      "name": "add_running_course_images_and_custom_courses",
+      "sha256": "6368e56a9bcbc6554526aad435b0c85ab30cbdb0a0f088527694d7ed2e687f07"
+    },
+    {
+      "version": "20261020004759",
+      "name": "add_running_saved_courses",
+      "sha256": "a442e6356cb2928a376eca8e0a2c6a11f82dc253d33f87732bd9cd4480ee3e3b"
+    },
+    {
+      "version": "20261020004906",
+      "name": "link_running_saved_courses",
+      "sha256": "15ce07e0b31bc54b51a7b5f79355ac148bc7340f566cea7c9f91bb01bbd7c724"
+    },
+    {
+      "version": "20261020005035",
+      "name": "version_running_course_snapshots",
+      "sha256": "85f8574d96ec561908b7b97ca23da685bc5c720aa5393d0e51b6b40a5bdfa763"
+    },
+    {
+      "version": "20261020005312",
+      "name": "preserve_running_favorite_on_reselect",
+      "sha256": "bbd66d952b18e9b7b62ec0ab54027bd4951393e3cc2831dc57b3d523fe6d7061"
+    },
+    {
+      "version": "20261020044749",
+      "name": "weekly_ai_diet_plans",
+      "sha256": "bbfb1291cfe926792aba4a4bce4fc90918000acc90cd5243da704bd54c3f06af"
+    },
+    {
+      "version": "20261020044807",
+      "name": "add_user_health_goals",
+      "sha256": "c3a362409cde24b460806ad874126a7ee6a06614696ec174551a2a87fe496b5c"
+    },
+    {
+      "version": "20261020044811",
+      "name": "capture_exercise_recommendation_choices",
+      "sha256": "8d199aa6a7ee694a30e9103be8fb7299f63407e75a16dfcbbd89eb20040e6255"
+    },
+    {
+      "version": "20261020044815",
+      "name": "add_diet_recipe_snapshots",
+      "sha256": "9b410e34fb92378f98aa8a5e4c4df37c91824854edd2eb5135991f1cee7afecb"
+    },
+    {
+      "version": "20261020044819",
+      "name": "link_community_workout_cards",
+      "sha256": "c1f6d180b7cfd04ff6259b982e7f2a75804e8ce967ae695149edf9cda9b1447e"
+    },
+    {
+      "version": "20261020044823",
+      "name": "add_health_document_display_title",
+      "sha256": "7fde124359ee88249204fc4c5f3514ac450db5553540d1fdb340ee03112306f8"
+    },
+    {
+      "version": "20261023002812",
+      "name": "community_admin_tools",
+      "sha256": "dafa110081026aea7c818d8353fa49f8db104abd8748df056de07a028e953ed4"
+    },
+    {
+      "version": "20261023030557",
+      "name": "accept_rules_based_diet_meals",
+      "sha256": "e54ce59b222b270d7ddb147a9c833fe260f1827173585bfb7b322186f6a3c8b8",
+      "original_local_sha256": "57c60357442994fe60fddc2261fc38ccf7f9234e12a4422e9e8a6ba91d29e5c1"
+    },
+    {
+      "version": "20261029005648",
+      "name": "create_user_workout_routines",
+      "sha256": "4ac8db3a2e5cd4b31f2d3e08ca8fa3610662fc23e4645cb37f628bbe95db1fd5"
+    },
+    {
+      "version": "20261029005800",
+      "name": "community_mileage_trial_rules",
+      "sha256": "1e466501df5b8e0e3dd657554dc201f49c25a26a3e6f40b0f585d1a5fec07a9e"
+    },
+    {
+      "version": "20261029010527",
+      "name": "create_habit_tier_v1",
+      "sha256": "77b10cadc90d4f4ba0e50a83df1595fc8f6fbcf0f9d3060baca014cd9464b783"
+    },
+    {
+      "version": "20261029010805",
+      "name": "add_app_preferences_and_goal_type",
+      "sha256": "c020cf04fc9313c5c2179ea381ea94dc3614aaab83d446374c6a67a9f290a442"
+    },
+    {
+      "version": "20261029012432",
+      "name": "posture_analysis_e16_e18",
+      "sha256": "e954ab2ad3597aa12fe69d23948fe9c820ccec2758ed5e8d38421d307681ee85"
+    },
+    {
+      "version": "20261029012948",
+      "name": "fix_posture_result_write_guard",
+      "sha256": "20d3eee0af509cbdae3d4d32d2d5479d297493c706a4043f4ee638fd4866e9f0"
+    },
+    {
+      "version": "20261029013154",
+      "name": "add_posture_result_display_fields",
+      "sha256": "85fff7b91614ef7ddf7f6a735dac9201cdc914548ebbffb8daf344cae18481ed"
+    },
+    {
+      "version": "20261029013234",
+      "name": "add_posture_analysis_progress",
+      "sha256": "880078cd35d0886f2afe54c33b3c7955d9674d31686494124df9095fbea4b627"
+    },
+    {
+      "version": "20261029071125",
+      "name": "community_post_details_20261029",
+      "sha256": "0c138e2157e6444f0b196f415e1726fc088168daa8fb78fc0327915bb627519b"
+    },
+    {
+      "version": "20261029071132",
+      "name": "community_search_20261029",
+      "sha256": "3102c3c583feaacddf95776d4a35b730455c662c1142b16a8ef30028b839a1ad"
+    },
+    {
+      "version": "20261029073814",
+      "name": "my_notification_preferences",
+      "sha256": "ca5a44c2bd80de6d95b69f17fcd9b2bbba0a4af022dffe76432e672ec336c933"
+    },
+    {
+      "version": "20261029073818",
+      "name": "profile_bio",
+      "sha256": "e663ea43d103967d9673b67511ab50478e4300d6502db63a5d1bd476d9269615"
+    },
+    {
+      "version": "20261029073823",
+      "name": "community_mileage_monthly",
+      "sha256": "a2241bd66fd5a678762aa61e73cd2e14e37f4d58430bc5383162d0741a2246f4"
+    },
+    {
+      "version": "20261029074233",
+      "name": "community_my_activity",
+      "sha256": "c6f38cb13fd7fe347a1e64ada557eeb94c09d292b9a23bdcc317f46a7dfde9ae"
+    },
+    {
+      "version": "20261029074428",
+      "name": "community_bookmarks",
+      "sha256": "adb7033c93793630d9eaabcef8eef1e36fd84c6cce9a1ae066c96806d1be3439"
+    },
+    {
+      "version": "20261102051648",
+      "name": "delete_health_document",
+      "sha256": "4e09c609820a5083523a5cb3eedb6226b0dd2a0036c94f20efa42a0361a1866a"
+    },
+    {
+      "version": "20261103010707",
+      "name": "cache_weekly_diet_recipes",
+      "sha256": "64dc4c44ff74002fd79308751e03d795dc4a9282b0ec4b1e8a994a7a938ad4f8"
+    },
+    {
+      "version": "20261103013111",
+      "name": "cache_daily_diet_recipe",
+      "sha256": "72e77ba63a347d77ccf5cd57ae83d72ee92e8fd91d0cf8ddc1b2fe706b759fa0"
+    },
+    {
+      "version": "20261103070648",
+      "name": "weekly_diet_retention_30_days",
+      "sha256": "353919fe8328d3b7ab80b5041ec3717ac5d8cdb976a2fa400b610527f2e0c6f8"
+    },
+    {
+      "version": "20261103072835",
+      "name": "store_ai_exercise_recommendations",
+      "sha256": "efb27898cbd87cc34dfa2514c040a98c7afaa365db980cc5b7f73d94cd0a7a06",
+      "original_local_sha256": "11d7ba3f45b7f189bc372a75778d7503c35d7640fe10966c99218506ebc9a71c"
+    },
+    {
+      "version": "20261103072839",
+      "name": "exercise_ai_weekly_sessions",
+      "sha256": "62d4f3785de737a5b0e91de666d296903bcea23fa37c98b93206a20c2ceaca62",
+      "original_local_sha256": "d824dc157405e10667ba5587b64b3782e2aa798303d806328d7d855a7ddd1d2b"
+    }
+  ],
+  "pending": [
+    "20261104060214_reconcile_live_diet_functions.sql",
+    "20261104060215_cache_exercise_ai_analysis.sql",
+    "20261104080053_enforce_ai_only_exercise_recommendations.sql",
+    "20261104081014_remove_legacy_exercise_paths.sql",
+    "20261105020000_archive_non_ai_exercise_recommendations.sql"
+  ]
+}

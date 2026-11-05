@@ -1,0 +1,10 @@
+*
+!requirements-server.txt
+!ocr/
+!ocr/**
+!server/
+!server/**
+!schema/
+!schema/**
+**/__pycache__/
+**/*.pyc

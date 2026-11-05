@@ -1,0 +1,8 @@
+# OCR 서버 실행에 필요한 것만 (EasyOCR·torch 등 채점용 라이브러리는 필요 없음)
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+python-multipart==0.0.32
+requests==2.34.2
+pillow==13.0.0
+pillow-heif==1.7.0
+pypdfium2==5.13.0

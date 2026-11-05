@@ -1,0 +1,8 @@
+{
+  "document_type": null,
+  "extracted_data": null,
+  "error": {
+    "code": "UNSUPPORTED_DOCUMENT",
+    "message": "건강검진 결과지나 체성분 결과지로 인식되지 않았습니다. 직접 입력해 주세요."
+  }
+}

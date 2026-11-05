@@ -1,0 +1,185 @@
+diff --git a/frontend/app/exercise/condition.tsx b/frontend/app/exercise/condition.tsx
+index 684cdc5..4f61a39 100644
+--- a/frontend/app/exercise/condition.tsx
++++ b/frontend/app/exercise/condition.tsx
+@@ -60,6 +60,7 @@ export default function ExerciseConditionScreen() {
+   const [condition, setCondition] = useState<ExerciseCondition>(initial);
+   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+   const [isGenerating, setIsGenerating] = useState(false);
++  const [generateError, setGenerateError] = useState('');
+   const goBack = useCallback(
+     () => (isChanging ? router.back() : router.replace('/exercise')),
+     [isChanging, router],
+@@ -78,8 +79,16 @@ export default function ExerciseConditionScreen() {
+     setLeaveDialogOpen(false);
+     router.replace('/home');
+   };
++  const updateCondition = (update: (current: ExerciseCondition) => ExerciseCondition) => {
++    setGenerateError('');
++    setCondition(update);
++  };
++  const showError = (title: string, message: string) => {
++    if (Platform.OS === 'web') setGenerateError(`${title} ${message}`);
++    else Alert.alert(title, message);
++  };
+   const toggleEquipment = (id: ExerciseEquipment) =>
+-    setCondition((current) => ({
++    updateCondition((current) => ({
+       ...current,
+       equipment: current.equipment.includes(id)
+         ? current.equipment.filter((item) => item !== id)
+@@ -88,16 +97,17 @@ export default function ExerciseConditionScreen() {
+ 
+   const handleGenerate = async () => {
+     if (isGenerating) return;
++    setGenerateError('');
+     if (
+       condition.availableMinutes === null ||
+       condition.location === null ||
+       !condition.condition.trim()
+     ) {
+-      Alert.alert('운동 설정을 확인해 주세요', '운동 시간, 장소, 오늘 컨디션을 선택해 주세요.');
++      showError('운동 설정을 확인해 주세요.', '운동 시간, 장소, 오늘 컨디션을 선택해 주세요.');
+       return;
+     }
+     if (condition.discomfortArea.trim().length > 50) {
+-      Alert.alert('불편한 부위를 확인해 주세요', '50자 이하로 입력해 주세요.');
++      showError('불편한 부위를 확인해 주세요.', '50자 이하로 입력해 주세요.');
+       return;
+     }
+     setIsGenerating(true);
+@@ -111,7 +121,7 @@ export default function ExerciseConditionScreen() {
+       if (isChanging) router.dismissTo('/exercise/summary');
+       else router.push('/exercise/summary');
+     } catch (error) {
+-      Alert.alert('맞춤 운동을 만들지 못했어요', getExerciseApiErrorMessage(error));
++      showError('맞춤 운동을 만들지 못했어요.', getExerciseApiErrorMessage(error));
+     } finally {
+       setIsGenerating(false);
+     }
+@@ -148,7 +158,7 @@ export default function ExerciseConditionScreen() {
+               key={minutes}
+               label={minutes === 120 ? '120분 이상' : String(minutes) + '분'}
+               selected={condition.availableMinutes === minutes}
+-              onPress={() => setCondition((current) => ({ ...current, availableMinutes: minutes }))}
++              onPress={() => updateCondition((current) => ({ ...current, availableMinutes: minutes }))}
+             />
+           ))}
+         </ChoiceSection>
+@@ -158,7 +168,7 @@ export default function ExerciseConditionScreen() {
+               key={location}
+               label={exerciseLocationLabels[location]}
+               selected={condition.location === location}
+-              onPress={() => setCondition((current) => ({ ...current, location }))}
++              onPress={() => updateCondition((current) => ({ ...current, location }))}
+             />
+           ))}
+         </ChoiceSection>
+@@ -179,7 +189,7 @@ export default function ExerciseConditionScreen() {
+               key={value}
+               label={value}
+               selected={condition.condition === value}
+-              onPress={() => setCondition((current) => ({ ...current, condition: value }))}
++              onPress={() => updateCondition((current) => ({ ...current, condition: value }))}
+             />
+           ))}
+         </ChoiceSection>
+@@ -189,7 +199,7 @@ export default function ExerciseConditionScreen() {
+             accessibilityLabel="불편한 부위"
+             maxLength={50}
+             onChangeText={(value) =>
+-              setCondition((current) => ({ ...current, discomfortArea: value }))
++              updateCondition((current) => ({ ...current, discomfortArea: value }))
+             }
+             placeholder="예) 오른쪽 무릎, 허리"
+             placeholderTextColor={colors.textDisabled}
+@@ -207,6 +217,7 @@ export default function ExerciseConditionScreen() {
+         </View>
+       </ScrollView>
+       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 18) }]}>
++        {generateError ? <Text accessibilityLiveRegion="assertive" style={styles.error}>{generateError}</Text> : null}
+         <Pressable
+           accessibilityRole="button"
+           accessibilityState={{ busy: isGenerating, disabled: isGenerating }}
+@@ -308,6 +319,7 @@ function createStyles({ colors }: AppTheme) {
+     noticeTitle: { color: colors.warning, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
+     noticeText: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+     footer: { backgroundColor: colors.background, paddingHorizontal: 20, paddingTop: 8 },
++    error: { color: colors.danger, fontSize: 14, lineHeight: 20, marginBottom: 8 },
+     button: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center' },
+     buttonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+     pressed: { opacity: 0.75 },
+diff --git a/frontend/app/exercise/history.tsx b/frontend/app/exercise/history.tsx
+index 1cab60c..1aae018 100644
+--- a/frontend/app/exercise/history.tsx
++++ b/frontend/app/exercise/history.tsx
+@@ -7,6 +7,7 @@ import { getExerciseHistory, saveRecommendedWorkout } from '@/src/api/exercise';
+ import { getRunningApiErrorMessage, getRunningHistory, type RunningSession } from '@/src/api/running';
+ import { getApiErrorMessage } from '@/src/api/client';
+ import { sessionCalories, sessionLocalDate, sessionMinutes } from '@/src/features/exercise/weeklyMetrics';
++import { canSaveRecommendedHistorySession } from '@/src/features/exercise/historyActions';
+ import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+ import { Text } from '@/src/components/common';
+ 
+@@ -78,7 +79,7 @@ export default function ExerciseHistory() {
+     + runningRows.reduce((total, run) => total + number(run.elapsed_seconds) / 60, 0);
+   const save = async (session: HistoryRow['session']) => {
+     const id = session.exercise_recommendation_id;
+-    if (typeof id !== 'string' || !id) return;
++    if (!canSaveRecommendedHistorySession(session) || typeof id !== 'string') return;
+     setSavingId(id);
+     setSaveError('');
+     try {
+@@ -129,12 +130,15 @@ export default function ExerciseHistory() {
+         ) : filtered.length === 0 ? <View style={styles.card}><Text style={styles.body}>이 기간에 기록한 운동이 없어요.</Text></View> : filtered.map(({ session, logs }, index) => {
+           const id = typeof session.exercise_recommendation_id === 'string' ? session.exercise_recommendation_id : null;
+           const complete = session.status === 'completed';
++          const canSave = canSaveRecommendedHistorySession(session);
+           const calories = sessionCalories(session.total_calories_burned, session.completed_item_count);
+           return <View key={String(session.exercise_session_id ?? index)} style={styles.card}>
+             <View style={styles.sectionRow}><Text style={styles.cardTitle}>{sessionLocalDate(session.started_at)} 운동</Text><Text style={styles.badge}>{complete ? '완료' : '중단'}</Text></View>
+             <Text style={styles.body}>{[sessionMinutes(session.total_duration_seconds) ? `${sessionMinutes(session.total_duration_seconds)}분` : null, `${number(session.completed_item_count)}개 완료`, calories ? `${Math.round(calories)}kcal` : null].filter(Boolean).join(' · ')}</Text>
+             {logs.length > 0 ? <Text style={styles.caption} numberOfLines={2}>{logs.map((log) => typeof log === 'object' && log && 'exercise_name' in log ? String(log.exercise_name) : '').filter(Boolean).join(' · ')}</Text> : null}
+-            {complete && id ? <Pressable accessibilityRole="button" disabled={savingId === id || savedIds.includes(id)} onPress={() => void save(session)} style={styles.outlineButton}><Text style={styles.outlineText}>{savedIds.includes(id) ? '저장 완료' : savingId === id ? '저장 중…' : '내 루틴으로 저장'}</Text></Pressable> : null}
++            {session.recommendation_generator === 'legacy' ? <Text style={styles.caption}>이전 추천 기록 · 참고용이에요. 새 루틴으로 저장할 수 없어요.</Text> : null}
++            {complete && id && !canSave && session.recommendation_generator !== 'legacy' ? <Text style={styles.caption}>추천 정보를 확인할 수 없어 지금은 저장할 수 없어요.</Text> : null}
++            {canSave && id ? <Pressable accessibilityRole="button" disabled={savingId === id || savedIds.includes(id)} onPress={() => void save(session)} style={styles.outlineButton}><Text style={styles.outlineText}>{savedIds.includes(id) ? '저장 완료' : savingId === id ? '저장 중…' : '내 루틴으로 저장'}</Text></Pressable> : null}
+           </View>;
+         })}
+         {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
+diff --git a/frontend/src/features/exercise/historyActions.ts b/frontend/src/features/exercise/historyActions.ts
+new file mode 100644
+index 0000000..9c998b8
+--- /dev/null
++++ b/frontend/src/features/exercise/historyActions.ts
+@@ -0,0 +1,6 @@
++export function canSaveRecommendedHistorySession(session: Record<string, unknown>): boolean {
++  return session.status === 'completed'
++    && typeof session.exercise_recommendation_id === 'string'
++    && session.exercise_recommendation_id.trim().length > 0
++    && session.recommendation_generator === 'auto-fit-ai';
++}
+diff --git a/frontend/tests/exercise-history-actions.test.mjs b/frontend/tests/exercise-history-actions.test.mjs
+new file mode 100644
+index 0000000..baaf8f0
+--- /dev/null
++++ b/frontend/tests/exercise-history-actions.test.mjs
+@@ -0,0 +1,18 @@
++import assert from 'node:assert/strict';
++import test from 'node:test';
++import { canSaveRecommendedHistorySession } from '../src/features/exercise/historyActions.ts';
++
++const completed = { status: 'completed', exercise_recommendation_id: 'recommendation-1' };
++
++test('only completed AI recommendations expose the save action', () => {
++  assert.equal(canSaveRecommendedHistorySession({ ...completed, recommendation_generator: 'auto-fit-ai' }), true);
++  assert.equal(canSaveRecommendedHistorySession({ ...completed, recommendation_generator: 'legacy' }), false);
++  assert.equal(canSaveRecommendedHistorySession({ ...completed, recommendation_generator: null }), false);
++  assert.equal(canSaveRecommendedHistorySession({ ...completed }), false);
++});
++
++test('incomplete and unlinked sessions cannot save a recommendation', () => {
++  assert.equal(canSaveRecommendedHistorySession({ ...completed, status: 'stopped', recommendation_generator: 'auto-fit-ai' }), false);
++  assert.equal(canSaveRecommendedHistorySession({ ...completed, exercise_recommendation_id: null, recommendation_generator: 'auto-fit-ai' }), false);
++  assert.equal(canSaveRecommendedHistorySession({ ...completed, exercise_recommendation_id: ' ', recommendation_generator: 'auto-fit-ai' }), false);
++});

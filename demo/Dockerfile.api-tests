@@ -1,0 +1,16 @@
+FROM auto-fit-integrated-api:verify
+
+USER root
+RUN pip install --no-cache-dir pytest==9.0.2
+
+COPY --chown=app:app backend/tests/ /app/backend/tests/
+COPY --chown=app:app backend/scripts/ /app/backend/scripts/
+COPY --chown=app:app .github/workflows/ /app/.github/workflows/
+COPY --chown=app:app docs/ /app/docs/
+COPY --chown=app:app deploy/stack/ /app/deploy/stack/
+COPY --chown=app:app supabase/migrations/ /app/supabase/migrations/
+COPY --chown=app:app supabase/migration-baseline-20261104.json /app/supabase/migration-baseline-20261104.json
+
+ENV PYTHONPATH=/app
+WORKDIR /app
+USER app
