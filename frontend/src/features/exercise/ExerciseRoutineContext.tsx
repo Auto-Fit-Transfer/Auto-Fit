@@ -54,6 +54,9 @@ export type ExerciseHomeMetrics = {
   targetWorkoutCount: number | null;
   goalAchievementRate: number | null;
   remainingGoalWorkoutCount: number | null;
+  currentWeekMinutes: number | null;
+  targetMinutes: number | null;
+  remainingGoalMinutes: number | null;
 };
 
 export type StartedExerciseSession = {
@@ -344,6 +347,9 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
     targetWorkoutCount: null,
     goalAchievementRate: null,
     remainingGoalWorkoutCount: null,
+    currentWeekMinutes: null,
+    targetMinutes: null,
+    remainingGoalMinutes: null,
   });
   const [latestSession, setLatestSession] = useState<ExerciseSessionSummary | null>(null);
   const [resultRecordCompleted, setResultRecordCompleted] = useState(false);
@@ -396,6 +402,9 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
         targetWorkoutCount: null,
         goalAchievementRate: null,
         remainingGoalWorkoutCount: null,
+        currentWeekMinutes: null,
+        targetMinutes: null,
+        remainingGoalMinutes: null,
       });
       setLatestSession(null);
       setResultRecordCompleted(false);

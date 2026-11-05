@@ -14,7 +14,9 @@ export function mapWeeklyMetrics(response: unknown) {
     summary = record(progress.summary),
     achievements = record(progress.achievements);
   const completed = number(summary.workout_count),
-    target = number(summary.target_workout_count);
+    target = number(summary.target_workout_count),
+    minutes = number(summary.duration_minutes),
+    targetMinutes = number(summary.target_duration_minutes);
   return {
     currentWorkoutStreakDays: number(achievements.longest_workout_streak_days),
     currentWeekWorkoutCount: completed,
@@ -22,6 +24,10 @@ export function mapWeeklyMetrics(response: unknown) {
     goalAchievementRate: number(summary.goal_achievement_rate),
     remainingGoalWorkoutCount:
       target !== null && completed !== null ? Math.max(0, target - completed) : null,
+    currentWeekMinutes: minutes,
+    targetMinutes,
+    remainingGoalMinutes:
+      targetMinutes !== null && minutes !== null ? Math.max(0, Math.ceil(targetMinutes - minutes)) : null,
   };
 }
 export function sessionMinutes(value: unknown) {

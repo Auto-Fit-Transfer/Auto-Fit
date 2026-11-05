@@ -46,6 +46,7 @@ type Props = {
   onAlternative: (mealId: R6Meal['id']) => void;
   onOpenRecipe: (mealId: R6Meal['id']) => void;
   onOpenProteinGuide: () => void;
+  onOpenWeekly: () => void;
   showRecordControls: boolean;
 };
 
@@ -198,9 +199,14 @@ export function R6DietHome(props: Props) {
           </Pressable>
         )}
 
-        <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle, isDark && dark.text]}>
-          {props.selectedDateOffset === 0 ? '오늘 식단' : '선택한 날 식단'}
-        </Text>
+        <View style={styles.sectionRow}>
+          <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle, isDark && dark.text]}>
+            {props.selectedDateOffset === 0 ? '오늘 식단' : '선택한 날 식단'}
+          </Text>
+          <Pressable accessibilityRole="button" hitSlop={16} onPress={props.onOpenWeekly}>
+            <CaretText style={[styles.guideLinkText, isDark && dark.secondary]}>7일 전체 보기</CaretText>
+          </Pressable>
+        </View>
         {props.mealsLoading && <Text style={styles.stateText}>식단을 불러오고 있어요.</Text>}
         {props.mealsError && (
           <Pressable onPress={props.onRetryMeals} style={styles.stateCard}>
@@ -361,7 +367,8 @@ function createStyles({ colors }: AppTheme) {
     photoTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
     photoHint: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
     photoDisabled: { opacity: 0.55 },
-    sectionTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, color: colors.textPrimary, marginTop: 20, marginBottom: 12 },
+    sectionRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between', marginBottom: 12, marginTop: 20 },
+    sectionTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, color: colors.textPrimary },
     stateCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16 },
     stateText: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
     mealCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, marginBottom: 16, padding: 16 },

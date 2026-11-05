@@ -47,7 +47,7 @@ function MenuRow({ Icon, title, detail, onPress, selected = false }: { Icon: typ
 }
 
 export default function ExerciseScreen() {
-  const { colors } = useAppTheme();
+  const { colors, fontStep } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -79,6 +79,16 @@ export default function ExerciseScreen() {
   const progress = Math.min(100, Math.max(0, homeMetrics.goalAchievementRate ?? 0));
   const target = homeMetrics.targetWorkoutCount;
   const doneCount = homeMetrics.currentWeekWorkoutCount ?? 0;
+  // The percent averages workouts and minutes, so both are on the card. The server's minutes are the ones it counted.
+  const weekTime = Math.round(homeMetrics.currentWeekMinutes ?? week.minutes);
+  const timeLabel = homeMetrics.targetMinutes ? `${weekTime} / ${homeMetrics.targetMinutes}분` : `${weekTime}분`;
+  const leftParts = [
+    homeMetrics.remainingGoalWorkoutCount ? `${homeMetrics.remainingGoalWorkoutCount}회` : null,
+    homeMetrics.remainingGoalMinutes ? `${homeMetrics.remainingGoalMinutes}분` : null,
+  ].filter(Boolean);
+  const leftLabel = homeMetrics.remainingGoalWorkoutCount === null && homeMetrics.remainingGoalMinutes === null
+    ? '—'
+    : leftParts.join(' · ') || '달성';
   const segments = target && target <= 7 ? Array.from({ length: target }, (_, index) => index) : [];
   const segmentLabel = (index: number) => {
     const key = week.days[index];
@@ -162,6 +172,10 @@ export default function ExerciseScreen() {
           </Pressable>
         ) : null}
 
+        <View style={[styles.list, isDark && dark.card]}>
+          <MenuRow Icon={HeartbeatIcon} title="러닝" detail="지역과 거리에 맞는 코스" onPress={() => router.push('/exercise/running')} />
+        </View>
+
         <View style={[styles.card, simple && simpleStyles.card, isDark && dark.card]}>
           <View style={styles.rowBetween}>
             <Text style={[styles.sectionSmall, isDark && dark.text]}>이번 주 목표</Text>
@@ -185,9 +199,9 @@ export default function ExerciseScreen() {
               <View style={[styles.progressFill, { width: `${progress}%` }]} />
             </View>
           )}
-          <View style={[styles.statRow, simple && simpleStyles.statRow]}>
-            <View style={[styles.statBox, isDark && dark.card]}><Text style={[styles.statLabel, isDark && dark.secondary]}>운동 시간</Text><Text style={[styles.statValue, isDark && dark.text]}>{week.minutes}분</Text></View>
-            <View style={[styles.statBox, isDark && dark.card]}><Text style={[styles.statLabel, isDark && dark.secondary]}>목표까지</Text><Text style={[styles.statValue, isDark && dark.text]}>{value(homeMetrics.remainingGoalWorkoutCount, '회')}</Text></View>
+          <View style={[styles.statRow, (simple || fontStep > 3) && simpleStyles.statRow]}>
+            <View style={[styles.statBox, isDark && dark.card]}><Text style={[styles.statLabel, isDark && dark.secondary]}>운동 시간</Text><Text style={[styles.statValue, isDark && dark.text]}>{timeLabel}</Text></View>
+            <View style={[styles.statBox, isDark && dark.card]}><Text style={[styles.statLabel, isDark && dark.secondary]}>목표까지</Text><Text style={[styles.statValue, isDark && dark.text]}>{leftLabel}</Text></View>
           </View>
         </View>
 

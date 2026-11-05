@@ -18,6 +18,18 @@ test('weekly achievement preserves server frequency and duration weighting', () 
   assert.equal(v.remainingGoalWorkoutCount, 0);
   assert.equal(v.targetWorkoutCount, 3);
 });
+test('the weekly card gets the minutes behind the percent', () => {
+  const v = mapWeeklyMetrics({
+    progress: {
+      summary: { workout_count: 3, target_workout_count: 3, duration_minutes: 80.4, target_duration_minutes: 120, goal_achievement_rate: 83.3 },
+    },
+  });
+  assert.equal(v.currentWeekMinutes, 80.4);
+  assert.equal(v.targetMinutes, 120);
+  assert.equal(v.remainingGoalMinutes, 40);
+  assert.equal(mapWeeklyMetrics({ progress: { summary: { duration_minutes: 130, target_duration_minutes: 120 } } }).remainingGoalMinutes, 0);
+  assert.equal(mapWeeklyMetrics(null).remainingGoalMinutes, null);
+});
 test('completed workouts without calorie estimates are not shown as zero kcal', () => {
   assert.equal(sessionCalories(0, 4), null);
   assert.equal(sessionCalories('0', '1'), null);

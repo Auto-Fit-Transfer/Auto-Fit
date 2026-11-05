@@ -215,7 +215,7 @@ export default function HomeScreen() {
                 })}
               </View>
               <Text style={[styles.hint, isDark && dark.secondary]}>
-                이번 주 {weekMinutes}분 운동{weeklyLeft === null ? '' : weeklyLeft > 0 ? ` · 목표까지 ${weeklyLeft}회` : ' · 목표 달성'}
+                이번 주 {weekMinutes}분 운동{weeklyLeft === null ? '' : weeklyLeft > 0 ? ` · 목표까지 ${weeklyLeft}회` : homeMetrics.remainingGoalMinutes ? ' · 횟수 목표 달성' : ' · 목표 달성'}
               </Text>
             </Pressable>
             <Pressable accessibilityRole="button" onPress={() => router.push('/chat')} style={[styles.box, styles.chatRow, isDark && dark.card]}>
