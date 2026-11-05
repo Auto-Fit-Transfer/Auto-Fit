@@ -265,7 +265,7 @@ function createStyles({ colors }: AppTheme) {
       fontSize: 16,
       lineHeight: 21,
     },
-    bubbleTextMine: { color: colors.surface },
+    bubbleTextMine: { color: colors.onPrimary },
     time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
     composer: {
       alignItems: 'flex-end',

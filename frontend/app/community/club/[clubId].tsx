@@ -359,7 +359,7 @@ function createStyles({ colors }: AppTheme) {
     join: { backgroundColor: colors.primary, borderColor: colors.primary },
     joined: { backgroundColor: colors.surfaceMuted, borderColor: colors.surfaceMuted },
     pressed: { opacity: 0.75 },
-    joinTextOn: { color: colors.surface, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    joinTextOn: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
     joinedText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
     message: {
       alignItems: 'center',

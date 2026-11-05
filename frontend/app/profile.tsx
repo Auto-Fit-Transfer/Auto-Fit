@@ -264,6 +264,6 @@ function createStyles({ colors }: AppTheme) {
     footer: { backgroundColor: colors.background, paddingHorizontal: 22, paddingTop: 12 },
     save: { height: 56, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
     saveDisabled: { opacity: 0.45 },
-    saveText: { fontFamily: fontFamilies.pretendardSemiBold, color: colors.surface, fontSize: 16 },
+    saveText: { fontFamily: fontFamilies.pretendardSemiBold, color: colors.onPrimary, fontSize: 16 },
   } as const;
 }

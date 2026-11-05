@@ -61,7 +61,7 @@ function createStyles({ colors }: AppTheme) {
       width: 40,
     },
     label: {
-      color: colors.surface,
+      color: colors.onPrimary,
       fontFamily: fontFamilies.pretendardMedium,
       fontSize: 12,
       includeFontPadding: false,

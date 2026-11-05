@@ -546,7 +546,7 @@ function createStyles({ colors }: AppTheme) {
       fontFamily: fontFamilies.pretendardSemiBold,
       fontSize: 13,
     },
-    currentDivider: { width: 1, height: 56, backgroundColor: '#D2EEE9' },
+    currentDivider: { width: 1, height: 56, backgroundColor: colors.border },
     currentInfo: {
       alignSelf: 'stretch',
       flexDirection: 'row',
@@ -626,7 +626,7 @@ function createStyles({ colors }: AppTheme) {
     },
     currentPill: { marginRight: 10, borderRadius: 20, paddingHorizontal: 5, paddingVertical: 3 },
     currentPillText: {
-      color: colors.surface,
+      color: colors.onPrimary,
       fontSize: 13,
       fontFamily: fontFamilies.pretendardSemiBold,
     },

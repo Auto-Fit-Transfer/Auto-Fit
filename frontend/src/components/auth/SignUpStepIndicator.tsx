@@ -86,7 +86,7 @@ function createStyles({ colors }: AppTheme) {
       textAlign: 'center',
     },
     activeLabel: {
-      color: colors.surface,
+      color: colors.onPrimary,
     },
   } as const;
 }

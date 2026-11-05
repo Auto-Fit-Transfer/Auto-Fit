@@ -386,7 +386,7 @@ function createStyles({ colors }: AppTheme) {
     headerActions: { flexDirection: 'row' },
     badge: {
       backgroundColor: colors.danger,
-      borderColor: '#FFFFFF',
+      borderColor: colors.background,
       borderRadius: 5,
       borderWidth: 1,
       height: 10,

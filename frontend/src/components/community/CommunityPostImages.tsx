@@ -177,7 +177,7 @@ function createStyles({ colors }: AppTheme) {
     carouselScroll: { flex: 1 },
     carouselImage: { height: '100%', backgroundColor: colors.background },
     imageCount: { position: 'absolute', right: 10, top: 10, borderRadius: radius.round, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4 },
-    imageCountText: { color: colors.surface, fontSize: 11 },
+    imageCountText: { color: colors.onPrimary, fontSize: 11 },
     dots: { flexDirection: 'row', alignSelf: 'center', gap: 5 },
     dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.border },
     activeDot: { backgroundColor: colors.textPrimary },
@@ -196,7 +196,7 @@ function createStyles({ colors }: AppTheme) {
       position: 'absolute',
       right: 16,
     },
-    counter: { color: colors.surface, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
+    counter: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
     close: {
       alignItems: 'center',
       backgroundColor: 'rgba(0, 0, 0, 0.45)',

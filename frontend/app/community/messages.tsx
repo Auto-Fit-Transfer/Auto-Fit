@@ -212,6 +212,6 @@ function createStyles({ colors }: AppTheme) {
       paddingHorizontal: 6,
       paddingVertical: 2,
     },
-    badgeText: { color: colors.surface, fontFamily: fontFamilies.pretendardBold, fontSize: 12 },
+    badgeText: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 12 },
   } as const;
 }

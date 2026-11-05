@@ -159,6 +159,6 @@ function createStyles({ colors }: AppTheme) {
     success: { color: colors.success, fontSize: 12 },
     save: { height: 48, borderRadius: 9, backgroundColor: colors.primaryPressed, alignItems: 'center', justifyContent: 'center' },
     disabled: { opacity: 0.45 },
-    saveText: { color: colors.surface, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
+    saveText: { color: colors.onPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardSemiBold },
   } as const;
 }

@@ -198,7 +198,7 @@ function createStyles({ colors }: AppTheme) {
     dialogDescription: { fontSize: 14, lineHeight: 21, color: colors.textSecondary },
     deleteButton: { minHeight: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.danger },
     disabled: { opacity: 0.45 },
-    deleteText: { fontSize: 16, color: colors.surface, fontFamily: fontFamilies.pretendardSemiBold },
+    deleteText: { fontSize: 16, color: colors.onPrimary, fontFamily: fontFamilies.pretendardSemiBold },
     cancel: { alignItems: 'center', paddingVertical: 8 },
     cancelText: { fontSize: 14, color: colors.textSecondary },
   } as const;
