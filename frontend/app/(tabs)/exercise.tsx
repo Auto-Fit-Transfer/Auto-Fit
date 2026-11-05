@@ -1,13 +1,16 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DownIcon from '@/assets/icons/common/chevrons/Down.svg';
+import UpIcon from '@/assets/icons/common/chevrons/Up.svg';
 import BarbellIcon from '@/assets/icons/ui/barbell.svg';
 import CalendarIcon from '@/assets/icons/ui/calendar-check.svg';
 import CameraIcon from '@/assets/icons/ui/camera.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import ChartIcon from '@/assets/icons/ui/chart-line-up.svg';
+import CheckIcon from '@/assets/icons/ui/check.svg';
 import ClockIcon from '@/assets/icons/ui/clock.svg';
 import FileIcon from '@/assets/icons/ui/file-text.svg';
 import FireIcon from '@/assets/icons/ui/fire.svg';
@@ -25,19 +28,19 @@ const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
 const value = (number: number | null | undefined, suffix = '') =>
   number == null ? '—' : `${number}${suffix}`;
 
-function MenuRow({ Icon, title, detail, onPress }: { Icon: typeof TargetIcon; title: string; detail: string; onPress: () => void }) {
+function MenuRow({ Icon, title, detail, onPress, selected = false }: { Icon: typeof TargetIcon; title: string; detail: string; onPress: () => void; selected?: boolean }) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const { preferences, isDark } = useDisplayPreferences();
   const simple = preferences.simple_mode_enabled;
   return (
-    <Pressable hitSlop={16} accessibilityRole="button" onPress={onPress} style={[styles.menuRow, simple && simpleStyles.menuRow]}>
+    <Pressable hitSlop={16} accessibilityRole="button" accessibilityState={{ selected }} onPress={onPress} style={[styles.menuRow, simple && simpleStyles.menuRow]}>
       <View style={[styles.menuIcon, isDark && dark.card]}><Icon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={22} width={22} /></View>
       <View style={styles.menuCopy}>
         <Text style={[styles.menuTitle, simple && simpleStyles.menuTitle, isDark && dark.text]}>{title}</Text>
         <Text style={[styles.menuDetail, simple && simpleStyles.menuDetail, isDark && dark.secondary]}>{detail}</Text>
       </View>
-      <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
+      {selected ? <CheckIcon color={colors.primaryText} height={20} width={20} /> : <CaretRightIcon color={colors.textSecondary} height={20} width={20} />}
     </Pressable>
   );
 }
@@ -61,8 +64,12 @@ export default function ExerciseScreen() {
   // The context keeps the last recommendation even when it was made on an earlier day.
   const routine = status === 'not-created' ? null : loadedRoutine;
   const week = useWeekWorkouts();
+  const [kindsOpen, setKindsOpen] = useState(false);
 
-  useFocusEffect(useCallback(() => { void refreshHome(); }, [refreshHome]));
+  useFocusEffect(useCallback(() => {
+    void refreshHome();
+    return () => setKindsOpen(false);
+  }, [refreshHome]));
 
   const start = new Date();
   start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
@@ -112,7 +119,14 @@ export default function ExerciseScreen() {
     <View style={[styles.root, isDark && dark.root]}>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <ScrollView contentContainerStyle={[styles.content, simple && simpleStyles.content, { paddingTop: insets.top + 16, paddingBottom: bottomPadding }]} showsVerticalScrollIndicator={false}>
-        <View style={styles.titleRow}><Text style={[styles.pageTitle, simple && simpleStyles.pageTitle, isDark && dark.text]}>운동</Text><SimpleReadButton text={`오늘의 운동입니다. ${status === 'completed' ? '오늘 운동을 마쳤어요.' : routine?.title ?? '오늘의 맞춤 운동을 준비해요.'} 이번 주 운동은 ${value(homeMetrics.currentWeekWorkoutCount)}회 완료했고 목표는 ${value(homeMetrics.targetWorkoutCount)}회입니다.`} /></View>
+        <View style={styles.titleRow}><Pressable accessibilityLabel="운동 종류 고르기" accessibilityRole="button" accessibilityState={{ expanded: kindsOpen }} onPress={() => setKindsOpen((open) => !open)} style={[styles.kindBox, simple && simpleStyles.kindBox]}><Text style={[styles.pageTitle, simple && simpleStyles.pageTitle, isDark && dark.text]}>운동</Text>{kindsOpen ? <UpIcon color={colors.textSecondary} height={20} width={20} /> : <DownIcon color={colors.textSecondary} height={20} width={20} />}</Pressable><SimpleReadButton text={`오늘의 운동입니다. ${status === 'completed' ? '오늘 운동을 마쳤어요.' : routine?.title ?? '오늘의 맞춤 운동을 준비해요.'} 이번 주 운동은 ${value(homeMetrics.currentWeekWorkoutCount)}회 완료했고 목표는 ${value(homeMetrics.targetWorkoutCount)}회입니다.`} /></View>
+        {kindsOpen ? (
+          <View style={[styles.list, isDark && dark.card]}>
+            <MenuRow Icon={BarbellIcon} selected title="오늘의 운동" detail="맞춤 운동 추천" onPress={() => setKindsOpen(false)} />
+            <View style={[styles.divider, isDark && dark.track]} />
+            <MenuRow Icon={HeartbeatIcon} title="러닝" detail="지역과 거리에 맞는 코스" onPress={() => router.push('/exercise/running')} />
+          </View>
+        ) : null}
         <View style={[styles.card, simple && simpleStyles.card, isDark && dark.card]}>
           <Text style={[styles.eyebrow, isDark && dark.secondary]}>{routine?.planSessions.length ? '운동 계획' : '오늘의 운동'}</Text>
           <Text style={[styles.heroTitle, simple && simpleStyles.heroTitle, isDark && dark.text]}>
@@ -190,8 +204,6 @@ export default function ExerciseScreen() {
           <View style={[styles.divider, isDark && dark.track]} />
           <MenuRow Icon={CalendarIcon} title="저장한 운동" detail="추천 운동을 모으고 내 루틴 만들기" onPress={() => router.push('/exercise/saved-routines')} />
           <View style={[styles.divider, isDark && dark.track]} />
-          <MenuRow Icon={HeartbeatIcon} title="러닝 코스 추천" detail="지역과 거리에 맞는 코스" onPress={() => router.push('/exercise/running')} />
-          <View style={[styles.divider, isDark && dark.track]} />
           <MenuRow Icon={FileIcon} title="부위별 운동 가이드" detail="불편한 부위의 가이드" onPress={() => router.push('/exercise/body-guide')} />
         </View>
       </ScrollView>
@@ -204,6 +216,7 @@ function createStyles({ colors }: AppTheme) {
     root: { flex: 1, backgroundColor: colors.background },
     titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
     content: { paddingHorizontal: 20, gap: 16 },
+    kindBox: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 8, minHeight: 48, paddingHorizontal: 14 },
     pageTitle: { color: colors.textPrimary, fontSize: 22, lineHeight: 30, fontFamily: fontFamilies.pretendardBold },
     card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 18, gap: 12 },
     list: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, overflow: 'hidden' },
@@ -249,6 +262,7 @@ function createStyles({ colors }: AppTheme) {
 
 const simpleStyles = StyleSheet.create({
   content: { gap: 20 },
+  kindBox: { minHeight: 60 },
   pageTitle: {},
   card: { gap: 16, padding: 20 },
   heroTitle: {},
