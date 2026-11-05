@@ -257,45 +257,13 @@ function requestDietMealFeedback(
     ...(input.actualItems !== undefined ? { actual_items: input.actualItems } : {}),
   };
 
-  if (__DEV__) {
-    console.log('[Diet feedback] request:', {
-      actual_items: requestBody.actual_items,
-      diet_meal_id: dietMealId,
-      eaten_at: requestBody.eaten_at,
-      feedback_type: requestBody.feedback_type,
-      method,
-      request_body: requestBody,
-    });
-  }
-
   return apiRequest<DietFeedbackResponse>(
     `/api/diet/meals/${encodeURIComponent(dietMealId)}/feedback`,
     {
       body: JSON.stringify(requestBody),
       method,
     },
-  ).catch((error: unknown) => {
-    if (__DEV__) {
-      if (error instanceof ApiError) {
-        console.error('[Diet feedback] failure:', {
-          detail: error.detail ?? null,
-          error: error.code ?? null,
-          http_status: error.status,
-          message: error.message,
-          response_body: error.responseBody ?? null,
-        });
-      } else {
-        console.error('[Diet feedback] failure:', {
-          detail: null,
-          error: null,
-          http_status: null,
-          message: error instanceof Error ? error.message : String(error),
-          response_body: null,
-        });
-      }
-    }
-    throw error;
-  });
+  );
 }
 
 export function submitDietMealFeedback(dietMealId: string, input: DietFeedbackInput) {

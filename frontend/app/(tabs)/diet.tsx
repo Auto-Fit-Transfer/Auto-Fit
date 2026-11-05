@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MealRecordSheets, type MealRecordDraft } from '@/src/components/diet/MealRecordSheets';
-import { plainFoodName } from '@/src/features/diet/foodName';
 import { R6DietHome } from '@/src/components/diet/R6DietHome';
 import {
   getDietApiErrorMessage,
@@ -16,40 +15,32 @@ import {
   uploadDietMealPhoto,
   type DietActualItem,
   type DietFeedbackInput,
-  type WeeklyDay,
   type WeeklyPlan,
 } from '@/src/api/diet';
-import { API_BASE_URL, ApiError } from '@/src/api/client';
+import { ApiError } from '@/src/api/client';
 import { awardTierActivity } from '@/src/api/tier';
 import { weeklyDietErrorCode } from '@/src/features/diet/weeklyDietErrors';
-import { weekStartOf, weeklyDayFor } from '@/src/features/diet/weeklyMeals';
+import {
+  isApiRecord,
+  macroLabel,
+  mapRecommendationMeals,
+  mapWeeklyMeals,
+  readArray,
+  readMealType,
+  readNumber,
+  readString,
+  type ApiRecord,
+  type Meal,
+  type MealStatus,
+  type MealType,
+} from '@/src/features/diet/dayMeals';
+import { mergeDayMeals, weekStartOf } from '@/src/features/diet/weeklyMeals';
 import { nutritionNumber, type NutritionSummary } from '@/src/features/nutritionSummary';
 
 const dateWindowMin = -6;
 const dateWindowMax = 6;
 
-type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
-type ApiRecord = Record<string, unknown>;
-type MealStatus = 'recommended' | 'eaten' | 'modified' | 'skipped';
 type MealStatuses = Record<MealType, MealStatus>;
-
-type Meal = {
-  dietMealId?: string;
-  imageUrl?: string;
-  recommendationStatus?: MealStatus;
-  sourceType?: string;
-  variantId: string;
-  weekly?: { planId: string; day: WeeklyDay };
-  id: MealType;
-  title: string;
-  kcal: number | null;
-  foods: string;
-  tags: string[];
-  note: string;
-  usedIngredients: string[];
-  intake: [string, string][];
-  macros: string;
-};
 
 type NutritionGoal = {
   targetKey: NutritionTargetKey;
@@ -67,10 +58,6 @@ const defaultMealStatuses: MealStatuses = {
   lunch: 'recommended',
   dinner: 'recommended',
   snack: 'recommended',
-};
-
-const mealPresentation: Record<MealType, string> = {
-  breakfast: '아침', lunch: '점심', dinner: '저녁', snack: '간식',
 };
 
 // Values remain empty until the selected date's backend summary is loaded.
@@ -118,175 +105,10 @@ function toDateKey(date: Date) {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
-function isApiRecord(value: unknown): value is ApiRecord {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function readArray(value: unknown) {
-  return Array.isArray(value) ? value : [];
-}
-
-function readString(record: ApiRecord, keys: string[]) {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return undefined;
-}
-
-function readNumber(record: ApiRecord, keys: string[]) {
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value === 'number' && Number.isFinite(value)) return value;
-    if (typeof value === 'string' && value.trim()) {
-      const parsed = Number(value);
-      if (Number.isFinite(parsed)) return parsed;
-    }
-  }
-  return undefined;
-}
-
-function readMealType(value: unknown): MealType | undefined {
-  if (typeof value !== 'string') return undefined;
-  switch (value.trim().toLowerCase()) {
-    case 'breakfast':
-    case 'morning':
-    case '아침':
-      return 'breakfast';
-    case 'lunch':
-    case 'noon':
-    case '점심':
-      return 'lunch';
-    case 'dinner':
-    case 'evening':
-    case '저녁':
-      return 'dinner';
-    case 'snack':
-    case '간식':
-      return 'snack';
-    default:
-      return undefined;
-  }
-}
-
-function foodName(food: unknown) {
-  if (typeof food === 'string') return food.trim();
-  if (!isApiRecord(food)) return '';
-  return readString(food, ['food_name', 'name', 'title', 'display_name']) ?? '';
-}
-
-function foodAmount(food: unknown) {
-  if (!isApiRecord(food)) return '';
-  const quantity = readNumber(food, ['quantity', 'amount', 'serving_size', 'serving']);
-  const unit = readString(food, ['unit', 'quantity_unit', 'serving_unit']);
-  if (quantity === undefined && !unit) return '';
-  const displayQuantity =
-    unit === 'g' && quantity !== undefined && quantity >= 10
-      ? Math.round(quantity / 10) * 10
-      : quantity;
-  return `${displayQuantity ?? ''}${unit ?? ''}`.trim();
-}
-
-function macroLabel(items: { carbs?: number; protein?: number; fat?: number }[]) {
-  const total = (key: 'carbs' | 'protein' | 'fat', label: string) =>
-    items.some((item) => item[key] !== undefined)
-      ? `${label} ${Math.round(items.reduce((sum, item) => sum + (item[key] ?? 0), 0))}g`
-      : null;
-  return [total('carbs', '탄'), total('protein', '단'), total('fat', '지')].filter(Boolean).join(' ');
-}
-
 function localClock(value: string | undefined) {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) return undefined;
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-}
-
-function mapRecommendationMeals(result: unknown): Meal[] {
-  if (!isApiRecord(result)) return [];
-
-  const nestedRecommendation = isApiRecord(result.recommendation)
-    ? result.recommendation
-    : undefined;
-  const apiMeals = readArray(result.meals ?? nestedRecommendation?.meals);
-  const mappedByType = new Map<MealType, Meal>();
-
-  apiMeals.forEach((apiMeal, index) => {
-    if (!isApiRecord(apiMeal)) return;
-
-    const mealId = readMealType(
-      readString(apiMeal, ['meal_type', 'meal_category', 'type', 'time_of_day']),
-    );
-    const dietMealId = readString(apiMeal, ['diet_meal_id', 'id']);
-    const foods = readArray(apiMeal.foods ?? apiMeal.items);
-    if (!mealId || !dietMealId || mappedByType.has(mealId)) return;
-
-    const foodNames = foods.map(foodName).filter(Boolean);
-    const foodCalories = foods.reduce((sum, food) => {
-      if (!isApiRecord(food)) return sum;
-      return sum + (readNumber(food, ['calories', 'kcal', 'energy_kcal']) ?? 0);
-    }, 0);
-    const kcal =
-      readNumber(apiMeal, [
-        'recommended_calories',
-        'calories',
-        'kcal',
-        'total_calories',
-        'energy_kcal',
-      ]) ?? (foods.some((food) => isApiRecord(food) && readNumber(food, ['calories', 'kcal', 'energy_kcal']) !== undefined) ? foodCalories : null);
-
-    mappedByType.set(mealId, {
-      dietMealId,
-      foods: plainFoodName(foodNames.join(' · ')) || '등록된 음식이 없어요',
-      macros: macroLabel(foods.filter(isApiRecord).map((food) => ({
-        carbs: readNumber(food, ['carbohydrates', 'carbs']),
-        fat: readNumber(food, ['fat']),
-        protein: readNumber(food, ['protein']),
-      }))),
-      id: mealId,
-      imageUrl: readString(apiMeal, ['image_url']),
-      intake: foods
-        .map((food) => [foodName(food), foodAmount(food)] as [string, string])
-        .filter(([name]) => Boolean(name)),
-      kcal: kcal == null ? null : Math.round(kcal),
-      note: readString(apiMeal, ['recommendation_note', 'note', 'description', 'comment']) ?? '',
-      recommendationStatus: recommendationStatusToMealStatus(readString(apiMeal, ['status'])),
-      sourceType: readString(apiMeal, ['source_type']),
-      tags: readArray(apiMeal.tags).filter((tag): tag is string => typeof tag === 'string'),
-      title: mealPresentation[mealId],
-      usedIngredients: readArray(apiMeal.used_ingredients ?? apiMeal.ingredients)
-        .map(foodName)
-        .filter(Boolean),
-      variantId: dietMealId || `api-meal-${index}`,
-    });
-  });
-
-  const mappedMeals = (['breakfast', 'lunch', 'dinner', 'snack'] as MealType[])
-    .map((mealId) => mappedByType.get(mealId))
-    .filter((meal): meal is Meal => Boolean(meal));
-
-  return mappedMeals;
-}
-
-function mapWeeklyMeals(plan: WeeklyPlan | null, dateKey: string): Meal[] {
-  const entry = weeklyDayFor(plan, dateKey);
-  if (!plan || !entry) return [];
-  return (['breakfast', 'lunch', 'dinner', 'snack'] as MealType[]).flatMap((id) => {
-    const meal = entry.meals[id];
-    if (!meal) return [];
-    return [{
-      foods: plainFoodName(meal.menu_name),
-      id,
-      intake: [],
-      kcal: Math.round(meal.estimated_calories_kcal),
-      macros: '',
-      note: meal.guidance || meal.menu_description || '',
-      tags: [],
-      title: mealPresentation[id],
-      usedIngredients: [],
-      variantId: `weekly-${entry.date}-${id}`,
-      weekly: { planId: plan.weekly_diet_plan_id, day: entry.day },
-    }];
-  });
 }
 
 function mapRecommendationNutritionTargets(result: unknown): RecommendationNutritionTargets {
@@ -306,20 +128,6 @@ function feedbackTypeToStatus(value: unknown): MealStatus | undefined {
   if (value === 'different_food') return 'modified';
   if (value === 'skipped') return 'skipped';
   return undefined;
-}
-
-function recommendationStatusToMealStatus(value: unknown): MealStatus {
-  switch (typeof value === 'string' ? value.trim().toLowerCase() : '') {
-    case 'completed':
-      return 'eaten';
-    case 'changed':
-      return 'modified';
-    case 'skipped':
-      return 'skipped';
-    case 'recommended':
-    default:
-      return 'recommended';
-  }
 }
 
 function mapLogDraft(log: ApiRecord, mealId: MealType): MealRecordDraft | undefined {
@@ -442,11 +250,10 @@ export default function DietScreen() {
   const feedbackEnabled = selectedDateKey === todayDateKey;
   const showRecordControls = selectedDateKey <= todayDateKey;
   const selectedWeek = weekStartOf(selectedDateKey);
-  // Recording needs a daily meal id, so the saved week only fills days without a daily recommendation.
   const shownMeals = useMemo(
-    () => (recommendedMeals.length > 0 || recommendationLoading || recommendationError
+    () => (recommendationLoading || recommendationError
       ? recommendedMeals
-      : mapWeeklyMeals(weeklyPlan, selectedDateKey)),
+      : mergeDayMeals(recommendedMeals, mapWeeklyMeals(weeklyPlan, selectedDateKey))),
     [recommendationError, recommendationLoading, recommendedMeals, selectedDateKey, weeklyPlan],
   );
 
@@ -532,43 +339,8 @@ export default function DietScreen() {
 
       try {
         const response = await getDietRecommendationsByDate(dateKey);
-        if (__DEV__) {
-          const result = isApiRecord(response.result) ? response.result : undefined;
-          const recommendation = isApiRecord(result?.recommendation)
-            ? result.recommendation
-            : undefined;
-          const apiMeals = readArray(result?.meals ?? recommendation?.meals);
-          console.log(
-            '[Diet Recommendations GET] response',
-            apiMeals.map((meal) => {
-              const record = isApiRecord(meal) ? meal : undefined;
-              return {
-                diet_meal_id: record?.diet_meal_id,
-                foods: record?.foods,
-                meal_type: record?.meal_type,
-                recommendation_note: record?.recommendation_note,
-                source_type: record?.source_type,
-              };
-            }),
-            { dateKey },
-          );
-        }
         const mappedMeals = mapRecommendationMeals(response.result);
         const mappedNutritionTargets = mapRecommendationNutritionTargets(response.result);
-
-        if (__DEV__) {
-          console.log(
-            '[Diet Recommendations GET] mapped meals',
-            mappedMeals.map((meal) => ({
-              dietMealId: meal.dietMealId,
-              foods: meal.foods,
-              id: meal.id,
-              note: meal.note,
-              sourceType: meal.sourceType,
-            })),
-            { dateKey },
-          );
-        }
 
         if (!isMountedRef.current || requestId !== recommendationRequestRef.current) return false;
 
@@ -675,17 +447,6 @@ export default function DietScreen() {
       feedbackRequestMealIdsRef.current.add(mealId);
       setFeedbackMealIds((current) => new Set(current).add(mealId));
       try {
-        if (__DEV__) {
-          console.log('[Diet feedback] routing:', {
-            current_status: selectedStatuses[mealId],
-            diet_meal_id: dietMealId,
-            feedback_type: status,
-            has_existing_feedback: hasExistingFeedback,
-            reason: hasExistingFeedback
-              ? 'current_status_is_not_recommended'
-              : 'current_status_is_recommended',
-          });
-        }
         await saveDietMealFeedback(
           dietMealId,
           {
@@ -749,20 +510,6 @@ export default function DietScreen() {
       const currentMeal = recommendedMeals.find((meal) => meal.id === mealId);
       const dietMealId = currentMeal?.dietMealId;
       if (!dietMealId || regenerateRequestMealIdsRef.current.has(mealId)) return;
-      const requestStartedAtDate = new Date();
-      const requestId = `diet-regenerate-${mealId}-${requestStartedAtDate.getTime()}`;
-      const finalRequestUrl = `${API_BASE_URL}/api/diet/meals/${encodeURIComponent(dietMealId)}/regenerate`;
-
-      if (__DEV__) {
-        console.log('[Diet Regenerate] START', {
-          dateKey: selectedDateKey,
-          dietMealId,
-          foods: currentMeal.foods,
-          mealId,
-          requestId,
-          sourceType: currentMeal.sourceType,
-        });
-      }
 
       regenerateRequestMealIdsRef.current.add(mealId);
       setRegeneratingMealIds((current) => new Set(current).add(mealId));
@@ -770,19 +517,6 @@ export default function DietScreen() {
         const response = await regenerateDietMeal(dietMealId);
 
         const rawRegeneratedMeal = response.meal;
-
-        if (__DEV__) {
-          const rawMeal = isApiRecord(rawRegeneratedMeal) ? rawRegeneratedMeal : undefined;
-          console.log('[Diet Regenerate] response', {
-            diet_meal_id: rawMeal?.diet_meal_id,
-            foods: rawMeal?.foods,
-            meal_type: rawMeal?.meal_type,
-            recommended_calories: rawMeal?.recommended_calories,
-            recommendation_note: rawMeal?.recommendation_note,
-            requestId,
-            source_type: rawMeal?.source_type,
-          });
-        }
 
         if (!isMountedRef.current) return;
 
@@ -794,29 +528,7 @@ export default function DietScreen() {
           (meal) => meal.id === mealId,
         );
         if (regeneratedMeal) {
-          setRecommendedMeals((current) => {
-            const previousMeal = current.find((meal) => meal.id === mealId);
-            const next = current.map((meal) => (meal.id === mealId ? regeneratedMeal : meal));
-            if (__DEV__) {
-              console.log('[Diet Regenerate] state update', {
-                after: {
-                  dietMealId: regeneratedMeal.dietMealId,
-                  foods: regeneratedMeal.foods,
-                  sourceType: regeneratedMeal.sourceType,
-                },
-                before: previousMeal
-                  ? {
-                      dietMealId: previousMeal.dietMealId,
-                      foods: previousMeal.foods,
-                      sourceType: previousMeal.sourceType,
-                    }
-                  : null,
-                mealId,
-                requestId,
-              });
-            }
-            return next;
-          });
+          setRecommendedMeals((current) => current.map((meal) => (meal.id === mealId ? regeneratedMeal : meal)));
           return;
         }
 
@@ -824,16 +536,6 @@ export default function DietScreen() {
         // established recommendation mapper rather than constructing a meal client-side.
         await loadRecommendations(selectedDateKey);
       } catch (error) {
-        if (__DEV__) {
-          const apiError = error instanceof ApiError ? error : undefined;
-          console.error('[Diet Regenerate] FAILED', {
-            detail: apiError?.detail ?? null,
-            finalRequestUrl,
-            httpStatus: apiError?.status ?? null,
-            message: apiError?.message ?? (error instanceof Error ? error.message : String(error)),
-            requestedAtIso: requestStartedAtDate.toISOString(),
-          });
-        }
         if (isMountedRef.current) {
           Alert.alert('식단을 다시 추천하지 못했어요', getDietApiErrorMessage(error));
         }
@@ -899,17 +601,6 @@ export default function DietScreen() {
       feedbackRequestMealIdsRef.current.add(mealId);
       setFeedbackMealIds((current) => new Set(current).add(mealId));
       try {
-        if (__DEV__) {
-          console.log('[Diet feedback] routing:', {
-            current_status: selectedStatuses[mealId],
-            diet_meal_id: dietMealId,
-            feedback_type: 'different_food',
-            has_existing_feedback: hasExistingFeedback,
-            reason: hasExistingFeedback
-              ? 'current_status_is_not_recommended'
-              : 'current_status_is_recommended',
-          });
-        }
         const feedbackResponse = await saveDietMealFeedback(
           dietMealId,
           {
@@ -1032,7 +723,7 @@ export default function DietScreen() {
             title: meal.title,
             kcal: status === 'modified' && recordedFoods ? recordedKcal : meal.kcal,
             foods: recordedFoods?.map((food) => food.name).join(' · ') || meal.foods,
-            note: meal.note,
+            note: meal.note || meal.description || '',
             detail: status === 'eaten' || status === 'modified'
               ? [[log?.time, photoUrl ? '사진으로 기록' : '기록'].filter(Boolean).join(' '), macros].filter(Boolean).join(' · ')
               : null,
