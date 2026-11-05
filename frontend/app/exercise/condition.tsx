@@ -60,6 +60,7 @@ export default function ExerciseConditionScreen() {
   const [condition, setCondition] = useState<ExerciseCondition>(initial);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState('');
   const goBack = useCallback(
     () => (isChanging ? router.back() : router.replace('/exercise')),
     [isChanging, router],
@@ -78,8 +79,16 @@ export default function ExerciseConditionScreen() {
     setLeaveDialogOpen(false);
     router.replace('/home');
   };
+  const updateCondition = (update: (current: ExerciseCondition) => ExerciseCondition) => {
+    setGenerateError('');
+    setCondition(update);
+  };
+  const showError = (title: string, message: string) => {
+    if (Platform.OS === 'web') setGenerateError(`${title} ${message}`);
+    else Alert.alert(title, message);
+  };
   const toggleEquipment = (id: ExerciseEquipment) =>
-    setCondition((current) => ({
+    updateCondition((current) => ({
       ...current,
       equipment: current.equipment.includes(id)
         ? current.equipment.filter((item) => item !== id)
@@ -88,16 +97,17 @@ export default function ExerciseConditionScreen() {
 
   const handleGenerate = async () => {
     if (isGenerating) return;
+    setGenerateError('');
     if (
       condition.availableMinutes === null ||
       condition.location === null ||
       !condition.condition.trim()
     ) {
-      Alert.alert('운동 설정을 확인해 주세요', '운동 시간, 장소, 오늘 컨디션을 선택해 주세요.');
+      showError('운동 설정을 확인해 주세요.', '운동 시간, 장소, 오늘 컨디션을 선택해 주세요.');
       return;
     }
     if (condition.discomfortArea.trim().length > 50) {
-      Alert.alert('불편한 부위를 확인해 주세요', '50자 이하로 입력해 주세요.');
+      showError('불편한 부위를 확인해 주세요.', '50자 이하로 입력해 주세요.');
       return;
     }
     setIsGenerating(true);
@@ -111,7 +121,7 @@ export default function ExerciseConditionScreen() {
       if (isChanging) router.dismissTo('/exercise/summary');
       else router.push('/exercise/summary');
     } catch (error) {
-      Alert.alert('맞춤 운동을 만들지 못했어요', getExerciseApiErrorMessage(error));
+      showError('맞춤 운동을 만들지 못했어요.', getExerciseApiErrorMessage(error));
     } finally {
       setIsGenerating(false);
     }
@@ -148,7 +158,7 @@ export default function ExerciseConditionScreen() {
               key={minutes}
               label={minutes === 120 ? '120분 이상' : String(minutes) + '분'}
               selected={condition.availableMinutes === minutes}
-              onPress={() => setCondition((current) => ({ ...current, availableMinutes: minutes }))}
+              onPress={() => updateCondition((current) => ({ ...current, availableMinutes: minutes }))}
             />
           ))}
         </ChoiceSection>
@@ -158,7 +168,7 @@ export default function ExerciseConditionScreen() {
               key={location}
               label={exerciseLocationLabels[location]}
               selected={condition.location === location}
-              onPress={() => setCondition((current) => ({ ...current, location }))}
+              onPress={() => updateCondition((current) => ({ ...current, location }))}
             />
           ))}
         </ChoiceSection>
@@ -179,7 +189,7 @@ export default function ExerciseConditionScreen() {
               key={value}
               label={value}
               selected={condition.condition === value}
-              onPress={() => setCondition((current) => ({ ...current, condition: value }))}
+              onPress={() => updateCondition((current) => ({ ...current, condition: value }))}
             />
           ))}
         </ChoiceSection>
@@ -189,7 +199,7 @@ export default function ExerciseConditionScreen() {
             accessibilityLabel="불편한 부위"
             maxLength={50}
             onChangeText={(value) =>
-              setCondition((current) => ({ ...current, discomfortArea: value }))
+              updateCondition((current) => ({ ...current, discomfortArea: value }))
             }
             placeholder="예) 오른쪽 무릎, 허리"
             placeholderTextColor={colors.textDisabled}
@@ -207,6 +217,7 @@ export default function ExerciseConditionScreen() {
         </View>
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 18) }]}>
+        {generateError ? <Text accessibilityLiveRegion="assertive" style={styles.error}>{generateError}</Text> : null}
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ busy: isGenerating, disabled: isGenerating }}
@@ -308,6 +319,7 @@ function createStyles({ colors }: AppTheme) {
     noticeTitle: { color: colors.warning, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
     noticeText: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
     footer: { backgroundColor: colors.background, paddingHorizontal: 20, paddingTop: 8 },
+    error: { color: colors.danger, fontSize: 14, lineHeight: 20, marginBottom: 8 },
     button: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center' },
     buttonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
     pressed: { opacity: 0.75 },

@@ -9,6 +9,7 @@ import { getExerciseHistory, saveRecommendedWorkout } from '@/src/api/exercise';
 import { getRunningApiErrorMessage, getRunningHistory, type RunningSession } from '@/src/api/running';
 import { getApiErrorMessage } from '@/src/api/client';
 import { sessionCalories, sessionLocalDate, sessionMinutes } from '@/src/features/exercise/weeklyMetrics';
+import { canSaveRecommendedHistorySession } from '@/src/features/exercise/historyActions';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
@@ -80,7 +81,7 @@ export default function ExerciseHistory() {
     + runningRows.reduce((total, run) => total + number(run.elapsed_seconds) / 60, 0);
   const save = async (session: HistoryRow['session']) => {
     const id = session.exercise_recommendation_id;
-    if (typeof id !== 'string' || !id) return;
+    if (!canSaveRecommendedHistorySession(session) || typeof id !== 'string') return;
     setSavingId(id);
     setSaveError('');
     try {
@@ -131,12 +132,15 @@ export default function ExerciseHistory() {
         ) : filtered.length === 0 ? <View style={styles.card}><Text style={styles.body}>이 기간에 기록한 운동이 없어요.</Text></View> : filtered.map(({ session, logs }, index) => {
           const id = typeof session.exercise_recommendation_id === 'string' ? session.exercise_recommendation_id : null;
           const complete = session.status === 'completed';
+          const canSave = canSaveRecommendedHistorySession(session);
           const calories = sessionCalories(session.total_calories_burned, session.completed_item_count);
           return <View key={String(session.exercise_session_id ?? index)} style={styles.card}>
             <View style={styles.sectionRow}><Text style={styles.cardTitle}>{koreanDate(sessionLocalDate(session.started_at))} 운동</Text><Text style={styles.badge}>{complete ? '완료' : '중단'}</Text></View>
             <Text style={styles.body}>{[sessionMinutes(session.total_duration_seconds) ? `${sessionMinutes(session.total_duration_seconds)}분` : null, `${number(session.completed_item_count)}개 완료`, calories ? `${Math.round(calories)}kcal` : null].filter(Boolean).join(' · ')}</Text>
             {logs.length > 0 ? <Text style={styles.caption} numberOfLines={2}>{logs.map((log) => typeof log === 'object' && log && 'exercise_name' in log ? String(log.exercise_name) : '').filter(Boolean).join(' · ')}</Text> : null}
-            {complete && id ? <Pressable accessibilityRole="button" disabled={savingId === id || savedIds.includes(id)} onPress={() => void save(session)} style={styles.outlineButton}><Text style={styles.outlineText}>{savedIds.includes(id) ? '저장 완료' : savingId === id ? '저장 중…' : '내 루틴으로 저장'}</Text></Pressable> : null}
+            {session.recommendation_generator === 'legacy' ? <Text style={styles.caption}>이전 추천 기록 · 참고용이에요. 새 루틴으로 저장할 수 없어요.</Text> : null}
+            {complete && id && !canSave && session.recommendation_generator !== 'legacy' ? <Text style={styles.caption}>추천 정보를 확인할 수 없어 지금은 저장할 수 없어요.</Text> : null}
+            {canSave && id ? <Pressable accessibilityRole="button" disabled={savingId === id || savedIds.includes(id)} onPress={() => void save(session)} style={styles.outlineButton}><Text style={styles.outlineText}>{savedIds.includes(id) ? '저장 완료' : savingId === id ? '저장 중…' : '내 루틴으로 저장'}</Text></Pressable> : null}
           </View>;
         })}
         {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
