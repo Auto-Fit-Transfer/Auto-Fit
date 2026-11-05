@@ -15,7 +15,7 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import Svg, { Defs, Line, LinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ArrowRightIcon from '@/assets/icons/common/ArrowRight_Short.svg';
@@ -32,8 +32,9 @@ import CheckFatIcon from '@/assets/icons/system/Check_Fat.svg';
 import LightbulbIcon from '@/assets/icons/system/Lightbulb.svg';
 import PencilIcon from '@/assets/icons/feature/Pencil_Line.svg';
 import SearchIcon from '@/assets/icons/input/MagnifyingGlass.svg';
-import { AppBottomSheet, CustomScrollIndicator, useCustomScrollIndicator, Text as SharedText } from '@/src/components/common';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { AppBottomSheet, CustomScrollIndicator, noWebFocusRing, useCustomScrollIndicator, Text as SharedText } from '@/src/components/common';
+import { amountFromInput, scaleFromSource, type AmountScale } from '@/src/features/diet/foodAmount';
+import { fontFamilies, scaleForEasyMode, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 function Text(props: TextProps) {
   return <SharedText allowFontScaling={false} maxFontSizeMultiplier={1} {...props} />;
@@ -249,56 +250,10 @@ const createEmptyFoodDraft = (): RecordedFood => ({
 
 const onlyNumeric = (value: string) => value.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
 
-const scaleFoodToAmount = (food: RecordedFood, amount: number): RecordedFood => {
-  const safeAmount = Math.max(0, Math.round(amount));
-  const previousAmount = Math.max(1, food.amount || food.baseAmount || 1);
-  const ratio = safeAmount / previousAmount;
-  const scale = (value?: number) =>
-    value === undefined ? undefined : Math.max(0, Math.round(value * ratio * 10) / 10);
-
-  return {
-    ...food,
-    amount: safeAmount,
-    serving: Math.round((safeAmount / Math.max(1, food.baseAmount ?? 300)) * 10) / 10,
-    kcal: scale(food.kcal),
-    carbs: scale(food.carbs),
-    protein: scale(food.protein),
-    fat: scale(food.fat),
-  };
-};
-
 export const formatRecordedFoodAmount = (food: RecordedFood) => {
   if (food.amount <= 0) return '';
   return food.unit === '인분' ? `${food.serving}인분` : `${food.amount}${food.unit}`;
 };
-
-function AmountStepIcon({ operation }: { operation: 'decrease' | 'increase' }) {
-  const { colors } = useAppTheme();
-  return (
-    <Svg height={16} viewBox="0 0 16 16" width={16}>
-      <Line
-        stroke={colors.primary}
-        strokeLinecap="round"
-        strokeWidth={1.8}
-        x1={3}
-        x2={13}
-        y1={8}
-        y2={8}
-      />
-      {operation === 'increase' ? (
-        <Line
-          stroke={colors.primary}
-          strokeLinecap="round"
-          strokeWidth={1.8}
-          x1={8}
-          x2={8}
-          y1={3}
-          y2={13}
-        />
-      ) : null}
-    </Svg>
-  );
-}
 
 function PrimaryButton({
   children,
@@ -726,15 +681,27 @@ function FoodDetailsEditor({
   onNutritionInputFocus?: () => void;
   onRegisterApplyNutrition?: (apply: (() => RecordedFood | null) | null) => void;
 }) {
+  const { colors, easyMode } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const [selectedPreset, setSelectedPreset] = useState<number | null>(food.serving === 1 ? 1 : null);
   const [nutritionEditing, setNutritionEditing] = useState(false);
+  // null shows the food's amount, so leaving the field empty brings back the last valid amount.
+  const [amountDraft, setAmountDraft] = useState<string | null>(null);
+  const [amountFocused, setAmountFocused] = useState(false);
+  const amountInput = useRef<TextInput>(null);
+  const amountScale = useRef<AmountScale | null>(null);
   const baseAmount = food.baseAmount ?? 300;
 
   const setAmount = (amount: number, preset: number | null = null) => {
     if (nutritionEditing) return;
     setSelectedPreset(preset);
-    onChange(scaleFoodToAmount(food, amount));
+    amountScale.current = scaleFromSource(amountScale.current, food, amount);
+    onChange(amountScale.current.emitted);
+  };
+  const typeAmount = (text: string) => {
+    const { digits, amount } = amountFromInput(text);
+    setAmountDraft(digits);
+    if (amount !== null) setAmount(amount);
   };
   const handleNutritionEditingChange = useCallback((editing: boolean) => {
     setNutritionEditing(editing);
@@ -749,7 +716,7 @@ function FoodDetailsEditor({
           {editPresetRatios.map((ratio) => (
             <Pressable
               key={ratio}
-              onPress={() => setAmount(Math.round(baseAmount * ratio), ratio)}
+              onPress={() => { amountInput.current?.blur(); setAmount(Math.round(baseAmount * ratio), ratio); }}
               style={[styles.presetButton, selectedPreset === ratio && styles.presetButtonSelected]}
             >
               <Text style={[styles.presetTitle, selectedPreset === ratio && styles.presetTitleSelected]}>
@@ -761,15 +728,30 @@ function FoodDetailsEditor({
             </Pressable>
           ))}
         </View>
-        <View style={styles.amountStepper}>
-          <Pressable accessibilityLabel="섭취량 10g 줄이기" onPress={() => setAmount(Math.max(0, food.amount - 10))} style={styles.stepButton}>
-            <AmountStepIcon operation="decrease" />
-          </Pressable>
-          <Text style={styles.amountValue}>{food.amount > 0 ? `${food.amount}${food.unit}` : '-'}</Text>
-          <Pressable accessibilityLabel="섭취량 10g 늘리기" onPress={() => setAmount(Math.min(999, food.amount + 10))} style={styles.stepButton}>
-            <AmountStepIcon operation="increase" />
-          </Pressable>
-        </View>
+        <Pressable onPress={() => amountInput.current?.focus()} style={styles.amountField}>
+          <TextInput
+            accessibilityLabel={`섭취량, ${food.unit} 단위`}
+            allowFontScaling={false}
+            editable={!nutritionEditing}
+            keyboardType="number-pad"
+            onBlur={() => { setAmountFocused(false); setAmountDraft(null); }}
+            onChangeText={typeAmount}
+            onFocus={() => setAmountFocused(true)}
+            placeholder="0"
+            placeholderTextColor={colors.textSecondary}
+            ref={amountInput}
+            selectTextOnFocus
+            style={easyMode ? scaleForEasyMode(styles.amountInput) : styles.amountInput}
+            value={amountDraft ?? (food.amount > 0 ? String(food.amount) : '')}
+          />
+          <Text style={styles.amountUnit}>{food.unit}</Text>
+          {/* The iPhone number pad has no return key, so this is how the keyboard goes away. */}
+          {amountFocused ? (
+            <Pressable accessibilityLabel="섭취량 입력 완료" accessibilityRole="button" hitSlop={8} onPress={() => amountInput.current?.blur()} style={styles.amountDone}>
+              <Text style={styles.amountDoneText}>완료</Text>
+            </Pressable>
+          ) : null}
+        </Pressable>
       </View>
       <NutritionEditor
         food={food}
@@ -1289,7 +1271,7 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
             <View style={styles.selectedFoodCopy}>
               <Text style={styles.selectedFoodName}>{addFoodDraft.name}</Text>
               {!addFoodDraft.isCustom ? (
-                <Text style={styles.selectedFoodMeta}>1인분 ({addFoodDraft.baseAmount ?? addFoodDraft.amount}{addFoodDraft.unit}) · 약 {addFoodDraft.kcal ?? '-'} kcal</Text>
+                <Text style={styles.selectedFoodMeta}>1인분 ({addFoodDraft.baseAmount ?? addFoodDraft.amount}{addFoodDraft.unit}) · 약 {addFoodDraft.kcal === undefined || !addFoodDraft.amount ? '-' : Math.round(addFoodDraft.kcal * (addFoodDraft.baseAmount ?? addFoodDraft.amount) / addFoodDraft.amount)} kcal</Text>
               ) : null}
             </View>
             <SearchIcon color={colors.textPrimary} height={20} width={20} />
@@ -1397,26 +1379,26 @@ function createStyles({ colors }: AppTheme) {
     r6Fallback: { flex: 1, paddingTop: 18 },
     r6FallbackIcon: { height: 38, width: 38, borderRadius: 9, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
     r6FallbackTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, marginBottom: 6 },
-    r6FallbackDescription: { color: '#777981', fontSize: 14, lineHeight: 19, marginBottom: 18 },
+    r6FallbackDescription: { color: colors.textSecondary, fontSize: 14, lineHeight: 19, marginBottom: 18 },
     r6FallbackLabel: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14, marginTop: 20, marginBottom: 10 },
     r6FallbackChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
     r6FallbackChip: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 11, paddingVertical: 7, backgroundColor: colors.surface },
     r6FallbackChipText: { color: colors.textSecondary, fontSize: 12 },
     r6FallbackSpacer: { flex: 1, minHeight: 120 },
     r6RetryButton: { backgroundColor: colors.surfaceMuted, minHeight: 51, borderRadius: 9, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-    r6RetryText: { color: '#26272E', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
+    r6RetryText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14 },
     r6ReviewPhoto: { minHeight: 135, borderRadius: 11, backgroundColor: colors.surfaceMuted, overflow: 'hidden', marginBottom: 16 },
     r6ReviewPhotoImage: { width: '100%', height: 135 },
     r6ReviewPhotoPlaceholder: { height: 135, alignItems: 'center', justifyContent: 'center', gap: 7 },
-    r6ReviewPhotoText: { color: '#92949B', fontSize: 12 },
-    r6EditLabel: { color: '#2E2F35', fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14, marginTop: 13, marginBottom: 8 },
+    r6ReviewPhotoText: { color: colors.textSecondary, fontSize: 12 },
+    r6EditLabel: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 14, marginTop: 13, marginBottom: 8 },
     r6EditSuggestions: { backgroundColor: colors.surface, height: 185, borderWidth: 1, borderColor: colors.border, borderRadius: 10, overflow: 'hidden' },
     overlay: { backgroundColor: 'rgba(0, 0, 0, 0.45)' },
     sheet: { borderTopLeftRadius: 0, borderTopRightRadius: 0, boxSizing: 'border-box', overflow: 'hidden', paddingTop: 0 },
     bottomSheetContent: { flex: 1, minHeight: 0, paddingHorizontal: 21, paddingTop: 0 },
     chrome: { alignItems: 'center', height: 46, justifyContent: 'flex-start', position: 'relative' },
     subSheetChrome: { alignItems: 'center', height: 55, justifyContent: 'flex-start', position: 'relative' },
-    dragHandle: { backgroundColor: '#D9D9D9', borderRadius: 2, height: 4, marginTop: 6, width: 40 },
+    dragHandle: { backgroundColor: colors.border, borderRadius: 2, height: 4, marginTop: 6, width: 40 },
     stepRow: { alignItems: 'center', flexDirection: 'row', marginTop: 16 },
     stepSegment: { alignItems: 'center', flexDirection: 'row' },
     stepLine: { backgroundColor: colors.border, height: 1, width: 38 },
@@ -1425,7 +1407,7 @@ function createStyles({ colors }: AppTheme) {
     stepCircleActive: { backgroundColor: colors.primary, borderColor: colors.primary },
     stepCircleComplete: { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
     stepText: { color: colors.textDisabled, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 12 },
-    stepTextActive: { color: colors.surface },
+    stepTextActive: { color: colors.onPrimary },
     stepTextComplete: { color: colors.textPrimary },
     backButton: { alignItems: 'center', height: foodShotHeaderControlSize, justifyContent: 'center', left: 0, position: 'absolute', top: 20, width: foodShotHeaderControlSize },
     closeButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.primary, borderRadius: foodShotHeaderControlSize / 2, borderWidth: 1, elevation: 2, height: foodShotHeaderControlSize, justifyContent: 'center', position: 'absolute', right: 0, shadowColor: colors.primaryPressed, shadowOffset: { height: 2, width: 2 }, shadowOpacity: 0.2, shadowRadius: 2.5, top: 20, width: foodShotHeaderControlSize },
@@ -1455,8 +1437,8 @@ function createStyles({ colors }: AppTheme) {
     outlineActionText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
     primaryButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 10, height: 48, justifyContent: 'center', width: '100%' },
     gradientButton: { backgroundColor: 'transparent', elevation: 3, overflow: 'hidden', shadowColor: colors.primary, shadowOffset: { height: 4, width: 0 }, shadowOpacity: 0.25, shadowRadius: 6 },
-    primaryButtonDisabled: { backgroundColor: '#C8DED9' },
-    primaryButtonText: { color: colors.surface, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
+    primaryButtonDisabled: { backgroundColor: colors.surfaceMuted },
+    primaryButtonText: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
     analyzeButtonContent: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', position: 'relative', width: '100%' },
     ctaArrowCircle: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, height: 24, justifyContent: 'center', position: 'absolute', right: 9, width: 24 },
     pressed: { opacity: 0.72 },
@@ -1516,7 +1498,7 @@ function createStyles({ colors }: AppTheme) {
     addContent: { flex: 1, paddingTop: 6 },
     addFoodSelection: { width: '100%' },
     addFoodDetails: { gap: 32, marginTop: 36 },
-    selectedFoodCard: { alignItems: 'center', backgroundColor: '#F7F7F7', borderRadius: 10, flexDirection: 'row', minHeight: 70, padding: 12 },
+    selectedFoodCard: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 10, flexDirection: 'row', minHeight: 70, padding: 12 },
     selectedFoodCopy: { flex: 1 },
     selectedFoodInfoRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
     selectedFoodName: { color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20 },
@@ -1534,9 +1516,11 @@ function createStyles({ colors }: AppTheme) {
     presetTitleSelected: { color: colors.primaryPressed },
     presetMeta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     presetMetaSelected: { color: colors.primary },
-    amountStepper: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', height: 58, justifyContent: 'space-between', paddingHorizontal: 16 },
-    stepButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 16, borderWidth: 1, height: 32, justifyContent: 'center', width: 32 },
-    amountValue: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 22 },
+    amountField: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 10, borderWidth: 1, flexDirection: 'row', gap: 4, height: 58, justifyContent: 'center', paddingHorizontal: 16 },
+    amountInput: { ...noWebFocusRing, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, padding: 0, textAlign: 'right', width: 60 },
+    amountUnit: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 22 },
+    amountDone: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 8, height: 36, justifyContent: 'center', paddingHorizontal: 12, position: 'absolute', right: 10 },
+    amountDoneText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     nutritionSection: { gap: 0 },
     editNutritionButton: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 20, flexDirection: 'row', gap: 3, minHeight: 25, paddingBottom: 4, paddingLeft: 10, paddingRight: 13, paddingTop: 4 },
     confirmNutritionButton: { backgroundColor: colors.surfaceMuted },
@@ -1546,7 +1530,7 @@ function createStyles({ colors }: AppTheme) {
     nutritionKcalInput: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, height: 32, padding: 0, textAlign: 'center', width: 90 },
     nutritionMacroInput: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.textBody, fontFamily: fontFamilies.pretendardSemiBold, fontSize: 20, height: 28, padding: 0, textAlign: 'center', width: 45 },
     editorActions: { gap: 10, marginTop: 'auto' },
-    deleteFoodButton: { alignItems: 'center', backgroundColor: '#FFF0F0', borderRadius: 12, flexDirection: 'row', gap: 8, height: 48, justifyContent: 'center', width: '100%' },
+    deleteFoodButton: { alignItems: 'center', backgroundColor: colors.dangerLight, borderRadius: 12, flexDirection: 'row', gap: 8, height: 48, justifyContent: 'center', width: '100%' },
     deleteFoodText: { color: colors.danger, fontFamily: fontFamilies.pretendardBold, fontSize: 20 },
     replaceContent: { flex: 1, gap: 12 },
     searchArea: { position: 'relative', zIndex: 20 },
