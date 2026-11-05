@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canPreviewRoute, courseDifficultyLabel, coursesWithRenderablePaths, previewRouteInput, routePoints, routePolyline } from '../src/features/running/courseRoute.ts';
+import { canPreviewRoute, courseDifficultyLabel, hasRenderablePath, previewRouteInput, routePoints, routePolyline } from '../src/features/running/courseRoute.ts';
 import { kakaoMapHtml } from '../src/features/running/kakaoMap.ts';
 
 test('kakao map page encodes the key and draws only numeric route points', () => {
@@ -21,8 +21,14 @@ test('official course points are previewed from their nested coordinates', () =>
     end: { latitude: 35.12, longitude: 126.82 },
     waypoints: [{ latitude: 35.11, longitude: 126.81 }],
   });
-  assert.equal(previewRouteInput({ start, end, waypoints: ['들판', { latitude: 35.11, longitude: 126.81 }] }), null);
+  assert.deepEqual(previewRouteInput({ start, end, waypoints: ['들판', { latitude: 35.11, longitude: 126.81 }] }), {
+    start: { latitude: 35.1, longitude: 126.8 },
+    end: { latitude: 35.12, longitude: 126.82 },
+    waypoints: [{ latitude: 35.11, longitude: 126.81 }],
+  });
   assert.equal(canPreviewRoute({ start, end: { name: '도착', coordinate: null } }), false);
+  assert.equal(canPreviewRoute({ start, end: start, waypoints: ['천축사'] }), false);
+  assert.equal(canPreviewRoute({ start, end: start, waypoints: [{ latitude: 35.11, longitude: 126.81 }] }), true);
   assert.equal(canPreviewRoute({ start, end: { name: '도착', coordinate: { latitude: 999, longitude: 126.82 } } }), false);
 });
 
@@ -51,7 +57,7 @@ test('route diagram uses only real valid coordinates and preserves endpoints', (
   assert.equal(plannedLine.split(' ')[0], actualLine.split(' ')[0]);
 });
 
-test('recommendations omit courses without at least two usable path points', () => {
+test('saved courses need at least two usable path points', () => {
   const valid = { course_id: 'valid', path: [
     { latitude: 37.5, longitude: 127 },
     { latitude: 37.51, longitude: 127.01 },
@@ -63,7 +69,7 @@ test('recommendations omit courses without at least two usable path points', () 
     { course_id: 'invalid', path: [valid.path[0], { latitude: 999, longitude: 127.01 }] },
     valid,
   ];
-  assert.deepEqual(coursesWithRenderablePaths(courses), [valid]);
+  assert.deepEqual(courses.filter(hasRenderablePath), [valid]);
 });
 
 test('course difficulty shows Korean words and hides unknown codes', () => {

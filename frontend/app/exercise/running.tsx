@@ -4,7 +4,7 @@ import * as Location from 'expo-location';
 import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getActiveRunningSession, getRunningApiErrorMessage, getRunningRecommendations, getSavedRunningCourses, startFreeRun, type RunningCourse, type RunningDistanceOption, type RunningSavedCourse, type RunningSession } from '@/src/api/running';
-import { courseDifficultyLabel, coursesWithRenderablePaths, hasRenderablePath } from '@/src/features/running/courseRoute';
+import { courseDifficultyLabel, hasRenderablePath } from '@/src/features/running/courseRoute';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
@@ -45,10 +45,10 @@ export default function RunningRecommendations() {
     setMessage('');
     try {
       const result = await getRunningRecommendations(region.trim(), distance);
-      const mappedCourses = coursesWithRenderablePaths(result.courses ?? []);
-      setCourses(mappedCourses);
-      if (result.status === 'generation_required') setMessage('이 조건에 맞는 공식 코스가 없어요. 자동 코스 생성은 출발 위치 선택 기능을 연결한 뒤 사용할 수 있어요.');
-      else if (!mappedCourses.length) setMessage('경로가 있는 코스를 찾지 못했어요. 다른 지역이나 거리를 선택해 주세요.');
+      // The list carries no route coordinates; the course screen geocodes the ends and draws the route.
+      const found = result.courses ?? [];
+      setCourses(found);
+      if (!found.length) setMessage('이 조건에 맞는 공식 코스가 없어요. 시·구 이름이나 다른 거리로 찾아보세요.');
     } catch (cause) {
       setMessage(getRunningApiErrorMessage(cause));
     } finally {
@@ -98,7 +98,7 @@ export default function RunningRecommendations() {
         <View style={{ width: 24 }} />
       </View>
       <Text style={styles.sectionTitle}>어디서 달릴까요?</Text>
-      <TextInput accessibilityLabel="러닝 지역" placeholder="예: 성남시, 서울숲" value={region} onChangeText={setRegion} maxLength={120} style={styles.input} />
+      <TextInput accessibilityLabel="러닝 지역" placeholder="예: 서울, 마포구, 부산" value={region} onChangeText={setRegion} maxLength={120} style={styles.input} />
       <Text style={styles.sectionTitle}>목표 거리</Text>
       <View style={styles.options}>{distanceOptions.map((option) =>
         <Pressable key={option} accessibilityRole="button" accessibilityState={{ selected: distance === option }} onPress={() => setDistance(option)} style={[styles.option, distance === option && styles.selected]}>

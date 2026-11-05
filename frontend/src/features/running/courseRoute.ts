@@ -18,10 +18,6 @@ export function hasRenderablePath(course: RunningCourse): boolean {
   return routePoints(course).length >= 2;
 }
 
-export function coursesWithRenderablePaths(courses: RunningCourse[]): RunningCourse[] {
-  return courses.filter(hasRenderablePath);
-}
-
 // Official courses nest coordinates as { name, address, coordinate }; named waypoints have none.
 export function pointCoordinate(value: unknown): RunningCoordinate | null {
   const point = validCoordinate(value) ? value : (value as { coordinate?: unknown } | null | undefined)?.coordinate;
@@ -32,9 +28,11 @@ export function previewRouteInput(course: RunningCourse) {
   const start = pointCoordinate(course.start);
   const end = pointCoordinate(course.end);
   if (!start || !end) return null;
+  // Official waypoints are usually names only, so the route can differ from the course; the screen says so.
   const waypoints = (course.waypoints ?? []).map(pointCoordinate).filter((point) => point !== null);
-  // Routing past a waypoint with no coordinate would draw a different course under the official name.
-  if (waypoints.length !== (course.waypoints?.length ?? 0)) return null;
+  // A loop with no usable waypoints has nothing to route: the walking route API rejects it (502).
+  const sameEnds = Math.abs(start.latitude - end.latitude) < 0.0001 && Math.abs(start.longitude - end.longitude) < 0.0001;
+  if (sameEnds && !waypoints.length) return null;
   return { start, end, waypoints };
 }
 

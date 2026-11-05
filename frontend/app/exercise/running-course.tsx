@@ -142,6 +142,8 @@ export default function RunningCourseScreen() {
   const pathMissing = course && ['official_gpx', 'auto_generated'].includes(sourceOf(course) ?? '') && path.length < 2;
   const distanceAcceptanceNeeded = course?.within_tolerance === false;
   const distanceKm = preview?.distance_km ?? course?.distance_km;
+  // The official time belongs to the official distance, so a drawn route shows its own.
+  const minutes = typeof preview?.estimated_duration_minutes === 'number' ? preview.estimated_duration_minutes : course?.estimated_duration_minutes;
   const canSave = !!course?.selection_token && !validationNeeded && !pathMissing && (!distanceAcceptanceNeeded || acceptDistanceError);
 
   return <View style={s.root}>
@@ -155,12 +157,13 @@ export default function RunningCourseScreen() {
         {course.description ? <Text style={s.body}>{course.description}</Text> : null}
         <View style={s.tags}>{course.region ? <Text style={s.tag}>{course.region}</Text> : null}<Text style={s.tag}>{sourceOf(course) === 'auto_generated' ? '생성 코스' : '공식 코스'}</Text></View>
         {path.length >= 2 ? <RouteDiagram course={course} preview={preview} /> : null}
+        {path.length >= 2 && sourceOf(course) === 'official_metadata' ? <Text style={s.metricLabel}>길찾기로 그린 경로예요. 공식 코스{preview && typeof course.distance_km === 'number' ? `(${course.distance_km}km)` : ''}와 다를 수 있어요.</Text> : null}
         <View style={s.metrics}>
           <View style={s.metric}><Text style={s.metricLabel}>거리</Text><Text style={s.metricValue}>{typeof distanceKm === 'number' ? `${Math.round(distanceKm * 10) / 10}km` : '—'}</Text></View>
-          <View style={s.metric}><Text style={s.metricLabel}>예상 시간</Text><Text style={s.metricValue}>{typeof course.estimated_duration_minutes === 'number' ? `약 ${course.estimated_duration_minutes}분` : '—'}</Text></View>
+          <View style={s.metric}><Text style={s.metricLabel}>예상 시간</Text><Text style={s.metricValue}>{typeof minutes === 'number' ? `약 ${Math.round(minutes)}분` : '—'}</Text></View>
           <View style={s.metric}><Text style={s.metricLabel}>난이도</Text><Text style={s.metricValue}>{courseDifficultyLabel(course.difficulty) || '—'}</Text></View>
         </View>
-        {validationNeeded ? <View style={s.notice}><Text style={s.body}>{canPreviewRoute(course) ? `경로를 검증하지 못했어요. ${previewError || '잠시 후 다시 시도해 주세요.'}` : '이 코스는 좌표 정보가 부족해 경로를 검증할 수 없어요.'}</Text></View> : null}
+        {validationNeeded ? <View style={s.notice}><Text style={s.body}>{canPreviewRoute(course) ? `경로를 검증하지 못했어요. ${previewError || '잠시 후 다시 시도해 주세요.'}` : '이 코스는 출발지와 도착지만으로 경로를 그릴 수 없어요.'}</Text></View> : null}
         {pathMissing ? <View style={s.notice}><Text style={s.body}>경로 좌표가 없어 이 코스를 저장할 수 없어요.</Text></View> : null}
         {distanceAcceptanceNeeded ? <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: acceptDistanceError }} onPress={() => setAcceptDistanceError((value) => !value)} style={s.notice}><Text style={s.body}>{acceptDistanceError ? '☑' : '□'}  요청한 거리와 실제 코스가 {course.distance_error_percent ?? '다소'}% 차이 나는 것을 확인했어요.</Text></Pressable> : null}
         {error && course ? <Text style={s.error}>{error}</Text> : null}
@@ -182,7 +185,7 @@ function createSStyles({ colors }: AppTheme) {
     header: { height: 52, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, back: { color: colors.textPrimary, fontSize: 32, lineHeight: 36 }, title: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
     eyebrow: { color: colors.textSecondary, fontSize: 14, marginTop: 12 }, courseTitle: { color: colors.textPrimary, fontSize: 21, fontFamily: fontFamilies.pretendardBold }, body: { color: colors.textBody, fontSize: 14, lineHeight: 20 },
     tags: { flexDirection: 'row', gap: 7 }, tag: { backgroundColor: colors.surfaceMuted, color: colors.textBody, borderRadius: 5, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 5, fontSize: 12 },
-    map: { height: 220, backgroundColor: '#F1F2F3', borderRadius: 16, overflow: 'hidden' }, mapEmpty: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' }, mapEmptyText: { color: colors.textSecondary, fontSize: 14 }, mapBadge: { position: 'absolute', right: 8, top: 8, backgroundColor: '#FFFE', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 5 }, mapBadgeText: { color: colors.textBody, fontSize: 12 },
+    map: { height: 220, backgroundColor: colors.surfaceMuted, borderRadius: 16, overflow: 'hidden' }, mapEmpty: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' }, mapEmptyText: { color: colors.textSecondary, fontSize: 14 }, mapBadge: { position: 'absolute', right: 8, top: 8, backgroundColor: colors.surface, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 5 }, mapBadgeText: { color: colors.textBody, fontSize: 12 },
     metrics: { flexDirection: 'row', gap: 8 }, metric: { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 11, gap: 5 }, metricLabel: { color: colors.textSecondary, fontSize: 12 }, metricValue: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
     notice: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14 }, error: { color: colors.danger, fontSize: 14, lineHeight: 18 },
     button: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, disabled: { opacity: 0.5 }, buttonText: { color: '#FFF', fontSize: 14, fontFamily: fontFamilies.pretendardBold }, outline: { height: 56, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
