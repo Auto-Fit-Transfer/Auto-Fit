@@ -24,6 +24,7 @@ export type R6Meal = {
   canSave: boolean;
   pending: boolean;
   regenerating: boolean;
+  allergyWarning: string | null;
 };
 
 export type R6Goal = { label: string; current: number | null; target: number | null; unit: string };
@@ -271,6 +272,9 @@ export function R6DietHome(props: Props) {
                     {meal.detail ? <Text style={[styles.detailText, isDark && dark.secondary]}>{meal.detail}</Text> : null}
                   </View>
                 </View>
+                {meal.allergyWarning ? (
+                  <Text accessibilityRole="alert" style={styles.allergyWarning}>{meal.allergyWarning}</Text>
+                ) : null}
                 {recommended && meal.note ? (
                   <View style={styles.noteRow}>
                     <InfoIcon color={colors.textSecondary} height={16} width={16} />
@@ -280,11 +284,11 @@ export function R6DietHome(props: Props) {
               </Pressable>
               {showActions ? (
                 <View style={styles.mealActions}>
-                  {meal.status !== 'eaten' && props.showRecordControls && meal.canSave ? action('먹었어요', () => props.onStatusChange(meal.id, 'eaten'), !canRecord) : null}
+                  {meal.status !== 'eaten' && props.showRecordControls && meal.canSave && !meal.allergyWarning ? action('먹었어요', () => props.onStatusChange(meal.id, 'eaten'), !canRecord) : null}
                   {recommended && meal.canSave ? action(meal.regenerating ? '찾는 중…' : '바꾸기', () => props.onAlternative(meal.id), meal.regenerating) : null}
                   {!recommended && props.showRecordControls && meal.canSave ? action('다른 음식 기록', () => props.onRecord(meal.id), !canRecord) : null}
                   {meal.status !== 'skipped' && props.showRecordControls && meal.canSave ? action('건너뛰기', () => props.onStatusChange(meal.id, 'skipped'), !canRecord) : null}
-                  {action('레시피', () => props.onOpenRecipe(meal.id))}
+                  {meal.allergyWarning ? null : action('레시피', () => props.onOpenRecipe(meal.id))}
                 </View>
               ) : null}
             </View>
@@ -387,6 +391,7 @@ function createStyles({ colors }: AppTheme) {
     detailText: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
     noteRow: { flexDirection: 'row', gap: 4 },
     note: { color: colors.textSecondary, flex: 1, fontSize: 12, lineHeight: 18 },
+    allergyWarning: { color: colors.danger, fontSize: 13, lineHeight: 19 },
     mealActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 12 },
     smallAction: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
     smallActionText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },

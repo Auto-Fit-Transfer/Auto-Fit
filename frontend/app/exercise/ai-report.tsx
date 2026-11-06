@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import CheckIcon from '@/assets/icons/ui/check.svg';
+import { ApiError } from '@/src/api/client';
 import { getExerciseApiErrorMessage, getExerciseSessionAnalysis } from '@/src/api/exercise';
 import { Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
@@ -41,7 +42,11 @@ export default function ExerciseAiReportScreen() {
         if (active) setResult({ key: requestKey, report: mapExerciseAnalysis(analysis), error: null });
       })
       .catch((reason: unknown) => {
-        if (active) setResult({ key: requestKey, report: null, error: getExerciseApiErrorMessage(reason) });
+        // The workout is already saved when this screen opens; only the AI part failed.
+        const error = reason instanceof ApiError && reason.status >= 500
+          ? '운동 기록은 저장됐어요. AI 분석을 지금 불러오지 못했어요. 잠시 후 다시 시도해 주세요.'
+          : getExerciseApiErrorMessage(reason);
+        if (active) setResult({ key: requestKey, report: null, error });
       });
     return () => {
       active = false;

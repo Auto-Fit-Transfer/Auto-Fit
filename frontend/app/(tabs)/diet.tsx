@@ -19,6 +19,8 @@ import {
 } from '@/src/api/diet';
 import { ApiError } from '@/src/api/client';
 import { awardTierActivity } from '@/src/api/tier';
+import { allergyWarning, mealAllergyConflicts } from '@/src/features/diet/allergyConflict';
+import { useAllergyNames } from '@/src/features/diet/useAllergyNames';
 import { weeklyDietErrorCode } from '@/src/features/diet/weeklyDietErrors';
 import {
   isApiRecord,
@@ -250,6 +252,7 @@ export default function DietScreen() {
   const feedbackEnabled = selectedDateKey === todayDateKey;
   const showRecordControls = selectedDateKey <= todayDateKey;
   const selectedWeek = weekStartOf(selectedDateKey);
+  const allergyNames = useAllergyNames();
   const shownMeals = useMemo(
     () => (recommendationLoading || recommendationError
       ? recommendedMeals
@@ -713,6 +716,8 @@ export default function DietScreen() {
           const log = mealLogMetaByDate[selectedDateKey]?.[meal.id];
           const recordedFoods = record?.foods;
           const status = selectedStatuses[meal.id];
+          // Only a meal still on offer is flagged; recorded meals stay as the user saved them.
+          const conflicts = status === 'recommended' ? mealAllergyConflicts(meal, allergyNames) : [];
           const photoUrl = record?.photoUri ?? log?.photoUrl;
           const macros = status === 'modified' && recordedFoods ? macroLabel(recordedFoods) : meal.macros;
           const recordedKcal = recordedFoods?.every((food) => food.kcal !== undefined)
@@ -732,6 +737,7 @@ export default function DietScreen() {
             canSave: feedbackEnabled && Boolean(meal.dietMealId),
             pending: feedbackMealIds.has(meal.id),
             regenerating: regeneratingMealIds.has(meal.id),
+            allergyWarning: conflicts.length > 0 ? allergyWarning(conflicts) : null,
           };
         })}
         mealsLoading={recommendationLoading || (recommendedMeals.length === 0 && weeklyLoading)}
