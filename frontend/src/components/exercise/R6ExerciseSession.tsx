@@ -21,7 +21,7 @@ import WarningIcon from '@/assets/icons/ui/warning-circle.svg';
 import XIcon from '@/assets/icons/ui/x.svg';
 import type { ExerciseSessionExercise, ExerciseSessionState } from '@/src/features/exercise/ExerciseSessionContext';
 import { defaultVoiceGuideSettings, loadVoiceGuideSettings, saveVoiceGuideSettings, speakGuide, stopGuide, type VoiceGuideSettings } from '@/src/features/exercise/voiceGuide';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, lightPalette, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
 
 const parts = ['목', '어깨', '허리', '무릎', '손목', '발목', '기타'];
@@ -159,12 +159,12 @@ export function R6ExerciseSession({
         <View style={s.track}><View style={[s.fill, { width: `${progress * 100}%` }]} /></View>
         <Text style={s.exerciseTitle}>{exercise.name}</Text>
 
-        <View style={s.media}>
+        <View style={[s.media, imageUrl ? s.mediaGif : null]}>
           {imageUrl ? <Image accessibilityLabel={`${exercise.name} 동작 시범`} source={{ uri: imageUrl }} resizeMode="contain" style={s.mediaImage} /> : null}
           {videoUrl ? (
             <Pressable accessibilityLabel="동작 영상 보기" accessibilityRole="button" onPress={openVideo} style={s.videoAction}>
               <View style={s.playCircle}><PlayIcon color={colors.textPrimary} height={22} width={22} /></View>
-              <Text style={s.mediaText}>동작 영상</Text>
+              <Text style={[s.mediaText, imageUrl ? s.mediaTextOnGif : null]}>동작 영상</Text>
             </Pressable>
           ) : !imageUrl ? <Text style={s.mediaText}>동작 영상이 제공되지 않았어요</Text> : null}
           {voice.enabled && exercise.instruction ? (
@@ -320,6 +320,9 @@ function createSStyles({ colors }: AppTheme) {
     exerciseTitle: { color: colors.textPrimary, fontSize: 22, lineHeight: 30, fontFamily: fontFamilies.pretendardBold, marginTop: 4 },
     media: { height: 180, borderRadius: 16, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
     mediaImage: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
+    // The demo GIFs have a white background baked in, so the card is white in both modes.
+    mediaGif: { backgroundColor: lightPalette.background, borderColor: lightPalette.border },
+    mediaTextOnGif: { color: lightPalette.textSecondary },
     videoAction: { alignItems: 'center', gap: 6 },
     playCircle: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
     mediaText: { color: colors.textSecondary, fontSize: 14 },
