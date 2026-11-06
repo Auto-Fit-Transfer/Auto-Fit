@@ -23,11 +23,18 @@ async def analyze_session(
 ) -> ExerciseSessionAnalysisResponse:
     try:
         narrative = await analyze_exercise_session(request)
-    except (RuntimeError, TimeoutError):
-        logger.warning("Exercise analysis service unavailable")
+    except (RuntimeError, TimeoutError) as exc:
+        logger.warning(
+            "Exercise analysis service unavailable "
+            "(exception_type=%s).",
+            type(exc).__name__,
+        )
         raise HTTPException(503, detail="Exercise analysis is temporarily unavailable") from None
-    except Exception:
-        logger.error("Exercise analysis failed")
+    except Exception as exc:
+        logger.error(
+            "Exercise analysis failed (exception_type=%s).",
+            type(exc).__name__,
+        )
         raise HTTPException(500, detail="Exercise analysis failed") from None
     return ExerciseSessionAnalysisResponse(
         ok=True, generator="auto-fit-ai", result=narrative,

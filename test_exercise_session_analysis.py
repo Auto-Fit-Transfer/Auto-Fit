@@ -1,9 +1,12 @@
 import asyncio
 import json
+import logging
 from types import SimpleNamespace
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
+import pytest
+from pydantic import ValidationError
 
 import app.core.security as security_module
 import app.routers.exercise_session_analysis_router as router_module
@@ -94,3 +97,167 @@ def test_analysis_service_sends_only_contract_fields(monkeypatch):
     assert captured["text_format"] is ExerciseAnalysisNarrative
     assert json.loads(captured["input"]) == REQUEST
     assert "진단" in captured["instructions"]
+    assert captured["reasoning"] == {"effort": "minimal"}
+    assert captured["max_output_tokens"] == 2200
+
+
+def test_analysis_service_logs_incomplete_metadata_without_health_payload(
+    monkeypatch,
+    caplog,
+):
+    class FakeResponses:
+        async def parse(self, **_kwargs):
+            return SimpleNamespace(
+                id="resp_test",
+                status="incomplete",
+                incomplete_details=SimpleNamespace(
+                    reason="max_output_tokens"
+                ),
+                usage=SimpleNamespace(
+                    output_tokens=2200,
+                    output_tokens_details=SimpleNamespace(
+                        reasoning_tokens=2100
+                    ),
+                ),
+                output_parsed=None,
+            )
+
+    class FakeClient:
+        def __init__(self, **_kwargs):
+            self.responses = FakeResponses()
+
+    monkeypatch.setattr(service_module, "get_settings", lambda: SimpleNamespace(
+        openai_api_key="test-key", openai_model="test-model",
+        exercise_analysis_openai_timeout_seconds=5,
+    ))
+    monkeypatch.setattr(service_module, "AsyncOpenAI", FakeClient)
+
+    with caplog.at_level(logging.WARNING):
+        with pytest.raises(
+            RuntimeError,
+            match="structured output is empty",
+        ):
+            asyncio.run(service_module.analyze_exercise_session(
+                ExerciseSessionAnalysisRequest.model_validate(REQUEST)
+            ))
+
+    assert "response_id=resp_test" in caplog.text
+    assert "status=incomplete" in caplog.text
+    assert "max_output_tokens" in caplog.text
+    assert "output_tokens=2200" in caplog.text
+    assert "reasoning_tokens=2100" in caplog.text
+    assert REQUEST["feedback"]["note"] not in caplog.text
+    assert REQUEST["exercises"][0]["name"] not in caplog.text
+    assert REQUEST["feedback"]["uncomfortable_areas"][0] not in caplog.text
+
+
+def test_analysis_service_converts_parse_validation_error_without_input_log(
+    monkeypatch,
+    caplog,
+):
+    try:
+        ExerciseAnalysisNarrative.model_validate({})
+    except ValidationError as exc:
+        parse_error = exc
+
+    class FakeResponses:
+        async def parse(self, **_kwargs):
+            raise parse_error
+
+    class FakeClient:
+        def __init__(self, **_kwargs):
+            self.responses = FakeResponses()
+
+    monkeypatch.setattr(service_module, "get_settings", lambda: SimpleNamespace(
+        openai_api_key="test-key", openai_model="test-model",
+        exercise_analysis_openai_timeout_seconds=5,
+    ))
+    monkeypatch.setattr(service_module, "AsyncOpenAI", FakeClient)
+
+    with caplog.at_level(logging.WARNING):
+        with pytest.raises(
+            RuntimeError,
+            match="structured output parsing failed",
+        ):
+            asyncio.run(service_module.analyze_exercise_session(
+                ExerciseSessionAnalysisRequest.model_validate(REQUEST)
+            ))
+
+    assert "exception_type=ValidationError" in caplog.text
+    assert "missing" in caplog.text
+    assert REQUEST["feedback"]["note"] not in caplog.text
+
+
+def test_analysis_service_converts_response_contract_validation_error(
+    monkeypatch,
+    caplog,
+):
+    class FakeResponses:
+        async def parse(self, **_kwargs):
+            return SimpleNamespace(
+                id="resp_invalid",
+                status="completed",
+                incomplete_details=None,
+                usage=None,
+                output_parsed={
+                    "summary": REQUEST["feedback"]["note"],
+                },
+            )
+
+    class FakeClient:
+        def __init__(self, **_kwargs):
+            self.responses = FakeResponses()
+
+    monkeypatch.setattr(service_module, "get_settings", lambda: SimpleNamespace(
+        openai_api_key="test-key", openai_model="test-model",
+        exercise_analysis_openai_timeout_seconds=5,
+    ))
+    monkeypatch.setattr(service_module, "AsyncOpenAI", FakeClient)
+
+    with caplog.at_level(logging.WARNING):
+        with pytest.raises(
+            RuntimeError,
+            match="response contract validation failed",
+        ):
+            asyncio.run(service_module.analyze_exercise_session(
+                ExerciseSessionAnalysisRequest.model_validate(REQUEST)
+            ))
+
+    assert "response_id=resp_invalid" in caplog.text
+    assert "exception_type=ValidationError" in caplog.text
+    assert REQUEST["feedback"]["note"] not in caplog.text
+
+
+@pytest.mark.parametrize(
+    ("service_error", "expected_status"),
+    [
+        (RuntimeError("private runtime diagnostic"), 503),
+        (TimeoutError("private timeout diagnostic"), 503),
+        (ValueError("private internal diagnostic"), 500),
+    ],
+)
+def test_analysis_api_maps_service_errors_without_exposing_details(
+    monkeypatch,
+    caplog,
+    service_error,
+    expected_status,
+):
+    request = ExerciseSessionAnalysisRequest.model_validate(REQUEST)
+
+    async def unavailable(_request):
+        raise service_error
+
+    monkeypatch.setattr(
+        router_module,
+        "analyze_exercise_session",
+        unavailable,
+    )
+
+    with caplog.at_level(logging.WARNING):
+        with pytest.raises(HTTPException) as exc_info:
+            asyncio.run(router_module.analyze_session(request, None))
+
+    assert exc_info.value.status_code == expected_status
+    assert "private" not in str(exc_info.value.detail)
+    assert type(service_error).__name__ in caplog.text
+    assert str(service_error) not in caplog.text
