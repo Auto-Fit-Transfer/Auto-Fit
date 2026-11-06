@@ -83,7 +83,7 @@ class GeneratedRecipeStep(BaseModel):
 
     instruction: str = Field(
         min_length=1,
-        max_length=1000,
+        max_length=240,
     )
 
     duration_minutes: float | None = Field(
@@ -94,7 +94,7 @@ class GeneratedRecipeStep(BaseModel):
 
     tip: str | None = Field(
         default=None,
-        max_length=500,
+        max_length=160,
     )
 
 
@@ -140,7 +140,7 @@ class GeneratedRecipeResponse(BaseModel):
 
     cooking_tip: str | None = Field(
         default=None,
-        max_length=500,
+        max_length=200,
     )
 
 
@@ -199,6 +199,11 @@ class MealRecipeService:
     )
     RECIPE_CACHE_TTL_SECONDS = 30 * 60
     RECIPE_CACHE_MAX_ENTRIES = 512
+    RECIPE_FORMAT_VERSION = "compact-v1"
+    MAX_DISPLAY_RECIPE_STEPS = 6
+    MAX_GENERATED_RECIPE_STEPS = 5
+    MAX_GENERATED_STEP_CHARACTERS = 160
+    MAX_GROUPED_STEP_CHARACTERS = 900
 
     @staticmethod
     def _nested_response_value(
@@ -540,6 +545,163 @@ class MealRecipeService:
         return normalized
 
     # ==================================================
+    # 화면 표시용 조리 단계 정리
+    #
+    # RecipeService는 공식 API 원문 정규화만 담당한다.
+    # 번호/공백/중복 제거와 단계 묶기는 최종 응답을 조립하는
+    # MealRecipeService에서 수행한다.
+    # ==================================================
+
+    @staticmethod
+    def _clean_recipe_step_text(
+        value: Any,
+    ) -> str:
+        if isinstance(value, dict):
+            value = value.get("instruction")
+
+        text = str(value or "")
+        text = text.replace("\u200b", " ")
+        text = re.sub(r"\s+", " ", text).strip()
+        text = re.sub(
+            (
+                r"^(?:[-*•]\s*)?"
+                r"(?:[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]"
+                r"|(?:(?:step|단계)\s*)?\d{1,2}\s*[.)\-:])\s*"
+            ),
+            "",
+            text,
+            flags=re.IGNORECASE,
+        )
+        text = re.sub(r"\s+([,.!?])", r"\1", text)
+        return text.strip()
+
+    @classmethod
+    def _normalize_recipe_steps(
+        cls,
+        values: list[Any] | None,
+    ) -> list[str]:
+        normalized_steps: list[str] = []
+        seen: set[str] = set()
+
+        for value in values or []:
+            instruction = cls._clean_recipe_step_text(value)
+            if not instruction:
+                continue
+
+            dedup_key = re.sub(
+                r"[^0-9a-zA-Z가-힣]+",
+                "",
+                instruction.lower(),
+            )
+            if not dedup_key or dedup_key in seen:
+                continue
+
+            seen.add(dedup_key)
+            normalized_steps.append(instruction)
+
+        if len(normalized_steps) > 1:
+            generic_preparation_steps = {
+                "재료를준비한다",
+                "재료를준비합니다",
+                "필요한재료를준비한다",
+                "필요한재료를준비합니다",
+            }
+            filtered_steps = [
+                step
+                for step in normalized_steps
+                if re.sub(
+                    r"[^0-9a-zA-Z가-힣]+",
+                    "",
+                    step.lower(),
+                ) not in generic_preparation_steps
+            ]
+            if filtered_steps:
+                normalized_steps = filtered_steps
+
+        return normalized_steps
+
+    @staticmethod
+    def _as_complete_step_sentence(
+        instruction: str,
+    ) -> str:
+        text = str(instruction).strip()
+        if text and text[-1] not in ".!?。":
+            return f"{text}."
+        return text
+
+    @classmethod
+    def compact_recipe_steps(
+        cls,
+        values: list[Any] | None,
+        *,
+        max_steps: int | None = None,
+    ) -> list[str]:
+        """Keep step order/content while reducing duplicate display cards."""
+
+        steps = cls._normalize_recipe_steps(values)
+        display_limit = max(
+            1,
+            int(max_steps or cls.MAX_DISPLAY_RECIPE_STEPS),
+        )
+        if len(steps) <= display_limit:
+            return steps
+
+        grouped_steps: list[str] = []
+        cursor = 0
+
+        for group_index in range(display_limit):
+            remaining_steps = len(steps) - cursor
+            remaining_groups = display_limit - group_index
+            group_size = max(
+                1,
+                (remaining_steps + remaining_groups - 1)
+                // remaining_groups,
+            )
+            group = steps[cursor:cursor + group_size]
+            cursor += group_size
+
+            combined = " ".join(
+                cls._as_complete_step_sentence(step)
+                for step in group
+            )
+            if (
+                len(combined) > cls.MAX_GROUPED_STEP_CHARACTERS
+                and len(group) > 1
+            ):
+                grouped_steps.extend(group)
+            else:
+                grouped_steps.append(combined)
+
+        return grouped_steps
+
+    @classmethod
+    def _normalize_generated_steps(
+        cls,
+        values: list[GeneratedRecipeStep],
+    ) -> list[GeneratedRecipeStep]:
+        normalized_steps: list[GeneratedRecipeStep] = []
+        seen: set[str] = set()
+
+        for step in values:
+            instruction = cls._clean_recipe_step_text(step.instruction)
+            dedup_key = re.sub(
+                r"[^0-9a-zA-Z가-힣]+",
+                "",
+                instruction.lower(),
+            )
+            if not instruction or not dedup_key or dedup_key in seen:
+                continue
+
+            seen.add(dedup_key)
+            normalized_steps.append(
+                step.model_copy(
+                    update={"instruction": instruction},
+                )
+            )
+
+        return normalized_steps
+
+    # ==================================================
     # 공식 레시피 재료 문자열 → 재료명 + g 구조 변환
     # ==================================================
 
@@ -799,7 +961,8 @@ class MealRecipeService:
         )
 
         return (
-            f"{normalized_food}"
+            f"{self.RECIPE_FORMAT_VERSION}"
+            f"|{normalized_food}"
             f"|portion_g={self._normalize_cache_number(portion_g)}"
             f"|calories_kcal={self._normalize_cache_number(calories_kcal)}"
             f"|protein_g={self._normalize_cache_number(protein_g)}"
@@ -1716,6 +1879,20 @@ class MealRecipeService:
         ready_food_marker = self._ready_to_serve_food_marker(
             food_name
         )
+
+        if (
+            ready_food_marker is None
+            and len(generated.steps) > self.MAX_GENERATED_RECIPE_STEPS
+        ):
+            issues.append("조리 단계가 5단계를 초과함")
+
+        if any(
+            len(step.instruction)
+            > self.MAX_GENERATED_STEP_CHARACTERS
+            for step in generated.steps
+        ):
+            issues.append("조리 단계 설명이 지나치게 김")
+
         if ready_food_marker is None:
             return issues
 
@@ -1729,7 +1906,7 @@ class MealRecipeService:
         ):
             issues.append("완제품 식품 자체가 재료 목록에 없음")
 
-        if len(generated.steps) > 4:
+        if len(generated.steps) > 3:
             issues.append("완제품 식품의 준비 단계가 지나치게 많음")
 
         normalized_steps = self.normalize_for_compare(
@@ -1810,7 +1987,7 @@ class MealRecipeService:
         )
         ready_to_serve_instruction = ""
         step_count_rule = (
-            "13. 조리 단계는 3~8단계로 작성한다."
+            "13. 조리 단계는 핵심 행동만 2~5단계로 작성한다."
         )
         if ready_to_serve_marker is not None:
             ready_to_serve_instruction = f"""
@@ -1822,7 +1999,7 @@ class MealRecipeService:
 음식명과 영양정보에 없는 토핑이나 다른 식품을 임의로 추가하지 않는다.
 """
             step_count_rule = (
-                "13. 준비 단계는 1~4단계로 간단하게 작성한다."
+                "13. 준비 단계는 1~3단계로 간단하게 작성한다."
             )
 
         # ==================================================
@@ -1922,7 +2099,7 @@ class MealRecipeService:
 7. 굽기, 찌기, 삶기, 데치기,
    가벼운 볶기 등을 우선한다.
 
-8. 재료는 최대 12개 정도로 작성한다.
+8. 핵심 재료만 최대 8개로 작성한다.
 
 9. 각 재료는 name과 amount_g 필드를 반드시 제공한다.
 
@@ -1936,20 +2113,27 @@ class MealRecipeService:
 
 {step_count_rule}
 
-14. 각 조리 단계에 현실적인 소요시간(분)과 필요한 경우 조리 팁을 작성한다.
+14. 각 조리 단계는 행동 중심의 한국어 한 문장으로 작성하고,
+    80자 이내를 목표로 한다. 재료 목록과 중량을 단계마다 반복하지 않는다.
 
-15. 전체 예상 조리시간과 인분 수를 작성한다.
+15. 각 단계에 현실적인 소요시간(분)을 작성한다.
+    조리 팁은 꼭 필요한 단계에만 한 문장으로 짧게 작성한다.
 
-16. 공식기관의 레시피라고 주장하지 않는다.
+16. 전체 예상 조리시간과 인분 수를 작성한다.
 
-17. 질환을 치료하거나 예방한다고 표현하지 않는다.
+17. 공식기관의 레시피라고 주장하지 않는다.
 
-18. 한국 가정에서 이해하기 쉬운
+18. 질환을 치료하거나 예방한다고 표현하지 않는다.
+
+19. 한국 가정에서 이해하기 쉬운
     한국어로 작성한다.
 
-19. 체, 면보, 칼, 도마, 냄비, 프라이팬, 그릇 같은 조리 도구는
+20. 체, 면보, 칼, 도마, 냄비, 프라이팬, 그릇 같은 조리 도구는
     재료가 아니다. 필요한 도구는 조리 단계에서만 언급하고
     ingredients에는 절대 포함하지 않는다.
+
+21. 서론, 영양 설명, 완성 평가, 반복되는 제공 문구를 넣지 말고
+    재료와 조리 단계만 짧고 직접적으로 작성한다.
 
 {retry_instruction}
 """
@@ -1982,6 +2166,9 @@ class MealRecipeService:
                     attempt,
                     os.getpid(),
                 )
+                previous_quality_issues = [
+                    "응답 생성 실패: 핵심 재료와 5단계 이내로 더 간결하게 작성"
+                ]
                 continue
 
             generated = (
@@ -2013,7 +2200,14 @@ class MealRecipeService:
                     diagnostics["output_tokens"],
                     diagnostics["reasoning_tokens"],
                 )
+                previous_quality_issues = [
+                    "구조화 응답 미완성: 재료와 조리 단계를 더 짧게 작성"
+                ]
                 continue
+
+            generated.steps = self._normalize_generated_steps(
+                generated.steps
+            )
 
             # ==================================================
             # 생성 후 다시 코드 레벨에서 안전성 검사
@@ -2251,6 +2445,10 @@ class MealRecipeService:
             else official_serving_weight
         )
 
+        compact_steps = self.compact_recipe_steps(
+            recipe.get("steps") or [],
+        )
+
         return {
             "recipe_available": True,
 
@@ -2326,10 +2524,7 @@ class MealRecipeService:
                 ),
 
                 "steps": (
-                    recipe.get(
-                        "steps",
-                        [],
-                    )
+                    compact_steps
                 ),
 
                 "step_details": [
@@ -2340,7 +2535,7 @@ class MealRecipeService:
                         "tip": None,
                     }
                     for index, step in enumerate(
-                        recipe.get("steps") or [],
+                        compact_steps,
                         1,
                     )
                     if str(step).strip()

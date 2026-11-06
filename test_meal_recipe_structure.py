@@ -132,6 +132,73 @@ def test_similarity_and_official_ingredients() -> None:
         )
 
 
+def test_official_long_steps_are_compacted_for_display() -> None:
+    service = make_service()
+    official_result = {
+        "match_type": "official_exact",
+        "similarity": 1.0,
+        "recipe": {
+            "recipe_id": "compact-official",
+            "menu_name": "채소볶음",
+            "serving_weight": 200.0,
+            "ingredients_text": "채소 180g, 기름 5g",
+            "steps": [
+                "1. 재료를 준비합니다.",
+                "2. 채소를 깨끗이 씻습니다.",
+                "3. 채소를 먹기 좋은 크기로 자릅니다.",
+                "4. 팬을 중불로 1분 예열합니다.",
+                "5. 기름을 두르고 채소를 넣습니다.",
+                "6. 180도 정도에서 3분간 볶습니다.",
+                "7. 채소가 익도록 2분 더 볶습니다.",
+                "8. 불을 끄고 간을 확인합니다.",
+                "9. 그릇에 담아 제공합니다.",
+                "9. 그릇에 담아 제공합니다.",
+            ],
+            "source": "식품의약품안전처 식품안전나라",
+        },
+    }
+
+    result = service.build_official_recipe_result(
+        official_result,
+        target_portion_g=200.0,
+    )
+    steps = result["recipe"]["steps"]
+    detail_instructions = [
+        detail["instruction"]
+        for detail in result["recipe"]["step_details"]
+    ]
+    joined_steps = " ".join(steps)
+
+    if len(steps) > service.MAX_DISPLAY_RECIPE_STEPS:
+        raise RuntimeError(f"공식 Recipe 단계 축약 실패: {steps}")
+
+    if steps != detail_instructions:
+        raise RuntimeError("steps와 step_details 내용이 일치하지 않습니다.")
+
+    if "재료를 준비합니다" in joined_steps:
+        raise RuntimeError("불필요한 일반 준비 단계가 제거되지 않았습니다.")
+
+    if "1분" not in joined_steps or "180도" not in joined_steps:
+        raise RuntimeError("시간 또는 온도 정보가 축약 과정에서 손실됐습니다.")
+
+    if any(step[:2] in {"1.", "2.", "3.", "4.", "5.", "6."}
+           for step in steps):
+        raise RuntimeError("기존 단계 번호가 표시 문구에 남았습니다.")
+
+
+def test_recipe_cache_key_contains_format_version() -> None:
+    service = make_service()
+    cache_key = service._build_cache_key(
+        food_name="두부구이",
+        allergies=[],
+        disliked_foods=[],
+        portion_g=100.0,
+    )
+
+    if not cache_key.startswith(f"{service.RECIPE_FORMAT_VERSION}|"):
+        raise RuntimeError(f"Recipe 포맷 cache 분리 실패: {cache_key}")
+
+
 async def test_official_similar_pipeline() -> None:
     service = make_service()
     service.recipe_service = FakeRecipeService(
@@ -482,6 +549,76 @@ async def test_llm_safety_retry_and_structure() -> None:
         )
 
 
+async def test_llm_verbose_steps_retry_to_compact_output() -> None:
+    service = make_service()
+    verbose_steps = [
+        f"{index}. 채소 조리 단계 {index}를 진행합니다."
+        for index in range(1, 7)
+    ]
+    fake_responses = FakeResponses(
+        [
+            GeneratedRecipeResponse(
+                ingredients=[
+                    GeneratedRecipeIngredient(
+                        name="채소",
+                        amount_g=150.0,
+                    )
+                ],
+                steps=verbose_steps,
+            ),
+            GeneratedRecipeResponse(
+                ingredients=[
+                    GeneratedRecipeIngredient(
+                        name="채소",
+                        amount_g=150.0,
+                    )
+                ],
+                steps=[
+                    "1. 채소를 씻고 먹기 좋게 자릅니다.",
+                    "2. 중불에서 5분간 볶습니다.",
+                    "2. 중불에서 5분간 볶습니다.",
+                ],
+                estimated_duration_minutes=7.0,
+            ),
+        ]
+    )
+    service.settings = SimpleNamespace(openai_model="test-model")
+    service.openai_client = SimpleNamespace(responses=fake_responses)
+
+    result = await service.generate_llm_recipe(
+        item={
+            "food_name": "채소볶음",
+            "portion_g": 150.0,
+            "calories_kcal": 120.0,
+            "protein_g": 4.0,
+            "fat_g": 5.0,
+            "carbohydrate_g": 15.0,
+        },
+        allergies=[],
+        disliked_foods=[],
+    )
+
+    if fake_responses.call_count != 2:
+        raise RuntimeError("긴 LLM Recipe가 간결한 결과로 재생성되지 않았습니다.")
+
+    if "5단계를 초과" not in fake_responses.inputs[1]["input"]:
+        raise RuntimeError("긴 Recipe 거부 사유가 재시도 prompt에 반영되지 않았습니다.")
+
+    expected_steps = [
+        "채소를 씻고 먹기 좋게 자릅니다.",
+        "중불에서 5분간 볶습니다.",
+    ]
+    if result["recipe"]["steps"] != expected_steps:
+        raise RuntimeError(f"LLM Recipe 단계 정리 실패: {result}")
+
+    detail_instructions = [
+        detail["instruction"]
+        for detail in result["recipe"]["step_details"]
+    ]
+    if detail_instructions != expected_steps:
+        raise RuntimeError("LLM steps와 step_details가 일치하지 않습니다.")
+
+
 def test_llm_ingredient_rejects_zero_grams() -> None:
     try:
         GeneratedRecipeIngredient(
@@ -586,12 +723,15 @@ async def test_ready_to_serve_recipe_retries_manufacturing_result() -> None:
 
 async def main() -> None:
     test_similarity_and_official_ingredients()
+    test_official_long_steps_are_compacted_for_display()
+    test_recipe_cache_key_contains_format_version()
     test_llm_ingredient_rejects_zero_grams()
     await test_official_similar_pipeline()
     await test_official_exact_pipeline()
     await test_unsafe_containment_matches_are_rejected()
     await test_cache_separates_portions()
     await test_llm_safety_retry_and_structure()
+    await test_llm_verbose_steps_retry_to_compact_output()
     await test_ready_to_serve_recipe_retries_manufacturing_result()
     print(
         "Meal Recipe 구조 및 안전성 테스트: OK"
