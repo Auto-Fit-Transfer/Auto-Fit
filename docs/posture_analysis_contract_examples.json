@@ -1,0 +1,93 @@
+{
+  "description": "Backend가 전달한 합성 자세 분석 출력 예제이며 실제 사용자 또는 실제 분석값이 아닙니다.",
+  "progress": {
+    "posture_analysis_job_id": "00000000-0000-4000-8000-000000000001",
+    "analysis_stage": "joint_detection",
+    "progress_percent": 60,
+    "processed_frames": 180,
+    "total_frames": 300,
+    "detected_repetitions": 3
+  },
+  "result": {
+    "schema_version": "1.0",
+    "posture_analysis_job_id": "00000000-0000-4000-8000-000000000001",
+    "exercise_code": "squat",
+    "camera_view": "side",
+    "model_version": "pose-squat-v1",
+    "assessment": {
+      "overall_score": 82,
+      "passing_score": null,
+      "repetition_count": 1,
+      "summary": "스쿼트 자세가 좋습니다. 끝으로 갈수록 상체가 숙여지는 점을 고쳐보세요."
+    },
+    "repetitions": [
+      {
+        "repetition_number": 1,
+        "start_offset_ms": 1200,
+        "keyframe_offset_ms": 2300,
+        "end_offset_ms": 3400,
+        "score": 82,
+        "keypoints": [
+          {"joint_code": "head", "x_normalized": 0.50, "y_normalized": 0.18, "confidence": 0.98},
+          {"joint_code": "neck", "x_normalized": 0.49, "y_normalized": 0.27, "confidence": 0.98},
+          {"joint_code": "right_shoulder", "x_normalized": 0.47, "y_normalized": 0.32, "confidence": 0.97},
+          {"joint_code": "right_elbow", "x_normalized": 0.55, "y_normalized": 0.40, "confidence": 0.95},
+          {"joint_code": "right_wrist", "x_normalized": 0.63, "y_normalized": 0.43, "confidence": 0.93},
+          {"joint_code": "right_hip", "x_normalized": 0.42, "y_normalized": 0.52, "confidence": 0.96},
+          {"joint_code": "right_knee", "x_normalized": 0.57, "y_normalized": 0.68, "confidence": 0.96},
+          {"joint_code": "right_ankle", "x_normalized": 0.52, "y_normalized": 0.88, "confidence": 0.94},
+          {"joint_code": "right_heel", "x_normalized": 0.50, "y_normalized": 0.91, "confidence": 0.92},
+          {"joint_code": "right_foot_index", "x_normalized": 0.60, "y_normalized": 0.92, "confidence": 0.91}
+        ],
+        "angles": [
+          {
+            "angle_code": "torso_lean",
+            "measured_degrees": 52,
+            "target_min_degrees": null,
+            "target_max_degrees": 45
+          },
+          {
+            "angle_code": "knee_flexion",
+            "measured_degrees": 101,
+            "target_min_degrees": null,
+            "target_max_degrees": 100
+          }
+        ]
+      }
+    ],
+    "findings": [
+      {
+        "display_order": 1,
+        "finding_type": "correction",
+        "finding_code": "excessive_torso_lean",
+        "title": "상체가 많이 숙여져요",
+        "explanation": "허벅지 뒤가 뻣뻣하거나 발목이 덜 굽혀지면 상체가 숙여질 수 있어요.",
+        "repetition_start": 1,
+        "repetition_end": 1,
+        "guidance_steps": [
+          {"sequence_order": 1, "instruction": "가슴을 앞으로 펴고 시선을 앞 바닥에 두세요."}
+        ]
+      },
+      {
+        "display_order": 2,
+        "finding_type": "positive",
+        "finding_code": "stable_heel_contact",
+        "title": "발뒤꿈치가 끝까지 바닥에 붙어 있어요",
+        "explanation": "동작 중 발뒤꿈치 접촉이 유지됐어요.",
+        "repetition_start": 1,
+        "repetition_end": 1,
+        "guidance_steps": []
+      }
+    ],
+    "routine_suggestions": [
+      {
+        "display_order": 1,
+        "finding_display_order": 1,
+        "exercise_name": "고블릿 스쿼트",
+        "prescription": "가슴 앞에 덤벨을 들고 10회씩 3세트",
+        "target_sets": 3,
+        "target_repetitions": 10
+      }
+    ]
+  }
+}
