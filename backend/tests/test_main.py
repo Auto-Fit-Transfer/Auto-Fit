@@ -2240,12 +2240,13 @@ def test_regenerate_diet_meal_calls_owner_scoped_rpc(monkeypatch) -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.method == "POST"
-        assert request.url.path == "/rest/v1/rpc/replace_diet_meal"
+        assert request.url.path == "/rest/v1/rpc/replace_checked_diet_meal"
         payload = json.loads(request.content)
         assert payload == {
             "p_user_id": "authenticated-user",
             "p_diet_meal_id": "meal-1",
             "p_meal": replacement,
+            "p_food_allergens": [],
         }
         return httpx.Response(
             200,
@@ -2272,6 +2273,7 @@ def test_regenerate_diet_meal_calls_owner_scoped_rpc(monkeypatch) -> None:
             "meal-1",
             replacement,
             TEST_SETTINGS,
+            [],
         )
     )
 
@@ -2354,7 +2356,7 @@ def test_regenerate_recommended_diet_meal_uses_authenticated_user(
             ],
         }
 
-    async def fake_regenerate(user_id, received_id, replacement, settings):
+    async def fake_regenerate(user_id, received_id, replacement, settings, allergy_names):
         assert user_id == "authenticated-user"
         assert received_id == meal_id
         assert replacement["meal_type"] == "lunch"
@@ -2362,6 +2364,7 @@ def test_regenerate_recommended_diet_meal_uses_authenticated_user(
         assert replacement["foods"][0]["food_name"] == "두부 스테이크"
         assert replacement["used_ingredients"][0]["name"] == "두부"
         assert replacement["used_ingredients"][0]["matched_food_name"] == "두부 스테이크"
+        assert allergy_names == []
         return {"diet_meal_id": received_id, **replacement}
 
     async def fake_assign(meals, settings):
@@ -2492,9 +2495,13 @@ def test_record_meal_feedback_uses_authenticated_user(monkeypatch) -> None:
         assert body.feedback_type == "eaten"
         return {"feedback": {"feedback_type": "eaten"}}
 
+    async def allergy_check(*_args):
+        return None
+
     main.app.dependency_overrides[main.get_current_user] = fake_user
     main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
     monkeypatch.setattr(main, "record_recommended_meal", fake_record)
+    monkeypatch.setattr(main, "reject_conflicting_eaten_feedback", allergy_check)
     try:
         response = TestClient(main.app).post(
             "/api/diet/meals/11111111-1111-1111-1111-111111111111/feedback",
@@ -2836,7 +2843,7 @@ def test_meal_regeneration_does_not_save_allergen_conflict(monkeypatch, caplog) 
 
     async def fake_context(*_args, **_kwargs):
         return {
-            "recommendation": {"status": "active"},
+            "recommendation": {"status": "active", "allergy_context": ["우유"]},
             "meal": {
                 "meal_type": "lunch", "meal_order": 2,
                 "recommended_calories": 400, "status": "recommended",

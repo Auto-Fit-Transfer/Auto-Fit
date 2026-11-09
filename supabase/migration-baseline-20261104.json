@@ -413,6 +413,7 @@
     "20261104060215_cache_exercise_ai_analysis.sql",
     "20261104080053_enforce_ai_only_exercise_recommendations.sql",
     "20261104081014_remove_legacy_exercise_paths.sql",
-    "20261105020000_archive_non_ai_exercise_recommendations.sql"
+    "20261105020000_archive_non_ai_exercise_recommendations.sql",
+    "20261109040000_guard_saved_diet_feedback_allergy.sql"
   ]
 }

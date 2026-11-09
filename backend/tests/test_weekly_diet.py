@@ -610,6 +610,85 @@ def test_recipe_rejects_invalid_ai_response(harness, mutation):
     assert response.json()["detail"]["code"] in {"AI_INVALID_RESPONSE", "AI_SLOT_MISMATCH"}
 
 
+def test_weekly_recipe_rejects_allergenic_ingredient_before_save(harness):
+    client, state = harness
+    assert generate(client).status_code == 201
+    payload = api.recipe_request(state["rows"][0], "monday", "lunch", state["context"])
+    reply = recipe_reply(payload)
+    reply["meal"]["items"][0]["recipe"]["ingredients"] = [
+        {"name": "땅콩", "amount_g": 10}
+    ]
+    state["recipe_reply"] = reply
+
+    response = client.get(RECIPE)
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "AI_ALLERGEN_CONFLICT"
+    assert state["recipes"] == []
+
+
+def test_weekly_recipe_rechecks_cached_ingredients(harness):
+    client, state = harness
+    assert generate(client).status_code == 201
+    assert client.get(RECIPE).status_code == 200
+    state["recipes"][0]["recipe_response"]["meal"]["items"][0]["recipe"]["ingredients"] = [
+        {"name": "땅콩", "amount_g": 10}
+    ]
+
+    response = client.get(RECIPE)
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "AI_ALLERGEN_CONFLICT"
+
+
+@pytest.mark.parametrize("ingredients_text,expected_code", [
+    ("땅콩 10g", "AI_ALLERGEN_CONFLICT"),
+    ("재료 정보 없음", "AI_RECIPE_INGREDIENTS_UNVERIFIED"),
+])
+def test_weekly_recipe_rejects_missing_structured_ingredients(harness, ingredients_text, expected_code):
+    client, state = harness
+    assert generate(client).status_code == 201
+    payload = api.recipe_request(state["rows"][0], "monday", "lunch", state["context"])
+    reply = recipe_reply(payload)
+    detail = reply["meal"]["items"][0]["recipe"]
+    detail["ingredients"] = None
+    detail["ingredients_text"] = ingredients_text
+    state["recipe_reply"] = reply
+
+    response = client.get(RECIPE)
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == expected_code
+    assert state["recipes"] == []
+
+
+def test_weekly_recipe_rechecks_cached_unstructured_ingredients(harness):
+    client, state = harness
+    assert generate(client).status_code == 201
+    assert client.get(RECIPE).status_code == 200
+    detail = state["recipes"][0]["recipe_response"]["meal"]["items"][0]["recipe"]
+    detail["ingredients"] = None
+    detail["ingredients_text"] = "땅콩 10g"
+
+    response = client.get(RECIPE)
+
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "AI_ALLERGEN_CONFLICT"
+
+
+def test_weekly_recipe_rejects_cached_ingredient_without_name(harness):
+    client, state = harness
+    assert generate(client).status_code == 201
+    assert client.get(RECIPE).status_code == 200
+    detail = state["recipes"][0]["recipe_response"]["meal"]["items"][0]["recipe"]
+    detail["ingredients"] = [{"amount_g": 30}]
+
+    response = client.get(RECIPE)
+
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] == "WEEKLY_DIET_STORAGE_ERROR"
+
+
 @pytest.mark.parametrize("change", ["version", "context"])
 def test_recipe_rejects_changes_during_ai_call(harness, change):
     client, state = harness

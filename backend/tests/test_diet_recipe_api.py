@@ -64,7 +64,9 @@ def test_daily_recipe_is_generated_saved_reused_and_refreshed(monkeypatch) -> No
 
     async def context(user_id, meal_id, settings):
         assert user_id == "owner-123" and meal_id == str(MEAL_ID)
-        return deepcopy(meal_context())
+        saved = deepcopy(meal_context())
+        saved["recommendation"]["allergy_context"] = list(state["allergens"])
+        return saved
 
     async def restrictions(user_id, settings):
         return {"food_allergens": state["allergens"]}

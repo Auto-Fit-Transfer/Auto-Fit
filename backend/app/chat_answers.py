@@ -139,7 +139,13 @@ async def answer_question(
         existing_route = plan.intent in {"health_score_latest", "health_score_change"} or (
             plan.intent in {"meal_history", "exercise_history"} and record_period(content) is not None
         )
-        if navigation is not None and not existing_route:
+        navigation_requested = any(
+            word in "".join(content.casefold().split())
+            for word in ("화면", "메뉴", "페이지", "열어", "이동", "어디", "탭")
+        )
+        if (navigation is not None and not existing_route and (
+            plan.intent not in {"meal_history", "exercise_history"} or navigation_requested
+        )):
             return navigation
     if is_off_topic_question(content):
         if not allow_general:
@@ -177,6 +183,13 @@ async def _database_answer(
 ):
     text = "".join(content.split())
     if plan.intent in {"meal_history", "exercise_history"} and load_records is not None:
+        if plan.intent == "exercise_history" and any(
+            word in text for word in ("일반적인", "생활습관", "휴식", "운동방법", "운동법")
+        ):
+            return clarification(
+                "현재는 본인의 운동 기록 횟수·시간·열량 요약만 지원합니다. 일반 운동·휴식 생활 습관 안내는 아직 제공하지 않습니다.",
+                "general_exercise_guidance",
+            )
         if any(word in text for word in ("왜", "이유", "원인", "추천", "어떻게", "괜찮", "뜻", "개선", "삭제", "수정", "변경", "저장", "다른사용자", "다른사람", "계획", "목표", "루틴", "종류", "무슨운동", "단백질", "탄수화물", "지방")):
             return clarification("현재는 본인의 기록 횟수·시간·열량 요약을 조회할 수 있습니다. 추천이나 원인 분석은 아직 지원하지 않습니다.", "record_summary_question")
         period = record_period(content)

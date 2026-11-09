@@ -26,6 +26,8 @@ def diet_client(monkeypatch):
             "/rest/v1/diet_meal_foods": [],
             "/rest/v1/diet_feedback": [],
             "/rest/v1/user_food_inventory": [],
+            "/rest/v1/allergy_types": [],
+            "/rest/v1/user_allergies": [],
             "/rest/v1/menu_images": [],
             "/rest/v1/meal_logs": [{"meal_log_id": "private-log", "photo_storage_path": "private-user/photo.png"}],
             "/rest/v1/meal_log_items": [],

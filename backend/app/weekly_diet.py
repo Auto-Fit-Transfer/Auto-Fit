@@ -12,6 +12,7 @@ from pydantic import ValidationError
 
 from backend.app.ai_server import AIEndpoint, AIServerClient, AIServerError, get_ai_server_config
 from backend.app.diet_ai import conflicts_allergy
+from backend.app.saved_diet_allergy import recipe_conflicts, recipe_ingredients_complete
 from backend.app.weekly_diet_contract import (
     Day, MealType, WeeklyGenerateRequest, ReplaceWeeklyMealRequest,
     WeeklyReply, ReplacementReply, WeeklyPlanResponse, current_week_start,
@@ -185,6 +186,14 @@ def validate_recipe_reply(payload: dict, reply: dict) -> None:
             or result["daily_target_percentages"] is not None
             or result["related_menus"] != payload["related_menus"]):
         fail("AI_INVALID_RESPONSE")
+    for item in result["items"]:
+        recipe = item.get("recipe")
+        if not isinstance(recipe, dict):
+            continue
+        if recipe_conflicts(recipe, payload["food_allergens"]):
+            fail("AI_ALLERGEN_CONFLICT", 409)
+        if not recipe_ingredients_complete(recipe, payload["food_allergens"]):
+            fail("AI_RECIPE_INGREDIENTS_UNVERIFIED", 409)
 
 
 async def require_recipe_current(store, plan_id, version, latest, load_context, settings):

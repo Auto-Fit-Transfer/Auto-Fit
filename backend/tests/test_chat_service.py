@@ -77,6 +77,39 @@ def test_chat_reads_service_and_adds_safe_navigation():
     assert answer["evidence"] == [{"type": "navigation", "route": "/exercise/running", "label": "최근 러닝 기록 화면 열기"}]
 
 
+def test_general_exercise_advice_does_not_read_personal_records():
+    question = "기능 시험입니다. 운동 후 휴식할 때 참고할 일반적인 생활 습관을 한 문장으로 알려 주세요."
+
+    async def forbidden(*_args):
+        raise AssertionError("general advice must not read personal records")
+
+    answer = asyncio.run(answer_question(
+        question, forbidden, forbidden, read_service=forbidden,
+    ))
+    assert answer["intent"] == "clarification"
+    assert answer["response_source"] == "need_more_data"
+    assert answer["evidence"] == []
+    assert "기록" in answer["content"]
+
+
+def test_exercise_summary_still_requires_explicit_summary_request():
+    assert match_service_query("운동 알려줘", NOW) is None
+    assert match_service_query("운동 요약 알려줘", NOW).path == "/api/exercise/summary"
+
+
+def test_general_advice_with_record_word_still_avoids_personal_lookup():
+    async def forbidden(*_args):
+        raise AssertionError("general advice must not read personal records")
+
+    answer = asyncio.run(answer_question(
+        "운동 기록을 꾸준히 남기려면 어떤 일반적인 생활습관이 좋아?",
+        forbidden, forbidden, read_service=forbidden,
+    ))
+    assert answer["intent"] == "clarification"
+    assert answer["evidence"] == []
+    assert "일반 운동·휴식 생활 습관" in answer["content"]
+
+
 def test_empty_result_keeps_navigation_and_does_not_invent_data():
     query = match_service_query("저장한 러닝 코스", NOW)
     answer = service_answer(query, {"courses": []})

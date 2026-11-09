@@ -35,7 +35,7 @@ def test_diet_food_query_uses_persisted_order() -> None:
 def test_regenerated_foods_follow_persisted_food_order() -> None:
     async def run() -> None:
         async def handler(request: httpx.Request) -> httpx.Response:
-            assert request.url.path.endswith("/rpc/replace_diet_meal")
+            assert request.url.path.endswith("/rpc/replace_checked_diet_meal")
             return httpx.Response(200, json={
                 "diet_meal_id": "meal",
                 "foods": [
@@ -47,7 +47,7 @@ def test_regenerated_foods_follow_persisted_food_order() -> None:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             async with bind_request_client(client):
                 result = await main.regenerate_diet_meal(
-                    "owner", "meal", {"foods": []}, TEST_SETTINGS
+                    "owner", "meal", {"foods": []}, TEST_SETTINGS, []
                 )
 
         assert [food["food_name"] for food in result["foods"]] == [

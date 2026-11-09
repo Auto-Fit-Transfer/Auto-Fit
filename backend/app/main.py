@@ -43,6 +43,7 @@ from backend.app.chat_rate_limit import ChatRateLimiter
 from backend.app.http_client import client_scope, get_with_pgrst303_retry, retry_pgrst303_scope, SharedHttpClientMiddleware
 from backend.app.diet_timing import DietTimingMiddleware, timed_http_client
 from backend.app.diet_recipe import daily_recipe_request, daily_source_fingerprint, has_unavailable_recipe, snapshot_fields
+from backend.app.saved_diet_allergy import meal_safety, recipe_conflicts, recipe_ingredients_complete
 from backend.app.diet_ai import (
     DietAIUnavailable,
     conflicts_allergy,
@@ -2480,17 +2481,31 @@ async def create_diet_recommendation(
     plan: dict[str, Any],
     settings: Settings,
 ) -> dict[str, Any]:
+    allergy_context = plan.get("allergy_context")
+    if not isinstance(allergy_context, list):
+        raise HTTPException(500, detail="Daily diet allergy context is missing")
     async with client_scope() as client:
         response = await client.post(
-            f"{settings.supabase_url}/rest/v1/rpc/create_diet_recommendation",
+            f"{settings.supabase_url}/rest/v1/rpc/create_checked_diet_recommendation",
             headers=service_headers(settings),
             json={
                 "p_user_id": user_id,
                 "p_recommendation": plan["recommendation"],
                 "p_meals": plan["meals"],
+                "p_food_allergens": allergy_context,
             },
         )
     if not response.is_success:
+        try:
+            error = response.json()
+        except ValueError:
+            error = None
+        if (isinstance(error, dict) and error.get("code") == "P0001"
+                and error.get("message") == "DIET_ALLERGY_CONTEXT_CHANGED"):
+            raise HTTPException(409, detail={
+                "code": "DIET_ALLERGY_CONTEXT_CHANGED",
+                "message": "알레르기 설정이 변경되었습니다. 식단을 다시 생성해 주세요.",
+            })
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Supabase diet recommendation creation failed",
@@ -2681,6 +2696,7 @@ async def fetch_diet_recommendation(
             "diet_recommendation_id,user_id,recommendation_date,target_calories,"
             "target_carbohydrates,target_protein,target_fat,"
             "recommendation_summary,ai_reason,status,created_at"
+            ",allergy_context"
         ),
         "user_id": f"eq.{user_id}",
         "order": (
@@ -2958,18 +2974,31 @@ async def regenerate_diet_meal(
     diet_meal_id: str,
     meal: dict[str, Any],
     settings: Settings,
+    allergy_names: list[str],
 ) -> dict[str, Any]:
     async with client_scope() as client:
         response = await client.post(
-            f"{settings.supabase_url}/rest/v1/rpc/replace_diet_meal",
+            f"{settings.supabase_url}/rest/v1/rpc/replace_checked_diet_meal",
             headers=service_headers(settings),
             json={
                 "p_user_id": user_id,
                 "p_diet_meal_id": diet_meal_id,
                 "p_meal": meal,
+                "p_food_allergens": allergy_names,
             },
         )
     if response.status_code == status.HTTP_400_BAD_REQUEST:
+        try:
+            error = response.json()
+        except ValueError:
+            error = None
+        check_saved_meal_allergy_rpc_error(error)
+        if (isinstance(error, dict) and error.get("code") == "P0001"
+                and error.get("message") == "DIET_ALLERGY_CONTEXT_CHANGED"):
+            raise HTTPException(409, detail={
+                "code": "DIET_ALLERGY_CONTEXT_CHANGED",
+                "message": "알레르기 설정이 변경되었습니다. 식단 전체를 다시 생성해 주세요.",
+            })
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Diet meal cannot be regenerated",
@@ -3034,7 +3063,7 @@ async def fetch_diet_meal_context(
             f"{settings.supabase_url}/rest/v1/diet_recommendations",
             headers=service_headers(settings),
             params={
-                "select": "diet_recommendation_id,user_id,recommendation_date,status",
+                "select": "diet_recommendation_id,user_id,recommendation_date,status,allergy_context",
                 "diet_recommendation_id": f"eq.{meal['diet_recommendation_id']}",
                 "user_id": f"eq.{user_id}",
                 "limit": "1",
@@ -3167,6 +3196,7 @@ async def update_recommended_meal(
             error = response.json()
         except ValueError:
             error = {}
+        check_saved_meal_allergy_rpc_error(error)
         missing = (
             response.status_code == 400
             and isinstance(error, dict)
@@ -3207,6 +3237,7 @@ async def record_recommended_meal(
             error = {}
         if not isinstance(error, dict):
             error = {}
+        check_saved_meal_allergy_rpc_error(error)
         code = error.get("code")
         message = error.get("message")
         duplicate = (
@@ -4093,6 +4124,79 @@ async def delete_diet_inventory(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+async def current_allergy_names(user_id: str, settings: Settings) -> list[str]:
+    catalog, selected = await asyncio.gather(
+        fetch_allergy_catalog(settings),
+        fetch_user_allergies(user_id, settings),
+    )
+    return resolve_daily_allergy_names(selected, catalog)
+
+
+def annotate_saved_diet_allergies(
+    result: dict[str, Any] | None, allergies: list[str]
+) -> dict[str, Any] | None:
+    if result is None:
+        return None
+    return {
+        **result,
+        "meals": [
+            {**meal, "allergy_safety": meal_safety(
+                meal, allergies, result.get("recommendation", {}).get("allergy_context")
+            )}
+            for meal in result.get("meals") or []
+        ],
+    }
+
+
+def raise_saved_meal_allergy_conflict() -> None:
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "code": "DIET_MEAL_ALLERGY_CONFLICT",
+            "message": "현재 알레르기와 충돌하는 추천 식단입니다.",
+        },
+    )
+
+
+def raise_saved_meal_allergy_unverified() -> None:
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "code": "DIET_MEAL_ALLERGY_UNVERIFIED",
+            "message": "저장된 식단의 알레르기 정보를 확인할 수 없습니다.",
+        },
+    )
+
+
+def check_saved_meal_allergy_rpc_error(error: Any) -> None:
+    if not isinstance(error, dict) or error.get("code") != "P0001":
+        return
+    if error.get("message") == "DIET_MEAL_ALLERGY_CONFLICT":
+        raise_saved_meal_allergy_conflict()
+    if error.get("message") == "DIET_MEAL_ALLERGY_UNVERIFIED":
+        raise_saved_meal_allergy_unverified()
+
+
+def reject_conflicting_saved_meal(
+    meal: dict[str, Any], allergies: list[str], saved_allergies: list[str] | None = None
+) -> None:
+    state = meal_safety(meal, allergies, saved_allergies)["status"]
+    if state in {"conflict", "context_changed"}:
+        raise_saved_meal_allergy_conflict()
+    if state == "context_unverified":
+        raise_saved_meal_allergy_unverified()
+
+
+async def reject_conflicting_eaten_feedback(
+    user_id: str, diet_meal_id: str, settings: Settings
+) -> None:
+    context = await fetch_diet_meal_context(user_id, diet_meal_id, settings)
+    reject_conflicting_saved_meal(
+        context["meal"], await current_allergy_names(user_id, settings),
+        context["recommendation"].get("allergy_context"),
+    )
+
+
 @app.get("/api/diet/recommendations", tags=["Diet"])
 async def get_diet_recommendation_by_date(
     recommendation_date: Annotated[date, Query(alias="date")],
@@ -4106,6 +4210,10 @@ async def get_diet_recommendation_by_date(
         recommendation_date,
         client=getattr(request.app.state, "supabase_http_client", None) if request else None,
     )
+    if result and result.get("meals"):
+        result = annotate_saved_diet_allergies(
+            result, await current_allergy_names(user.id, settings)
+        )
     return {"result": result}
 
 
@@ -4115,6 +4223,10 @@ async def get_latest_diet_recommendation(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     result = await fetch_latest_diet_recommendation(user.id, settings)
+    if result and result.get("meals"):
+        result = annotate_saved_diet_allergies(
+            result, await current_allergy_names(user.id, settings)
+        )
     return {"result": result}
 
 
@@ -4128,9 +4240,23 @@ async def get_diet_meal_recipe(
     """Generate and save an owned daily meal's recipe on first read."""
     context = await fetch_diet_meal_context(user.id, str(diet_meal_id), settings)
     latest = await load_weekly_diet_context(user.id, settings)
+    reject_conflicting_saved_meal(
+        context["meal"], latest["food_allergens"],
+        context["recommendation"].get("allergy_context"),
+    )
     payload = daily_recipe_request(context, latest["food_allergens"])
     fingerprint = daily_source_fingerprint(payload)
     client = getattr(request.app.state, "supabase_http_client", None) if request else None
+
+    def public_safe_recipe(row: dict) -> dict | None:
+        if recipe_conflicts(row, latest["food_allergens"]):
+            raise_saved_meal_allergy_conflict()
+        if not recipe_ingredients_complete(row, latest["food_allergens"]):
+            raise HTTPException(409, detail={
+                "code": "DIET_RECIPE_INGREDIENTS_UNVERIFIED",
+                "message": "레시피의 전체 재료를 확인할 수 없어 제공하지 않습니다.",
+            })
+        return _public_diet_recipe(row)
 
     async def read_snapshot() -> dict | None:
         async with timed_http_client("recipe", client) as http_client:
@@ -4157,7 +4283,7 @@ async def get_diet_meal_recipe(
     existing = await read_snapshot()
     if (existing and existing.get("source_fingerprint") == fingerprint
             and not has_unavailable_recipe(existing.get("recipe_response"))):
-        return {"recipe": _public_diet_recipe(existing)}
+        return {"recipe": public_safe_recipe(existing)}
 
     ai = get_weekly_ai_client()
     await ChatRateLimiter(
@@ -4180,6 +4306,8 @@ async def get_diet_meal_recipe(
         "source_fingerprint": fingerprint,
         **snapshot_fields(reply),
     }
+    if recipe_conflicts(snapshot_data, latest["food_allergens"]):
+        raise_saved_meal_allergy_conflict()
     async with timed_http_client("recipe", client) as http_client:
         if existing:
             params = {"user_id": f"eq.{user.id}", "select": "*"}
@@ -4211,7 +4339,7 @@ async def get_diet_meal_recipe(
         saved = await read_snapshot()
         if (saved and saved.get("source_fingerprint") == fingerprint
                 and not has_unavailable_recipe(saved.get("recipe_response"))):
-            return {"recipe": _public_diet_recipe(saved)}
+            return {"recipe": public_safe_recipe(saved)}
         raise HTTPException(409, detail="Diet recipe changed while saving")
     try:
         saved_rows = response.json()
@@ -4223,9 +4351,9 @@ async def get_diet_meal_recipe(
         saved = await read_snapshot()
         if (saved and saved.get("source_fingerprint") == fingerprint
                 and not has_unavailable_recipe(saved.get("recipe_response"))):
-            return {"recipe": _public_diet_recipe(saved)}
+            return {"recipe": public_safe_recipe(saved)}
         raise HTTPException(409, detail="Diet recipe changed while saving")
-    return {"recipe": _public_diet_recipe(saved_rows[0])}
+    return {"recipe": public_safe_recipe(saved_rows[0])}
 
 
 def _public_diet_recipe(row: dict) -> dict | None:
@@ -4283,6 +4411,10 @@ async def generate_diet_recommendation(
             previous["recommendation"]["diet_recommendation_id"] if previous else None
         )
         if previous_id != observed_id:
+            if previous and previous.get("meals"):
+                previous = annotate_saved_diet_allergies(
+                    previous, await current_allergy_names(user.id, settings)
+                )
             return {
                 "ok": True,
                 "generator": "mixed_ai_v1",
@@ -4328,13 +4460,14 @@ async def generate_diet_recommendation(
             ) from exc
         await assign_menu_images(plan["meals"], settings)
         await generate_missing_menu_images(plan["meals"], settings)
+        plan["allergy_context"] = allergy_names
         await create_diet_recommendation(user.id, plan, settings)
         result = await fetch_diet_recommendation(user.id, settings, target_date)
         return {
             "ok": True,
             "generator": "mixed_ai_v1",
             "reused_concurrent_result": False,
-            "result": result,
+            "result": annotate_saved_diet_allergies(result, allergy_names),
         }
 
 
@@ -4366,6 +4499,11 @@ async def regenerate_recommended_diet_meal(
         fetch_food_catalog(settings),
     )
     allergy_names = resolve_daily_allergy_names(selected, catalog)
+    saved_allergies = context["recommendation"].get("allergy_context")
+    if allergy_names and saved_allergies is None:
+        raise_saved_meal_allergy_unverified()
+    if saved_allergies is not None and not set(allergy_names).issubset(saved_allergies):
+        raise_saved_meal_allergy_conflict()
     resolved_inventory = resolve_safe_inventory_items(
         inventory, food_catalog, allergy_names
     )
@@ -4400,6 +4538,7 @@ async def regenerate_recommended_diet_meal(
         str(diet_meal_id),
         replacement,
         settings,
+        allergy_names,
     )
     meal["image_source"] = replacement.get("image_source")
     meal["image_generation_status"] = replacement.get("image_generation_status")
@@ -4421,6 +4560,10 @@ async def post_diet_meal_feedback(
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
+    if body.feedback_type == "eaten":
+        await reject_conflicting_eaten_feedback(
+            user.id, str(diet_meal_id), settings
+        )
     result = await record_recommended_meal(
         user.id, str(diet_meal_id), body, settings
     )
@@ -4434,6 +4577,10 @@ async def patch_diet_meal_feedback(
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
+    if body.feedback_type == "eaten":
+        await reject_conflicting_eaten_feedback(
+            user.id, str(diet_meal_id), settings
+        )
     result = await update_recommended_meal(user.id, str(diet_meal_id), body, settings)
     return {"ok": True, "result": result}
 

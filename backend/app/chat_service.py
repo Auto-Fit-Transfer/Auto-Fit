@@ -75,6 +75,8 @@ def match_service_query(content: str, now: datetime | None = None) -> ServiceQue
             return _query("diet_recommendation", "/api/diet/recommendations/latest", "최근 식단 추천", "/diet", "result")
         return None
     if any(word in text for word in ("운동", "헬스", "홈트")):
+        if any(word in text for word in ("일반적인", "생활습관", "휴식", "운동방법", "운동법")):
+            return None
         if any(word in text for word in ("저장", "루틴")):
             return _query("saved_workout_routines", "/api/exercise/saved-routines", "저장한 운동", "/exercise/saved-routines", "routines")
         if any(word in text for word in ("기록", "내역", "했어", "했지")):
@@ -87,7 +89,9 @@ def match_service_query(content: str, now: datetime | None = None) -> ServiceQue
             return _query("exercise_goal", "/api/exercise/goals/active", "운동 목표", "/exercise/goal", "goal")
         if "추천" in text:
             return _query("exercise_recommendation", "/api/exercise/recommendations/latest", "최근 운동 추천", "/exercise", "result")
-        return _query("exercise_summary", "/api/exercise/summary", "운동 요약", "/exercise/summary", "summary")
+        if any(word in text for word in ("요약", "현황")):
+            return _query("exercise_summary", "/api/exercise/summary", "운동 요약", "/exercise/summary", "summary")
+        return None
     for word, intent, title in (
         ("혈압", "health_blood_pressure", "최근 혈압"),
         ("혈당", "health_glucose", "최근 혈당"),

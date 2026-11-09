@@ -131,6 +131,7 @@ async def refresh_daily_diets() -> tuple[int, int]:
                 )
                 await assign_menu_images(plan["meals"], settings)
                 await generate_missing_menu_images(plan["meals"], settings)
+                plan["allergy_context"] = allergy_names
                 await create_diet_recommendation(user_id, plan, settings)
                 return True
             except Exception as exc:  # Keep refreshing other users after one isolated failure.
