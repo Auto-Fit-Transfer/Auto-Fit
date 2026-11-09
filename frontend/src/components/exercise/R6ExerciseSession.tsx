@@ -19,17 +19,13 @@ import PauseIcon from '@/assets/icons/ui/pause-fill.svg';
 import PlayIcon from '@/assets/icons/ui/play-fill.svg';
 import WarningIcon from '@/assets/icons/ui/warning-circle.svg';
 import XIcon from '@/assets/icons/ui/x.svg';
+import { discomfortFeelings as feelings } from '@/src/features/exercise/discomfortFeelings';
 import type { ExerciseSessionExercise, ExerciseSessionState } from '@/src/features/exercise/ExerciseSessionContext';
 import { defaultVoiceGuideSettings, loadVoiceGuideSettings, saveVoiceGuideSettings, speakGuide, stopGuide, type VoiceGuideSettings } from '@/src/features/exercise/voiceGuide';
 import { fontFamilies, lightPalette, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
 
 const parts = ['목', '어깨', '허리', '무릎', '손목', '발목', '기타'];
-const feelings = [
-  { key: 'stiff', label: '뻐근해요', symptomType: 'fatigue', severity: 3 },
-  { key: 'tingling', label: '찌릿해요', symptomType: 'pain', severity: 5 },
-  { key: 'pain', label: '아파요', symptomType: 'pain', severity: 8 },
-] as const;
 
 export type DiscomfortReport = {
   bodyAreas: string[];
@@ -48,6 +44,7 @@ type Props = {
   onReportDiscomfort: (report: DiscomfortReport) => Promise<number | null>;
   onSkip: () => void;
   onSkipRest: () => void;
+  onStopWorkout: () => void;
   onTogglePause: () => void;
 };
 
@@ -56,7 +53,7 @@ function time(seconds: number) {
 }
 
 export function R6ExerciseSession({
-  exercise, session, onAddRest, onBack, onCompleteSet, onReportDiscomfort, onSkip, onSkipRest, onTogglePause,
+  exercise, session, onAddRest, onBack, onCompleteSet, onReportDiscomfort, onSkip, onSkipRest, onStopWorkout, onTogglePause,
 }: Props) {
   const { colors } = useAppTheme();
   const s = useThemedStyles(createSStyles);
@@ -68,6 +65,9 @@ export function R6ExerciseSession({
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [changedCount, setChangedCount] = useState<number | null>(null);
+  const [stopped, setStopped] = useState(false);
+  const chosenFeeling = feelings.find((item) => item.key === feeling) ?? feelings[0];
+  const needsPart = !chosenFeeling.stops && selectedParts.length === 0;
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [voice, setVoice] = useState<VoiceGuideSettings>(defaultVoiceGuideSettings);
   const lastSpoken = useRef('');
@@ -114,22 +114,25 @@ export function R6ExerciseSession({
       setResumeAfterSheet(true);
     }
     setChangedCount(null);
+    setStopped(false);
     setSheetOpen(true);
   };
   const continueWorkout = () => {
+    if (stopped) return; // A stop never resumes; the only way on is ending the workout.
     setSheetOpen(false);
     if (resumeAfterSheet) onTogglePause();
     setResumeAfterSheet(false);
   };
   const submitDiscomfort = async () => {
-    if (submitting || selectedParts.length === 0) return;
-    const chosen = feelings.find((item) => item.key === feeling) ?? feelings[0];
+    if (submitting || needsPart) return;
+    // shortcut: ends only on this device, because the discomfort RPC's stop cancels the whole weekly plan; send action_taken=stop once back-end limits it to the current plan_session_id.
+    if (chosenFeeling.stops) { setStopped(true); return; }
     setSubmitting(true);
     const changed = await onReportDiscomfort({
       bodyAreas: selectedParts,
       detail: note.trim() || null,
-      severity: chosen.severity,
-      symptomType: chosen.symptomType,
+      severity: chosenFeeling.severity,
+      symptomType: chosenFeeling.symptomType,
     });
     setSubmitting(false);
     if (changed !== null) setChangedCount(changed);
@@ -240,17 +243,28 @@ export function R6ExerciseSession({
           <Pressable accessibilityLabel="닫기" accessibilityRole="button" onPress={continueWorkout} style={s.sheetDim} />
           <View style={[s.sheet, { paddingBottom: Math.max(20, insets.bottom + 12) }]}>
             <View style={s.sheetHeading}>
-              <Text style={s.sheetTitle}>{changedCount === null ? '어디가 불편했나요?' : '알려 주셔서 고마워요'}</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="닫기" hitSlop={10} onPress={continueWorkout}><XIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
+              <Text style={s.sheetTitle}>{stopped ? '운동을 멈췄어요' : changedCount === null ? '어디가 불편했나요?' : '알려 주셔서 고마워요'}</Text>
+              {stopped ? null : <Pressable accessibilityRole="button" accessibilityLabel="닫기" hitSlop={10} onPress={continueWorkout}><XIcon color={colors.textPrimary} height={24} width={24} /></Pressable>}
             </View>
-            {changedCount !== null ? (
+            {stopped ? (
+              <>
+                <View style={s.notice}>
+                  <WarningIcon color={colors.warning} height={20} width={20} />
+                  <View style={s.grow}>
+                    <Text style={s.noticeTitle}>증상에 따라 안전을 위해 중단했어요</Text>
+                    <Text style={s.cardText}>증상이 계속되거나 심해지면 의료진과 상담해 주세요.</Text>
+                  </View>
+                </View>
+                <Pressable accessibilityRole="button" onPress={onStopWorkout} style={s.sheetPrimary}><Text style={s.primaryText}>운동 종료</Text></Pressable>
+              </>
+            ) : changedCount !== null ? (
               <>
                 <Text style={s.sheetDescription}>{changedCount > 0 ? `남은 운동 ${changedCount}개를 몸 상태에 맞게 바꿨어요.` : '바꿀 남은 운동은 없어요. 무리되면 언제든 멈춰 주세요.'}</Text>
                 <Pressable accessibilityRole="button" onPress={continueWorkout} style={s.sheetPrimary}><Text style={s.primaryText}>운동 이어 하기</Text></Pressable>
               </>
             ) : (
               <>
-                <Text style={s.sheetDescription}>운동은 잠시 멈춰 있어요. 알려 주시면 남은 운동을 바꿔 드려요.</Text>
+                <Text style={s.sheetDescription}>운동은 잠시 멈춰 있어요.</Text>
                 <View style={s.notice}>
                   <WarningIcon color={colors.warning} height={20} width={20} />
                   <View style={s.grow}>
@@ -265,15 +279,15 @@ export function R6ExerciseSession({
                   </Pressable>
                 ))}</View>
                 <Text style={s.fieldTitle}>어떤 느낌인가요?</Text>
-                <View style={s.feelings}>{feelings.map(({ key, label }) => (
-                  <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: feeling === key }} onPress={() => setFeeling(key)} style={[s.chip, s.feeling, feeling === key && s.selectedChip]}>
+                <View style={s.chips}>{feelings.map(({ key, label }) => (
+                  <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: feeling === key }} onPress={() => setFeeling(key)} style={[s.chip, feeling === key && s.selectedChip]}>
                     <Text style={[s.chipText, feeling === key && s.selectedChipText]}>{label}</Text>
                   </Pressable>
                 ))}</View>
                 <TextInput accessibilityLabel="불편한 내용" maxLength={200} onChangeText={setNote} placeholder="예) 당길 때 오른쪽 어깨가 찌릿해요 (선택)" placeholderTextColor={colors.textDisabled} style={s.input} value={note} />
                 <View style={s.actions}>
-                  <Pressable accessibilityRole="button" onPress={() => { setSheetOpen(false); setResumeAfterSheet(false); onBack(); }} style={s.secondaryButton}><Text style={s.secondaryText}>오늘은 그만하기</Text></Pressable>
-                  <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting || selectedParts.length === 0 }} disabled={submitting || selectedParts.length === 0} onPress={() => void submitDiscomfort()} style={[s.primaryButton, (submitting || selectedParts.length === 0) && s.disabled]}><Text style={[s.primaryText, (submitting || selectedParts.length === 0) && s.disabledText]}>{submitting ? '바꾸는 중…' : '남은 운동 바꾸기'}</Text></Pressable>
+                  {chosenFeeling.stops ? null : <Pressable accessibilityRole="button" onPress={() => { setSheetOpen(false); setResumeAfterSheet(false); onBack(); }} style={s.secondaryButton}><Text style={s.secondaryText}>오늘은 그만하기</Text></Pressable>}
+                  <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting || needsPart }} disabled={submitting || needsPart} onPress={() => void submitDiscomfort()} style={[s.primaryButton, (submitting || needsPart) && s.disabled]}><Text style={[s.primaryText, (submitting || needsPart) && s.disabledText]}>{submitting ? '바꾸는 중…' : chosenFeeling.stops ? '운동 중단하기' : '남은 운동 강도 낮추기'}</Text></Pressable>
                 </View>
               </>
             )}

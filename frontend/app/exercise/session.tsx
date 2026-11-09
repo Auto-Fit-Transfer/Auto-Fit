@@ -191,6 +191,7 @@ export default function ExerciseSessionScreen() {
         onReportDiscomfort={reportDiscomfort}
         onSkip={openSkipConfirmation}
         onSkipRest={skipRest}
+        onStopWorkout={leaveSession}
         onTogglePause={togglePause}
         session={session}
       />
