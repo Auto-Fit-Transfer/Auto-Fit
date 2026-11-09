@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from app.schemas.posture_analysis import (
     PostureAnalysisProgress,
     PostureAnalysisResult,
+    PostureCapabilitiesResponse,
 )
 
 
@@ -18,6 +19,7 @@ EXAMPLES = json.loads(
     )
 )
 PROGRESS_EXAMPLE = EXAMPLES["progress"]
+CAPABILITIES_EXAMPLE = EXAMPLES["capabilities"]
 RESULT_EXAMPLE = EXAMPLES["result"]
 
 
@@ -33,11 +35,33 @@ def test_progress_contract() -> None:
         PostureAnalysisProgress.model_validate(invalid)
 
 
+def test_capabilities_contract() -> None:
+    result = PostureCapabilitiesResponse.model_validate(
+        CAPABILITIES_EXAMPLE
+    )
+    assert len(result.exercises) == 10
+    assert result.exercises[0].camera_view == "side"
+
+    invalid = deepcopy(CAPABILITIES_EXAMPLE)
+    invalid["exercises"][0]["validation_status"] = "production"
+    with pytest.raises(ValidationError):
+        PostureCapabilitiesResponse.model_validate(invalid)
+
+    duplicate_key = deepcopy(CAPABILITIES_EXAMPLE)
+    duplicate_key["exercises"][1]["catalog_exercise_keys"] = [
+        duplicate_key["exercises"][0]["catalog_exercise_keys"][0]
+    ]
+    with pytest.raises(ValidationError):
+        PostureCapabilitiesResponse.model_validate(duplicate_key)
+
+
 def test_final_result_contract() -> None:
     result = PostureAnalysisResult.model_validate(RESULT_EXAMPLE)
+    assert result.schema_version == "1.1"
+    assert result.assessment.verdict == "needs_correction"
     assert result.assessment.repetition_count == len(result.repetitions)
     assert result.repetitions[0].keypoints[0].joint_code == "head"
-    assert result.routine_suggestions[0].finding_display_order == 1
+    assert result.routine_suggestions == []
 
 
 @pytest.mark.parametrize(
@@ -46,8 +70,10 @@ def test_final_result_contract() -> None:
         (("repetitions", 0, "keypoints", 0, "confidence"), 1.1),
         (("repetitions", 0, "keypoints", 0, "joint_code"), "pelvis"),
         (("repetitions", 0, "angles", 0, "angle_code"), "back_angle"),
+        (("repetitions", 0, "angles", 0, "measured_degrees"), 181),
+        (("repetitions", 0, "end_offset_ms"), 30_001),
+        (("assessment", "verdict"), "correct"),
         (("assessment", "repetition_count"), 2),
-        (("routine_suggestions", 0, "finding_display_order"), 99),
     ],
 )
 def test_invalid_result_is_rejected(
@@ -84,3 +110,35 @@ def test_repetition_offsets_and_duplicate_codes_are_rejected() -> None:
     ] = "right_knee"
     with pytest.raises(ValidationError):
         PostureAnalysisResult.model_validate(duplicate_joint)
+
+
+def test_angle_target_and_verdict_must_match_result() -> None:
+    missing_target = deepcopy(RESULT_EXAMPLE)
+    missing_target["repetitions"][0]["angles"][0][
+        "target_max_degrees"
+    ] = None
+    with pytest.raises(ValidationError):
+        PostureAnalysisResult.model_validate(missing_target)
+
+    contradictory_verdict = deepcopy(RESULT_EXAMPLE)
+    contradictory_verdict["assessment"][
+        "verdict"
+    ] = "within_current_rules"
+    with pytest.raises(ValidationError):
+        PostureAnalysisResult.model_validate(contradictory_verdict)
+
+
+def test_routine_suggestion_must_reference_a_finding() -> None:
+    invalid_suggestion = deepcopy(RESULT_EXAMPLE)
+    invalid_suggestion["routine_suggestions"] = [
+        {
+            "display_order": 1,
+            "finding_display_order": 99,
+            "exercise_name": "catalog mapping pending",
+            "prescription": "do not display",
+            "target_sets": 1,
+            "target_repetitions": 1,
+        }
+    ]
+    with pytest.raises(ValidationError):
+        PostureAnalysisResult.model_validate(invalid_suggestion)

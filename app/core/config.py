@@ -274,8 +274,15 @@ class Settings(BaseSettings):
     posture_model_path: str = (
         "app/models/pose_landmarker_full.task"
     )
+    posture_model_sha256: str = Field(
+        default=(
+            "4eaa5eb7a98365221087693fcc286334"
+            "cf0858e2eb6e15b506aa4a7ecdcec4ad"
+        ),
+        pattern=r"^[0-9a-fA-F]{64}$",
+    )
     posture_model_version: str = (
-        "mediapipe-pose-landmarker-full+squat-rules-v1"
+        "mediapipe-pose-full-4eaa5eb7"
     )
     posture_video_max_bytes: int = Field(
         default=50_000_000,
@@ -283,9 +290,9 @@ class Settings(BaseSettings):
         le=200_000_000,
     )
     posture_video_max_seconds: float = Field(
-        default=60.0,
+        default=30.0,
         gt=0,
-        le=180.0,
+        le=30.0,
     )
     posture_target_fps: float = Field(
         default=15.0,
@@ -307,6 +314,7 @@ class Settings(BaseSettings):
         ge=1,
         le=8,
     )
+    posture_allow_experimental: bool = False
 
     # Backend -> AI Server 인증
     ai_server_api_key: str | None = None

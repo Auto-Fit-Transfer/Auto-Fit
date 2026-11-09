@@ -97,7 +97,7 @@ def test_analysis_service_sends_only_contract_fields(monkeypatch):
     assert captured["text_format"] is ExerciseAnalysisNarrative
     assert json.loads(captured["input"]) == REQUEST
     assert "진단" in captured["instructions"]
-    assert captured["reasoning"] == {"effort": "minimal"}
+    assert captured["reasoning"] == {"effort": "low"}
     assert captured["max_output_tokens"] == 2200
 
 

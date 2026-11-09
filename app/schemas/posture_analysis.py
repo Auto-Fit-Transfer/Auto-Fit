@@ -12,6 +12,14 @@ PostureAnalysisStage = Literal[
     "result_summary",
 ]
 
+PostureVerdict = Literal[
+    "within_current_rules",
+    "needs_correction",
+]
+
+PostureCameraView = Literal["side", "front"]
+PostureValidationStatus = Literal["validated", "experimental"]
+
 PostureJointCode = Literal[
     "head",
     "neck",
@@ -38,6 +46,14 @@ PostureAngleCode = Literal[
     "knee_flexion",
     "hip_flexion",
     "ankle_dorsiflexion",
+    "elbow_flexion",
+    "body_alignment",
+    "hip_extension",
+    "upper_arm_drift",
+    "ankle_flexion",
+    "shoulder_abduction",
+    "leg_abduction",
+    "bilateral_asymmetry",
 ]
 
 class PostureContractModel(BaseModel):
@@ -65,6 +81,49 @@ class PostureAnalysisProgress(PostureContractModel):
         return self
 
 
+class PostureExerciseCapability(PostureContractModel):
+    exercise_code: str = Field(min_length=1)
+    display_name_ko: str = Field(min_length=1)
+    camera_view: PostureCameraView
+    movement_type: Literal["repetition"] = "repetition"
+    analysis_side_required: bool = False
+    validation_status: PostureValidationStatus
+    rule_version: str = Field(min_length=1)
+    catalog_exercise_keys: list[str] = Field(min_length=1)
+    capture_instructions: list[str] = Field(min_length=1)
+    limitations: list[str] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_capability_lists(self) -> "PostureExerciseCapability":
+        if len(self.catalog_exercise_keys) != len(
+            set(self.catalog_exercise_keys)
+        ):
+            raise ValueError("catalog_exercise_keys must be unique")
+        return self
+
+
+class PostureCapabilitiesResponse(PostureContractModel):
+    schema_version: Literal["1.0"] = "1.0"
+    exercises: list[PostureExerciseCapability] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_capabilities(self) -> "PostureCapabilitiesResponse":
+        exercise_codes = [item.exercise_code for item in self.exercises]
+        if len(exercise_codes) != len(set(exercise_codes)):
+            raise ValueError("exercise_code values must be unique")
+
+        catalog_keys = [
+            exercise_key
+            for item in self.exercises
+            for exercise_key in item.catalog_exercise_keys
+        ]
+        if len(catalog_keys) != len(set(catalog_keys)):
+            raise ValueError(
+                "catalog exercise keys cannot map to multiple profiles"
+            )
+        return self
+
+
 class PostureKeypoint(PostureContractModel):
     joint_code: PostureJointCode
     x_normalized: float = Field(ge=0, le=1)
@@ -74,12 +133,27 @@ class PostureKeypoint(PostureContractModel):
 
 class PostureAngle(PostureContractModel):
     angle_code: PostureAngleCode
-    measured_degrees: float
-    target_min_degrees: float | None = None
-    target_max_degrees: float | None = None
+    measured_degrees: float = Field(ge=0, le=180)
+    target_min_degrees: float | None = Field(
+        default=None,
+        ge=0,
+        le=180,
+    )
+    target_max_degrees: float | None = Field(
+        default=None,
+        ge=0,
+        le=180,
+    )
 
     @model_validator(mode="after")
     def validate_target_range(self) -> "PostureAngle":
+        if (
+            self.target_min_degrees is None
+            and self.target_max_degrees is None
+        ):
+            raise ValueError(
+                "at least one target angle boundary is required"
+            )
         if (
             self.target_min_degrees is not None
             and self.target_max_degrees is not None
@@ -93,10 +167,10 @@ class PostureAngle(PostureContractModel):
 
 class PostureRepetition(PostureContractModel):
     repetition_number: int = Field(ge=1, le=20)
-    start_offset_ms: int = Field(ge=0)
-    keyframe_offset_ms: int = Field(ge=0)
-    end_offset_ms: int = Field(ge=0)
-    score: float = Field(ge=0, le=100)
+    start_offset_ms: int = Field(ge=0, le=30_000)
+    keyframe_offset_ms: int = Field(ge=0, le=30_000)
+    end_offset_ms: int = Field(ge=0, le=30_000)
+    score: int = Field(ge=0, le=100)
     keypoints: list[PostureKeypoint] = Field(
         min_length=1,
         max_length=18,
@@ -134,8 +208,9 @@ class PostureRepetition(PostureContractModel):
 
 
 class PostureAssessment(PostureContractModel):
-    overall_score: float = Field(ge=0, le=100)
-    passing_score: float | None = Field(default=None, ge=0, le=100)
+    overall_score: int = Field(ge=0, le=100)
+    passing_score: int | None = Field(default=None, ge=0, le=100)
+    verdict: PostureVerdict
     repetition_count: int = Field(ge=1, le=20)
     summary: str = Field(min_length=1)
 
@@ -147,7 +222,7 @@ class PostureGuidanceStep(PostureContractModel):
 
 class PostureFinding(PostureContractModel):
     display_order: int = Field(ge=1)
-    finding_type: str = Field(min_length=1)
+    finding_type: Literal["correction", "positive"]
     finding_code: str = Field(min_length=1)
     title: str = Field(min_length=1)
     explanation: str = Field(min_length=1)
@@ -192,7 +267,7 @@ class PostureRoutineSuggestion(PostureContractModel):
 
 
 class PostureAnalysisResult(PostureContractModel):
-    schema_version: Literal["1.0"]
+    schema_version: Literal["1.1"]
     posture_analysis_job_id: UUID
     exercise_code: str = Field(min_length=1)
     camera_view: str = Field(min_length=1)
@@ -254,5 +329,19 @@ class PostureAnalysisResult(PostureContractModel):
                 raise ValueError(
                     "routine suggestion must reference an existing finding"
                 )
+
+        has_correction = any(
+            finding.finding_type == "correction"
+            for finding in self.findings
+        )
+        expected_verdict = (
+            "needs_correction"
+            if has_correction
+            else "within_current_rules"
+        )
+        if self.assessment.verdict != expected_verdict:
+            raise ValueError(
+                "assessment.verdict must match correction findings"
+            )
 
         return self

@@ -19,7 +19,9 @@ from app.schemas.exercise_session_analysis import (
 logger = logging.getLogger(__name__)
 
 EXERCISE_ANALYSIS_MAX_OUTPUT_TOKENS = 2200
-EXERCISE_ANALYSIS_REASONING_EFFORT = "minimal"
+# Keep this value compatible with the configured shared OpenAI model.
+# GPT-5.6 Luna rejects `minimal` with HTTP 400 but supports `low`.
+EXERCISE_ANALYSIS_REASONING_EFFORT = "low"
 
 
 INSTRUCTIONS = """운동 완료 기록을 근거로 짧은 한국어 피드백을 작성하세요.

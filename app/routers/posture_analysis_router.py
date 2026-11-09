@@ -6,7 +6,10 @@ from fastapi.security import HTTPAuthorizationCredentials
 
 from app.core.config import get_settings
 from app.core.security import security, verify_api_key
-from app.schemas.posture_analysis import PostureAnalysisResult
+from app.schemas.posture_analysis import (
+    PostureAnalysisResult,
+    PostureCapabilitiesResponse,
+)
 from app.services.posture_analysis_service import (
     PostureAnalysisError,
     PostureAnalysisService,
@@ -23,20 +26,37 @@ router = APIRouter(
 )
 
 
+@router.get(
+    "/capabilities",
+    response_model=PostureCapabilitiesResponse,
+)
+async def get_posture_analysis_capabilities(
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+) -> PostureCapabilitiesResponse:
+    """운동 자산 key와 촬영 방향이 고정된 자세 분석 목록을 반환한다."""
+
+    verify_api_key(credentials)
+    return PostureAnalysisService(
+        settings=get_settings()
+    ).get_capabilities()
+
+
 @router.post(
     "/analyze",
     response_model=PostureAnalysisResult,
 )
 async def analyze_posture_video(
     video: UploadFile = File(
-        description="전신이 보이는 측면 스쿼트 영상",
+        description="capabilities 촬영 안내에 맞춘 짧은 전신 운동 영상",
     ),
     posture_analysis_job_id: UUID = Form(),
     exercise_code: str = Form(default="squat"),
     camera_view: str = Form(default="side"),
+    exercise_key: str | None = Form(default=None),
+    analysis_side: str | None = Form(default=None),
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> PostureAnalysisResult:
-    """영상을 저장하지 않고 측면 스쿼트 자세를 분석한다."""
+    """영상을 저장하지 않고 등록된 운동별 자세 규칙으로 분석한다."""
 
     verify_api_key(credentials)
     settings = get_settings()
@@ -55,6 +75,8 @@ async def analyze_posture_video(
             posture_analysis_job_id=posture_analysis_job_id,
             exercise_code=exercise_code,
             camera_view=camera_view,
+            exercise_key=exercise_key,
+            analysis_side=analysis_side,
             video_bytes=video_bytes,
             declared_content_type=declared_content_type,
         )

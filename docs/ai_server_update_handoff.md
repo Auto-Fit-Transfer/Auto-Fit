@@ -145,7 +145,7 @@ debug API는 운영 노출 여부를 별도로 관리해야 한다.
 | 운동 추천 | 기존 LLM 추천 + 로컬 CSV 강제 변경 | 현재 앱은 `rules_v1`만 사용 | Backend 공개 API 사용 | AI 구현, 실제 앱 연동 대기 |
 | 러닝 코스 | 공공 코스·위치 추천·경로 preview·loop·세션 추천 | 인증·저장 Backend 경로 존재 | 러닝 화면 존재 | 구현 완료, provider live 검증 필요 |
 | 챗봇 | 일반 답변·의도 분류·식단 변경·러닝 orchestration | Backend 적용 상태 관리 필요 | 챗 화면 존재 | 구현 완료, 액션 E2E 필요 |
-| 운동 자세 분석 | MediaPipe Pose 기반 측면 스쿼트 분석 | Backend 계약 존재 | 촬영·결과 화면 존재 | 제한 범위 구현 완료 |
+| 운동 자세 분석 | MediaPipe Pose 기반 10종 registry 분석 | Backend 계약 존재 | 촬영·결과 화면 존재 | 스쿼트 검증 완료, 9종 실영상 보정 대기 |
 | 음식 이미지 분석 | 분석·재계산 API와 계약 존재 | OCR/이미지 전달 계약 확인 필요 | 촬영·확인 UI 계획 존재 | 부분 구현, provider·E2E 필요 |
 | RAG | 건강 문서 검색·출처 제한·분석 연결 | AI 내부 사용 | 직접 노출하지 않음 | 구현 완료 |
 
@@ -501,7 +501,8 @@ Frontend
 
 현재 제한:
 
-- 스쿼트 측면 이외 운동은 아직 지원하지 않는다.
+- 운영 검증 완료 범위는 스쿼트 측면이다. 추가 9종은 registry와 규칙 분석이 구현됐지만 실영상 보정 전이므로 기본 설정에서 차단한다.
+- 플랭크·월싯 같은 정적 홀드와 데드리프트·올림픽 리프트·케틀벨 스윙·착지처럼 단일 2D 영상 오판 위험이 큰 운동은 현재 범위에서 제외한다.
 - 실시간 스트리밍 분석이 아니라 업로드 영상 동기 분석이다.
 - 모델 파일과 MediaPipe runtime이 없는 배포에서는 `503`이 발생한다.
 - 품질 부족 또는 완료 회차 미검출은 `422`로 처리한다.
@@ -569,7 +570,7 @@ OpenAI 정책:
 | 전국길관광정보·공공 코스 | 러닝 공식 코스 | 연동 코드 존재 |
 | Kakao 지도·경로 | 장소·경로 preview | API Key와 live 검증 필요 |
 | 운동 GIF CSV | 운동 key와 Backend 자산 매핑 | 로컬 미커밋, 연동 대기 |
-| MediaPipe 모델 | 스쿼트 자세 분석 | 모델 파일 배포 필요 |
+| MediaPipe 모델 | 자세 분석 10종의 33개 관절점 추출 | 모델 파일 배포 필요, 스쿼트 외 9종 실영상 보정 필요 |
 
 외부 서비스의 무료 할당량, 유료 조건, 상업 이용, 저장 가능 범위와 라이선스는 배포 전
 공식 문서 기준으로 다시 확인한다.
@@ -1052,3 +1053,66 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - 테스트 결과: 실제 이미지 decode·EXIF 제거·resize, 공식 DB 장애, 안전 매칭, code exact·이름 불일치 차단, 동일명 영양 모호성, non-100g 기준량, 미파싱 지표, 동시 분석 제한, Router·인증·OpenAPI 계약을 포함한 pytest `17 passed`; syntax compile·diff check 통과
 - 상세 계약: [푸드샷 AI 계약](food_image_backend_contract.md), [Backend·Frontend 인계](foodshot_backend_frontend_handoff_2026-11-09.md)
 - 남은 작업: Backend/Frontend 구현, 비용 승인된 실제 스마트폰 사진 1건, 배포 `/openapi.json` 대조, 촬영→분석→수정→재계산→저장 모바일 E2E
+
+## 2026-11-09 · 운동 자세 분석 판정·저장 계약·모델 무결성 안정화
+
+- 상태: AI Server P0 구현·합성 분석·Linux Docker 실제 스쿼트 영상 E2E 완료, 팀 스마트폰 영상 보정과 Backend/Frontend 연동 대기
+- 관련 커밋: 미커밋
+- 변경 목적: 카메라로 촬영한 운동 동작을 관절점 기반으로 분석하고, 현재 규칙 범위인지 교정이 필요한지 Backend가 모호하지 않게 저장·표시하도록 계약 보강
+- 현재 범위: `exercise_code=squat`, `camera_view=side`, MP4/MOV/WEBM/AVI, 최대 50MB·30초, 분석 목표 15fps
+- 분석 구조: MediaPipe Pose Landmarker Full 33개 관절점 → 신뢰도·프레임 범위 검증 → EMA 좌표 보정 → 완료 회차 분리 → 몸통 기울기·무릎 굽힘·발뒤꿈치 들림 규칙 → 회차·종합 점수와 교정 finding
+- 판정 계약: `schema_version=1.1`; `assessment.verdict=within_current_rules|needs_correction`. correction finding 유무와 verdict의 일치를 Pydantic에서 강제하며 의료적 정상·안전 판정으로 사용하지 않음
+- 저장 호환: 회차·종합·통과 점수는 정수, 각도는 0~180도, 회차 offset은 0~30,000ms. 목표 범위가 없는 각도는 반환하지 않으며 현재 `torso_lean`, `knee_flexion`만 제공
+- 모델 무결성: 모델 SHA-256 `4eaa5eb7a98365221087693fcc286334cf0858e2eb6e15b506aa4a7ecdcec4ad`를 다운로드와 추론 전에 fail-closed 검증; 모델 교체 시 `POSTURE_MODEL_SHA256`과 `POSTURE_MODEL_VERSION`을 함께 변경
+- 개인정보: 원본 영상·video URL·사용자 ID를 응답이나 AI 저장소에 보존하지 않고 요청 처리용 임시 영상도 성공·실패 후 즉시 삭제
+- CSV 정책: 자세 교정 finding과 guidance는 반환하지만 `routine_suggestions`는 빈 배열. 장비·장소 조건과 `exercise_key` 계약 없이 구매 운동 자산 CSV 밖의 운동명을 임의 생성하지 않음
+- Backend 작업: 작업 생성·multipart 업로드 proxy·AI 호출·결과 transaction 저장·상태 조회 구현, `schema_version`·`verdict` 저장 컬럼/DTO 추가, finding display order를 저장된 finding ID로 변환, 422/503 오류 매핑
+- Frontend 작업: 기존 8~10초 측면 촬영 결과를 Backend에 업로드하고 처리 화면으로 이동, verdict·회차·교정 guidance 표시, 실시간 스트리밍은 MVP 범위에서 제외
+- 자동 테스트 결과: 자세 분석 서비스·Router·Schema·모델 checksum 테스트 `22 passed`; OpenAPI snapshot과 Backend AI 계약 포함 `16 passed`; syntax compile·JSON 계약·diff check 통과
+- Docker 모델 검증: 이미지 build 중 고정 SHA 모델 다운로드 성공, MediaPipe `1.2.2`·OpenCV `5.0.0` 네이티브 모델 로드 성공, 모델 9,398,198 bytes와 SHA-256 `4eaa5eb7a98365221087693fcc286334cf0858e2eb6e15b506aa4a7ecdcec4ad` 일치
+- Docker API 검증: `/health` 200, 인증 누락 401, 사람이 없는 실제 AVI 422, 실행 서버 `/openapi.json`의 Schema `1.1`·verdict enum·정수 점수 확인
+- 실제 영상 E2E: TensorFlow 공식 `pose_squats.mp4` SHA-256 `ea9151e447b301985d5d65666551ef863b369a2e0f3a71ddd58abef2e722f96a`로 200, 2회 인식, 종합 96점, `needs_correction`, 회차 정수 점수, `routine_suggestions=[]`, 처리 후 임시 파일 0건 확인
+- 런타임 제한: Windows 로컬은 Application Control 정책으로 MediaPipe 네이티브 DLL 로딩이 `WinError 4551`로 차단되지만 동일 코드의 Linux Docker는 정상이다. 실제 사용자 스마트폰 촬영 조건의 임계값은 별도 보정 필요
+- 상세 계약: [운동 자세 분석 Backend 계약](posture_analysis_backend_contract.md), [합성 응답 예제](posture_analysis_contract_examples.json), [AI OpenAPI snapshot](ai-openapi.json)
+- 남은 작업: 팀 동의 스마트폰 스쿼트 영상 3종 이상(양호·상체 기울기·뒤꿈치 들림) 검증, 임계값 보정, Backend/Frontend E2E, 이후 다음 운동 종류 우선순위 확정
+
+## 2026-11-09 · 운동 자세 분석 10종 registry 확장
+
+- 상태: AI Server 운동별 registry·합성 계약 검증 완료, 스쿼트 외 9종 실제 스마트폰 영상 보정 및 Backend/Frontend 연동 대기
+- 관련 커밋: 미커밋
+- 추가 API: `GET /posture-analysis/capabilities`; 서버 간 Bearer 인증 필수
+- 등록 운동: 스쿼트, 푸시업, 글루트 브리지, 덤벨 바이셉 컬, 벽 지지 카프 레이즈, 런지, 스플릿 스쿼트, 점핑 잭, 덤벨 숄더 프레스, 덤벨 레터럴 레이즈
+- 촬영 방향: 앞의 7종은 `side`, 점핑 잭·숄더 프레스·레터럴 레이즈는 `front`
+- 자산 안전성: 각 자세 규칙은 `data/exercise_assets/exercise_asset_catalog.csv`의 검수된 exact `exercise_key` allowlist에만 연결. 운동명 포함·유사 매칭과 중량·머신·복합 변형 자동 상속 금지
+- 요청 변경: 신규 운동은 multipart `exercise_key` 필수. 스쿼트의 기존 요청만 하위 호환을 위해 key 생략 가능. key·code·view 불일치는 `422`
+- 검증 상태: 실제 Linux Docker 스쿼트 영상 회귀가 있는 스쿼트만 `validated`; 나머지 9종은 합성 각도 주기·계약 테스트를 통과했지만 실영상 보정 전이라 `experimental`. 운영 기본 `POSTURE_ALLOW_EXPERIMENTAL=false`에서 POST 차단
+- 신규 각도 코드: `elbow_flexion`, `body_alignment`, `hip_extension`, `upper_arm_drift`, `ankle_flexion`, `shoulder_abduction`, `leg_abduction`, `bilateral_asymmetry`
+- P1 보완: 점핑 잭은 팔 올림과 다리 벌림을 함께 완료 조건으로 사용, 정면 운동은 평균이 아닌 최악 측 점수와 좌우 비대칭을 함께 검사, 카프 레이즈는 정규화된 뒤꿈치 상승량으로 회차 분리, 런지·스플릿 스쿼트는 `analysis_side` 필수
+- 모델 버전: landmark 모델 식별자와 선택된 운동의 개별 `rule_version`을 결합해 응답
+- 제외 범위: 플랭크·월싯은 hold duration 계약 전까지 미지원. 데드리프트·올림픽 리프트·케틀벨 스윙·착지·관절이 가려지는 기구 운동은 단일 2D 영상 자동 판정에서 제외
+- 기존 기능 영향: 기존 `squat + side` 요청·Schema `1.1`·점수·verdict·모델 checksum·임시 영상 삭제·빈 `routine_suggestions` 유지
+- Backend 작업: capabilities proxy/cache, exact key-code-view 검증, 10종 code-view DB migration, 신규 angle code constraint, rule/validation status snapshot 저장, 운영에서는 validated만 활성화
+- Frontend 작업: 고정 스쿼트 타입과 문구를 capabilities 기반으로 동적화하고 exact exercise key가 validated일 때만 촬영 CTA 노출; front/side 촬영 가이드 분기
+- 자동 테스트 결과: 자세 분석 서비스·Router·Schema·OpenAPI/Backend 계약 전체 Linux Docker pytest `40 passed`; Windows 비동기 Router 1건은 sandbox의 Proactor socketpair 제한으로 Docker에서 검증
+- 실제 HTTP smoke: `/health` 200, 인증된 `/posture-analysis/capabilities` 200·10종, 인증 누락 401, 운영 기본값의 experimental 푸시업 분석 422 확인
+- registry 실제 영상 회귀: TensorFlow 공식 `pose_squats.mp4`를 POST해 200, 2회 인식, 96점, `needs_correction`, `mediapipe-pose-full-4eaa5eb7+squat-side-rules-v2`를 확인해 기존 스쿼트 동작 보존
+- 상세 계약: [운동 자세 분석 Backend 계약](posture_analysis_backend_contract.md), [합성 capability·결과 예제](posture_analysis_contract_examples.json)
+- 남은 작업: 9종별 팀 동의 스마트폰 영상(정상·대표 교정·불완전 동작) 수집, threshold 보정, 운동별 Docker 실제 API 회귀 후 한 종씩 `validated` 전환
+
+## 2026-11-09 · 운동 중 증상 대응 운영 확인·운동 결과 분석 모델 호환성 수정
+
+- 운동 중 증상 대응 운영 커밋: `84d1e23`; 2026-11-09 13:17 KST 자동 배포 확인
+- 서버 확인: `/health` 200, `/chat/orchestrate` OpenAPI 계약 유지
+- 직접 선택 운영 결과: `아파요`, `어지러워요`, `숨쉬기 힘들어요` 모두 HTTP 200, `exercise_session_stop / ready_for_backend_apply`, `requires_backend_apply=true`, `pending_action=null`, `action_taken=stop`
+- 사건·안전 계약: `event_recording.required=true`, `mode=append_only`, `allow_resume=false`, `allow_replacement=false`, `emergency_number=119`
+- 위험도 결과: `아파요=caution`, `어지러워요=emergency`, `숨쉬기 힘들어요=caution`
+- 경미 증상 회귀: `오른쪽 무릎이 살짝 찌릿해`는 `confirm_exercise_adjustment / awaiting_confirmation`, `requires_backend_apply=false`, `pending_action=exercise_session_adjust`
+- 비용·로그: 위 운영 시험은 규칙 경로로 처리되어 OpenAI 호출 0건, 오류 로그 0건, 실제 개인정보가 아닌 시험값만 사용
+- Frontend 전달 상태: `front-end a60bb44`; 직접 선택 매핑과 중단 안내 문구 반영 사실을 전달받았으며 실제 화면·iPhone 검증은 미완료
+- 연동 대기: Backend의 `/chat/orchestrate` 연결과 pending action 확인·취소 API 이후 Frontend action 카드 연결
+- 운동 결과 분석 최초 실제 시험: 2026-11-09 15:15 KST 전후 합성 세션 1건에서 `POST /analyze/exercise-session` 503, OpenAI `BadRequestError` 400 확인
+- 원인: 운영 설정 `OPENAI_MODEL=gpt-5.6-luna`는 `reasoning.effort=minimal`을 지원하지 않는데 운동 결과 분석이 이를 하드코딩함. [OpenAI 공식 GPT-5.6 Luna 문서](https://developers.openai.com/api/docs/models/gpt-5.6-luna)는 `none`, `low`, `medium`, `high`, `xhigh`, `max`만 지원한다고 명시
+- 수정: 운동 결과 분석 reasoning effort를 모델 호환 값인 `low`로 변경하고 테스트 기대값도 동일하게 고정
+- 수정 후 실제 시험: 같은 비식별 합성 세션으로 HTTP 200, `ok=true`, `generator=auto-fit-ai`, `summary`, `insights`, `next_session_adjustments`, `safety_notice` 계약 확인; 컨테이너 오류 로그 0건
+- 회귀 테스트: 운동 결과 분석 단독 Docker pytest `8 passed`; 자세 분석·OpenAPI/Backend 계약을 포함한 통합 대상 Docker pytest `48 passed`
+- 잔여 점검: 동일 전역 모델을 사용하는 Recipe·Chat·운동 추천·건강 분석 일부 경로에도 `minimal` 하드코딩이 남아 있다. 기존 식단·레시피 미커밋 변경과 섞지 않고 별도 호환성 변경·비용 승인 시험으로 처리

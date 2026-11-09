@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from copy import deepcopy
+import hashlib
 import json
 from math import cos, radians, sin
 from pathlib import Path
@@ -10,16 +11,26 @@ from uuid import UUID, uuid4
 import httpx
 import pytest
 
+import app.services.posture_analysis_service as posture_service_module
 from app.core.config import Settings, get_settings
 from app.main import app
 from app.schemas.posture_analysis import PostureAnalysisResult
+from app.scripts import download_pose_model
 from app.services.posture_analysis_service import (
+    CalfRaisePostureAnalyzer,
+    CyclicPostureAnalyzer,
+    MediaPipeVideoPoseExtractor,
     PoseFrame,
     PosePoint,
     PoseVideoSample,
     PostureAnalysisError,
+    PostureConfigurationError,
     PostureAnalysisService,
     SquatPostureAnalyzer,
+    _CYCLIC_EXERCISE_PROFILES,
+    _PRESS_ASYMMETRY_RULE,
+    _PRESS_PRIMARY_RULE,
+    _measure_angle_rule,
 )
 
 
@@ -125,6 +136,106 @@ def _squat_sample(
     )
 
 
+def _generic_pose_sample(frame_count: int) -> PoseVideoSample:
+    frames: list[PoseFrame] = []
+    for index in range(frame_count):
+        landmarks = {
+            "head": _point(0.50, 0.10),
+            "left_shoulder": _point(0.44, 0.25),
+            "left_elbow": _point(0.39, 0.40),
+            "left_wrist": _point(0.35, 0.55),
+            "left_hip": _point(0.46, 0.55),
+            "left_knee": _point(0.44, 0.72),
+            "left_ankle": _point(0.43, 0.88),
+            "left_heel": _point(0.41, 0.91),
+            "left_foot_index": _point(0.48, 0.92),
+            "right_shoulder": _point(0.56, 0.25),
+            "right_elbow": _point(0.61, 0.40),
+            "right_wrist": _point(0.65, 0.55),
+            "right_hip": _point(0.54, 0.55),
+            "right_knee": _point(0.56, 0.72),
+            "right_ankle": _point(0.57, 0.88),
+            "right_heel": _point(0.59, 0.91),
+            "right_foot_index": _point(0.52, 0.92),
+        }
+        frames.append(
+            PoseFrame(
+                timestamp_ms=index * 100,
+                landmarks=landmarks,
+            )
+        )
+    return PoseVideoSample(
+        frames=frames,
+        sampled_frame_count=len(frames),
+        duration_ms=frames[-1].timestamp_ms,
+    )
+
+
+def _calf_raise_sample() -> PoseVideoSample:
+    ratios = [0.04] * 5 + [0.14] + [0.28] * 5 + [0.14] + [0.04] * 6
+    base = _generic_pose_sample(len(ratios))
+    frames: list[PoseFrame] = []
+    for frame, ratio in zip(base.frames, ratios, strict=True):
+        landmarks = dict(frame.landmarks)
+        for side in ("left", "right"):
+            knee = landmarks[f"{side}_knee"]
+            ankle = landmarks[f"{side}_ankle"]
+            foot = landmarks[f"{side}_foot_index"]
+            lower_leg_length = (
+                (knee.x - ankle.x) ** 2
+                + (knee.y - ankle.y) ** 2
+            ) ** 0.5
+            current_heel = landmarks[f"{side}_heel"]
+            landmarks[f"{side}_heel"] = _point(
+                current_heel.x,
+                foot.y - ratio * lower_leg_length,
+            )
+        frames.append(
+            PoseFrame(
+                timestamp_ms=frame.timestamp_ms,
+                landmarks=landmarks,
+            )
+        )
+    return PoseVideoSample(
+        frames=frames,
+        sampled_frame_count=len(frames),
+        duration_ms=frames[-1].timestamp_ms,
+    )
+
+
+def _passing_rule_value(rule: object) -> float:
+    target_min = getattr(rule, "target_min_degrees")
+    target_max = getattr(rule, "target_max_degrees")
+    if target_min is not None and target_max is not None:
+        return (target_min + target_max) / 2
+    if target_min is not None:
+        return min(180.0, target_min + 5.0)
+    assert target_max is not None
+    return max(0.0, target_max - 5.0)
+
+
+def _primary_sequence(profile: object) -> list[float]:
+    direction = getattr(profile, "motion_direction")
+    rest_threshold = getattr(profile, "rest_threshold_degrees")
+    activation_threshold = getattr(profile, "activation_threshold_degrees")
+    primary_rule = getattr(profile, "primary_rule")
+    required_peak = getattr(profile, "required_peak_degrees")
+    target_value = _passing_rule_value(primary_rule)
+    if direction == "decrease":
+        rest = min(180.0, rest_threshold + 10.0)
+        peak = min(target_value, required_peak - 2.0)
+    else:
+        rest = max(0.0, rest_threshold - 10.0)
+        peak = max(target_value, required_peak + 2.0)
+    return (
+        [rest] * 5
+        + [activation_threshold]
+        + [peak] * 5
+        + [activation_threshold]
+        + [rest] * 5
+    )
+
+
 def test_squat_analyzer_returns_contract_result() -> None:
     settings = Settings(
         posture_min_landmark_confidence=0.5,
@@ -139,9 +250,15 @@ def test_squat_analyzer_returns_contract_result() -> None:
 
     assert result.exercise_code == "squat"
     assert result.camera_view == "side"
+    assert result.schema_version == "1.1"
     assert result.assessment.repetition_count == 1
     assert result.assessment.passing_score is None
-    assert len(result.repetitions[0].angles) == 4
+    assert result.assessment.verdict == "within_current_rules"
+    assert isinstance(result.assessment.overall_score, int)
+    assert isinstance(result.repetitions[0].score, int)
+    assert {
+        angle.angle_code for angle in result.repetitions[0].angles
+    } == {"torso_lean", "knee_flexion"}
     assert result.repetitions[0].start_offset_ms < (
         result.repetitions[0].keyframe_offset_ms
     )
@@ -180,8 +297,9 @@ def test_squat_analyzer_detects_torso_and_heel_corrections() -> None:
     finding_codes = {finding.finding_code for finding in result.findings}
     assert "excessive_torso_lean" in finding_codes
     assert "heel_lift" in finding_codes
+    assert result.assessment.verdict == "needs_correction"
     assert result.repetitions[0].score < 100
-    assert len(result.routine_suggestions) >= 2
+    assert result.routine_suggestions == []
 
 
 def test_squat_analyzer_rejects_incomplete_motion() -> None:
@@ -200,6 +318,238 @@ def test_squat_analyzer_rejects_incomplete_motion() -> None:
                 duration_ms=1100,
             ),
         )
+
+
+@pytest.mark.parametrize(
+    "profile",
+    tuple(
+        profile
+        for profile in _CYCLIC_EXERCISE_PROFILES
+        if profile.descriptor.exercise_code != "calf_raise"
+    ),
+    ids=lambda profile: profile.descriptor.exercise_code,
+)
+def test_each_registered_cyclic_analyzer_returns_contract_result(
+    profile: object,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sequence = _primary_sequence(profile)
+
+    def fake_measure_angle_rule(
+        frame: PoseFrame,
+        *,
+        rule: object,
+        side: object,
+        bilateral: bool,
+        bilateral_aggregation: str = "mean",
+    ) -> float:
+        del side, bilateral, bilateral_aggregation
+        if rule is getattr(profile, "primary_rule"):
+            return sequence[frame.timestamp_ms // 100]
+        return _passing_rule_value(rule)
+
+    monkeypatch.setattr(
+        posture_service_module,
+        "_measure_angle_rule",
+        fake_measure_angle_rule,
+    )
+    settings = Settings(
+        posture_min_landmark_confidence=0.5,
+        posture_min_pose_coverage=0.6,
+    )
+    analyzer = CyclicPostureAnalyzer(settings, profile)  # type: ignore[arg-type]
+
+    result = analyzer.analyze(
+        posture_analysis_job_id=uuid4(),
+        sample=_generic_pose_sample(len(sequence)),
+    )
+
+    descriptor = getattr(profile, "descriptor")
+    assert result.exercise_code == descriptor.exercise_code
+    assert result.camera_view == descriptor.camera_view
+    assert result.assessment.repetition_count == 1
+    assert result.assessment.verdict == "within_current_rules"
+    assert result.repetitions[0].score == 100
+    assert result.routine_suggestions == []
+    assert result.model_version.endswith(descriptor.rule_version)
+
+
+def test_calf_raise_uses_normalized_heel_lift_for_repetitions() -> None:
+    profile = next(
+        item
+        for item in _CYCLIC_EXERCISE_PROFILES
+        if item.descriptor.exercise_code == "calf_raise"
+    )
+    analyzer = CalfRaisePostureAnalyzer(Settings(), profile)
+
+    result = analyzer.analyze(
+        posture_analysis_job_id=uuid4(),
+        sample=_calf_raise_sample(),
+    )
+
+    assert result.exercise_code == "calf_raise"
+    assert result.assessment.repetition_count == 1
+    assert result.assessment.verdict == "within_current_rules"
+    assert result.repetitions[0].score == 100
+
+
+def test_cyclic_analyzer_reports_profile_specific_correction(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    profile = next(
+        item
+        for item in _CYCLIC_EXERCISE_PROFILES
+        if item.descriptor.exercise_code == "push_up"
+    )
+    sequence = _primary_sequence(profile)
+
+    def fake_measure_angle_rule(
+        frame: PoseFrame,
+        *,
+        rule: object,
+        side: object,
+        bilateral: bool,
+        bilateral_aggregation: str = "mean",
+    ) -> float:
+        del side, bilateral, bilateral_aggregation
+        if rule is profile.primary_rule:
+            return sequence[frame.timestamp_ms // 100]
+        if getattr(rule, "angle_code") == "body_alignment":
+            return 145.0
+        return _passing_rule_value(rule)
+
+    monkeypatch.setattr(
+        posture_service_module,
+        "_measure_angle_rule",
+        fake_measure_angle_rule,
+    )
+    analyzer = CyclicPostureAnalyzer(Settings(), profile)
+    result = analyzer.analyze(
+        posture_analysis_job_id=uuid4(),
+        sample=_generic_pose_sample(len(sequence)),
+    )
+
+    assert result.assessment.verdict == "needs_correction"
+    assert result.repetitions[0].score < 100
+    assert {
+        finding.finding_code for finding in result.findings
+    } == {"push_up_body_alignment"}
+
+
+def test_jumping_jack_requires_leg_opening(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    profile = next(
+        item
+        for item in _CYCLIC_EXERCISE_PROFILES
+        if item.descriptor.exercise_code == "jumping_jack"
+    )
+    sequence = _primary_sequence(profile)
+
+    def fake_measure_angle_rule(
+        frame: PoseFrame,
+        *,
+        rule: object,
+        side: object,
+        bilateral: bool,
+        bilateral_aggregation: str = "mean",
+    ) -> float:
+        del side, bilateral, bilateral_aggregation
+        if rule is profile.primary_rule:
+            return sequence[frame.timestamp_ms // 100]
+        if getattr(rule, "angle_code") == "leg_abduction":
+            return 180.0
+        return _passing_rule_value(rule)
+
+    monkeypatch.setattr(
+        posture_service_module,
+        "_measure_angle_rule",
+        fake_measure_angle_rule,
+    )
+    analyzer = CyclicPostureAnalyzer(Settings(), profile)
+
+    with pytest.raises(PostureAnalysisError, match="완료된 점핑 잭"):
+        analyzer.analyze(
+            posture_analysis_job_id=uuid4(),
+            sample=_generic_pose_sample(len(sequence)),
+        )
+
+
+def test_front_profile_uses_worst_side_and_measures_asymmetry() -> None:
+    frame = PoseFrame(
+        timestamp_ms=0,
+        landmarks={
+            "left_shoulder": _point(0.30, 0.50),
+            "left_elbow": _point(0.30, 0.40),
+            "left_wrist": _point(0.30, 0.30),
+            "right_shoulder": _point(0.70, 0.50),
+            "right_elbow": _point(0.70, 0.40),
+            "right_wrist": _point(0.80, 0.40),
+        },
+    )
+
+    mean_angle = _measure_angle_rule(
+        frame,
+        rule=_PRESS_PRIMARY_RULE,
+        side=None,
+        bilateral=True,
+    )
+    worst_angle = _measure_angle_rule(
+        frame,
+        rule=_PRESS_PRIMARY_RULE,
+        side=None,
+        bilateral=True,
+        bilateral_aggregation="worst",
+    )
+    asymmetry = _measure_angle_rule(
+        frame,
+        rule=_PRESS_ASYMMETRY_RULE,
+        side=None,
+        bilateral=True,
+    )
+
+    assert mean_angle == pytest.approx(135.0)
+    assert worst_angle == pytest.approx(90.0)
+    assert asymmetry == pytest.approx(90.0)
+
+
+def test_capabilities_use_exact_catalog_keys_and_validation_status() -> None:
+    service = PostureAnalysisService(settings=Settings())
+
+    capabilities = service.get_capabilities()
+    by_code = {
+        item.exercise_code: item for item in capabilities.exercises
+    }
+
+    assert set(by_code) == {
+        "squat",
+        "push_up",
+        "glute_bridge",
+        "biceps_curl",
+        "calf_raise",
+        "lunge",
+        "split_squat",
+        "jumping_jack",
+        "shoulder_press",
+        "lateral_raise",
+    }
+    assert by_code["squat"].validation_status == "validated"
+    assert by_code["lunge"].analysis_side_required is True
+    assert by_code["push_up"].analysis_side_required is False
+    assert all(
+        item.validation_status == "experimental"
+        for code, item in by_code.items()
+        if code != "squat"
+    )
+    all_keys = [
+        exercise_key
+        for item in capabilities.exercises
+        for exercise_key in item.catalog_exercise_keys
+    ]
+    assert len(all_keys) == len(set(all_keys))
+    assert by_code["push_up"].catalog_exercise_keys == [
+        "ex_f6c866501f5ac0"
+    ]
 
 
 class _FakeExtractor:
@@ -248,13 +598,64 @@ def test_service_deletes_temporary_video() -> None:
 
 
 def test_service_rejects_unsupported_request_and_file() -> None:
-    service = PostureAnalysisService(settings=Settings())
+    service = PostureAnalysisService(
+        settings=Settings(posture_allow_experimental=True)
+    )
     video_bytes = b"\x00\x00\x00\x18ftypisom" + b"video"
 
-    with pytest.raises(PostureAnalysisError, match="squat"):
+    with pytest.raises(PostureAnalysisError, match="exercise_key"):
         service._validate_request(
             exercise_code="lunge",
             camera_view="side",
+            analysis_side="right",
+            video_bytes=video_bytes,
+        )
+
+    with pytest.raises(PostureAnalysisError, match="일치하지 않습니다"):
+        service._validate_request(
+            exercise_code="lunge",
+            camera_view="side",
+            exercise_key="ex_f6c866501f5ac0",
+            analysis_side="right",
+            video_bytes=video_bytes,
+        )
+
+    assert service._validate_request(
+        exercise_code="lunge",
+        camera_view="side",
+        exercise_key="ex_b34acd08bef11a",
+        analysis_side="right",
+        video_bytes=video_bytes,
+    ) == ("lunge", "side", "right")
+
+    with pytest.raises(PostureAnalysisError, match="analysis_side"):
+        service._validate_request(
+            exercise_code="lunge",
+            camera_view="side",
+            exercise_key="ex_b34acd08bef11a",
+            video_bytes=video_bytes,
+        )
+
+    with pytest.raises(PostureAnalysisError, match="camera_view"):
+        service._validate_request(
+            exercise_code="jumping_jack",
+            camera_view="side",
+            exercise_key="ex_3ecaba64725e87",
+            video_bytes=video_bytes,
+        )
+
+    with pytest.raises(PostureAnalysisError, match="지원하지 않는"):
+        service._validate_request(
+            exercise_code="deadlift",
+            camera_view="side",
+            video_bytes=video_bytes,
+        )
+
+    with pytest.raises(PostureAnalysisError, match="지원하지 않는"):
+        service._validate_request(
+            exercise_code="Lunge",
+            camera_view="side",
+            exercise_key="ex_b34acd08bef11a",
             video_bytes=video_bytes,
         )
 
@@ -267,6 +668,80 @@ def test_service_rejects_unsupported_request_and_file() -> None:
             b"not-a-video",
             declared_content_type="video/mp4",
         )
+
+
+def test_service_blocks_experimental_profiles_by_default() -> None:
+    service = PostureAnalysisService(settings=Settings())
+    video_bytes = b"\x00\x00\x00\x18ftypisom" + b"video"
+
+    with pytest.raises(PostureAnalysisError, match="비활성화"):
+        service._validate_request(
+            exercise_code="push_up",
+            camera_view="side",
+            exercise_key="ex_f6c866501f5ac0",
+            video_bytes=video_bytes,
+        )
+
+
+def test_extractor_rejects_unexpected_model_checksum(
+    tmp_path: Path,
+) -> None:
+    model_path = tmp_path / "pose_landmarker_full.task"
+    model_path.write_bytes(b"unexpected-model")
+    settings = Settings(
+        posture_model_path=str(model_path),
+        posture_model_sha256="0" * 64,
+    )
+    extractor = MediaPipeVideoPoseExtractor(settings)
+
+    with pytest.raises(
+        PostureConfigurationError,
+        match="checksum",
+    ):
+        extractor.extract(
+            tmp_path / "unused.mp4",
+            posture_analysis_job_id=uuid4(),
+        )
+
+
+def test_model_download_verifies_checksum(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    model_bytes = b"verified-pose-model"
+    source_path = tmp_path / "source.task"
+    source_path.write_bytes(model_bytes)
+    output_path = tmp_path / "target.task"
+    expected_sha256 = hashlib.sha256(model_bytes).hexdigest()
+    monkeypatch.setattr(download_pose_model, "MINIMUM_MODEL_BYTES", 1)
+
+    downloaded = download_pose_model.download_model(
+        output_path=output_path,
+        model_url=source_path.as_uri(),
+        expected_sha256=expected_sha256,
+    )
+
+    assert downloaded == output_path
+    assert output_path.read_bytes() == model_bytes
+
+
+def test_model_download_rejects_checksum_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source_path = tmp_path / "source.task"
+    source_path.write_bytes(b"untrusted-pose-model")
+    output_path = tmp_path / "target.task"
+    monkeypatch.setattr(download_pose_model, "MINIMUM_MODEL_BYTES", 1)
+
+    with pytest.raises(RuntimeError, match="checksum"):
+        download_pose_model.download_model(
+            output_path=output_path,
+            model_url=source_path.as_uri(),
+            expected_sha256="0" * 64,
+        )
+
+    assert not output_path.exists()
 
 
 async def _test_router_contract() -> None:
@@ -282,6 +757,8 @@ async def _test_router_contract() -> None:
         posture_analysis_job_id: UUID,
         exercise_code: str,
         camera_view: str,
+        exercise_key: str | None,
+        analysis_side: str | None,
         video_bytes: bytes,
         declared_content_type: str | None,
         progress_callback: object = None,
@@ -290,6 +767,8 @@ async def _test_router_contract() -> None:
         assert posture_analysis_job_id == expected_job_id
         assert exercise_code == "squat"
         assert camera_view == "side"
+        assert exercise_key is None
+        assert analysis_side is None
         assert video_bytes[4:8] == b"ftyp"
         assert declared_content_type == "video/mp4"
         payload = deepcopy(RESULT_EXAMPLE)
@@ -336,18 +815,27 @@ async def _test_router_contract() -> None:
                     )
                 },
             )
+            capabilities = await client.get(
+                "/posture-analysis/capabilities",
+                headers={
+                    "Authorization": "Bearer posture-test-key",
+                },
+            )
 
         assert response.status_code == 200
         assert response.json()["posture_analysis_job_id"] == str(
             expected_job_id
         )
         assert unauthorized.status_code == 401
+        assert capabilities.status_code == 200
+        assert len(capabilities.json()["exercises"]) == 10
 
         operation = app.openapi()["paths"][
             "/posture-analysis/analyze"
         ]["post"]
         assert "multipart/form-data" in operation["requestBody"]["content"]
         assert operation["security"] == [{"HTTPBearer": []}]
+        assert "/posture-analysis/capabilities" in app.openapi()["paths"]
     finally:
         PostureAnalysisService.analyze_video = original_analyze
         settings.ai_server_api_key = previous_key

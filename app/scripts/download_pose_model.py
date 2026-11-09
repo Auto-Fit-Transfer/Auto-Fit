@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import hmac
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -10,13 +12,26 @@ DEFAULT_MODEL_URL = (
     "pose_landmarker/pose_landmarker_full/float16/latest/"
     "pose_landmarker_full.task"
 )
+DEFAULT_MODEL_SHA256 = (
+    "4eaa5eb7a98365221087693fcc286334"
+    "cf0858e2eb6e15b506aa4a7ecdcec4ad"
+)
 MINIMUM_MODEL_BYTES = 1_000_000
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def download_model(
     *,
     output_path: Path,
     model_url: str = DEFAULT_MODEL_URL,
+    expected_sha256: str = DEFAULT_MODEL_SHA256,
 ) -> Path:
     """공식 MediaPipe 모델을 원자적으로 내려받는다."""
 
@@ -26,6 +41,10 @@ def download_model(
     if (
         output_path.is_file()
         and output_path.stat().st_size >= MINIMUM_MODEL_BYTES
+        and hmac.compare_digest(
+            _file_sha256(output_path),
+            expected_sha256.lower(),
+        )
     ):
         return output_path
 
@@ -42,6 +61,13 @@ def download_model(
         if temporary_path.stat().st_size < MINIMUM_MODEL_BYTES:
             raise RuntimeError(
                 "Downloaded pose model is unexpectedly small."
+            )
+        if not hmac.compare_digest(
+            _file_sha256(temporary_path),
+            expected_sha256.lower(),
+        ):
+            raise RuntimeError(
+                "Downloaded pose model checksum does not match."
             )
 
         temporary_path.replace(output_path)
@@ -62,11 +88,16 @@ def main() -> None:
         "--url",
         default=DEFAULT_MODEL_URL,
     )
+    parser.add_argument(
+        "--sha256",
+        default=DEFAULT_MODEL_SHA256,
+    )
     arguments = parser.parse_args()
 
     model_path = download_model(
         output_path=arguments.output,
         model_url=arguments.url,
+        expected_sha256=arguments.sha256,
     )
     print(f"Pose model ready: {model_path}")
 
