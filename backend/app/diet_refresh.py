@@ -9,6 +9,7 @@ import logging
 from fastapi import HTTPException
 
 from backend.app.food_image_generation import generate_missing_menu_images
+from backend.app.http_client import get_with_pgrst303_retry, retry_pgrst303_scope
 from backend.app.main import (
     KST,
     assign_menu_images,
@@ -45,7 +46,8 @@ async def fetch_refresh_user_ids() -> list[str]:
     page_size = 1000
     async with client_scope() as client:
         while True:
-            response = await client.get(
+            response = await get_with_pgrst303_retry(
+                client,
                 f"{settings.supabase_url}/rest/v1/profiles",
                 headers=service_headers(settings),
                 params={
@@ -69,7 +71,8 @@ async def fetch_user_ids_with_active_diet(target_date: date) -> set[str]:
     offset = 0
     async with client_scope() as client:
         while True:
-            response = await client.get(
+            response = await get_with_pgrst303_retry(
+                client,
                 f"{settings.supabase_url}/rest/v1/diet_recommendations",
                 headers=service_headers(settings),
                 params={
@@ -92,12 +95,13 @@ async def fetch_user_ids_with_active_diet(target_date: date) -> set[str]:
 async def refresh_daily_diets() -> tuple[int, int]:
     settings = get_settings()
     target_date = datetime.now(KST).date()
-    user_ids, existing_user_ids, allergy_catalog, food_catalog = await asyncio.gather(
-        fetch_refresh_user_ids(),
-        fetch_user_ids_with_active_diet(target_date),
-        fetch_allergy_catalog(settings),
-        fetch_food_catalog(settings),
-    )
+    async with retry_pgrst303_scope():
+        user_ids, existing_user_ids, allergy_catalog, food_catalog = await asyncio.gather(
+            fetch_refresh_user_ids(),
+            fetch_user_ids_with_active_diet(target_date),
+            fetch_allergy_catalog(settings),
+            fetch_food_catalog(settings),
+        )
     # A rerun only fills the gaps: regenerating would pay for AI again and replace today's menu.
     pending_user_ids = [
         user_id for user_id in user_ids if user_id not in existing_user_ids

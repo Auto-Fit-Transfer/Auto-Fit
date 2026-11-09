@@ -40,7 +40,7 @@ from backend.app.chat_running import answer_running_course, search_running_cours
 from backend.app.chat_service import ServiceQuery
 from backend.app.chat_persona import ChatCharacterId, apply_chat_persona
 from backend.app.chat_rate_limit import ChatRateLimiter
-from backend.app.http_client import client_scope, SharedHttpClientMiddleware
+from backend.app.http_client import client_scope, get_with_pgrst303_retry, retry_pgrst303_scope, SharedHttpClientMiddleware
 from backend.app.diet_timing import DietTimingMiddleware, timed_http_client
 from backend.app.diet_recipe import daily_recipe_request, daily_source_fingerprint, has_unavailable_recipe, snapshot_fields
 from backend.app.diet_ai import (
@@ -717,7 +717,8 @@ async def fetch_allergy_catalog(settings: Settings) -> list[dict[str, Any]]:
         "order": "name.asc",
     }
     async with client_scope() as client:
-        response = await client.get(
+        response = await get_with_pgrst303_retry(
+            client,
             f"{settings.supabase_url}/rest/v1/allergy_types",
             headers=service_headers(settings),
             params=params,
@@ -1573,24 +1574,28 @@ async def fetch_exercise_history(
         ),
         "user_id": f"eq.{user_id}",
     }
-    async with client_scope() as client:
-        session_response, log_response, feedback_response = await asyncio.gather(
-            client.get(
-                f"{settings.supabase_url}/rest/v1/exercise_sessions",
-                headers=service_headers(settings),
-                params=session_params,
-            ),
-            client.get(
-                f"{settings.supabase_url}/rest/v1/exercise_logs",
-                headers=service_headers(settings),
-                params=log_params,
-            ),
-            client.get(
-                f"{settings.supabase_url}/rest/v1/exercise_session_feedback",
-                headers=service_headers(settings),
-                params=feedback_params,
-            ),
-        )
+    async with retry_pgrst303_scope():
+        async with client_scope() as client:
+            session_response, log_response, feedback_response = await asyncio.gather(
+                get_with_pgrst303_retry(
+                    client,
+                    f"{settings.supabase_url}/rest/v1/exercise_sessions",
+                    headers=service_headers(settings),
+                    params=session_params,
+                ),
+                get_with_pgrst303_retry(
+                    client,
+                    f"{settings.supabase_url}/rest/v1/exercise_logs",
+                    headers=service_headers(settings),
+                    params=log_params,
+                ),
+                get_with_pgrst303_retry(
+                    client,
+                    f"{settings.supabase_url}/rest/v1/exercise_session_feedback",
+                    headers=service_headers(settings),
+                    params=feedback_params,
+                ),
+            )
     if not all(
         response.is_success
         for response in (session_response, log_response, feedback_response)
@@ -2495,7 +2500,8 @@ async def create_diet_recommendation(
 
 async def fetch_food_catalog(settings: Settings) -> list[dict[str, Any]]:
     async with client_scope() as client:
-        response = await client.get(
+        response = await get_with_pgrst303_retry(
+            client,
             f"{settings.supabase_url}/rest/v1/food_items",
             headers=service_headers(settings),
             params={
