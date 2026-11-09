@@ -105,6 +105,26 @@
         }
       }
     },
+    "/health/food-image": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Food Image Health Check",
+        "description": "외부 호출 없이 푸드샷 처리 상태만 반환한다.",
+        "operationId": "food_image_health_check_health_food_image_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
     "/chat": {
       "post": {
         "tags": [
@@ -5644,6 +5664,20 @@
             "maximum": 5000.0,
             "exclusiveMinimum": 0.0,
             "title": "Amount G"
+          },
+          "matched_food_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Food Code",
+            "description": "최초 분석에서 사용자가 확정한 공식 Food DB 코드. 전달되면 이름 유사도 검색보다 우선한다."
           }
         },
         "additionalProperties": false,
@@ -5662,7 +5696,7 @@
               "$ref": "#/components/schemas/FoodAnalysisRecalculateItem"
             },
             "type": "array",
-            "maxItems": 12,
+            "maxItems": 20,
             "minItems": 1,
             "title": "Items"
           }
@@ -5713,7 +5747,7 @@
               "$ref": "#/components/schemas/FoodAnalysisItem"
             },
             "type": "array",
-            "maxItems": 12,
+            "maxItems": 20,
             "title": "Items"
           },
           "total_nutrition": {

@@ -41,7 +41,7 @@ class VisionFoodRecognition(BaseModel):
 
     image_is_food: bool
     foods: list[VisionDetectedFood] = Field(
-        max_length=12,
+        max_length=20,
     )
     analysis_note: str = Field(max_length=300)
 
@@ -57,6 +57,15 @@ class FoodAnalysisRecalculateItem(BaseModel):
 
     name: str = Field(min_length=1, max_length=100)
     amount_g: float = Field(gt=0, le=5000)
+    matched_food_code: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+        description=(
+            "최초 분석에서 사용자가 확정한 공식 Food DB 코드. "
+            "전달되면 이름 유사도 검색보다 우선한다."
+        ),
+    )
 
 
 class FoodAnalysisRecalculateRequest(BaseModel):
@@ -64,7 +73,7 @@ class FoodAnalysisRecalculateRequest(BaseModel):
 
     items: list[FoodAnalysisRecalculateItem] = Field(
         min_length=1,
-        max_length=12,
+        max_length=20,
     )
 
 
@@ -123,7 +132,7 @@ class FoodAnalysisResponse(BaseModel):
     status: FoodAnalysisStatus
     recognition_source: FoodRecognitionSource
     nutrition_source: str = "official_food_catalog"
-    items: list[FoodAnalysisItem] = Field(max_length=12)
+    items: list[FoodAnalysisItem] = Field(max_length=20)
     total_nutrition: FoodAnalysisNutrition
     nutrition_complete: bool
     requires_user_confirmation: bool = True

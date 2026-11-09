@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+from io import BytesIO
 from types import SimpleNamespace
 from typing import Any
 
 import httpx
+import pytest
+from PIL import Image
 
 from app.core.config import get_settings
 from app.main import app
@@ -17,10 +20,32 @@ from app.schemas.food_image import (
 from app.services.food_catalog_service import FoodCatalogService
 from app.services.food_image_analysis_service import (
     FoodImageAnalysisService,
+    FoodImageCapacityError,
+    FoodImageProviderError,
+    FoodImageValidationError,
+    _get_analysis_semaphore,
+    get_food_image_resilience_stats,
 )
 
 
-JPEG_BYTES = b"\xff\xd8\xff" + (b"image-data" * 4)
+def _image_bytes(
+    image_format: str = "JPEG",
+    *,
+    size: tuple[int, int] = (32, 24),
+    with_exif: bool = False,
+) -> bytes:
+    image = Image.new("RGB", size, (220, 120, 40))
+    output = BytesIO()
+    kwargs: dict[str, Any] = {}
+    if with_exif:
+        exif = Image.Exif()
+        exif[305] = "Auto-Fit test camera"
+        kwargs["exif"] = exif
+    image.save(output, format=image_format, **kwargs)
+    return output.getvalue()
+
+
+JPEG_BYTES = _image_bytes()
 
 
 class StubFoodCatalogService(FoodCatalogService):
@@ -180,6 +205,36 @@ def test_food_image_service_analysis_and_recalculation() -> None:
     asyncio.run(_test_service_analysis_and_recalculation())
 
 
+def test_food_image_preparation_decodes_resizes_and_removes_metadata() -> None:
+    service = FoodImageAnalysisService(
+        openai_client=FakeOpenAIClient(  # type: ignore[arg-type]
+            VisionFoodRecognition(
+                image_is_food=False,
+                foods=[],
+                analysis_note="음식 없음",
+            )
+        ),
+        food_catalog_service=StubFoodCatalogService(),
+    )
+    original_limit = service.settings.food_image_target_max_dimension
+    service.settings.food_image_target_max_dimension = 512
+    try:
+        prepared, media_type = service._prepare_image(
+            image_bytes=_image_bytes(
+                size=(1200, 800),
+                with_exif=True,
+            ),
+            declared_content_type="image/jpeg",
+        )
+    finally:
+        service.settings.food_image_target_max_dimension = original_limit
+
+    assert media_type == "image/jpeg"
+    with Image.open(BytesIO(prepared)) as normalized:
+        assert max(normalized.size) == 512
+        assert not normalized.getexif()
+
+
 def test_food_image_validation_rejects_unsupported_content() -> None:
     service = FoodImageAnalysisService(
         openai_client=FakeOpenAIClient(  # type: ignore[arg-type]
@@ -203,6 +258,363 @@ def test_food_image_validation_rejects_unsupported_content() -> None:
         assert "JPEG, PNG, and WEBP" in str(exc)
     else:
         raise AssertionError("Unsupported image content was accepted")
+
+
+def test_food_image_validation_rejects_damaged_magic_byte_file() -> None:
+    service = FoodImageAnalysisService(
+        openai_client=FakeOpenAIClient(  # type: ignore[arg-type]
+            VisionFoodRecognition(
+                image_is_food=False,
+                foods=[],
+                analysis_note="음식 없음",
+            )
+        ),
+        food_catalog_service=StubFoodCatalogService(),
+    )
+
+    with pytest.raises(FoodImageValidationError, match="damaged"):
+        service._prepare_image(
+            image_bytes=b"\xff\xd8\xffnot-a-real-jpeg",
+            declared_content_type="image/jpeg",
+        )
+
+
+class FailingFoodCatalogService(FoodCatalogService):
+    async def fetch_all_foods(
+        self,
+        page_size: int = 1000,
+        force_refresh: bool = False,
+    ) -> list[dict[str, Any]]:
+        del page_size, force_refresh
+        raise RuntimeError("catalog offline")
+
+
+def test_food_catalog_outage_is_not_hidden_as_partial_response() -> None:
+    service = FoodImageAnalysisService(
+        openai_client=FakeOpenAIClient(  # type: ignore[arg-type]
+            VisionFoodRecognition(
+                image_is_food=True,
+                foods=[
+                    VisionDetectedFood(
+                        name="김치볶음밥",
+                        estimated_amount_g=200,
+                        confidence=0.9,
+                        alternative_names=[],
+                    )
+                ],
+                analysis_note="인식 완료",
+            )
+        ),
+        food_catalog_service=FailingFoodCatalogService(),
+    )
+
+    with pytest.raises(RuntimeError, match="temporarily unavailable"):
+        asyncio.run(
+            service.analyze_image(
+                image_bytes=JPEG_BYTES,
+                declared_content_type="image/jpeg",
+            )
+        )
+
+
+class SimilarFoodCatalogService(FoodCatalogService):
+    async def fetch_all_foods(
+        self,
+        page_size: int = 1000,
+        force_refresh: bool = False,
+    ) -> list[dict[str, Any]]:
+        del page_size, force_refresh
+        return [
+            {
+                "foodCd": "CAKE-001",
+                "foodNm": "당근 그릭요거트 케이크",
+                "nutConSrtrQua": "100g",
+                "enerc": "300",
+                "chocdf": "40",
+                "prot": "8",
+                "fatce": "12",
+                "srcNm": "대한민국 전국통합식품영양성분정보",
+            },
+            {
+                "foodCd": "YOGURT-001",
+                "foodNm": "그릭요거트",
+                "nutConSrtrQua": "50g",
+                "enerc": "60",
+                "chocdf": "4",
+                "prot": "5",
+                "fatce": "2",
+                "srcNm": "대한민국 전국통합식품영양성분정보",
+            },
+        ]
+
+
+def test_recalculation_prefers_exact_food_code_and_serving_basis() -> None:
+    service = FoodImageAnalysisService(
+        openai_client=FakeOpenAIClient(  # type: ignore[arg-type]
+            VisionFoodRecognition(
+                image_is_food=False,
+                foods=[],
+                analysis_note="unused",
+            )
+        ),
+        food_catalog_service=SimilarFoodCatalogService(),
+    )
+
+    response = asyncio.run(
+        service.recalculate(
+            FoodAnalysisRecalculateRequest(
+                items=[
+                    {
+                        "name": "그릭요거트",
+                        "amount_g": 100,
+                        "matched_food_code": "YOGURT-001",
+                    }
+                ]
+            )
+        )
+    )
+
+    assert response.status == "completed"
+    assert response.items[0].matched_food_code == "YOGURT-001"
+    assert response.items[0].calories_kcal == 120
+    assert response.items[0].protein_g == 10
+
+
+def test_recalculation_rejects_stale_code_for_changed_food_name() -> None:
+    service = FoodImageAnalysisService(
+        openai_client=FakeOpenAIClient(  # type: ignore[arg-type]
+            VisionFoodRecognition(
+                image_is_food=False,
+                foods=[],
+                analysis_note="unused",
+            )
+        ),
+        food_catalog_service=SimilarFoodCatalogService(),
+    )
+
+    response = asyncio.run(
+        service.recalculate(
+            FoodAnalysisRecalculateRequest(
+                items=[
+                    {
+                        "name": "김치볶음밥",
+                        "amount_g": 200,
+                        "matched_food_code": "YOGURT-001",
+                    }
+                ]
+            )
+        )
+    )
+
+    assert response.status == "partial"
+    assert response.items[0].catalog_matched is False
+    assert response.items[0].calories_kcal is None
+
+
+class AmbiguousExactCatalogService(FoodCatalogService):
+    async def fetch_all_foods(
+        self,
+        page_size: int = 1000,
+        force_refresh: bool = False,
+    ) -> list[dict[str, Any]]:
+        del page_size, force_refresh
+        base = {
+            "foodNm": "김치볶음밥",
+            "nutConSrtrQua": "100g",
+            "chocdf": "25",
+            "prot": "5",
+            "fatce": "4",
+            "srcNm": "대한민국 전국통합식품영양성분정보",
+        }
+        return [
+            {**base, "foodCd": "RICE-001", "enerc": "160"},
+            {**base, "foodCd": "RICE-002", "enerc": "220"},
+        ]
+
+
+def test_ambiguous_exact_catalog_rows_are_not_auto_confirmed() -> None:
+    recognition = VisionFoodRecognition(
+        image_is_food=True,
+        foods=[
+            VisionDetectedFood(
+                name="김치볶음밥",
+                estimated_amount_g=200,
+                confidence=0.95,
+                alternative_names=[],
+            )
+        ],
+        analysis_note="인식 완료",
+    )
+    service = FoodImageAnalysisService(
+        openai_client=FakeOpenAIClient(recognition),  # type: ignore[arg-type]
+        food_catalog_service=AmbiguousExactCatalogService(),
+    )
+
+    response = asyncio.run(
+        service.analyze_image(
+            image_bytes=JPEG_BYTES,
+            declared_content_type="image/jpeg",
+        )
+    )
+
+    assert response.status == "partial"
+    assert response.items[0].catalog_matched is False
+
+
+def test_generic_name_does_not_match_longer_different_dish() -> None:
+    recognition = VisionFoodRecognition(
+        image_is_food=True,
+        foods=[
+            VisionDetectedFood(
+                name="그릭요거트",
+                estimated_amount_g=100,
+                confidence=0.9,
+                alternative_names=["당근 그릭요거트 케이크"],
+            )
+        ],
+        analysis_note="인식 완료",
+    )
+
+    class CakeOnlyCatalog(SimilarFoodCatalogService):
+        async def fetch_all_foods(
+            self,
+            page_size: int = 1000,
+            force_refresh: bool = False,
+        ) -> list[dict[str, Any]]:
+            foods = await super().fetch_all_foods(
+                page_size=page_size,
+                force_refresh=force_refresh,
+            )
+            return foods[:1]
+
+    service = FoodImageAnalysisService(
+        openai_client=FakeOpenAIClient(recognition),  # type: ignore[arg-type]
+        food_catalog_service=CakeOnlyCatalog(),
+    )
+    response = asyncio.run(
+        service.analyze_image(
+            image_bytes=JPEG_BYTES,
+            declared_content_type="image/jpeg",
+        )
+    )
+
+    assert response.status == "partial"
+    assert response.items[0].catalog_matched is False
+
+
+def test_low_confidence_result_requires_correction_before_storage() -> None:
+    recognition = VisionFoodRecognition(
+        image_is_food=True,
+        foods=[
+            VisionDetectedFood(
+                name="김치볶음밥",
+                estimated_amount_g=200,
+                confidence=0.2,
+                alternative_names=[],
+            )
+        ],
+        analysis_note="낮은 신뢰도",
+    )
+    service = FoodImageAnalysisService(
+        openai_client=FakeOpenAIClient(recognition),  # type: ignore[arg-type]
+        food_catalog_service=StubFoodCatalogService(),
+    )
+
+    response = asyncio.run(
+        service.analyze_image(
+            image_bytes=JPEG_BYTES,
+            declared_content_type="image/jpeg",
+        )
+    )
+
+    assert response.status == "partial"
+    assert response.nutrition_complete is False
+    assert response.items[0].catalog_matched is True
+    assert any("신뢰도가 낮" in warning for warning in response.items[0].warnings)
+
+
+def test_missing_amount_does_not_claim_that_amount_was_estimated() -> None:
+    recognition = VisionFoodRecognition(
+        image_is_food=True,
+        foods=[
+            VisionDetectedFood(
+                name="김치볶음밥",
+                estimated_amount_g=None,
+                confidence=0.95,
+                alternative_names=[],
+            )
+        ],
+        analysis_note="중량 확인 불가",
+    )
+    service = FoodImageAnalysisService(
+        openai_client=FakeOpenAIClient(recognition),  # type: ignore[arg-type]
+        food_catalog_service=StubFoodCatalogService(),
+    )
+
+    response = asyncio.run(
+        service.analyze_image(
+            image_bytes=JPEG_BYTES,
+            declared_content_type="image/jpeg",
+        )
+    )
+
+    warnings = response.items[0].warnings
+    assert response.items[0].amount_estimated is False
+    assert any("추정하지 못" in warning for warning in warnings)
+    assert not any("중량은 추정값" in warning for warning in warnings)
+
+
+def test_unparsed_openai_response_is_observable() -> None:
+    fake_openai = FakeOpenAIClient(None)  # type: ignore[arg-type]
+    service = FoodImageAnalysisService(
+        openai_client=fake_openai,  # type: ignore[arg-type]
+        food_catalog_service=StubFoodCatalogService(),
+    )
+    before = get_food_image_resilience_stats()["unparsed_responses"]
+
+    with pytest.raises(FoodImageProviderError, match="empty result"):
+        asyncio.run(
+            service.analyze_image(
+                image_bytes=JPEG_BYTES,
+                declared_content_type="image/jpeg",
+            )
+        )
+
+    after = get_food_image_resilience_stats()["unparsed_responses"]
+    assert after == before + 1
+
+
+async def _test_food_image_capacity_limit() -> None:
+    service = FoodImageAnalysisService(
+        openai_client=FakeOpenAIClient(  # type: ignore[arg-type]
+            VisionFoodRecognition(
+                image_is_food=False,
+                foods=[],
+                analysis_note="unused",
+            )
+        ),
+        food_catalog_service=StubFoodCatalogService(),
+    )
+    original_limit = service.settings.food_image_max_concurrent_analyses
+    original_timeout = service.settings.food_image_queue_timeout_seconds
+    service.settings.food_image_max_concurrent_analyses = 1
+    service.settings.food_image_queue_timeout_seconds = 0.01
+    semaphore = _get_analysis_semaphore(1)
+    await semaphore.acquire()
+    try:
+        with pytest.raises(FoodImageCapacityError, match="busy"):
+            await service._recognize_foods(
+                image_bytes=JPEG_BYTES,
+                media_type="image/jpeg",
+            )
+    finally:
+        semaphore.release()
+        service.settings.food_image_max_concurrent_analyses = original_limit
+        service.settings.food_image_queue_timeout_seconds = original_timeout
+
+
+def test_food_image_capacity_limit() -> None:
+    asyncio.run(_test_food_image_capacity_limit())
 
 
 async def _test_router_contract() -> None:
@@ -304,6 +716,7 @@ async def _test_router_contract() -> None:
             ]
             == [{"HTTPBearer": []}]
         )
+        assert "/health/food-image" in openapi["paths"]
     finally:
         FoodImageAnalysisService.analyze_image = original_analyze
         FoodImageAnalysisService.recalculate = original_recalculate

@@ -26,6 +26,9 @@ from app.services.diet_refresh_service import (
 from app.services.meal_recipe_service import (
     MealRecipeService,
 )
+from app.services.food_image_analysis_service import (
+    get_food_image_resilience_stats,
+)
 
 router = APIRouter(tags=["health"])
 
@@ -97,4 +100,16 @@ async def health_analysis_health_check():
         "diet_refresh_resilience": (
             get_diet_refresh_resilience_stats()
         ),
+    }
+
+
+@router.get("/health/food-image")
+async def food_image_health_check():
+    """외부 호출 없이 푸드샷 처리 상태만 반환한다."""
+
+    return {
+        "status": "ok",
+        "service": "healthcare-ai-server",
+        "worker_pid": os.getpid(),
+        "food_image_resilience": get_food_image_resilience_stats(),
     }

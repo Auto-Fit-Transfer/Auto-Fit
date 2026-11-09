@@ -66,6 +66,16 @@ class Settings(BaseSettings):
         gt=0,
         le=300,
     )
+    food_image_queue_timeout_seconds: float = Field(
+        default=5.0,
+        gt=0,
+        le=60,
+    )
+    food_image_max_concurrent_analyses: int = Field(
+        default=2,
+        ge=1,
+        le=8,
+    )
     food_image_max_bytes: int = Field(
         default=10_000_000,
         ge=100_000,
@@ -76,10 +86,30 @@ class Settings(BaseSettings):
         ge=1,
         le=20,
     )
-    food_catalog_match_threshold: float = Field(
-        default=0.78,
-        ge=0.5,
+    food_image_max_pixels: int = Field(
+        default=20_000_000,
+        ge=100_000,
+        le=100_000_000,
+    )
+    food_image_target_max_dimension: int = Field(
+        default=1600,
+        ge=512,
+        le=4096,
+    )
+    food_image_min_confidence: float = Field(
+        default=0.55,
+        ge=0.0,
         le=1.0,
+    )
+    food_catalog_match_threshold: float = Field(
+        default=0.90,
+        ge=0.75,
+        le=1.0,
+    )
+    food_catalog_match_ambiguity_margin: float = Field(
+        default=0.04,
+        ge=0.0,
+        le=0.25,
     )
 
     # Diet LLM 설명/메타데이터 캐시

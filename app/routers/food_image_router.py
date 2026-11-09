@@ -11,8 +11,10 @@ from app.schemas.food_image import (
 )
 from app.services.food_image_analysis_service import (
     FoodImageAnalysisService,
+    FoodImageCapacityError,
     FoodImageConfigurationError,
     FoodImageProviderError,
+    FoodImageValidationError,
 )
 
 
@@ -52,10 +54,19 @@ async def analyze_food_image(
                 image_bytes=image_bytes,
                 declared_content_type=image.content_type,
             )
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except FoodImageValidationError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail=str(exc),
+        ) from exc
     except FoodImageConfigurationError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except FoodImageCapacityError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=str(exc),
+            headers={"Retry-After": "5"},
+        ) from exc
     except FoodImageProviderError as exc:
         logger.warning("Food image provider failed: %s", exc)
         raise HTTPException(status_code=502, detail=str(exc)) from exc
