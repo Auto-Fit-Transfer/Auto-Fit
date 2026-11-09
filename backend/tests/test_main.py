@@ -896,6 +896,76 @@ def test_start_exercise_session_uses_authenticated_user(monkeypatch) -> None:
         main.app.dependency_overrides.clear()
 
 
+def test_start_exercise_session_skips_stopped_day(monkeypatch) -> None:
+    stopped_id = "00000000-0000-0000-0000-000000000001"
+    next_id = "00000000-0000-0000-0000-000000000002"
+
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_latest(user_id: str, settings: main.Settings):
+        return {
+            "recommendation": {
+                "exercise_recommendation_id": "recommendation-123",
+                "status": "active",
+                "generator": "auto-fit-ai",
+            },
+            "plan_sessions": [
+                {"exercise_plan_session_id": stopped_id, "status": "stopped"},
+                {"exercise_plan_session_id": next_id, "status": "planned"},
+            ],
+        }
+
+    async def fake_rpc(name: str, payload: dict, settings: main.Settings):
+        assert name == "start_exercise_plan_session"
+        assert payload["p_plan_session_id"] == next_id
+        return {"session": {"plan_session_id": next_id}, "items": []}
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "fetch_latest_exercise_recommendation", fake_latest)
+    monkeypatch.setattr(main, "call_exercise_session_rpc", fake_rpc)
+    try:
+        response = TestClient(main.app).post("/api/exercise/sessions/start", json={})
+        assert response.status_code == 200
+        assert response.json()["result"]["session"]["plan_session_id"] == next_id
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+@pytest.mark.parametrize("terminal_status", ["completed", "stopped", "skipped"])
+def test_start_exercise_session_rejects_terminal_day(monkeypatch, terminal_status) -> None:
+    plan_id = "00000000-0000-0000-0000-000000000001"
+
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_latest(user_id: str, settings: main.Settings):
+        return {
+            "recommendation": {
+                "exercise_recommendation_id": "recommendation-123",
+                "status": "active",
+                "generator": "auto-fit-ai",
+            },
+            "plan_sessions": [{"exercise_plan_session_id": plan_id, "status": terminal_status}],
+        }
+
+    async def unexpected_rpc(name: str, payload: dict, settings: main.Settings):
+        raise AssertionError("A terminal day must not start")
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "fetch_latest_exercise_recommendation", fake_latest)
+    monkeypatch.setattr(main, "call_exercise_session_rpc", unexpected_rpc)
+    try:
+        response = TestClient(main.app).post(
+            "/api/exercise/sessions/start", json={"plan_session_id": plan_id},
+        )
+        assert response.status_code == 409
+    finally:
+        main.app.dependency_overrides.clear()
+
+
 def test_record_exercise_item_result_uses_path_ids_and_user(monkeypatch) -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="authenticated-user")

@@ -3810,10 +3810,10 @@ async def start_ai_exercise_session(
         (plan for plan in plan_sessions if plan["exercise_plan_session_id"] == requested_id),
         None,
     ) if requested_id else next(
-        (plan for plan in plan_sessions if plan["status"] not in {"completed", "skipped"}),
+        (plan for plan in plan_sessions if plan["status"] not in {"completed", "stopped", "skipped"}),
         None,
     )
-    if not selected:
+    if not selected or selected["status"] in {"completed", "stopped", "skipped"}:
         raise HTTPException(409, detail="An available exercise plan session is required")
     payload["p_plan_session_id"] = selected["exercise_plan_session_id"]
     result = await call_exercise_session_rpc("start_exercise_plan_session", payload, settings)
