@@ -995,3 +995,21 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - E2E 조건: AI 계획 저장 후 조회·시작·항목 완료·세션 완료까지 확인
 - 테스트 결과: 관련 pytest `64 passed`, 운동 화면 설정 스크립트와 syntax compile 통과. 40분·37분의 45분 보정, 허용 범위 47분 유지, 초과 52분 보정, 비율·순서 유지, 198·200분 상한, 보정 후검증, OpenAI 1회 호출을 확인
 - 남은 작업: 수정본 배포 후 동일 파일럿 계정과 조건으로 재시험, 운영 로그에서 호출 횟수와 보정 결과 확인
+
+## 2026-11-09 · 운동 중 챗봇 증상 대응·현재 세션 조정 계약
+
+- 상태: AI Server 로컬 구현·결정론적 검증 완료, Backend/Frontend 연동 및 E2E 대기
+- 관련 커밋: 미커밋
+- 변경 목적: 사용자가 운동 중 챗봇으로 통증·피로·어지럼·호흡 불편을 말하면 일반 답변으로 끝내지 않고 운동 일시정지, 추가 확인, 현재 세션 조정 또는 중단으로 연결
+- 변경 API: `POST /chat/orchestrate`의 `ChatIntent`, `ChatAction`, `ChatContext`, `ChatPendingAction`에 additive 운동 세션 계약 추가; legacy `POST /chat` 계약 유지
+- 안전 정책: 고위험 증상 판정은 OpenAI를 호출하지 않는 결정론적 규칙 사용; 가슴 통증·압박, 실신/심한 어지럼, 심한 호흡곤란, 비정상 심계항진, 심한 통증은 대체 운동 없이 `exercise_session_stop`
+- 경미한 조정: 증상·부위·0~10 정도가 충분할 때 `confirm_exercise_adjustment` 반환; 명시적 확인과 동일 세션 version 검증 후에만 `exercise_session_adjust / ready_for_backend_apply`
+- 변경 방지: pending action에 `session_id`, `plan_session_id`, 현재 item, 세션 version, 증상과 조정 전략을 보존; 확인 시 최신 context와 다르면 적용 거부
+- 조정 범위: 현재 운동 건너뛰기, 남은 운동 강도·운동량 축소, 현재 세션 중단. 실제 종목 자동 교체는 CSV 안전 메타데이터 부재로 보류
+- 변경 파일: `app/schemas/chat.py`, `app/schemas/exercise_session_analysis.py`, `app/services/exercise_context_service.py`, `app/services/chat_intent_service.py`, `app/services/chat_orchestrator_service.py`, `app/routers/chat_router.py`, Chat 계약·예제·테스트, Backend/Frontend 전달 문서
+- 기존 동작 영향: 일반 운동 질문, 주간 운동 계획 교체 미지원 응답, 식단 pending action, 건강 RAG, 러닝 추천·생성 흐름 유지
+- Backend 작업: 실제 채팅에서 `/chat/orchestrate` adapter 연결, 활성 세션 snapshot 조립, pending action 서버 보관, discomfort RPC를 현재 `plan_session_id` 범위로 제한, 추천 전체 취소 방지
+- Frontend 작업: 운동 중 챗봇 진입 시 idempotent 일시정지, 증상 입력·조정 확인 카드, 고위험 재개 차단, 적용 후 최신 세션 재조회
+- 테스트 결과: 신규 실제 pytest `21 passed`; 건강점수·러닝·OpenAPI·운동 추천·운동 완료 분석을 포함한 관련 pytest `104 passed`; `test_chat_orchestrator.py`, `test_chat_contract_examples.py`, `test_chat_api_integration.py`, `test_chat_security_boundaries.py` 통과
+- 상세 인계: [Backend 전달사항](backend_exercise_chat_adaptation_handoff_2026-11-09.md), [Frontend 전달사항](frontend_exercise_chat_adaptation_handoff_2026-11-09.md)
+- 남은 작업: Backend/Frontend 구현, 배포 서버 `/openapi.json` 대조, 모바일 E2E

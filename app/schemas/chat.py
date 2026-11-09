@@ -1,9 +1,11 @@
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    model_serializer,
     model_validator,
 )
 
@@ -17,6 +19,10 @@ from app.schemas.recommendation import (
 from app.schemas.health_analysis import (
     HealthScoreOutput,
 )
+from app.schemas.exercise_session_analysis import (
+    BodyArea,
+    ExerciseSymptomType,
+)
 from app.schemas.running import (
     RunningDistanceOption,
 )
@@ -27,6 +33,7 @@ ChatIntent = Literal[
     "health_question",
     "exercise_question",
     "exercise_replace_request",
+    "exercise_session_discomfort",
     "running_question",
     "running_recommend_request",
     "running_generate_request",
@@ -42,6 +49,12 @@ ChatAction = Literal[
     "health_rag",
     "exercise_context",
     "exercise_replace_unavailable",
+    "need_exercise_session_context",
+    "need_exercise_symptom_details",
+    "confirm_exercise_adjustment",
+    "exercise_adjustment_cancelled",
+    "exercise_session_adjust",
+    "exercise_session_stop",
     "running_context",
     "need_running_location",
     "need_running_distance",
@@ -89,6 +102,12 @@ ChatHealthScoreSection = Literal[
     "diet",
     "exercise",
     "health_data",
+]
+
+
+ExerciseAdjustmentStrategy = Literal[
+    "reduce_remaining_volume",
+    "skip_current_and_reduce_remaining",
 ]
 
 
@@ -194,6 +213,33 @@ class ChatRunningContext(BaseModel):
         return self
 
 
+class ChatActiveExerciseSessionContext(BaseModel):
+    """Backend가 보유한 현재 운동 세션의 변경 방지 snapshot."""
+
+    model_config = ConfigDict(
+        allow_inf_nan=False,
+        extra="forbid",
+    )
+
+    session_id: UUID
+    plan_session_id: UUID
+    status: Literal["in_progress", "paused"]
+    current_exercise_item_id: UUID | None = None
+    current_exercise_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=200,
+    )
+    remaining_exercise_item_ids: list[UUID] = Field(
+        default_factory=list,
+        max_length=30,
+    )
+    version: str = Field(
+        min_length=1,
+        max_length=100,
+    )
+
+
 class ChatContext(BaseModel):
     metric_statuses: dict[str, str] = Field(
         default_factory=dict
@@ -223,6 +269,10 @@ class ChatContext(BaseModel):
 
     exercise_summary: dict | None = None
 
+    active_exercise_session: (
+        ChatActiveExerciseSessionContext | None
+    ) = None
+
     diet_summary: dict | None = None
 
     running: ChatRunningContext | None = None
@@ -237,9 +287,108 @@ class ChatPendingAction(BaseModel):
         extra="forbid"
     )
 
-    action: Literal["diet_replace"]
-    target_day: DietDay
-    target_meal: DietMealType
+    action: Literal[
+        "diet_replace",
+        "exercise_session_adjust",
+    ]
+    target_day: DietDay | None = None
+    target_meal: DietMealType | None = None
+    session_id: UUID | None = None
+    plan_session_id: UUID | None = None
+    exercise_item_id: UUID | None = None
+    session_version: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=100,
+    )
+    symptom_type: ExerciseSymptomType | None = None
+    severity: int | None = Field(
+        default=None,
+        ge=0,
+        le=10,
+    )
+    body_areas: list[BodyArea] = Field(
+        default_factory=list,
+        max_length=10,
+    )
+    adjustment_strategy: ExerciseAdjustmentStrategy | None = None
+
+    @model_validator(mode="after")
+    def validate_action_payload(self) -> "ChatPendingAction":
+        exercise_values = (
+            self.session_id,
+            self.plan_session_id,
+            self.exercise_item_id,
+            self.session_version,
+            self.symptom_type,
+            self.severity,
+            self.adjustment_strategy,
+        )
+
+        if self.action == "diet_replace":
+            if self.target_day is None or self.target_meal is None:
+                raise ValueError(
+                    "diet_replace requires target_day and target_meal"
+                )
+            if any(value is not None for value in exercise_values):
+                raise ValueError(
+                    "diet_replace cannot include exercise fields"
+                )
+            if self.body_areas:
+                raise ValueError(
+                    "diet_replace cannot include body_areas"
+                )
+            return self
+
+        if self.target_day is not None or self.target_meal is not None:
+            raise ValueError(
+                "exercise_session_adjust cannot include diet fields"
+            )
+
+        required_values = {
+            "session_id": self.session_id,
+            "plan_session_id": self.plan_session_id,
+            "session_version": self.session_version,
+            "symptom_type": self.symptom_type,
+            "severity": self.severity,
+            "adjustment_strategy": self.adjustment_strategy,
+        }
+        missing = [
+            name
+            for name, value in required_values.items()
+            if value is None
+        ]
+        if missing:
+            raise ValueError(
+                "exercise_session_adjust is missing: "
+                + ", ".join(missing)
+            )
+
+        return self
+
+    @model_serializer(mode="wrap")
+    def serialize_action_payload(self, handler):
+        data = handler(self)
+        if self.action == "diet_replace":
+            return {
+                "action": data["action"],
+                "target_day": data["target_day"],
+                "target_meal": data["target_meal"],
+            }
+
+        return {
+            "action": data["action"],
+            "session_id": data["session_id"],
+            "plan_session_id": data["plan_session_id"],
+            "exercise_item_id": data["exercise_item_id"],
+            "session_version": data["session_version"],
+            "symptom_type": data["symptom_type"],
+            "severity": data["severity"],
+            "body_areas": data["body_areas"],
+            "adjustment_strategy": data[
+                "adjustment_strategy"
+            ],
+        }
 
 
 class ChatRequest(BaseModel):

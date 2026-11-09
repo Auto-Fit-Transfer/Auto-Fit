@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.2",
+  "contract_version": "1.3",
   "legacy_chat": {
     "request": {
       "question": "운동 방향을 알려줘",
@@ -260,6 +260,239 @@
       "target_day": null,
       "target_meal": null,
       "data": null,
+      "sources": []
+    }
+  },
+  "exercise_symptom_details": {
+    "request": {
+      "content": "오른쪽 무릎이 찌릿하고 아파",
+      "history": [],
+      "context": {
+        "active_exercise_session": {
+          "session_id": "11111111-1111-1111-1111-111111111111",
+          "plan_session_id": "22222222-2222-2222-2222-222222222222",
+          "status": "in_progress",
+          "current_exercise_item_id": "33333333-3333-3333-3333-333333333333",
+          "current_exercise_name": "스쿼트",
+          "remaining_exercise_item_ids": [
+            "44444444-4444-4444-4444-444444444444"
+          ],
+          "version": "session-version-1"
+        }
+      },
+      "pending_action": null
+    },
+    "response": {
+      "intent": "exercise_session_discomfort",
+      "message": "운동은 일시정지한 상태로 유지하세요. 지금 가장 불편한 증상과 부위, 불편한 정도를 0~10으로 알려주세요.",
+      "action": "need_exercise_symptom_details",
+      "action_status": "needs_input",
+      "requires_backend_apply": false,
+      "pending_action": null,
+      "target_day": null,
+      "target_meal": null,
+      "data": {
+        "risk_level": "caution",
+        "symptom_type": "pain",
+        "severity": null,
+        "body_areas": [
+          "오른쪽 무릎"
+        ],
+        "red_flag_codes": [],
+        "missing_fields": [
+          "severity"
+        ],
+        "recommended_action": "pause",
+        "adjustment_strategy": null,
+        "session": {
+          "session_id": "11111111-1111-1111-1111-111111111111",
+          "plan_session_id": "22222222-2222-2222-2222-222222222222",
+          "session_version": "session-version-1",
+          "exercise_item_id": "33333333-3333-3333-3333-333333333333"
+        }
+      },
+      "sources": []
+    }
+  },
+  "exercise_adjustment_proposal": {
+    "request": {
+      "content": "오른쪽 무릎이 살짝 찌릿해",
+      "history": [],
+      "context": {
+        "active_exercise_session": {
+          "session_id": "11111111-1111-1111-1111-111111111111",
+          "plan_session_id": "22222222-2222-2222-2222-222222222222",
+          "status": "in_progress",
+          "current_exercise_item_id": "33333333-3333-3333-3333-333333333333",
+          "current_exercise_name": "스쿼트",
+          "remaining_exercise_item_ids": [
+            "44444444-4444-4444-4444-444444444444"
+          ],
+          "version": "session-version-1"
+        }
+      },
+      "pending_action": null
+    },
+    "response": {
+      "intent": "exercise_session_discomfort",
+      "message": "운동은 일시정지한 상태로 유지하세요. 현재 운동을 건너뛰고 남은 운동 강도와 운동량을 낮추는 조정을 적용할까요? 상태가 악화되면 조정하지 말고 운동을 중단하세요.",
+      "action": "confirm_exercise_adjustment",
+      "action_status": "awaiting_confirmation",
+      "requires_backend_apply": false,
+      "pending_action": {
+        "action": "exercise_session_adjust",
+        "session_id": "11111111-1111-1111-1111-111111111111",
+        "plan_session_id": "22222222-2222-2222-2222-222222222222",
+        "exercise_item_id": "33333333-3333-3333-3333-333333333333",
+        "session_version": "session-version-1",
+        "symptom_type": "pain",
+        "severity": 3,
+        "body_areas": [
+          "오른쪽 무릎"
+        ],
+        "adjustment_strategy": "skip_current_and_reduce_remaining"
+      },
+      "target_day": null,
+      "target_meal": null,
+      "data": {
+        "risk_level": "mild",
+        "symptom_type": "pain",
+        "severity": 3,
+        "body_areas": [
+          "오른쪽 무릎"
+        ],
+        "red_flag_codes": [],
+        "missing_fields": [],
+        "recommended_action": "adjust",
+        "adjustment_strategy": "skip_current_and_reduce_remaining",
+        "session": {
+          "session_id": "11111111-1111-1111-1111-111111111111",
+          "plan_session_id": "22222222-2222-2222-2222-222222222222",
+          "session_version": "session-version-1",
+          "exercise_item_id": "33333333-3333-3333-3333-333333333333"
+        }
+      },
+      "sources": []
+    }
+  },
+  "exercise_adjustment_confirmation": {
+    "request": {
+      "content": "네, 조정해줘",
+      "history": [],
+      "context": {
+        "active_exercise_session": {
+          "session_id": "11111111-1111-1111-1111-111111111111",
+          "plan_session_id": "22222222-2222-2222-2222-222222222222",
+          "status": "in_progress",
+          "current_exercise_item_id": "33333333-3333-3333-3333-333333333333",
+          "current_exercise_name": "스쿼트",
+          "remaining_exercise_item_ids": [
+            "44444444-4444-4444-4444-444444444444"
+          ],
+          "version": "session-version-1"
+        }
+      },
+      "pending_action": {
+        "action": "exercise_session_adjust",
+        "session_id": "11111111-1111-1111-1111-111111111111",
+        "plan_session_id": "22222222-2222-2222-2222-222222222222",
+        "exercise_item_id": "33333333-3333-3333-3333-333333333333",
+        "session_version": "session-version-1",
+        "symptom_type": "pain",
+        "severity": 3,
+        "body_areas": [
+          "오른쪽 무릎"
+        ],
+        "adjustment_strategy": "skip_current_and_reduce_remaining"
+      }
+    },
+    "response": {
+      "intent": "exercise_session_discomfort",
+      "message": "현재 운동을 건너뛰거나 남은 운동 강도와 운동량을 낮출 준비가 됐어요. Backend에서 현재 세션에만 반영해주세요.",
+      "action": "exercise_session_adjust",
+      "action_status": "ready_for_backend_apply",
+      "requires_backend_apply": true,
+      "pending_action": null,
+      "target_day": null,
+      "target_meal": null,
+      "data": {
+        "session_id": "11111111-1111-1111-1111-111111111111",
+        "plan_session_id": "22222222-2222-2222-2222-222222222222",
+        "exercise_item_id": "33333333-3333-3333-3333-333333333333",
+        "session_version": "session-version-1",
+        "adjustment_strategy": "skip_current_and_reduce_remaining",
+        "discomfort_event": {
+          "symptom_type": "pain",
+          "severity": 3,
+          "body_areas": [
+            "오른쪽 무릎"
+          ],
+          "action_taken": "adjust"
+        }
+      },
+      "sources": []
+    }
+  },
+  "exercise_emergency_stop": {
+    "request": {
+      "content": "운동 중 가슴 통증이 있어",
+      "history": [],
+      "context": {
+        "active_exercise_session": {
+          "session_id": "11111111-1111-1111-1111-111111111111",
+          "plan_session_id": "22222222-2222-2222-2222-222222222222",
+          "status": "in_progress",
+          "current_exercise_item_id": "33333333-3333-3333-3333-333333333333",
+          "current_exercise_name": "스쿼트",
+          "remaining_exercise_item_ids": [
+            "44444444-4444-4444-4444-444444444444"
+          ],
+          "version": "session-version-1"
+        }
+      },
+      "pending_action": null
+    },
+    "response": {
+      "intent": "exercise_session_discomfort",
+      "message": "안전 신호가 확인되어 운동을 즉시 중단해야 합니다. 대체 운동은 진행하지 마세요. 증상이 심하거나 지속되면 주변에 도움을 요청하고 119 또는 의료기관의 도움을 받으세요.",
+      "action": "exercise_session_stop",
+      "action_status": "ready_for_backend_apply",
+      "requires_backend_apply": true,
+      "pending_action": null,
+      "target_day": null,
+      "target_meal": null,
+      "data": {
+        "risk_level": "emergency",
+        "symptom_type": "pain",
+        "severity": null,
+        "body_areas": [
+          "가슴"
+        ],
+        "red_flag_codes": [
+          "chest_discomfort"
+        ],
+        "missing_fields": [],
+        "recommended_action": "stop",
+        "adjustment_strategy": null,
+        "session": {
+          "session_id": "11111111-1111-1111-1111-111111111111",
+          "plan_session_id": "22222222-2222-2222-2222-222222222222",
+          "session_version": "session-version-1",
+          "exercise_item_id": "33333333-3333-3333-3333-333333333333"
+        },
+        "session_id": "11111111-1111-1111-1111-111111111111",
+        "plan_session_id": "22222222-2222-2222-2222-222222222222",
+        "session_version": "session-version-1",
+        "exercise_item_id": "33333333-3333-3333-3333-333333333333",
+        "discomfort_event": {
+          "symptom_type": "pain",
+          "severity": null,
+          "body_areas": [
+            "가슴"
+          ],
+          "action_taken": "stop"
+        }
+      },
       "sources": []
     }
   },

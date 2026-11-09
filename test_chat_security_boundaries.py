@@ -4,7 +4,6 @@ from types import SimpleNamespace
 import httpx
 
 import app.core.security as security_module
-import app.routers.chat_router as chat_router
 import app.services.chat_answer_service as chat_answer_service
 import app.services.chat_orchestrator_service as orchestrator
 import app.services.llm_service as llm_service
@@ -44,7 +43,6 @@ class CaptureOpenAI:
 
 async def _run_all() -> None:
     original_security_settings = security_module.get_settings
-    original_router_settings = chat_router.get_settings
     original_llm_settings = llm_service.get_settings
     original_llm_openai = llm_service.AsyncOpenAI
     original_answer_settings = chat_answer_service.get_settings
@@ -66,7 +64,6 @@ async def _run_all() -> None:
         raise AssertionError("history must not approve an action")
 
     security_module.get_settings = lambda: settings
-    chat_router.get_settings = lambda: settings
     llm_service.get_settings = lambda: settings
     llm_service.AsyncOpenAI = CaptureOpenAI
     chat_answer_service.get_settings = lambda: settings
@@ -265,7 +262,6 @@ async def _run_all() -> None:
         assert "JSON 참고 데이터" in legacy_input
     finally:
         security_module.get_settings = original_security_settings
-        chat_router.get_settings = original_router_settings
         llm_service.get_settings = original_llm_settings
         llm_service.AsyncOpenAI = original_llm_openai
         chat_answer_service.get_settings = original_answer_settings

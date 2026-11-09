@@ -42,6 +42,9 @@ from app.services.public_running_course_service import (
     PublicRunningCourseConfigurationError,
     PublicRunningCourseProviderError,
 )
+from app.services.exercise_context_service import (
+    assess_active_exercise_discomfort,
+)
 from app.services.running_route_service import (
     generate_running_loop_routes,
     recommend_running_courses,
@@ -222,6 +225,79 @@ def _is_action_cancellation(message: str) -> bool:
         message,
         CANCEL_ACTION_MESSAGES,
     )
+
+
+def _active_exercise_session_data(
+    request: ChatRequest,
+) -> dict[str, object] | None:
+    active_session = (
+        request.context.active_exercise_session
+        if request.context is not None
+        else None
+    )
+    if active_session is None:
+        return None
+
+    return {
+        "session_id": str(active_session.session_id),
+        "plan_session_id": str(active_session.plan_session_id),
+        "session_version": active_session.version,
+        "exercise_item_id": (
+            str(active_session.current_exercise_item_id)
+            if active_session.current_exercise_item_id is not None
+            else None
+        ),
+    }
+
+
+def _exercise_pending_matches_session(
+    request: ChatRequest,
+    pending_action: ChatPendingAction,
+) -> bool:
+    active_session = (
+        request.context.active_exercise_session
+        if request.context is not None
+        else None
+    )
+    if active_session is None:
+        return False
+
+    return (
+        pending_action.session_id == active_session.session_id
+        and pending_action.plan_session_id
+        == active_session.plan_session_id
+        and pending_action.exercise_item_id
+        == active_session.current_exercise_item_id
+        and pending_action.session_version
+        == active_session.version
+        and active_session.status in {"in_progress", "paused"}
+    )
+
+
+def _exercise_action_data(
+    pending_action: ChatPendingAction,
+    *,
+    action_taken: str,
+) -> dict[str, object]:
+    return {
+        "session_id": str(pending_action.session_id),
+        "plan_session_id": str(pending_action.plan_session_id),
+        "exercise_item_id": (
+            str(pending_action.exercise_item_id)
+            if pending_action.exercise_item_id is not None
+            else None
+        ),
+        "session_version": pending_action.session_version,
+        "adjustment_strategy": (
+            pending_action.adjustment_strategy
+        ),
+        "discomfort_event": {
+            "symptom_type": pending_action.symptom_type,
+            "severity": pending_action.severity,
+            "body_areas": list(pending_action.body_areas),
+            "action_taken": action_taken,
+        },
+    }
 
 
 def _extract_current_meal(
@@ -433,13 +509,50 @@ async def process_chat(
     # 현재 메시지뿐 아니라 최근 history도 함께 사용한다.
     # =====================================================
 
+    context = request.context
+    active_exercise_session_available = (
+        context is not None
+        and context.active_exercise_session is not None
+    )
+    classified_intent = await classify_chat_intent(
+        message=request.content,
+        history=request.history,
+        health_score_available=(
+            context is not None
+            and context.health_score is not None
+        ),
+        active_exercise_session_available=(
+            active_exercise_session_available
+        ),
+    )
+
     pending_action = request.pending_action
     confirmed_pending_action = False
 
-    if (
-        pending_action is not None
-        and _is_action_cancellation(request.content)
-    ):
+    # 운동 중 새 이상 신호는 기존 식단/운동 확인 대기보다 항상 우선한다.
+    # 악화된 증상을 단순 확인 답변으로 오해하지 않도록 pending action은
+    # 이번 요청에서 사용하지 않는다.
+    if classified_intent.intent == "exercise_session_discomfort":
+        intent_result = classified_intent
+        pending_action = None
+    elif pending_action is None:
+        intent_result = classified_intent
+    elif _is_action_cancellation(request.content):
+        if pending_action.action == "exercise_session_adjust":
+            return ChatResponse(
+                intent="exercise_session_discomfort",
+                message=(
+                    "운동 조정은 취소했어요. 안전 상태를 다시 확인하기 "
+                    "전에는 운동을 자동으로 재개하지 않습니다."
+                ),
+                action="exercise_adjustment_cancelled",
+                action_status="completed",
+                data={
+                    "session_id": str(pending_action.session_id),
+                    "recommended_action": "remain_paused",
+                },
+            )
+
         return ChatResponse(
             intent="diet_replace_request",
             message="식단 변경 요청을 취소했어요.",
@@ -448,22 +561,71 @@ async def process_chat(
             target_day=pending_action.target_day,
             target_meal=pending_action.target_meal,
         )
-
-    if pending_action is not None:
-        if not _is_action_confirmation(request.content):
+    elif not _is_action_confirmation(request.content):
+        if pending_action.action == "exercise_session_adjust":
             return ChatResponse(
-                intent="diet_replace_request",
+                intent="exercise_session_discomfort",
                 message=(
-                    "식단 변경을 진행하려면 '네'라고 답하고, "
-                    "원하지 않으면 '취소'라고 답해주세요."
+                    "남은 운동을 안전하게 조정하려면 '네'라고 답하고, "
+                    "원하지 않으면 '취소'라고 답해주세요. 운동은 "
+                    "확인 전까지 일시정지 상태를 유지하세요."
                 ),
-                action="confirm_diet_replace",
+                action="confirm_exercise_adjustment",
                 action_status="awaiting_confirmation",
-                target_day=pending_action.target_day,
-                target_meal=pending_action.target_meal,
                 pending_action=pending_action,
+                data={
+                    "session_id": str(pending_action.session_id),
+                    "recommended_action": "remain_paused",
+                },
             )
 
+        return ChatResponse(
+            intent="diet_replace_request",
+            message=(
+                "식단 변경을 진행하려면 '네'라고 답하고, "
+                "원하지 않으면 '취소'라고 답해주세요."
+            ),
+            action="confirm_diet_replace",
+            action_status="awaiting_confirmation",
+            target_day=pending_action.target_day,
+            target_meal=pending_action.target_meal,
+            pending_action=pending_action,
+        )
+    elif pending_action.action == "exercise_session_adjust":
+        if not _exercise_pending_matches_session(
+            request,
+            pending_action,
+        ):
+            return ChatResponse(
+                intent="exercise_session_discomfort",
+                message=(
+                    "운동 세션 상태가 변경되어 기존 조정안을 적용하지 "
+                    "않았습니다. 현재 운동 상태를 다시 확인해주세요."
+                ),
+                action="need_exercise_session_context",
+                action_status="needs_input",
+                data={
+                    "reason": "exercise_session_context_changed",
+                    "recommended_action": "remain_paused",
+                },
+            )
+
+        return ChatResponse(
+            intent="exercise_session_discomfort",
+            message=(
+                "현재 운동을 건너뛰거나 남은 운동 강도와 운동량을 "
+                "낮출 준비가 됐어요. Backend에서 현재 세션에만 "
+                "반영해주세요."
+            ),
+            action="exercise_session_adjust",
+            action_status="ready_for_backend_apply",
+            requires_backend_apply=True,
+            data=_exercise_action_data(
+                pending_action,
+                action_taken="adjust",
+            ),
+        )
+    else:
         intent_result = ChatIntentResult(
             intent="diet_replace_request",
             confidence=1.0,
@@ -471,19 +633,8 @@ async def process_chat(
             target_meal=pending_action.target_meal,
         )
         confirmed_pending_action = True
-    else:
-        intent_result = await classify_chat_intent(
-            message=request.content,
-            history=request.history,
-            health_score_available=(
-                request.context is not None
-                and request.context.health_score is not None
-            ),
-        )
 
     intent = intent_result.intent
-
-    context = request.context
 
     # =====================================================
     # 2. Safe Context
@@ -496,7 +647,141 @@ async def process_chat(
     )
 
     # =====================================================
-    # 3. Health Score Question
+    # 3. Active Exercise Discomfort
+    #
+    # 급성 증상은 OpenAI에 보내지 않고 결정론적 안전 규칙으로만
+    # 처리한다. AI Server는 DB를 직접 변경하지 않으며 Backend가
+    # 현재 세션 소유권과 version을 다시 검증한 뒤 적용한다.
+    # =====================================================
+
+    if intent == "exercise_session_discomfort":
+        assessment = assess_active_exercise_discomfort(
+            request.content
+        )
+        assessment_data = assessment.to_response_data()
+        session_data = _active_exercise_session_data(request)
+
+        if session_data is None:
+            if assessment.recommended_action == "stop":
+                message = (
+                    "운동을 즉시 중단하고 안전한 자세를 유지하세요. "
+                    "증상이 심하거나 지속되면 주변에 도움을 요청하고 "
+                    "119 또는 의료기관의 도움을 받으세요. 세션 변경을 "
+                    "적용하려면 Backend의 현재 운동 정보가 필요합니다."
+                )
+                action = "exercise_session_stop"
+                action_status = "unable_to_apply"
+            else:
+                message = (
+                    "우선 운동을 일시정지하세요. 현재 세션에 안전한 "
+                    "조정을 적용하려면 Backend의 활성 운동 정보가 "
+                    "필요합니다."
+                )
+                action = "need_exercise_session_context"
+                action_status = "needs_input"
+
+            assessment_data["session"] = None
+            return ChatResponse(
+                intent=intent,
+                message=message,
+                action=action,
+                action_status=action_status,
+                data=assessment_data,
+            )
+
+        assessment_data["session"] = session_data
+
+        if assessment.recommended_action == "stop":
+            stop_data = {
+                **assessment_data,
+                **session_data,
+                "adjustment_strategy": None,
+                "discomfort_event": {
+                    "symptom_type": assessment.symptom_type,
+                    "severity": assessment.severity,
+                    "body_areas": list(assessment.body_areas),
+                    "action_taken": "stop",
+                },
+            }
+            return ChatResponse(
+                intent=intent,
+                message=(
+                    "안전 신호가 확인되어 운동을 즉시 중단해야 합니다. "
+                    "대체 운동은 진행하지 마세요. 증상이 심하거나 "
+                    "지속되면 주변에 도움을 요청하고 119 또는 "
+                    "의료기관의 도움을 받으세요."
+                ),
+                action="exercise_session_stop",
+                action_status="ready_for_backend_apply",
+                requires_backend_apply=True,
+                data=stop_data,
+            )
+
+        if assessment.missing_fields:
+            return ChatResponse(
+                intent=intent,
+                message=(
+                    "운동은 일시정지한 상태로 유지하세요. 지금 가장 "
+                    "불편한 증상과 부위, 불편한 정도를 0~10으로 "
+                    "알려주세요."
+                ),
+                action="need_exercise_symptom_details",
+                action_status="needs_input",
+                data=assessment_data,
+            )
+
+        active_session = context.active_exercise_session
+        adjustment_strategy = assessment.adjustment_strategy
+        if (
+            adjustment_strategy
+            == "skip_current_and_reduce_remaining"
+            and active_session.current_exercise_item_id is None
+        ):
+            adjustment_strategy = "reduce_remaining_volume"
+
+        pending = ChatPendingAction(
+            action="exercise_session_adjust",
+            session_id=active_session.session_id,
+            plan_session_id=active_session.plan_session_id,
+            exercise_item_id=(
+                active_session.current_exercise_item_id
+            ),
+            session_version=active_session.version,
+            symptom_type=assessment.symptom_type,
+            severity=assessment.severity,
+            body_areas=list(assessment.body_areas),
+            adjustment_strategy=adjustment_strategy,
+        )
+        assessment_data["adjustment_strategy"] = adjustment_strategy
+
+        if (
+            adjustment_strategy
+            == "skip_current_and_reduce_remaining"
+        ):
+            proposed_change = (
+                "현재 운동을 건너뛰고 남은 운동 강도와 운동량을 "
+                "낮추는 조정"
+            )
+        else:
+            proposed_change = (
+                "남은 운동 강도와 운동량을 낮추는 조정"
+            )
+
+        return ChatResponse(
+            intent=intent,
+            message=(
+                f"운동은 일시정지한 상태로 유지하세요. {proposed_change}을 "
+                "적용할까요? 상태가 악화되면 조정하지 말고 운동을 "
+                "중단하세요."
+            ),
+            action="confirm_exercise_adjustment",
+            action_status="awaiting_confirmation",
+            pending_action=pending,
+            data=assessment_data,
+        )
+
+    # =====================================================
+    # 4. Health Score Question
     # =====================================================
 
     if intent == "health_score_question":

@@ -23,6 +23,8 @@
 
 따라서 현재 바로 E2E 가능한 AI 기능은 러닝과 기존 `/chat` 호환 경로다. 나머지 endpoint는 AI Server에 구현되어 있어도 Backend Router·DTO·저장 mapping이 추가되기 전에는 Frontend에서 사용할 수 없다. 특히 Backend의 식단 생성 prompt를 `/chat`에 계속 싣는 방식은 전용 Food DB·Recipe·알레르기 검증 파이프라인을 우회하므로 최종 구조로 사용하지 않는다.
 
+> 2026-11-09 AI Server에는 운동 중 증상을 규칙 기반으로 판정해 현재 세션의 조정·중단 action을 반환하는 기능이 추가됐다. Backend 실제 채팅 adapter와 세션 단위 transaction은 아직 필요하다. 상세 작업은 [Backend 운동 중 챗봇 능동 조정 전달사항](backend_exercise_chat_adaptation_handoff_2026-11-09.md)을 따른다.
+
 또한 해당 Backend 커밋의 `/chat` 호출 제한은 socket 8초·전체 10초인데 AI Server의 기본 OpenAI 제한은 30초다. Backend가 먼저 연결을 끊은 뒤 AI 호출만 계속되는 상황을 막으려면 Backend의 upstream 제한을 AI 제한보다 길게 조정하거나, 기능별 전용 endpoint로 전환하면서 공통 timeout 정책을 합의해야 한다. AI 응답 품질을 떨어뜨릴 수 있으므로 AI 제한을 임의로 8초 미만으로 낮추지는 않는다.
 
 ## 가장 먼저 합의할 사항
@@ -432,6 +434,22 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
 ```
 
 건강 리포트 질문에는 최신 `/health-analysis` 응답의 `analysis.health_score`를 `context.health_score`로 전달한다. 챗봇은 확정된 점수를 다시 계산하지 않으며 `health_score_context` 응답으로 요약·이전 주 비교·변화 사유·우선 행동을 제공한다. 최신 점수가 없으면 `need_health_score_context`를 반환한다.
+
+운동 중 증상 요청에는 `context.active_exercise_session`을 추가한다.
+
+```json
+{
+  "session_id": "11111111-1111-1111-1111-111111111111",
+  "plan_session_id": "22222222-2222-2222-2222-222222222222",
+  "status": "in_progress",
+  "current_exercise_item_id": "33333333-3333-3333-3333-333333333333",
+  "current_exercise_name": "스쿼트",
+  "remaining_exercise_item_ids": [],
+  "version": "session-version-1"
+}
+```
+
+경미한 조정은 `confirm_exercise_adjustment` 확인 전에는 적용하지 않는다. `exercise_session_adjust` 또는 `exercise_session_stop`이 `ready_for_backend_apply`와 `requires_backend_apply=true`로 함께 반환될 때도 Backend가 소유권·현재 `plan_session_id`·version·중복 적용을 다시 검증한다. AI/네트워크 장애와 취소를 운동 자동 재개로 해석하지 않는다.
 
 식단 변경은 다음 조건이 모두 충족될 때만 저장한다.
 

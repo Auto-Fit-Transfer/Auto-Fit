@@ -29,6 +29,12 @@ async def _validate_runtime_behavior(examples: dict) -> None:
     confirmation = examples["diet_replace_confirmation"]
     cancellation = examples["diet_replace_cancellation"]
     exercise = examples["exercise_replace_unavailable"]
+    exercise_details = examples["exercise_symptom_details"]
+    exercise_proposal = examples["exercise_adjustment_proposal"]
+    exercise_confirmation = examples[
+        "exercise_adjustment_confirmation"
+    ]
+    exercise_emergency = examples["exercise_emergency_stop"]
     running_recommendation = examples["running_gps_recommendation"]
     running_generation = examples["running_gps_loop_generation"]
 
@@ -67,6 +73,46 @@ async def _validate_runtime_behavior(examples: dict) -> None:
     assert exercise_result.model_dump(
         mode="json"
     ) == exercise["response"]
+
+    exercise_details_result = await orchestrator.process_chat(
+        ChatRequest.model_validate(
+            exercise_details["request"]
+        )
+    )
+    assert exercise_details_result.model_dump(
+        mode="json"
+    ) == exercise_details["response"]
+
+    exercise_proposal_result = await orchestrator.process_chat(
+        ChatRequest.model_validate(
+            exercise_proposal["request"]
+        )
+    )
+    assert exercise_proposal_result.model_dump(
+        mode="json"
+    ) == exercise_proposal["response"]
+    assert exercise_proposal_result.pending_action is not None
+    assert exercise_proposal_result.pending_action.model_dump(
+        mode="json"
+    ) == exercise_confirmation["request"]["pending_action"]
+
+    exercise_confirmation_result = await orchestrator.process_chat(
+        ChatRequest.model_validate(
+            exercise_confirmation["request"]
+        )
+    )
+    assert exercise_confirmation_result.model_dump(
+        mode="json"
+    ) == exercise_confirmation["response"]
+
+    exercise_emergency_result = await orchestrator.process_chat(
+        ChatRequest.model_validate(
+            exercise_emergency["request"]
+        )
+    )
+    assert exercise_emergency_result.model_dump(
+        mode="json"
+    ) == exercise_emergency["response"]
 
     original_replacement = orchestrator.generate_replacement_meal
     original_running_recommendation = (
@@ -159,7 +205,7 @@ async def _run_all() -> None:
         )
     )
 
-    assert examples["contract_version"] == "1.2"
+    assert examples["contract_version"] == "1.3"
 
     legacy = examples["legacy_chat"]
     BackendChatRequest.model_validate(
@@ -173,6 +219,10 @@ async def _run_all() -> None:
         "health_question",
         "health_score_comparison",
         "exercise_replace_unavailable",
+        "exercise_symptom_details",
+        "exercise_adjustment_proposal",
+        "exercise_adjustment_confirmation",
+        "exercise_emergency_stop",
         "diet_replace_proposal",
         "diet_replace_confirmation",
         "diet_replace_cancellation",

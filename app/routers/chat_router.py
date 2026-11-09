@@ -171,6 +171,11 @@ async def test_chat_intent(
                 request.context is not None
                 and request.context.health_score is not None
             ),
+            active_exercise_session_available=(
+                request.context is not None
+                and request.context.active_exercise_session
+                is not None
+            ),
         )
 
     except Exception:

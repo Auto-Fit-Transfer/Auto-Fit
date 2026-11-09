@@ -168,6 +168,20 @@ async def _run_intent_tests() -> None:
     )
     assert exercise_question.intent == "exercise_question"
 
+    recovery_lifestyle_question = await classify_chat_intent(
+        message="운동 후 휴식할 때 참고할 생활 습관"
+    )
+    assert recovery_lifestyle_question.intent == "health_question"
+
+    exercise_question_cases = [
+        "오늘 운동 횟수와 시간 알려줘",
+        "운동 후 스트레칭은 어떻게 해?",
+        "운동 세트 사이 휴식은 몇 초가 좋아?",
+    ]
+    for message in exercise_question_cases:
+        result = await classify_chat_intent(message=message)
+        assert result.intent == "exercise_question", message
+
     unavailable = await orchestrator.process_chat(
         ChatRequest(content="운동 계획을 다른 것으로 바꿔줘")
     )
@@ -355,12 +369,69 @@ async def _run_answer_history_forwarding_test() -> None:
     assert captured["history"] == history
 
 
+async def _run_recovery_lifestyle_routing_test() -> None:
+    calls = []
+
+    async def fake_answer_health_question_with_sources(
+        message,
+        metric_statuses,
+        history=None,
+    ):
+        calls.append((message, metric_statuses, history))
+        return "운동 후 회복 생활 습관 안내", []
+
+    async def fail_answer_exercise_question(*args, **kwargs):
+        raise AssertionError(
+            "회복 생활 습관 질문이 운동 요약 경로로 전달됐습니다."
+        )
+
+    original_health_answer = (
+        orchestrator.answer_health_question_with_sources
+    )
+    original_exercise_answer = orchestrator.answer_exercise_question
+    orchestrator.answer_health_question_with_sources = (
+        fake_answer_health_question_with_sources
+    )
+    orchestrator.answer_exercise_question = fail_answer_exercise_question
+
+    try:
+        result = await orchestrator.process_chat(
+            ChatRequest(
+                content="운동 후 휴식할 때 참고할 생활 습관",
+                context=ChatContext(
+                    metric_statuses={"blood_pressure": "normal"},
+                    exercise_summary={
+                        "weekly_count": 3,
+                        "total_minutes": 120,
+                    },
+                ),
+            )
+        )
+    finally:
+        orchestrator.answer_health_question_with_sources = (
+            original_health_answer
+        )
+        orchestrator.answer_exercise_question = original_exercise_answer
+
+    assert result.intent == "health_question"
+    assert result.action == "health_rag"
+    assert result.message == "운동 후 회복 생활 습관 안내"
+    assert calls == [
+        (
+            "운동 후 휴식할 때 참고할 생활 습관",
+            {"blood_pressure": "normal"},
+            [],
+        )
+    ]
+
+
 async def _run_all() -> None:
     await _run_intent_tests()
     await _run_missing_context_tests()
     await _run_replacement_action_test()
     await _run_cancellation_test()
     await _run_answer_history_forwarding_test()
+    await _run_recovery_lifestyle_routing_test()
 
 
 def main() -> None:

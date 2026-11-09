@@ -9,7 +9,7 @@
 | Endpoint | 용도 | Action 지원 | Backend DB 변경 |
 |---|---|---|---|
 | `POST /chat` | 기존 Backend 호환 일반 답변 | 없음 | 없음 |
-| `POST /chat/orchestrate` | 건강 RAG, 건강 리포트 설명, 저장된 운동·식단 조회, 식단 변경, GPS 기반 러닝 추천·순환 코스 생성 | 건강 점수 설명, 식단 변경 및 러닝 조회·생성 지원 | AI Server는 직접 변경하지 않음 |
+| `POST /chat/orchestrate` | 건강 RAG, 건강 리포트 설명, 저장된 운동·식단 조회, 운동 중 증상 대응, 식단 변경, GPS 기반 러닝 추천·순환 코스 생성 | 건강 점수 설명, 현재 운동 조정·중단 제안, 식단 변경 및 러닝 조회·생성 지원 | AI Server는 직접 변경하지 않음 |
 | `POST /chat/intent-test` | 개발 중 의도 분류 확인 | 실행하지 않음 | 없음 |
 
 모든 endpoint에는 다음 인증 헤더가 필요하다.
@@ -70,6 +70,8 @@ Content-Type: application/json
 | `pending_action` | 아니요 | 직전 응답에서 받은 확인 대기 action |
 
 `history`는 문맥 참고용이며 변경 승인으로 사용되지 않는다. 식단 변경 승인은 현재 요청의 `pending_action`과 명시적인 확인 문구가 모두 있을 때만 처리한다.
+
+운동 중 증상 대응에서는 Backend가 `context.active_exercise_session`에 현재 세션 snapshot을 전달한다. 증상 분류와 고위험 중단 판단은 OpenAI를 호출하지 않는 결정론적 규칙으로 처리한다. 경미한 조정도 `pending_action`과 명시적 확인이 모두 있을 때만 `ready_for_backend_apply`가 된다.
 
 ### Health score context
 
@@ -195,6 +197,12 @@ Backend 로직은 사용자 표시용 `message` 문구를 비교하지 않고 `i
 | `health_rag` | `completed` | 답변과 `sources` 표시 |
 | `exercise_context` | `completed` | 저장된 운동 설명 표시 |
 | `exercise_replace_unavailable` | `unable_to_apply` | 변경 버튼을 완료 처리하지 않고 안내 표시 |
+| `need_exercise_session_context` | `needs_input` | 운동을 자동 재개하지 않고 인증 사용자의 최신 활성 세션을 조회해 재요청 |
+| `need_exercise_symptom_details` | `needs_input` | 운동 일시정지 유지, 증상·부위·0~10 정도 요청 |
+| `confirm_exercise_adjustment` | `awaiting_confirmation` | 조정 전 `pending_action`을 사용자·채팅·세션별로 안전하게 보존 |
+| `exercise_adjustment_cancelled` | `completed` | pending action 폐기. 취소를 운동 자동 재개로 해석하지 않음 |
+| `exercise_session_adjust` | `ready_for_backend_apply` | 세션 소유권·version 재검증 후 현재 세션에만 `adjust` 적용 |
+| `exercise_session_stop` | `ready_for_backend_apply` 또는 `unable_to_apply` | 화면에서는 즉시 중단. 적용 가능하면 현재 세션에만 `stop`; context가 없으면 최신 세션 조회 후 별도 저장. 대체 운동을 제공하지 않음 |
 | `running_context` | `completed` | 저장된 러닝 조건을 사용한 설명 표시 |
 | `need_running_distance` | `needs_input` | 거리 선택 또는 직접 입력 요청 |
 | `need_running_location` | `needs_input` | 위치 권한 허용, 지역 또는 정확한 출발지 요청 |
@@ -211,6 +219,81 @@ Backend 로직은 사용자 표시용 `message` 문구를 비교하지 않고 `i
 | `diet_replace_cancelled` | `completed` | 보존한 `pending_action` 폐기 |
 | `diet_replace` | `ready_for_backend_apply` | `data`를 검증한 뒤 해당 식단 슬롯에 반영 |
 | `general_chat` | `completed` | 일반 답변 표시 |
+
+## Active exercise discomfort flow
+
+운동 진행 중 사용자가 통증, 피로, 어지럼, 호흡 불편 또는 신체 이상을 말하면 일반 운동 답변이나 LLM 상담으로 보내지 않고 `exercise_session_discomfort`로 처리한다.
+
+Backend는 인증된 사용자의 최신 활성 세션을 다음 형태로 전달한다.
+
+```json
+{
+  "content": "오른쪽 무릎이 살짝 찌릿해",
+  "history": [],
+  "context": {
+    "active_exercise_session": {
+      "session_id": "11111111-1111-1111-1111-111111111111",
+      "plan_session_id": "22222222-2222-2222-2222-222222222222",
+      "status": "in_progress",
+      "current_exercise_item_id": "33333333-3333-3333-3333-333333333333",
+      "current_exercise_name": "스쿼트",
+      "remaining_exercise_item_ids": [
+        "44444444-4444-4444-4444-444444444444"
+      ],
+      "version": "session-version-1"
+    }
+  },
+  "pending_action": null
+}
+```
+
+`version`은 Backend가 현재 세션의 변경 여부를 확인할 수 있는 불투명 문자열이다. `updated_at`, row version 또는 동일 목적의 값을 안정적으로 직렬화해 사용할 수 있다. AI Server는 사용자 ID와 원본 건강 수치를 요구하지 않는다.
+
+판정 규칙은 다음과 같다.
+
+| 상태 | AI 응답 | 적용 정책 |
+|---|---|---|
+| 증상·정도 정보 부족 | `need_exercise_symptom_details` | 일시정지 유지 후 추가 질문 |
+| 경미한 피로 | `confirm_exercise_adjustment` | 확인 후 남은 운동량·강도 축소 |
+| 경미한 국소 통증 | `confirm_exercise_adjustment` | 확인 후 현재 운동 건너뛰기와 남은 운동량·강도 축소 |
+| 가슴 통증·압박, 실신/심한 어지럼, 심한 호흡곤란, 비정상 심계항진, 심한 통증 | `exercise_session_stop` | 대체 운동 없이 현재 세션 중단 |
+| AI/Backend context 불일치 | `need_exercise_session_context` | 기존 pending action을 적용하지 않고 일시정지 유지 |
+
+조정 제안의 `pending_action`은 `session_id`, `plan_session_id`, `exercise_item_id`, `session_version`, 증상 정보와 `adjustment_strategy`를 보존한다. 확인 요청에서 최신 세션 ID와 version이 다르면 AI Server는 변경을 준비하지 않는다.
+
+`adjustment_strategy`는 다음 두 값만 사용한다.
+
+- `reduce_remaining_volume`: 남은 운동 강도·시간·세트·횟수 축소
+- `skip_current_and_reduce_remaining`: 현재 운동을 건너뛰고 남은 운동량 축소
+
+현재 운동 CSV에는 검증된 금기 부위, 관절 부담, 충격도, 대체 운동군이 없다. 따라서 이 버전은 LLM이 임의 종목을 교체하지 않는다. 종목 자동 교체는 해당 안전 메타데이터와 Backend의 세션 단위 교체 transaction이 준비된 뒤 기존 운동 catalog 안에서만 별도로 활성화한다.
+
+확인 완료 응답 예시는 다음과 같다.
+
+```json
+{
+  "intent": "exercise_session_discomfort",
+  "action": "exercise_session_adjust",
+  "action_status": "ready_for_backend_apply",
+  "requires_backend_apply": true,
+  "pending_action": null,
+  "data": {
+    "session_id": "11111111-1111-1111-1111-111111111111",
+    "plan_session_id": "22222222-2222-2222-2222-222222222222",
+    "exercise_item_id": "33333333-3333-3333-3333-333333333333",
+    "session_version": "session-version-1",
+    "adjustment_strategy": "skip_current_and_reduce_remaining",
+    "discomfort_event": {
+      "symptom_type": "pain",
+      "severity": 3,
+      "body_areas": ["오른쪽 무릎"],
+      "action_taken": "adjust"
+    }
+  }
+}
+```
+
+Backend는 `message` 문구를 파싱하지 않고 구조화 필드로만 적용한다. `requires_backend_apply=true`여도 인증·소유권·세션 상태·version·중복 적용을 다시 검증해야 한다.
 
 ## GPS-based running course recommendation
 
@@ -402,9 +485,11 @@ Backend는 직전 응답의 `pending_action`을 수정하지 않고 최신 식�
 }
 ```
 
-## Exercise replacement before API integration
+## General exercise plan replacement before API integration
 
-운동 API가 연결되기 전에는 운동 변경을 실행하지 않는다.
+주간 운동 계획의 일반적인 종목 교체는 아직 실행하지 않는다. 이 제한은 위의
+`exercise_session_discomfort` 안전 흐름에서 현재 세션을 축소하거나 중단하는
+기능과 구분한다.
 
 ```json
 {
@@ -437,6 +522,10 @@ Backend는 다음 책임을 가진다.
 10. GPS 좌표를 사용자 메시지 문자열이나 LLM용 history에 삽입하지 않는다.
 11. 러닝 추천·생성 응답은 조회 결과이며, 즐겨찾기·선택·경로 snapshot 저장은 Backend의 별도 `/api/running/*` 처리에서 수행한다.
 12. 저장 전 `course_id`, 거리, 경로 좌표와 응답 상태를 검증하고 `unavailable` 결과를 저장하지 않는다.
+13. 운동 중 챗봇 요청에는 인증 사용자의 최신 활성 세션 snapshot과 변경 감지용 `version`을 전달한다.
+14. 운동 조정 pending action은 서버에서 사용자·채팅·세션별로 격리하고 만료·소비·중복 적용을 검사한다.
+15. 운동 `adjust`와 `stop`은 현재 `plan_session_id`에만 적용하며 다른 날짜 세션이나 주간 추천 전체 상태를 변경하지 않는다.
+16. 운동 증상 action 처리 중 AI 장애, context 불일치 또는 네트워크 실패가 발생해도 운동을 자동 재개하지 않는다.
 
 ## HTTP and recovery behavior
 

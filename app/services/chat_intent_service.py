@@ -4,6 +4,9 @@ from app.schemas.chat import (
     ChatHistoryItem,
     ChatIntentResult,
 )
+from app.services.exercise_context_service import (
+    has_active_exercise_discomfort_signal,
+)
 
 
 # =========================================================
@@ -116,6 +119,18 @@ EXERCISE_KEYWORDS = {
     "런닝",
     "러닝",
     "걷기",
+}
+
+
+EXERCISE_RECOVERY_HEALTH_PHRASES = {
+    "운동 후 휴식",
+    "운동 후 회복",
+    "운동 뒤 휴식",
+    "운동 뒤 회복",
+    "운동하고 휴식",
+    "운동하고 회복",
+    "생활 습관",
+    "생활습관",
 }
 
 
@@ -698,6 +713,7 @@ async def classify_chat_intent(
     message: str,
     history: list[ChatHistoryItem] | None = None,
     health_score_available: bool = False,
+    active_exercise_session_available: bool = False,
 ) -> ChatIntentResult:
     """
     사용자 메시지를 외부 LLM으로 보내지 않고
@@ -796,6 +812,22 @@ async def classify_chat_intent(
         cleaned_message,
         health_score_available=health_score_available,
     )
+
+    # 운동 중 신체 이상 신호는 저장 정보 조회나 일반 운동 질문보다
+    # 먼저 안전 흐름으로 보낸다. 활성 세션이 있으면 "무릎이 아파"처럼
+    # 운동이라는 단어가 없는 짧은 표현도 감지한다.
+    if has_active_exercise_discomfort_signal(
+        cleaned_message,
+        active_session_available=(
+            active_exercise_session_available
+        ),
+    ):
+        return ChatIntentResult(
+            intent="exercise_session_discomfort",
+            confidence=0.99,
+            target_day=None,
+            target_meal=None,
+        )
 
     # 건강 리포트 점수 질문은 식단·운동 단어를 포함하더라도
     # 새 추천 생성이 아니라 기존 점수 설명 요청으로 처리한다.
@@ -898,6 +930,23 @@ async def classify_chat_intent(
             confidence=0.90,
             target_day=target_day,
             target_meal=target_meal,
+        )
+
+    # 운동 후 회복·생활 습관은 저장된 운동 횟수/시간 조회가 아니라
+    # 건강 관리 안내에 해당한다. 복합 표현만 좁게 분류하여
+    # "운동 세트 사이 휴식" 같은 수행 질문은 운동 경로에 남긴다.
+    if (
+        has_exercise
+        and _contains_any(
+            cleaned_message,
+            EXERCISE_RECOVERY_HEALTH_PHRASES,
+        )
+    ):
+        return ChatIntentResult(
+            intent="health_question",
+            confidence=0.93,
+            target_day=None,
+            target_meal=None,
         )
 
     # =====================================================

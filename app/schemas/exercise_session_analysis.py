@@ -11,6 +11,13 @@ class StrictModel(BaseModel):
 
 ShortText = Annotated[str, Field(min_length=1, max_length=500)]
 BodyArea = Annotated[str, Field(min_length=1, max_length=50)]
+ExerciseSymptomType = Literal[
+    "pain",
+    "fatigue",
+    "dizziness",
+    "breathing",
+    "other",
+]
 
 
 class PerformedExercise(StrictModel):
@@ -28,7 +35,7 @@ class ExerciseFeedback(StrictModel):
 
 
 class DiscomfortEvent(StrictModel):
-    symptom_type: Literal["pain", "fatigue", "dizziness", "breathing", "other"]
+    symptom_type: ExerciseSymptomType
     severity: int | None = Field(default=None, ge=0, le=10)
     body_areas: list[BodyArea] = Field(default_factory=list, max_length=10)
     action_taken: Literal["adjust", "stop", "continue"] | None = None
