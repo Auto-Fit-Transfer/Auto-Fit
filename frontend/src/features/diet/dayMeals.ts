@@ -1,4 +1,5 @@
 import type { WeeklyDay, WeeklyPlan } from '@/src/api/diet';
+import { readAllergySafety, type AllergySafety } from '@/src/features/diet/allergyConflict';
 import { plainFoodName } from '@/src/features/diet/foodName';
 import { weeklyDayFor } from '@/src/features/diet/weeklyMeals';
 
@@ -8,6 +9,7 @@ export type MealStatus = 'recommended' | 'eaten' | 'modified' | 'skipped';
 type MacroItem = { carbs?: number; protein?: number; fat?: number };
 
 export type Meal = {
+  allergySafety?: AllergySafety;
   description?: string;
   macroItems: MacroItem[];
   dietMealId?: string;
@@ -162,6 +164,7 @@ export function mapRecommendationMeals(result: unknown): Meal[] {
     }));
 
     mappedByType.set(mealId, {
+      allergySafety: readAllergySafety(apiMeal.allergy_safety),
       dietMealId,
       foods: plainFoodName(foodNames.join(' · ')) || '등록된 음식이 없어요',
       macroItems,

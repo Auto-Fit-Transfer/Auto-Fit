@@ -6,12 +6,12 @@ import { koreanDate } from '@/src/lib/koreanDate';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import { ApiError } from '@/src/api/client';
-import { allergyWarning, mealAllergyConflicts } from '@/src/features/diet/allergyConflict';
+import { mealAllergyNotice } from '@/src/features/diet/allergyConflict';
 import { plainFoodName } from '@/src/features/diet/foodName';
 import { macroLabel, mapRecommendationMeals, mapWeeklyMeals, type Meal } from '@/src/features/diet/dayMeals';
 import { mergeDayMeals, weekDates } from '@/src/features/diet/weeklyMeals';
 import {
-  generateWeeklyDiet, getDietApiErrorMessage, getDietRecommendationsByDate, getWeeklyDiet,
+  generateDietRecommendations, generateWeeklyDiet, getDietApiErrorMessage, getDietRecommendationsByDate, getWeeklyDiet,
   regenerateDietMeal, regenerateWeeklyDietMeal, type WeeklyPlan,
 } from '@/src/api/diet';
 import { Text } from '@/src/components/common';
@@ -58,7 +58,7 @@ export function WeeklyDietContent() {
   const [detailOpen, setDetailOpen] = useState(false);
   const allergyNames = useAllergyNames();
   const start = weekKey(week);
-  // A failed refresh keeps what is on screen; only this week's data may be shown.
+  // Only this week's data may be shown.
   const shownPlan = plan?.week_start_date === start ? plan : null;
   const shownDaily = daily?.week === start ? daily.meals : null;
   const [today] = useState(todayInKorea);
@@ -87,7 +87,11 @@ export function WeeklyDietContent() {
       setPlan(nextPlan);
       setDaily({ week: weekStart, meals: Object.fromEntries(nextDaily) });
     }).catch((cause: unknown) => {
-      if (active) setError(getDietApiErrorMessage(cause));
+      if (!active) return;
+      // Older meals must not stay on screen as current ones after an allergy change.
+      setPlan(null);
+      setDaily(null);
+      setError(getDietApiErrorMessage(cause));
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [requestKey]));
@@ -127,6 +131,20 @@ export function WeeklyDietContent() {
     } finally { requestBusy.current = false; setPending(''); }
   };
 
+  const regenerateToday = async () => {
+    if (requestBusy.current) return;
+    requestBusy.current = true;
+    setPending('day');
+    setError('');
+    setMealError(null);
+    try {
+      await generateDietRecommendations();
+      setReload((value) => value + 1);
+    } catch (cause) {
+      setError(getDietApiErrorMessage(cause));
+    } finally { requestBusy.current = false; setPending(''); }
+  };
+
   const openRecipe = (date: string, meal: Meal) => {
     if (meal.weekly) {
       router.push({ pathname: '/diet/weekly-recipe', params: { planId: meal.weekly.planId, day: meal.weekly.day, mealType: meal.id } });
@@ -156,19 +174,20 @@ export function WeeklyDietContent() {
         {meals.map((meal) => {
           const slot = `${date}:${meal.id}`;
           const macros = macroLabel(meal.macroItems, MACRO_NAMES, ' · ');
-          const conflicts = mealAllergyConflicts(meal, allergyNames);
+          const notice = meal.recommendationStatus === 'modified' ? null : mealAllergyNotice(meal, allergyNames);
           return <View key={meal.id} style={s.mealCard}>
             <View style={s.mealHead}><Text style={s.mealLabel}>{meal.title}</Text>{meal.kcal == null ? null : <Text style={s.kcal}>{meal.kcal} kcal</Text>}</View>
             <Text style={s.mealTitle}>{meal.foods}</Text>
-            {conflicts.length > 0 && <Text accessibilityRole="alert" style={s.errorText}>{allergyWarning(conflicts)}</Text>}
+            {notice && <Text accessibilityRole={notice.blocked ? 'alert' : undefined} style={notice.blocked ? s.errorText : s.guidance}>{notice.message}</Text>}
             {Boolean(meal.description) && <Text style={s.muted}>{meal.description}</Text>}
             {meal.intake.length > 0 && <Text style={s.foods}>{meal.intake.map(([name, amount]) => [plainFoodName(name), amount].filter(Boolean).join(' ')).join(' · ')}</Text>}
             {Boolean(macros) && <Text style={s.foods}>{macros}</Text>}
             {Boolean(meal.note) && <Text style={s.guidance}>{meal.note}</Text>}
             {mealError?.slot === slot && <Text accessibilityRole="alert" style={s.errorText}>{mealError.message}</Text>}
             <View style={s.actions}>
-              {conflicts.length > 0 ? null : <Pressable accessibilityRole="button" onPress={() => openRecipe(date, meal)} style={s.recipeButton}><Text style={s.recipeText}>레시피 보기</Text></Pressable>}
-              {canRegenerate(date, meal) ? <Pressable accessibilityRole="button" disabled={Boolean(pending)} onPress={() => Alert.alert('메뉴 다시 추천', `${weekdayOf(date)}요일 ${meal.title} 메뉴를 바꿀까요?`, [{ text: '취소', style: 'cancel' }, { text: '다시 추천', onPress: () => void regenerate(date, meal) }])} style={s.smallOutline}><Text style={s.outlineText}>{pending === slot ? '추천 중…' : '다시 추천'}</Text></Pressable> : null}
+              {notice?.blocked ? null : <Pressable accessibilityRole="button" onPress={() => openRecipe(date, meal)} style={s.recipeButton}><Text style={s.recipeText}>레시피 보기</Text></Pressable>}
+              {notice?.regenerateDay && date === today ? <Pressable accessibilityRole="button" disabled={Boolean(pending)} onPress={() => Alert.alert('오늘 식단을 다시 추천받을까요?', '오늘 식단 전체가 새 추천으로 바뀌어요.', [{ text: '취소', style: 'cancel' }, { text: '다시 추천', onPress: () => void regenerateToday() }])} style={s.smallOutline}><Text style={s.outlineText}>{pending === 'day' ? '추천 중…' : '하루 식단 다시 추천'}</Text></Pressable> : null}
+              {canRegenerate(date, meal) && !notice?.regenerateDay ? <Pressable accessibilityRole="button" disabled={Boolean(pending)} onPress={() => Alert.alert('메뉴 다시 추천', `${weekdayOf(date)}요일 ${meal.title} 메뉴를 바꿀까요?`, [{ text: '취소', style: 'cancel' }, { text: '다시 추천', onPress: () => void regenerate(date, meal) }])} style={s.smallOutline}><Text style={s.outlineText}>{pending === slot ? '추천 중…' : '다시 추천'}</Text></Pressable> : null}
             </View>
           </View>;
         })}

@@ -1,5 +1,7 @@
 const serviceBusy = '식단 서비스가 잠시 응답하지 않아요. 잠시 후 다시 시도해 주세요.';
 const unusableResult = '식단 결과를 확인하지 못했어요. 다시 시도해 주세요.';
+const allergyBlocked = '현재 알레르기로 확인되지 않는 식단이라 처리하지 않았어요. 하루 식단을 다시 추천받아 주세요.';
+const recipeUnverified = '전체 재료를 확인할 수 없어 레시피를 보여 드리지 않아요.';
 
 // The server sends one generic sentence for these codes, so the app words each case itself.
 const messages: Record<string, string> = {
@@ -16,6 +18,12 @@ const messages: Record<string, string> = {
   AI_SLOT_MISMATCH: unusableResult,
   AI_FOOD_RESTRICTION_CONFLICT:
     '알레르기와 피하는 음식을 지키는 식단을 만들지 못했어요. 안전을 위해 보여 드리지 않았어요.',
+  AI_ALLERGEN_CONFLICT: allergyBlocked,
+  AI_RECIPE_INGREDIENTS_UNVERIFIED: recipeUnverified,
+  DIET_MEAL_ALLERGY_CONFLICT: allergyBlocked,
+  DIET_MEAL_ALLERGY_UNVERIFIED: allergyBlocked,
+  DIET_RECIPE_INGREDIENTS_UNVERIFIED: recipeUnverified,
+  DIET_ALLERGY_CONTEXT_CHANGED: '알레르기 설정이 바뀌었어요. 한 끼가 아니라 하루 식단을 다시 추천받아 주세요.',
   AI_INPUT_REJECTED: '지금 조건으로는 식단을 만들 수 없어요. 조건을 확인한 뒤 다시 시도해 주세요.',
   AI_DUPLICATE_MENU: '다른 메뉴를 찾지 못했어요. 다시 시도해 주세요.',
   WEEKLY_DIET_STORAGE_ERROR: '식단을 저장하지 못했어요. 다시 시도해 주세요.',

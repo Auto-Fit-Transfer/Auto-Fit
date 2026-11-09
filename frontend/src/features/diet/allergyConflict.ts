@@ -53,3 +53,48 @@ export function mealAllergyConflicts(meal: MealNames, allergyNames: string[]) {
 export function allergyWarning(conflicts: string[]) {
   return `${conflicts.join(', ')} 알레르기와 겹치는 재료가 있어요. 이 메뉴는 드시지 마세요.`;
 }
+
+// The API's re-check of a saved daily meal against the current allergies.
+export type AllergySafety = { status: string; matchedFoodNames: string[] };
+
+export function readAllergySafety(value: unknown): AllergySafety | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const { status, matched_food_names: names } = value as { status?: unknown; matched_food_names?: unknown };
+  if (typeof status !== 'string') return undefined;
+  return {
+    status,
+    matchedFoodNames: Array.isArray(names) ? names.filter((name): name is string => typeof name === 'string') : [],
+  };
+}
+
+export type MealAllergyNotice = { blocked: boolean; regenerateDay: boolean; message: string };
+
+// The API's answer wins; the name check only covers meals it does not judge, such as weekly ones.
+export function mealAllergyNotice(
+  meal: MealNames & { allergySafety?: AllergySafety },
+  allergyNames: string[],
+): MealAllergyNotice | null {
+  const safety = meal.allergySafety;
+  if (!safety) {
+    const conflicts = mealAllergyConflicts(meal, allergyNames);
+    return conflicts.length > 0 ? { blocked: true, regenerateDay: false, message: allergyWarning(conflicts) } : null;
+  }
+  switch (safety.status) {
+    case 'no_selected_allergies':
+      return null;
+    case 'ingredients_unverified':
+      return { blocked: false, regenerateDay: false, message: '전체 재료는 확인되지 않았어요.' };
+    case 'conflict': {
+      const names = safety.matchedFoodNames.map((name) => name.replace(/_/g, ' ')).join(', ');
+      return {
+        blocked: true,
+        regenerateDay: true,
+        message: `현재 알레르기와 겹치는 음식이 있어요${names ? `: ${names}` : ''}. 이 메뉴는 드시지 마세요.`,
+      };
+    }
+    case 'context_changed':
+      return { blocked: true, regenerateDay: true, message: '알레르기 설정이 바뀐 뒤 확인되지 않은 식단이에요. 이 메뉴는 사용할 수 없어요.' };
+    default: // context_unverified, and any status this app version does not know yet.
+      return { blocked: true, regenerateDay: true, message: '이 식단은 알레르기 정보를 다시 확인할 수 없어요. 이 메뉴는 사용할 수 없어요.' };
+  }
+}

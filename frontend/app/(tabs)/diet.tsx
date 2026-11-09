@@ -9,6 +9,7 @@ import {
   getDietNutritionSummary,
   getDietRecommendationsByDate,
   getWeeklyDiet,
+  generateDietRecommendations,
   regenerateDietMeal,
   submitDietMealFeedback,
   updateDietMealFeedback,
@@ -19,7 +20,7 @@ import {
 } from '@/src/api/diet';
 import { ApiError } from '@/src/api/client';
 import { awardTierActivity } from '@/src/api/tier';
-import { allergyWarning, mealAllergyConflicts } from '@/src/features/diet/allergyConflict';
+import { mealAllergyNotice } from '@/src/features/diet/allergyConflict';
 import { useAllergyNames } from '@/src/features/diet/useAllergyNames';
 import { weeklyDietErrorCode } from '@/src/features/diet/weeklyDietErrors';
 import {
@@ -213,6 +214,8 @@ export default function DietScreen() {
   });
   const nutritionSummaryRequestRef = useRef(0);
   const regenerateRequestMealIdsRef = useRef(new Set<MealType>());
+  const dayRegenerateBusyRef = useRef(false);
+  const [dayRegenerating, setDayRegenerating] = useState(false);
   const weeklyRequestRef = useRef(0);
 
   const displayedNutritionGoals = useMemo(
@@ -556,6 +559,29 @@ export default function DietScreen() {
     [loadRecommendations, recommendedMeals, selectedDateKey],
   );
 
+  // Paid AI call that replaces today's whole plan, so it asks first and ignores a double tap.
+  const runDayRegenerate = useCallback(async () => {
+    if (dayRegenerateBusyRef.current) return;
+    dayRegenerateBusyRef.current = true;
+    setDayRegenerating(true);
+    try {
+      await generateDietRecommendations();
+      await loadRecommendations(selectedDateKey);
+    } catch (error) {
+      if (isMountedRef.current) Alert.alert('식단을 다시 추천하지 못했어요', getDietApiErrorMessage(error));
+    } finally {
+      dayRegenerateBusyRef.current = false;
+      if (isMountedRef.current) setDayRegenerating(false);
+    }
+  }, [loadRecommendations, selectedDateKey]);
+
+  const regenerateDay = useCallback(() => {
+    Alert.alert('오늘 식단을 다시 추천받을까요?', '오늘 식단 전체가 새 추천으로 바뀌어요.', [
+      { style: 'cancel', text: '취소' },
+      { onPress: () => void runDayRegenerate(), text: '다시 추천' },
+    ]);
+  }, [runDayRegenerate]);
+
   const requestAlternativeMeal = useCallback(
     (mealId: MealType) => {
       if (recommendationLoading) return;
@@ -716,8 +742,8 @@ export default function DietScreen() {
           const log = mealLogMetaByDate[selectedDateKey]?.[meal.id];
           const recordedFoods = record?.foods;
           const status = selectedStatuses[meal.id];
-          // Only a meal still on offer is flagged; recorded meals stay as the user saved them.
-          const conflicts = status === 'recommended' ? mealAllergyConflicts(meal, allergyNames) : [];
+          // A different food the user recorded is not the recommended menu, so it stays as saved.
+          const notice = status === 'modified' ? null : mealAllergyNotice(meal, allergyNames);
           const photoUrl = record?.photoUri ?? log?.photoUrl;
           const macros = status === 'modified' && recordedFoods ? macroLabel(recordedFoods) : meal.macros;
           const recordedKcal = recordedFoods?.every((food) => food.kcal !== undefined)
@@ -737,7 +763,9 @@ export default function DietScreen() {
             canSave: feedbackEnabled && Boolean(meal.dietMealId),
             pending: feedbackMealIds.has(meal.id),
             regenerating: regeneratingMealIds.has(meal.id),
-            allergyWarning: conflicts.length > 0 ? allergyWarning(conflicts) : null,
+            allergyWarning: notice?.message ?? null,
+            allergyBlocked: Boolean(notice?.blocked),
+            canRegenerateDay: Boolean(notice?.regenerateDay) && feedbackEnabled,
           };
         })}
         mealsLoading={recommendationLoading || (recommendedMeals.length === 0 && weeklyLoading)}
@@ -751,6 +779,8 @@ export default function DietScreen() {
         onRecord={openMealRecord}
         onStatusChange={(mealId, status) => void submitFeedback(mealId, status)}
         onAlternative={requestAlternativeMeal}
+        onRegenerateDay={regenerateDay}
+        dayRegenerating={dayRegenerating}
         onOpenRecipe={(mealId) => {
           const meal = shownMeals.find((item) => item.id === mealId);
           if (meal?.weekly) {

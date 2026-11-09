@@ -25,6 +25,8 @@ export type R6Meal = {
   pending: boolean;
   regenerating: boolean;
   allergyWarning: string | null;
+  allergyBlocked: boolean;
+  canRegenerateDay: boolean;
 };
 
 export type R6Goal = { label: string; current: number | null; target: number | null; unit: string };
@@ -45,6 +47,8 @@ type Props = {
   onRecord: (mealId: R6Meal['id']) => void;
   onStatusChange: (mealId: R6Meal['id'], status: 'eaten' | 'skipped') => void;
   onAlternative: (mealId: R6Meal['id']) => void;
+  onRegenerateDay: () => void;
+  dayRegenerating: boolean;
   onOpenRecipe: (mealId: R6Meal['id']) => void;
   onOpenProteinGuide: () => void;
   onOpenWeekly: () => void;
@@ -273,7 +277,7 @@ export function R6DietHome(props: Props) {
                   </View>
                 </View>
                 {meal.allergyWarning ? (
-                  <Text accessibilityRole="alert" style={styles.allergyWarning}>{meal.allergyWarning}</Text>
+                  <Text accessibilityRole={meal.allergyBlocked ? 'alert' : undefined} style={meal.allergyBlocked ? styles.allergyWarning : styles.note}>{meal.allergyWarning}</Text>
                 ) : null}
                 {recommended && meal.note ? (
                   <View style={styles.noteRow}>
@@ -284,11 +288,12 @@ export function R6DietHome(props: Props) {
               </Pressable>
               {showActions ? (
                 <View style={styles.mealActions}>
-                  {meal.status !== 'eaten' && props.showRecordControls && meal.canSave && !meal.allergyWarning ? action('먹었어요', () => props.onStatusChange(meal.id, 'eaten'), !canRecord) : null}
-                  {recommended && meal.canSave ? action(meal.regenerating ? '찾는 중…' : '바꾸기', () => props.onAlternative(meal.id), meal.regenerating) : null}
-                  {!recommended && props.showRecordControls && meal.canSave ? action('다른 음식 기록', () => props.onRecord(meal.id), !canRecord) : null}
+                  {meal.status !== 'eaten' && props.showRecordControls && meal.canSave && !meal.allergyBlocked ? action('먹었어요', () => props.onStatusChange(meal.id, 'eaten'), !canRecord) : null}
+                  {recommended && meal.canSave && !meal.allergyBlocked ? action(meal.regenerating ? '찾는 중…' : '바꾸기', () => props.onAlternative(meal.id), meal.regenerating) : null}
+                  {meal.canRegenerateDay ? action(props.dayRegenerating ? '추천 중…' : '하루 식단 다시 추천', props.onRegenerateDay, props.dayRegenerating) : null}
+                  {(!recommended || meal.allergyBlocked) && props.showRecordControls && meal.canSave ? action('다른 음식 기록', () => props.onRecord(meal.id), !canRecord) : null}
                   {meal.status !== 'skipped' && props.showRecordControls && meal.canSave ? action('건너뛰기', () => props.onStatusChange(meal.id, 'skipped'), !canRecord) : null}
-                  {meal.allergyWarning ? null : action('레시피', () => props.onOpenRecipe(meal.id))}
+                  {meal.allergyBlocked ? null : action('레시피', () => props.onOpenRecipe(meal.id))}
                 </View>
               ) : null}
             </View>
