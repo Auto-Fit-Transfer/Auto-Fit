@@ -252,7 +252,7 @@ export function R6ExerciseSession({
                   <WarningIcon color={colors.warning} height={20} width={20} />
                   <View style={s.grow}>
                     <Text style={s.noticeTitle}>증상에 따라 안전을 위해 중단했어요</Text>
-                    <Text style={s.cardText}>증상이 계속되거나 심해지면 의료진과 상담해 주세요.</Text>
+                    <Text style={s.cardText}>즉시 운동을 멈추고 넘어지지 않도록 앉거나 편한 자세를 취해 주세요. 증상이 심하거나 계속되면 의료진과 상담해 주세요. 가슴 통증·압박, 실신할 것 같은 느낌, 의식 변화 또는 말하기 힘들 정도의 호흡곤란이 있으면 주변에 도움을 요청하고 119에 연락해 주세요.</Text>
                   </View>
                 </View>
                 <Pressable accessibilityRole="button" onPress={onStopWorkout} style={s.sheetPrimary}><Text style={s.primaryText}>운동 종료</Text></Pressable>
