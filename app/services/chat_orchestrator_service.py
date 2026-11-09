@@ -300,6 +300,53 @@ def _exercise_action_data(
     }
 
 
+def _exercise_stop_safety_guidance(
+    *,
+    risk_level: str,
+) -> dict[str, object]:
+    """Frontend가 자유 문장을 파싱하지 않도록 중단 안내를 구조화한다."""
+
+    return {
+        "level": "stop",
+        "risk_level": risk_level,
+        "title": "운동을 중단해 주세요",
+        "immediate_action": (
+            "즉시 운동을 멈추고 넘어지지 않도록 앉거나 "
+            "편한 자세를 취해 주세요."
+        ),
+        "medical_advice": (
+            "증상이 심하거나 계속되면 의료진과 상담해 주세요."
+        ),
+        "emergency_signs": [
+            "가슴 통증 또는 압박",
+            "실신할 것 같은 느낌 또는 의식 변화",
+            "말하기 힘들 정도의 호흡곤란",
+        ],
+        "emergency_action": (
+            "응급 신호가 있으면 주변에 도움을 요청하고 "
+            "119에 연락해 주세요."
+        ),
+        "emergency_number": "119",
+        "allow_resume": False,
+        "allow_replacement": False,
+    }
+
+
+def _exercise_discomfort_event(
+    *,
+    symptom_type: str | None,
+    severity: int | None,
+    body_areas: tuple[str, ...],
+    action_taken: str,
+) -> dict[str, object]:
+    return {
+        "symptom_type": symptom_type,
+        "severity": severity,
+        "body_areas": list(body_areas),
+        "action_taken": action_taken,
+    }
+
+
 def _extract_current_meal(
     diet_summary: dict | None,
     target_day: str,
@@ -664,10 +711,10 @@ async def process_chat(
         if session_data is None:
             if assessment.recommended_action == "stop":
                 message = (
-                    "운동을 즉시 중단하고 안전한 자세를 유지하세요. "
-                    "증상이 심하거나 지속되면 주변에 도움을 요청하고 "
-                    "119 또는 의료기관의 도움을 받으세요. 세션 변경을 "
-                    "적용하려면 Backend의 현재 운동 정보가 필요합니다."
+                    "즉시 운동을 멈추고 넘어지지 않도록 앉거나 편한 "
+                    "자세를 취해 주세요. 증상이 심하거나 계속되면 "
+                    "의료진과 상담해 주세요. 응급 신호가 있으면 주변에 "
+                    "도움을 요청하고 119에 연락해 주세요."
                 )
                 action = "exercise_session_stop"
                 action_status = "unable_to_apply"
@@ -681,6 +728,27 @@ async def process_chat(
                 action_status = "needs_input"
 
             assessment_data["session"] = None
+            if assessment.recommended_action == "stop":
+                assessment_data.update(
+                    {
+                        "discomfort_event": _exercise_discomfort_event(
+                            symptom_type=assessment.symptom_type,
+                            severity=assessment.severity,
+                            body_areas=assessment.body_areas,
+                            action_taken="stop",
+                        ),
+                        "event_recording": {
+                            "required": True,
+                            "mode": "append_only",
+                            "independent_of_session_apply": True,
+                        },
+                        "safety_guidance": (
+                            _exercise_stop_safety_guidance(
+                                risk_level=assessment.risk_level,
+                            )
+                        ),
+                    }
+                )
             return ChatResponse(
                 intent=intent,
                 message=message,
@@ -696,20 +764,28 @@ async def process_chat(
                 **assessment_data,
                 **session_data,
                 "adjustment_strategy": None,
-                "discomfort_event": {
-                    "symptom_type": assessment.symptom_type,
-                    "severity": assessment.severity,
-                    "body_areas": list(assessment.body_areas),
-                    "action_taken": "stop",
+                "discomfort_event": _exercise_discomfort_event(
+                    symptom_type=assessment.symptom_type,
+                    severity=assessment.severity,
+                    body_areas=assessment.body_areas,
+                    action_taken="stop",
+                ),
+                "event_recording": {
+                    "required": True,
+                    "mode": "append_only",
+                    "independent_of_session_apply": True,
                 },
+                "safety_guidance": _exercise_stop_safety_guidance(
+                    risk_level=assessment.risk_level,
+                ),
             }
             return ChatResponse(
                 intent=intent,
                 message=(
-                    "안전 신호가 확인되어 운동을 즉시 중단해야 합니다. "
-                    "대체 운동은 진행하지 마세요. 증상이 심하거나 "
-                    "지속되면 주변에 도움을 요청하고 119 또는 "
-                    "의료기관의 도움을 받으세요."
+                    "즉시 운동을 멈추고 넘어지지 않도록 앉거나 편한 "
+                    "자세를 취해 주세요. 증상이 심하거나 계속되면 "
+                    "의료진과 상담해 주세요. 응급 신호가 있으면 주변에 "
+                    "도움을 요청하고 119에 연락해 주세요."
                 ),
                 action="exercise_session_stop",
                 action_status="ready_for_backend_apply",

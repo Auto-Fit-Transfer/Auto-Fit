@@ -22,7 +22,7 @@ Frontend는 AI Server를 직접 호출하거나 `AI_SERVER_API_KEY`를 보관하
 - `action_data`
 - `pending_action_id`
 
-현재 운동 화면의 `몸이 불편해요` 기능은 선택값과 관계없이 `actionTaken: "adjust"`를 전송한다. 심각도 8인 “아파요”도 같은 조정으로 처리되므로 새 안전 정책과 통일해야 한다.
+2026-11-09 Frontend 작업본에서는 `어지러워요`, `숨쉬기 힘들어요` 선택지가 추가됐고 `아파요·어지러워요·숨쉬기 힘들어요`는 로컬 중단, `뻐근해요·찌릿해요`는 사용자가 “남은 운동 강도 낮추기”를 눌렀을 때만 조정하는 흐름으로 바뀌었다. 이 방향은 AI Server 정책과 일치한다. 남은 작업은 Backend action 계약 연결, 안전 사건 기록, 새로고침 복원이다.
 
 ## 권장 사용자 흐름
 
@@ -69,6 +69,29 @@ type ChatMessage = {
 };
 ```
 
+stop action의 `action_data`에는 다음 구조를 optional로 정의한다.
+
+```ts
+type ExerciseSafetyGuidance = {
+  level: 'stop';
+  risk_level: 'caution' | 'emergency';
+  title: string;
+  immediate_action: string;
+  medical_advice: string;
+  emergency_signs: string[];
+  emergency_action: string;
+  emergency_number: '119';
+  allow_resume: false;
+  allow_replacement: false;
+};
+
+type ExerciseEventRecording = {
+  required: boolean;
+  mode: 'append_only';
+  independent_of_session_apply: boolean;
+};
+```
+
 Frontend는 AI의 원본 `pending_action` 전체를 신뢰 가능한 승인 정보로 저장하지 않는다. Backend가 반환한 `pending_action_id`만 확인/취소 요청에 사용한다.
 
 ## Action별 UI
@@ -83,6 +106,10 @@ Frontend는 AI의 원본 `pending_action` 전체를 신뢰 가능한 승인 정�
 | `exercise_session_stop` | action status와 관계없이 로컬 운동을 즉시 중단하고 고위험 안내와 “운동 종료”만 표시. 재개·대체 운동 버튼 숨김 |
 
 `action_status=ready_for_backend_apply`가 Frontend에 보인다고 직접 AI 결과를 적용하지 않는다. Backend가 DB transaction을 완료한 최종 응답을 받은 뒤 화면 상태를 갱신한다.
+
+`exercise_session_stop`에서는 `action_data.safety_guidance`를 렌더링한다. `message` 문자열에서 “119”, “중단”, “대체 운동”을 검색해 버튼을 결정하지 않는다. `allow_resume=false`, `allow_replacement=false`이면 두 버튼을 모두 숨긴다.
+
+`action_data.event_recording.required=true`는 Backend의 사건 기록 책임을 나타낸다. Frontend가 AI Server에 직접 기록하거나 AI payload를 DB 저장 형식으로 재조립하지 않는다. Backend 응답에 기록 실패 상태가 있더라도 화면의 로컬 중단 상태는 유지한다.
 
 ## 추가 정보 입력 UI
 
@@ -126,13 +153,44 @@ Backend 적용 성공 후 `GET /api/exercise/sessions/latest` 또는 Backend가 
 
 챗봇과 기존 불편 신고 화면이 서로 다른 안전 정책을 사용하면 안 된다.
 
-수정 필요:
+확정 매핑:
 
-1. `severity=8`인 “아파요”를 무조건 `adjust`로 보내지 않는다.
-2. 어지럼과 호흡곤란 선택지를 추가한다.
-3. 고위험 선택은 대체 운동 없이 중단 경로로 보낸다.
-4. 경미한 조정도 적용 전 사용자 확인을 받는다.
-5. 실제 종목 교체가 아니라 강도·볼륨 축소라면 버튼 문구를 “남은 운동 강도 낮추기”로 표시한다.
+| 화면 선택값 | 화면 처리 | 서버 처리 |
+|---|---|---|
+| `아파요` | 즉시 로컬 중단. 재개·대체 운동 버튼 숨김 | Backend에 stop 사건 기록 요청. 의료 응급상태로 단정하지 않음 |
+| `어지러워요` | 즉시 로컬 중단. 재개·대체 운동 버튼 숨김 | Backend에 stop 사건 기록 요청 |
+| `숨쉬기 힘들어요` | 즉시 로컬 중단. 재개·대체 운동 버튼 숨김 | Backend에 stop 사건 기록 요청 |
+| `뻐근해요` | 일시정지 유지 후 “남은 운동 강도 낮추기” 표시 | 사용자가 버튼을 눌렀을 때만 adjust 요청 |
+| `찌릿해요` | 일시정지 유지 후 “남은 운동 강도 낮추기” 표시 | 사용자가 버튼을 눌렀을 때만 adjust 요청 |
+
+이 표는 정도 입력이 없는 직접 선택 화면 전용 정책이다. 챗봇 자연어에서 “오른쪽 무릎이 살짝 아파요”처럼 부위·정도가 있는 입력은 AI의 추가 질문·확인 흐름을 따른다.
+
+중단 안내 문구:
+
+> 즉시 운동을 멈추고 넘어지지 않도록 앉거나 편한 자세를 취해 주세요. 증상이 심하거나 계속되면 의료진과 상담해 주세요. 가슴 통증·압박, 실신할 것 같은 느낌, 의식 변화 또는 말하기 힘들 정도의 호흡곤란이 있으면 주변에 도움을 요청하고 119에 연락해 주세요.
+
+문구는 `action_data.safety_guidance` 필드별로 표시하며, 위 문장을 소스 코드에 별도 중복 저장하지 않는 것을 권장한다.
+
+## Pending action 확인·취소 호출
+
+Backend가 다음 공개 API를 제공하면 `pending_action_id`만 사용해 호출한다.
+
+```http
+POST /api/chats/{chat_id}/pending-actions/{pending_action_id}/confirm
+POST /api/chats/{chat_id}/pending-actions/{pending_action_id}/cancel
+```
+
+```json
+{
+  "idempotency_key": "클라이언트가 생성한 UUID"
+}
+```
+
+- 확인·취소 버튼을 누른 즉시 같은 idempotency key로 요청 상태를 고정한다.
+- timeout 뒤 새 pending action을 만들지 않고 같은 key로 재시도하거나 Backend 상태를 조회한다.
+- `409`이면 최신 세션과 채팅 action을 다시 조회한다.
+- 취소 성공, 실패 또는 네트워크 오류 모두 운동을 자동 재개하지 않는다.
+- AI의 원본 `pending_action` JSON은 Frontend 저장소에 보관하거나 다시 보내지 않는다.
 
 ## 오류와 중복 처리
 
@@ -160,6 +218,11 @@ Backend 적용 성공 후 `GET /api/exercise/sessions/latest` 또는 Backend가 
 - [ ] 조정 확인·취소 버튼이 중복 요청을 만들지 않는다.
 - [ ] 조정 취소 후 운동이 자동 재개되지 않는다.
 - [ ] 고위험 응답에서는 재개·대체 운동 버튼이 표시되지 않는다.
+- [ ] 직접 선택 `아파요·어지러워요·숨쉬기 힘들어요`는 모두 즉시 로컬 중단된다.
+- [ ] `뻐근해요·찌릿해요`는 명시적 버튼 입력 전 adjust 요청을 보내지 않는다.
+- [ ] `safety_guidance`를 필드로 렌더링하고 `message`를 파싱하지 않는다.
+- [ ] pending 확인·취소 요청은 동일 idempotency key로 중복 적용되지 않는다.
+- [ ] stop 기록 실패 또는 네트워크 오류에도 중단 화면이 유지된다.
 - [ ] 적용 성공 후 최신 세션과 변경 item이 표시된다.
 - [ ] 네트워크·AI 장애 시 자동 재개되지 않는다.
 - [ ] 새로고침 후 action과 운동 세션 상태가 복원된다.

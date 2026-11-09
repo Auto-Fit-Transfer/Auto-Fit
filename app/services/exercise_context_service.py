@@ -120,7 +120,23 @@ BREATHING_PATTERNS = (
     "숨차",
     "호흡이 불편",
     "숨쉬기 어려",
+    "숨쉬기 힘들",
 )
+
+
+# 기존 `몸이 불편해요` 화면은 심각도나 부위를 함께 받지 않고
+# 아래 선택 문구만 전달한다. 이 선택값은 의료 진단에 쓰지 않고,
+# 추가 정보가 없을 때도 운동 재개를 허용하지 않는 보수적 UI
+# 안전 정책으로만 사용한다. 자연어로 구체적인 정도가 함께 전달된
+# 경우에는 기존 severity/body-area 규칙을 그대로 적용한다.
+DIRECT_STOP_SELECTIONS: dict[str, ExerciseSymptomType] = {
+    "아파": "pain",
+    "아파요": "pain",
+    "어지러워": "dizziness",
+    "어지러워요": "dizziness",
+    "숨쉬기힘들어": "breathing",
+    "숨쉬기힘들어요": "breathing",
+}
 
 
 OTHER_DISCOMFORT_PATTERNS = (
@@ -188,6 +204,13 @@ class ActiveExerciseDiscomfortAssessment:
 
 def _normalize_discomfort_message(message: str) -> str:
     return re.sub(r"\s+", " ", message.strip().lower())
+
+
+def _direct_stop_selection(
+    message: str,
+) -> ExerciseSymptomType | None:
+    compact = re.sub(r"[\s.!?…~]+", "", message)
+    return DIRECT_STOP_SELECTIONS.get(compact)
 
 
 def _is_negated_match(
@@ -289,6 +312,7 @@ def assess_active_exercise_discomfort(
     """운동 중 증상을 외부 LLM 없이 보수적으로 판정한다."""
 
     normalized = _normalize_discomfort_message(message)
+    direct_stop_symptom = _direct_stop_selection(normalized)
     red_flag_codes = tuple(
         code
         for code, patterns in RED_FLAG_PATTERNS
@@ -349,6 +373,19 @@ def assess_active_exercise_discomfort(
             severity=severity,
             body_areas=body_areas,
             red_flag_codes=tuple(red_flags),
+            missing_fields=(),
+            recommended_action="stop",
+            adjustment_strategy=None,
+        )
+
+    if direct_stop_symptom is not None:
+        return ActiveExerciseDiscomfortAssessment(
+            has_signal=True,
+            risk_level="caution",
+            symptom_type=direct_stop_symptom,
+            severity=severity,
+            body_areas=body_areas,
+            red_flag_codes=(),
             missing_fields=(),
             recommended_action="stop",
             adjustment_strategy=None,

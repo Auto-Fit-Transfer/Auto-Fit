@@ -1013,3 +1013,42 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - 테스트 결과: 신규 실제 pytest `21 passed`; 건강점수·러닝·OpenAPI·운동 추천·운동 완료 분석을 포함한 관련 pytest `104 passed`; `test_chat_orchestrator.py`, `test_chat_contract_examples.py`, `test_chat_api_integration.py`, `test_chat_security_boundaries.py` 통과
 - 상세 인계: [Backend 전달사항](backend_exercise_chat_adaptation_handoff_2026-11-09.md), [Frontend 전달사항](frontend_exercise_chat_adaptation_handoff_2026-11-09.md)
 - 남은 작업: Backend/Frontend 구현, 배포 서버 `/openapi.json` 대조, 모바일 E2E
+
+## 2026-11-09 · 운동 중 직접 신고 중단·안전 안내·사건 기록 계약 보강
+
+- 상태: AI Server 로컬 구현·계약·관련 회귀 테스트 완료, Backend/Frontend 적용과 E2E 대기
+- 관련 커밋: 미커밋
+- 변경 목적: 직접 신고 화면의 `아파요·어지러워요·숨쉬기 힘들어요`를 안전 우선 중단으로 통일하고, 중단 안내와 고위험 사건 기록이 자유 문장 또는 세션 변경 성공 여부에 종속되지 않게 보강
+- 직접 선택 정책: 공백과 문장 끝 기호를 제외한 정확한 선택값에만 적용. `조금 아파요` 같은 자연어는 기존 추가 질문·조정 확인 흐름을 유지
+- 응답 계약: stop 응답의 `data`에 기존 `discomfort_event`를 유지하면서 `safety_guidance`와 `event_recording={required:true, mode:"append_only", independent_of_session_apply:true}` 추가
+- 안전 UI 정책: `allow_resume=false`, `allow_replacement=false`; 즉시 안전한 자세, 증상 지속 시 의료진 상담, 가슴 통증·실신 징후·말하기 어려운 호흡곤란이면 주변 도움과 119 연락을 조건부 안내
+- 이벤트 정책: 활성 세션 context 유무 및 `requires_backend_apply` 값과 관계없이 stop 사건은 append-only 기록 대상. 세션 stop/adjust와 사건 기록을 분리
+- Backend 작업: 실제 `/chat/orchestrate` adapter 연결, pending 확인·취소 공개 API와 idempotency 구현, 기존 `/api/exercise/sessions/{session_id}/discomfort`의 기록과 주간 계획 변경 책임 분리, 현재 `session_id + plan_session_id`에만 stop 적용
+- Frontend 작업: 직접 선택 매핑 유지, stop에서 재개·대체 버튼 미표시, `data.safety_guidance` 필드 렌더링, pending 확인·취소 시 Backend의 `pending_action_id`와 idempotency key만 사용
+- 계약 버전: `docs/chat_api_contract_examples.json` `1.4`
+- 변경 파일: `app/services/exercise_context_service.py`, `app/services/chat_orchestrator_service.py`, 운동 중 증상 테스트, Chat 계약 예제, Backend/Frontend/서버 운영 인계 문서
+- 기존 동작 영향: 경미한 자연어 증상 확인, 세션 version 검증, 식단 pending action, 건강 RAG, 러닝, 일반 운동 질문은 유지
+- 테스트 결과: 운동 증상·Chat 계약 예제·Chat API·보안·러닝·건강점수·resilience 관련 pytest `41 passed`; Python compile, JSON parse, `git diff --check` 통과
+- 상세 인계: [Backend 전달사항](backend_exercise_chat_adaptation_handoff_2026-11-09.md), [Frontend 전달사항](frontend_exercise_chat_adaptation_handoff_2026-11-09.md), [서버 운영 전달사항](exercise_safety_server_operator_handoff_2026-11-09.md)
+- 남은 작업: Backend/Frontend 구현, AI Server 배포, 직접 선택 5종과 챗봇 자연어 E2E
+
+## 2026-11-09 · 푸드샷 이미지 인식·공식 영양 재계산 안정화
+
+- 상태: AI Server 구현·결정론적 검증 완료, Backend/Frontend 연동 및 실제 사진 1건 검증 대기
+- 관련 커밋: 미커밋
+- 변경 목적: 스마트폰 음식 사진에서 음식 후보와 예상 g을 인식하고, 공식 Food DB 영양값만 사용해 사용자 확인 후 실제 섭취 기록으로 연결
+- 변경 API: `POST /food-analysis/analyze`, `POST /food-analysis/recalculate`; `GET /health/food-image` 추가
+- 개인정보 보호: JPEG/PNG/WebP를 실제 decode하고 최대 픽셀을 검증한 뒤 EXIF orientation 적용, EXIF 제거, 최대 변 1,600px JPEG 재인코딩본만 OpenAI에 전달; 원본·base64를 로그나 DB에 저장하지 않음
+- 공식 영양 정책: OpenAI는 음식명·예상 중량·신뢰도만 생성하며 칼로리·탄수화물·단백질·지방은 공식 Food DB에서만 계산
+- 매칭 안전성: primary exact → 안전한 대체명 exact → 제한적 fuzzy 순서; 포함 관계·모호한 상위 후보는 자동 확정하지 않음
+- 사용자 확정: 재계산 요청에 선택적 `matched_food_code`를 추가해 중량만 수정할 때 같은 공식 항목을 exact code로 재사용; 존재하지 않는 code는 이름으로 조용히 대체하지 않음
+- 기준량 보정: 공식 `serving_basis`의 g 값을 파싱해 100g 고정 가정 없이 영양값을 비례 계산하며, g 기준을 해석할 수 없는 row는 자동 계산하지 않음
+- 장애 분리: 공식 Food DB 장애는 200 partial로 숨기지 않고 503 처리; OpenAI timeout·provider·미파싱, 낮은 신뢰도, 모호한 매칭, 응답 상태를 worker별 메모리 지표로 관측
+- 부하 보호: worker당 동시 Vision 분석 기본 2건, 대기 기본 5초; 초과 시 503과 `Retry-After` 반환
+- 변경 파일: `app/services/food_image_analysis_service.py`, `app/schemas/food_image.py`, `app/routers/food_image_router.py`, `app/routers/health_router.py`, `app/core/config.py`, `.env.example`, `requirements.txt`, OpenAPI·계약·테스트·인계 문서
+- 기존 동작 영향: 사용자 확인 필수, 이미지 비영구 저장, 공식 영양 우선, OpenAI Structured Output 구조 유지; FoodLens와 OCR은 연결하지 않음
+- Backend 작업: 인증된 multipart 프록시·JSON 재계산 프록시, `file → image` 변환, rate limit/idempotency, 오류 매핑, `nutrition_complete=false` 저장 차단, 일반 식사 기록 의미 확정
+- Frontend 작업: 촬영 후 즉시 수동 fallback으로 가는 임시 동작 제거, 분석 상태 UI, nullable g·confidence·warnings 표시, 수정 후 재계산, 확정 후 식사·사진 저장
+- 테스트 결과: 실제 이미지 decode·EXIF 제거·resize, 공식 DB 장애, 안전 매칭, code exact·이름 불일치 차단, 동일명 영양 모호성, non-100g 기준량, 미파싱 지표, 동시 분석 제한, Router·인증·OpenAPI 계약을 포함한 pytest `17 passed`; syntax compile·diff check 통과
+- 상세 계약: [푸드샷 AI 계약](food_image_backend_contract.md), [Backend·Frontend 인계](foodshot_backend_frontend_handoff_2026-11-09.md)
+- 남은 작업: Backend/Frontend 구현, 비용 승인된 실제 스마트폰 사진 1건, 배포 `/openapi.json` 대조, 촬영→분석→수정→재계산→저장 모바일 E2E

@@ -1,5 +1,7 @@
 # Auto-Fit Chat API Backend Contract
 
+계약 버전: `1.4`
+
 이 계약은 Auto-Fit Backend가 AI Server 챗봇을 연결할 때 따라야 하는 요청, 응답, 상태 전이와 저장 책임을 정의한다. 신규 개인화 기능은 `POST /chat/orchestrate`를 사용하며, 기존 `POST /chat`은 이전 Backend 호환용 일반 답변 경로로 유지한다.
 
 전체 JSON 예제는 [chat_api_contract_examples.json](chat_api_contract_examples.json)에 있으며 `test_chat_contract_examples.py`가 실제 Pydantic 스키마와의 일치 여부를 검증한다.
@@ -256,6 +258,7 @@ Backend는 인증된 사용자의 최신 활성 세션을 다음 형태로 전�
 | 증상·정도 정보 부족 | `need_exercise_symptom_details` | 일시정지 유지 후 추가 질문 |
 | 경미한 피로 | `confirm_exercise_adjustment` | 확인 후 남은 운동량·강도 축소 |
 | 경미한 국소 통증 | `confirm_exercise_adjustment` | 확인 후 현재 운동 건너뛰기와 남은 운동량·강도 축소 |
+| 직접 신고 화면의 정확한 선택값 `아파요`, `어지러워요`, `숨쉬기 힘들어요` | `exercise_session_stop` | 정도 입력이 없는 UI에 한해 보수적으로 즉시 중단. 단순 `아파요`를 의료 응급상태로 단정하지 않음 |
 | 가슴 통증·압박, 실신/심한 어지럼, 심한 호흡곤란, 비정상 심계항진, 심한 통증 | `exercise_session_stop` | 대체 운동 없이 현재 세션 중단 |
 | AI/Backend context 불일치 | `need_exercise_session_context` | 기존 pending action을 적용하지 않고 일시정지 유지 |
 
@@ -294,6 +297,22 @@ Backend는 인증된 사용자의 최신 활성 세션을 다음 형태로 전�
 ```
 
 Backend는 `message` 문구를 파싱하지 않고 구조화 필드로만 적용한다. `requires_backend_apply=true`여도 인증·소유권·세션 상태·version·중복 적용을 다시 검증해야 한다.
+
+중단 응답에는 다음 두 구조가 추가된다.
+
+- `data.safety_guidance`: 즉시 중단 안내, 조건부 119 안내, 재개·대체 운동 금지 여부
+- `data.event_recording`: 세션 변경 성공 여부와 독립적인 append-only 사건 기록 지시
+
+`data.discomfort_event`의 기존 strict 필드는 변경하지 않는다. `event_recording.required=true`인데 `requires_backend_apply=false`인 경우에도 Backend는 인증된 사용자 기준으로 사건을 기록한다. 기존 discomfort RPC가 기록과 주간 추천 변경을 함께 수행한다면, 신규 migration에서 append-only insert와 현재 세션 범위의 stop/adjust transaction을 분리한 뒤 연결한다.
+
+Frontend가 pending payload를 직접 보관하지 않도록 Backend는 다음 공개 API를 제공한다.
+
+```http
+POST /api/chats/{chat_id}/pending-actions/{pending_action_id}/confirm
+POST /api/chats/{chat_id}/pending-actions/{pending_action_id}/cancel
+```
+
+두 요청은 `{ "idempotency_key": "UUID" }`만 받고, Backend가 저장한 원본 pending payload와 최신 세션 snapshot을 AI Server `POST /chat/orchestrate`에 전달한다. 확인·취소 모두 소유권, 만료, 소비 여부, 세션 version, 중복 요청을 검증하며 취소나 오류를 운동 자동 재개로 해석하지 않는다.
 
 ## GPS-based running course recommendation
 

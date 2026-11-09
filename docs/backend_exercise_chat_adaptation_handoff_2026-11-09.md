@@ -33,12 +33,12 @@ AI Server에는 운동 중 증상을 결정론적으로 판정해 현재 세션�
 - `exercise_session_adjust`
 - `exercise_session_stop`
 
-안전 판정은 OpenAI를 호출하지 않는다. 가슴 통증·압박, 실신 또는 심한 어지럼, 심한 호흡곤란, 비정상 심계항진, 심한 통증은 대체 운동 없이 `exercise_session_stop`으로 처리한다. 경미한 증상은 사용자 확인 전에는 적용 가능한 action을 반환하지 않는다.
+안전 판정은 OpenAI를 호출하지 않는다. 가슴 통증·압박, 실신 또는 심한 어지럼, 심한 호흡곤란, 비정상 심계항진, 심한 통증은 대체 운동 없이 `exercise_session_stop`으로 처리한다. 기존 직접 신고 화면처럼 정도·부위를 함께 받지 않는 화면에서 정확히 `아파요`, `어지러워요`, `숨쉬기 힘들어요` 중 하나를 선택한 경우에도 의료 진단이 아닌 보수적 UI 정책으로 중단한다. `조금 아파요`처럼 정도가 포함된 자연어는 이 완전 일치 정책에 포함하지 않고 기존 추가 질문·조정 확인 흐름을 유지한다. 경미한 증상은 사용자 확인 전에는 적용 가능한 action을 반환하지 않는다.
 
 안전 중단 기준은 일반적인 운동 안전 지침을 보수적으로 적용한 것이며 의료 진단이 아니다.
 
-- [American Heart Association · Heart Attack Warning Signs](https://www.heart.org/health-topics/heart-attack/warning-signs-of-a-heart-attack)
-- [Cambridge University Hospitals · Cardiac rehabilitation home exercise guidelines](https://www.cuh.nhs.uk/patient-information/cardiac-rehabilitation-home-exercise-guidelines/)
+- [질병관리청 국가건강정보포털 · 운동 중 어지럼·호흡곤란 시 운동 중단 안내](https://health.kdca.go.kr/healthinfo/biz/health/gnrlzHealthInfo/gnrlzHealthInfo/gnrlzHealthInfoView.do?cntnts_sn=6691)
+- [소방청 · 응급환자 주요 증상 안내](https://www.nfa.go.kr/nfa/news/pressrelease/explanation/?cntId=44&mode=view)
 
 ## 요청 연결
 
@@ -111,7 +111,7 @@ POST /api/chats/{chat_id}/messages
 | `confirm_exercise_adjustment` | `pending_action`을 서버에 저장하고 확인 또는 취소를 기다린다. |
 | `exercise_adjustment_cancelled` | pending action을 폐기한다. 취소를 운동 재개로 처리하지 않는다. |
 | `exercise_session_adjust` | `ready_for_backend_apply`와 `requires_backend_apply=true`를 확인한 뒤 현재 세션에만 적용한다. |
-| `exercise_session_stop` | 화면 운동은 즉시 중단한다. `ready_for_backend_apply`이면 현재 세션에 적용하고, `unable_to_apply`이면 최신 세션을 조회해 별도 중단 처리한다. 다른 날짜 세션과 추천 전체는 유지한다. |
+| `exercise_session_stop` | 화면 운동은 즉시 중단한다. `data.safety_guidance`와 `data.discomfort_event`를 전달하고, `data.event_recording.required=true`이면 세션 변경 성공 여부와 독립적으로 사건을 append-only 기록한다. `ready_for_backend_apply`이면 현재 세션에만 적용하고, `unable_to_apply`이면 최신 세션을 조회한다. 다른 날짜 세션과 추천 전체는 유지한다. |
 
 사용자 표시용 `message` 문구를 파싱해서 동작을 추론하지 않는다.
 
@@ -150,6 +150,41 @@ Frontend가 이 JSON을 신뢰 가능한 승인 정보로 보관하지 않도록
 
 확인 메시지를 AI Server로 보낼 때는 서버에서 조회한 미소비 pending payload와 최신 활성 세션 snapshot을 함께 전송한다.
 
+## Frontend용 pending action 확인·취소 API
+
+`pending_action_id`는 AI Server 필드가 아니라 Backend가 저장된 payload에 부여하는 불투명 ID다. Frontend가 AI의 원본 `pending_action`을 다시 보내지 않도록 다음 공개 API를 제공한다.
+
+```http
+POST /api/chats/{chat_id}/pending-actions/{pending_action_id}/confirm
+POST /api/chats/{chat_id}/pending-actions/{pending_action_id}/cancel
+Content-Type: application/json
+```
+
+두 endpoint의 요청은 동일하게 idempotency key만 받는다.
+
+```json
+{
+  "idempotency_key": "클라이언트가 생성한 UUID"
+}
+```
+
+확인 처리:
+
+1. 인증 사용자와 `chat_id`, `pending_action_id`의 소유권을 확인한다.
+2. 미소비·미만료 상태와 idempotency key를 확인한다.
+3. 저장된 원본 pending payload와 최신 활성 세션 snapshot을 조회한다.
+4. AI Server `POST /chat/orchestrate`에 `content="네"`, 최신 context, 저장된 `pending_action`을 전달한다.
+5. AI 응답과 최신 세션의 ID·version을 다시 검증한 뒤 현재 계획 세션에만 적용한다.
+6. 같은 transaction에서 pending action을 소비 처리하고 최신 세션을 반환한다.
+
+취소 처리:
+
+1. 같은 소유권·미소비·미만료·idempotency 검증을 수행한다.
+2. AI Server에는 `content="취소"`, 저장된 pending payload, 최신 context를 전달한다.
+3. pending action만 소비 처리한다. 운동을 자동 재개하거나 계획을 변경하지 않는다.
+
+두 endpoint는 중복 요청에 동일 결과를 반환해야 하며, 세션 version이 달라진 경우 `409`와 최신 세션 재조회 정보를 반환한다.
+
 ## 적용 전 필수 검증
 
 Backend는 AI 응답을 신뢰해 바로 수정하지 않고 다음을 모두 확인한다.
@@ -184,7 +219,7 @@ Backend는 AI 응답을 신뢰해 바로 수정하지 않고 다음을 모두 �
 
 ## 기존 discomfort 요청 매핑
 
-`data.discomfort_event`는 기존 요청 필드로 다음과 같이 매핑한다.
+`data.discomfort_event`는 현재 Backend에 이미 존재하는 `POST /api/exercise/sessions/{session_id}/discomfort` 요청 필드로 다음과 같이 매핑한다.
 
 ```json
 {
@@ -198,6 +233,52 @@ Backend는 AI 응답을 신뢰해 바로 수정하지 않고 다음을 모두 �
 ```
 
 `exercise_session_stop`에서는 `action_taken=stop`을 사용한다. AI의 자유 문장을 `detail`에 자동 저장하지 않는다.
+
+AI stop 응답에는 다음 기록 정책도 함께 온다.
+
+```json
+{
+  "event_recording": {
+    "required": true,
+    "mode": "append_only",
+    "independent_of_session_apply": true
+  }
+}
+```
+
+이는 현재 세션 중단 transaction이 실패하거나 활성 세션 context가 없는 경우에도 안전 사건 자체는 기록해야 한다는 의미다. 다만 현재 `/api/exercise/sessions/{session_id}/discomfort`가 호출하는 `record_exercise_discomfort` RPC는 기록과 계획 변경을 함께 수행하므로, 아래 보정이 완료되기 전 `action_taken=stop`을 그대로 호출하면 안 된다.
+
+신규 migration에서 다음 두 책임을 분리한다.
+
+1. append-only discomfort event insert: 운동 계획·추천 상태를 변경하지 않는다.
+2. current-session stop/adjust transaction: 인증 사용자 소유의 현재 `session_id + plan_session_id` 범위만 변경한다.
+
+AI 응답의 `requires_backend_apply=false`는 세션 변경을 적용할 수 없다는 뜻이지, `event_recording.required=true`인 사건 기록까지 생략하라는 뜻이 아니다.
+
+## 구조화 안전 안내 전달
+
+`exercise_session_stop`의 `data.safety_guidance`를 그대로 Frontend DTO에 전달한다. `message`를 파싱하거나 Backend가 새 문구를 임의 생성하지 않는다.
+
+```json
+{
+  "level": "stop",
+  "risk_level": "caution",
+  "title": "운동을 중단해 주세요",
+  "immediate_action": "즉시 운동을 멈추고 넘어지지 않도록 앉거나 편한 자세를 취해 주세요.",
+  "medical_advice": "증상이 심하거나 계속되면 의료진과 상담해 주세요.",
+  "emergency_signs": [
+    "가슴 통증 또는 압박",
+    "실신할 것 같은 느낌 또는 의식 변화",
+    "말하기 힘들 정도의 호흡곤란"
+  ],
+  "emergency_action": "응급 신호가 있으면 주변에 도움을 요청하고 119에 연락해 주세요.",
+  "emergency_number": "119",
+  "allow_resume": false,
+  "allow_replacement": false
+}
+```
+
+`risk_level`은 입력에 따라 `caution` 또는 `emergency`가 될 수 있다. 119 안내는 `emergency_signs` 조건부 문구로 표시하며, 단순 `아파요` 선택을 의료 응급상태로 단정하지 않는다.
 
 ## 채팅 저장 계약
 
@@ -229,6 +310,11 @@ Backend는 AI 응답을 신뢰해 바로 수정하지 않고 다음을 모두 �
 - [ ] 세션 version 변경 시 기존 조정안이 거부된다.
 - [ ] `exercise_session_adjust`가 현재 `plan_session_id`에만 적용된다.
 - [ ] `exercise_session_stop`이 다른 날짜 운동과 추천 전체를 취소하지 않는다.
+- [ ] stop 사건은 세션 적용 성공 여부와 독립적으로 append-only 기록된다.
+- [ ] `requires_backend_apply=false`여도 `event_recording.required=true`를 누락하지 않는다.
+- [ ] pending 확인·취소 endpoint가 소유권·만료·소비·idempotency·세션 version을 검증한다.
+- [ ] 취소와 네트워크 오류가 운동 자동 재개로 이어지지 않는다.
+- [ ] `data.safety_guidance`가 필드 손실 없이 Frontend에 전달된다.
 - [ ] AI 장애나 네트워크 실패 시 운동을 자동 재개하지 않는다.
 - [ ] 적용 후 최신 세션과 변경된 item을 다시 조회한다.
 - [ ] 기존 식단 pending action과 러닝·건강 챗봇 기능이 회귀하지 않는다.

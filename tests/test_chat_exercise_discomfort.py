@@ -82,6 +82,69 @@ def test_emergency_without_session_still_requires_local_stop() -> None:
     assert result.requires_backend_apply is False
     assert result.data["recommended_action"] == "stop"
     assert result.data["session"] is None
+    assert result.data["discomfort_event"]["action_taken"] == "stop"
+    assert result.data["event_recording"] == {
+        "required": True,
+        "mode": "append_only",
+        "independent_of_session_apply": True,
+    }
+    assert result.data["safety_guidance"]["allow_resume"] is False
+    assert (
+        result.data["safety_guidance"]["allow_replacement"]
+        is False
+    )
+
+
+@pytest.mark.parametrize(
+    "message, expected_symptom",
+    [
+        ("아파요", "pain"),
+        ("아파요!", "pain"),
+        ("어지러워요", "dizziness"),
+        ("숨쉬기 힘들어요", "breathing"),
+    ],
+)
+def test_direct_discomfort_choices_require_session_stop(
+    message: str,
+    expected_symptom: str,
+) -> None:
+    result = _process(
+        ChatRequest(
+            content=message,
+            context=_context(),
+        )
+    )
+
+    assert result.intent == "exercise_session_discomfort"
+    assert result.action == "exercise_session_stop"
+    assert result.action_status == "ready_for_backend_apply"
+    assert result.requires_backend_apply is True
+    assert result.pending_action is None
+    assert result.data["symptom_type"] == expected_symptom
+    assert result.data["discomfort_event"] == {
+        "symptom_type": expected_symptom,
+        "severity": None,
+        "body_areas": [],
+        "action_taken": "stop",
+    }
+    assert result.data["event_recording"]["mode"] == "append_only"
+    assert result.data["safety_guidance"]["allow_resume"] is False
+    assert (
+        result.data["safety_guidance"]["allow_replacement"]
+        is False
+    )
+
+
+def test_described_mild_pain_is_not_direct_stop_selection() -> None:
+    result = _process(
+        ChatRequest(
+            content="조금 아파요",
+            context=_context(),
+        )
+    )
+
+    assert result.action == "need_exercise_symptom_details"
+    assert result.data["recommended_action"] == "pause"
 
 
 def test_negated_chest_pain_does_not_create_emergency() -> None:
@@ -131,6 +194,12 @@ def test_red_flags_require_immediate_session_stop(
     assert result.requires_backend_apply is True
     assert expected_code in result.data["red_flag_codes"]
     assert result.data["discomfort_event"]["action_taken"] == "stop"
+    assert result.data["event_recording"] == {
+        "required": True,
+        "mode": "append_only",
+        "independent_of_session_apply": True,
+    }
+    assert result.data["safety_guidance"]["emergency_number"] == "119"
     assert result.pending_action is None
 
 
