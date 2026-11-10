@@ -1,12 +1,14 @@
 # Exercise chat and FoodShot release handoff
 
-## Current boundary
+## Production status (2026-11-10)
 
-`back-end` currently contains the posture analysis release ahead of the remote branch. Finish that separate release first. Do not use a broad `supabase db push`: it would mix the posture and exercise-chat migrations. The production FastAPI origin remains `https://211-233-206-193.sslip.io` and NCP uses a pinned full commit hash.
+The production FastAPI origin remains `https://211-233-206-193.sslip.io`. The existing remote `back-end` and local worktree are at `64fbc60cf82563be2a9acabc5c934530d8125ebc`. The NCP owner reported that this exact commit was pinned and running at 11:30:30 KST, with FoodShot and pending-action routes visible in OpenAPI. The owner also confirmed that the production AI service runs `ebdce8d5b0f132c8335ef086a6ecf3bbb4a25f9b` and exposes the three endpoints listed below. These server observations are the owner's report; this workspace cannot inspect the running service over SSH.
+
+Read-only production Supabase checks confirmed all six exercise-chat migration versions. Cleanup cron jobs 1–3 are still inactive. Authenticated test-account flows for FoodShot analyze/recalculate, adjustment confirm/cancel and high-risk stop have not been reported as completed. The cleanup jobs need a fresh deletion-count preflight and the user's conditional approval before reactivation. Do not run a broad `supabase db push` for this release.
 
 The iPhone TestFlight build `Auto-Fit Test 1.0.0 (52)` was built from the official read-only `front-end` commit `6d0ae22301ab778ca1fb88be9b8689eb2017734f`. Apple accepted it for internal beta testing. Physical-device verification of the high-risk exercise stop is still pending.
 
-## Database and API order
+## Database and API release checklist
 
 1. Confirm the posture release has been pushed/deployed and its two migrations `20261109061727` and `20261109070000` are in production history. Do not include posture work in this release by accident.
 2. Confirm the production AI service supports the official `ai` contract at `ebdce8d`: `/chat/orchestrate`, `/food-analysis/analyze`, and `/food-analysis/recalculate`. The backend does not expose the AI key to the app.

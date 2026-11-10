@@ -1,5 +1,13 @@
 # Posture analysis release handoff
 
+## Production status (2026-11-10)
+
+The reviewed posture commit `877848e1` and this handoff commit `30d5c3df` were pushed to the existing remote `back-end`. Production Supabase has both posture migration versions `20261109061727` and `20261109070000`; the private `posture-analysis-temp` bucket and service-only RPC permissions were verified directly.
+
+The NCP owner reported deployment of `30d5c3df` at 11:13 KST, installation of `ffmpeg`/`ffprobe` 6.1.1 for the venv service, and a successful authenticated end-to-end test through the public API. The test completed a 13-second squat video, returned a Schema 1.1 result, and left zero temporary Storage objects and cleanup queue rows. The test account was deleted. The owner later reported the API pinned to `64fbc60cf82563be2a9acabc5c934530d8125ebc` at 11:30:30 KST with posture writes and cleanup enabled. These server observations are the owner's report; the local workspace has no SSH access to independently inspect the running service.
+
+The frontend-facing contract is [posture-analysis-api-contract.md](posture-analysis-api-contract.md). Actual-device integration remains for the frontend owner.
+
 ## Verified source and local result
 
 - Backend: `back-end` commit `877848e1` (posture analysis only).
@@ -7,9 +15,9 @@
 - A 13-second squat video completed through the local API, AI server, Supabase Auth, PostgREST, RPC and private Storage. The Schema 1.1 result contained two repetitions. The temporary video, cleanup queue entry, test user and test jobs were removed.
 - The isolated Backend commit passed 1,154 Backend tests. Local Docker image build and `git diff --check` passed.
 
-## Production preflight
+## Historical production preflight
 
-The fixed production FastAPI origin is `https://211-233-206-193.sslip.io/`; do not switch to Render automatically. On 2026-11-10, its `/health` returned HTTP 200. A read-only query of the Auto-Fit production Supabase project found zero posture jobs and showed migration history through `20261109041000`, without the two posture migrations below. Recheck both facts immediately before release because production state can change.
+Before the release, the fixed production FastAPI origin was `https://211-233-206-193.sslip.io/`; Render was not used. On 2026-11-10, its `/health` returned HTTP 200. The pre-release Supabase query found zero posture jobs and showed migration history through `20261109041000`, without the two posture migrations below. The migrations have since been applied, as recorded in the production status above.
 
 ```sql
 select count(*) as total_jobs,
@@ -22,9 +30,11 @@ select count(*) as total_jobs,
 from public.posture_analysis_jobs;
 ```
 
-If duplicate active jobs appear, resolve them explicitly before creating the partial unique index. Do not run a broad `supabase db push`: unrelated exercise-chat migrations are pending in the shared worktree.
+At release time, the zero duplicate-active-job check allowed the partial unique index to be created. A broad `supabase db push` was avoided so the posture release stayed separate from the then-pending exercise-chat migrations.
 
-## Release order
+## Historical release checklist
+
+The steps below record the release sequence followed on 2026-11-10. Steps 1–4 are complete; the frontend handoff in step 5 remains. These are not instructions to reapply migrations or repush commits.
 
 1. Push only the reviewed Backend commit to the existing remote `back-end` branch, without force push or history rewrite. Keep the unrelated uncommitted exercise-chat and food-shot changes out of the release.
 2. Apply `20261109061727_posture_analysis_contract_v11.sql` and then `20261109070000_posture_analysis_atomic_result.sql` to the Auto-Fit production database. Confirm both versions in migration history, the private `posture-analysis-temp` bucket, and service-only `expire_stale_posture_upload` and `save_posture_analysis_result` RPC access.
