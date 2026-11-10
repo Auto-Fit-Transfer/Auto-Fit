@@ -13,7 +13,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from math import ceil
 from typing import Annotated, Any, Literal
-from uuid import UUID
+from uuid import UUID, uuid4
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -35,11 +35,22 @@ from backend.app.chat_exercise_info import load_exercise_types
 from backend.app.chat_intents import is_off_topic_question
 from backend.app.chat_model import get_model_config, request_model
 from backend.app.chat_records import answer_records
-from backend.app.chat_storage import ChatStore, fail as chat_fail
+from backend.app.chat_storage import CHAT_FIELDS, MESSAGE_FIELDS, ChatStore, fail as chat_fail, project
 from backend.app.chat_running import answer_running_course, search_running_courses
 from backend.app.chat_service import ServiceQuery
 from backend.app.chat_persona import ChatCharacterId, apply_chat_persona
 from backend.app.chat_rate_limit import ChatRateLimiter
+from backend.app.exercise_chat import (
+    InvalidExerciseChatResponse,
+    answer_from_exercise_response,
+    fallback_stop_response,
+    should_route_exercise_message,
+    unavailable_exercise_answer,
+    validate_exercise_response,
+)
+from backend.app.exercise_chat_service import (
+    ITEM_FIELDS, SESSION_FIELDS, ExerciseChatStore, call_exercise_orchestrator,
+)
 from backend.app.http_client import client_scope, get_with_pgrst303_retry, retry_pgrst303_scope, SharedHttpClientMiddleware
 from backend.app.diet_timing import DietTimingMiddleware, timed_http_client
 from backend.app.diet_recipe import daily_recipe_request, daily_source_fingerprint, has_unavailable_recipe, snapshot_fields
@@ -64,6 +75,7 @@ from backend.app.food_image_generation import (
     generate_missing_menu_images,
     get_food_image_settings,
 )
+from backend.app.food_shots import create_food_shots_router
 from backend.app.home import HomeResponse, build_home_response
 from backend.app.health_documents import create_health_documents_router
 from backend.app.account_deletion import create_account_deletion_router
@@ -186,6 +198,12 @@ class ChatAnswerPreviewRequest(BaseModel):
 
 class ChatMessageRequest(ChatAnswerPreviewRequest):
     client_message_id: UUID
+
+
+class ExercisePendingDecisionRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    idempotency_key: UUID
 
 
 class CreateChatRequest(BaseModel):
@@ -3533,6 +3551,7 @@ async def load_weekly_diet_context(user_id: str, settings: Settings) -> dict:
 app.include_router(create_weekly_diet_router(get_current_user, get_settings, load_weekly_diet_context))
 app.include_router(create_running_router(get_current_user, get_settings))
 app.include_router(create_meal_photos_router(get_current_user, get_settings))
+app.include_router(create_food_shots_router(get_current_user, get_settings))
 app.include_router(create_account_deletion_router(get_current_user, get_settings))
 app.include_router(create_community_router(get_current_user, get_settings))
 app.include_router(create_user_settings_router(get_current_user, get_settings))
@@ -4742,6 +4761,212 @@ async def list_chat_messages(
     return await store.messages(str(chat_id), limit, before)
 
 
+async def exercise_chat_followup_history(
+    store: ChatStore, chat_id: UUID,
+) -> tuple[str | None, list[dict[str, str]]]:
+    rows = (await store.messages(str(chat_id), 3, None))["messages"]
+    previous = next((row for row in reversed(rows) if row["sender_type"] == "assistant"), None)
+    action = previous.get("action") if previous else None
+    if action not in {"need_exercise_symptom_details", "need_exercise_session_context"}:
+        return None, []
+    history = [
+        {"role": "user" if row["sender_type"] == "user" else "assistant",
+         "content": row["content"]}
+        for row in rows
+        if row.get("sender_type") in {"user", "assistant"}
+           and isinstance(row.get("content"), str)
+    ]
+    return action, history
+
+
+async def exercise_chat_answer(
+    chat_id: UUID, body: ChatMessageRequest, store: ChatStore,
+    settings: Settings, history: list[dict[str, str]],
+) -> tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any] | None]:
+    persistence = ExerciseChatStore(settings.supabase_url, service_headers(settings), store.user_id)
+    snapshot = None
+    try:
+        snapshot = await persistence.active_snapshot()
+        try:
+            config = get_ai_server_config()
+        except ValueError:
+            raise HTTPException(503, detail="Exercise chat AI unavailable") from None
+        if config is None:
+            raise AIServerError("AI_UNAVAILABLE")
+        ai_response = await call_exercise_orchestrator(
+            config, body.content, snapshot, history=history,
+        )
+        validate_exercise_response(ai_response, snapshot)
+    except (AIServerError, InvalidExerciseChatResponse, ValueError, HTTPException) as exc:
+        logger.warning("Exercise chat unavailable: %s", type(exc).__name__)
+        ai_response = fallback_stop_response(body.content, snapshot)
+        if ai_response is None:
+            return unavailable_exercise_answer(), None, None
+
+    action = ai_response["action"]
+    pending_id = None
+    session_state = None
+    if action == "confirm_exercise_adjustment":
+        pending_id = str(uuid4())
+    elif action == "need_exercise_session_context":
+        try:
+            session_state = await persistence.latest_session_state()
+        except HTTPException as exc:
+            logger.error("Exercise chat session refresh failed: %s", exc.status_code)
+    elif action == "exercise_session_stop":
+        event = ai_response["data"]["discomfort_event"]
+        event_recorded = False
+        session_applied = False
+        try:
+            await persistence.record_stop_event(chat_id, body.client_message_id, snapshot, event)
+            event_recorded = True
+        except HTTPException as exc:
+            logger.error("Exercise chat stop event save failed: %s", exc.status_code)
+        if ai_response["requires_backend_apply"]:
+            try:
+                await persistence.stop_session(body.client_message_id, snapshot)
+                session_applied = True
+            except HTTPException as exc:
+                logger.error("Exercise chat session stop failed: %s", exc.status_code)
+        if not session_applied:
+            ai_response = {**ai_response, "action_status": "unable_to_apply",
+                           "requires_backend_apply": False}
+        try:
+            session_state = await persistence.latest_session_state()
+        except HTTPException as exc:
+            logger.error("Exercise chat session refresh failed: %s", exc.status_code)
+        answer = answer_from_exercise_response(ai_response)
+        answer["action_data"] = {
+            **ai_response["data"],
+            "backend_apply_status": "applied" if session_applied else "unable_to_apply",
+            "backend_event_recorded": event_recorded,
+        }
+        return answer, session_state, None
+    return (
+        answer_from_exercise_response(ai_response, pending_id),
+        session_state,
+        ai_response["pending_action"] if pending_id else None,
+    )
+
+
+async def resolve_exercise_pending_action(
+    chat_id: UUID, pending_action_id: UUID, body: ExercisePendingDecisionRequest,
+    decision: Literal["confirm", "cancel"], store: ChatStore,
+    limiter: ChatRateLimiter, settings: Settings,
+) -> dict[str, Any]:
+    persistence = ExerciseChatStore(settings.supabase_url, service_headers(settings), store.user_id)
+    await store.get(str(chat_id))
+    pending = await persistence.pending(chat_id, pending_action_id)
+    if pending["consumed_at"] is not None:
+        expected_decision = "confirmed" if decision == "confirm" else "cancelled"
+        if (pending["idempotency_key"] == str(body.idempotency_key)
+                and pending["decision"] == expected_decision
+                and isinstance(pending["result"], dict)):
+            result = pending["result"]
+        else:
+            raise HTTPException(409, detail="PENDING_ACTION_CONSUMED")
+    else:
+        expires_at = datetime.fromisoformat(pending["expires_at"])
+        if expires_at <= datetime.now(UTC):
+            raise HTTPException(409, detail="PENDING_ACTION_EXPIRED")
+        snapshot = await persistence.active_snapshot()
+        if (snapshot is None
+                or snapshot["session_id"] != pending["session_id"]
+                or snapshot["plan_session_id"] != pending["plan_session_id"]
+                or snapshot["version"] != pending["session_version"]):
+            raise HTTPException(409, detail={
+                "code": "SESSION_VERSION_CONFLICT",
+                "latest_session": await persistence.latest_session_state(),
+            })
+        await limiter.check("answers")
+        try:
+            config = get_ai_server_config()
+        except ValueError:
+            raise HTTPException(503, detail="Exercise chat AI unavailable") from None
+        if config is None:
+            raise HTTPException(503, detail="Exercise chat AI unavailable")
+        try:
+            ai_response = await call_exercise_orchestrator(
+                config, "네" if decision == "confirm" else "취소",
+                snapshot, pending_action=pending["payload"],
+            )
+            if isinstance(ai_response, dict) and ai_response.get("action") == "need_exercise_session_context":
+                raise HTTPException(409, detail={
+                    "code": "SESSION_VERSION_CONFLICT",
+                    "latest_session": await persistence.latest_session_state(),
+                })
+            validate_exercise_response(ai_response, snapshot, decision=decision)
+        except AIServerError as exc:
+            logger.warning("Exercise pending action AI failed: %s", exc.code)
+            raise HTTPException(502, detail="Exercise chat AI unavailable") from None
+        except InvalidExerciseChatResponse:
+            raise HTTPException(502, detail="Invalid exercise chat AI action") from None
+        answer = answer_from_exercise_response(ai_response, str(pending_action_id))
+        if decision == "confirm":
+            answer["action_data"] = {**(ai_response.get("data") or {}),
+                                     "backend_apply_status": "applied"}
+        try:
+            result = await persistence.resolve_pending(
+                chat_id, pending_action_id, body.idempotency_key,
+                decision, ai_response, answer,
+            )
+        except HTTPException as exc:
+            if exc.status_code == 409 and exc.detail == "SESSION_VERSION_CONFLICT":
+                raise HTTPException(409, detail={
+                    "code": "SESSION_VERSION_CONFLICT",
+                    "latest_session": await persistence.latest_session_state(),
+                }) from None
+            raise
+    response = {
+        "is_replay": result.get("is_replay", False),
+        "chat": project(result["chat"], CHAT_FIELDS),
+        "user_message": project(result["user_message"], MESSAGE_FIELDS),
+        "assistant_message": project(result["assistant_message"], MESSAGE_FIELDS),
+        "adjusted_items": result.get("adjusted_items") or [],
+    }
+    session = result.get("session")
+    items = result.get("items")
+    if not isinstance(session, dict) or not isinstance(items, list) or any(
+        not isinstance(item, dict) for item in items
+    ):
+        raise HTTPException(502, detail="Invalid exercise chat action result")
+    response["exercise_session"] = {
+        "session": project(session, SESSION_FIELDS),
+        "items": [project(item, ITEM_FIELDS) for item in items],
+    }
+    return response
+
+
+@app.post(
+    "/api/chats/{chat_id}/pending-actions/{pending_action_id}/confirm",
+    tags=["Chat"],
+)
+async def confirm_exercise_pending_action(
+    chat_id: UUID, pending_action_id: UUID, body: ExercisePendingDecisionRequest,
+    store: ChatStore = Depends(get_chat_store),
+    limiter: ChatRateLimiter = Depends(get_chat_access),
+    settings: Settings = Depends(get_settings),
+):
+    return await resolve_exercise_pending_action(
+        chat_id, pending_action_id, body, "confirm", store, limiter, settings,
+    )
+
+
+@app.post(
+    "/api/chats/{chat_id}/pending-actions/{pending_action_id}/cancel",
+    tags=["Chat"],
+)
+async def cancel_exercise_pending_action(
+    chat_id: UUID, pending_action_id: UUID, body: ExercisePendingDecisionRequest,
+    store: ChatStore = Depends(get_chat_store),
+    limiter: ChatRateLimiter = Depends(get_chat_access),
+    settings: Settings = Depends(get_settings),
+):
+    return await resolve_exercise_pending_action(
+        chat_id, pending_action_id, body, "cancel", store, limiter, settings,
+    )
+
+
 @app.post("/api/chats/{chat_id}/messages", status_code=201, tags=["Chat"])
 async def send_chat_message(
     chat_id: UUID, body: ChatMessageRequest, response: Response, request: Request,
@@ -4759,6 +4984,8 @@ async def send_chat_message(
     async def load_score_items(rows):
         return await fetch_assessment_items(store.url, store.headers, rows)
 
+    session_state = None
+    pending_payload = None
     try:
         async with asyncio.timeout(CHAT_REQUEST_TIMEOUT_SECONDS):
             result = await store.exchange(chat_id, body.client_message_id, body.content)
@@ -4778,37 +5005,61 @@ async def send_chat_message(
                 async def read_service(query: ServiceQuery):
                     return await read_chat_service(request, query)
 
-                action_answer = None
-                region_reply = re.fullmatch(r"[가-힣]{2,20}(?:동|구|시|군|읍|면)", body.content.strip())
-                if region_reply:
-                    history = await store.messages(chat_id, 1, None)
-                    previous = history["messages"][-1] if history["messages"] else None
-                    previous = previous if previous and previous["sender_type"] == "assistant" else None
-
-                    if region_reply and previous and "running_region" in (previous.get("required_data") or []):
-                        action_answer = await answer_running_course(
-                            f"{body.content} 러닝 코스", lookup_running_courses,
-                        )
-                allow_general = False
-                if is_off_topic_question(body.content):
-                    allow_general = not await store.has_general_ai_answer(chat_id)
-                answer = action_answer or await answer_question(
-                    body.content,
-                    load_scores,
-                    load_records,
-                    load_catalog,
-                    allow_general,
-                    generate_routine,
-                    load_score_items,
-                    lookup_running_courses,
-                    read_service,
+                previous_action, exercise_history = await exercise_chat_followup_history(
+                    store, chat_id,
                 )
-                answer = apply_chat_persona(answer, character_id)
-                result = await store.exchange(chat_id, body.client_message_id, body.content, answer)
+                if should_route_exercise_message(body.content, previous_action):
+                    answer, session_state, pending_payload = await exercise_chat_answer(
+                        chat_id, body, store, settings, exercise_history,
+                    )
+                else:
+                    action_answer = None
+                    region_reply = re.fullmatch(r"[가-힣]{2,20}(?:동|구|시|군|읍|면)", body.content.strip())
+                    if region_reply:
+                        history = await store.messages(chat_id, 1, None)
+                        previous = history["messages"][-1] if history["messages"] else None
+                        previous = previous if previous and previous["sender_type"] == "assistant" else None
+
+                        if region_reply and previous and "running_region" in (previous.get("required_data") or []):
+                            action_answer = await answer_running_course(
+                                f"{body.content} 러닝 코스", lookup_running_courses,
+                            )
+                    allow_general = False
+                    if is_off_topic_question(body.content):
+                        allow_general = not await store.has_general_ai_answer(chat_id)
+                    answer = action_answer or await answer_question(
+                        body.content,
+                        load_scores,
+                        load_records,
+                        load_catalog,
+                        allow_general,
+                        generate_routine,
+                        load_score_items,
+                        lookup_running_courses,
+                        read_service,
+                    )
+                    answer = apply_chat_persona(answer, character_id)
+                if pending_payload is not None:
+                    result = await store.exchange_proposal(
+                        chat_id, body.client_message_id, body.content,
+                        answer, pending_payload,
+                    )
+                else:
+                    result = await store.exchange(chat_id, body.client_message_id, body.content, answer)
     except TimeoutError:
         chat_fail("DATA_SOURCE_ERROR")
     if result is None:
         chat_fail("DATA_SOURCE_ERROR")
+    if result["is_replay"] and result["assistant_message"].get("action") in {
+        "exercise_session_adjust", "exercise_session_stop",
+    }:
+        persistence = ExerciseChatStore(settings.supabase_url, service_headers(settings), store.user_id)
+        try:
+            session_state = await persistence.latest_session_state()
+        except HTTPException:
+            pass
+    if session_state is not None:
+        result["exercise_session"] = session_state
     response.status_code = 200 if result["is_replay"] else 201
     return result
 

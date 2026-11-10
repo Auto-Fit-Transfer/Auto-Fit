@@ -11,7 +11,11 @@ from fastapi import HTTPException
 from backend.app.http_client import client_scope
 
 CHAT_FIELDS = "chat_id,title,status,created_at,updated_at"
-MESSAGE_FIELDS = "message_id,chat_id,sender_type,content,intent,response_source,needs_more_data,evidence,required_data,created_at"
+MESSAGE_FIELDS = (
+    "message_id,chat_id,sender_type,content,intent,response_source,needs_more_data,"
+    "evidence,required_data,action,action_status,requires_backend_apply,"
+    "action_data,pending_action_id,created_at"
+)
 
 
 def fail(code, status_code=502):
@@ -19,6 +23,7 @@ def fail(code, status_code=502):
         "CHAT_NOT_FOUND": "채팅방을 찾을 수 없습니다.",
         "CHAT_ARCHIVED": "보관된 채팅방에는 새 메시지를 보낼 수 없습니다.",
         "IDEMPOTENCY_CONFLICT": "같은 요청 ID가 다른 질문에 사용되었습니다.",
+        "SESSION_VERSION_CONFLICT": "운동 상태가 변경되어 조정안을 저장하지 못했습니다. 다시 확인해 주세요.",
         "VALIDATION_ERROR": "입력값을 확인해 주세요.",
     }
     raise HTTPException(status_code, detail={
@@ -69,7 +74,10 @@ class ChatStore:
             if response.is_error:
                 payload = response.json()
                 code = payload.get("message") if isinstance(payload, dict) else None
-                if code in {"CHAT_NOT_FOUND", "CHAT_ARCHIVED", "IDEMPOTENCY_CONFLICT"}:
+                if code in {
+                    "CHAT_NOT_FOUND", "CHAT_ARCHIVED", "IDEMPOTENCY_CONFLICT",
+                    "SESSION_VERSION_CONFLICT",
+                }:
                     fail(code, 404 if code == "CHAT_NOT_FOUND" else 409)
                 fail("DATA_SOURCE_ERROR")
             payload = response.json()
@@ -151,6 +159,24 @@ class ChatStore:
         })
         if result is None:
             return None
+        return self._project_exchange(result)
+
+    async def exchange_proposal(
+        self, chat_id, client_message_id, content, answer, pending_payload,
+    ):
+        result = await self.request("POST", "rpc/save_exercise_chat_proposal", body={
+            "p_user_id": self.user_id,
+            "p_chat_id": str(chat_id),
+            "p_client_message_id": str(client_message_id),
+            "p_content": content,
+            "p_answer": answer,
+            "p_pending_id": answer["pending_action_id"],
+            "p_payload": pending_payload,
+        })
+        return self._project_exchange(result)
+
+    @staticmethod
+    def _project_exchange(result):
         return {"is_replay": result["is_replay"], "chat": project(result["chat"], CHAT_FIELDS),
                 "user_message": project(result["user_message"], MESSAGE_FIELDS),
                 "assistant_message": project(result["assistant_message"], MESSAGE_FIELDS)}

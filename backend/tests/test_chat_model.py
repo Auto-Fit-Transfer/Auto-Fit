@@ -1,5 +1,6 @@
 import asyncio
 import json
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -143,6 +144,7 @@ def test_http_routes_use_adapter(monkeypatch, saved):
         return None if answer is None else {"is_replay": False, "assistant_message": answer}
     monkeypatch.setattr(main, "answer_records", records)
     monkeypatch.setattr(ChatStore, "exchange", exchange)
+    monkeypatch.setattr(ChatStore, "messages", AsyncMock(return_value={"messages": []}))
     main.app.dependency_overrides[main.get_settings] = lambda: main.Settings("https://db.example", "pk", "sk", "http://localhost:3000")
     main.app.dependency_overrides[main.get_current_user] = lambda: main.AuthenticatedUser(id="owner")
     try:

@@ -16,9 +16,10 @@ REQUEST = str(uuid4())
 
 
 @pytest.fixture
-def client():
+def client(monkeypatch):
     main.app.dependency_overrides[main.get_current_user] = lambda: main.AuthenticatedUser(id="owner")
     main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(ChatStore, "messages", AsyncMock(return_value={"messages": []}))
     try:
         yield TestClient(main.app)
     finally:

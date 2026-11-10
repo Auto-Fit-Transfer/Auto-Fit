@@ -162,6 +162,9 @@ def test_presentation_flow_from_profile_to_progress(monkeypatch) -> None:
     monkeypatch.setattr(main, "call_exercise_session_rpc", exercise_rpc)
     monkeypatch.setattr(main, "fetch_completed_exercise_sessions", completed_sessions)
     monkeypatch.setattr(ChatStore, "exchange", exchange)
+    async def messages(self, chat_id, limit, before):
+        return {"messages": []}
+    monkeypatch.setattr(ChatStore, "messages", messages)
     monkeypatch.setattr(main, "get_ai_server_config", lambda: object())
 
     class FakeAIClient:

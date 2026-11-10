@@ -27,6 +27,7 @@ class AIEndpoint(str, Enum):
     DIET_REFRESH = "/health-analysis/diet-refresh"
     EXERCISE = "/recommend/exercise"
     EXERCISE_ANALYSIS = "/analyze/exercise-session"
+    FOOD_SHOT_RECALCULATE = "/food-analysis/recalculate"
 
 
 class PostureEndpoint(str, Enum):
@@ -70,10 +71,14 @@ def get_ai_server_config() -> AIServerConfig | None:
 class AIServerError(RuntimeError):
     """Safe internal error: never includes response bodies, credentials or input."""
 
-    def __init__(self, code: str, upstream_status: int | None = None):
+    def __init__(
+        self, code: str, upstream_status: int | None = None,
+        retry_after: int | None = None,
+    ):
         super().__init__(code)
         self.code = code
         self.upstream_status = upstream_status
+        self.retry_after = retry_after
 
 
 HTTP_TIMEOUT_SECONDS = 60
@@ -123,6 +128,14 @@ class AIServerClient:
     async def posture_capabilities(self) -> dict:
         return await self._request_json("GET", PostureEndpoint.CAPABILITIES.value)
 
+    async def analyze_food_image(self, image: bytes, content_type: str) -> dict:
+        if not image or content_type not in {"image/jpeg", "image/png", "image/webp"}:
+            raise ValueError("Unsupported food image")
+        return await self._request_json(
+            "POST", "/food-analysis/analyze",
+            files={"image": ("food-image", image, content_type)},
+        )
+
     async def analyze_posture_video(
         self, *, video: BinaryIO, content_type: str, filename: str,
         posture_analysis_job_id: str, exercise_key: str | None,
@@ -169,10 +182,17 @@ class AIServerClient:
                     ) as response:
                         if response.status_code != 200:
                             code = {
-                                401: "AI_AUTH_FAILED", 422: "AI_INPUT_REJECTED",
+                                401: "AI_AUTH_FAILED", 413: "AI_IMAGE_TOO_LARGE",
+                                415: "AI_UNSUPPORTED_IMAGE", 422: "AI_INPUT_REJECTED",
                                 500: "AI_INTERNAL_ERROR", 503: "AI_UNAVAILABLE",
                             }.get(response.status_code, "AI_HTTP_ERROR")
-                            raise AIServerError(code, response.status_code)
+                            retry_header = response.headers.get("retry-after", "")
+                            retry_after = (int(retry_header) if retry_header.isascii()
+                                           and retry_header.isdecimal()
+                                           and len(retry_header) <= 4 else None)
+                            if retry_after is not None and not 1 <= retry_after <= 3600:
+                                retry_after = None
+                            raise AIServerError(code, response.status_code, retry_after)
                         data = bytearray()
                         async for chunk in response.aiter_bytes():
                             if len(data) + len(chunk) > MAX_RESPONSE_BYTES:

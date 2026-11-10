@@ -416,7 +416,13 @@
     "20261105020000_archive_non_ai_exercise_recommendations.sql",
     "20261109040000_guard_saved_diet_feedback_allergy.sql",
     "20261109041000_scope_exercise_discomfort_to_plan_session.sql",
+    "20261109042535_exercise_chat_session_safety.sql",
+    "20261109042659_exercise_chat_event_and_pending_storage.sql",
+    "20261109042801_exercise_chat_message_actions.sql",
+    "20261109042841_exercise_chat_action_transactions.sql",
+    "20261109042905_exercise_chat_proposal_exchange.sql",
     "20261109061727_posture_analysis_contract_v11.sql",
-    "20261109070000_posture_analysis_atomic_result.sql"
+    "20261109070000_posture_analysis_atomic_result.sql",
+    "20261110014003_exercise_chat_pending_retention.sql"
   ]
 }

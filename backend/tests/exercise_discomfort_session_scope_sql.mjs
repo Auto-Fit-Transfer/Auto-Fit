@@ -15,10 +15,7 @@ const firstItem = id(5);
 const remainingItem = id(6);
 const nextDayItem = id(7);
 const session = id(8);
-const migration = readFileSync(
-  new URL('../../supabase/migrations/20261109041000_scope_exercise_discomfort_to_plan_session.sql', import.meta.url),
-  'utf8',
-);
+const migration = name => readFileSync(new URL(`../../supabase/migrations/${name}`, import.meta.url), 'utf8');
 
 const record = (action, item, activeSession = session, severity = 3) => db.query(
   `select public.record_exercise_discomfort(
@@ -71,7 +68,8 @@ try {
       where exercise_session_id is not null and exercise_item_id is not null;
     grant select, insert, update on all tables in schema public to service_role;
   `);
-  await db.exec(migration);
+  await db.exec(migration('20261109041000_scope_exercise_discomfort_to_plan_session.sql'));
+  await db.exec(migration('20261109042535_exercise_chat_session_safety.sql'));
   const signature = 'public.record_exercise_discomfort(uuid,uuid,uuid,text,smallint,jsonb,text,text)';
   for (const functionSignature of [
     signature,
