@@ -40,7 +40,7 @@ class StartSavedCourse(BaseModel):
 class TrackPointInput(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
-    accuracy_meters: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+    accuracy_meters: float | None = Field(default=None, allow_inf_nan=False)
     elapsed_seconds: int = Field(ge=0, le=86400)
 
 
@@ -247,7 +247,8 @@ class RunningSessionService:
             raise HTTPException(409, detail="일시정지 또는 종료된 러닝에는 위치를 추가할 수 없습니다.")
         now = datetime.now(timezone.utc)
         _validate_elapsed(session, body.elapsed_seconds, now)
-        if body.accuracy_meters is None or body.accuracy_meters > 50:
+        # iOS can report negative accuracy for an invalid fix; never store its coordinates.
+        if body.accuracy_meters is None or body.accuracy_meters < 0 or body.accuracy_meters > 50:
             return {"accepted": False, "reason": "low_accuracy", "session": session}
         last = await self._last_point(str(session_id))
         if last:

@@ -179,7 +179,8 @@ def test_gps_distance_filters_bad_accuracy_and_saves_result(monkeypatch):
     assert history_call[2]["status"] == "eq.completed"
 
 
-def test_very_approximate_gps_is_rejected_without_pausing(monkeypatch):
+@pytest.mark.parametrize("accuracy", [-1, 10001])
+def test_unusable_gps_accuracy_is_rejected_without_pausing(monkeypatch, accuracy):
     client = harness(monkeypatch)
     start(client)
     store = FakeStore.instances[-1]
@@ -188,7 +189,7 @@ def test_very_approximate_gps_is_rejected_without_pausing(monkeypatch):
     response = client.post(f"/api/running/sessions/{SESSION}/points", json={
         "latitude": 37.0,
         "longitude": 127.0,
-        "accuracy_meters": 10001,
+        "accuracy_meters": accuracy,
         "elapsed_seconds": 3,
     })
 
@@ -199,8 +200,8 @@ def test_very_approximate_gps_is_rejected_without_pausing(monkeypatch):
     assert store.points == []
 
 
-@pytest.mark.parametrize("accuracy", [-1, float("inf"), float("nan")])
-def test_invalid_gps_accuracy_is_rejected(accuracy):
+@pytest.mark.parametrize("accuracy", [float("-inf"), float("inf"), float("nan")])
+def test_nonfinite_gps_accuracy_is_rejected(accuracy):
     with pytest.raises(ValidationError):
         running_sessions.TrackPointInput(
             latitude=37.0, longitude=127.0,
