@@ -6,6 +6,8 @@ The app uses the production FastAPI origin `https://211-233-206-193.sslip.io` an
 
 Use the existing `POST /api/chats/{chat_id}/messages` with a stable `client_message_id` UUID and the user's `content`. The response keeps the existing `chat`, `user_message`, `assistant_message`, and `is_replay` fields. The assistant message now also carries `action`, `action_status`, `requires_backend_apply`, `action_data`, and `pending_action_id`.
 
+An adjustment card needs one active dated exercise session with remaining items. Exercise recommendation generation is pilot-gated on the API server: a test user outside `EXERCISE_AI_TEST_USER_IDS` may receive `403 EXERCISE_AI_NOT_ENABLED` before a session can be started. The app must not infer that adjustment cards are available for that user merely because the chat endpoints appear in OpenAPI.
+
 When `action="confirm_exercise_adjustment"` and `action_status="awaiting_confirmation"`, show a confirm/cancel card. Keep the opaque `pending_action_id` for the two endpoints below. Do not infer an action from the message text or apply exercise changes on the device before confirmation. A repeated message with the same `client_message_id` returns the same card rather than creating another pending action.
 
 For an explicit high-risk symptom (`아파요`, `어지러워요`, `숨쉬기 힘들어요`), the backend records a stop event and attempts to stop the active dated exercise session without a confirmation card. It returns `action="exercise_session_stop"`; `action_data.backend_event_recorded` and `action_data.backend_apply_status` report what actually persisted. If the session cannot be stopped, show the safety guidance without offering resume or replacement exercise.
