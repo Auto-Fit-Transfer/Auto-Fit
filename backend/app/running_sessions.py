@@ -40,7 +40,7 @@ class StartSavedCourse(BaseModel):
 class TrackPointInput(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
-    accuracy_meters: float | None = Field(default=None, ge=0, le=10000)
+    accuracy_meters: float | None = Field(default=None, ge=0, allow_inf_nan=False)
     elapsed_seconds: int = Field(ge=0, le=86400)
 
 

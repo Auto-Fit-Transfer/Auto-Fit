@@ -4,8 +4,10 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from uuid import UUID
 
+import pytest
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from backend.app import running_sessions
 
@@ -175,6 +177,35 @@ def test_gps_distance_filters_bad_accuracy_and_saves_result(monkeypatch):
                         if call[0] == "GET" and call[1] == "running_sessions")
     assert history_call[2]["user_id"] == f"eq.{OWNER}"
     assert history_call[2]["status"] == "eq.completed"
+
+
+def test_very_approximate_gps_is_rejected_without_pausing(monkeypatch):
+    client = harness(monkeypatch)
+    start(client)
+    store = FakeStore.instances[-1]
+    monkeypatch.setattr(running_sessions, "RunningStore", lambda _settings, _user_id: store)
+
+    response = client.post(f"/api/running/sessions/{SESSION}/points", json={
+        "latitude": 37.0,
+        "longitude": 127.0,
+        "accuracy_meters": 10001,
+        "elapsed_seconds": 3,
+    })
+
+    assert response.status_code == 200, response.text
+    assert response.json()["accepted"] is False
+    assert response.json()["reason"] == "low_accuracy"
+    assert response.json()["session"]["status"] == "in_progress"
+    assert store.points == []
+
+
+@pytest.mark.parametrize("accuracy", [-1, float("inf"), float("nan")])
+def test_invalid_gps_accuracy_is_rejected(accuracy):
+    with pytest.raises(ValidationError):
+        running_sessions.TrackPointInput(
+            latitude=37.0, longitude=127.0,
+            accuracy_meters=accuracy, elapsed_seconds=3,
+        )
 
 
 def test_other_user_and_invalid_time_are_rejected(monkeypatch):
