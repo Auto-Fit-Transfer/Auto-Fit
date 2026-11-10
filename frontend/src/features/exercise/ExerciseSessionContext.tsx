@@ -10,10 +10,12 @@ import {
   type ReactNode,
 } from 'react';
 
-import { completeExerciseSession, recordExerciseItemResult } from '@/src/api/exercise';
+import { completeExerciseSession, recordExerciseDiscomfort, recordExerciseItemResult, type ExerciseDiscomfortInput } from '@/src/api/exercise';
 import { awardTierActivity } from '@/src/api/tier';
 import { getSupabaseClient } from '@/src/lib/supabase';
+import { logError } from '@/src/lib/logError';
 import { mergeAdjustedExercises } from './exerciseAdjustment';
+import { finishedProgress, runStopSequence, SYMPTOM_STOP_REASON } from './stopRecording';
 
 import type { StartedExerciseSession } from './ExerciseRoutineContext';
 import type { ExerciseItem, ExerciseRoutine } from './exerciseData';
@@ -50,6 +52,7 @@ export type ExerciseSessionResult = {
   performedWeightKg: number | null;
   sessionItemId: string;
   skipped: boolean;
+  skipReason?: string;
 };
 
 export type ExerciseSessionState = {
@@ -82,6 +85,8 @@ type ExerciseSessionSummary = {
   totalElapsedSeconds: number;
 };
 
+export type SymptomStopReport = Omit<ExerciseDiscomfortInput, 'actionTaken' | 'exerciseItemId'>;
+
 type ExerciseSessionContextValue = {
   addRestSeconds: (seconds: number) => void;
   applyAdjustedItems: (sessionId: string, adjustedItems: unknown[]) => void;
@@ -94,6 +99,7 @@ type ExerciseSessionContextValue = {
   currentExercise: ExerciseSessionExercise | null;
   flushPendingResults: () => Promise<void>;
   goToNextExercise: () => void;
+  recordSymptomStop: (report: SymptomStopReport) => Promise<void>;
   openExitConfirmation: () => void;
   openSkipConfirmation: () => void;
   session: ExerciseSessionState | null;
@@ -219,11 +225,12 @@ function initialSetRemainingMs(exercise: ExerciseSessionExercise) {
 
 function buildResult(state: ExerciseSessionState, completed: boolean): ExerciseSessionResult {
   const exercise = state.exercises[state.currentExerciseIndex];
-  const completedSets = completed ? exercise.totalSets : Math.max(0, state.currentSet - 1);
-  const performedRepetitions =
-    exercise.mode === 'reps'
-      ? completedSets * (exercise.targetRepetitions ?? 0) + (completed ? 0 : state.currentRep)
-      : null;
+  const { completedSets, performedRepetitions } = completed
+    ? {
+        completedSets: exercise.totalSets,
+        performedRepetitions: exercise.mode === 'reps' ? exercise.totalSets * (exercise.targetRepetitions ?? 0) : null,
+      }
+    : finishedProgress({ ...state, exercise });
 
   return {
     caloriesBurned: exercise.caloriesBurned,
@@ -497,19 +504,19 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     setSession((current) => (current ? reducer(current, action) : current));
   }, []);
 
-  const queueResult = useCallback((result: ExerciseSessionResult) => {
-    const current = sessionRef.current;
-    if (!current || reportedResultsRef.current.has(result.exerciseId)) return;
+  // The session id can be passed in, so a stop still saves after the screen cleared the session.
+  const queueResult = useCallback((result: ExerciseSessionResult, sessionId = sessionRef.current?.sessionId) => {
+    if (!sessionId || reportedResultsRef.current.has(result.exerciseId)) return;
     reportedResultsRef.current.add(result.exerciseId);
 
     let task: Promise<void>;
-    task = recordExerciseItemResult(current.sessionId, result.sessionItemId, {
+    task = recordExerciseItemResult(sessionId, result.sessionItemId, {
       completed: result.completed,
       completedSets: result.completedSets,
       durationMinutes: Math.max(0, Math.round(result.elapsedSeconds / 60)),
       performedRepetitions: result.performedRepetitions,
       performedWeightKg: result.performedWeightKg,
-      skipReason: result.skipped ? '사용자가 운동을 건너뜀' : null,
+      skipReason: result.skipped ? result.skipReason ?? '사용자가 운동을 건너뜀' : null,
       skipped: result.skipped,
     })
       .then(() => undefined)
@@ -535,6 +542,30 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     if (!current) return;
     for (const result of current.results) queueResult(result);
     await Promise.all([...pendingWritesRef.current]);
+  }, [queueResult]);
+
+  // Saves the current item as far as it got, then the stop (back-end 66a7cf6 ends only today's plan session).
+  // Everything is read now, so tapping "운동 종료" right away does not cut it short.
+  const recordSymptomStop = useCallback(async (report: SymptomStopReport) => {
+    const current = sessionRef.current;
+    if (!current) return;
+    const { sessionId } = current;
+    const exercise = current.exercises[current.currentExerciseIndex];
+    const partial = exercise && (current.phase === 'exercise' || current.phase === 'rest')
+      ? { ...buildResult(current, false), skipReason: SYMPTOM_STOP_REASON }
+      : null;
+    await runStopSequence({
+      settleQueued: () => {
+        for (const result of current.results) queueResult(result, sessionId);
+        return [...pendingWritesRef.current];
+      },
+      queueCurrentItem: partial ? () => {
+        queueResult(partial, sessionId);
+        return [...pendingWritesRef.current];
+      } : null,
+      sendStop: () => recordExerciseDiscomfort(sessionId, { ...report, actionTaken: 'stop', exerciseItemId: exercise?.id ?? null }),
+      log: logError,
+    });
   }, [queueResult]);
 
   const timerRunning = Boolean(
@@ -646,6 +677,7 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
       goToNextExercise: () => dispatch({ now: Date.now(), type: 'next-exercise' }),
       openExitConfirmation: () => dispatch({ type: 'open-exit' }),
       openSkipConfirmation: () => dispatch({ type: 'open-skip' }),
+      recordSymptomStop,
       session,
       setAdjustmentPending: (sessionId, pending) =>
         dispatch({ now: Date.now(), pending, sessionId, type: 'set-adjustment-pending' }),
@@ -662,6 +694,7 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
       currentExercise,
       dispatch,
       flushPendingResults,
+      recordSymptomStop,
       session,
       summary,
     ],

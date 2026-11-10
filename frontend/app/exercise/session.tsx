@@ -26,6 +26,7 @@ export default function ExerciseSessionScreen() {
     completeSession,
     currentExercise,
     flushPendingResults,
+    recordSymptomStop,
     goToNextExercise,
     openExitConfirmation,
     openSkipConfirmation,
@@ -93,24 +94,6 @@ export default function ExerciseSessionScreen() {
       }
     },
     [applyAdjustedItems, currentExercise, flushPendingResults, session, setAdjustmentPending],
-  );
-
-  // The server ends only today's plan session (back-end 66a7cf6). A failed save is logged; the stop stays on screen.
-  const reportStop = useCallback(
-    (report: DiscomfortReport) => {
-      if (!session || !currentExercise) return;
-      const { sessionId } = session;
-      const exerciseItemId = currentExercise.id;
-      void (async () => {
-        try {
-          await flushPendingResults();
-          await recordExerciseDiscomfort(sessionId, { actionTaken: 'stop', exerciseItemId, ...report });
-        } catch (error) {
-          logError('Exercise stop record failed', error);
-        }
-      })();
-    },
-    [currentExercise, flushPendingResults, session],
   );
 
   const finish = useCallback(async () => {
@@ -207,7 +190,7 @@ export default function ExerciseSessionScreen() {
         onBack={openExitConfirmation}
         onCompleteSet={completeCurrentSet}
         onReportDiscomfort={reportDiscomfort}
-        onReportStop={reportStop}
+        onReportStop={(report) => void recordSymptomStop(report)}
         onSkip={openSkipConfirmation}
         onSkipRest={skipRest}
         onStopWorkout={leaveSession}
