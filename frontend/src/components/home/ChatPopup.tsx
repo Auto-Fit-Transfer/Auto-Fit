@@ -2,6 +2,7 @@ import { logError } from '@/src/lib/logError';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
+  ActivityIndicator,
   BackHandler,
   Keyboard,
   Platform,
@@ -27,8 +28,9 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 
 import CloseIcon from '@/assets/icons/common/X.svg';
 import PaperPlaneIcon from '@/assets/icons/feature/PaperPlane_Fill.svg';
-import { createChat, getChatMessages, getChats, sendChatMessage } from '@/src/api/chat';
-import { getApiErrorMessage } from '@/src/api/client';
+import { createChat, decideExerciseAdjustment, getChatMessages, getChats, sendChatMessage } from '@/src/api/chat';
+import { ApiError, getApiErrorMessage } from '@/src/api/client';
+import { cardConflictText, cardState, stopNotice } from '@/src/features/chat/exerciseCard';
 import { ChatCharacterAvatar, getChatAvatarVariant } from '@/src/components/chat/ChatCharacterAvatar';
 import { CustomScrollIndicator, useCustomScrollIndicator, Text, TextInput } from '@/src/components/common';
 import {
@@ -99,6 +101,10 @@ type UiChatMessage = {
   needsMoreData?: boolean;
   role: 'assistant' | 'user';
   text: string;
+  action?: string | null;
+  actionStatus?: string | null;
+  actionData?: unknown;
+  pendingActionId?: string | null;
 };
 
 type PendingMessage = {
@@ -128,6 +134,10 @@ function mapServerMessage(message: ServerChatMessage): UiChatMessage {
     needsMoreData: message.needs_more_data,
     role: message.sender_type === 'user' ? 'user' : 'assistant',
     text: message.content,
+    action: message.action,
+    actionStatus: message.action_status,
+    actionData: message.action_data,
+    pendingActionId: message.pending_action_id,
   };
 }
 
@@ -236,6 +246,10 @@ export function ChatPopup({
   const [inputText, setInputText] = useState('');
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  // A card stays open until the server answers; a tap alone is not a success (contract).
+  const [deciding, setDeciding] = useState<string | null>(null);
+  const [cardNotes, setCardNotes] = useState<Record<string, string>>({});
+  const decisionKeysRef = useRef<Record<string, string>>({});
   const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [messages, setMessages] = useState<UiChatMessage[]>(() => {
@@ -460,6 +474,28 @@ export function ChatPopup({
     }
   }, [character.id, chatId, inputText, isInitialLoading, isSending]);
 
+  const decide = useCallback(async (pendingActionId: string, decision: 'confirm' | 'cancel') => {
+    if (!chatId || deciding) return;
+    const slot = `${pendingActionId}:${decision}`;
+    decisionKeysRef.current[slot] ??= createClientMessageId();
+    setDeciding(pendingActionId);
+    setErrorMessage(null);
+    try {
+      const response = await decideExerciseAdjustment(chatId, pendingActionId, decision, decisionKeysRef.current[slot]);
+      mergeChatSessionMessages(chatId, [response.user_message, response.assistant_message]);
+      setMessages((current) => dedupeMessages([...current, mapServerMessage(response.user_message), mapServerMessage(response.assistant_message)]));
+    } catch (error) {
+      const note = error instanceof ApiError && error.status === 409 ? cardConflictText(error.detail) : null;
+      if (note) setCardNotes((current) => ({ ...current, [pendingActionId]: note }));
+      else {
+        logError('운동 조정 카드 처리 실패', error);
+        setErrorMessage(getApiErrorMessage(error));
+      }
+    } finally {
+      setDeciding(null);
+    }
+  }, [chatId, deciding]);
+
   useEffect(() => {
     const duration = reduceMotion ? 1 : popupDuration;
 
@@ -655,6 +691,26 @@ export function ChatPopup({
                         <View style={styles.botBubble}>
                           <Text style={styles.messageText}>{chatMessage.id === 'welcome' ? chatWelcomes[character.id] : displayChatAnswer(chatMessage.text, character.id)}</Text>
                         </View>
+                        {(() => {
+                          const stop = stopNotice(chatMessage);
+                          if (stop) return <Text style={styles.cardNote}>{stop}</Text>;
+                          const state = cardState(chatMessage, messages, Date.now());
+                          const id = chatMessage.pendingActionId;
+                          if (!state || !id) return null;
+                          const note = cardNotes[id];
+                          if (note || state !== 'open') {
+                            return <Text style={styles.cardNote}>{note ?? (state === 'confirmed' ? '운동을 조정했어요.' : state === 'cancelled' ? '조정하지 않고 그대로 두었어요.' : '10분이 지나 이 제안은 닫혔어요. 다시 말씀해 주세요.')}</Text>;
+                          }
+                          const busy = deciding === id;
+                          return <View style={styles.cardActions}>
+                            <Pressable accessibilityRole="button" disabled={!!deciding} onPress={() => void decide(id, 'cancel')} style={[styles.cardButton, styles.cardCancel]}>
+                              <Text style={styles.cardCancelText}>그대로 할게요</Text>
+                            </Pressable>
+                            <Pressable accessibilityRole="button" disabled={!!deciding} onPress={() => void decide(id, 'confirm')} style={[styles.cardButton, styles.cardConfirm]}>
+                              {busy ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.cardConfirmText}>이대로 조정</Text>}
+                            </Pressable>
+                          </View>;
+                        })()}
                         <Text style={styles.time}>{formatMessageTime(chatMessage.createdAt)}</Text>
                       </View>
                     </View>
@@ -883,6 +939,13 @@ function createStyles({ colors }: AppTheme) {
       lineHeight: 17,
       textAlign: 'center',
     },
+    cardActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
+    cardButton: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+    cardCancel: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+    cardCancelText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    cardConfirm: { backgroundColor: colors.primary },
+    cardConfirmText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 14 },
+    cardNote: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12, lineHeight: 17, marginTop: 6 },
     composer: {
       alignItems: 'center',
       backgroundColor: colors.surfaceMuted,

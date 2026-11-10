@@ -5,6 +5,7 @@ import type {
   ChatMessagesResponse,
   ChatStatus,
   CreateChatResponse,
+  ExerciseDecisionResponse,
   SendChatMessageResponse,
   UpdateChatResponse,
 } from '@/src/types/chat';
@@ -44,6 +45,14 @@ export function sendChatMessage(chatId: string, content: string, clientMessageId
     headers: { 'X-AutoFit-Character': characterId },
     method: 'POST',
   });
+}
+
+// Same key on a network retry; a new key is a new decision (contract).
+export function decideExerciseAdjustment(chatId: string, pendingActionId: string, decision: 'confirm' | 'cancel', idempotencyKey: string) {
+  return apiRequest<ExerciseDecisionResponse>(
+    `/api/chats/${encodeURIComponent(chatId)}/pending-actions/${encodeURIComponent(pendingActionId)}/${decision}`,
+    { body: JSON.stringify({ idempotency_key: idempotencyKey }), method: 'POST' },
+  );
 }
 
 export function updateChat(chatId: string, patch: { status?: ChatStatus; title?: string }) {

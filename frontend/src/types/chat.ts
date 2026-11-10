@@ -20,6 +20,11 @@ export interface ChatMessage {
   required_data?: unknown[];
   response_source?: string | null;
   sender_type: ChatSenderType;
+  // Exercise chat actions; the card is shown only from these, never from the text.
+  action?: string | null;
+  action_status?: string | null;
+  action_data?: unknown;
+  pending_action_id?: string | null;
 }
 
 export interface ChatListResponse {
@@ -44,6 +49,11 @@ export interface SendChatMessageResponse {
   chat: Chat;
   is_replay: boolean;
   user_message: ChatMessage;
+}
+
+export interface ExerciseDecisionResponse extends SendChatMessageResponse {
+  adjusted_items: unknown[];
+  exercise_session: { session: unknown; items: unknown[] };
 }
 
 export interface UpdateChatResponse {
