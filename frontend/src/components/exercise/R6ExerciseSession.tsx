@@ -30,8 +30,8 @@ const parts = ['목', '어깨', '허리', '무릎', '손목', '발목', '기타'
 export type DiscomfortReport = {
   bodyAreas: string[];
   detail: string | null;
-  severity: number;
-  symptomType: 'fatigue' | 'pain';
+  severity: number | null;
+  symptomType: 'fatigue' | 'pain' | 'dizziness' | 'breathing';
 };
 
 type Props = {
@@ -42,6 +42,8 @@ type Props = {
   onCompleteSet: () => void;
   // Resolves to how many remaining items changed, or null when the report failed.
   onReportDiscomfort: (report: DiscomfortReport) => Promise<number | null>;
+  // Records a high-risk stop in the background; the stop screen does not wait for it.
+  onReportStop: (report: DiscomfortReport) => void;
   onSkip: () => void;
   onSkipRest: () => void;
   onStopWorkout: () => void;
@@ -53,7 +55,7 @@ function time(seconds: number) {
 }
 
 export function R6ExerciseSession({
-  exercise, session, onAddRest, onBack, onCompleteSet, onReportDiscomfort, onSkip, onSkipRest, onStopWorkout, onTogglePause,
+  exercise, session, onAddRest, onBack, onCompleteSet, onReportDiscomfort, onReportStop, onSkip, onSkipRest, onStopWorkout, onTogglePause,
 }: Props) {
   const { colors } = useAppTheme();
   const s = useThemedStyles(createSStyles);
@@ -125,15 +127,19 @@ export function R6ExerciseSession({
   };
   const submitDiscomfort = async () => {
     if (submitting || needsPart) return;
-    // shortcut: ends only on this device, because the discomfort RPC's stop cancels the whole weekly plan; send action_taken=stop once back-end limits it to the current plan_session_id.
-    if (chosenFeeling.stops) { setStopped(true); return; }
-    setSubmitting(true);
-    const changed = await onReportDiscomfort({
+    const report = {
       bodyAreas: selectedParts,
       detail: note.trim() || null,
       severity: chosenFeeling.severity,
       symptomType: chosenFeeling.symptomType,
-    });
+    };
+    if (chosenFeeling.stops) {
+      setStopped(true);
+      onReportStop(report);
+      return;
+    }
+    setSubmitting(true);
+    const changed = await onReportDiscomfort(report);
     setSubmitting(false);
     if (changed !== null) setChangedCount(changed);
   };

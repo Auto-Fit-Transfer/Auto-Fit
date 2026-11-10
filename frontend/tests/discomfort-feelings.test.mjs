@@ -7,6 +7,11 @@ test('severe pain, dizziness and breathing trouble end the workout instead of ad
   assert.deepEqual(stops, ['pain', 'dizzy', 'breathing']);
 });
 
+test('every stop carries the symptom the server records', () => {
+  const stops = discomfortFeelings.filter((item) => item.stops);
+  assert.deepEqual(stops.map((item) => item.symptomType), ['pain', 'dizziness', 'breathing']);
+});
+
 test('only mild feelings adjust, and never at a severe level', () => {
   const adjusts = discomfortFeelings.filter((item) => !item.stops);
   assert.deepEqual(adjusts.map((item) => item.key), ['stiff', 'tingling']);
