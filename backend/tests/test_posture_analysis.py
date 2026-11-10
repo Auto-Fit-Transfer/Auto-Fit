@@ -2,6 +2,7 @@
 
 from contextlib import asynccontextmanager
 from types import SimpleNamespace
+from uuid import UUID
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException
@@ -16,19 +17,42 @@ REP = "00000000-0000-4000-8000-000000000013"
 FINDING = "00000000-0000-4000-8000-000000000014"
 
 
-def make_client(monkeypatch, *, owner=True, status="completed"):
+def make_client(monkeypatch, *, owner=True, status="completed",
+                repetition_count=1, finding_count=1):
     requests = []
     job = {"posture_analysis_job_id": JOB, "status": status, "analysis_stage": "complete",
            "progress_percent": 100, "processed_frames": 100, "total_frames": 100,
            "detected_repetitions": 1, "temporary_video_path": "private/video.mp4"}
+    repetition_ids = ([REP] if repetition_count == 1 else
+                      [str(UUID(int=100 + index)) for index in range(repetition_count)])
+    finding_ids = ([FINDING] if finding_count == 1 else
+                   [str(UUID(int=200 + index)) for index in range(finding_count)])
     tables = {
         "posture_analysis_jobs": [job] if owner else [],
         "posture_assessments": [{"posture_assessment_id": ASSESSMENT, "overall_score": 82}],
-        "posture_repetitions": [{"posture_repetition_id": REP, "repetition_number": 1, "score": 82}],
-        "posture_joint_keypoints": [{"joint_code": "left_knee", "x_normalized": .5, "y_normalized": .6}],
-        "posture_joint_angles": [{"angle_code": "knee_flexion", "measured_degrees": 101}],
-        "posture_findings": [{"posture_finding_id": FINDING, "title": "무릎을 더 굽혀요"}],
-        "posture_guidance_steps": [{"sequence_order": 1, "instruction": "천천히 내려가요"}],
+        "posture_repetitions": [
+            {"posture_repetition_id": rep_id, "repetition_number": index + 1, "score": 82}
+            for index, rep_id in enumerate(repetition_ids)
+        ],
+        "posture_joint_keypoints": [
+            {"posture_repetition_id": rep_id, "joint_code": "left_knee",
+             "x_normalized": .5, "y_normalized": .6}
+            for rep_id in repetition_ids
+        ],
+        "posture_joint_angles": [
+            {"posture_repetition_id": rep_id, "angle_code": "knee_flexion",
+             "measured_degrees": 101}
+            for rep_id in repetition_ids
+        ],
+        "posture_findings": [
+            {"posture_finding_id": finding_id, "title": "무릎을 더 굽혀요"}
+            for finding_id in finding_ids
+        ],
+        "posture_guidance_steps": [
+            {"posture_finding_id": finding_id, "sequence_order": 1,
+             "instruction": "천천히 내려가요"}
+            for finding_id in finding_ids
+        ],
         "posture_routine_suggestions": [],
     }
 
@@ -92,3 +116,19 @@ def test_completed_result_contains_owned_nested_data(monkeypatch):
     assert result["findings"][0]["guidance_steps"][0]["instruction"] == "천천히 내려가요"
     assert "private/video.mp4" not in response.text
     assert requests[0].url.params["user_id"] == f"eq.{OWNER}"
+
+
+def test_maximum_result_reads_children_in_three_batches(monkeypatch):
+    client, requests = make_client(monkeypatch, repetition_count=20, finding_count=30)
+    response = client.get(f"/api/posture/jobs/{JOB}/result")
+    assert response.status_code == 200, response.text
+    assert len(response.json()["repetitions"]) == 20
+    assert len(response.json()["findings"]) == 30
+    assert len(requests) == 8
+    assert all(
+        request.url.params[parent_field].startswith("in.(")
+        for request, parent_field in zip(
+            requests[-3:],
+            ["posture_repetition_id", "posture_repetition_id", "posture_finding_id"],
+        )
+    )

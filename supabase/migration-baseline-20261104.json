@@ -415,6 +415,8 @@
     "20261104081014_remove_legacy_exercise_paths.sql",
     "20261105020000_archive_non_ai_exercise_recommendations.sql",
     "20261109040000_guard_saved_diet_feedback_allergy.sql",
-    "20261109041000_scope_exercise_discomfort_to_plan_session.sql"
+    "20261109041000_scope_exercise_discomfort_to_plan_session.sql",
+    "20261109061727_posture_analysis_contract_v11.sql",
+    "20261109070000_posture_analysis_atomic_result.sql"
   ]
 }

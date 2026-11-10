@@ -12,6 +12,7 @@ import math
 import os
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import BinaryIO
 from urllib.parse import urlsplit
 
 import httpx
@@ -26,6 +27,11 @@ class AIEndpoint(str, Enum):
     DIET_REFRESH = "/health-analysis/diet-refresh"
     EXERCISE = "/recommend/exercise"
     EXERCISE_ANALYSIS = "/analyze/exercise-session"
+
+
+class PostureEndpoint(str, Enum):
+    CAPABILITIES = "/posture-analysis/capabilities"
+    ANALYZE = "/posture-analysis/analyze"
 
 
 @dataclass(frozen=True)
@@ -73,6 +79,8 @@ class AIServerError(RuntimeError):
 HTTP_TIMEOUT_SECONDS = 60
 WALL_TIMEOUT_SECONDS = 65
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+POSTURE_HTTP_TIMEOUT_SECONDS = 180
+POSTURE_WALL_TIMEOUT_SECONDS = 185
 
 
 def _invalid_constant(value: str):
@@ -107,20 +115,57 @@ class AIServerClient:
             raise ValueError("AI request must be a JSON object")
         # Serialize before opening a connection; reject NaN/Infinity in input.
         body = json.dumps(payload, ensure_ascii=False, allow_nan=False).encode("utf-8")
+        return await self._request_json(
+            "POST", endpoint.value,
+            headers={"Content-Type": "application/json"}, content=body,
+        )
+
+    async def posture_capabilities(self) -> dict:
+        return await self._request_json("GET", PostureEndpoint.CAPABILITIES.value)
+
+    async def analyze_posture_video(
+        self, *, video: BinaryIO, content_type: str, filename: str,
+        posture_analysis_job_id: str, exercise_key: str | None,
+        exercise_code: str, camera_view: str, analysis_side: str | None = None,
+    ) -> dict:
+        if exercise_key is None and (exercise_code, camera_view) != ("squat", "side"):
+            raise ValueError("exercise_key is required outside legacy side squat")
+        fields = {
+            "posture_analysis_job_id": posture_analysis_job_id,
+            "exercise_code": exercise_code,
+            "camera_view": camera_view,
+        }
+        if exercise_key is not None:
+            fields["exercise_key"] = exercise_key
+        if analysis_side is not None:
+            fields["analysis_side"] = analysis_side
+        return await self._request_json(
+            "POST", PostureEndpoint.ANALYZE.value,
+            data=fields, files={"video": (filename, video, content_type)},
+            http_timeout=POSTURE_HTTP_TIMEOUT_SECONDS,
+            wall_timeout=POSTURE_WALL_TIMEOUT_SECONDS,
+        )
+
+    async def _request_json(
+        self, method: str, path: str, *, headers: dict[str, str] | None = None,
+        content: bytes | None = None, data: dict[str, str] | None = None,
+        files: dict | None = None, http_timeout: float | None = None,
+        wall_timeout: float | None = None,
+    ) -> dict:
         try:
-            async with asyncio.timeout(WALL_TIMEOUT_SECONDS):
+            async with asyncio.timeout(wall_timeout or WALL_TIMEOUT_SECONDS):
                 # Never borrow the Supabase client: it can carry privileged headers.
                 async with httpx.AsyncClient(
-                    timeout=HTTP_TIMEOUT_SECONDS, follow_redirects=False,
+                    timeout=http_timeout or HTTP_TIMEOUT_SECONDS, follow_redirects=False,
                     trust_env=False, transport=self._transport,
                 ) as client:
                     async with client.stream(
-                        "POST", self.config.base_url.rstrip("/") + endpoint.value,
+                        method, self.config.base_url.rstrip("/") + path,
                         headers={
                             "Authorization": f"Bearer {self.config.api_key}",
-                            "Content-Type": "application/json",
                             "Accept": "application/json",
-                        }, content=body,
+                            **(headers or {}),
+                        }, content=content, data=data, files=files,
                     ) as response:
                         if response.status_code != 200:
                             code = {

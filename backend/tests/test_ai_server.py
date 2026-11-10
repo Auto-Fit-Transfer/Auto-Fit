@@ -1,4 +1,5 @@
 import asyncio
+import io
 import json
 
 import httpx
@@ -139,3 +140,70 @@ def test_invalid_request_fails_before_network(endpoint, payload):
 
     with pytest.raises(ValueError):
         asyncio.run(make_client(handler).post(endpoint, payload))
+
+
+def test_posture_capabilities_uses_authenticated_get():
+    def handler(request):
+        assert request.method == "GET"
+        assert str(request.url) == "https://ai.example.invalid/posture-analysis/capabilities"
+        assert request.headers["authorization"] == f"Bearer {KEY}"
+        assert "apikey" not in request.headers
+        return httpx.Response(200, json={"profiles": []})
+
+    assert asyncio.run(make_client(handler).posture_capabilities()) == {"profiles": []}
+
+
+def test_posture_analysis_sends_exact_multipart_fields_and_file():
+    def handler(request):
+        assert request.method == "POST"
+        assert str(request.url) == "https://ai.example.invalid/posture-analysis/analyze"
+        assert request.headers["authorization"] == f"Bearer {KEY}"
+        assert request.headers["content-type"].startswith("multipart/form-data; boundary=")
+        assert "apikey" not in request.headers
+        body = request.content
+        for field in (b'posture_analysis_job_id', b'exercise_key', b'exercise_code',
+                      b'camera_view', b'analysis_side', b'capture.mp4', b'video-data'):
+            assert field in body
+        return httpx.Response(200, json={"schema_version": "1.1"})
+
+    result = asyncio.run(make_client(handler).analyze_posture_video(
+        video=io.BytesIO(b"video-data"), content_type="video/mp4", filename="capture.mp4",
+        posture_analysis_job_id="00000000-0000-4000-8000-000000000011",
+        exercise_key="ex_b34acd08bef11a", exercise_code="lunge",
+        camera_view="side", analysis_side="left",
+    ))
+    assert result == {"schema_version": "1.1"}
+
+
+def test_posture_legacy_squat_omits_exercise_key():
+    def handler(request):
+        assert b'exercise_key' not in request.content
+        return httpx.Response(200, json={"schema_version": "1.1"})
+
+    asyncio.run(make_client(handler).analyze_posture_video(
+        video=io.BytesIO(b"video-data"), content_type="video/mp4", filename="capture.mp4",
+        posture_analysis_job_id="00000000-0000-4000-8000-000000000011",
+        exercise_key=None, exercise_code="squat", camera_view="side",
+    ))
+
+
+def test_posture_new_exercise_rejects_missing_key_before_network():
+    def handler(_):
+        pytest.fail("Missing exercise key must never reach the AI server")
+
+    with pytest.raises(ValueError, match="exercise_key"):
+        asyncio.run(make_client(handler).analyze_posture_video(
+            video=io.BytesIO(b"video-data"), content_type="video/mp4", filename="capture.mp4",
+            posture_analysis_job_id="00000000-0000-4000-8000-000000000011",
+            exercise_key=None, exercise_code="lunge", camera_view="side",
+        ))
+
+
+@pytest.mark.parametrize("status,code", [(422, "AI_INPUT_REJECTED"), (503, "AI_UNAVAILABLE")])
+def test_posture_transport_maps_errors_without_response_body(status, code):
+    def handler(_):
+        return httpx.Response(status, text=f"private data {KEY}")
+
+    with pytest.raises(ai_server.AIServerError, match=code) as error:
+        asyncio.run(make_client(handler).posture_capabilities())
+    assert KEY not in str(error.value)

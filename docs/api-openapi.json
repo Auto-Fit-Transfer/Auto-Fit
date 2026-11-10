@@ -803,6 +803,20 @@
         "title": "Body_post_photo_api_diet_meal_logs__meal_log_id__photo_post",
         "type": "object"
       },
+      "Body_post_video_api_posture_jobs__job_id__video_post": {
+        "properties": {
+          "video": {
+            "contentMediaType": "application/octet-stream",
+            "title": "Video",
+            "type": "string"
+          }
+        },
+        "required": [
+          "video"
+        ],
+        "title": "Body_post_video_api_posture_jobs__job_id__video_post",
+        "type": "object"
+      },
       "Body_upload_health_document_api_health_documents_post": {
         "properties": {
           "document_type": {
@@ -3346,6 +3360,117 @@
           }
         },
         "title": "CreatePostRequest",
+        "type": "object"
+      },
+      "CreatePostureJobRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis_side": {
+            "anyOf": [
+              {
+                "enum": [
+                  "left",
+                  "right"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Side"
+          },
+          "camera_view": {
+            "enum": [
+              "side",
+              "front"
+            ],
+            "title": "Camera View",
+            "type": "string"
+          },
+          "exercise_code": {
+            "pattern": "^[a-z][a-z0-9_]{1,63}$",
+            "title": "Exercise Code",
+            "type": "string"
+          },
+          "exercise_key": {
+            "pattern": "^ex_[0-9a-f]{8,64}$",
+            "title": "Exercise Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "exercise_key",
+          "exercise_code",
+          "camera_view"
+        ],
+        "title": "CreatePostureJobRequest",
+        "type": "object"
+      },
+      "CreatedPostureJob": {
+        "properties": {
+          "analysis_side": {
+            "anyOf": [
+              {
+                "enum": [
+                  "left",
+                  "right"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Side"
+          },
+          "camera_view": {
+            "enum": [
+              "side",
+              "front"
+            ],
+            "title": "Camera View",
+            "type": "string"
+          },
+          "exercise_code": {
+            "title": "Exercise Code",
+            "type": "string"
+          },
+          "exercise_key": {
+            "title": "Exercise Key",
+            "type": "string"
+          },
+          "posture_analysis_job_id": {
+            "format": "uuid",
+            "title": "Posture Analysis Job Id",
+            "type": "string"
+          },
+          "rule_version": {
+            "title": "Rule Version",
+            "type": "string"
+          },
+          "status": {
+            "const": "awaiting_upload",
+            "title": "Status",
+            "type": "string"
+          },
+          "validation_status": {
+            "const": "validated",
+            "title": "Validation Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "posture_analysis_job_id",
+          "exercise_key",
+          "exercise_code",
+          "camera_view",
+          "analysis_side",
+          "rule_version",
+          "validation_status",
+          "status"
+        ],
+        "title": "CreatedPostureJob",
         "type": "object"
       },
       "DailyTargetPercentages": {
@@ -18105,6 +18230,122 @@
         ]
       }
     },
+    "/api/posture/capabilities": {
+      "get": {
+        "operationId": "get_capabilities_api_posture_capabilities_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "운영 검증된 자세 분석 운동 조회",
+        "tags": [
+          "Posture Analysis"
+        ]
+      }
+    },
+    "/api/posture/jobs": {
+      "post": {
+        "operationId": "post_job_api_posture_jobs_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePostureJobRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreatedPostureJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "검증된 자세 분석 작업 생성",
+        "tags": [
+          "Posture Analysis"
+        ]
+      }
+    },
     "/api/posture/jobs/{job_id}": {
       "get": {
         "operationId": "get_job_api_posture_jobs__job_id__get",
@@ -18224,6 +18465,78 @@
           }
         ],
         "summary": "본인의 완료된 자세 분석 결과 조회",
+        "tags": [
+          "Posture Analysis"
+        ]
+      }
+    },
+    "/api/posture/jobs/{job_id}/video": {
+      "post": {
+        "operationId": "post_video_api_posture_jobs__job_id__video_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_post_video_api_posture_jobs__job_id__video_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "자세 분석 영상 업로드 및 분석",
         "tags": [
           "Posture Analysis"
         ]

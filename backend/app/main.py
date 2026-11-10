@@ -7,7 +7,7 @@ import logging
 import re
 import secrets
 from collections import defaultdict
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, ROUND_HALF_UP
@@ -74,6 +74,7 @@ from backend.app.habit_tier import create_habit_tier_router
 from backend.app.analysis_popups import create_analysis_popups_router
 from backend.app.analysis_summary import create_analysis_summary_router
 from backend.app.posture_analysis import create_posture_analysis_router
+from backend.app.posture_workflow import posture_cleanup_loop
 from backend.app.saved_workout_routines import create_saved_workout_router
 from backend.app.running_sessions import create_running_sessions_router
 from backend.app.weekly_diet import (
@@ -3411,9 +3412,22 @@ async def lifespan(app: FastAPI):
     get_food_image_settings()  # Validate optional generator config without calling it.
     async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
         app.state.supabase_http_client = client
+        posture_cleanup_task = None
+        cleanup_enabled = environment_flag(
+            os.getenv("POSTURE_ANALYSIS_CLEANUP_ENABLED"),
+            default=environment_flag(
+                os.getenv("POSTURE_ANALYSIS_WRITE_ENABLED"), default=False),
+        )
+        if cleanup_enabled:
+            posture_cleanup_task = asyncio.create_task(
+                posture_cleanup_loop(client, get_settings()))
         try:
             yield
         finally:
+            if posture_cleanup_task is not None:
+                posture_cleanup_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await posture_cleanup_task
             del app.state.supabase_http_client
 
 
