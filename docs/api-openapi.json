@@ -8432,7 +8432,6 @@
           "accuracy_meters": {
             "anyOf": [
               {
-                "maximum": 10000.0,
                 "minimum": 0.0,
                 "type": "number"
               },
