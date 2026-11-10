@@ -6,6 +6,9 @@ import {
   getRunningApiErrorMessage, pauseRunningSession, resumeRunningSession,
   type RunningPlannedCourse, type RunningSession, type RunningTrackPoint,
 } from '@/src/api/running';
+import { appStateAction, INACTIVE_GRACE_MS } from './liveTracking';
+
+export type LiveLocation = { latitude: number; longitude: number; accuracy: number | null };
 
 export function useRunningSession(sessionId: string) {
   const [session, setSession] = useState<RunningSession | null>(null);
@@ -15,6 +18,11 @@ export function useRunningSession(sessionId: string) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  // Where the phone is now (map only). `points` stay the positions the server accepted for the distance.
+  const [currentLocation, setCurrentLocation] = useState<LiveLocation | null>(null);
+  const [rejection, setRejection] = useState('');
+  const [preciseOff, setPreciseOff] = useState(false);
+  const shownAtRef = useRef(0);
   const sessionRef = useRef<RunningSession | null>(null);
   const watchRef = useRef<Location.LocationSubscription | null>(null);
   const queuedRef = useRef<Promise<void>>(Promise.resolve());
@@ -36,6 +44,17 @@ export function useRunningSession(sessionId: string) {
   const stopWatch = useCallback(() => {
     watchRef.current?.remove();
     watchRef.current = null;
+  }, []);
+
+  const showLocation = useCallback((location: Location.LocationObject | null) => {
+    if (!location || !mountedRef.current || location.timestamp < shownAtRef.current) return;
+    shownAtRef.current = location.timestamp;
+    setCurrentLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude, accuracy: location.coords.accuracy });
+  }, []);
+
+  const readPermission = useCallback((permission: Location.LocationPermissionResponse) => {
+    if (mountedRef.current) setPreciseOff(permission.ios?.accuracy === 'reduced' || permission.android?.accuracy === 'coarse');
+    return permission.granted;
   }, []);
 
   const haltAfterError = useCallback(async (message: string) => {
@@ -60,10 +79,13 @@ export function useRunningSession(sessionId: string) {
   const startWatch = useCallback(async () => {
     stopWatch();
     trackingHaltedRef.current = false;
+    // A first fix for the map before the watcher's first callback; it is never sent as a track point.
+    void Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }).then(showLocation).catch(() => {});
     try {
       const subscription = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.High, distanceInterval: 10, timeInterval: 3000 },
         (location) => {
+          showLocation(location);
           queuedRef.current = queuedRef.current.then(async () => {
             if (sessionRef.current?.status !== 'in_progress' || trackingHaltedRef.current || !mountedRef.current) return;
             const response = await addRunningTrackPoint(sessionId, {
@@ -73,12 +95,13 @@ export function useRunningSession(sessionId: string) {
               elapsed_seconds: elapsedNow(),
             });
             applySession(response.session);
-            if (response.accepted && response.point && mountedRef.current) {
+            if (!mountedRef.current) return;
+            if (response.accepted && response.point) {
               setPoints((current) => [...current, response.point!]);
               setError('');
-            } else if (response.reason === 'low_accuracy' && mountedRef.current) {
-              setError('GPS 신호가 약해 위치를 기다리는 중이에요.');
             }
+            // A small movement passed the accuracy check, so it clears an earlier notice too.
+            setRejection(response.accepted || response.reason === 'small_movement' ? '' : response.reason ?? '');
           }).catch((cause) => {
             void haltAfterError(`기록 저장에 실패해 러닝을 일시정지했어요. ${getRunningApiErrorMessage(cause)}`);
           });
@@ -91,7 +114,7 @@ export function useRunningSession(sessionId: string) {
       if (mountedRef.current) setError(getRunningApiErrorMessage(cause));
       throw cause;
     }
-  }, [applySession, elapsedNow, haltAfterError, sessionId, stopWatch]);
+  }, [applySession, elapsedNow, haltAfterError, sessionId, showLocation, stopWatch]);
 
   const pause = useCallback(async () => {
     if (busyRef.current || sessionRef.current?.status !== 'in_progress') return;
@@ -135,7 +158,7 @@ export function useRunningSession(sessionId: string) {
     let didResume = false;
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
-      if (!permission.granted || !await Location.hasServicesEnabledAsync()) {
+      if (!readPermission(permission) || !await Location.hasServicesEnabledAsync()) {
         throw new Error('러닝을 계속하려면 위치 권한과 기기 위치 서비스를 켜 주세요.');
       }
       const response = await resumeRunningSession(sessionId);
@@ -159,7 +182,7 @@ export function useRunningSession(sessionId: string) {
       busyRef.current = false;
       setBusy(false);
     }
-  }, [applySession, sessionId, startWatch]);
+  }, [applySession, readPermission, sessionId, startWatch]);
 
   const complete = useCallback(async () => {
     if (busyRef.current || !sessionRef.current ||
@@ -203,15 +226,18 @@ export function useRunningSession(sessionId: string) {
       setPlannedCourse(response.planned_course ?? null);
       baseRef.current = response.session.elapsed_seconds;
       setElapsedSeconds(response.session.elapsed_seconds);
-      if (response.session.status === 'in_progress') {
-        segmentStartRef.current = Date.now();
-        const permission = await Location.getForegroundPermissionsAsync();
-        if (permission.granted && !cancelled) await startWatch();
-        else if (!permission.granted && !cancelled) {
-          await pause();
-          setError('위치 권한을 켠 뒤 러닝을 다시 시작해 주세요.');
-        }
-      }
+      if (response.session.status === 'in_progress') segmentStartRef.current = Date.now();
+      const granted = readPermission(await Location.getForegroundPermissionsAsync());
+      // The last known position only centres the map quickly, also for a paused run.
+      if (granted) showLocation(await Location.getLastKnownPositionAsync().catch(() => null));
+      if (response.session.status !== 'in_progress' || cancelled) return;
+      if (!granted) {
+        await pause();
+        setError('위치 권한을 켠 뒤 러닝을 다시 시작해 주세요.');
+      } else if (!await Location.hasServicesEnabledAsync()) {
+        await pause();
+        setError('기기의 위치 서비스를 켜 주세요.');
+      } else if (!cancelled) await startWatch();
     }).catch(async (cause) => {
       if (!cancelled) {
         await pause();
@@ -220,21 +246,30 @@ export function useRunningSession(sessionId: string) {
     })
       .finally(() => { if (!cancelled) setLoading(false); });
     const timer = setInterval(() => setElapsedSeconds(elapsedNow()), 1000);
+    let grace: ReturnType<typeof setTimeout> | undefined;
     const appState = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') void pause();
+      const action = appStateAction(state);
+      if (action === 'wait') {
+        grace ??= setTimeout(() => { grace = undefined; void pause(); }, INACTIVE_GRACE_MS);
+        return;
+      }
+      clearTimeout(grace);
+      grace = undefined;
+      if (action === 'pause') void pause();
     });
     return () => {
       cancelled = true;
       mountedRef.current = false;
       clearInterval(timer);
+      clearTimeout(grace);
       appState.remove();
       stopWatch();
       if (sessionRef.current?.status === 'in_progress' && !busyRef.current) {
         void pauseRunningSession(sessionId, elapsedNow()).catch(() => {});
       }
     };
-  }, [applySession, elapsedNow, pause, sessionId, startWatch, stopWatch]);
+  }, [applySession, elapsedNow, pause, readPermission, sessionId, showLocation, startWatch, stopWatch]);
 
   return { session, points, plannedCourse, loading, busy, error, elapsedSeconds,
-    pause, resume, complete };
+    currentLocation, rejection, preciseOff, pause, resume, complete };
 }
