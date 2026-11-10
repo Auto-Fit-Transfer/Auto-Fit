@@ -14,18 +14,17 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Line } from 'react-native-svg';
 import RetryIcon from '@/assets/icons/system/ArrowsClockwise.svg';
 import UploadIcon from '@/assets/icons/ui/upload-simple.svg';
 import XIcon from '@/assets/icons/ui/x.svg';
 import { Text } from '@/src/components/common';
+import { POSTURE_MAX_BYTES, postureVideoProblem, postureVideoType } from '@/src/features/exercise/postureFlow';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const RECORD_SECONDS = 10;
-const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+const MAX_VIDEO_BYTES = POSTURE_MAX_BYTES;
 const cameraBackground = '#1B1E21';
 const muted = '#A7AAAE';
-const jointGreen = '#76DDA1';
 const recordingRed = '#FF4D55';
 
 function deleteCameraCache(uri: string | null) {
@@ -44,90 +43,17 @@ function deletePickedCache(uri: string | null) {
 }
 
 function FramingGuide({ height }: { height: number }) {
-  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={[styles.guide, { height }]}
-    >
-      <Svg height="100%" viewBox="0 0 220 350" width="100%">
-        <Line
-          stroke={colors.textSecondary}
-          strokeWidth="17"
-          strokeLinecap="round"
-          x1="119"
-          x2="112"
-          y1="82"
-          y2="112"
-        />
-        <Line
-          stroke={colors.textSecondary}
-          strokeWidth="17"
-          strokeLinecap="round"
-          x1="112"
-          x2="94"
-          y1="112"
-          y2="172"
-        />
-        <Line
-          stroke={colors.textSecondary}
-          strokeWidth="17"
-          strokeLinecap="round"
-          x1="112"
-          x2="169"
-          y1="112"
-          y2="139"
-        />
-        <Line
-          stroke={colors.textSecondary}
-          strokeWidth="17"
-          strokeLinecap="round"
-          x1="94"
-          x2="158"
-          y1="172"
-          y2="205"
-        />
-        <Line
-          stroke={colors.textSecondary}
-          strokeWidth="17"
-          strokeLinecap="round"
-          x1="158"
-          x2="132"
-          y1="205"
-          y2="285"
-        />
-        <Line
-          stroke={colors.textSecondary}
-          strokeWidth="17"
-          strokeLinecap="round"
-          x1="132"
-          x2="164"
-          y1="285"
-          y2="289"
-        />
-        <Circle cx="119" cy="65" fill={colors.textSecondary} r="18" />
-        {[
-          [119, 65],
-          [117, 92],
-          [106, 133],
-          [94, 172],
-          [169, 139],
-          [158, 205],
-          [132, 285],
-        ].map(([x, y]) => (
-          <Circle cx={x} cy={y} fill={jointGreen} key={`${x}-${y}`} r="4" />
-        ))}
-      </Svg>
-    </View>
-  );
+  // Only where to stand: a drawn person read as fake on top of the real camera.
+  return <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.guide, { height }]} />;
 }
 
 export default function PostureCaptureScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const { source: initialSource } = useLocalSearchParams<{ source?: string }>();
+  const params = useLocalSearchParams<{ source?: string; exerciseCode?: string; cameraView?: string; name?: string }>();
+  const initialSource = params.source;
+  const exerciseLabel = `${params.name || '스쿼트'} · ${params.cameraView === 'front' ? '앞에서' : '옆에서'}`;
   const insets = useSafeAreaInsets();
   const { height: screenHeight } = useWindowDimensions();
   const cameraRef = useRef<CameraView>(null);
@@ -139,6 +65,9 @@ export default function PostureCaptureScreen() {
   const pickedCacheUriRef = useRef<string | null>(null);
   const albumPromptedRef = useRef(false);
   const durationRef = useRef(0);
+  const videoRef = useRef<{ uri: string; mimeType: string; name: string; durationMs: number } | null>(null);
+  // Set when the video goes to the analysis screen, which then owns the file and deletes it.
+  const handedOffRef = useRef(false);
   const [focused, setFocused] = useState(false);
   const [ready, setReady] = useState(false);
   const [phase, setPhase] = useState<'idle' | 'recording' | 'review'>('idle');
@@ -149,6 +78,7 @@ export default function PostureCaptureScreen() {
   useFocusEffect(
     useCallback(() => {
       activeRef.current = true;
+      handedOffRef.current = false;
       setReady(false);
       setPhase('idle');
       setSeconds(0);
@@ -159,10 +89,13 @@ export default function PostureCaptureScreen() {
         discardRecordingRef.current = true;
         setFocused(false);
         cameraRef.current?.stopRecording();
-        deleteCameraCache(recordedUriRef.current);
-        deletePickedCache(pickedCacheUriRef.current);
+        if (!handedOffRef.current) {
+          deleteCameraCache(recordedUriRef.current);
+          deletePickedCache(pickedCacheUriRef.current);
+        }
         recordedUriRef.current = null;
         pickedCacheUriRef.current = null;
+        videoRef.current = null;
       };
     }, []),
   );
@@ -174,6 +107,7 @@ export default function PostureCaptureScreen() {
     deletePickedCache(pickedCacheUriRef.current);
     recordedUriRef.current = null;
     pickedCacheUriRef.current = null;
+    videoRef.current = null;
     durationRef.current = 0;
     setSeconds(0);
     setReady(false);
@@ -222,13 +156,15 @@ export default function PostureCaptureScreen() {
         return;
       }
       const file = new File(result.uri);
-      if (!file.exists || file.size < 1 || file.size > MAX_VIDEO_BYTES) {
+      const type = postureVideoType(result.uri);
+      if (!file.exists || file.size < 1 || file.size > MAX_VIDEO_BYTES || !type) {
         deleteCameraCache(result.uri);
         setPhase('idle');
-        Alert.alert('영상 확인 실패', '25MB 이하로 다시 촬영해 주세요.');
+        Alert.alert('영상 확인 실패', '50MB 이하로 다시 촬영해 주세요.');
         return;
       }
       recordedUriRef.current = result.uri;
+      videoRef.current = { uri: result.uri, ...type, durationMs: Math.round(Math.max(durationRef.current, 8) * 1000) };
       setSource('camera');
       setPhase('review');
     } catch {
@@ -257,19 +193,17 @@ export default function PostureCaptureScreen() {
         deletePickedCache(asset.uri);
         return;
       }
-      if (asset.duration == null || asset.duration <= 0 || asset.duration > RECORD_SECONDS * 1000) {
+      const type = postureVideoType(asset.uri, asset.mimeType);
+      const problem = postureVideoProblem({ durationMs: asset.duration, sizeBytes: asset.fileSize, mimeType: type?.mimeType ?? null });
+      if (problem || !type) {
         deletePickedCache(asset.uri);
-        Alert.alert('영상 길이 확인', '10초 이하인 동영상을 선택해 주세요.');
-        return;
-      }
-      if (asset.fileSize == null || asset.fileSize > MAX_VIDEO_BYTES) {
-        deletePickedCache(asset.uri);
-        Alert.alert('영상 크기 확인', '25MB 이하인 동영상을 선택해 주세요.');
+        Alert.alert('영상 확인', problem ?? '이 영상은 분석할 수 없어요.');
         return;
       }
       pickedCacheUriRef.current = asset.uri;
+      videoRef.current = { uri: asset.uri, ...type, durationMs: Math.round(asset.duration ?? 0) };
       setSource('album');
-      setSeconds(Math.ceil(asset.duration / 1000));
+      setSeconds(Math.ceil((asset.duration ?? 0) / 1000));
       setPhase('review');
     } catch {
       Alert.alert('앨범 열기 실패', '동영상 접근 권한을 확인해 주세요.');
@@ -285,6 +219,15 @@ export default function PostureCaptureScreen() {
 
   const canUseCamera = focused && Platform.OS !== 'web' && permission?.granted;
   const guideHeight = Math.min(400, Math.max(270, screenHeight * 0.45));
+  const analyze = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    handedOffRef.current = true;
+    router.replace({ pathname: '/exercise/posture-processing', params: {
+      videoUri: video.uri, mimeType: video.mimeType, name: video.name, durationMs: String(video.durationMs),
+      exerciseCode: params.exerciseCode ?? '', cameraView: params.cameraView ?? '', label: exerciseLabel,
+    } });
+  };
   const close = () => {
     resetCapture();
     router.back();
@@ -319,11 +262,11 @@ export default function PostureCaptureScreen() {
             <View style={[styles.recordDot, phase === 'recording' && styles.recordDotActive]} />
             <Text style={styles.badgeText}>
               {phase === 'recording' ? '녹화 중' : phase === 'review' ? '촬영 완료' : '촬영 준비'}{' '}
-              {String(seconds).padStart(2, '0')} / 10초
+              {phase === 'review' && source === 'album' ? `${seconds}초` : `${String(seconds).padStart(2, '0')} / 10초`}
             </Text>
           </View>
           <View style={styles.exerciseBadge}>
-            <Text style={styles.badgeText}>스쿼트 · 옆에서</Text>
+            <Text style={styles.badgeText}>{exerciseLabel}</Text>
           </View>
         </View>
         <View style={styles.progressTrack}>
@@ -332,7 +275,7 @@ export default function PostureCaptureScreen() {
       </View>
 
       <View style={styles.center} pointerEvents="none">
-        <Text style={styles.framingLabel}>이 선 안에 머리부터 발끝까지</Text>
+        <Text style={styles.framingLabel}>{params.cameraView === 'front' ? '앞을 보고' : '옆으로 서서'} 머리부터 발끝까지 이 선 안에</Text>
         <FramingGuide height={guideHeight} />
       </View>
 
@@ -343,15 +286,16 @@ export default function PostureCaptureScreen() {
               {source === 'camera' ? '10초 촬영을 마쳤어요' : '앨범 영상을 선택했어요'}
             </Text>
             <Text style={styles.reviewCopy}>
-              분석 기능을 준비 중이라 영상을 보내지 않아요. 화면을 나가면 영상을 지워요.
+              분석하면 영상을 서버로 보내고, 분석이 끝나면 서버에서 바로 지워요.
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={resetCapture}
-              style={styles.retakeButton}
-            >
-              <Text style={styles.retakeText}>다시 찍기</Text>
-            </Pressable>
+            <View style={styles.reviewActions}>
+              <Pressable accessibilityRole="button" onPress={resetCapture} style={styles.retakeButton}>
+                <Text style={styles.retakeText}>다시 찍기</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={analyze} style={styles.analyzeButton}>
+                <Text style={styles.analyzeText}>분석하기</Text>
+              </Pressable>
+            </View>
           </View>
         ) : (
           <>
@@ -424,7 +368,7 @@ export default function PostureCaptureScreen() {
             onPress={() => void pickVideo()}
             style={styles.albumFallback}
           >
-            <Text style={styles.albumFallbackText}>앨범에서 10초 영상 선택</Text>
+            <Text style={styles.albumFallbackText}>앨범에서 30초 이하 영상 선택</Text>
           </Pressable>
         </View>
       ) : null}
@@ -559,6 +503,9 @@ function createStyles({ colors }: AppTheme) {
       paddingVertical: 13,
     },
     retakeText: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    reviewActions: { flexDirection: 'row', gap: 10 },
+    analyzeButton: { marginTop: 8, backgroundColor: colors.primary, borderRadius: 12, paddingHorizontal: 30, paddingVertical: 13 },
+    analyzeText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
     permissionPanel: {
       position: 'absolute',
       top: 0,

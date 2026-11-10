@@ -2,59 +2,37 @@ import { useCallback, useMemo, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Line } from 'react-native-svg';
 
 import { koreanDate } from '@/src/lib/koreanDate';
 import CheckIcon from '@/assets/icons/ui/check.svg';
 import PlusIcon from '@/assets/icons/ui/plus.svg';
 import MinusIcon from '@/assets/icons/ui/minus.svg';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
-import { getPostureResult, type PostureFinding, type PostureKeypoint, type PostureResult } from '@/src/api/posture';
+import { getPostureResult, type PostureFinding, type PostureRepetition, type PostureResult } from '@/src/api/posture';
+import { angleRow, secondsLabel } from '@/src/features/exercise/postureFlow';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const links = [
-  ['head', 'neck'], ['neck', 'left_shoulder'], ['left_shoulder', 'left_elbow'],
-  ['left_elbow', 'left_wrist'], ['left_shoulder', 'left_hip'], ['left_hip', 'left_knee'],
-  ['left_knee', 'left_ankle'], ['left_ankle', 'left_heel'], ['left_heel', 'left_foot_index'],
-  ['neck', 'right_shoulder'], ['right_shoulder', 'right_elbow'], ['right_elbow', 'right_wrist'],
-  ['right_shoulder', 'right_hip'], ['right_hip', 'right_knee'], ['right_knee', 'right_ankle'],
-  ['right_ankle', 'right_heel'], ['right_heel', 'right_foot_index'],
-] as const;
-
-const angleNames: Record<string, string> = {
-  torso_lean: '상체 기울기', knee_flexion: '무릎 각도',
-  hip_flexion: '엉덩이 각도', ankle_dorsiflexion: '발목 각도',
-};
-
-function Skeleton({ points }: { points: PostureKeypoint[] }) {
+// The chosen rep's measured angles next to the allowed range: real numbers instead of a drawn figure.
+function AngleCard({ rep }: { rep: PostureRepetition }) {
   const styles = useThemedStyles(createStyles);
-  const byCode = new Map(points.map((point) => [point.joint_code, point]));
-  const position = (point: PostureKeypoint) => ({ x: 24 + Number(point.x_normalized) * 312, y: 12 + Number(point.y_normalized) * 178 });
-  return <View style={styles.skeletonBox}>
-    {points.length === 0 ? <Text style={styles.noPoints}>관절 위치 기록이 없습니다.</Text> :
-      <Svg width="100%" height="100%" viewBox="0 0 360 202" accessibilityLabel="선택한 회차의 관절 위치 도식">
-        {links.map(([from, to]) => {
-          const a = byCode.get(from); const b = byCode.get(to);
-          if (!a || !b) return null;
-          const start = position(a); const end = position(b);
-          return <Line key={`${from}-${to}`} x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="#818387" strokeWidth={8} strokeLinecap="round" />;
-        })}
-        {points.map((point) => {
-          const pos = position(point);
-          return <Circle key={point.joint_code} cx={pos.x} cy={pos.y} r={4} fill="#77DEA6" />;
-        })}
-      </Svg>}
-    <View style={styles.skeletonFloor} />
+  return <View style={styles.angleCard}>
+    <Text style={styles.angleCaption}>{rep.repetition_number}회째 · {secondsLabel(rep.keyframe_offset_ms)} 장면 · {rep.score}점</Text>
+    {rep.angles.map((angle, index) => {
+      const row = angleRow(angle);
+      return <View key={angle.angle_code} style={[styles.angleLine, index > 0 && styles.angleDivider]}>
+        <View style={{ flex: 1 }}><Text style={styles.angleLabel}>{row.label}</Text>{row.target ? <Text style={styles.angleTargetText}>{row.target}</Text> : null}</View>
+        <View style={styles.angleValues}><Text style={styles.angleValue}>{row.value}</Text><Text style={[styles.angleStatus, row.off && styles.angleOff]}>{row.status}</Text></View>
+      </View>;
+    })}
   </View>;
 }
 
-function FindingCard({ finding, expanded, onToggle, result }: {
-  finding: PostureFinding; expanded: boolean; onToggle: () => void; result: PostureResult;
+function FindingCard({ finding, expanded, onToggle }: {
+  finding: PostureFinding; expanded: boolean; onToggle: () => void;
 }) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const suggestion = result.routine_suggestions.find((item) => item.posture_finding_id === finding.posture_finding_id);
   return <View style={styles.findingCard}>
     <Pressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={onToggle} style={styles.findingHeader}>
       <View style={{ flex: 1 }}><Text style={styles.findingTitle}>{finding.title}</Text>
@@ -68,10 +46,6 @@ function FindingCard({ finding, expanded, onToggle, result }: {
           <View style={styles.guidanceNumber}><Text style={styles.guidanceNumberText}>{step.sequence_order}</Text></View>
           <Text style={[styles.bodyText, { flex: 1 }]}>{step.instruction}</Text>
         </View>)}</>}
-      {suggestion && <View style={styles.suggestion}><Text style={styles.findingTitle}>{suggestion.exercise_name}</Text>
-        <Text style={styles.findingSub}>{suggestion.prescription}</Text>
-        <Text style={styles.suggestionStatus}>{suggestion.applied_at ? '루틴에 반영됨' : '루틴 연결 준비 중'}</Text>
-      </View>}
     </View>}
   </View>;
 }
@@ -95,7 +69,8 @@ export default function PostureResultScreen() {
     if (!jobId) { setLoading(false); setError('분석 작업을 선택해 주세요.'); return () => { active = false; }; }
     void getPostureResult(jobId).then((next) => {
       if (!active) return;
-      setResult(next); setSelectedId(next.repetitions.at(-1)?.posture_repetition_id ?? null);
+      // The lowest-scoring rep shows first: it is the one worth looking at.
+      setResult(next); setSelectedId([...next.repetitions].sort((a, b) => a.score - b.score)[0]?.posture_repetition_id ?? null);
       setError(null); setLoading(false);
     }).catch(() => { if (active) { setError('분석 결과를 불러오지 못했습니다.'); setLoading(false); } });
     return () => { active = false; };
@@ -117,19 +92,17 @@ export default function PostureResultScreen() {
           <Text style={styles.summary}>{result.assessment.summary}</Text>
           <View style={styles.chips}><Text style={styles.chip}>{date}</Text><Text style={styles.chip}>옆에서 {Math.round((result.job.capture_duration_ms ?? 0) / 1000)}초</Text><Text style={styles.chip}>{result.assessment.repetition_count}회 인식</Text></View>
         </View>
-        <Text style={styles.sectionTitle}>{selected ? `${selected.repetition_number}회째 자세` : '회차별 자세'}</Text>
-        <Skeleton points={selected?.keypoints ?? []} />
-        {selected && selected.angles.length > 0 && <View style={styles.angleRow}>{selected.angles.map((angle) => <View style={styles.angleChip} key={angle.angle_code}><Text style={styles.angleText}>{angleNames[angle.angle_code] ?? angle.angle_code} {Number(angle.measured_degrees)}°</Text>{(angle.target_min_degrees != null || angle.target_max_degrees != null) && <Text style={styles.angleTarget}>목표 {angle.target_min_degrees != null ? `${Number(angle.target_min_degrees)}°` : ''}{angle.target_min_degrees != null && angle.target_max_degrees != null ? '~' : ''}{angle.target_max_degrees != null ? `${Number(angle.target_max_degrees)}°` : ''}</Text>}</View>)}</View>}
+        <Text style={styles.sectionTitle}>회차별 자세</Text>
         <View style={styles.repRow}>{result.repetitions.map((rep) => <Pressable key={rep.posture_repetition_id} onPress={() => setSelectedId(rep.posture_repetition_id)} accessibilityRole="button" accessibilityState={{ selected: selected?.posture_repetition_id === rep.posture_repetition_id }} style={[styles.repButton, selected?.posture_repetition_id === rep.posture_repetition_id && styles.repSelected]}><Text style={[styles.repText, selected?.posture_repetition_id === rep.posture_repetition_id && styles.repSelectedText]}>{rep.repetition_number}회</Text></Pressable>)}</View>
+        {selected && selected.angles.length > 0 && <AngleCard rep={selected} />}
         <View style={styles.chartCard}><View style={styles.chartHeading}><Text style={styles.findingTitle}>회차별 점수</Text><Text style={styles.findingSub}>점수가 낮은 회차를 확인해요</Text></View>
           <View style={styles.chart}>{result.repetitions.map((rep) => <View style={styles.barColumn} key={rep.posture_repetition_id}><View style={[styles.bar, { height: `${Math.max(8, rep.score)}%`, backgroundColor: result.assessment.passing_score != null && rep.score < result.assessment.passing_score ? '#B56C00' : '#222027' }]}><Text style={styles.barText}>{rep.score}</Text></View><Text style={styles.barLabel}>{rep.repetition_number}회</Text></View>)}</View>
           {result.assessment.passing_score != null && <Text style={styles.threshold}>기준 {result.assessment.passing_score}점</Text>}
         </View>
-        {corrections.length > 0 && <><Text style={styles.sectionTitle}>고칠 점 {corrections.length}</Text>{corrections.map((finding) => <FindingCard key={finding.posture_finding_id} finding={finding} expanded={expandedIds.includes(finding.posture_finding_id)} onToggle={() => toggle(finding.posture_finding_id)} result={result} />)}</>}
+        {corrections.length > 0 && <><Text style={styles.sectionTitle}>고칠 점 {corrections.length}</Text>{corrections.map((finding) => <FindingCard key={finding.posture_finding_id} finding={finding} expanded={expandedIds.includes(finding.posture_finding_id)} onToggle={() => toggle(finding.posture_finding_id)} />)}</>}
         {positives.length > 0 && <View style={styles.positiveCard}><Text style={styles.findingTitle}>잘한 점</Text>{positives.map((finding) => <View key={finding.posture_finding_id} style={styles.positiveRow}><CheckIcon color={colors.success} height={16} width={16} style={styles.positiveIcon} /><Text style={styles.positiveText}>{finding.title}</Text></View>)}</View>}
-        {result.routine_suggestions.filter((item) => !item.posture_finding_id).map((item) => <View key={item.posture_routine_suggestion_id} style={styles.findingCard}><Text style={styles.findingTitle}>{item.exercise_name}</Text><Text style={styles.bodyText}>{item.prescription}</Text><Text style={styles.suggestionStatus}>{item.applied_at ? '루틴에 반영됨' : '루틴 연결 준비 중'}</Text></View>)}
-        <Text style={styles.privacy}>임시 영상의 삭제 처리가 기록됐어요. 관절 위치와 결과만 저장됩니다.</Text>
-        <View style={styles.actions}><Pressable onPress={() => router.replace('/exercise/posture-capture')} style={styles.secondaryButton}><Text style={styles.buttonText}>다시 찍기</Text></Pressable><Pressable onPress={() => router.back()} style={styles.primaryButton}><Text style={styles.primaryText}>운동으로 돌아가기</Text></Pressable></View>
+        <Text style={styles.privacy}>카메라 한 대로 본 결과라 참고용이에요. 영상은 분석 뒤 서버에서 지웠고, 관절 위치와 결과만 남아요.</Text>
+        <View style={styles.actions}><Pressable accessibilityRole="button" onPress={() => router.replace({ pathname: '/exercise/posture-capture', params: { exerciseCode: result.job.exercise_code, cameraView: result.job.camera_view } })} style={styles.secondaryButton}><Text style={styles.buttonText}>다시 찍기</Text></Pressable><Pressable accessibilityRole="button" onPress={() => router.back()} style={styles.primaryButton}><Text style={styles.primaryText}>완료</Text></Pressable></View>
       </>}
     </ScrollView>
   </View>;
@@ -145,6 +118,12 @@ function createStyles({ colors }: AppTheme) {
     sectionTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, marginTop: 25, marginBottom: 11 },
     skeletonBox: { height: 202, backgroundColor: '#1B1E21', borderRadius: 16, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }, skeletonFloor: { position: 'absolute', bottom: 13, width: '100%', height: 2, backgroundColor: '#4D5255' }, noPoints: { color: '#FFFFFF', fontSize: 12 },
     angleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 }, angleChip: { borderRadius: 12, paddingHorizontal: 9, paddingVertical: 5, backgroundColor: colors.successLight }, angleText: { color: '#16885A', fontSize: 12 }, angleTarget: { color: colors.success, fontSize: 12, marginTop: 2 },
+    angleCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, backgroundColor: colors.surface, paddingHorizontal: 16, paddingTop: 14, paddingBottom: 4, marginTop: 12 },
+    angleCaption: { color: colors.textSecondary, fontSize: 13 },
+    angleLine: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12 }, angleDivider: { borderTopWidth: 1, borderTopColor: colors.border },
+    angleLabel: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, angleTargetText: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
+    angleValues: { alignItems: 'flex-end' }, angleValue: { color: colors.textPrimary, fontSize: 18, fontFamily: fontFamilies.pretendardBold },
+    angleStatus: { color: colors.textSecondary, fontSize: 12, marginTop: 2 }, angleOff: { color: colors.warning, fontFamily: fontFamilies.pretendardMedium },
     repRow: { flexDirection: 'row', gap: 6, marginTop: 12 }, repButton: { flex: 1, minHeight: 39, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 20, alignItems: 'center', justifyContent: 'center' }, repSelected: { backgroundColor: colors.primaryLight, borderColor: colors.primary }, repText: { color: colors.textPrimary, fontSize: 12 }, repSelectedText: { color: colors.primaryText, fontFamily: fontFamilies.pretendardBold },
     chartCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16, marginTop: 19, backgroundColor: colors.surface }, chartHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     chart: { height: 145, flexDirection: 'row', gap: 10, alignItems: 'flex-end', justifyContent: 'center', marginTop: 19 }, barColumn: { flex: 1, height: 140, alignItems: 'center', justifyContent: 'flex-end' }, bar: { width: '60%', minWidth: 25, borderRadius: 8, alignItems: 'center', justifyContent: 'flex-start', paddingTop: 5 }, barText: { color: '#FFFFFF', fontSize: 12 }, barLabel: { fontSize: 12, color: colors.textSecondary, marginTop: 5 }, threshold: { color: colors.textSecondary, fontSize: 12, textAlign: 'right', marginTop: 7 },

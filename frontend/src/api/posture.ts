@@ -1,11 +1,25 @@
+import { Platform } from 'react-native';
 import { apiRequest } from './client';
+
+export type PostureCapability = {
+  exercise_code: string;
+  display_name_ko: string;
+  camera_view: 'side' | 'front';
+  movement_type: string;
+  analysis_side_required: boolean;
+  validation_status: 'validated' | 'experimental';
+  rule_version: string;
+  catalog_exercise_keys: string[];
+  capture_instructions: string[];
+  limitations: string[];
+};
 
 export type PostureJob = {
   posture_analysis_job_id: string;
-  exercise_code: 'squat';
-  camera_view: 'side';
+  exercise_code: string;
+  camera_view: 'side' | 'front';
   status: 'awaiting_upload' | 'processing' | 'cleanup_pending' | 'completed' | 'failed';
-  analysis_stage: 'waiting' | 'joint_detection' | 'posture_scoring' | 'result_summary' | 'complete' | 'failed';
+  analysis_stage: string;
   progress_percent: number;
   processed_frames: number;
   total_frames: number | null;
@@ -68,7 +82,9 @@ export type PostureResult = {
   job: PostureJob;
   assessment: {
     posture_assessment_id: string;
+    schema_version: string;
     model_version: string;
+    verdict: 'within_current_rules' | 'needs_correction';
     overall_score: number;
     passing_score: number | null;
     repetition_count: number;
@@ -79,6 +95,37 @@ export type PostureResult = {
   findings: PostureFinding[];
   routine_suggestions: PostureSuggestion[];
 };
+
+export function getPostureCapabilities() {
+  return apiRequest<{ schema_version: string; exercises: PostureCapability[] }>('/api/posture/capabilities');
+}
+
+export function createPostureJob(profile: PostureCapability, analysisSide: 'left' | 'right' | null = null) {
+  return apiRequest<{ posture_analysis_job_id: string; status: string }>('/api/posture/jobs', {
+    method: 'POST',
+    body: JSON.stringify({
+      exercise_key: profile.catalog_exercise_keys[0],
+      exercise_code: profile.exercise_code,
+      camera_view: profile.camera_view,
+      analysis_side: profile.analysis_side_required ? analysisSide : null,
+    }),
+  });
+}
+
+export type PostureVideo = { uri: string; mimeType: string; name: string };
+
+// Waits for the server's analysis and cleanup too, so it can take a while.
+export async function uploadPostureVideo(jobId: string, video: PostureVideo) {
+  const formData = new FormData();
+  if (Platform.OS === 'web') {
+    formData.append('video', await (await fetch(video.uri)).blob(), video.name);
+  } else {
+    formData.append('video', { name: video.name, type: video.mimeType, uri: video.uri } as unknown as Blob);
+  }
+  return apiRequest<{ posture_analysis_job_id: string; status: string }>(
+    `/api/posture/jobs/${encodeURIComponent(jobId)}/video`, { method: 'POST', body: formData },
+  );
+}
 
 export function getPostureJob(jobId: string) {
   return apiRequest<PostureJob>(`/api/posture/jobs/${encodeURIComponent(jobId)}`);
