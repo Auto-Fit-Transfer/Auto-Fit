@@ -19,7 +19,7 @@ import UploadIcon from '@/assets/icons/ui/upload-simple.svg';
 import XIcon from '@/assets/icons/ui/x.svg';
 import { Text } from '@/src/components/common';
 import { POSTURE_MAX_BYTES, postureVideoProblem, postureVideoType } from '@/src/features/exercise/postureFlow';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const RECORD_SECONDS = 10;
 const MAX_VIDEO_BYTES = POSTURE_MAX_BYTES;

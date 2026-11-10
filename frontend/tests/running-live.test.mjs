@@ -30,6 +30,8 @@ test('the live map page encodes the key and holds no position of its own', () =>
   assert.match(html, /appkey=a%26b%20key&autoload=false/);
   assert.match(html, /window\.__autofitUpdate=/);
   assert.doesNotMatch(html, /127\.07/);
+  // A map laid out with no width reports an error, so the screen falls back instead of staying blank.
+  assert.match(html, /offsetWidth<10\|\|box\.offsetHeight<10\)\{send\('error'\)/);
 });
 
 test('each GPS state has its own notice', () => {

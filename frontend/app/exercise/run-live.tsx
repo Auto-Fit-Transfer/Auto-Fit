@@ -130,7 +130,8 @@ function createStyles({ colors }: AppTheme) {
     metric: { color: colors.textPrimary, fontSize: 22, fontFamily: fontFamilies.pretendardBold, textAlign: 'center' },
     metricLabel: { color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginTop: 4 },
     routeCard: { borderColor: colors.border, borderWidth: 1, backgroundColor: colors.surface, borderRadius: 16, padding: 16, gap: 10, overflow: 'hidden' },
-    map: { borderRadius: 12, overflow: 'hidden', backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
+    // No alignItems here: the WebView's own wrapper is flex: 1, and centring it collapses its width to 0.
+    map: { borderRadius: 12, overflow: 'hidden', backgroundColor: colors.background },
     mapLoading: { ...StyleSheet.absoluteFill, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', gap: 8 },
     mapLoadingText: { color: colors.textSecondary, fontSize: 14 },
     mapFailed: { position: 'absolute', left: 10, right: 10, bottom: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingLeft: 12, paddingRight: 6, paddingVertical: 6 },

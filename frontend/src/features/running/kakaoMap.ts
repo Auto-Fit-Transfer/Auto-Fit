@@ -104,6 +104,7 @@ path:new kakao.maps.Polyline({strokeWeight:5,strokeColor:'${lineColor}',strokeOp
 circle:new kakao.maps.Circle({radius:10,strokeWeight:0,fillColor:'${currentColor}',fillOpacity:0.12}),
 start:overlay('start',2),finish:overlay('finish',2),current:overlay('current',3)};
 window.addEventListener('resize',function(){map.relayout();if(pending)draw()});
+var box=document.getElementById('map');if(box.offsetWidth<10||box.offsetHeight<10){send('error');return}
 send('ready');
 if(pending)draw();
 }catch(e){send('error')}})}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { File, Paths } from 'expo-file-system';
 import { ActivityIndicator, Platform, Pressable, ScrollView, View } from 'react-native';
@@ -55,8 +55,9 @@ export default function PostureProcessingScreen() {
   const jobRef = useRef<string | null>(params.jobId ?? null);
   const aliveRef = useRef(true);
   const runningRef = useRef(false);
-  const video: PostureVideo | null = params.videoUri && params.mimeType && params.name
-    ? { uri: params.videoUri, mimeType: params.mimeType, name: params.name } : null;
+  const video = useMemo<PostureVideo | null>(() => (params.videoUri && params.mimeType && params.name
+    ? { uri: params.videoUri, mimeType: params.mimeType, name: params.name } : null), [params.videoUri, params.mimeType, params.name]);
+  const nothingToDo = !video && !params.jobId;
   const seconds = Math.round(Number(params.durationMs) / 1000);
 
   const showResult = useCallback((jobId: string) => {
@@ -84,7 +85,6 @@ export default function PostureProcessingScreen() {
   const run = useCallback(async () => {
     if (runningRef.current || !video) return;
     runningRef.current = true;
-    setError(''); setNext(null); setStep(0);
     let jobId = jobRef.current;
     try {
       if (!jobId) {
@@ -116,9 +116,13 @@ export default function PostureProcessingScreen() {
 
   useEffect(() => {
     aliveRef.current = true;
-    if (video) void run();
-    else if (params.jobId) void follow(params.jobId, false);
-    else setError('분석할 영상이 없어요. 다시 찍어 주세요.');
+    // Every state change in run/follow comes after a network reply, never during this effect.
+    const start = async () => {
+      await Promise.resolve();
+      if (video) await run();
+      else if (params.jobId) await follow(params.jobId, false);
+    };
+    void start();
     return () => {
       aliveRef.current = false;
       deleteLocalVideo(params.videoUri);
@@ -127,21 +131,23 @@ export default function PostureProcessingScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const retry = () => { setError(''); setNext(null); setStep(0); void run(); };
+  const shownError = error || (nothingToDo ? '분석할 영상이 없어요. 다시 찍어 주세요.' : '');
   const again = () => router.replace({ pathname: '/exercise/posture-capture', params: { exerciseCode: params.exerciseCode ?? '', cameraView: params.cameraView ?? '' } });
 
   return (
     <View style={styles.screen}>
       <ScreenHeader onBack={() => router.back()} title="자세 분석 중" />
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
-        <Text style={styles.heading}>{error ? '분석을 마치지 못했어요' : '자세를 분석하고 있어요'}</Text>
+        <Text style={styles.heading}>{shownError ? '분석을 마치지 못했어요' : '자세를 분석하고 있어요'}</Text>
         <View style={styles.metaRow}>
           <Text style={styles.meta}>{params.label || '스쿼트 · 옆에서'}{seconds > 0 ? ` · ${seconds}초 영상` : ''}</Text>
-          {!error ? <Text style={styles.metaStrong}>보통 10초 안에 끝나요</Text> : null}
+          {!shownError ? <Text style={styles.metaStrong}>보통 10초 안에 끝나요</Text> : null}
         </View>
         <View style={styles.stepCard}>
           {steps.map((item, index) => {
             const done = index < step;
-            const active = !error && index === step;
+            const active = !shownError && index === step;
             return <View key={item.title} style={[styles.step, index > 0 && styles.stepBorder]}>
               <View style={[styles.stepIcon, done && styles.stepDone]}>
                 {done ? <CheckIcon color={colors.success} height={14} width={14} />
@@ -155,10 +161,10 @@ export default function PostureProcessingScreen() {
             </View>;
           })}
         </View>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {shownError ? <Text style={styles.error}>{shownError}</Text> : null}
         <View style={styles.noteRow}><LockIcon color={colors.textSecondary} height={14} width={14} /><Text style={styles.note}>분석이 끝나면 영상은 바로 지우고, 관절 위치와 결과만 남겨요.</Text></View>
-        {next === 'retry' ? <Pressable accessibilityRole="button" onPress={() => void run()} style={styles.primary}><Text style={styles.primaryText}>다시 보내기</Text></Pressable> : null}
-        {next ? <Pressable accessibilityRole="button" onPress={again} style={styles.secondary}><Text style={styles.secondaryText}>다시 찍기</Text></Pressable> : null}
+        {next === 'retry' ? <Pressable accessibilityRole="button" onPress={retry} style={styles.primary}><Text style={styles.primaryText}>다시 보내기</Text></Pressable> : null}
+        {next || nothingToDo ? <Pressable accessibilityRole="button" onPress={again} style={styles.secondary}><Text style={styles.secondaryText}>다시 찍기</Text></Pressable> : null}
       </ScrollView>
     </View>
   );
