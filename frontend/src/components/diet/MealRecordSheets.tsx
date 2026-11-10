@@ -35,6 +35,9 @@ import PencilIcon from '@/assets/icons/feature/Pencil_Line.svg';
 import SearchIcon from '@/assets/icons/input/MagnifyingGlass.svg';
 import { AppBottomSheet, CustomScrollIndicator, noWebFocusRing, useCustomScrollIndicator, Text as SharedText, TextInput } from '@/src/components/common';
 import { amountFromInput, scaleFromSource, type AmountScale } from '@/src/features/diet/foodAmount';
+import { foodShotErrorText, foodShotFoods, hasMissingNutrition, needsRecalculation, withRecalculated } from '@/src/features/diet/foodShot';
+import { analyzeFoodShot, recalculateFoodShot } from '@/src/api/diet';
+import { ApiError } from '@/src/api/client';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 function Text(props: TextProps) {
@@ -847,6 +850,9 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
   const [addSelection, setAddSelection] = useState<FoodSelection | null>(null);
   const [addFoodDraft, setAddFoodDraft] = useState<RecordedFood | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  // Why the photo was not turned into foods; null when the user chose to search by name.
+  const [failReason, setFailReason] = useState<string | null>(null);
   const [isNutritionEditing, setIsNutritionEditing] = useState(false);
   const [nutritionContentOffset] = useState(() => new Animated.Value(0));
   const nutritionMacroRowRef = useRef<View>(null);
@@ -941,6 +947,8 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
       setAddSelection(null);
       setAddFoodDraft(null);
       setIsSaving(false);
+      setIsAnalyzing(false);
+      setFailReason(null);
       setIsNutritionEditing(false);
       isNutritionEditingRef.current = false;
       applyNutritionEditsRef.current = null;
@@ -997,11 +1005,43 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
               }
             : current,
         );
-        setView('recognition_failed');
       }
     } catch (error) {
       logError('푸드샷 이미지 선택 실패', error);
       Alert.alert('사진을 불러오지 못했어요', '잠시 후 다시 시도해 주세요.');
+    }
+  };
+
+  const analyzePhoto = async () => {
+    if (!draft?.photoUri || isAnalyzing) return;
+    setIsAnalyzing(true);
+    try {
+      const result = await analyzeFoodShot({ uri: draft.photoUri, fileName: draft.photoFileName, mimeType: draft.photoMimeType });
+      const foods = foodShotFoods(result, `shot-${Date.now()}`);
+      if (!foods.length) {
+        setFailReason(result.message || '사진에서 음식을 찾지 못했어요. 음식 이름으로 찾아 기록할 수 있어요.');
+        setView('recognition_failed');
+        return;
+      }
+      setDraft((current) => (current ? { ...current, foods } : current));
+      setView('review');
+    } catch (error) {
+      logError('푸드샷 분석 실패', error);
+      setFailReason(error instanceof ApiError ? foodShotErrorText(error.status, error.detail) : foodShotErrorText(0, null));
+      setView('recognition_failed');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // A food with no nutrition gets it from the official catalog by name and grams (free, no AI).
+  const fillNutrition = async (food: RecordedFood): Promise<RecordedFood> => {
+    if (!needsRecalculation(food)) return food;
+    try {
+      return withRecalculated(food, await recalculateFoodShot([{ name: food.name.trim(), amount_g: food.amount }]));
+    } catch (error) {
+      logError('푸드샷 영양 재계산 실패', error);
+      return food;
     }
   };
 
@@ -1014,11 +1054,12 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
     setView('edit');
   };
 
-  const saveEditedFood = () => {
+  const saveEditedFood = async () => {
     if (!editingFoodId || !editFood) return;
-    const foodToSave = applyPendingNutritionEdits(editFood);
-    if (!foodToSave) return;
+    const edited = applyPendingNutritionEdits(editFood);
+    if (!edited) return;
     Keyboard.dismiss();
+    const foodToSave = await fillNutrition(edited);
     setDraft((current) =>
       current
         ? { ...current, foods: current.foods.map((food) => (food.id === editingFoodId ? { ...foodToSave } : food)) }
@@ -1069,11 +1110,12 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
     );
   };
 
-  const addFood = () => {
+  const addFood = async () => {
     if (!addFoodDraft || addFoodDraft.amount <= 0) return;
-    const foodToAdd = applyPendingNutritionEdits(addFoodDraft);
-    if (!foodToAdd) return;
+    const picked = applyPendingNutritionEdits(addFoodDraft);
+    if (!picked) return;
     Keyboard.dismiss();
+    const foodToAdd = await fillNutrition(picked);
     setDraft((current) => (current ? { ...current, foods: [...current.foods, { ...foodToAdd }] } : current));
     setView('review');
   };
@@ -1127,13 +1169,18 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
           <OutlineAction icon={<CameraIcon color={colors.textPrimary} fill={colors.primary} height={24} width={24} />} label="사진 촬영하기" onPress={() => void selectPhoto('camera')} />
           <OutlineAction icon={<GalleryIcon color={colors.textPrimary} fill={colors.primary} height={24} width={24} />} label="갤러리에서 선택하기" onPress={() => void selectPhoto('gallery')} />
           {draft?.photoUri ? (
-            <PrimaryButton onPress={() => setView('recognition_failed')}>
-              <View style={styles.analyzeButtonContent}>
-                <Text maxFontSizeMultiplier={1} style={styles.primaryButtonText}>음식 직접 찾기</Text>
-                <View style={styles.ctaArrowCircle}><ArrowRightIcon color={colors.textPrimary} height={16} width={16} /></View>
-              </View>
-            </PrimaryButton>
-          ) : <PrimaryButton onPress={() => setView('recognition_failed')}>사진 없이 음식 입력하기</PrimaryButton>}
+            <>
+              <PrimaryButton disabled={isAnalyzing} onPress={() => void analyzePhoto()}>
+                <View style={styles.analyzeButtonContent}>
+                  <Text maxFontSizeMultiplier={1} style={styles.primaryButtonText}>{isAnalyzing ? '사진을 분석하고 있어요…' : '사진 분석하기'}</Text>
+                  {isAnalyzing ? null : <View style={styles.ctaArrowCircle}><ArrowRightIcon color={colors.textPrimary} height={16} width={16} /></View>}
+                </View>
+              </PrimaryButton>
+              <Pressable accessibilityRole="button" disabled={isAnalyzing} onPress={() => { setFailReason(null); setView('recognition_failed'); }} style={styles.manualLink}>
+                <Text style={styles.manualLinkText}>음식 이름으로 직접 찾기</Text>
+              </Pressable>
+            </>
+          ) : <PrimaryButton onPress={() => { setFailReason(null); setView('recognition_failed'); }}>사진 없이 음식 입력하기</PrimaryButton>}
         </View>
       </View>
     </View>
@@ -1143,7 +1190,7 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
     <View style={styles.r6Fallback}>
       <View style={styles.r6FallbackIcon}><GalleryIcon color="#7D8087" height={26} width={26} /></View>
       <Text style={styles.r6FallbackTitle}>음식을 직접 찾아주세요</Text>
-      <Text style={styles.r6FallbackDescription}>사진 자동 분석은 아직 준비 중이에요. 음식 이름을 검색해 기록할 수 있어요.</Text>
+      <Text style={styles.r6FallbackDescription}>{failReason ?? '음식 이름을 검색해 기록할 수 있어요.'}</Text>
       <FoodSearch
         onSelect={(selection) => { chooseAddFood(selection); setView('add'); }}
         searchText={searchText}
@@ -1168,6 +1215,8 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
     fat: draft?.foods.every((food) => food.fat !== undefined) ? draft.foods.reduce((sum, food) => sum + (food.fat ?? 0), 0) : undefined,
   }), [draft]);
 
+  const missingNutrition = hasMissingNutrition(draft?.foods ?? []);
+
   const renderReview = () => (
     <View style={styles.reviewContent}>
       <View style={styles.reviewFoodGroup}>
@@ -1178,9 +1227,11 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
       <View style={styles.totalNutritionSection}>
         <Text style={styles.screenTitle}>영양 정보</Text>
         <NutritionPanel food={aggregateFood} />
+        {/* An incomplete total must not be saved as a finished meal (contract). */}
+        {missingNutrition ? <Text style={styles.missingNote}>영양 정보가 없는 음식이 있어요. 음식을 눌러 양이나 이름을 고쳐 주세요.</Text> : null}
       </View>
       <View style={styles.reviewCta}>
-        <PrimaryButton disabled={isSaving || !draft?.foods.length} onPress={() => void handleSaveFoodShotMeal()}>
+        <PrimaryButton disabled={isSaving || !draft?.foods.length || missingNutrition} onPress={() => void handleSaveFoodShotMeal()}>
           {isSaving ? '기록 중…' : '이대로 기록하기'}
         </PrimaryButton>
       </View>
@@ -1381,6 +1432,9 @@ function createStyles({ colors }: AppTheme) {
     r6FallbackIcon: { height: 38, width: 38, borderRadius: 12, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
     r6FallbackTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, marginBottom: 6 },
     r6FallbackDescription: { color: colors.textSecondary, fontSize: 14, lineHeight: 19, marginBottom: 18 },
+    manualLink: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+    manualLinkText: { color: colors.textSecondary, fontSize: 14, textDecorationLine: 'underline' },
+    missingNote: { color: colors.textSecondary, fontSize: 13, lineHeight: 18, marginTop: 8 },
     r6FallbackLabel: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, marginTop: 20, marginBottom: 10 },
     r6FallbackChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
     r6FallbackChip: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 11, paddingVertical: 7, backgroundColor: colors.surface },

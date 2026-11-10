@@ -1,6 +1,8 @@
 import { ApiError, apiRequest, getApiErrorMessage } from '@/src/api/client';
 import { Platform } from 'react-native';
+import { File } from 'expo-file-system';
 
+import type { FoodShotResponse } from '@/src/features/diet/foodShot';
 import { weeklyDietErrorMessage } from '@/src/features/diet/weeklyDietErrors';
 
 type ApiObject = Record<string, unknown>;
@@ -108,6 +110,25 @@ export async function uploadDietMealPhoto(
       method: 'POST',
     },
   );
+}
+
+// Paid on the server (OpenAI Vision) per call, so the app runs it only on the user's tap and never retries.
+export async function analyzeFoodShot(photo: DietMealPhotoInput) {
+  const { fileName } = getMealPhotoUploadMetadata(photo);
+  const formData = new FormData();
+  if (Platform.OS === 'web') {
+    const response = await fetch(photo.uri);
+    if (!response.ok) throw new Error('선택한 사진을 불러오지 못했어요.');
+    formData.append('file', await response.blob(), fileName);
+  } else {
+    formData.append('file', new File(photo.uri), fileName);
+  }
+  return apiRequest<FoodShotResponse>('/api/diet/food-shots/analyze', { body: formData, method: 'POST' });
+}
+
+// Official catalog lookup only (no AI), for foods the user named or weighed.
+export function recalculateFoodShot(items: { name: string; amount_g: number; matched_food_code?: string }[]) {
+  return apiRequest<FoodShotResponse>('/api/diet/food-shots/recalculate', { body: JSON.stringify({ items }), method: 'POST' });
 }
 
 export function getLatestDietRecommendations() {
