@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { File } from 'expo-file-system';
 import { apiRequest } from './client';
 
 export type PostureCapability = {
@@ -120,7 +121,8 @@ export async function uploadPostureVideo(jobId: string, video: PostureVideo) {
   if (Platform.OS === 'web') {
     formData.append('video', await (await fetch(video.uri)).blob(), video.name);
   } else {
-    formData.append('video', { name: video.name, type: video.mimeType, uri: video.uri } as unknown as Blob);
+    // The app's other uploads send a real file like this; its type comes from the extension (.mov is video/quicktime).
+    formData.append('video', new File(video.uri), video.name);
   }
   return apiRequest<{ posture_analysis_job_id: string; status: string }>(
     `/api/posture/jobs/${encodeURIComponent(jobId)}/video`, { method: 'POST', body: formData },
