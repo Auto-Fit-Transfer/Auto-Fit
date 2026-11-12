@@ -1,5 +1,7 @@
 import asyncio
 import sys
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from app.schemas.running import (
     GeoCoordinate,
@@ -145,6 +147,50 @@ def make_geometry() -> DurunubiGeometry:
     )
 
 
+def make_durunubi_settings(
+    *,
+    durunubi_api_key: str | None,
+    public_data_service_key: str | None,
+) -> SimpleNamespace:
+    return SimpleNamespace(
+        durunubi_api_key=durunubi_api_key,
+        public_data_service_key=public_data_service_key,
+        running_public_data_timeout_seconds=30.0,
+        running_durunubi_cache_ttl_seconds=21600.0,
+        running_gpx_max_bytes=5_000_000,
+        running_gpx_max_points=2000,
+    )
+
+
+def test_durunubi_service_key_precedence() -> None:
+    dedicated_settings = make_durunubi_settings(
+        durunubi_api_key="durunubi-key",
+        public_data_service_key="shared-key",
+    )
+    with patch(
+        "app.services.durunubi_course_service.get_settings",
+        return_value=dedicated_settings,
+    ):
+        dedicated_service = DurunubiCourseService()
+        assert dedicated_service.service_key == "durunubi-key"
+
+        explicit_service = DurunubiCourseService(
+            service_key="explicit-key"
+        )
+        assert explicit_service.service_key == "explicit-key"
+
+    fallback_settings = make_durunubi_settings(
+        durunubi_api_key=None,
+        public_data_service_key="shared-key",
+    )
+    with patch(
+        "app.services.durunubi_course_service.get_settings",
+        return_value=fallback_settings,
+    ):
+        fallback_service = DurunubiCourseService()
+        assert fallback_service.service_key == "shared-key"
+
+
 async def run_async_tests() -> None:
     public_course = make_public_course()
     durunubi_course = make_durunubi_course()
@@ -210,6 +256,7 @@ async def run_async_tests() -> None:
 
 
 def main() -> None:
+    test_durunubi_service_key_precedence()
     items, total_count = DurunubiCourseService.parse_course_page_payload(
         {
             "response": {

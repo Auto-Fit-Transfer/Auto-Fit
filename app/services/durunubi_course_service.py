@@ -79,7 +79,10 @@ class DurunubiCourseService:
         self.service_key = (
             service_key
             if service_key is not None
-            else settings.public_data_service_key
+            else (
+                settings.durunubi_api_key
+                or settings.public_data_service_key
+            )
         )
         self.timeout_seconds = (
             timeout_seconds
@@ -123,7 +126,8 @@ class DurunubiCourseService:
     def _service_key(self) -> str:
         if not self.service_key or not self.service_key.strip():
             raise DurunubiConfigurationError(
-                "PUBLIC_DATA_SERVICE_KEY is not configured."
+                "DURUNUBI_API_KEY or PUBLIC_DATA_SERVICE_KEY "
+                "is not configured."
             )
         return self.service_key.strip()
 

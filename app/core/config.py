@@ -158,6 +158,10 @@ class Settings(BaseSettings):
     # 공공기관 음식 API
     public_data_service_key: str | None = None
 
+    # 한국관광공사 두루누비 API
+    # 미설정 시 기존 PUBLIC_DATA_SERVICE_KEY를 호환용으로 사용한다.
+    durunubi_api_key: str | None = None
+
     # 식품나라 조리식품 레시피 DB
     food_safety_recipe_api_key: str | None = None
 

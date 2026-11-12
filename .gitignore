@@ -11,6 +11,7 @@ app/models/**/*.task
 data/chroma
 data/rag_sources/
 data/rag_temp/
+data/external_source_data/
 food_image_server/.venv/
 food_image_server/.env
 food_image_server/models/
