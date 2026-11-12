@@ -1,0 +1,210 @@
+{
+  "description": "Backend가 전달한 합성 자세 분석 출력 예제이며 실제 사용자 또는 실제 분석값이 아닙니다.",
+  "capabilities": {
+    "schema_version": "1.0",
+    "exercises": [
+      {
+        "exercise_code": "squat",
+        "display_name_ko": "스쿼트",
+        "camera_view": "side",
+        "movement_type": "repetition",
+        "analysis_side_required": false,
+        "validation_status": "validated",
+        "rule_version": "squat-side-rules-v2",
+        "catalog_exercise_keys": ["ex_96dcb551b33a8e", "ex_3fb808cb84e33d"],
+        "capture_instructions": ["전신과 양발이 모두 보이도록 측면에서 촬영하세요."],
+        "limitations": ["무릎의 정면 외반과 발 압력은 판단하지 않습니다."]
+      },
+      {
+        "exercise_code": "push_up",
+        "display_name_ko": "푸시업",
+        "camera_view": "side",
+        "movement_type": "repetition",
+        "analysis_side_required": false,
+        "validation_status": "experimental",
+        "rule_version": "push-up-side-rules-v1",
+        "catalog_exercise_keys": ["ex_f6c866501f5ac0"],
+        "capture_instructions": ["머리부터 발목까지 보이도록 측면에서 촬영하세요."],
+        "limitations": ["팔꿈치 벌어짐과 손 간격은 판단하지 않습니다."]
+      },
+      {
+        "exercise_code": "glute_bridge",
+        "display_name_ko": "글루트 브리지",
+        "camera_view": "side",
+        "movement_type": "repetition",
+        "analysis_side_required": false,
+        "validation_status": "experimental",
+        "rule_version": "glute-bridge-side-rules-v1",
+        "catalog_exercise_keys": ["ex_1bb869dd7b0cc4"],
+        "capture_instructions": ["어깨부터 발목까지 보이도록 측면에서 촬영하세요."],
+        "limitations": ["골반의 좌우 회전과 허리 분절 움직임은 판단하지 않습니다."]
+      },
+      {
+        "exercise_code": "biceps_curl",
+        "display_name_ko": "덤벨 바이셉 컬",
+        "camera_view": "side",
+        "movement_type": "repetition",
+        "analysis_side_required": false,
+        "validation_status": "experimental",
+        "rule_version": "biceps-curl-side-rules-v1",
+        "catalog_exercise_keys": ["ex_a0b65fb7225b0a"],
+        "capture_instructions": ["분석할 팔이 보이도록 측면에서 촬영하세요."],
+        "limitations": ["덤벨 중량, 그립과 손목 회전은 판단하지 않습니다."]
+      },
+      {
+        "exercise_code": "calf_raise",
+        "display_name_ko": "벽 지지 카프 레이즈",
+        "camera_view": "side",
+        "movement_type": "repetition",
+        "analysis_side_required": false,
+        "validation_status": "experimental",
+        "rule_version": "calf-raise-side-rules-v1",
+        "catalog_exercise_keys": ["ex_4da43055d05edf"],
+        "capture_instructions": ["무릎·발목·발끝이 보이도록 측면에서 촬영하세요."],
+        "limitations": ["발 압력과 발목의 내번·외번은 판단하지 않습니다."]
+      },
+      {
+        "exercise_code": "lunge",
+        "display_name_ko": "런지",
+        "camera_view": "side",
+        "movement_type": "repetition",
+        "analysis_side_required": true,
+        "validation_status": "experimental",
+        "rule_version": "lunge-side-rules-v1",
+        "catalog_exercise_keys": ["ex_b34acd08bef11a"],
+        "capture_instructions": ["같은 방향의 런지를 측면에서 촬영하세요."],
+        "limitations": ["무릎 정면 외반은 판단하지 않습니다."]
+      },
+      {
+        "exercise_code": "split_squat",
+        "display_name_ko": "스플릿 스쿼트",
+        "camera_view": "side",
+        "movement_type": "repetition",
+        "analysis_side_required": true,
+        "validation_status": "experimental",
+        "rule_version": "split-squat-side-rules-v1",
+        "catalog_exercise_keys": ["ex_65d9303b043376"],
+        "capture_instructions": ["발 위치를 유지한 채 측면에서 촬영하세요."],
+        "limitations": ["실제 체중 분배는 판단하지 않습니다."]
+      },
+      {
+        "exercise_code": "jumping_jack",
+        "display_name_ko": "점핑 잭",
+        "camera_view": "front",
+        "movement_type": "repetition",
+        "analysis_side_required": false,
+        "validation_status": "experimental",
+        "rule_version": "jumping-jack-front-rules-v1",
+        "catalog_exercise_keys": ["ex_3ecaba64725e87"],
+        "capture_instructions": ["전신이 보이도록 정면에서 촬영하세요."],
+        "limitations": ["착지 충격과 발 압력은 판단하지 않습니다."]
+      },
+      {
+        "exercise_code": "shoulder_press",
+        "display_name_ko": "덤벨 숄더 프레스",
+        "camera_view": "front",
+        "movement_type": "repetition",
+        "analysis_side_required": false,
+        "validation_status": "experimental",
+        "rule_version": "shoulder-press-front-rules-v1",
+        "catalog_exercise_keys": ["ex_b81e8a03ab0cb0"],
+        "capture_instructions": ["양팔이 보이도록 정면에서 촬영하세요."],
+        "limitations": ["허리 과신전과 견갑 움직임은 판단하지 않습니다."]
+      },
+      {
+        "exercise_code": "lateral_raise",
+        "display_name_ko": "덤벨 레터럴 레이즈",
+        "camera_view": "front",
+        "movement_type": "repetition",
+        "analysis_side_required": false,
+        "validation_status": "experimental",
+        "rule_version": "lateral-raise-front-rules-v1",
+        "catalog_exercise_keys": ["ex_f830e9dd981059"],
+        "capture_instructions": ["양팔과 상체가 보이도록 정면에서 촬영하세요."],
+        "limitations": ["어깨 회전과 견갑 움직임은 판단하지 않습니다."]
+      }
+    ]
+  },
+  "progress": {
+    "posture_analysis_job_id": "00000000-0000-4000-8000-000000000001",
+    "analysis_stage": "joint_detection",
+    "progress_percent": 60,
+    "processed_frames": 180,
+    "total_frames": 300,
+    "detected_repetitions": 3
+  },
+  "result": {
+    "schema_version": "1.1",
+    "posture_analysis_job_id": "00000000-0000-4000-8000-000000000001",
+    "exercise_code": "squat",
+    "camera_view": "side",
+    "model_version": "mediapipe-pose-full-4eaa5eb7+squat-side-rules-v2",
+    "assessment": {
+      "overall_score": 82,
+      "passing_score": null,
+      "verdict": "needs_correction",
+      "repetition_count": 1,
+      "summary": "스쿼트 1회를 분석했습니다. 우선 확인할 교정 항목: 상체가 많이 숙여져요."
+    },
+    "repetitions": [
+      {
+        "repetition_number": 1,
+        "start_offset_ms": 1200,
+        "keyframe_offset_ms": 2300,
+        "end_offset_ms": 3400,
+        "score": 82,
+        "keypoints": [
+          {"joint_code": "head", "x_normalized": 0.50, "y_normalized": 0.18, "confidence": 0.98},
+          {"joint_code": "neck", "x_normalized": 0.49, "y_normalized": 0.27, "confidence": 0.98},
+          {"joint_code": "right_shoulder", "x_normalized": 0.47, "y_normalized": 0.32, "confidence": 0.97},
+          {"joint_code": "right_elbow", "x_normalized": 0.55, "y_normalized": 0.40, "confidence": 0.95},
+          {"joint_code": "right_wrist", "x_normalized": 0.63, "y_normalized": 0.43, "confidence": 0.93},
+          {"joint_code": "right_hip", "x_normalized": 0.42, "y_normalized": 0.52, "confidence": 0.96},
+          {"joint_code": "right_knee", "x_normalized": 0.57, "y_normalized": 0.68, "confidence": 0.96},
+          {"joint_code": "right_ankle", "x_normalized": 0.52, "y_normalized": 0.88, "confidence": 0.94},
+          {"joint_code": "right_heel", "x_normalized": 0.50, "y_normalized": 0.91, "confidence": 0.92},
+          {"joint_code": "right_foot_index", "x_normalized": 0.60, "y_normalized": 0.92, "confidence": 0.91}
+        ],
+        "angles": [
+          {
+            "angle_code": "torso_lean",
+            "measured_degrees": 52,
+            "target_min_degrees": null,
+            "target_max_degrees": 45
+          },
+          {
+            "angle_code": "knee_flexion",
+            "measured_degrees": 101,
+            "target_min_degrees": null,
+            "target_max_degrees": 100
+          }
+        ]
+      }
+    ],
+    "findings": [
+      {
+        "display_order": 1,
+        "finding_type": "correction",
+        "finding_code": "excessive_torso_lean",
+        "title": "상체가 많이 숙여져요",
+        "explanation": "허벅지 뒤가 뻣뻣하거나 발목이 덜 굽혀지면 상체가 숙여질 수 있어요.",
+        "repetition_start": 1,
+        "repetition_end": 1,
+        "guidance_steps": [
+          {"sequence_order": 1, "instruction": "가슴을 앞으로 펴고 시선을 앞 바닥에 두세요."}
+        ]
+      },
+      {
+        "display_order": 2,
+        "finding_type": "positive",
+        "finding_code": "stable_heel_contact",
+        "title": "발뒤꿈치가 끝까지 바닥에 붙어 있어요",
+        "explanation": "동작 중 발뒤꿈치 접촉이 유지됐어요.",
+        "repetition_start": 1,
+        "repetition_end": 1,
+        "guidance_steps": []
+      }
+    ],
+    "routine_suggestions": []
+  }
+}
