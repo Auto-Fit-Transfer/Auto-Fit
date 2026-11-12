@@ -6,9 +6,9 @@ import {
   getRunningApiErrorMessage, pauseRunningSession, resumeRunningSession,
   type RunningPlannedCourse, type RunningSession, type RunningTrackPoint,
 } from '@/src/api/running';
-import { appStateAction, INACTIVE_GRACE_MS } from './liveTracking';
+import { appStateAction, INACTIVE_GRACE_MS, readLiveLocation, type LiveLocation } from './liveTracking';
 
-export type LiveLocation = { latitude: number; longitude: number; accuracy: number | null };
+export type { LiveLocation } from './liveTracking';
 
 export function useRunningSession(sessionId: string) {
   const [session, setSession] = useState<RunningSession | null>(null);
@@ -47,9 +47,14 @@ export function useRunningSession(sessionId: string) {
   }, []);
 
   const showLocation = useCallback((location: Location.LocationObject | null) => {
-    if (!location || !mountedRef.current || location.timestamp < shownAtRef.current) return;
-    shownAtRef.current = location.timestamp;
-    setCurrentLocation({ latitude: location.coords.latitude, longitude: location.coords.longitude, accuracy: location.coords.accuracy });
+    if (!location || !mountedRef.current) return null;
+    const next = readLiveLocation(location.coords);
+    if (location.timestamp >= shownAtRef.current) {
+      shownAtRef.current = location.timestamp;
+      // Hide an invalid current fix without changing the server-approved track.
+      setCurrentLocation(next);
+    }
+    return next;
   }, []);
 
   const readPermission = useCallback((permission: Location.LocationPermissionResponse) => {
@@ -85,13 +90,14 @@ export function useRunningSession(sessionId: string) {
       const subscription = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.High, distanceInterval: 10, timeInterval: 3000 },
         (location) => {
-          showLocation(location);
+          const position = showLocation(location);
+          if (!position) return;
           queuedRef.current = queuedRef.current.then(async () => {
             if (sessionRef.current?.status !== 'in_progress' || trackingHaltedRef.current || !mountedRef.current) return;
             const response = await addRunningTrackPoint(sessionId, {
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-              accuracy_meters: location.coords.accuracy,
+              latitude: position.latitude,
+              longitude: position.longitude,
+              accuracy_meters: position.accuracy,
               elapsed_seconds: elapsedNow(),
             });
             applySession(response.session);

@@ -43,7 +43,7 @@ export default function RunResult() {
     <ScrollView contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 36 }]}>
       {sessionId && loading ? <ActivityIndicator color={colors.primaryText} /> : !sessionId ? <Text style={styles.error}>러닝 기록 ID가 없습니다.</Text> : error ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> :
         session?.status !== 'completed' ? <View style={styles.card}><Text style={styles.body}>아직 완료된 러닝이 아니에요.</Text></View> : <>
-          <View style={styles.hero}><Text style={styles.eyebrow}>오늘의 러닝 기록</Text><Text style={styles.distance}>{(Number(session.distance_meters) / 1000).toFixed(2)} km</Text><Text style={styles.caption}>GPS로 확인된 이동 거리</Text></View>
+          <View style={styles.hero}><Text style={styles.eyebrow}>러닝 기록</Text><Text style={styles.distance}>{(Number(session.distance_meters) / 1000).toFixed(2)} km</Text><Text style={styles.caption}>GPS로 확인된 이동 거리</Text></View>
           <View style={styles.card}>
             <View style={styles.row}><Text style={styles.body}>운동 시간</Text><Text style={styles.value}>{duration(session.elapsed_seconds)}</Text></View>
             <View style={styles.divider} />

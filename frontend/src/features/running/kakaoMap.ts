@@ -48,19 +48,22 @@ export type LiveMapInput = {
 };
 
 const pair = (point: RunningCoordinate | null | undefined) => {
-  const latitude = Number(point?.latitude);
-  const longitude = Number(point?.longitude);
-  return Number.isFinite(latitude) && Number.isFinite(longitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180
+  const latitude = point?.latitude;
+  const longitude = point?.longitude;
+  return typeof latitude === 'number' && typeof longitude === 'number'
+    && Number.isFinite(latitude) && Number.isFinite(longitude) && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180
     ? [Number(latitude.toFixed(6)), Number(longitude.toFixed(6))] : null;
 };
 const pairs = (points: RunningCoordinate[] = []) => points.map(pair).filter((point) => point !== null);
 
 // Numbers only, so the page can take it as a JS literal or a postMessage string.
 export function liveMapPayload({ currentLocation, accuracyMeters, acceptedPath, plannedPath }: LiveMapInput) {
-  const accuracy = Number(accuracyMeters);
+  const validAccuracy = accuracyMeters == null
+    || (typeof accuracyMeters === 'number' && Number.isFinite(accuracyMeters) && accuracyMeters >= 0);
+  const current = validAccuracy ? pair(currentLocation) : null;
   return {
-    current: pair(currentLocation),
-    accuracy: accuracyMeters != null && Number.isFinite(accuracy) && accuracy > 0 ? Math.round(accuracy) : null,
+    current,
+    accuracy: current && accuracyMeters != null && accuracyMeters > 0 ? Math.round(accuracyMeters) : null,
     path: pairs(acceptedPath),
     planned: pairs(plannedPath),
   };
