@@ -35,7 +35,7 @@ import PencilIcon from '@/assets/icons/feature/Pencil_Line.svg';
 import SearchIcon from '@/assets/icons/input/MagnifyingGlass.svg';
 import { AppBottomSheet, CustomScrollIndicator, noWebFocusRing, useCustomScrollIndicator, Text as SharedText, TextInput } from '@/src/components/common';
 import { amountFromInput, scaleFromSource, type AmountScale } from '@/src/features/diet/foodAmount';
-import { foodShotErrorText, foodShotFoods, hasMissingNutrition, needsRecalculation, withRecalculated } from '@/src/features/diet/foodShot';
+import { foodShotErrorText, foodShotFoods, hasMissingNutrition, missingNutritionNote, needsRecalculation, withRecalculated } from '@/src/features/diet/foodShot';
 import { analyzeFoodShot, recalculateFoodShot } from '@/src/api/diet';
 import { ApiError } from '@/src/api/client';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
@@ -416,16 +416,17 @@ function FoodSearch({
             </View>
           ) : (
             <View style={styles.emptySearch}>
-              <SearchIcon color={colors.textDisabled} height={30} width={30} />
               <Text style={styles.emptySearchText}>검색 결과가 없어요.</Text>
+              {/* The app's own list is short, so registering the typed name is the main way on from here. */}
               <Pressable
+                accessibilityRole="button"
                 onPress={() => {
                   Keyboard.dismiss();
                   onSelect({ kind: 'custom', name: query });
                 }}
                 style={styles.customFoodButton}
               >
-                <Text style={styles.customFoodButtonText}>입력한 음식명으로 등록하기</Text>
+                <Text ellipsizeMode="middle" numberOfLines={1} style={styles.customFoodButtonText}>‘{query}’ 이름으로 등록하기</Text>
               </Pressable>
             </View>
           )}
@@ -853,6 +854,7 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   // Why the photo was not turned into foods; null when the user chose to search by name.
   const [failReason, setFailReason] = useState<string | null>(null);
+  const [nutritionNotes, setNutritionNotes] = useState<Record<string, string>>({});
   const [isNutritionEditing, setIsNutritionEditing] = useState(false);
   const [nutritionContentOffset] = useState(() => new Animated.Value(0));
   const nutritionMacroRowRef = useRef<View>(null);
@@ -1035,14 +1037,26 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
   };
 
   // A food with no nutrition gets it from the official catalog by name and grams (free, no AI).
+  // When it still has none afterwards, the review step says why (nutritionNotes), so the disabled save is not a dead end.
   const fillNutrition = async (food: RecordedFood): Promise<RecordedFood> => {
-    if (!needsRecalculation(food)) return food;
-    try {
-      return withRecalculated(food, await recalculateFoodShot([{ name: food.name.trim(), amount_g: food.amount }]));
-    } catch (error) {
-      logError('푸드샷 영양 재계산 실패', error);
-      return food;
+    let filled = food;
+    let tried: false | 'not_found' | number = false;
+    if (needsRecalculation(food)) {
+      try {
+        filled = withRecalculated(food, await recalculateFoodShot([{ name: food.name.trim(), amount_g: food.amount }]));
+        tried = 'not_found';
+      } catch (error) {
+        logError('푸드샷 영양 재계산 실패', error);
+        tried = error instanceof ApiError ? error.status : 0;
+      }
     }
+    setNutritionNotes((current) => {
+      const next = { ...current };
+      if (filled.kcal === undefined) next[food.id] = missingNutritionNote(food, tried);
+      else delete next[food.id];
+      return next;
+    });
+    return filled;
   };
 
   const openFoodEdit = (food: RecordedFood) => {
@@ -1228,7 +1242,13 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
         <Text style={styles.screenTitle}>영양 정보</Text>
         <NutritionPanel food={aggregateFood} />
         {/* An incomplete total must not be saved as a finished meal (contract). */}
-        {missingNutrition ? <Text style={styles.missingNote}>영양 정보가 없는 음식이 있어요. 음식을 눌러 양이나 이름을 고쳐 주세요.</Text> : null}
+        {/* One line per food that blocks the save: what the catalog lookup answered, or what to enter first.
+            A food from the photo was already looked up by the server, so with grams it counts as not found. */}
+        {(draft?.foods ?? []).filter((food) => food.kcal === undefined).map((food) => (
+          <Text key={food.id} style={styles.missingNote}>
+            {nutritionNotes[food.id] ?? missingNutritionNote(food, food.unit === 'g' && food.amount > 0 && food.amount <= 5000 ? 'not_found' : false)}
+          </Text>
+        ))}
       </View>
       <View style={styles.reviewCta}>
         <PrimaryButton disabled={isSaving || !draft?.foods.length || missingNutrition} onPress={() => void handleSaveFoodShotMeal()}>
@@ -1599,8 +1619,8 @@ function createStyles({ colors }: AppTheme) {
     searchResultKcal: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     emptySearch: { alignItems: 'center', gap: 8, padding: 14 },
     emptySearchText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    customFoodButton: { backgroundColor: colors.surface, alignItems: 'center', borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 38, justifyContent: 'center', width: '100%' },
-    customFoodButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    customFoodButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 10, justifyContent: 'center', minHeight: 44, paddingHorizontal: 14, width: '100%' },
+    customFoodButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
     currentFoodBox: { backgroundColor: colors.surface, borderRadius: 12, gap: 8, minHeight: 70, padding: 12 },
     currentFoodLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
     currentFoodInfoRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },

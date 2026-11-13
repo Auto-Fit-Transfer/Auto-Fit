@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { foodShotErrorText, foodShotFoods, hasMissingNutrition, needsRecalculation, withRecalculated } from '../src/features/diet/foodShot.ts';
+import { foodShotErrorText, foodShotFoods, hasMissingNutrition, missingNutritionNote, needsRecalculation, withRecalculated } from '../src/features/diet/foodShot.ts';
 
 const item = (over = {}) => ({
   name: '김치볶음밥', amount_g: 250.4, catalog_matched: true, matched_food_code: 'D101',
@@ -43,4 +43,15 @@ test('each error code has its own message', () => {
   assert.match(foodShotErrorText(413, { code: 'FOOD_SHOT_TOO_LARGE' }), /너무 커요/);
   assert.match(foodShotErrorText(415, { code: 'UNSUPPORTED_IMAGE_TYPE' }), /JPEG, PNG, WebP/);
   assert.match(foodShotErrorText(503, null), /이름으로 찾아/);
+});
+
+test('a food left without nutrition says why: no grams, not in the catalog, or the request failed', () => {
+  const tofu = { name: '두부구이', amount: 0, unit: 'g' };
+  assert.match(missingNutritionNote(tofu, false), /‘두부구이’ 양을 g으로 입력/);
+  assert.match(missingNutritionNote({ ...tofu, amount: 6000 }, false), /5,000g 이하/);
+  assert.match(missingNutritionNote({ ...tofu, amount: 150 }, 'not_found'), /찾지 못했어요. 이름을 바꾸거나 영양 정보를 직접 입력/);
+  assert.match(missingNutritionNote({ ...tofu, amount: 150 }, 0), /연결 문제/);
+  assert.match(missingNutritionNote({ ...tofu, amount: 150 }, 401), /로그인이 만료/);
+  assert.match(missingNutritionNote({ ...tofu, amount: 150 }, 502), /지금은 ‘두부구이’/);
+  assert.match(missingNutritionNote({ name: ' ', amount: 0, unit: 'g' }, false), /‘이 음식’/);
 });
