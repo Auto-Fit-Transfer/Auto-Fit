@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SendIcon from '@/assets/icons/feature/PaperPlane_Fill.svg';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import InfoIcon from '@/assets/icons/ui/info.svg';
-import { createChat, getChatMessages, getChats, sendChatMessage } from '@/src/api/chat';
+import { createChat, decideExerciseAdjustment, getChatMessages, getChats, sendChatMessage } from '@/src/api/chat';
 import { ApiError, getApiErrorMessage } from '@/src/api/client';
 import { R6ConnectionError } from '@/src/components/common/R6ConnectionError';
 import { ChatCharacterAvatar, getChatAvatarVariant } from '@/src/components/chat/ChatCharacterAvatar';
@@ -21,6 +21,7 @@ import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { getChatSessionSnapshot, mergeChatSessionMessages, prefetchActiveChat, updateChatSessionSnapshot } from '@/src/features/chat/chatSessionCache';
 import { chatCharacters, chatWelcomes, displayChatAnswer, loadChatCharacter } from '@/src/features/chat/chatCharacters';
+import { cardConflictText, cardMessage, cardView } from '@/src/features/chat/exerciseCard';
 import type { ChatMessage } from '@/src/types/chat';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
@@ -60,6 +61,11 @@ export default function R6ChatScreen() {
   const [error, setError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const [initialLoadFailed, setInitialLoadFailed] = useState(false);
+  // The exercise adjustment card: it stays open until the server answers; a tap alone is not a success (contract).
+  const [deciding, setDeciding] = useState<string | null>(null);
+  const [cardNotes, setCardNotes] = useState<Record<string, string>>({});
+  const decisionKeys = useRef<Record<string, string>>({});
+  const cards = useMemo(() => messages.map(cardMessage), [messages]);
 
   const load = useCallback(async () => {
     const request = ++loadRequest.current;
@@ -128,6 +134,34 @@ export default function R6ChatScreen() {
     }
   };
 
+  const decide = async (pendingActionId: string, decision: 'confirm' | 'cancel') => {
+    if (!chatId || deciding) return;
+    const slot = `${pendingActionId}:${decision}`;
+    decisionKeys.current[slot] ??= newMessageId(); // a retry of the same decision reuses its key
+    setDeciding(pendingActionId);
+    setError(null);
+    try {
+      const response = await decideExerciseAdjustment(chatId, pendingActionId, decision, decisionKeys.current[slot]);
+      const incoming = [response.user_message, response.assistant_message].filter(Boolean);
+      setMessages((current) => {
+        const known = new Set(current.map((item) => item.message_id));
+        return [...current, ...incoming.filter((item) => !known.has(item.message_id))];
+      });
+      mergeChatSessionMessages(chatId, incoming);
+    } catch (reason) {
+      // A 409 means this card can no longer be used; its line under the answer says why.
+      const note = reason instanceof ApiError && reason.status === 409 ? cardConflictText(reason.detail) : null;
+      if (note) setCardNotes((current) => ({ ...current, [pendingActionId]: note }));
+      else {
+        setError(getApiErrorMessage(reason));
+        setOffline(reason instanceof ApiError && reason.status === 0);
+        setInitialLoadFailed(false);
+      }
+    } finally {
+      setDeciding(null);
+    }
+  };
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
       <View style={{ paddingTop: insets.top + 4 }}>
@@ -159,7 +193,7 @@ export default function R6ChatScreen() {
               <View style={styles.assistantColumn}><View style={[styles.assistantBubble, simple && simpleStyles.bubble]}><Text style={[styles.messageText, simple && simpleStyles.messageText]}>{chatWelcomes[character.id]}</Text></View><SimpleReadButton label="환영 인사 듣기" text={chatWelcomes[character.id]} /></View>
             </View>
           ) : null}
-          {messages.map((message) => message.sender_type === 'user' ? (
+          {messages.map((message, index) => message.sender_type === 'user' ? (
             <View key={message.message_id} style={styles.userRow}>
               <View style={[styles.userBubble, simple && simpleStyles.bubble]}><Text style={[styles.userText, simple && simpleStyles.messageText]}>{message.content}</Text></View>
               <Text style={styles.time}>{messageTime(message.created_at)}</Text>
@@ -170,6 +204,24 @@ export default function R6ChatScreen() {
               <View style={styles.assistantColumn}>
                 <View style={[styles.assistantBubble, simple && simpleStyles.bubble]}><Text style={[styles.messageText, simple && simpleStyles.messageText]}>{displayChatAnswer(message.content, character.id)}</Text></View>
                 <SimpleReadButton label="답변 듣기" text={displayChatAnswer(message.content, character.id)} />
+                {(() => {
+                  // Shown only from the server's action fields, never from the answer text.
+                  const view = cardView(cards[index], cards, Date.now(), cardNotes);
+                  if (!view) return null;
+                  if (view.kind === 'note') return <Text style={styles.cardNote}>{view.text}</Text>;
+                  const id = view.pendingActionId;
+                  const busy = Boolean(deciding);
+                  return (
+                    <View style={styles.cardActions}>
+                      <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => void decide(id, 'cancel')} style={[styles.cardButton, styles.cardCancel, busy && styles.cardBusy]}>
+                        <Text style={styles.cardCancelText}>그대로 할게요</Text>
+                      </Pressable>
+                      <Pressable accessibilityRole="button" accessibilityState={{ busy: deciding === id, disabled: busy }} disabled={busy} onPress={() => void decide(id, 'confirm')} style={[styles.cardButton, styles.cardConfirm, busy && deciding !== id && styles.cardBusy]}>
+                        {deciding === id ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.cardConfirmText}>이대로 조정</Text>}
+                      </Pressable>
+                    </View>
+                  );
+                })()}
                 <Text style={styles.time}>{messageTime(message.created_at)}</Text>
               </View>
             </View>
@@ -209,6 +261,14 @@ function createStyles({ colors }: AppTheme) {
     userBubble: { backgroundColor: colors.tabBar, borderRadius: 16, maxWidth: '82%', padding: 14 },
     userText: { color: '#FFFFFF', fontSize: 16, lineHeight: 24 },
     time: { color: colors.textSecondary, fontSize: 12 },
+    cardActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
+    cardButton: { alignItems: 'center', borderRadius: 12, flexGrow: 1, justifyContent: 'center', minHeight: 48, minWidth: 116, paddingHorizontal: 14 },
+    cardCancel: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
+    cardCancelText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
+    cardConfirm: { backgroundColor: colors.primary },
+    cardConfirmText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
+    cardBusy: { opacity: 0.5 },
+    cardNote: { color: colors.textSecondary, fontSize: 13, lineHeight: 19 },
     sending: { alignSelf: 'flex-start' },
     inlineError: { backgroundColor: colors.dangerLight, borderRadius: 12, padding: 12 },
     inlineErrorText: { color: colors.danger, fontSize: 14 },

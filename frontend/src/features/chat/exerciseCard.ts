@@ -37,3 +37,30 @@ export function stopNotice(message: { action?: string | null; actionData?: unkno
   const data = (message.actionData ?? {}) as { backend_apply_status?: unknown };
   return data.backend_apply_status === 'applied' ? null : '운동 기록은 자동으로 멈추지 못했어요. 운동 화면에서 직접 멈춰 주세요.';
 }
+
+// The chat screen keeps messages as the server sends them; the rules above read these fields from that shape.
+type ServerMessage = { action?: string | null; action_status?: string | null; action_data?: unknown; pending_action_id?: string | null; created_at: string };
+type Card = CardMessage & { actionData?: unknown };
+
+export const cardMessage = (message: ServerMessage): Card => ({
+  action: message.action,
+  actionStatus: message.action_status,
+  actionData: message.action_data,
+  pendingActionId: message.pending_action_id,
+  createdAt: Date.parse(message.created_at),
+});
+
+export type CardView = { kind: 'buttons'; pendingActionId: string } | { kind: 'note'; text: string } | null;
+
+// What sits under one assistant answer: the two buttons while its card is open, one line once it is closed or can no
+// longer be used (notes: the 409 text by pending action id), and nothing for an ordinary answer.
+export function cardView(card: Card, all: Card[], now: number, notes: Record<string, string> = {}): CardView {
+  const stop = stopNotice(card);
+  if (stop) return { kind: 'note', text: stop };
+  const state = cardState(card, all, now);
+  const id = card.pendingActionId;
+  if (!state || !id) return null;
+  if (notes[id]) return { kind: 'note', text: notes[id] };
+  if (state === 'open') return { kind: 'buttons', pendingActionId: id };
+  return { kind: 'note', text: state === 'confirmed' ? '운동을 조정했어요.' : state === 'cancelled' ? '조정하지 않고 그대로 두었어요.' : '10분이 지나 이 제안은 닫혔어요. 다시 말씀해 주세요.' };
+}
