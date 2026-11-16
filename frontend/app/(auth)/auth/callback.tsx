@@ -4,6 +4,7 @@ import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
+import { isPasswordRecoveryUrl } from '@/src/features/auth/authCallback';
 import { createSupabaseSessionFromOAuthUrl } from '@/src/features/auth/socialOAuth';
 import { getPostLoginDestination } from '@/src/features/auth/postLoginDestination';
 import { useThemedStyles, type AppTheme } from '@/src/theme';
@@ -22,7 +23,7 @@ export default function OAuthCallbackScreen() {
         if (!url) throw new Error('OAuth 콜백 주소를 확인하지 못했습니다.');
 
         await createSupabaseSessionFromOAuthUrl(url);
-        const destination = await getPostLoginDestination();
+        const destination = isPasswordRecoveryUrl(url) ? '/password/reset' : await getPostLoginDestination();
         if (isActive) router.replace(destination);
       } catch (error) {
         logError('소셜 로그인 콜백 처리 실패', error);

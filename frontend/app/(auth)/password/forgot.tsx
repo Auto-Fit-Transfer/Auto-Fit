@@ -8,6 +8,7 @@ import EmailIcon from '@/assets/icons/input/Email.svg';
 import InfoIcon from '@/assets/icons/auth-redesign/info-circle.svg';
 import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { PasswordAuthScreenLayout } from '@/src/components/auth';
+import { AUTH_CALLBACK_PATH } from '@/src/features/auth/authCallback';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
@@ -44,7 +45,7 @@ export default function ForgotPasswordScreen() {
     setIsSending(true);
     try {
       const { error } = await getSupabaseClient().auth.resetPasswordForEmail(normalizedEmail, {
-        redirectTo: Linking.createURL('auth/recovery'),
+        redirectTo: Linking.createURL(AUTH_CALLBACK_PATH),
       });
       if (error) throw error;
       setResent(sentAt !== null);

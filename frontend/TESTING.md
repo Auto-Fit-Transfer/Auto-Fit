@@ -31,7 +31,7 @@ npx expo start --go --lan --port 8083
 
 Expo Go에서는 표시되는 QR을 스캔한다. 컴퓨터와 휴대폰이 같은 네트워크에 있어야 하며 컴퓨터와 개발 서버를 켜 두어야 한다. 공개 인터넷 터널은 사용하지 않는다. 현재 공식 버전 API의 Expo Go SDK는 57로 프로젝트와 일치한다.
 
-Expo Go의 소셜 OAuth는 독립 앱의 `autofit://auth/callback`과 리디렉션이 다르므로 이 경로의 테스트는 이메일 로그인을 우선 사용한다. 설치형 앱의 Google/Kakao 로그인은 Supabase 허용 리디렉션 및 제공자 설정과 실기기 왕복을 별도로 확인한다.
+Expo Go의 소셜 OAuth는 독립 앱의 `autofit-a://auth/callback`과 리디렉션이 다르므로 이 경로의 테스트는 이메일 로그인을 우선 사용한다. 설치형 앱의 Google/Kakao 로그인은 Supabase 허용 리디렉션 및 제공자 설정과 실기기 왕복을 별도로 확인한다.
 
 ## 이번 수정과 검증
 
