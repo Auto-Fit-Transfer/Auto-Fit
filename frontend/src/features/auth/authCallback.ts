@@ -16,3 +16,26 @@ export function getAuthCallbackParams(url: string) {
 export function isPasswordRecoveryUrl(url: string) {
   return getAuthCallbackParams(url).get('type') === 'recovery';
 }
+
+// forgot.tsx keeps when this phone last asked for a reset mail.
+export const RESET_ASKED_KEY = 'auth:password-reset-asked-at';
+const RESET_WINDOW_MS = 60 * 60 * 1000;
+const clean = (value: string | null) => (value ?? '').replace(/[^A-Za-z0-9_]/g, '').slice(0, 40);
+
+// What the link carried, as names only (never the values), with Supabase's error code: safe to show and to log.
+export function callbackSummary(url: string | null) {
+  if (!url) return 'no_url';
+  const params = getAuthCallbackParams(url);
+  const parts = ['code', 'access_token', 'refresh_token', 'error'].filter((key) => params.has(key));
+  if (params.has('type')) parts.push(`type=${clean(params.get('type'))}`);
+  if (params.has('error_code')) parts.push(`error_code=${clean(params.get('error_code'))}`);
+  return parts.join(',') || 'no_params';
+}
+
+// A failed link is a password reset when it says so, when Supabase says an email link expired, or when this
+// phone asked for a reset mail within the last hour (a link that never arrived says nothing about itself).
+export function isRecoveryAttempt(url: string | null, resetAskedAt: number | null, now: number) {
+  const params = url ? getAuthCallbackParams(url) : null;
+  if (params?.get('type') === 'recovery' || params?.get('error_code') === 'otp_expired') return true;
+  return resetAskedAt !== null && now >= resetAskedAt && now - resetAskedAt < RESET_WINDOW_MS;
+}

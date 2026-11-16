@@ -37,6 +37,8 @@ export default function ResetPasswordScreen() {
     try {
       const { error } = await getSupabaseClient().auth.updateUser({ password });
       if (error) throw error;
+      // The reset link signed this phone in; leave that session so the next sign-in uses the new password.
+      await getSupabaseClient().auth.signOut({ scope: 'local' }).catch(() => undefined);
       router.replace('/login');
     } catch (error) {
       logError('비밀번호 변경 실패', error);

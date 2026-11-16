@@ -1,46 +1,66 @@
 import { logError } from '@/src/lib/logError';
 import { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { View } from 'react-native';
 
-import { isPasswordRecoveryUrl } from '@/src/features/auth/authCallback';
+import { callbackSummary, isPasswordRecoveryUrl, isRecoveryAttempt, RESET_ASKED_KEY } from '@/src/features/auth/authCallback';
 import { createSupabaseSessionFromOAuthUrl } from '@/src/features/auth/socialOAuth';
 import { getPostLoginDestination } from '@/src/features/auth/postLoginDestination';
 import { useThemedStyles, type AppTheme } from '@/src/theme';
 
-export default function OAuthCallbackScreen() {
+// The link that opened this screen: the latest one the phone handed over (cold start or from the background),
+// or, if it is still on its way, the next one within a few seconds.
+async function openedLink(waitMs = 3000): Promise<string | null> {
+  const known = Linking.getLinkingURL() ?? (await Linking.getInitialURL());
+  if (known) return known;
+  return new Promise((resolve) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      clearTimeout(timer);
+      subscription.remove();
+      resolve(url);
+    });
+    timer = setTimeout(() => {
+      subscription.remove();
+      resolve(null);
+    }, waitMs);
+  });
+}
+
+export default function AuthCallbackScreen() {
   const styles = useThemedStyles(createStyles);
-  const callbackUrl = Linking.useLinkingURL();
   const router = useRouter();
 
   useEffect(() => {
     let isActive = true;
 
-    const completeOAuth = async () => {
+    const complete = async () => {
+      const url = await openedLink();
       try {
-        const url = callbackUrl ?? (await Linking.getInitialURL());
-        if (!url) throw new Error('OAuth 콜백 주소를 확인하지 못했습니다.');
-
+        if (!url) throw new Error('no_url');
         await createSupabaseSessionFromOAuthUrl(url);
+        await AsyncStorage.removeItem(RESET_ASKED_KEY).catch(() => undefined);
         const destination = isPasswordRecoveryUrl(url) ? '/password/reset' : await getPostLoginDestination();
         if (isActive) router.replace(destination);
       } catch (error) {
-        logError('소셜 로그인 콜백 처리 실패', error);
+        // Names of what arrived and Supabase's error code only: never the link, tokens or code.
+        const summary = callbackSummary(url);
+        logError(`인증 링크 처리 실패 (${summary})`, error);
+        const askedAt = Number(await AsyncStorage.getItem(RESET_ASKED_KEY).catch(() => null)) || null;
         if (!isActive) return;
-
-        router.replace({
-          pathname: '/login',
-          params: { oauthError: '1' },
-        });
+        router.replace(isRecoveryAttempt(url, askedAt, Date.now())
+          ? { pathname: '/password/forgot', params: { linkError: summary } }
+          : { pathname: '/login', params: { oauthError: '1' } });
       }
     };
 
-    void completeOAuth();
+    void complete();
     return () => {
       isActive = false;
     };
-  }, [callbackUrl, router]);
+  }, [router]);
 
   return <View style={styles.screen} />;
 }

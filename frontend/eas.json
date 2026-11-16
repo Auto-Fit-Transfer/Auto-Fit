@@ -36,5 +36,12 @@
         "EXPO_USE_PRECOMPILED_MODULES": "0"
       }
     }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6835331420"
+      }
+    }
   }
 }

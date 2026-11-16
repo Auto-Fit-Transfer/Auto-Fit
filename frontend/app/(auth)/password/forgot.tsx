@@ -1,13 +1,14 @@
 import { logError } from '@/src/lib/logError';
 import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Linking from 'expo-linking';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert, Keyboard, Platform, Pressable, View } from 'react-native';
 
 import { aForm } from '@/src/components/a/form';
 import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { PasswordAuthScreenLayout } from '@/src/components/auth';
-import { AUTH_CALLBACK_PATH } from '@/src/features/auth/authCallback';
+import { AUTH_CALLBACK_PATH, RESET_ASKED_KEY } from '@/src/features/auth/authCallback';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
@@ -21,6 +22,11 @@ const formatSentAt = (date: Date) => {
 export default function ForgotPasswordScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  // Set by auth/callback when a reset link could not sign the user in; it holds names and an error code only.
+  const { linkError } = useLocalSearchParams<{ linkError?: string }>();
+  const linkProblem = typeof linkError === 'string' && linkError
+    ? `재설정 링크를 열지 못했어요. 링크가 만료됐거나 이미 쓰였을 수 있어요. 링크를 다시 받아 주세요. (확인 코드: ${linkError.slice(0, 80)})`
+    : undefined;
   const [email, setEmail] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [sentAt, setSentAt] = useState<Date | null>(null);
@@ -47,6 +53,7 @@ export default function ForgotPasswordScreen() {
         redirectTo: Linking.createURL(AUTH_CALLBACK_PATH),
       });
       if (error) throw error;
+      void AsyncStorage.setItem(RESET_ASKED_KEY, String(Date.now())).catch(() => undefined);
       setResent(sentAt !== null);
       setSentAt(new Date());
       setWait(resendSeconds);
@@ -133,6 +140,7 @@ export default function ForgotPasswordScreen() {
         autoCapitalize="none"
         autoComplete="email"
         autoCorrect={false}
+        error={linkProblem}
         keyboardType="email-address"
         label="이메일"
         onChangeText={setEmail}
