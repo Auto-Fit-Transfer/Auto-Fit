@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from 'react';
+import { memo, useCallback, useState, useSyncExternalStore } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { useRunningSession, type LiveLocation } from '@/src/features/running/use
 import { KAKAO_MAP_JS_KEY } from '@/src/features/running/kakaoMap';
 import { gpsNotice } from '@/src/features/running/liveTracking';
 import { routePolyline } from '@/src/features/running/courseRoute';
+import { qaLog, qaPosition, readQaLog, RUN_QA, subscribeQaLog, type QaInject } from '@/src/features/running/runQa';
 import type { RunningPlannedCourse, RunningTrackPoint } from '@/src/api/running';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
@@ -34,9 +35,9 @@ const RouteCard = memo(function RouteCard({ points, plannedCourse, currentLocati
   const [mapFailed, setMapFailed] = useState(!KAKAO_MAP_JS_KEY);
   const [mapReady, setMapReady] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const failMap = useCallback(() => setMapFailed(true), []);
-  const readyMap = useCallback(() => setMapReady(true), []);
-  const retryMap = () => { setMapReady(false); setMapFailed(false); setAttempt((count) => count + 1); };
+  const failMap = useCallback(() => { qaLog('지도 불러오기 실패 → 경로 도식'); setMapFailed(true); }, []);
+  const readyMap = useCallback(() => { qaLog('지도 준비됨'); setMapReady(true); }, []);
+  const retryMap = () => { qaLog('지도 다시 시도'); setMapReady(false); setMapFailed(false); setAttempt((count) => count + 1); };
   const height = 220;
   const actual = points.map(({ latitude, longitude }) => ({ latitude, longitude }));
   const planned = plannedCourse?.path ?? [];
@@ -72,6 +73,28 @@ const RouteCard = memo(function RouteCard({ points, plannedCourse, currentLocati
   </View>;
 });
 
+const QA_BUTTONS: [QaInject, string][] = [['low_accuracy', '오차 80m 위치'], ['small_movement', '제자리 위치'], ['gps_jump', '100km 튄 위치']];
+
+// QA builds only (EXPO_PUBLIC_RUN_QA=1). The buttons send test positions the server must refuse; the list is what this screen did.
+function QaPanel({ lastAccepted, here, recording, onFeed, onReloadMap }: { lastAccepted: RunningTrackPoint | null; here: LiveLocation | null; recording: boolean; onFeed: (position: LiveLocation) => void; onReloadMap: () => void }) {
+  const styles = useThemedStyles(createStyles);
+  const log = useSyncExternalStore(subscribeQaLog, readQaLog, readQaLog);
+  const feed = (kind: QaInject, label: string) => {
+    const position = qaPosition(kind, lastAccepted && { latitude: lastAccepted.latitude, longitude: lastAccepted.longitude, accuracy: null }, here);
+    if (!recording) qaLog(`${label}: 기록 중일 때만 보내요`);
+    else if (!position) qaLog(`${label}: 저장된 위치가 먼저 있어야 해요`);
+    else onFeed(position);
+  };
+  return <View style={styles.qa}>
+    <Text style={styles.routeTitle}>QA 기록 · 시험 빌드에만 보여요</Text>
+    <View style={styles.qaButtons}>
+      {QA_BUTTONS.map(([kind, label]) => <Pressable key={kind} accessibilityRole="button" onPress={() => feed(kind, label)} style={styles.qaButton}><Text style={styles.qaButtonText}>{label} 보내기</Text></Pressable>)}
+      <Pressable accessibilityRole="button" onPress={onReloadMap} style={styles.qaButton}><Text style={styles.qaButtonText}>지도 새로 불러오기</Text></Pressable>
+    </View>
+    <Text selectable style={styles.qaLog}>{log.join('\n') || '아직 기록이 없어요.'}</Text>
+  </View>;
+}
+
 export default function RunLive() {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
@@ -80,7 +103,8 @@ export default function RunLive() {
   const sessionId = typeof params.sessionId === 'string' ? params.sessionId : '';
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { session, points, plannedCourse, loading, busy, error, elapsedSeconds, currentLocation, rejection, preciseOff, pause, resume, complete } = useRunningSession(sessionId);
+  const { session, points, plannedCourse, loading, busy, error, elapsedSeconds, currentLocation, rejection, preciseOff, pause, resume, complete, qaFeed } = useRunningSession(sessionId);
+  const [mapKey, setMapKey] = useState(0);
   const notice = gpsNotice({ tracking: session?.status === 'in_progress', hasLocation: currentLocation !== null, accuracyMeters: currentLocation?.accuracy, rejection, preciseOff });
   const [confirmEnd, setConfirmEnd] = useState(false);
   const endRun = async () => {
@@ -104,7 +128,7 @@ export default function RunLive() {
             <View><Text style={styles.metric}>{formatPace(session.average_pace_seconds_per_km)}</Text><Text style={styles.metricLabel}>평균 페이스 · /km</Text></View>
           </View>
         </View>
-        <RouteCard points={points} plannedCourse={plannedCourse} currentLocation={currentLocation} width={Math.max(200, width - 72)} />
+        <RouteCard key={mapKey} points={points} plannedCourse={plannedCourse} currentLocation={currentLocation} width={Math.max(200, width - 72)} />
         {notice ? <Text style={styles.notice}>{notice}</Text> : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Text style={styles.hint}>화면을 벗어나거나 앱이 백그라운드로 가면 러닝이 일시정지돼요.</Text>
@@ -112,6 +136,7 @@ export default function RunLive() {
           session.status === 'paused' ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => void resume()} style={styles.primary}><Text style={styles.primaryText}>{busy ? '처리 중…' : '러닝 계속하기'}</Text></Pressable> : null}
         {session.status === 'completed' ? <Pressable accessibilityRole="button" onPress={() => router.replace({ pathname: '/exercise/run-result', params: { sessionId } })} style={styles.primary}><Text style={styles.primaryText}>완료 기록 보기</Text></Pressable> :
           <Pressable accessibilityRole="button" disabled={busy} onPress={() => setConfirmEnd(true)} style={styles.secondary}><Text style={styles.secondaryText}>러닝 종료하고 저장</Text></Pressable>}
+        {RUN_QA ? <QaPanel lastAccepted={points.at(-1) ?? null} here={currentLocation} recording={session.status === 'in_progress'} onFeed={qaFeed} onReloadMap={() => { qaLog('지도 새로 불러오기'); setMapKey((key) => key + 1); }} /> : null}
       </>}
     </ScrollView>
     <ConfirmDialog visible={confirmEnd} title="러닝을 종료할까요?" description="지금까지 기록된 시간과 GPS 이동 경로를 저장합니다." secondaryLabel="계속 달리기" primaryLabel="종료하고 저장" onSecondary={() => setConfirmEnd(false)} onPrimary={() => void endRun()} />
@@ -147,5 +172,10 @@ function createStyles({ colors }: AppTheme) {
     primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
     secondary: { height: 56, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
     secondaryText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
+    qa: { borderColor: colors.border, borderWidth: 1, borderStyle: 'dashed', borderRadius: 12, padding: 12, gap: 10 },
+    qaButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    qaButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 10, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+    qaButtonText: { color: colors.textPrimary, fontSize: 13 },
+    qaLog: { color: colors.textSecondary, fontSize: 12, lineHeight: 18, fontVariant: ['tabular-nums'] as ['tabular-nums'] },
   } as const;
 }

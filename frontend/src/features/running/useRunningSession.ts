@@ -7,6 +7,10 @@ import {
   type RunningPlannedCourse, type RunningSession, type RunningTrackPoint,
 } from '@/src/api/running';
 import { appStateAction, INACTIVE_GRACE_MS, readLiveLocation, type LiveLocation } from './liveTracking';
+import { qaLog } from './runQa';
+
+const failed = (cause: unknown) => `실패 ${(cause as { status?: number } | null)?.status || '연결 없음'}`;
+const meters = (accuracy: number | null) => (accuracy === null ? '없음' : `${Math.round(accuracy)}m`);
 
 export type { LiveLocation } from './liveTracking';
 
@@ -73,46 +77,66 @@ export function useRunningSession(sessionId: string) {
       setElapsedSeconds(frozen);
       setError(message);
     }
+    qaLog('pause 요청 보냄 (오류 뒤)');
     try {
       const response = await pauseRunningSession(sessionId, frozen);
+      qaLog('pause 응답 200');
       applySession(response.session);
-    } catch {
+    } catch (cause) {
+      qaLog(`pause ${failed(cause)}`);
       // Keep the error visible; the user can retry the pause once connected.
     }
   }, [applySession, elapsedNow, sessionId, stopWatch]);
+
+  // One position, from the watcher or a QA button, through the same queue: the server decides what counts.
+  const sendPoint = useCallback((position: LiveLocation, source: string) => {
+    queuedRef.current = queuedRef.current.then(async () => {
+      if (sessionRef.current?.status !== 'in_progress' || trackingHaltedRef.current || !mountedRef.current) return;
+      qaLog(`points 보냄 (${source}, 오차 ${meters(position.accuracy)})`);
+      const response = await addRunningTrackPoint(sessionId, {
+        latitude: position.latitude,
+        longitude: position.longitude,
+        accuracy_meters: position.accuracy,
+        elapsed_seconds: elapsedNow(),
+      });
+      qaLog(`points 응답 200 · ${response.accepted ? '저장됨' : `거절 ${response.reason ?? '이유 없음'}`}`);
+      applySession(response.session);
+      if (!mountedRef.current) return;
+      if (response.accepted && response.point) {
+        setPoints((current) => [...current, response.point!]);
+        setError('');
+      }
+      // A small movement passed the accuracy check, so it clears an earlier notice too.
+      setRejection(response.accepted || response.reason === 'small_movement' ? '' : response.reason ?? '');
+    }).catch((cause) => {
+      qaLog(`points ${failed(cause)}`);
+      void haltAfterError(`기록 저장에 실패해 러닝을 일시정지했어요. ${getRunningApiErrorMessage(cause)}`);
+    });
+  }, [applySession, elapsedNow, haltAfterError, sessionId]);
+
+  // QA buttons only: a test position goes through the watcher's path, map marker included.
+  const qaFeed = useCallback((position: LiveLocation) => {
+    const shown = showLocation({ coords: position, timestamp: Date.now() } as Location.LocationObject);
+    if (shown) sendPoint(shown, 'QA 버튼');
+  }, [sendPoint, showLocation]);
 
   const startWatch = useCallback(async () => {
     stopWatch();
     trackingHaltedRef.current = false;
     // A first fix for the map before the watcher's first callback; it is never sent as a track point.
-    void Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }).then(showLocation).catch(() => {});
+    void Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }).then((location) => {
+      qaLog(`첫 위치 조회 (지도만, 보내지 않음, 오차 ${meters(location.coords.accuracy)})`);
+      return showLocation(location);
+    }).catch(() => {});
     try {
       const subscription = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.High, distanceInterval: 10, timeInterval: 3000 },
         (location) => {
           const position = showLocation(location);
-          if (!position) return;
-          queuedRef.current = queuedRef.current.then(async () => {
-            if (sessionRef.current?.status !== 'in_progress' || trackingHaltedRef.current || !mountedRef.current) return;
-            const response = await addRunningTrackPoint(sessionId, {
-              latitude: position.latitude,
-              longitude: position.longitude,
-              accuracy_meters: position.accuracy,
-              elapsed_seconds: elapsedNow(),
-            });
-            applySession(response.session);
-            if (!mountedRef.current) return;
-            if (response.accepted && response.point) {
-              setPoints((current) => [...current, response.point!]);
-              setError('');
-            }
-            // A small movement passed the accuracy check, so it clears an earlier notice too.
-            setRejection(response.accepted || response.reason === 'small_movement' ? '' : response.reason ?? '');
-          }).catch((cause) => {
-            void haltAfterError(`기록 저장에 실패해 러닝을 일시정지했어요. ${getRunningApiErrorMessage(cause)}`);
-          });
+          if (position) sendPoint(position, 'watcher');
+          else qaLog('watcher 위치 무효 (보내지 않음)');
         },
-        () => { void haltAfterError('위치 신호가 끊겨 러닝을 일시정지했어요.'); },
+        () => { qaLog('watcher 오류'); void haltAfterError('위치 신호가 끊겨 러닝을 일시정지했어요.'); },
       );
       if (sessionRef.current?.status === 'in_progress' && mountedRef.current) watchRef.current = subscription;
       else subscription.remove();
@@ -120,7 +144,7 @@ export function useRunningSession(sessionId: string) {
       if (mountedRef.current) setError(getRunningApiErrorMessage(cause));
       throw cause;
     }
-  }, [applySession, elapsedNow, haltAfterError, sessionId, showLocation, stopWatch]);
+  }, [haltAfterError, sendPoint, showLocation, stopWatch]);
 
   const pause = useCallback(async () => {
     if (busyRef.current || sessionRef.current?.status !== 'in_progress') return;
@@ -130,16 +154,20 @@ export function useRunningSession(sessionId: string) {
     baseRef.current = frozenElapsed;
     segmentStartRef.current = null;
     stopWatch();
+    qaLog(`pause 시작 (${frozenElapsed}초)`);
     try {
       await queuedRef.current;
+      qaLog('pause 요청 보냄');
       const response = await pauseRunningSession(sessionId, Math.max(
         frozenElapsed, sessionRef.current?.elapsed_seconds ?? 0));
+      qaLog(`pause 응답 200 · ${response.session.elapsed_seconds}초`);
       baseRef.current = response.session.elapsed_seconds;
       segmentStartRef.current = null;
       if (mountedRef.current) setElapsedSeconds(response.session.elapsed_seconds);
       applySession(response.session);
       if (mountedRef.current) setError('');
     } catch (cause) {
+      qaLog(`pause ${failed(cause)}`);
       if (mountedRef.current) setError(getRunningApiErrorMessage(cause));
       // The server may still be recording; keep the screen aligned with it.
       try {
@@ -167,7 +195,9 @@ export function useRunningSession(sessionId: string) {
       if (!readPermission(permission) || !await Location.hasServicesEnabledAsync()) {
         throw new Error('러닝을 계속하려면 위치 권한과 기기 위치 서비스를 켜 주세요.');
       }
+      qaLog(`resume 요청 보냄 (정확한 위치 ${permission.ios?.accuracy === 'reduced' || permission.android?.accuracy === 'coarse' ? '꺼짐' : '켜짐'})`);
       const response = await resumeRunningSession(sessionId);
+      qaLog('resume 응답 200');
       didResume = true;
       baseRef.current = response.session.elapsed_seconds;
       segmentStartRef.current = Date.now();
@@ -255,8 +285,9 @@ export function useRunningSession(sessionId: string) {
     let grace: ReturnType<typeof setTimeout> | undefined;
     const appState = AppState.addEventListener('change', (state) => {
       const action = appStateAction(state);
+      qaLog(`앱 상태 ${state}`);
       if (action === 'wait') {
-        grace ??= setTimeout(() => { grace = undefined; void pause(); }, INACTIVE_GRACE_MS);
+        grace ??= setTimeout(() => { grace = undefined; qaLog('inactive 5초 지남'); void pause(); }, INACTIVE_GRACE_MS);
         return;
       }
       clearTimeout(grace);
@@ -271,11 +302,12 @@ export function useRunningSession(sessionId: string) {
       appState.remove();
       stopWatch();
       if (sessionRef.current?.status === 'in_progress' && !busyRef.current) {
+        qaLog('화면 나감 → pause 요청 보냄');
         void pauseRunningSession(sessionId, elapsedNow()).catch(() => {});
       }
     };
   }, [applySession, elapsedNow, pause, readPermission, sessionId, showLocation, startWatch, stopWatch]);
 
   return { session, points, plannedCourse, loading, busy, error, elapsedSeconds,
-    currentLocation, rejection, preciseOff, pause, resume, complete };
+    currentLocation, rejection, preciseOff, pause, resume, complete, qaFeed };
 }

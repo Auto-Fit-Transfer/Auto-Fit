@@ -96,6 +96,7 @@ registerHooks({
     if (specifier === '@/src/api/running') source = bridge(['addRunningTrackPoint', 'completeRunningSession', 'getRunningSession', 'getRunningApiErrorMessage', 'pauseRunningSession', 'resumeRunningSession'], 'api');
     if (source) return { shortCircuit: true, url: `data:text/javascript,${encodeURIComponent(source)}` };
     if (specifier === './liveTracking') return { shortCircuit: true, url: new URL('../src/features/running/liveTracking.ts', import.meta.url).href };
+    if (specifier === './runQa') return { shortCircuit: true, url: new URL('../src/features/running/runQa.ts', import.meta.url).href };
     return next(specifier, context);
   },
 });
@@ -252,5 +253,20 @@ test('a coarse large positive fix keeps its marker and asks for precise location
     assert.equal(state.session.distance_meters, 42);
     assert.equal(fixture.calls.pauses, 0);
     assert.equal(gpsNotice({ tracking: true, hasLocation: true, accuracyMeters: state.currentLocation.accuracy, rejection: state.rejection, preciseOff: state.preciseOff }), '휴대폰 설정에서 Auto-Fit의 정확한 위치를 켜 주세요.');
+  } finally { fixture.close(); }
+});
+
+test('a QA button position goes the phone fix way: marker, the same points queue, and the server reason on screen', async () => {
+  const fixture = await phone({ first: fix({}) });
+  try {
+    fixture.read().qaFeed({ ...here, accuracy: 80 });
+    await drain();
+    const state = fixture.read();
+    assert.deepEqual(state.currentLocation, { ...here, accuracy: 80 }, 'the map shows it like a real fix');
+    assert.equal(fixture.calls.points.length, 1);
+    assert.equal(fixture.calls.points[0].accuracy_meters, 80);
+    assert.equal(state.rejection, 'low_accuracy');
+    assert.equal(state.points.length, 1, 'nothing new is stored');
+    assert.equal(fixture.calls.pauses, 0);
   } finally { fixture.close(); }
 });
