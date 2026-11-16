@@ -13,7 +13,8 @@ import {
 import { AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import { useSignup, type SignupExerciseGoal } from '@/src/features/signup/SignupContext';
-import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
+import { useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 const goalType: Record<SignupExerciseGoal, ExerciseGoalType> = {
@@ -141,7 +142,7 @@ export default function SignUpStep5Screen() {
           <Text style={styles.laterText}>나중에 정할래요</Text>
         </Pressable>
       }
-      heading={goalNames[draft.exerciseGoal] ? `${goalNames[draft.exerciseGoal]}, 조금만 더 알려 주세요` : undefined}
+      heading={goalNames[draft.exerciseGoal] ? `${goalNames[draft.exerciseGoal]},\n조금만 더 알려 주세요` : undefined}
       onBack={() => router.back()}
       onContinue={() => void finish()}
     >
@@ -202,31 +203,17 @@ function Chip({ label, selected, onPress }: { label: string; selected: boolean; 
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    form: { gap: 28 },
-    sectionTitle: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-      lineHeight: 24,
-      marginBottom: 10,
-    },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    chip: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 999,
-      borderWidth: 1,
-      height: 40,
-      justifyContent: 'center',
-      paddingHorizontal: 16,
-    },
-    chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-    chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    chipTextSelected: { color: '#FFFFFF' },
-    unit: { color: colors.textSecondary, fontSize: 16 },
+    form: { gap: 14 },
+    sectionTitle: a.q,
+    chips: { flexDirection: 'row', gap: 6 },
+    chip: { ...a.chip, flex: 1 },
+    chipSelected: a.on,
+    chipText: a.chipText,
+    chipTextSelected: a.onText,
+    unit: { ...a.p15, color: colors.textSecondary },
     later: { alignItems: 'center', height: 44, justifyContent: 'center', marginTop: 8 },
-    laterText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    laterText: a.link,
   } as const;
 }

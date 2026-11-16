@@ -148,7 +148,7 @@ export default function ExerciseHistory() {
         {runningLoading ? <ActivityIndicator color={colors.primaryText} /> : runningError ? (
           <Pressable accessibilityRole="button" onPress={() => { setRunningLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{runningError} · 다시 시도</Text></Pressable>
         ) : filteredRuns.length === 0 ? <View style={styles.card}><Text style={styles.body}>이 기간에 완료한 러닝이 없어요.</Text></View> :
-          filteredRuns.map((run) => <Pressable key={run.running_session_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercise/run-result', params: { sessionId: run.running_session_id } })} style={styles.card}>
+          filteredRuns.map((run) => <Pressable key={run.running_session_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercise/run-result', params: { sessionId: run.running_session_id, from: 'history' } })} style={styles.card}>
             <View style={styles.sectionRow}><Text style={styles.cardTitle}>{koreanDate(sessionLocalDate(run.started_at))} 자유 러닝</Text><CaretText style={styles.link}>결과 보기</CaretText></View>
             <Text style={styles.body}>{(number(run.distance_meters) / 1000).toFixed(2)}km · {Math.round(number(run.elapsed_seconds) / 60)}분</Text>
           </Pressable>)}

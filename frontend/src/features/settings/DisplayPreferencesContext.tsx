@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Appearance, useColorScheme } from 'react-native';
+import { Appearance } from 'react-native';
 
 import { getDisplayPreferences, saveDisplayPreferences, type DisplayPreferences } from '@/src/api/userSettings';
 import { getSupabaseClient } from '@/src/lib/supabase';
@@ -30,7 +30,6 @@ function validPreferences(value: unknown): value is DisplayPreferences {
 }
 
 export function DisplayPreferencesProvider({ children }: { children: ReactNode }) {
-  const systemScheme = useColorScheme();
   const [userId, setUserId] = useState<string | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [preferences, setPreferences] = useState<DisplayPreferences>(defaults);
@@ -111,12 +110,12 @@ export function DisplayPreferencesProvider({ children }: { children: ReactNode }
 
   useEffect(() => {
     if (typeof Appearance.setColorScheme !== 'function') return;
-    Appearance.setColorScheme(preferences.theme_mode === 'system' ? 'auto' : preferences.theme_mode);
+    Appearance.setColorScheme('light');
     return () => Appearance.setColorScheme('auto');
-  }, [preferences.theme_mode]);
+  }, []);
 
-  const isDark = preferences.theme_mode === 'dark'
-    || (preferences.theme_mode === 'system' && systemScheme === 'dark');
+  // Renewal A has only the light look, so neither the saved mode nor the device's setting turns the screens dark.
+  const isDark = false;
   const value = useMemo(() => ({ preferences, isDark, ready, serverSynced, save }),
     [preferences, isDark, ready, serverSynced, save]);
   return <DisplayContext.Provider value={value}>{children}</DisplayContext.Provider>;

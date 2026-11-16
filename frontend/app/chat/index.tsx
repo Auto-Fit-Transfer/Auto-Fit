@@ -1,32 +1,26 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import SendIcon from '@/assets/icons/feature/PaperPlane_Fill.svg';
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
-import InfoIcon from '@/assets/icons/ui/info.svg';
+import { Alert } from 'react-native';
 import { createChat, decideExerciseAdjustment, getChatMessages, getChats, sendChatMessage } from '@/src/api/chat';
 import { ApiError, getApiErrorMessage } from '@/src/api/client';
+import { AskView, ToneSheet, type AskLine } from '@/src/components/a/AskView';
+import { useHero } from '@/src/components/a/useHero';
 import { R6ConnectionError } from '@/src/components/common/R6ConnectionError';
-import { ChatCharacterAvatar, getChatAvatarVariant } from '@/src/components/chat/ChatCharacterAvatar';
-import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
-import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { getChatSessionSnapshot, mergeChatSessionMessages, prefetchActiveChat, updateChatSessionSnapshot } from '@/src/features/chat/chatSessionCache';
-import { chatCharacters, chatWelcomes, displayChatAnswer, loadChatCharacter } from '@/src/features/chat/chatCharacters';
+import { chatCharacters, displayChatAnswer, loadChatCharacter, saveChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
 import { cardConflictText, cardMessage, cardView } from '@/src/features/chat/exerciseCard';
 import type { ChatMessage } from '@/src/types/chat';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text, TextInput } from '@/src/components/common';
 
-const prompts = ['운동 기록 알려줘', '최근 건강 점수 알려줘'];
+// Renewal A: the app's three chat characters are three ways my own character talks. The server still
+// gets quni / nabi / coach and still answers the same; only the name on the screen and the greeting differ.
+const tones: Record<ChatCharacterId, { name: string; greeting: string }> = {
+  quni: { name: '다정하게', greeting: '건강 점수와 식단 · 운동 기록을 같이 살펴봐요' },
+  nabi: { name: '느긋하게', greeting: '편하게 이야기해 주세요. 천천히 함께 살펴볼게요' },
+  coach: { name: '단호하게', greeting: '건강 점수와 식단 · 운동 기록부터 확인해 보죠' },
+};
+
+// The first two stay at hand during the talk; all four are offered before the first question.
+const prompts = ['운동 기록 알려줘', '최근 건강 점수 알려줘', '왜 체중이 천천히 줄어?', '오늘 운동 가볍게 해 줘'];
 
 function newMessageId() {
   if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
@@ -36,20 +30,16 @@ function newMessageId() {
   });
 }
 
-function messageTime(dateValue: string) {
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return '';
-  return `${date.getHours() < 12 ? '오전' : '오후'} ${date.getHours() % 12 || 12}:${String(date.getMinutes()).padStart(2, '0')}`;
-}
-
 export default function R6ChatScreen() {
-  const { colors } = useAppTheme();
-  const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { preferences } = useDisplayPreferences();
-  const simple = preferences.simple_mode_enabled;
-  const scroll = useRef<ScrollView>(null);
+  const hero = useHero();
+  const [toneOpen, setToneOpen] = useState(false);
+  // The clock the workout card's ten minutes are counted by: read outside rendering, moved on every 15 seconds.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 15000);
+    return () => clearInterval(timer);
+  }, []);
   const loadRequest = useRef(0);
   const pending = useRef<{ content: string; id: string } | null>(null);
   const [character, setCharacter] = useState<(typeof chatCharacters)[number]>(chatCharacters[0]);
@@ -162,129 +152,69 @@ export default function R6ChatScreen() {
     }
   };
 
-  return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.root}>
-      <View style={{ paddingTop: insets.top + 4 }}>
-        <View style={styles.header}>
-          <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={() => router.back()} style={{ width: 52 }}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
-          <View style={styles.headerCenter}>
-            <ChatCharacterAvatar characterId={character.id} size={28} />
-            <Text style={[styles.headerName, simple && simpleStyles.headerName]}>{character.name}</Text>
-          </View>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/chat/characters')} style={styles.change}><Text style={styles.changeText}>바꾸기</Text></Pressable>
-        </View>
-      </View>
-      <View style={styles.disclaimer}><InfoIcon color={colors.textBody} height={18} width={18} /><Text style={styles.disclaimerText}>건강 판단은 참고용이에요. 증상이 있으면 병원에 문의해 주세요.</Text></View>
+  const pickTone = async (id: ChatCharacterId) => {
+    setToneOpen(false);
+    if (id === character.id) return;
+    try {
+      await saveChatCharacter(id);
+      setCharacter(chatCharacters.find((item) => item.id === id) ?? chatCharacters[0]);
+    } catch {
+      Alert.alert('선택을 저장하지 못했어요', '잠시 후 다시 시도해 주세요.');
+    }
+  };
 
-      {loading && messages.length === 0 ? (
-        <View style={styles.center}><ActivityIndicator color={colors.primaryText} /></View>
-      ) : initialLoadFailed && error && messages.length === 0 ? (
-        <R6ConnectionError message={error} offline={offline} onRetry={() => void load()} preservesInput={Boolean(draft)} />
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.messages}
-          keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() => scroll.current?.scrollToEnd({ animated: true })}
-          ref={scroll}
-        >
-          {messages.length === 0 ? (
-            <View style={styles.assistantRow}>
-              <ChatCharacterAvatar characterId={character.id} size={26} variant={getChatAvatarVariant({ isWelcome: true })} />
-              <View style={styles.assistantColumn}><View style={[styles.assistantBubble, simple && simpleStyles.bubble]}><Text style={[styles.messageText, simple && simpleStyles.messageText]}>{chatWelcomes[character.id]}</Text></View><SimpleReadButton label="환영 인사 듣기" text={chatWelcomes[character.id]} /></View>
-            </View>
-          ) : null}
-          {messages.map((message, index) => message.sender_type === 'user' ? (
-            <View key={message.message_id} style={styles.userRow}>
-              <View style={[styles.userBubble, simple && simpleStyles.bubble]}><Text style={[styles.userText, simple && simpleStyles.messageText]}>{message.content}</Text></View>
-              <Text style={styles.time}>{messageTime(message.created_at)}</Text>
-            </View>
-          ) : (
-            <View key={message.message_id} style={styles.assistantRow}>
-              <ChatCharacterAvatar characterId={character.id} size={26} variant={getChatAvatarVariant({ needsMoreData: message.needs_more_data })} />
-              <View style={styles.assistantColumn}>
-                <View style={[styles.assistantBubble, simple && simpleStyles.bubble]}><Text style={[styles.messageText, simple && simpleStyles.messageText]}>{displayChatAnswer(message.content, character.id)}</Text></View>
-                <SimpleReadButton label="답변 듣기" text={displayChatAnswer(message.content, character.id)} />
-                {(() => {
-                  // Shown only from the server's action fields, never from the answer text.
-                  const view = cardView(cards[index], cards, Date.now(), cardNotes);
-                  if (!view) return null;
-                  if (view.kind === 'note') return <Text style={styles.cardNote}>{view.text}</Text>;
-                  const id = view.pendingActionId;
-                  const busy = Boolean(deciding);
-                  return (
-                    <View style={styles.cardActions}>
-                      <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={() => void decide(id, 'cancel')} style={[styles.cardButton, styles.cardCancel, busy && styles.cardBusy]}>
-                        <Text style={styles.cardCancelText}>그대로 할게요</Text>
-                      </Pressable>
-                      <Pressable accessibilityRole="button" accessibilityState={{ busy: deciding === id, disabled: busy }} disabled={busy} onPress={() => void decide(id, 'confirm')} style={[styles.cardButton, styles.cardConfirm, busy && deciding !== id && styles.cardBusy]}>
-                        {deciding === id ? <ActivityIndicator color="#FFFFFF" size="small" /> : <Text style={styles.cardConfirmText}>이대로 조정</Text>}
-                      </Pressable>
-                    </View>
-                  );
-                })()}
-                <Text style={styles.time}>{messageTime(message.created_at)}</Text>
-              </View>
-            </View>
-          ))}
-          {sending ? <ActivityIndicator color={colors.primaryText} style={styles.sending} /> : null}
-          {error ? <View style={styles.inlineError}><Text style={styles.inlineErrorText}>{error}</Text></View> : null}
-          <View style={styles.promptRow}>{prompts.map((prompt) => (
-            <Pressable accessibilityRole="button" key={prompt} onPress={() => setDraft(prompt)} style={styles.prompt}><Text style={styles.promptText}>{prompt}</Text></Pressable>
-          ))}</View>
-        </ScrollView>
-      )}
-      <View style={[styles.composer, { paddingBottom: Math.max(12, insets.bottom) }]}>
-        <TextInput accessibilityLabel="챗봇 메시지" editable={Boolean(chatId) && !sending} maxLength={500} onChangeText={setDraft} onSubmitEditing={() => void send()} placeholder={`${character.name}에게 물어보세요`} placeholderTextColor={colors.textDisabled} returnKeyType="send" style={[styles.input, simple && simpleStyles.input]} value={draft} />
-        <Pressable accessibilityRole="button" accessibilityLabel="보내기" disabled={!chatId || !draft.trim() || sending} onPress={() => void send()} style={[styles.sendButton, (!chatId || !draft.trim() || sending) && styles.sendDisabled]}><SendIcon color="#FFFFFF" height={22} width={22} /></Pressable>
-      </View>
-    </KeyboardAvoidingView>
+  const lines: AskLine[] = messages.map((message, index) => {
+    if (message.sender_type === 'user') return { key: message.message_id, mine: message.content };
+    // The card is shown only from the server's action fields, never from the answer text.
+    const view = cardView(cards[index], cards, now, cardNotes);
+    return {
+      key: message.message_id,
+      // Every answer opens with the sentence of the way of talking chosen now, old answers too.
+      answer: displayChatAnswer(message.content, character.id),
+      note: view?.kind === 'note' ? view.text : undefined,
+      card:
+        view?.kind === 'buttons'
+          ? {
+              busy: Boolean(deciding),
+              waiting: deciding === view.pendingActionId,
+              onNo: () => void decide(view.pendingActionId, 'cancel'),
+              onYes: () => void decide(view.pendingActionId, 'confirm'),
+            }
+          : undefined,
+    };
+  });
+
+  return (
+    <>
+      <AskView
+        canType={Boolean(chatId) && !sending}
+        draft={draft}
+        error={initialLoadFailed ? null : error}
+        failed={
+          initialLoadFailed && error && messages.length === 0 ? (
+            <R6ConnectionError message={error} offline={offline} onRetry={() => void load()} preservesInput={Boolean(draft)} />
+          ) : undefined
+        }
+        greeting={tones[character.id].greeting}
+        lines={lines}
+        loading={loading && messages.length === 0}
+        onBack={() => router.back()}
+        onDraft={setDraft}
+        onSend={(text) => void send(text)}
+        onTone={() => setToneOpen(true)}
+        prompts={prompts}
+        tier={hero.tierIndex}
+        tone={tones[character.id].name}
+        waiting={sending}
+        who={hero.who}
+      />
+      <ToneSheet
+        chosen={character.id}
+        onClose={() => setToneOpen(false)}
+        onPick={(id) => void pickTone(id)}
+        tones={chatCharacters.map((item) => ({ id: item.id, name: tones[item.id].name, first: displayChatAnswer('', item.id).trim() }))}
+        visible={toneOpen}
+      />
+    </>
   );
 }
-
-function createStyles({ colors }: AppTheme) {
-  return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    header: { alignItems: 'center', flexDirection: 'row', minHeight: 52, paddingHorizontal: 20 },
-    headerCenter: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 8, justifyContent: 'center' },
-    headerName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-    change: { padding: 8 },
-    changeText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    disclaimer: { backgroundColor: colors.surfaceMuted, flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingVertical: 10 },
-    disclaimerText: { color: colors.textBody, flex: 1, fontSize: 14, lineHeight: 21 },
-    center: { flex: 1, justifyContent: 'center' },
-    messages: { flexGrow: 1, gap: 14, paddingHorizontal: 20, paddingVertical: 16 },
-    assistantRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 8, maxWidth: '88%' },
-    assistantColumn: { flexShrink: 1, gap: 4 },
-    assistantBubble: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexShrink: 1, padding: 14 },
-    messageText: { color: colors.textPrimary, fontSize: 16, lineHeight: 24 },
-    userRow: { alignItems: 'flex-end', gap: 4 },
-    userBubble: { backgroundColor: colors.tabBar, borderRadius: 16, maxWidth: '82%', padding: 14 },
-    userText: { color: '#FFFFFF', fontSize: 16, lineHeight: 24 },
-    time: { color: colors.textSecondary, fontSize: 12 },
-    cardActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
-    cardButton: { alignItems: 'center', borderRadius: 12, flexGrow: 1, justifyContent: 'center', minHeight: 48, minWidth: 116, paddingHorizontal: 14 },
-    cardCancel: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
-    cardCancelText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 15 },
-    cardConfirm: { backgroundColor: colors.primary },
-    cardConfirmText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 15 },
-    cardBusy: { opacity: 0.5 },
-    cardNote: { color: colors.textSecondary, fontSize: 13, lineHeight: 19 },
-    sending: { alignSelf: 'flex-start' },
-    inlineError: { backgroundColor: colors.dangerLight, borderRadius: 12, padding: 12 },
-    inlineErrorText: { color: colors.danger, fontSize: 14 },
-    promptRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginLeft: 36 },
-    prompt: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
-    promptText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    composer: { alignItems: 'center', borderTopColor: colors.border, borderTopWidth: 1, flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 10 },
-    input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 24, borderWidth: 1, color: colors.textPrimary, flex: 1, fontSize: 16, minHeight: 48, paddingHorizontal: 16 },
-    sendButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
-    sendDisabled: { opacity: 0.4 },
-  } as const;
-}
-
-const simpleStyles = StyleSheet.create({
-  headerName: {},
-  bubble: { padding: 16, maxWidth: '100%' },
-  messageText: {},
-  input: { minHeight: 52 },
-});

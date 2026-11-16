@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Modal, Pressable, View } from 'react-native';
 
-import { radius, spacing, typography, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
 
 interface BirthDatePickerProps {
@@ -105,48 +105,46 @@ function BirthDateDialog({
 }
 
 function createStyles({ colors }: AppTheme) {
+  const box = {
+    backgroundColor: colors.surface,
+    borderColor: colors.ink,
+    borderRadius: 12,
+    borderWidth: 2,
+    color: colors.ink,
+    fontFamily: fontFamilies.galmuri11Bold,
+    fontSize: 24,
+    height: 52,
+    padding: 0,
+    textAlign: 'center',
+  } as const;
+  const word = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
   return {
     overlay: {
       alignItems: 'center',
-      backgroundColor: colors.overlay,
+      backgroundColor: 'rgba(22, 24, 46, 0.45)',
       flex: 1,
       justifyContent: 'center',
-      padding: spacing.xl,
+      padding: 24,
     },
     dialog: {
       backgroundColor: colors.surface,
-      borderRadius: radius.lg,
-      gap: spacing.lg,
-      padding: spacing.lg,
+      borderColor: colors.ink,
+      borderRadius: 22,
+      borderWidth: 2,
+      boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)',
+      gap: 16,
+      padding: 20,
       width: 300,
     },
-    title: { color: colors.textBody, fontFamily: typography.sectionTitle.fontFamily, fontSize: 16 },
+    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
     dateFields: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
-    yearField: {
-      borderBottomColor: colors.border,
-      borderBottomWidth: 1,
-      color: colors.textBody,
-      fontFamily: typography.body.fontFamily,
-      fontSize: 18,
-      padding: spacing.xs,
-      textAlign: 'center',
-      width: 78,
-    },
-    dateField: {
-      borderBottomColor: colors.border,
-      borderBottomWidth: 1,
-      color: colors.textBody,
-      fontFamily: typography.body.fontFamily,
-      fontSize: 18,
-      padding: spacing.xs,
-      textAlign: 'center',
-      width: 48,
-    },
-    separator: { color: colors.textSecondary, fontSize: 18, marginHorizontal: 3 },
+    yearField: { ...box, width: 96 },
+    dateField: { ...box, width: 60 },
+    separator: { ...word, color: colors.textSecondary, marginHorizontal: 5 },
     actions: { flexDirection: 'row', justifyContent: 'flex-end' },
-    action: { minHeight: 40, justifyContent: 'center', paddingHorizontal: spacing.md },
-    cancel: { color: colors.textSecondary, fontFamily: typography.label.fontFamily },
-    confirm: { color: colors.primaryPressed, fontFamily: typography.label.fontFamily },
+    action: { justifyContent: 'center', minHeight: 40, paddingHorizontal: 12 },
+    cancel: { ...word, color: colors.textSecondary },
+    confirm: { ...word, color: colors.ink },
     disabled: { color: colors.textDisabled },
   } as const;
 }

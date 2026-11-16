@@ -13,6 +13,8 @@ import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { darkColors, fontFamilies } from '@/src/theme';
 
+// Renewal A has only the light look, so the choice of mode is not offered.
+const SHOW_THEME_MODES = false;
 const modes = [
   { label: '기기 설정대로', tone: '#DFDFE5', value: 'system' },
   { label: '밝게', tone: '#F5F5F8', value: 'light' },
@@ -51,6 +53,7 @@ export default function DisplaySettingsScreen() {
       contentContainerStyle={[styles.content, simple && simpleStyles.content, { paddingTop: 8, paddingBottom: insets.bottom + 32 }]}
       style={[styles.root, isDark && dark.root]}
     >
+      {SHOW_THEME_MODES ? (<>
       <Text style={[styles.sectionTitle, isDark && dark.text, simple && simpleStyles.sectionTitle]}>화면 모드</Text>
       <View style={styles.modes}>
         {modes.map((mode) => (
@@ -68,6 +71,7 @@ export default function DisplaySettingsScreen() {
           </Pressable>
         ))}
       </View>
+      </>) : null}
       {saveError ? <Text accessibilityRole="alert" style={styles.error}>{saveError}</Text> : null}
       {serverSynced === false ? <Text style={[styles.note, isDark && dark.secondary]}>이 기기에 저장했어요.</Text> : null}
       {simple ? null : <>

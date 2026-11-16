@@ -6,8 +6,7 @@ import {
   Pressable,
   View } from 'react-native';
 
-import EmailIcon from '@/assets/icons/input/Email.svg';
-import NoticeIcon from '@/assets/icons/auth-redesign/info-circle.svg';
+import { aForm } from '@/src/components/a/form';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import { useSignup } from '@/src/features/signup/SignupContext';
 import { getSignupAuthErrorMessage } from '@/src/features/signup/signupAuthError';
@@ -111,7 +110,6 @@ export default function SignUpStep2Screen() {
       onContinue={() => void verifyCode()}
     >
       <View style={styles.emailCard}>
-        <EmailIcon height={20} width={20} />
         <Text numberOfLines={1} style={styles.emailText}>
           {email}
         </Text>
@@ -154,7 +152,6 @@ export default function SignUpStep2Screen() {
         </Pressable>
       </View>
       <View style={styles.notice}>
-        <NoticeIcon height={20} width={20} />
         <Text style={styles.noticeText}>메일이 안 보이면 스팸함도 확인해 주세요.</Text>
       </View>
     </SignUpScreenLayout>
@@ -162,66 +159,32 @@ export default function SignUpStep2Screen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    emailCard: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: 10,
-      height: 58,
-      paddingLeft: 16,
-      paddingRight: 8,
-    },
-    emailText: {
-      color: colors.textPrimary,
-      flex: 1,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
-    smallButton: {
-      alignItems: 'center',
-      backgroundColor: colors.background,
-      borderColor: colors.border,
-      borderRadius: 8,
-      borderWidth: 1,
-      height: 44,
-      justifyContent: 'center',
-      paddingHorizontal: 12,
-    },
-    smallButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    codeRow: { flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
+    emailCard: { ...a.field, gap: 8, paddingRight: 6 },
+    emailText: { ...a.p15, color: colors.ink, flex: 1 },
+    smallButton: a.mini,
+    smallButtonText: a.miniText,
+    codeRow: { flexDirection: 'row', gap: 6 },
     codeInput: {
       backgroundColor: colors.surface,
-      borderColor: colors.border,
+      borderColor: colors.ink,
       borderRadius: 12,
-      borderWidth: 1,
-      color: colors.textPrimary,
+      borderWidth: 2,
+      color: colors.ink,
       flex: 1,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 22,
-      height: 60,
+      fontFamily: fontFamilies.galmuri11Bold,
+      fontSize: 24,
+      height: 56,
       minWidth: 0,
       padding: 0,
       textAlign: 'center',
     },
-    codeInputFocused: { borderColor: colors.primary, borderWidth: 2 },
-    resendRow: { alignItems: 'flex-end', marginTop: -16 },
+    // Which of the six boxes is being typed in.
+    codeInputFocused: { backgroundColor: colors.primaryLight },
+    resendRow: { alignItems: 'flex-end', marginTop: -4, paddingBottom: 3 },
     resendDisabled: { opacity: 0.55 },
-    notice: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: 10,
-      minHeight: 51,
-      paddingHorizontal: 16,
-      paddingVertical: 15,
-    },
-    noticeText: { color: colors.textBody, flex: 1, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
+    notice: {},
+    noticeText: a.note,
   } as const;
 }

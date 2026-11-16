@@ -127,27 +127,31 @@ export default function ExerciseCompletionScreen() {
 }
 
 function createSStyles({ colors }: AppTheme) {
+  // Renewal A: one dark outline on every piece, a ledge under what can be pressed, pixel letters.
+  const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
+  const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
+  const outline = { backgroundColor: colors.surface, borderColor: colors.ink, borderWidth: 2 } as const;
   return {
-    root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, paddingTop: 8, gap: 14 },
-    check: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.successLight, alignItems: 'center', justifyContent: 'center' },
-    title: { color: colors.textPrimary, fontSize: 22, lineHeight: 30, fontFamily: fontFamilies.pretendardBold },
-    subtitle: { color: colors.textBody, fontSize: 16, lineHeight: 24 },
-    metrics: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: 'row', paddingVertical: 16 },
+    root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 16, paddingTop: 8, gap: 14 },
+    check: { width: 56, height: 56, borderRadius: 14, backgroundColor: colors.gold, borderColor: colors.ink, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
+    title: { color: colors.ink, fontSize: 24, lineHeight: 28, fontFamily: fontFamilies.galmuri11Bold },
+    subtitle: { ...p15, color: colors.textBody },
+    metrics: { ...outline, borderRadius: 18, boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)', flexDirection: 'row', paddingVertical: 16 },
     metric: { alignItems: 'center', flex: 1, gap: 2 },
-    metricLabel: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
-    metricValue: { color: colors.textPrimary, fontSize: 18, lineHeight: 26, fontFamily: fontFamilies.pretendardBold },
-    metricNote: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
-    sectionTitle: { color: colors.textPrimary, fontSize: 16, lineHeight: 24, fontFamily: fontFamilies.pretendardBold, marginTop: 4 },
-    optional: { color: colors.textSecondary, fontSize: 14, fontFamily: fontFamilies.pretendardRegular },
-    helper: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
-    options: { flexDirection: 'row', gap: 8 },
-    option: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 999, borderWidth: 1, flex: 1, height: 44, justifyContent: 'center', paddingHorizontal: 4 },
+    metricLabel: { ...p12, color: colors.textSecondary },
+    metricValue: { color: colors.ink, fontSize: 24, lineHeight: 28, fontFamily: fontFamilies.galmuri11Bold },
+    metricNote: { ...p12, color: colors.textSecondary },
+    sectionTitle: { ...p15, color: colors.ink, marginTop: 4 },
+    optional: { ...p12, color: colors.textSecondary },
+    helper: { ...p12, color: colors.textSecondary },
+    options: { flexDirection: 'row', gap: 6 },
+    option: { ...outline, alignItems: 'center', borderRadius: 14, boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)', flex: 1, height: 46, justifyContent: 'center', paddingHorizontal: 4 },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    chip: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 999, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
-    selected: { backgroundColor: colors.primary, borderColor: colors.primary },
-    optionText: { color: colors.textBody, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
-    selectedText: { color: '#FFFFFF' },
-    primaryButton: { height: 56, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-    primaryText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled },
+    chip: { ...outline, alignItems: 'center', borderRadius: 12, height: 40, justifyContent: 'center', paddingHorizontal: 14 },
+    selected: { backgroundColor: colors.primary, borderColor: colors.ink },
+    optionText: { ...p15, color: colors.ink },
+    selectedText: { color: colors.onPrimary },
+    primaryButton: { height: 52, borderRadius: 14, backgroundColor: colors.primary, borderColor: colors.ink, borderWidth: 2, boxShadow: `0 4px 0 ${colors.ink}`, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+    primaryText: { color: colors.onPrimary, fontSize: 22, lineHeight: 26, fontFamily: fontFamilies.galmuri11Bold }, disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled },
   } as const;
 }

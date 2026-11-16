@@ -16,7 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import CloseIcon from '@/assets/icons/ui/x.svg';
-import { radius, shadows, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, radius, shadows, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { IconButton } from './IconButton';
 import { Text } from './Text';
@@ -354,10 +354,14 @@ function createStyles({ colors, text }: AppTheme) {
     },
     separateOverlay: { backgroundColor: colors.transparent },
     dimLayer: { backgroundColor: colors.overlay },
+    // Renewal A: the dark outline on the three sides that show.
     sheet: {
       backgroundColor: colors.elevated,
+      borderBottomWidth: 0,
+      borderColor: colors.ink,
       borderTopLeftRadius: radius.sheet,
       borderTopRightRadius: radius.sheet,
+      borderWidth: 2,
       maxHeight: '88%',
     },
     handle: {
@@ -374,8 +378,9 @@ function createStyles({ colors, text }: AppTheme) {
       minHeight: 56,
       paddingLeft: 20,
       paddingRight: 8,
+      paddingTop: 6,
     },
-    title: { ...text.title2, color: colors.textPrimary, flex: 1 },
+    title: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
     content: { paddingHorizontal: 20, paddingVertical: 16 },
     overflowScroll: { flexGrow: 0, flexShrink: 1 },
     footer: {

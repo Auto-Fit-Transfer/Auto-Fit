@@ -1,9 +1,10 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import MoreIcon from '@/assets/icons/system/DotsThree.svg';
 import type { CommunityAuthor, CommunityComment } from '@/src/api/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
-import { fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
+import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { CommunityAvatar } from './CommunityAvatar';
 import { Text } from '@/src/components/common';
@@ -58,32 +59,22 @@ export function CommunityCommentRow({
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
     row: {
-      borderBottomColor: colors.border,
-      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: colors.track,
+      borderBottomWidth: 2,
       flexDirection: 'row',
       gap: 10,
-      paddingHorizontal: spacing.lg,
-      paddingVertical: spacing.md,
+      marginHorizontal: 16,
+      paddingVertical: 14,
     },
     body: { flex: 1, minWidth: 0 },
-    meta: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs },
+    meta: { alignItems: 'center', flexDirection: 'row', gap: 6 },
     nicknameButton: { flexShrink: 1 },
-    nickname: {
-      color: colors.textPrimary,
-      flexShrink: 1,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-    },
-    time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+    nickname: { ...a.p15, color: colors.ink, flexShrink: 1 },
+    time: a.note,
     more: { marginLeft: 'auto' },
-    content: {
-      color: colors.textBody,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 14,
-      lineHeight: 21,
-      marginTop: 2,
-    },
+    content: { ...a.p15, color: colors.ink, marginTop: 2 },
   } as const;
 }

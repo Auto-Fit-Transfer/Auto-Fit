@@ -4,13 +4,12 @@ import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { Alert, Keyboard, Platform, Pressable, View } from 'react-native';
 
-import EmailIcon from '@/assets/icons/input/Email.svg';
-import InfoIcon from '@/assets/icons/auth-redesign/info-circle.svg';
+import { aForm } from '@/src/components/a/form';
 import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { PasswordAuthScreenLayout } from '@/src/components/auth';
 import { AUTH_CALLBACK_PATH } from '@/src/features/auth/authCallback';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
+import { useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 const resendSeconds = 60;
@@ -85,7 +84,6 @@ export default function ForgotPasswordScreen() {
       >
         <View style={styles.sentCard}>
           <View style={styles.sentRow}>
-            <EmailIcon height={20} width={20} />
             <View style={styles.sentCopy}>
               <Text numberOfLines={1} style={styles.sentEmail}>{email.trim().toLowerCase()}</Text>
               <Text style={styles.sentTime}>{formatSentAt(sentAt)}에 보냈어요</Text>
@@ -113,13 +111,7 @@ export default function ForgotPasswordScreen() {
             <Text style={styles.toastText}>메일을 다시 보냈어요</Text>
           </View>
         ) : null}
-        <View style={styles.notice}>
-          <InfoIcon height={20} width={20} />
-          <View style={styles.sentCopy}>
-            <Text style={styles.noticeTitle}>메일이 안 오나요?</Text>
-            <Text style={styles.noticeText}>스팸함을 확인해 보세요.</Text>
-          </View>
-        </View>
+        <Text style={styles.noticeText}>메일이 안 오면 스팸함도 확인해 보세요.</Text>
       </PasswordAuthScreenLayout>
     );
   }
@@ -155,46 +147,29 @@ export default function ForgotPasswordScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
     backToLogin: { alignItems: 'center', height: 44, justifyContent: 'center', marginTop: 8 },
-    backToLoginText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    backToLoginText: a.link,
     sentCard: {
       backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      gap: 12,
-      padding: 16,
+      borderColor: colors.ink,
+      borderRadius: 18,
+      borderWidth: 2,
+      boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)',
+      gap: 14,
+      padding: 14,
     },
     sentRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
     sentCopy: { flex: 1, gap: 2 },
-    sentEmail: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-    sentTime: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
-    sentActions: { flexDirection: 'row', gap: 8 },
-    smallButton: {
-      alignItems: 'center',
-      backgroundColor: colors.background,
-      borderColor: colors.border,
-      borderRadius: 8,
-      borderWidth: 1,
-      flex: 1,
-      height: 44,
-      justifyContent: 'center',
-    },
-    smallButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    sentEmail: { ...a.p15, color: colors.ink },
+    sentTime: a.note,
+    sentActions: { flexDirection: 'row', gap: 8, paddingBottom: 3 },
+    smallButton: a.mini,
+    smallButtonText: a.miniText,
     smallButtonDisabled: { color: colors.textDisabled },
-    toast: { backgroundColor: colors.tabBar, borderRadius: 12, marginTop: -12, padding: 14 },
-    toastText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    notice: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: 10,
-      padding: 16,
-    },
-    noticeTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14, lineHeight: 21 },
-    noticeText: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    toast: { alignSelf: 'center', backgroundColor: colors.ink, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 9 },
+    toastText: { ...a.p12, color: '#FFFFFF' },
+    noticeText: a.note,
   } as const;
 }

@@ -15,7 +15,6 @@ import { ApiError } from '@/src/api/client';
 
 import TrophyIcon from '@/assets/icons/deco/Trophy.svg';
 import SearchIcon from '@/assets/icons/ui/magnifying-glass.svg';
-import PencilIcon from '@/assets/icons/ui/pencil-simple.svg';
 import {
   getCommunityChallenges,
   getCommunityErrorMessage,
@@ -26,7 +25,8 @@ import {
   type CommunityPost,
   type CommunityPostCategory,
 } from '@/src/api/community';
-import { IconButton, Text } from '@/src/components/common';
+import { aForm } from '@/src/components/a/form';
+import { BackButton, IconButton, Text } from '@/src/components/common';
 import { NotificationBell } from '@/src/components/community/NotificationBell';
 import { R6ConnectionError } from '@/src/components/common/R6ConnectionError';
 import { CommunityPostCard } from '@/src/components/community';
@@ -43,7 +43,7 @@ import {
 import { CommunityChallengesPane } from '@/src/features/community/CommunityChallengesPane';
 import { CommunityClubsPane } from '@/src/features/community/CommunityClubsPane';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { darkColors, fontFamilies, shadows, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { darkColors, fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -213,16 +213,18 @@ export default function CommunityScreen() {
 
   return (
     <View style={[styles.root, isDark && dark.root]}>
-      <View style={[styles.header, isDark && dark.card, { paddingTop: insets.top + spacing.sm }]}>
-        <Text accessibilityRole="header" style={[styles.title, simple && simpleStyles.title, isDark && dark.text]}>
+      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
+        <BackButton accessibilityLabel="홈으로" onPress={() => router.navigate('/home')} />
+        <Text accessibilityRole="header" style={styles.title}>
           커뮤니티
         </Text>
         <View style={styles.headerActions}>
           <IconButton
             accessibilityLabel="커뮤니티 검색"
-            icon={<SearchIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={24} width={24} />}
+            icon={<SearchIcon color={colors.ink} height={22} width={22} />}
             onPress={() => router.push('/community/search')}
             size={44}
+            style={styles.headerCard}
           />
           <NotificationBell />
         </View>
@@ -235,9 +237,9 @@ export default function CommunityScreen() {
             aria-selected={item.value === activeTab}
             key={item.value}
             onPress={() => switchTab(item.value)}
-            style={[styles.tab, simple && simpleStyles.tab, item.value === activeTab && styles.tabActive]}
+            style={[styles.tab, item.value === activeTab && styles.tabActive]}
           >
-            <Text style={[styles.tabText, simple && simpleStyles.tabText, item.value === activeTab && styles.tabTextActive, isDark && dark.text]}>
+            <Text style={[styles.tabText, item.value === activeTab && styles.tabTextActive]}>
               {item.label}
             </Text>
           </Pressable>
@@ -274,7 +276,7 @@ export default function CommunityScreen() {
                   ))}
                 </ScrollView>
                 <Pressable accessibilityRole="button" onPress={() => setPane('challenges')} style={[styles.challengeCard, simple && simpleStyles.challengeCard, isDark && dark.card]}>
-                  <View style={[styles.challengeIcon, isDark && dark.card]}><TrophyIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={22} width={22} /></View>
+                  <View style={styles.challengeIcon}><TrophyIcon color={colors.ink} height={22} width={22} /></View>
                   <View style={styles.challengeCopy}>
                     <Text style={[styles.challengeTitle, simple && simpleStyles.challengeTitle, isDark && dark.text]}>{challenge?.title ?? '커뮤니티 챌린지'}</Text>
                     {challenge && challenge.goal <= 7 ? (
@@ -336,15 +338,9 @@ export default function CommunityScreen() {
           accessibilityLabel="글쓰기"
           accessibilityRole="button"
           onPress={() => router.push('/community/compose')}
-          style={({ pressed }) => [
-            styles.compose,
-            shadows.floating,
-            { bottom: bottomSpace + spacing.lg },
-            pressed && styles.composePressed,
-          ]}
+          style={({ pressed }) => [styles.compose, { bottom: bottomSpace + 16 }, pressed && styles.composePressed]}
         >
-          <PencilIcon color="#FFFFFF" height={20} width={20} />
-          <Text style={styles.composeText}>글쓰기</Text>
+          <Text style={styles.composeText}>+ 글쓰기</Text>
         </Pressable>
       )}
       {actions.elements}
@@ -353,77 +349,48 @@ export default function CommunityScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: the bar (back, name, search, bell), the three tabs on their ledges, small chips for the
+  // kinds of post, and each post an outlined card with room round it.
+  const a = aForm(colors);
+  const tile = { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderWidth: 2, justifyContent: 'center' } as const;
   return {
     root: { backgroundColor: colors.background, flex: 1 },
-    header: {
-      alignItems: 'center',
-      backgroundColor: colors.background,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      paddingBottom: spacing.xs,
-      paddingLeft: spacing.xl,
-      paddingRight: spacing.sm,
-    },
-    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
-    headerActions: { flexDirection: 'row' },
-    tabs: {
-      backgroundColor: colors.background,
-      borderBottomColor: colors.border,
-      borderBottomWidth: 1,
-      flexDirection: 'row',
-      gap: 22,
-      paddingHorizontal: 20,
-    },
-    tab: {
-      alignItems: 'center',
-      borderBottomColor: 'transparent',
-      borderBottomWidth: 2,
-      marginBottom: -1,
-      paddingVertical: 10,
-    },
-    tabActive: { borderBottomColor: colors.textPrimary },
-    tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 16, lineHeight: 24 },
-    tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    header: { alignItems: 'center', backgroundColor: colors.background, flexDirection: 'row', gap: 10, paddingBottom: 4, paddingHorizontal: 16 },
+    title: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    headerActions: { flexDirection: 'row', gap: 8 },
+    headerCard: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)' },
+    // 4 taller than its buttons: the ledge they stand on.
+    tabs: { backgroundColor: colors.background, flexDirection: 'row', gap: 6, paddingBottom: 4, paddingHorizontal: 16, paddingTop: 14 },
+    tab: a.seg,
+    tabActive: a.segOn,
+    tabText: a.segText,
+    tabTextActive: a.onText,
     list: { flexGrow: 1 },
-    feedHeader: { backgroundColor: colors.background, paddingVertical: 16, gap: 16 },
-    categories: { gap: 8, paddingHorizontal: 20 },
-    categoryChip: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 999, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
-    categoryActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-    categoryText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    categoryTextActive: { color: '#FFFFFF' },
-    challengeCard: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, marginHorizontal: 20, minHeight: 89, padding: 14 },
-    challengeIcon: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 20, height: 40, justifyContent: 'center', width: 40 },
-    challengeCopy: { flex: 1, gap: 6 },
-    challengeTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-    challengeBars: { flexDirection: 'row', gap: 4 },
-    challengeBar: { backgroundColor: colors.gaugeTrack, borderRadius: 4, flex: 1, height: 8 },
-    challengeBarDone: { backgroundColor: colors.primary },
-    challengeDescription: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
-    challengeAction: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-    challengeActionText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    postWrap: { backgroundColor: colors.background, borderColor: colors.surfaceMuted, borderTopWidth: 8 },
+    feedHeader: { backgroundColor: colors.background, gap: 12, paddingTop: 12 },
+    categories: { gap: 6, paddingBottom: 3, paddingHorizontal: 16 },
+    categoryChip: a.mini,
+    categoryActive: a.on,
+    categoryText: a.miniText,
+    categoryTextActive: a.onText,
+    challengeCard: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 12, marginHorizontal: 16, padding: 12 },
+    challengeIcon: { ...tile, borderRadius: 12, height: 44, width: 44 },
+    challengeCopy: { flex: 1, gap: 4 },
+    challengeTitle: { ...a.p15, color: colors.ink },
+    challengeBars: { flexDirection: 'row', gap: 3 },
+    challengeBar: { backgroundColor: colors.track, borderColor: 'rgba(32, 35, 63, 0.25)', borderWidth: 1, height: 8, width: 8 },
+    challengeBarDone: { backgroundColor: colors.primary, borderColor: colors.ink },
+    challengeDescription: a.note,
+    challengeAction: a.mini,
+    challengeActionText: a.miniText,
+    postWrap: { marginHorizontal: 16, marginTop: 12 },
     center: { flex: 1, justifyContent: 'center' },
-    message: { alignItems: 'center', gap: spacing.md, padding: spacing.xxl },
-    emptyTitle: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 18,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-    footer: { paddingVertical: spacing.lg },
-    compose: {
-      alignItems: 'center',
-      backgroundColor: colors.primary,
-      borderRadius: 999,
-      flexDirection: 'row',
-      gap: 6,
-      height: 47,
-      paddingHorizontal: 20,
-      position: 'absolute',
-      right: 20,
-    },
-    composeText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    composePressed: { backgroundColor: colors.primaryPressed },
+    message: { alignItems: 'center', gap: 8, padding: 32 },
+    emptyTitle: { ...a.p15, color: colors.ink, textAlign: 'center' },
+    messageText: { ...a.note, textAlign: 'center' },
+    footer: { paddingVertical: 16 },
+    compose: { ...a.go, height: 50, paddingHorizontal: 16, position: 'absolute', right: 16 },
+    composeText: a.goText,
+    composePressed: a.goPressed,
   } as const;
 }
 

@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import SendIcon from '@/assets/icons/feature/PaperPlane_Fill.svg';
 import {
   COMMUNITY_MAX_COMMENT_LENGTH,
   createCommunityComment,
@@ -27,7 +26,8 @@ import {
   type CommunityPost,
   type CommunityProfile,
 } from '@/src/api/community';
-import { AppButton, AppHeader, IconButton, Text, TextInput } from '@/src/components/common';
+import { aForm } from '@/src/components/a/form';
+import { AppButton, AppHeader, Text, TextInput } from '@/src/components/common';
 import { CommunityCommentRow, CommunityPostCard } from '@/src/components/community';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
@@ -36,7 +36,7 @@ import {
   subscribeCommunityEvents,
 } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
@@ -272,17 +272,20 @@ export default function CommunityPostScreen() {
               multiline
               onChangeText={setDraft}
               placeholder="댓글을 남겨 보세요"
-              placeholderTextColor={colors.textDisabled}
+              placeholderTextColor={colors.textSecondary}
               style={[styles.input, simple && simpleStyles.input]}
               value={draft}
             />
-            <IconButton
+            <Pressable
               accessibilityLabel="댓글 보내기"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !draft.trim() || sending }}
               disabled={!draft.trim() || sending}
-              icon={<SendIcon color={colors.primary} height={24} width={24} />}
               onPress={() => void send()}
-              size={44}
-            />
+              style={[styles.send, (!draft.trim() || sending) && styles.sendOff]}
+            >
+              <Text style={styles.sendText}>보내기</Text>
+            </Pressable>
           </View>
         </>
       )}
@@ -292,49 +295,35 @@ export default function CommunityPostScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
     root: { backgroundColor: colors.background, flex: 1 },
-    readRow: { alignItems: 'flex-end', paddingHorizontal: spacing.xl, paddingVertical: spacing.xs },
+    readRow: { alignItems: 'flex-end', paddingHorizontal: 16, paddingVertical: 4 },
     center: { flex: 1, justifyContent: 'center' },
-    message: { alignItems: 'center', gap: spacing.md, padding: spacing.xxl },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-    sectionTitle: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
-    commentsHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: spacing.xs },
-    sortLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-    bookmarkButton: { alignItems: 'center', backgroundColor: colors.background, alignSelf: 'flex-end', borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', marginHorizontal: spacing.xl, marginTop: spacing.sm, paddingHorizontal: 12 },
-    bookmarkText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    empty: {
-      ...typography.body,
-      color: colors.textSecondary,
-      paddingVertical: spacing.xxl,
-      textAlign: 'center',
-    },
-    inputBar: {
-      alignItems: 'flex-end',
-      borderTopColor: colors.border,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      flexDirection: 'row',
-      gap: spacing.xs,
-      paddingHorizontal: spacing.md,
-      paddingTop: spacing.sm,
-    },
+    message: { alignItems: 'center', gap: 12, padding: 32 },
+    messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
+    sectionTitle: a.note,
+    commentsHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 4, paddingHorizontal: 18, paddingTop: 18 },
+    sortLabel: a.note,
+    bookmarkButton: { ...a.mini, alignSelf: 'flex-end', marginRight: 16, marginTop: 12 },
+    bookmarkText: a.miniText,
+    empty: { ...a.note, paddingVertical: 32, textAlign: 'center' },
+    inputBar: { alignItems: 'flex-end', flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 10 },
     input: {
-      ...typography.body,
+      ...a.input,
       backgroundColor: colors.surface,
-      borderColor: colors.border,
+      borderColor: colors.ink,
       borderRadius: 12,
-      borderWidth: 1,
-      color: colors.textPrimary,
+      borderWidth: 2,
       flex: 1,
       maxHeight: 110,
-      minHeight: 44,
-      paddingHorizontal: spacing.md,
+      minHeight: 46,
+      paddingHorizontal: 12,
       paddingVertical: 11,
     },
+    send: { ...a.go, height: 46, marginBottom: 4, paddingHorizontal: 14 },
+    sendOff: { opacity: 0.4 },
+    sendText: { ...a.p15, color: colors.onPrimary },
   } as const;
 }
 

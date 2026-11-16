@@ -55,6 +55,9 @@ type Props = {
   showRecordControls: boolean;
 };
 
+// Renewal A's diet tab (src/components/a/DietView.tsx) takes the same props; this older view is no longer shown.
+export type R6DietHomeProps = Props;
+
 const mealLabels: { id: R6Meal['id']; title: string }[] = [
   { id: 'breakfast', title: '아침' },
   { id: 'lunch', title: '점심' },

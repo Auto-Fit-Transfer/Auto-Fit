@@ -3,17 +3,14 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Alert, Keyboard, Pressable, View } from 'react-native';
 
-import CheckIcon from '@/assets/icons/system/Check.svg';
-import EyeSlashIcon from '@/assets/icons/auth-redesign/5facc.svg';
-import EyeIcon from '@/assets/icons/input/Eye.svg';
+import { aForm } from '@/src/components/a/form';
 import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { PasswordAuthScreenLayout } from '@/src/components/auth';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
 
 export default function ResetPasswordScreen() {
-  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const confirmationRef = useRef<TextInput>(null);
@@ -60,6 +57,7 @@ export default function ResetPasswordScreen() {
         accessibilityLabel="새 비밀번호"
         autoCapitalize="none"
         autoComplete="new-password"
+        fieldStyle={styles.withMini}
         label="새 비밀번호"
         onChangeText={setPassword}
         onSubmitEditing={() => confirmationRef.current?.focus()}
@@ -77,6 +75,7 @@ export default function ResetPasswordScreen() {
         accessibilityLabel="한 번 더 입력"
         autoCapitalize="none"
         autoComplete="new-password"
+        fieldStyle={styles.withMini}
         label="한 번 더 입력"
         onChangeText={setConfirmation}
         onSubmitEditing={() => void completeReset()}
@@ -92,7 +91,7 @@ export default function ResetPasswordScreen() {
       <View style={styles.conditions}>
         {conditions.map((condition) => (
           <View key={condition.label} style={styles.conditionRow}>
-            <CheckIcon color={condition.met ? colors.success : colors.textDisabled} height={18} width={18} />
+            <View style={[styles.conditionBox, condition.met && styles.conditionBoxMet]} />
             <Text style={[styles.conditionText, condition.met && styles.conditionMet]}>{condition.label}</Text>
           </View>
         ))}
@@ -102,30 +101,39 @@ export default function ResetPasswordScreen() {
 }
 
 function VisibilityButton({ onPress, visible }: { onPress: () => void; visible: boolean }) {
+  const styles = useThemedStyles(createStyles);
   return (
     <Pressable
       accessibilityLabel={visible ? '비밀번호 숨기기' : '비밀번호 보기'}
       accessibilityRole="button"
       hitSlop={10}
       onPress={onPress}
+      style={styles.mini}
     >
-      {visible ? <EyeSlashIcon height={22} width={22} /> : <EyeIcon height={22} width={22} />}
+      <Text style={styles.miniText}>{visible ? '숨기기' : '보기'}</Text>
     </Pressable>
   );
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    conditions: {
+    // The rules as a list: a small box fills with violet as each one is met.
+    conditions: { gap: 8, marginHorizontal: 2 },
+    conditionRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+    conditionBox: {
       backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      gap: 10,
-      padding: 16,
+      borderColor: colors.ink,
+      borderRadius: 4,
+      borderWidth: 2,
+      height: 12,
+      width: 12,
     },
-    conditionRow: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 21 },
-    conditionText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
-    conditionMet: { color: colors.textPrimary },
+    conditionBoxMet: { backgroundColor: colors.primary },
+    conditionText: a.note,
+    conditionMet: { color: colors.ink },
+    withMini: { paddingRight: 6 },
+    mini: a.mini,
+    miniText: a.miniText,
   } as const;
 }

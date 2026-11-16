@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { JoinScene } from '@/src/components/a/JoinScene';
+
 import { AuthCard, AuthPage } from './AuthRedesign';
 
 export interface PasswordAuthScreenLayoutProps {
@@ -43,6 +45,7 @@ export function PasswordAuthScreenLayout({
       heading={title}
       mode="password"
       onBack={onBack}
+      scene={<JoinScene />}
     >
       {children}
     </AuthPage>

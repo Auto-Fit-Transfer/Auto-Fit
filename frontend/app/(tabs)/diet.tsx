@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MealRecordSheets, type MealRecordDraft } from '@/src/components/diet/MealRecordSheets';
-import { R6DietHome } from '@/src/components/diet/R6DietHome';
+import { DietView } from '@/src/components/a/DietView';
 import {
   getDietApiErrorMessage,
   getDietMealLogs,
@@ -730,7 +730,7 @@ export default function DietScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      <R6DietHome
+      <DietView
         today={today}
         selectedDateOffset={selectedDateOffset}
         selectedDateKey={selectedDateKey}

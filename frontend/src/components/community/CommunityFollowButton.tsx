@@ -1,6 +1,7 @@
 import { Pressable } from 'react-native';
 
-import { fontFamilies, spacing, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
+import { useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 export interface CommunityFollowButtonProps {
@@ -42,22 +43,16 @@ export function CommunityFollowButton({
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    button: {
-      backgroundColor: colors.surface,
-      alignItems: 'center',
-      borderRadius: 8,
-      borderWidth: 1,
-      justifyContent: 'center',
-      minHeight: 34,
-      paddingHorizontal: spacing.md,
-    },
-    follow: { backgroundColor: colors.background, borderColor: colors.border },
-    following: { backgroundColor: colors.surfaceMuted, borderColor: colors.surfaceMuted },
-    wide: { alignSelf: 'stretch', borderRadius: 12, minHeight: 44 },
+    button: a.mini,
+    follow: {},
+    // Already following: flat and tinted, so it reads as a state and not as something to press next.
+    following: { backgroundColor: colors.primaryLight, boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)' },
+    wide: { alignSelf: 'stretch', borderRadius: 12, height: 44 },
     pressed: { opacity: 0.75 },
-    text: { fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    followText: { color: colors.textPrimary },
-    followingText: { color: colors.textPrimary },
+    text: a.miniText,
+    followText: {},
+    followingText: {},
   } as const;
 }

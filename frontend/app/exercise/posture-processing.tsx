@@ -1,17 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { File, Paths } from 'expo-file-system';
-import { ActivityIndicator, Platform, Pressable, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Platform } from 'react-native';
 
-import CheckIcon from '@/assets/icons/ui/check.svg';
-import LockIcon from '@/assets/icons/ui/lock.svg';
-import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { ApiError, getApiErrorMessage } from '@/src/api/client';
 import { createPostureJob, getPostureCapabilities, getPostureJob, uploadPostureVideo, type PostureVideo } from '@/src/api/posture';
+import { PostureWaitView } from '@/src/components/a/PostureViews';
 import { recoveryAction, stepOf } from '@/src/features/exercise/postureFlow';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text } from '@/src/components/common';
 
 const steps = [
   { title: '영상 올리기', description: '영상을 서버로 보내요' },
@@ -39,11 +34,10 @@ function problemText(cause: unknown) {
   return getApiErrorMessage(cause);
 }
 
+// Renewal A's 자세 분석, waiting (src/components/a/PostureViews.tsx shows it). This file sends the
+// video, follows the job and goes on to the result.
 export default function PostureProcessingScreen() {
-  const { colors } = useAppTheme();
-  const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{
     jobId?: string; videoUri?: string; mimeType?: string; name?: string; durationMs?: string;
     exerciseCode?: string; cameraView?: string; label?: string;
@@ -59,11 +53,13 @@ export default function PostureProcessingScreen() {
     ? { uri: params.videoUri, mimeType: params.mimeType, name: params.name } : null), [params.videoUri, params.mimeType, params.name]);
   const nothingToDo = !video && !params.jobId;
   const seconds = Math.round(Number(params.durationMs) / 1000);
+  const label = params.label || '스쿼트 · 옆에서';
 
   const showResult = useCallback((jobId: string) => {
     setStep(3);
-    router.replace({ pathname: '/exercise/posture-result', params: { jobId } });
-  }, [router]);
+    // The result has no name of the exercise in it, so the one filmed is handed over for its title.
+    router.replace({ pathname: '/exercise/posture-result', params: { jobId, name: label.split(' · ')[0] } });
+  }, [label, router]);
 
   // The upload request returns only after analysis and cleanup, so the job is read alongside it for the steps.
   // While uploading this only moves the steps; without an upload in flight it also ends the screen.
@@ -136,64 +132,18 @@ export default function PostureProcessingScreen() {
   const again = () => router.replace({ pathname: '/exercise/posture-capture', params: { exerciseCode: params.exerciseCode ?? '', cameraView: params.cameraView ?? '' } });
 
   return (
-    <View style={styles.screen}>
-      <ScreenHeader onBack={() => router.back()} title="자세 분석 중" />
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 24 }]}>
-        <Text style={styles.heading}>{shownError ? '분석을 마치지 못했어요' : '자세를 분석하고 있어요'}</Text>
-        <View style={styles.metaRow}>
-          <Text style={styles.meta}>{params.label || '스쿼트 · 옆에서'}{seconds > 0 ? ` · ${seconds}초 영상` : ''}</Text>
-          {!shownError ? <Text style={styles.metaStrong}>보통 10초 안에 끝나요</Text> : null}
-        </View>
-        <View style={styles.stepCard}>
-          {steps.map((item, index) => {
-            const done = index < step;
-            const active = !shownError && index === step;
-            return <View key={item.title} style={[styles.step, index > 0 && styles.stepBorder]}>
-              <View style={[styles.stepIcon, done && styles.stepDone]}>
-                {done ? <CheckIcon color={colors.success} height={14} width={14} />
-                  : active ? <ActivityIndicator color={colors.textPrimary} size="small" />
-                    : <Text style={styles.stepIconText}>{index + 1}</Text>}
-              </View>
-              <View style={styles.stepCopy}>
-                <Text style={[styles.stepTitle, !done && !active && styles.stepWaiting]}>{item.title}</Text>
-                <Text style={styles.stepDescription}>{index === 0 && done && seconds > 0 ? `${seconds}초 영상을 보냈어요` : item.description}</Text>
-              </View>
-            </View>;
-          })}
-        </View>
-        {shownError ? <Text style={styles.error}>{shownError}</Text> : null}
-        <View style={styles.noteRow}><LockIcon color={colors.textSecondary} height={14} width={14} /><Text style={styles.note}>분석이 끝나면 영상은 바로 지우고, 관절 위치와 결과만 남겨요.</Text></View>
-        {next === 'retry' ? <Pressable accessibilityRole="button" onPress={retry} style={styles.primary}><Text style={styles.primaryText}>다시 보내기</Text></Pressable> : null}
-        {next || nothingToDo ? <Pressable accessibilityRole="button" onPress={again} style={styles.secondary}><Text style={styles.secondaryText}>다시 찍기</Text></Pressable> : null}
-      </ScrollView>
-    </View>
+    <PostureWaitView
+      error={shownError || null}
+      failed={Boolean(shownError)}
+      meta={`${label}${seconds > 0 ? ` · ${seconds}초 영상` : ''}`}
+      onAgain={next || nothingToDo ? again : undefined}
+      onBack={() => router.back()}
+      onRetry={next === 'retry' ? retry : undefined}
+      steps={steps.map((item, index) => ({
+        title: item.title,
+        description: index === 0 && index < step && seconds > 0 ? `${seconds}초 영상을 보냈어요` : item.description,
+        state: index < step ? 'done' : index === step ? 'active' : 'waiting',
+      }))}
+    />
   );
-}
-
-function createStyles({ colors }: AppTheme) {
-  return {
-    screen: { flex: 1, backgroundColor: colors.background },
-    content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20, gap: 16 },
-    heading: { color: colors.textPrimary, fontSize: 20, fontFamily: fontFamilies.pretendardBold },
-    metaRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 8, marginTop: -6 },
-    meta: { color: colors.textSecondary, fontSize: 14, flexShrink: 1 },
-    metaStrong: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
-    stepCard: { borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 4, backgroundColor: colors.surface },
-    step: { flexDirection: 'row', alignItems: 'center', minHeight: 64 },
-    stepBorder: { borderTopWidth: 1, borderTopColor: colors.border },
-    stepIcon: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-    stepDone: { backgroundColor: colors.successLight, borderColor: colors.successLight },
-    stepIconText: { color: colors.textSecondary, fontSize: 12 },
-    stepCopy: { flex: 1 },
-    stepTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
-    stepWaiting: { color: colors.textSecondary },
-    stepDescription: { color: colors.textSecondary, fontSize: 12, marginTop: 3 },
-    error: { color: colors.danger, fontSize: 14, lineHeight: 21 },
-    noteRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    note: { color: colors.textSecondary, fontSize: 12, lineHeight: 17, flex: 1 },
-    primary: { backgroundColor: colors.primary, borderRadius: 12, minHeight: 56, alignItems: 'center', justifyContent: 'center' },
-    primaryText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-    secondary: { backgroundColor: colors.surfaceMuted, borderRadius: 12, minHeight: 56, alignItems: 'center', justifyContent: 'center' },
-    secondaryText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  } as const;
 }

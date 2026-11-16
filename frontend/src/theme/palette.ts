@@ -32,33 +32,39 @@ export interface Palette {
   overlay: string;
   transparent: string;
   tier: Record<'CORE' | 'BALANCE' | 'ACTIVE' | 'FIT' | 'PEAK', TierColors>;
+  // Renewal A (the pixel game). ink: the one dark outline every piece has. gold: points you got.
+  // track: the empty part of a bar, and quiet dividers.
+  ink: string;
+  gold: string;
+  track: string;
 }
 
 export const lightPalette: Palette = {
-  primary: '#5246C6',
-  primaryPressed: '#43389F',
-  primaryLight: '#ECE9FF',
-  primaryText: '#5246C6',
-  onPrimary: '#FFFFFF',
-  background: '#FFFFFF',
-  surface: '#FAFBFC',
-  surfaceMuted: '#F2F4F6',
+  // Renewal A: violet is what you press and how far you are; the letters on it are dark, not white.
+  primary: '#9D8BFF',
+  primaryPressed: '#8A77F0',
+  primaryLight: '#ECE8FF',
+  primaryText: '#4A36B8',
+  onPrimary: '#1B1247',
+  background: '#F4F6FB',
+  surface: '#FFFFFF',
+  surfaceMuted: '#EEF1F7',
   elevated: '#FFFFFF',
-  border: '#DFE2E7',
-  textPrimary: '#17161D',
-  textBody: '#3B3A42',
-  textSecondary: '#5E5D66',
-  textDisabled: '#8E8D95',
-  tabBar: '#17161D',
-  tabBarBorder: '#17161D',
+  border: '#D5D9E6',
+  textPrimary: '#20233F',
+  textBody: '#2C3050',
+  textSecondary: '#6E7389',
+  textDisabled: '#9AA0B4',
+  tabBar: '#20233F',
+  tabBarBorder: '#20233F',
   success: '#0E7C48',
   successLight: '#E8F6EF',
   warning: '#9A5B00',
   warningLight: '#FFF3E0',
-  danger: '#C62828',
-  dangerLight: '#FDECEC',
-  gaugeFill: '#5246C6',
-  gaugeTrack: '#E3E6EB',
+  danger: '#E0503A',
+  dangerLight: '#FDECE8',
+  gaugeFill: '#9D8BFF',
+  gaugeTrack: '#E4E7F0',
   overlay: 'rgba(13, 13, 20, 0.45)',
   transparent: 'transparent',
   tier: {
@@ -68,6 +74,9 @@ export const lightPalette: Palette = {
     FIT: { bg: '#ECE9FF', fg: '#43389F' },
     PEAK: { bg: '#FAF2DD', fg: '#6E5210' },
   },
+  ink: '#20233F',
+  gold: '#FFD23F',
+  track: '#E4E7F0',
 };
 
 export const darkPalette: Palette = {
@@ -104,4 +113,8 @@ export const darkPalette: Palette = {
     FIT: { bg: '#23204A', fg: '#B4ABFF' },
     PEAK: { bg: '#2F2710', fg: '#E8C766' },
   },
+  // Renewal A has no dark look (decided); these only keep the type whole.
+  ink: '#F3F4F6',
+  gold: '#FFD23F',
+  track: '#3A3F47',
 };

@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "autofit-a",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gogosi.autofit.a",
@@ -26,6 +26,7 @@
     },
     "plugins": [
       ["expo-router", { "sitemap": false }],
+      ["expo-sensors", { "motionPermission": "오늘의 걷기 퀘스트에 걸음 수를 보여 드리려면 동작 및 피트니스 접근 권한이 필요합니다." }],
       [
         "expo-image-picker",
         {

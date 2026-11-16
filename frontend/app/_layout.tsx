@@ -4,7 +4,7 @@ import { NavigationBar as ExpoNavigationBar } from 'expo-navigation-bar';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthGate } from '@/src/features/auth/AuthGate';
@@ -14,6 +14,13 @@ import { DisplayPreferencesProvider, useDisplayPreferences } from '@/src/feature
 import { AppThemeProvider, darkPalette, fontAssets, lightPalette } from '@/src/theme';
 
 void SplashScreen.preventAutoHideAsync();
+
+// On the web the window can be far wider than a phone. This is a phone app, so there it keeps a
+// phone's width in the middle of the window instead of stretching. Phones are not affected.
+const frame = StyleSheet.create({
+  outer: { flex: 1 },
+  inner: Platform.OS === 'web' ? { alignSelf: 'center', flex: 1, maxWidth: 480, width: '100%' } : { flex: 1 },
+});
 
 function AppShell() {
   const { isDark } = useDisplayPreferences();
@@ -26,8 +33,12 @@ function AppShell() {
       <ExerciseSessionProvider>
         {/* Nested stacks and tabs paint this behind their screens, so a light default would flash in dark mode. */}
         <ThemeProvider value={{ ...base, colors: { ...base.colors, background } }}>
-          <Stack screenOptions={{ contentStyle: { backgroundColor: background }, headerShown: false }} />
-          <AuthGate background={background} />
+          <View style={[frame.outer, { backgroundColor: '#12101F' }]}>
+            <View style={frame.inner}>
+              <Stack screenOptions={{ contentStyle: { backgroundColor: background }, headerShown: false }} />
+              <AuthGate background={background} />
+            </View>
+          </View>
         </ThemeProvider>
       </ExerciseSessionProvider>
     </ExerciseRoutineProvider>

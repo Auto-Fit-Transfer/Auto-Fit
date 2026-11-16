@@ -1,30 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ScreenHeader } from '@/src/components/common/ScreenHeader';
-import { getRunningApiErrorMessage, getRunningSession, type RunningSession, type RunningTrackPoint } from '@/src/api/running';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text } from '@/src/components/common';
+import { RunDoneView } from '@/src/components/a/RunViews';
+import { useHero } from '@/src/components/a/useHero';
+import { getRunningApiErrorMessage, getRunningSession, type RunningPlannedCourse, type RunningSession, type RunningTrackPoint } from '@/src/api/running';
+import { runClock, runKm, runPace, runProgress } from '@/src/features/a/runFormat';
 
-const duration = (seconds: number) => {
-  const total = Math.max(0, Math.floor(Number(seconds) || 0));
-  return total >= 3600
-    ? `${Math.floor(total / 3600)}시간 ${Math.floor(total % 3600 / 60)}분`
-    : `${Math.floor(total / 60)}분 ${total % 60}초`;
-};
-const pace = (seconds: number | null) => seconds && Number.isFinite(Number(seconds))
-  ? `${Math.floor(Number(seconds) / 60)}분 ${Math.round(Number(seconds) % 60)}초/km` : '측정 전';
-
+// Renewal A, after a run (src/components/a/RunViews.tsx shows it). Opened from the list of past runs
+// (from=history) the button goes back there; after a run it goes home.
 export default function RunResult() {
-  const { colors } = useAppTheme();
-  const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const params = useLocalSearchParams<{ sessionId?: string }>();
+  const params = useLocalSearchParams<{ sessionId?: string; from?: string }>();
   const sessionId = typeof params.sessionId === 'string' ? params.sessionId : '';
-  const insets = useSafeAreaInsets();
+  const fromHistory = params.from === 'history';
+  const hero = useHero();
   const [session, setSession] = useState<RunningSession | null>(null);
   const [points, setPoints] = useState<RunningTrackPoint[]>([]);
+  const [course, setCourse] = useState<RunningPlannedCourse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
@@ -32,47 +23,28 @@ export default function RunResult() {
     let active = true;
     if (!sessionId) return;
     void getRunningSession(sessionId)
-      .then((result) => { if (active) { setSession(result.session); setPoints(result.points ?? []); setError(''); } })
+      .then((result) => { if (active) { setSession(result.session); setPoints(result.points ?? []); setCourse(result.planned_course ?? null); setError(''); } })
       .catch((cause) => { if (active) setError(getRunningApiErrorMessage(cause)); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [retry, sessionId]);
+  const done = session?.status === 'completed' ? session : null;
+  const whole = done ? runProgress(done.distance_meters, course?.target_distance_meters)?.finished : false;
 
-  return <View style={styles.root}>
-    <ScreenHeader onBack={() => router.replace('/exercise')} title="러닝 완료" />
-    <ScrollView contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 36 }]}>
-      {sessionId && loading ? <ActivityIndicator color={colors.primaryText} /> : !sessionId ? <Text style={styles.error}>러닝 기록 ID가 없습니다.</Text> : error ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> :
-        session?.status !== 'completed' ? <View style={styles.card}><Text style={styles.body}>아직 완료된 러닝이 아니에요.</Text></View> : <>
-          <View style={styles.hero}><Text style={styles.eyebrow}>러닝 기록</Text><Text style={styles.distance}>{(Number(session.distance_meters) / 1000).toFixed(2)} km</Text><Text style={styles.caption}>GPS로 확인된 이동 거리</Text></View>
-          <View style={styles.card}>
-            <View style={styles.row}><Text style={styles.body}>운동 시간</Text><Text style={styles.value}>{duration(session.elapsed_seconds)}</Text></View>
-            <View style={styles.divider} />
-            <View style={styles.row}><Text style={styles.body}>평균 페이스</Text><Text style={styles.value}>{pace(session.average_pace_seconds_per_km)}</Text></View>
-            <View style={styles.divider} />
-            <View style={styles.row}><Text style={styles.body}>기록된 GPS 위치</Text><Text style={styles.value}>{points.length}개</Text></View>
-          </View>
-          <Text style={styles.caption}>위치 정확도가 낮거나 비정상적으로 튄 좌표는 거리에 반영하지 않았어요. 칼로리는 검증된 계산 기준이 준비될 때까지 표시하지 않습니다.</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.replace('/exercise')} style={styles.button}><Text style={styles.buttonText}>운동 화면으로</Text></Pressable>
-        </>}
-    </ScrollView>
-  </View>;
-}
-
-function createStyles({ colors }: AppTheme) {
-  return {
-    root: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: 20, gap: 18 },
-    hero: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, alignItems: 'center', padding: 28, gap: 8 },
-    eyebrow: { color: colors.textSecondary, fontSize: 14 },
-    distance: { color: colors.textPrimary, fontSize: 32, fontFamily: fontFamilies.pretendardBold },
-    caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 19 },
-    card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 18, gap: 15 },
-    row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    body: { color: colors.textSecondary, fontSize: 14 },
-    value: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    divider: { height: 1, backgroundColor: colors.border },
-    error: { color: colors.danger, fontSize: 14 },
-    button: { backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center', alignItems: 'center' },
-    buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-  } as const;
+  return <RunDoneView
+    clock={runClock(done?.elapsed_seconds)}
+    courseName={course?.name ?? null}
+    km={runKm(done?.distance_meters)}
+    leaveLabel={fromHistory ? '기록으로' : '홈으로'}
+    loading={Boolean(sessionId) && loading}
+    onLeave={() => (fromHistory ? router.back() : router.replace('/home'))}
+    pace={runPace(done?.average_pace_seconds_per_km)}
+    path={points.map(({ latitude, longitude }) => ({ latitude, longitude }))}
+    problem={!sessionId ? { text: '러닝 기록을 찾지 못했어요.' }
+      : error ? { text: error, onRetry: () => { setLoading(true); setRetry((value) => value + 1); } }
+        : !done ? { text: '아직 완료된 러닝이 아니에요.' } : null}
+    tier={hero.tierIndex}
+    title={whole ? '완주!' : '러닝 완료!'}
+    who={hero.who}
+  />;
 }

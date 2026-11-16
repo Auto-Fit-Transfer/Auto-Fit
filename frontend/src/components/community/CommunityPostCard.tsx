@@ -11,7 +11,8 @@ import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import type { CommunityAuthor, CommunityPost, CommunityProfile } from '@/src/api/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
-import { darkColors, fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
+import { darkColors, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { CommunityAvatar } from './CommunityAvatar';
 import { CommunityFollowButton } from './CommunityFollowButton';
@@ -65,12 +66,12 @@ export function CommunityPostCard({
       {post.tags?.length ? <Text style={styles.tags}>{post.tags.map((tag) => `#${tag}`).join('  ')}</Text> : null}
       <View style={[styles.actions, expanded && styles.detailActions]}>
         <ActionButton active={post.liked_by_me} color={colors.danger} count={post.like_count}
-          icon={post.liked_by_me ? <HeartFillIcon color={colors.danger} height={20} width={20} /> : <HeartIcon color={colors.textBody} height={20} width={20} />}
+          icon={post.liked_by_me ? <HeartFillIcon color={colors.danger} height={20} width={20} /> : <HeartIcon color={colors.ink} height={20} width={20} />}
           label={post.liked_by_me ? '좋아요 취소' : '좋아요'} onPress={onLike} />
-        <ActionButton count={post.comment_count} icon={<ChatIcon color={colors.textBody} height={20} width={20} />} label="댓글" onPress={onComment ?? onPress} />
+        <ActionButton count={post.comment_count} icon={<ChatIcon color={colors.ink} height={20} width={20} />} label="댓글" onPress={onComment ?? onPress} />
         <View style={styles.actionsEnd}>
           <ActionButton active={post.reposted_by_me} color={colors.primaryPressed} end count={post.repost_count}
-            icon={<RepeatIcon color={post.reposted_by_me ? colors.primaryPressed : colors.textBody} height={20} width={20} />}
+            icon={<RepeatIcon color={post.reposted_by_me ? colors.primaryPressed : colors.ink} height={20} width={20} />}
             label={post.reposted_by_me ? '공유 취소' : '공유'} onPress={onRepost} />
         </View>
       </View>
@@ -104,7 +105,7 @@ export function CommunityPostCard({
           disabled={!openAuthor}
           onPress={openAuthor}
         >
-          <CommunityAvatar author={post.author} size={36} />
+          <CommunityAvatar author={post.author} size={40} />
         </Pressable>
         <View style={styles.body}>
           <Pressable disabled={!openAuthor} onPress={openAuthor} style={styles.nicknameButton}>
@@ -193,60 +194,56 @@ function ActionButton({
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    card: {
-      backgroundColor: colors.background,
-      paddingHorizontal: 20,
-      paddingVertical: 16,
-    },
-    detailCard: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg, paddingBottom: 0 },
+    card: { ...a.card, paddingHorizontal: 14, paddingVertical: 14 },
+    // Alone on its own screen it is still a card, with the screen's margin round it.
+    detailCard: { marginHorizontal: 16, marginTop: 8 },
     detailBody: { gap: 12, paddingTop: 12 },
-    detailContent: { marginTop: 0, lineHeight: 24 },
-    detailActions: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, paddingVertical: spacing.sm },
-    pressed: { backgroundColor: colors.surface },
-    repostHeader: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      gap: spacing.xs,
-      marginBottom: spacing.xs,
-      paddingLeft: 30,
-    },
-    repostText: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 12,
-    },
+    detailContent: {},
+    detailActions: {},
+    pressed: { opacity: 0.9 },
+    repostHeader: { alignItems: 'center', flexDirection: 'row', gap: 4, marginBottom: 6 },
+    repostText: a.note,
     row: { alignItems: 'center', flexDirection: 'row', gap: 10 },
     body: { flex: 1, gap: 2, minWidth: 0 },
     meta: { alignItems: 'center', flexDirection: 'row', gap: 8 },
     nicknameButton: { flexShrink: 1 },
-    nickname: {
-      color: colors.textPrimary,
-      flexShrink: 1,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-      lineHeight: 21,
+    nickname: { ...a.p15, color: colors.ink, flexShrink: 1 },
+    time: a.note,
+    // What is read: a little more room between the lines than a label gets.
+    content: { ...a.p15, color: colors.ink, lineHeight: 23 },
+    category: a.note,
+    tags: a.note,
+    activityCard: {
+      alignItems: 'center',
+      backgroundColor: colors.background,
+      borderColor: colors.ink,
+      borderRadius: 12,
+      borderWidth: 2,
+      flexDirection: 'row',
+      gap: 12,
+      padding: 12,
     },
-    time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-    content: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 16,
-      lineHeight: 24,
+    activityIcon: {
+      alignItems: 'center',
+      backgroundColor: colors.primaryLight,
+      borderColor: colors.ink,
+      borderRadius: 10,
+      borderWidth: 2,
+      height: 36,
+      justifyContent: 'center',
+      width: 36,
     },
-    category: { backgroundColor: colors.surfaceMuted, borderRadius: 8, color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, overflow: 'hidden', paddingHorizontal: 6, paddingVertical: 1 },
-    tags: { color: colors.textSecondary, fontSize: 14 },
-    activityCard: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 12 },
-    activityIcon: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 36, justifyContent: 'center', width: 36 },
     activityCopy: { flex: 1, minWidth: 0 },
-    activityType: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 18 },
-    activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
-    activityMeta: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
-    actions: { alignItems: 'center', flexDirection: 'row', gap: 16 },
+    activityType: a.note,
+    activityName: { ...a.p15, color: colors.ink },
+    activityMeta: a.note,
+    actions: { alignItems: 'center', borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', gap: 16, paddingTop: 10 },
     actionsEnd: { marginLeft: 'auto' },
     actionEnd: { justifyContent: 'flex-end' },
     action: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 28, minWidth: 44 },
-    count: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
+    count: { ...a.p12, color: colors.ink },
   } as const;
 }
 

@@ -1,14 +1,19 @@
 import type { ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 
+import { JoinScene } from '@/src/components/a/JoinScene';
+import type { Who } from '@/src/components/a/sprites';
+
 import { AuthButton, AuthCard, AuthPage } from './AuthRedesign';
 
+// Renewal A: joining is making my character, so every step sits under the same title and the street.
 const copy = {
-  basic: ['기본 정보를 알려 주세요', '로그인과 맞춤 추천에 써요.'],
-  verify: ['메일로 받은 6자리를\n입력해 주세요', ''],
-  allergy: ['피해야 하는 음식이 있나요?', '식단을 추천할 때 빼 드려요. 여러 개 고를 수 있어요.'],
-  goal: ['가장 이루고 싶은 목표는\n무엇인가요?', ''],
-  detail: ['목표를 조금만 더 알려 주세요', '고른 내용으로 첫 식단과 운동을 맞춰 드려요.'],
+  account: '먼저 계정을 만들어요',
+  character: '어떤 모습으로 시작할까요?',
+  verify: '메일로 받은 6자리를\n입력해 주세요',
+  allergy: '못 먹는 음식이 있나요?',
+  goal: '목표를 설정해 볼까요?',
+  detail: '목표를 조금만 더 알려 주세요',
 } as const;
 
 export interface SignUpScreenLayoutProps {
@@ -25,6 +30,11 @@ export interface SignUpScreenLayoutProps {
   ctaLoading?: boolean;
   heading?: string;
   footerExtra?: ReactNode;
+  // The first step of signing up with a mail address is two parts on one screen: the account, then the character.
+  secondPart?: boolean;
+  // The character while it is being chosen; left out, the one kept on this phone is shown.
+  who?: Who;
+  pair?: boolean;
 }
 
 export interface SignUpSectionProps {
@@ -52,18 +62,20 @@ export function SignUpScreenLayout({
   ctaLoading = false,
   heading: headingOverride,
   footerExtra,
+  secondPart = false,
+  who,
+  pair = false,
 }: SignUpScreenLayoutProps) {
-  const key =
-    totalSteps === 3
-      ? (['basic', 'allergy', 'goal'] as const)[currentStep - 1]
-      : totalSteps === 4
-        ? (['basic', 'allergy', 'goal', 'detail'] as const)[currentStep - 1]
-        : (['basic', 'verify', 'allergy', 'goal', 'detail'] as const)[currentStep - 1];
-  const [heading, description] = copy[key];
+  // With a mail address the first screen counts as two steps, so the dots are six.
+  const withMail = totalSteps === 5;
+  const keys = withMail
+    ? (['account', 'verify', 'allergy', 'goal', 'detail'] as const)
+    : (['character', 'allergy', 'goal', 'detail'] as const);
+  const key = withMail && currentStep === 1 && secondPart ? 'character' : keys[currentStep - 1];
   return (
     <AuthPage
+      barTitle="캐릭터 만들기"
       contentOffsetY={contentOffsetY}
-      description={description}
       footer={
         <>
           <AuthButton
@@ -75,11 +87,12 @@ export function SignUpScreenLayout({
           {footerExtra}
         </>
       }
-      heading={headingOverride ?? heading}
+      heading={headingOverride ?? copy[key]}
       mode="signup"
       onBack={onBack}
-      step={currentStep}
-      totalSteps={totalSteps}
+      scene={<JoinScene pair={pair} who={who} />}
+      step={withMail ? currentStep + (currentStep > 1 || secondPart ? 1 : 0) : currentStep}
+      totalSteps={withMail ? 6 : totalSteps}
     >
       {children}
     </AuthPage>

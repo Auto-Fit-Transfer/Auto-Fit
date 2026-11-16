@@ -54,6 +54,7 @@ function createStyles({ colors }: AppTheme) {
   return {
     base: { backgroundColor: colors.surface, borderRadius: radius.card },
     soft: { backgroundColor: colors.surfaceMuted },
-    bordered: { borderColor: colors.border, borderWidth: 1 },
+    // Renewal A: a card has the dark outline and a soft ledge under it.
+    bordered: { borderColor: colors.ink, borderWidth: 2, boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)' },
   } as const;
 }

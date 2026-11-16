@@ -1,34 +1,38 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CaretText } from '@/src/components/common/CaretText';
-import { ScreenHeader } from '@/src/components/common/ScreenHeader';
+import { Pressable } from 'react-native';
 import { getActiveRunningSession, getRunningApiErrorMessage, getRunningRecommendations, getSavedRunningCourses, startFreeRun, type RunningCourse, type RunningDistanceOption, type RunningSavedCourse, type RunningSession } from '@/src/api/running';
+import { aForm } from '@/src/components/a/form';
+import { RunSetup, type RunCondition, type RunIntensity } from '@/src/components/a/RunParts';
+import { RunReadyView, type RunTab } from '@/src/components/a/RunReadyView';
+import { AppBottomSheet, Text } from '@/src/components/common';
+import { runClock, runKm } from '@/src/features/a/runFormat';
 import { courseDifficultyLabel, hasRenderablePath } from '@/src/features/running/courseRoute';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text, TextInput } from '@/src/components/common';
+import { useThemedStyles, type AppTheme } from '@/src/theme';
 
 const distanceOptions: RunningDistanceOption[] = ['3km', '5km', '10km'];
 const nameOf = (course: RunningCourse) => course.course_name || course.name || '이름 없는 코스';
 
+// Renewal A's 러닝, before a run (src/components/a/RunReadyView.tsx shows it). A course is opened from
+// the list on its own screen, where its map is drawn; running without one is asked in a box here.
 export default function RunningRecommendations() {
-  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const [region, setRegion] = useState('');
   const [distance, setDistance] = useState<RunningDistanceOption>('5km');
   const [minutes, setMinutes] = useState('30');
-  const [intensity, setIntensity] = useState<'light' | 'moderate' | 'hard'>('light');
-  const [condition, setCondition] = useState<'good' | 'normal' | 'tired'>('normal');
+  const [intensity, setIntensity] = useState<RunIntensity>('light');
+  const [condition, setCondition] = useState<RunCondition>('normal');
   const [activeSession, setActiveSession] = useState<RunningSession | null>(null);
   const [starting, setStarting] = useState(false);
   const [courses, setCourses] = useState<RunningCourse[]>([]);
   const [savedCourses, setSavedCourses] = useState<RunningSavedCourse[]>([]);
   const [message, setMessage] = useState('');
+  const [startMessage, setStartMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<RunTab>('rec');
+  const [freeOpen, setFreeOpen] = useState(false);
   useFocusEffect(useCallback(() => {
     let active = true;
     void getActiveRunningSession().then((result) => {
@@ -40,6 +44,7 @@ export default function RunningRecommendations() {
     return () => { active = false; };
   }, []));
   const search = async () => {
+    setTab('rec');
     if (!region.trim()) { setMessage('러닝할 지역을 입력해 주세요.'); return; }
     setLoading(true);
     setCourses([]);
@@ -59,19 +64,19 @@ export default function RunningRecommendations() {
   const start = async () => {
     const targetMinutes = Number(minutes);
     if (!Number.isInteger(targetMinutes) || targetMinutes < 10 || targetMinutes > 240) {
-      setMessage('목표 시간은 10~240분으로 입력해 주세요.');
+      setStartMessage('목표 시간은 10~240분으로 입력해 주세요.');
       return;
     }
     setStarting(true);
-    setMessage('');
+    setStartMessage('');
     try {
       const permission = await Location.requestForegroundPermissionsAsync();
       if (!permission.granted) {
-        setMessage('러닝 거리를 기록하려면 앱 사용 중 위치 권한이 필요해요.');
+        setStartMessage('러닝 거리를 기록하려면 앱 사용 중 위치 권한이 필요해요.');
         return;
       }
       if (!await Location.hasServicesEnabledAsync()) {
-        setMessage('기기의 위치 서비스를 켠 뒤 다시 시도해 주세요.');
+        setStartMessage('기기의 위치 서비스를 켠 뒤 다시 시도해 주세요.');
         return;
       }
       const result = await startFreeRun({
@@ -82,86 +87,74 @@ export default function RunningRecommendations() {
         intensity,
         discomfort_areas: [],
       });
+      setFreeOpen(false);
       router.push({ pathname: '/exercise/run-live', params: { sessionId: result.session.running_session_id } });
     } catch (cause) {
-      setMessage(getRunningApiErrorMessage(cause));
+      setStartMessage(getRunningApiErrorMessage(cause));
       void getActiveRunningSession().then((result) => setActiveSession(result.session)).catch(() => {});
     } finally {
       setStarting(false);
     }
   };
 
-  return <View style={styles.root}>
-    <ScreenHeader onBack={() => router.back()} title="러닝 추천" />
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 38 }]}>
-      <Text style={styles.sectionTitle}>어디서 달릴까요?</Text>
-      <TextInput accessibilityLabel="러닝 지역" placeholder="예: 서울, 마포구, 부산" value={region} onChangeText={setRegion} maxLength={120} style={styles.input} />
-      <Text style={styles.sectionTitle}>목표 거리</Text>
-      <View style={styles.options}>{distanceOptions.map((option) =>
-        <Pressable key={option} accessibilityRole="button" accessibilityState={{ selected: distance === option }} onPress={() => setDistance(option)} style={[styles.option, distance === option && styles.selected]}>
-          <Text style={[styles.optionText, distance === option && styles.selectedText]}>{option}</Text>
-        </Pressable>)}</View>
-      <Pressable accessibilityRole="button" disabled={loading} onPress={() => void search()} style={[styles.button, loading && styles.buttonDisabled]}><Text style={[styles.buttonText, loading && styles.disabledText]}>코스 추천받기</Text></Pressable>
-      {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
-      {message ? <View style={styles.notice}><Text style={styles.body}>{message}</Text></View> : null}
-      {courses.length > 0 ? <Text style={styles.sectionTitle}>추천 코스 {courses.length}개</Text> : null}
-      {courses.map((course, index) => <Pressable accessibilityRole="button" accessibilityLabel={`${nameOf(course)} 코스 자세히 보기`} onPress={() => router.push({ pathname: '/exercise/running-course', params: { courseId: course.course_id } })} key={course.course_id || String(index)} style={styles.card}>
-        <Text style={styles.courseTitle}>{nameOf(course)}</Text>
-        <Text style={styles.meta}>{[course.region, typeof course.distance_km === 'number' ? `${course.distance_km}km` : null, typeof course.estimated_duration_minutes === 'number' ? `약 ${Math.round(course.estimated_duration_minutes)}분` : null, courseDifficultyLabel(course.difficulty)].filter(Boolean).join(' · ')}</Text>
-        {course.description ? <Text style={styles.body}>{course.description}</Text> : null}
-        <View style={styles.courseLinkRow}><CaretText style={styles.courseLink}>코스 보기 · 경로 확인 · 저장</CaretText></View>
-      </Pressable>)}
-      {savedCourses.length > 0 ? <Text style={styles.sectionTitle}>저장한 러닝 코스</Text> : null}
-      {savedCourses.map((saved) => <Pressable key={saved.running_saved_course_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercise/running-course', params: { savedId: saved.running_saved_course_id } })} style={styles.card}>
-        <View style={styles.savedHeading}><Text style={styles.courseTitle}>{saved.course_name}</Text>{saved.is_selected ? <Text style={styles.savedBadge}>선택됨</Text> : null}</View>
-        <Text style={styles.meta}>{[saved.snapshot.region, typeof saved.snapshot.distance_km === 'number' ? `${saved.snapshot.distance_km}km` : null].filter(Boolean).join(' · ') || '경로 자세히 보기'}</Text>
-      </Pressable>)}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>코스 없이 자유 러닝</Text>
-        <Text style={styles.caption}>앱이 열려 있는 동안 GPS로 이동 거리와 시간을 기록해요.</Text>
-        <Text style={styles.meta}>목표 시간 · 분</Text>
-        <TextInput accessibilityLabel="목표 러닝 시간(분)" keyboardType="number-pad" value={minutes} onChangeText={setMinutes} style={styles.input} />
-        <Text style={styles.meta}>강도</Text>
-        <View style={styles.options}>{([['light', '가볍게'], ['moderate', '보통'], ['hard', '강하게']] as const).map(([value, label]) =>
-          <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: intensity === value }} onPress={() => setIntensity(value)} style={[styles.option, intensity === value && styles.selected]}>
-            <Text style={[styles.optionText, intensity === value && styles.selectedText]}>{label}</Text>
-          </Pressable>)}</View>
-        <Text style={styles.meta}>오늘 컨디션</Text>
-        <View style={styles.options}>{([['good', '좋음'], ['normal', '보통'], ['tired', '피곤함']] as const).map(([value, label]) =>
-          <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: condition === value }} onPress={() => setCondition(value)} style={[styles.option, condition === value && styles.selected]}>
-            <Text style={[styles.optionText, condition === value && styles.selectedText]}>{label}</Text>
-          </Pressable>)}</View>
-        {activeSession ? <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/exercise/run-live', params: { sessionId: activeSession.running_session_id } })} style={styles.button}><Text style={styles.buttonText}>진행 중인 러닝 이어하기</Text></Pressable> :
-          <Pressable accessibilityRole="button" disabled={starting} onPress={() => void start()} style={[styles.buttonOutline, starting && styles.buttonDisabled]}><Text style={[styles.buttonOutlineText, starting && styles.disabledText]}>{starting ? '준비 중…' : '자유 러닝 시작하기'}</Text></Pressable>}
-      </View>
-    </ScrollView>
-  </View>;
+  const rows = tab === 'rec'
+    ? courses.map((course, index) => ({
+        key: course.course_id || String(index),
+        name: nameOf(course),
+        detail: [course.region, typeof course.distance_km === 'number' ? `${course.distance_km}km` : null, typeof course.estimated_duration_minutes === 'number' ? `약 ${Math.round(course.estimated_duration_minutes)}분` : null, courseDifficultyLabel(course.difficulty)].filter(Boolean).join(' · '),
+        onPress: () => router.push({ pathname: '/exercise/running-course', params: { courseId: course.course_id } }),
+      }))
+    : savedCourses.map((saved) => ({
+        key: saved.running_saved_course_id,
+        name: saved.course_name,
+        detail: [saved.snapshot.region, typeof saved.snapshot.distance_km === 'number' ? `${saved.snapshot.distance_km}km` : null].filter(Boolean).join(' · '),
+        onPress: () => router.push({ pathname: '/exercise/running-course', params: { savedId: saved.running_saved_course_id } }),
+      }));
+
+  return <>
+    <RunReadyView
+      active={activeSession ? {
+        detail: `${runKm(activeSession.distance_meters)}km · ${runClock(activeSession.elapsed_seconds)}`,
+        onResume: () => router.push({ pathname: '/exercise/run-live', params: { sessionId: activeSession.running_session_id } }),
+      } : null}
+      counts={{ rec: courses.length, mine: savedCourses.length }}
+      distance={distance}
+      distances={distanceOptions}
+      finding={loading}
+      kinds={[
+        { label: '오늘의 운동', onPress: () => router.replace('/exercise') },
+        { label: '러닝', selected: true, onPress: () => undefined },
+        { label: '자세 분석', onPress: () => router.replace('/exercise/posture-check') },
+      ]}
+      message={message}
+      onBack={() => router.back()}
+      onDistance={(value) => setDistance(value as RunningDistanceOption)}
+      onFind={() => void search()}
+      onFree={() => { setStartMessage(''); setFreeOpen(true); }}
+      onRegion={setRegion}
+      onTab={setTab}
+      region={region}
+      rows={rows}
+      tab={tab}
+    />
+    <AppBottomSheet contentStyle={styles.sheet} onClose={() => setFreeOpen(false)} title="코스 없이 달리기" visible={freeOpen}>
+      <RunSetup condition={condition} intensity={intensity} minutes={minutes} onCondition={setCondition} onIntensity={setIntensity} onMinutes={setMinutes} />
+      {startMessage ? <Text accessibilityRole="alert" style={styles.error}>{startMessage}</Text> : null}
+      <Pressable accessibilityRole="button" accessibilityState={{ disabled: starting }} disabled={starting} onPress={() => void start()} style={({ pressed }) => [styles.go, starting && styles.off, pressed && styles.goPressed]}>
+        <Text style={styles.goText}>{starting ? '준비 중…' : '달리기 시작'}</Text>
+      </Pressable>
+    </AppBottomSheet>
+  </>;
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    root: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: 20, gap: 17 },
-    sectionTitle: { color: colors.textPrimary, fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-    input: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, height: 52, fontSize: 16, color: colors.textPrimary },
-    options: { flexDirection: 'row', gap: 9 },
-    option: { flex: 1, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 12, paddingVertical: 13, alignItems: 'center' },
-    selected: { borderColor: colors.primary, backgroundColor: colors.primary },
-    optionText: { color: colors.textSecondary, fontSize: 14 },
-    selectedText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold },
-    buttonOutline: { backgroundColor: colors.background, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 56, justifyContent: 'center', alignItems: 'center' },
-    buttonDisabled: { backgroundColor: colors.surfaceMuted, borderColor: colors.surfaceMuted },
-    disabledText: { color: colors.textDisabled },
-    buttonOutlineText: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    button: { backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center', alignItems: 'center' },
-    buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    notice: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16 },
-    body: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
-    card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16, gap: 8 },
-    courseTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    courseLinkRow: { marginTop: 4 },
-    courseLink: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, savedHeading: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 }, savedBadge: { backgroundColor: colors.primaryLight, color: colors.textPrimary, borderRadius: 8, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, fontSize: 12 },
-    meta: { color: colors.textSecondary, fontSize: 14 },
-    caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 18 },
+    sheet: { gap: 14, paddingBottom: 24, paddingHorizontal: 16, paddingTop: 0 },
+    error: { ...a.p12, color: colors.danger },
+    go: a.go,
+    goPressed: a.goPressed,
+    goText: a.goText,
+    off: { opacity: 0.4 },
   } as const;
 }

@@ -10,8 +10,8 @@ import {
 import { getSignupApiErrorMessage, saveAllergies } from '@/src/api/onboarding';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import { useSignup } from '@/src/features/signup/SignupContext';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import NoticeIcon from '@/assets/icons/auth-redesign/info-circle.svg';
+import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 import { Text, TextInput } from '@/src/components/common';
 
 interface AllergenOption {
@@ -163,13 +163,7 @@ export default function SignUpStep3Screen() {
           value={otherAllergy}
         />
       </View>
-      <View style={styles.notice}>
-        <NoticeIcon height={20} width={20} />
-        <View style={styles.noticeCopy}>
-          <Text style={styles.noticeTitle}>참고용 정보예요</Text>
-          <Text style={styles.noticeText}>음식을 먹기 전에는 성분표를 꼭 확인해 주세요.</Text>
-        </View>
-      </View>
+      <Text style={styles.noticeText}>참고용 정보예요. 음식을 먹기 전에는 성분표를 꼭 확인해 주세요.</Text>
     </SignUpScreenLayout>
   );
 }
@@ -191,6 +185,7 @@ function AllergenButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.allergenButton,
+        option.id === 'none' && styles.allergenNone,
         selected && styles.allergenButtonSelected,
         pressed && styles.pressed,
       ]}
@@ -203,58 +198,18 @@ function AllergenButton({
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    allergenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    allergenButton: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 999,
-      borderWidth: 1,
-      height: 40,
-      justifyContent: 'center',
-      minWidth: 80,
-      paddingHorizontal: 10,
-    },
-    allergenButtonSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-    allergenLabel: {
-      color: colors.textBody,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-      lineHeight: 21,
-      textAlign: 'center',
-    },
-    allergenLabelSelected: { color: '#FFFFFF' },
-    otherTitle: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-      lineHeight: 21,
-      marginBottom: 8,
-    },
-    otherInput: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 16,
-      height: 52,
-      paddingHorizontal: 16,
-    },
-    notice: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: 10,
-      padding: 16,
-    },
-    noticeCopy: { flex: 1, gap: 2 },
-    noticeTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14, lineHeight: 21 },
-    noticeText: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
+    // Four in a row; "none" is a row of its own, so the twelve below it make three full rows.
+    allergenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    allergenButton: { ...a.chip, flexBasis: '23%', flexGrow: 1 },
+    allergenNone: { flexBasis: '100%' },
+    allergenButtonSelected: a.on,
+    allergenLabel: a.chipText,
+    allergenLabelSelected: a.onText,
+    otherTitle: a.q,
+    otherInput: { ...a.field, ...a.input },
+    noticeText: a.note,
     pressed: { opacity: 0.75 },
   } as const;
 }

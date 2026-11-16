@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { BackButton } from './BackButton';
 import { Text } from './Text';
@@ -38,20 +38,21 @@ export function AppHeader({
   );
 }
 
-function createStyles({ colors, text }: AppTheme) {
+// Renewal A: the back card, the name in pixel letters, one action.
+function createStyles({ colors }: AppTheme) {
   return {
     container: {
       alignItems: 'center',
       backgroundColor: colors.background,
       flexDirection: 'row',
       minHeight: 56,
-      paddingHorizontal: 10,
+      paddingHorizontal: 16,
     },
     side: { alignItems: 'flex-start', justifyContent: 'center', minWidth: 44, width: 44 },
     collapsed: { minWidth: 12, width: 12 },
     sideAuto: { width: 'auto' },
     right: { alignItems: 'flex-end' },
-    title: { ...text.body1Strong, color: colors.textPrimary, flex: 1, textAlign: 'center' },
+    title: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21, textAlign: 'center' },
     titleStart: { textAlign: 'left' },
   } as const;
 }

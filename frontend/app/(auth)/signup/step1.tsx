@@ -1,20 +1,19 @@
-import { useRef, useState } from 'react';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Alert, Modal, Pressable, StyleSheet, View } from 'react-native';
-import CalendarIcon from '@/assets/icons/input/Calendar.svg';
-import CheckIcon from '@/assets/icons/auth-redesign/ab4c2.svg';
-import EyeIcon from '@/assets/icons/input/Eye.svg';
-import EyeSlashIcon from '@/assets/icons/auth-redesign/5facc.svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useRef, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Alert, BackHandler, Modal, Pressable, StyleSheet, View } from 'react-native';
+import CheckIcon from '@/assets/icons/system/Check.svg';
 import { getSignupApiErrorMessage, saveProfile } from '@/src/api/onboarding';
+import { aForm } from '@/src/components/a/form';
+import { WHO_KEY, type Who } from '@/src/components/a/sprites';
 import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { BirthDatePicker, SignUpScreenLayout } from '@/src/components/auth';
 import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
 import { useSignup, type SignupGender } from '@/src/features/signup/SignupContext';
 import { getSignupAuthErrorMessage } from '@/src/features/signup/signupAuthError';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
-
 const consentItems = [
   { key: 'age', label: '만 14세 이상이에요', required: true },
   { key: 'service', label: '서비스 이용약관', required: true },
@@ -22,12 +21,13 @@ const consentItems = [
   {
     key: 'health',
     label: '건강정보(민감정보) 수집 · 이용',
-    detail: '검진 결과 · 체성분 · 알레르기 · 운동 기록을 맞춤 추천에 써요',
+    detail: '검진 결과 · 체성분 · 알레르기 · 운동 기록을 추천에 써요',
     required: true,
   },
   { key: 'marketing', label: '혜택 · 이벤트 알림 받기', required: false },
 ] as const;
 type ConsentKey = (typeof consentItems)[number]['key'];
+type Job = 'worker' | 'student';
 const formatDate = (date: Date) =>
   [
     date.getFullYear(),
@@ -35,7 +35,11 @@ const formatDate = (date: Date) =>
     String(date.getDate()).padStart(2, '0'),
   ].join('-');
 
+// Renewal A: joining is making my character. Signing up with a mail address asks in two parts on this
+// screen, the account and then the character (job, sex, birthday); after a social login there is no
+// account to make, so it is one part. The job is new and only picks the character, kept on this phone.
 export default function SignUpStep1Screen() {
+  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { flow } = useLocalSearchParams<{ flow?: string }>();
@@ -44,6 +48,8 @@ export default function SignUpStep1Screen() {
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const inFlight = useRef(false);
+  const leftToVerify = useRef(false);
+  const [part, setPart] = useState<0 | 1>(0);
   const [name, setName] = useState(draft.name);
   const [email, setEmail] = useState(draft.email);
   const [password, setPassword] = useState('');
@@ -52,6 +58,7 @@ export default function SignUpStep1Screen() {
     draft.birthDate ? new Date(draft.birthDate + 'T00:00:00') : undefined,
   );
   const [birthdayPickerVisible, setBirthdayPickerVisible] = useState(false);
+  const [job, setJob] = useState<Job>('worker');
   const [gender, setGender] = useState<SignupGender | undefined>(draft.gender);
   const [consentVisible, setConsentVisible] = useState(false);
   const [exitVisible, setExitVisible] = useState(false);
@@ -61,8 +68,28 @@ export default function SignUpStep1Screen() {
   const requiredChecked = consentItems.every(
     (item) => !item.required || consents.includes(item.key),
   );
+  const showAccount = isPostLogin || part === 0;
+  const showCharacter = isPostLogin || part === 1;
+  const who: Who = `${job}-${gender === 'male' ? 'm' : 'f'}`;
 
-  const validationMessage = () => {
+  useFocusEffect(
+    useCallback(() => {
+      // Back from the mail code step (to change the address, say): the account part opens again.
+      if (leftToVerify.current) {
+        leftToVerify.current = false;
+        setPart(0);
+      }
+      if (part !== 1) return undefined;
+      // Android's own back button goes back one part first, as the button on the screen does.
+      const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+        setPart(0);
+        return true;
+      });
+      return () => subscription.remove();
+    }, [part]),
+  );
+
+  const accountMessage = () => {
     if (!name.trim()) return '이름을 입력해 주세요.';
     if (!isPostLogin && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
       return '올바른 이메일을 입력해 주세요.';
@@ -77,6 +104,9 @@ export default function SignUpStep1Screen() {
       )
     )
       return '비밀번호는 8자 이상이며 영문 대소문자, 숫자, 특수문자를 포함해야 합니다.';
+    return undefined;
+  };
+  const characterMessage = () => {
     if (!birthday) return '생년월일을 선택해 주세요.';
     const ageLimit = new Date();
     ageLimit.setFullYear(ageLimit.getFullYear() - 14);
@@ -86,8 +116,12 @@ export default function SignUpStep1Screen() {
   };
 
   const continueFromForm = async () => {
-    const message = validationMessage();
+    const message =
+      (showAccount ? accountMessage() : undefined) ?? (showCharacter ? characterMessage() : undefined);
     if (message) return Alert.alert('입력 정보를 확인해 주세요', message);
+    if (!showCharacter) return setPart(1);
+    // The character made here is the one that walks on the home screen.
+    void AsyncStorage.setItem(WHO_KEY, who).catch(() => undefined);
     if (!isPostLogin) return setConsentVisible(true);
     if (inFlight.current || !birthday || !gender) return;
     inFlight.current = true;
@@ -125,6 +159,7 @@ export default function SignUpStep1Screen() {
         gender,
       });
       setConsentVisible(false);
+      leftToVerify.current = !data.session;
       router.push(data.session ? '/signup/step3' : '/signup/step2');
     } catch (error) {
       Alert.alert(
@@ -148,21 +183,25 @@ export default function SignUpStep1Screen() {
       ctaLoading={isSubmitting}
       currentStep={1}
       totalSteps={isPostLogin ? 4 : 5}
-      onBack={() => (isPostLogin ? router.back() : setExitVisible(true))}
+      onBack={() => (part === 1 ? setPart(0) : isPostLogin ? router.back() : setExitVisible(true))}
       onContinue={() => void continueFromForm()}
+      pair={showCharacter}
+      secondPart={part === 1}
+      who={who}
     >
       <View style={styles.form}>
-        <AuthTextField
-          accessibilityLabel="이름"
-          autoComplete="name"
-          label="이름"
-          onChangeText={setName}
-          onSubmitEditing={() => emailRef.current?.focus()}
-          placeholder="이름을 입력해 주세요"
-          returnKeyType={isPostLogin ? 'done' : 'next'}
-          value={name}
-        />
-        {!isPostLogin ? (
+        {showAccount ? (
+          <AuthTextField
+            accessibilityLabel="이름"
+            autoComplete="name"
+            onChangeText={setName}
+            onSubmitEditing={() => emailRef.current?.focus()}
+            placeholder="이름"
+            returnKeyType={isPostLogin ? 'done' : 'next'}
+            value={name}
+          />
+        ) : null}
+        {showAccount && !isPostLogin ? (
           <>
             <AuthTextField
               ref={emailRef}
@@ -171,10 +210,9 @@ export default function SignUpStep1Screen() {
               autoComplete="email"
               autoCorrect={false}
               keyboardType="email-address"
-              label="이메일"
               onChangeText={setEmail}
               onSubmitEditing={() => passwordRef.current?.focus()}
-              placeholder="이메일을 입력해 주세요"
+              placeholder="이메일"
               returnKeyType="next"
               value={email}
             />
@@ -183,63 +221,85 @@ export default function SignUpStep1Screen() {
               accessibilityLabel="비밀번호"
               autoCapitalize="none"
               autoComplete="new-password"
-              label="비밀번호"
+              fieldStyle={styles.withMini}
               onChangeText={setPassword}
-              placeholder="비밀번호를 입력해 주세요"
+              placeholder="비밀번호"
               secureTextEntry={!passwordVisible}
               rightElement={
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={passwordVisible ? '비밀번호 숨기기' : '비밀번호 보기'}
+                  hitSlop={8}
                   onPress={() => setPasswordVisible((current) => !current)}
+                  style={styles.mini}
                 >
-                  {passwordVisible ? <EyeSlashIcon height={22} width={22} /> : <EyeIcon height={22} width={22} />}
+                  <Text style={styles.miniText}>{passwordVisible ? '숨기기' : '보기'}</Text>
                 </Pressable>
               }
               value={password}
             />
-            <Text style={styles.hint}>
-              8자 이상, 영문 대소문자 · 숫자 · 특수문자를 섞어 주세요
-            </Text>
+            <Text style={styles.hint}>8자 이상, 영문 대소문자 · 숫자 · 특수문자를 섞어 주세요</Text>
           </>
         ) : null}
-        <View>
-          <Text style={styles.label}>생년월일</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="생년월일 선택"
-            onPress={() => setBirthdayPickerVisible(true)}
-            style={styles.select}
-          >
-            <Text style={[styles.selectText, !birthday && styles.placeholder]}>
-              {birthday ? formatDate(birthday).replace(/-/g, '. ') : '생년월일을 선택해 주세요'}
-            </Text>
-            <CalendarIcon height={22} width={22} />
-          </Pressable>
-        </View>
-        <View>
-          <Text style={styles.label}>성별</Text>
-          <View style={styles.genderRow}>
-            {(
-              [
-                ['male', '남성'],
-                ['female', '여성'],
-              ] as const
-            ).map(([value, label]) => (
+        {showCharacter ? (
+          <>
+            <View style={isPostLogin && styles.ask}>
+              <Text style={styles.q}>직업</Text>
+              <View style={styles.segRow}>
+                {(
+                  [
+                    ['worker', '직장인'],
+                    ['student', '학생'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <Pressable
+                    key={value}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: job === value }}
+                    onPress={() => setJob(value)}
+                    style={[styles.seg, job === value && styles.segOn]}
+                  >
+                    <Text style={[styles.segText, job === value && styles.onText]}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+            <View style={styles.ask}>
+              <Text style={styles.q}>성별</Text>
+              <View style={styles.segRow}>
+                {(
+                  [
+                    ['female', '여성'],
+                    ['male', '남성'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <Pressable
+                    key={value}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: gender === value }}
+                    onPress={() => setGender(value)}
+                    style={[styles.seg, gender === value && styles.segOn]}
+                  >
+                    <Text style={[styles.segText, gender === value && styles.onText]}>{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+            <View style={styles.ask}>
+              <Text style={styles.q}>생년월일</Text>
               <Pressable
-                key={value}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: gender === value }}
-                onPress={() => setGender(value)}
-                style={[styles.gender, gender === value && styles.genderSelected]}
+                accessibilityRole="button"
+                accessibilityLabel="생년월일 선택"
+                onPress={() => setBirthdayPickerVisible(true)}
+                style={styles.select}
               >
-                <Text style={[styles.genderText, gender === value && styles.genderTextSelected]}>
-                  {label}
+                <Text style={[styles.selectText, !birthday && styles.placeholder]}>
+                  {birthday ? formatDate(birthday).replace(/-/g, '. ') : '생년월일을 선택해 주세요'}
                 </Text>
               </Pressable>
-            ))}
-          </View>
-        </View>
+            </View>
+          </>
+        ) : null}
       </View>
       <BirthDatePicker
         maximumDate={new Date()}
@@ -256,7 +316,7 @@ export default function SignUpStep1Screen() {
         title="가입을 그만둘까요?"
         description="지금까지 입력한 내용은 저장되지 않아요."
         secondaryLabel="그만두기"
-        primaryLabel="계속 가입하기"
+        primaryLabel="계속 만들기"
         onSecondary={() => {
           setExitVisible(false);
           router.replace('/login');
@@ -276,10 +336,8 @@ export default function SignUpStep1Screen() {
             style={styles.scrim}
           />
           <View style={styles.sheet}>
-            <View style={styles.handle} />
-            <Text style={styles.sheetTitle}>약관에 동의해 주세요</Text>
-            <Text style={styles.sheetDescription}>
-              필수 항목에 동의하면 회원가입을 진행할 수 있어요.
+            <Text accessibilityRole="header" style={styles.sheetTitle}>
+              약관에 동의해 주세요
             </Text>
             <Pressable
               accessibilityRole="checkbox"
@@ -287,12 +345,12 @@ export default function SignUpStep1Screen() {
               onPress={() => setConsents(allChecked ? [] : consentItems.map((item) => item.key))}
               style={styles.allRow}
             >
-              <View style={[styles.checkbox, allChecked && styles.checkboxOn]}>
-                {allChecked ? <CheckIcon height={16} width={16} /> : null}
+              <View style={[styles.tick, allChecked && styles.on]}>
+                {allChecked ? <CheckIcon color={colors.onPrimary} height={18} width={18} /> : null}
               </View>
               <View style={styles.consentCopy}>
-                <Text style={styles.allText}>모두 동의하기</Text>
-                <Text style={styles.allHint}>선택 항목도 함께 동의해요</Text>
+                <Text style={styles.consentText}>모두 동의하기</Text>
+                <Text style={styles.note}>선택 항목도 함께 동의해요</Text>
               </View>
             </Pressable>
             {consentItems.map((item) => (
@@ -303,24 +361,27 @@ export default function SignUpStep1Screen() {
                 onPress={() => toggleConsent(item.key)}
                 style={styles.consentRow}
               >
-                <View style={[styles.checkbox, consents.includes(item.key) && styles.checkboxOn]}>
-                  {consents.includes(item.key) ? <CheckIcon height={16} width={16} /> : null}
+                <View style={[styles.tick, consents.includes(item.key) && styles.on]}>
+                  {consents.includes(item.key) ? (
+                    <CheckIcon color={colors.onPrimary} height={18} width={18} />
+                  ) : null}
                 </View>
                 <View style={styles.consentCopy}>
                   <Text style={styles.consentText}>
-                    <Text style={styles.required}>{item.required ? '필수  ' : '선택  '}</Text>
-                    {item.label}
+                    {item.required ? '필수' : '선택'} · {item.label}
                   </Text>
-                  {'detail' in item ? <Text style={styles.consentDetail}>{item.detail}</Text> : null}
+                  {'detail' in item ? <Text style={styles.note}>{item.detail}</Text> : null}
                 </View>
               </Pressable>
             ))}
-            <AuthButton
-              disabled={!requiredChecked}
-              loading={isSubmitting}
-              onPress={() => void startSignup()}
-              title="동의하고 계속하기"
-            />
+            <View style={styles.sheetGo}>
+              <AuthButton
+                disabled={!requiredChecked}
+                loading={isSubmitting}
+                onPress={() => void startSignup()}
+                title="동의하고 계속하기"
+              />
+            </View>
           </View>
         </View>
       </Modal>
@@ -329,95 +390,64 @@ export default function SignUpStep1Screen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    form: { gap: 20 },
-    hint: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 14,
-      lineHeight: 21,
-      marginTop: -12,
-    },
-    label: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-      lineHeight: 21,
-      marginBottom: 8,
-    },
-    select: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
-      flexDirection: 'row',
-      height: 52,
-      justifyContent: 'space-between',
-      paddingHorizontal: 16,
-    },
-    selectText: { color: colors.textPrimary, fontSize: 16 },
+    form: { gap: 8 },
+    ask: { marginTop: 6 },
+    q: a.q,
+    note: a.note,
+    hint: { ...a.note, marginHorizontal: 2 },
+    // The row is 4 taller than its buttons: the ledge they stand on.
+    segRow: { flexDirection: 'row', gap: 6, paddingBottom: 4 },
+    seg: a.seg,
+    segOn: a.segOn,
+    segText: a.segText,
+    on: a.on,
+    onText: a.onText,
+    select: a.field,
+    selectText: a.input,
     placeholder: { color: colors.textSecondary },
-    genderRow: { flexDirection: 'row', gap: 8 },
-    gender: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 999,
-      borderWidth: 1,
-      flex: 1,
-      height: 40,
-      justifyContent: 'center',
-    },
-    genderSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-    genderText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    genderTextSelected: { color: '#FFFFFF' },
+    // The small button sits 6 from the field's edge, as far as it is from its top and bottom.
+    withMini: { paddingRight: 6 },
+    mini: a.mini,
+    miniText: a.miniText,
     modalRoot: { flex: 1, justifyContent: 'flex-end' },
-    scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(13, 13, 20, 0.45)' },
+    scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(22, 24, 46, 0.45)' },
     sheet: {
-      backgroundColor: colors.background,
+      alignSelf: 'center',
+      backgroundColor: colors.surface,
+      borderBottomWidth: 0,
+      borderColor: colors.ink,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
-      gap: 16,
+      borderWidth: 2,
+      maxWidth: 480,
       paddingBottom: 34,
-      paddingHorizontal: 20,
-      paddingTop: 12,
+      paddingHorizontal: 16,
+      paddingTop: 18,
+      width: '100%',
     },
-    handle: {
-      alignSelf: 'center',
-      backgroundColor: colors.border,
-      borderRadius: 3,
-      height: 4,
-      width: 40,
+    sheetTitle: {
+      color: colors.ink,
+      fontFamily: fontFamilies.galmuri11Bold,
+      fontSize: 24,
+      lineHeight: 28,
+      marginBottom: 6,
+      marginHorizontal: 4,
     },
-    sheetTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26, marginTop: 4 },
-    sheetDescription: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, marginTop: -10 },
-    allRow: {
+    allRow: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 54 },
+    consentRow: {
       alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
+      borderTopColor: colors.track,
+      borderTopWidth: 2,
       flexDirection: 'row',
-      gap: 12,
-      padding: 16,
+      gap: 10,
+      minHeight: 46,
+      paddingVertical: 6,
     },
     consentCopy: { flex: 1, gap: 2 },
-    allText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-    allHint: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
-    consentRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, minHeight: 24 },
-    consentText: { color: colors.textPrimary, fontSize: 14, lineHeight: 24 },
-    consentDetail: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
-    required: { fontFamily: fontFamilies.pretendardBold },
-    checkbox: {
-      alignItems: 'center',
-      borderColor: colors.textDisabled,
-      borderRadius: 8,
-      borderWidth: 1,
-      height: 24,
-      justifyContent: 'center',
-      width: 24,
-    },
-    checkboxOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+    consentText: { ...a.p15, color: colors.ink },
+    tick: a.tick,
+    sheetGo: { marginTop: 16 },
   } as const;
 }

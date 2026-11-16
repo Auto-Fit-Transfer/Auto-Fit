@@ -3,7 +3,6 @@ import { logError } from '@/src/lib/logError';
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Keyboard,
@@ -30,11 +29,6 @@ import HemoglobinIcon from '@/assets/icons/data/Hemoglobin.svg';
 import MuscleIcon from '@/assets/icons/data/Muscle.svg';
 import WeightIcon from '@/assets/icons/data/Weight.svg';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
-import FileIcon from '@/assets/icons/ui/file-text.svg';
-import HouseIcon from '@/assets/icons/ui/house.svg';
-import PencilIcon from '@/assets/icons/ui/pencil-simple.svg';
-import ShieldCheckIcon from '@/assets/icons/ui/shield-check.svg';
-import WarningIcon from '@/assets/icons/ui/warning-circle.svg';
 import {
   confirmHealthDocument,
   getHealthDocument,
@@ -52,6 +46,8 @@ import {
   Text,
   TextInput,
 } from '@/src/components/common';
+import { aForm } from '@/src/components/a/form';
+import { PaperFailed, PaperReading } from '@/src/components/a/PaperWait';
 import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
 import { HealthDataUploadBottomSheet, useHealthFileSelect } from '@/src/components/health-data/HealthDataUploadBottomSheet';
 import {
@@ -535,11 +531,12 @@ function MetricRow({
     </View>
   ) : null;
   return (
-    <View ref={onRowRef} style={styles.metricRow}>
+    <View ref={onRowRef} style={[styles.metricRow, !value && !isEditing && styles.metricRowMissing]}>
       <Text style={styles.metricLabel}>{definition.label}</Text>
       {isEditing ? box : (
-        <Text numberOfLines={1} style={styles.metricValueText}>
-          {value}{definition.unit && value ? ` ${definition.unit}` : ''}
+        <Text numberOfLines={1} style={[styles.metricValueText, !value && styles.metricMissing]}>
+          {value || '못 읽었어요'}
+          {value && definition.unit ? <Text style={styles.metricUnit}> {definition.unit}</Text> : null}
         </Text>
       )}
       <Pressable
@@ -550,7 +547,7 @@ function MetricRow({
         onPress={onToggleEdit}
         style={({ pressed }) => [isEditing ? styles.saveButton : styles.modifyButton, pressed && styles.pressed]}
       >
-        {isEditing ? <Text style={styles.saveText}>저장</Text> : <PencilIcon color={colors.textPrimary} height={20} width={20} />}
+        <Text style={isEditing ? styles.saveText : styles.modifyText}>{isEditing ? '저장' : '고치기'}</Text>
       </Pressable>
     </View>
   );
@@ -679,10 +676,9 @@ export default function OCRResultScreen() {
   const canvasLeft = insets.left + (availableWidth - scaledWidth) / 2;
   const safeTopAdjustment = Math.max(0, insets.top + 8 - referenceTitleTop * scale);
   const currentResult = results[currentIndex] ?? loadingResult;
-  const completionTop = 76;
-  const uploadFileTop = 118;
-  const tabsTop = 195;
-  const extractedCardTop = 252;
+  const uploadFileTop = 84;
+  const tabsTop = 162;
+  const extractedCardTop = 224;
   // The list takes spare height on a tall screen; a short one scrolls with the button below it.
   const bottomButtonTop = (windowHeight - insets.bottom - safeTopAdjustment) / scale - 76;
   const extractedCardHeight = Math.max(380, bottomButtonTop - 44 - 12 - extractedCardTop);
@@ -1035,62 +1031,23 @@ export default function OCRResultScreen() {
     />
   ));
 
-  if (isLoadingResults || results.length === 0) {
-    return (
-      <View style={styles.loadingRoot}>
-        <ActivityIndicator color={colors.primaryText} />
-      </View>
-    );
-  }
+  if (isLoadingResults || results.length === 0) return <PaperReading onBack={handleBack} />;
 
   if (currentResult.ocrStatus === 'failed' || currentResult.status === 'failed') {
     return (
-      <View style={styles.failureRoot}>
-        <View style={[styles.failureHeader, { paddingTop: insets.top + 4 }]}>
-          <Pressable hitSlop={12} accessibilityRole="button" accessibilityLabel="뒤로 가기" onPress={handleBack} style={styles.failureBack}>
-            <CaretLeftIcon color={colors.textPrimary} height={24} width={24} />
-          </Pressable>
-        </View>
-        <ScrollView contentContainerStyle={styles.failureContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.failureIcon}><WarningIcon color={colors.warning} height={32} width={32} /></View>
-          <Text style={styles.failureTitle}>글자를 읽지 못했어요</Text>
-          <Text style={styles.failureDescription}>사진이 흐리거나 결과지 일부가 잘렸을 수 있어요.</Text>
-          <View style={styles.failureGuide}>
-            <Text style={styles.failureGuideTitle}>다시 찍을 때는</Text>
-            {[
-              '밝은 곳에서 그림자 없이 찍어 주세요',
-              '결과지 네 모서리가 모두 보이게 해 주세요',
-              '글자가 흔들리지 않게 가까이 찍어 주세요',
-            ].map((tip, index) => (
-              <View key={tip} style={styles.failureTipRow}>
-                <Text style={styles.failureTipNumber}>{index + 1}</Text>
-                <Text style={styles.failureTipText}>{tip}</Text>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-        <View style={[styles.failureFooter, { paddingBottom: Math.max(insets.bottom, 18) }]}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: isReuploading || isSaving }}
-            disabled={isReuploading || isSaving}
-            onPress={failureSelect.selectPhoto}
-            style={styles.failureButton}
-          >
-            <Text style={styles.failureButtonText}>{isReuploading ? '업로드 중…' : '다시 찍기'}</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: isReuploading || isSaving }}
-            disabled={isReuploading || isSaving}
-            onPress={failureSelect.selectDocument}
-            style={styles.failureSecondary}
-          >
-            <Text style={styles.failureSecondaryText}>파일에서 고르기</Text>
-          </Pressable>
-        </View>
-      </View>
+      <PaperFailed
+        busy={isReuploading || isSaving}
+        onBack={handleBack}
+        onFile={failureSelect.selectDocument}
+        onPhoto={failureSelect.selectPhoto}
+        uploading={isReuploading}
+      />
     );
+  }
+
+  // Still being read: the loading look, not a sheet of empty numbers.
+  if (currentResult.ocrStatus === 'pending' || currentResult.ocrStatus === 'processing') {
+    return <PaperReading onBack={handleBack} />;
   }
 
   return (
@@ -1133,7 +1090,7 @@ export default function OCRResultScreen() {
             <Pressable accessibilityLabel="뒤로 가기" accessibilityRole="button" hitSlop={12} onPress={handleBack} style={styles.backButton}>
               <CaretLeftIcon color={colors.textPrimary} height={24} width={24} />
             </Pressable>
-            <Text style={styles.screenTitle}>판독 결과 확인</Text>
+            <Text accessibilityRole="header" style={styles.screenTitle}>읽은 수치 확인</Text>
             <Pressable
               accessibilityLabel="홈으로 가기"
               accessibilityRole="button"
@@ -1141,14 +1098,8 @@ export default function OCRResultScreen() {
               onPress={() => (hasUnsavedEdits ? setLeaveDialogOpen(true) : goHome())}
               style={styles.homeButton}
             >
-              <HouseIcon color={colors.textPrimary} height={24} width={24} />
+              <Text style={styles.homeText}>홈</Text>
             </Pressable>
-
-            <Text style={[styles.completionTitle, { top: completionTop }]}>
-              {currentResult.ocrStatus === 'completed'
-                ? '읽어 온 수치를 확인해 주세요'
-                : '건강 수치를 읽고 있어요'}
-            </Text>
 
             <AppCard
               bordered
@@ -1165,7 +1116,8 @@ export default function OCRResultScreen() {
                       style={styles.filePreviewImage}
                     />
                   ) : (
-                    <FileIcon color={colors.textPrimary} height={22} width={22} />
+                    // A sheet of paper with lines, where a photo of the paper cannot be shown.
+                    [0, 1, 2].map((line) => <View key={line} style={styles.paperLine} />)
                   )}
                 </View>
                 <View style={styles.fileTexts}>
@@ -1239,7 +1191,6 @@ export default function OCRResultScreen() {
             </AppCard>
 
             <View style={[styles.privacyBox, { top: privacyTop }]}>
-              <ShieldCheckIcon color={colors.textSecondary} height={18} width={18} />
               <Text style={styles.privacyText}>
                 {currentResult.ocrStatus === 'completed'
                   ? '읽어 온 수치는 분석과 추천에만 써요.'
@@ -1311,66 +1262,104 @@ export default function OCRResultScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: the same sheet of numbers, drawn with the dark outline, ledges and pixel letters.
+  const a = aForm(colors);
   return {
-    failureRoot: { flex: 1, alignSelf: 'center', width: '100%', maxWidth: 412, backgroundColor: colors.background },
-    failureHeader: { minHeight: 52, justifyContent: 'center', paddingHorizontal: 20 },
-    failureBack: { justifyContent: 'center', minHeight: 44, width: 44 },
-    failureContent: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 12 },
-    failureIcon: { alignItems: 'center', backgroundColor: colors.warningLight, borderRadius: 32, height: 64, justifyContent: 'center', width: 64 },
-    failureTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30, marginTop: 20 },
-    failureDescription: { color: colors.textBody, fontSize: 16, lineHeight: 24, marginTop: 4 },
-    failureGuide: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, gap: 12, marginTop: 20, padding: 18 },
-    failureGuideTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-    failureTipRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-    failureTipNumber: { backgroundColor: colors.background, borderRadius: 12, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, height: 24, lineHeight: 24, overflow: 'hidden', textAlign: 'center', width: 24 },
-    failureTipText: { color: colors.textBody, flex: 1, fontSize: 14, lineHeight: 21 },
-    failureFooter: { gap: 8, paddingHorizontal: 20, paddingTop: 8 },
-    failureButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center' },
-    failureButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-    failureSecondary: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 56, justifyContent: 'center' },
-    failureSecondaryText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-    loadingRoot: { alignItems: 'center', backgroundColor: colors.background, flex: 1, justifyContent: 'center' },
     root: { backgroundColor: colors.background, flex: 1, overflow: 'hidden' },
     scrollContent: { alignItems: 'center' },
     canvasSlot: { position: 'relative', width: '100%' },
     canvas: { height: referenceHeight, position: 'absolute', transformOrigin: 'top left', width: referenceWidth },
-    backButton: { height: 44, justifyContent: 'center', left: 20, position: 'absolute', top: 20, width: 44 },
-    screenTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, left: 70, lineHeight: 24, position: 'absolute', right: 70, textAlign: 'center', top: 30 },
-    homeButton: { alignItems: 'flex-end', height: 44, justifyContent: 'center', position: 'absolute', right: 20, top: 20, width: 44 },
-    completionTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, left: 20, lineHeight: 30, position: 'absolute', right: 20 },
-    uploadFileCard: { backgroundColor: colors.surface, borderRadius: 16, left: 20, position: 'absolute', width: 372 },
-    uploadFileBottom: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 63, paddingHorizontal: 14 },
-    filePreview: { alignItems: 'center', backgroundColor: colors.background, borderRadius: 20, height: 40, justifyContent: 'center', overflow: 'hidden', width: 40 },
+    backButton: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.ink,
+      borderRadius: 14,
+      borderWidth: 2,
+      boxShadow: `0 4px 0 ${colors.ink}`,
+      height: 44,
+      justifyContent: 'center',
+      left: 16,
+      position: 'absolute',
+      top: 18,
+      width: 44,
+    },
+    screenTitle: { ...a.p15, color: colors.ink, left: 70, position: 'absolute', right: 70, textAlign: 'center', top: 30 },
+    homeButton: { ...a.mini, position: 'absolute', right: 16, top: 24 },
+    homeText: a.miniText,
+    uploadFileCard: { backgroundColor: colors.surface, borderRadius: 18, left: 16, position: 'absolute', width: 380 },
+    uploadFileBottom: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 64, paddingLeft: 12, paddingRight: 10 },
+    filePreview: {
+      alignItems: 'center',
+      backgroundColor: colors.surface,
+      borderColor: colors.ink,
+      borderRadius: 6,
+      borderWidth: 2,
+      gap: 5,
+      height: 44,
+      justifyContent: 'center',
+      overflow: 'hidden',
+      width: 34,
+    },
     filePreviewImage: { height: '100%', width: '100%' },
+    paperLine: { backgroundColor: colors.track, height: 2, width: 18 },
     fileTexts: { flex: 1, minWidth: 0 },
-    fileName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, lineHeight: 21 },
-    uploadTime: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
-    reuploadButton: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-    reuploadText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    resultTabs: { backgroundColor: colors.surfaceMuted, borderRadius: 16, flexDirection: 'row', height: 46, left: 20, padding: 4, position: 'absolute', width: 372 },
-    resultTab: { alignItems: 'center', borderRadius: 12, flex: 1, justifyContent: 'center' },
-    resultTabActive: { backgroundColor: colors.background },
-    resultTabText: { color: colors.textSecondary, fontSize: 14 },
-    resultTabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
-    extractedCard: { backgroundColor: colors.surface, borderRadius: 16, left: 20, overflow: 'hidden', position: 'absolute', width: 372 },
+    fileName: { ...a.p15, color: colors.ink },
+    uploadTime: a.note,
+    reuploadButton: a.mini,
+    reuploadText: a.miniText,
+    // 4 taller than its buttons: the ledge they stand on.
+    resultTabs: { flexDirection: 'row', gap: 6, height: 50, left: 16, position: 'absolute', width: 380 },
+    resultTab: a.seg,
+    resultTabActive: a.segOn,
+    resultTabText: a.segText,
+    resultTabTextActive: a.onText,
+    extractedCard: { backgroundColor: colors.surface, borderRadius: 18, left: 16, overflow: 'hidden', position: 'absolute', width: 380 },
     metricListViewport: { height: '100%', position: 'relative', width: '100%' },
     metricList: { flex: 1, width: '100%' },
-    metricRow: { alignItems: 'center', borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: 'row', gap: 8, minHeight: 56, paddingHorizontal: 16 },
-    metricLabel: { color: colors.textBody, fontSize: 14, lineHeight: 21, width: 96 },
-    metricValueText: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 16, textAlign: 'right' },
-    metricInputBox: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.primary, borderRadius: 12, borderWidth: 2, flex: 1, flexDirection: 'row', gap: 4, height: 44, minWidth: 0, paddingHorizontal: 10 },
-    metricInput: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 16, minWidth: 0, padding: 0 },
+    metricRow: {
+      alignItems: 'center',
+      borderBottomColor: colors.track,
+      borderBottomWidth: 2,
+      flexDirection: 'row',
+      gap: 8,
+      minHeight: 58,
+      paddingLeft: 14,
+      paddingRight: 10,
+    },
+    // A number the paper did not give: the row is tinted and says so.
+    metricRowMissing: { backgroundColor: colors.primaryLight },
+    metricLabel: { ...a.note, width: 92 },
+    metricValueText: {
+      color: colors.ink,
+      flex: 1,
+      fontFamily: fontFamilies.galmuri11Bold,
+      fontSize: 22,
+      lineHeight: 28,
+      textAlign: 'right',
+    },
+    metricMissing: a.p15,
+    metricInputBox: { ...a.field, flex: 1, gap: 4, height: 44, minWidth: 0, paddingHorizontal: 10 },
+    metricInput: {
+      color: colors.ink,
+      flex: 1,
+      fontFamily: fontFamilies.galmuri11Bold,
+      fontSize: 22,
+      minWidth: 0,
+      padding: 0,
+      textAlign: 'right',
+    },
     bloodPressureInput: { textAlign: 'center' },
-    metricUnit: { color: colors.textSecondary, fontSize: 14 },
-    modifyButton: { alignItems: 'center', height: 34, justifyContent: 'center', width: 28 },
-    saveButton: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-    saveText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    privacyBox: { alignItems: 'center', flexDirection: 'row', gap: 6, left: 20, position: 'absolute', right: 20 },
-    privacyText: { color: colors.textSecondary, flex: 1, fontSize: 14, lineHeight: 21 },
-    nextButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center', left: 20, position: 'absolute', width: 372 },
-    nextButtonDisabled: { backgroundColor: colors.surfaceMuted },
+    metricUnit: a.note,
+    modifyButton: a.mini,
+    modifyText: a.miniText,
+    saveButton: { ...a.mini, backgroundColor: colors.primary },
+    saveText: { ...a.miniText, color: colors.onPrimary },
+    privacyBox: { alignItems: 'center', left: 16, position: 'absolute', right: 16 },
+    privacyText: { ...a.note, textAlign: 'center' },
+    nextButton: { ...a.go, left: 16, position: 'absolute', width: 380 },
+    nextButtonDisabled: a.goOff,
     disabledText: { color: colors.textDisabled },
-    nextButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    nextButtonText: a.goText,
     pressed: { opacity: 0.72 },
   } as const;
 }

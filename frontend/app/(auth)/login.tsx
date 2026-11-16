@@ -4,10 +4,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Keyboard, Pressable, View } from 'react-native';
 import type { SvgProps } from 'react-native-svg';
 
-import EyeSlashIcon from '@/assets/icons/auth-redesign/5facc.svg';
-import EyeIcon from '@/assets/icons/input/Eye.svg';
 import GoogleIcon from '@/assets/icons/auth-redesign/google-logo.svg';
 import KakaoIcon from '@/assets/icons/auth-redesign/kakao-symbol.svg';
+import { aForm } from '@/src/components/a/form';
 import { AuthButton, AuthCard, AuthPage, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import {
   signInWithSocialProvider,
@@ -15,7 +14,7 @@ import {
 } from '@/src/features/auth/socialOAuth';
 import { getPostLoginDestination } from '@/src/features/auth/postLoginDestination';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
+import { useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
 
 type SocialLoginButtonProps = {
@@ -114,10 +113,9 @@ export default function LoginScreen() {
           autoComplete="email"
           autoCorrect={false}
           keyboardType="email-address"
-          label="이메일"
           onChangeText={setEmail}
           onSubmitEditing={() => passwordRef.current?.focus()}
-          placeholder="example@email.com"
+          placeholder="이메일"
           returnKeyType="next"
           textContentType="emailAddress"
           value={email}
@@ -128,10 +126,10 @@ export default function LoginScreen() {
           autoCapitalize="none"
           autoComplete="password"
           error={loginError}
-          label="비밀번호"
+          fieldStyle={styles.withMini}
           onChangeText={setPassword}
           onSubmitEditing={handleLogin}
-          placeholder="비밀번호를 입력해 주세요"
+          placeholder="비밀번호"
           returnKeyType="done"
           rightElement={
             <Pressable
@@ -139,12 +137,9 @@ export default function LoginScreen() {
               accessibilityRole="button"
               hitSlop={10}
               onPress={() => setPasswordVisible(!passwordVisible)}
+              style={styles.mini}
             >
-              {passwordVisible ? (
-                <EyeSlashIcon height={22} width={22} />
-              ) : (
-                <EyeIcon height={22} width={22} />
-              )}
+              <Text style={styles.miniText}>{passwordVisible ? '숨기기' : '보기'}</Text>
             </Pressable>
           }
           secureTextEntry={!passwordVisible}
@@ -158,21 +153,7 @@ export default function LoginScreen() {
             title="로그인"
           />
         </View>
-        <View style={styles.accountLinks}>
-          <Pressable accessibilityRole="button" onPress={() => router.push('/password/forgot')} style={styles.linkButton}>
-            <Text style={styles.link}>비밀번호 찾기</Text>
-          </Pressable>
-          <View style={styles.linkDivider} />
-          <Pressable accessibilityRole="button" onPress={() => router.push('/signup/step1')} style={styles.linkButton}>
-            <Text style={styles.link}>회원가입</Text>
-          </Pressable>
-        </View>
       </AuthCard>
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>또는</Text>
-        <View style={styles.dividerLine} />
-      </View>
       <View style={styles.socialGroup}>
         <SocialLoginButton
           disabled={activeLoginProvider !== null}
@@ -188,56 +169,47 @@ export default function LoginScreen() {
           onPress={() => void handleSocialLogin('google')}
         />
       </View>
+      <View style={styles.accountLinks}>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/password/forgot')} style={styles.linkButton}>
+          <Text style={styles.link}>비밀번호 찾기</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" onPress={() => router.push('/signup/step1')} style={styles.linkButton}>
+          <Text style={styles.link}>회원가입</Text>
+        </Pressable>
+      </View>
     </AuthPage>
   );
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    loginCard: { gap: 16 },
-    loginButton: { marginTop: 8 },
-    accountLinks: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      gap: 4,
-      justifyContent: 'center',
-      marginTop: -8,
-    },
-    linkButton: { alignItems: 'center', height: 44, justifyContent: 'center', width: 120 },
-    linkDivider: { backgroundColor: colors.border, height: 12, width: 1 },
-    link: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-      lineHeight: 21,
-    },
-    divider: { alignItems: 'center', flexDirection: 'row', gap: 12, marginBottom: 16, marginTop: 'auto', paddingTop: 24 },
-    dividerLine: { backgroundColor: colors.border, flex: 1, height: 1 },
-    dividerText: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 14,
-      lineHeight: 21,
-    },
-    socialGroup: { gap: 8 },
+    loginCard: { gap: 8 },
+    loginButton: { marginTop: 6 },
+    withMini: { paddingRight: 6 },
+    mini: a.mini,
+    miniText: a.miniText,
+    // Kakao and Google side by side, each on a small ledge.
+    socialGroup: { flexDirection: 'row', gap: 8, marginTop: 14, paddingBottom: 3 },
     socialButton: {
       alignItems: 'center',
       backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
+      borderColor: colors.ink,
+      borderRadius: 14,
+      borderWidth: 2,
+      boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)',
+      flex: 1,
       flexDirection: 'row',
-      gap: 8,
-      height: 56,
+      gap: 6,
+      height: 46,
       justifyContent: 'center',
     },
-    kakaoButton: { backgroundColor: '#FEE500', borderWidth: 0 },
-    socialLabel: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
-    kakaoLabel: { color: '#000000' },
+    kakaoButton: { backgroundColor: '#FEE500' },
+    socialLabel: { ...a.p12, color: colors.ink },
+    kakaoLabel: { color: '#191919' },
+    accountLinks: { alignItems: 'center', flexDirection: 'row', gap: 18, justifyContent: 'center', marginTop: 4 },
+    linkButton: { alignItems: 'center', height: 44, justifyContent: 'center' },
+    link: a.link,
     pressed: { opacity: 0.75 },
   } as const;
 }

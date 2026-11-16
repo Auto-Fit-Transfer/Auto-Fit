@@ -12,8 +12,8 @@ import {
   type SignupExerciseExperience,
   type SignupExerciseGoal,
 } from '@/src/features/signup/SignupContext';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import CheckIcon from '@/assets/icons/auth-redesign/ab4c2.svg';
+import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 import { Text, TextInput } from '@/src/components/common';
 
 type ExerciseGoal = SignupExerciseGoal;
@@ -139,6 +139,7 @@ export default function SignUpStep4Screen() {
             label={option.label}
             onPress={() => selectGoal(option.id)}
             selected={exerciseGoal === option.id}
+            wide={option.id === 'conditioning'}
           />
         ))}
         <ChoiceRow
@@ -196,10 +197,12 @@ function ChoiceRow({
   label,
   selected,
   onPress,
+  wide = false,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
+  wide?: boolean;
 }) {
   const styles = useThemedStyles(createStyles);
   return (
@@ -209,14 +212,12 @@ function ChoiceRow({
       onPress={onPress}
       style={({ pressed }) => [
         styles.choice,
+        wide && styles.choiceWide,
         selected && styles.selected,
         pressed && styles.pressed,
       ]}
     >
       <Text style={[styles.choiceLabel, selected && styles.selectedLabel]}>{label}</Text>
-      <View style={[styles.radio, selected && styles.radioSelected]}>
-        {selected ? <CheckIcon height={16} width={16} /> : null}
-      </View>
     </Pressable>
   );
 }
@@ -237,7 +238,7 @@ function CustomGoalInput({
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   return (
-    <View>
+    <View style={styles.customWrap}>
       <Text style={styles.customLabel}>어떤 목표인가요?</Text>
       <View style={styles.customField}>
         <TextInput
@@ -261,102 +262,28 @@ function CustomGoalInput({
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    sectionTitle: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-      lineHeight: 24,
-      marginBottom: 10,
-    },
-    choiceList: { gap: 8 },
-    choice: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
-      flexDirection: 'row',
-      height: 56,
-      justifyContent: 'space-between',
-      paddingHorizontal: 19,
-    },
-    selected: { borderColor: colors.primary },
-    choiceLabel: {
-      color: colors.textPrimary,
-      flex: 1,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 16,
-      lineHeight: 24,
-    },
-    selectedLabel: { fontFamily: fontFamilies.pretendardBold },
-    radio: {
-      alignItems: 'center',
-      borderColor: colors.textDisabled,
-      borderRadius: 12,
-      borderWidth: 1,
-      height: 24,
-      justifyContent: 'center',
-      width: 24,
-    },
-    radioSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-    experienceRow: { flexDirection: 'row', gap: 8 },
-    chip: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 999,
-      borderWidth: 1,
-      flex: 1,
-      height: 40,
-      justifyContent: 'center',
-    },
-    chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-    chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    chipTextSelected: { color: '#FFFFFF' },
-    experienceHint: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 14,
-      lineHeight: 21,
-      marginTop: 10,
-    },
-    customLabel: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-      lineHeight: 21,
-      marginBottom: 8,
-      marginTop: 8,
-    },
-    customField: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.primary,
-      borderRadius: 12,
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: 8,
-      height: 52,
-      paddingHorizontal: 16,
-    },
-    customInput: {
-      color: colors.textPrimary,
-      flex: 1,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 16,
-      height: '100%',
-      minWidth: 0,
-      padding: 0,
-    },
-    customCount: { color: colors.textSecondary, fontSize: 14 },
-    customHint: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 14,
-      lineHeight: 21,
-      marginTop: 8,
-    },
+    sectionTitle: a.q,
+    // Three goals in a row, then the long one beside "my own".
+    choiceList: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    choice: { ...a.chip, flexBasis: '30%', flexGrow: 1 },
+    choiceWide: { flexBasis: '62%' },
+    selected: a.on,
+    choiceLabel: a.chipText,
+    selectedLabel: a.onText,
+    experienceRow: { flexDirection: 'row', gap: 6, paddingBottom: 4 },
+    chip: a.seg,
+    chipSelected: a.segOn,
+    chipText: a.segText,
+    chipTextSelected: a.onText,
+    experienceHint: { ...a.note, marginTop: 8 },
+    customWrap: { flexBasis: '100%', marginTop: 2 },
+    customLabel: a.q,
+    customField: { ...a.field, gap: 8 },
+    customInput: { ...a.input, flex: 1, height: '100%', minWidth: 0, padding: 0 },
+    customCount: a.note,
+    customHint: { ...a.note, marginTop: 8 },
     pressed: { opacity: 0.75 },
   } as const;
 }

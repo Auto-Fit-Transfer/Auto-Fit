@@ -5,13 +5,14 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  type StyleProp,
   TextInput,
   View,
-  type StyleProp,
-  type ViewStyle } from 'react-native';
+  type ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import AutofitWordmark from '@/assets/icons/autofit-wordmark.svg';
-import AutofitWordmarkDark from '@/assets/icons/autofit-wordmark-dark.svg';
+import { aForm } from '@/src/components/a/form';
+import { JoinScene } from '@/src/components/a/JoinScene';
 import BackIcon from '@/assets/icons/common/chevrons/Left.svg';
 
 import { AppTextField, type AppTextFieldProps, Text } from '@/src/components/common';
@@ -20,6 +21,10 @@ import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src
 type AuthPageProps = {
   mode: 'login' | 'signup' | 'password';
   heading?: string;
+  // Renewal A: the name on the bar when the heading below it is the step's question (캐릭터 만들기).
+  barTitle?: string;
+  // The picture above what the screen asks (the street and my character).
+  scene?: ReactNode;
   description?: string;
   step?: number;
   totalSteps?: number;
@@ -32,6 +37,8 @@ type AuthPageProps = {
 export function AuthPage({
   mode,
   heading,
+  barTitle,
+  scene,
   description,
   step,
   totalSteps = 5,
@@ -40,11 +47,10 @@ export function AuthPage({
   contentOffsetY = 0,
   children,
 }: AuthPageProps) {
-  const { colors, isDark } = useAppTheme();
+  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const isLogin = mode === 'login';
-  const Wordmark = isDark ? AutofitWordmarkDark : AutofitWordmark;
 
   return (
     <KeyboardAvoidingView
@@ -52,9 +58,11 @@ export function AuthPage({
       style={styles.root}
     >
       {isLogin ? (
-        <View style={[styles.loginHeader, { paddingTop: insets.top + 56 }]}>
-          <Wordmark accessibilityLabel="autofit" height={35} width={129} />
-        </View>
+        // Renewal A: signing in is the game's title screen - the street, my character on it, and the name.
+        // The street takes the height the form below leaves, so the screen has no empty half.
+        <JoinScene bigFrom={440} style={[styles.title, { minHeight: 300 + insets.top }]} tier={1}>
+          <Text accessibilityRole="header" style={[styles.titleName, { top: insets.top + 44 }]}>Auto-Fit</Text>
+        </JoinScene>
       ) : (
         <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
           <View style={styles.navigation}>
@@ -63,22 +71,25 @@ export function AuthPage({
               accessibilityRole="button"
               hitSlop={10}
               onPress={onBack}
-              style={styles.backButton}
+              style={({ pressed }) => [styles.backButton, pressed && styles.backPressed]}
             >
-              <BackIcon color={colors.textPrimary} height={24} width={24} />
+              <BackIcon color={colors.ink} height={24} width={24} />
             </Pressable>
-                      </View>
-          {step ? (
-            <View accessibilityLabel={`${totalSteps}단계 중 ${step}단계`} style={styles.progress}>
-              {Array.from({ length: totalSteps }, (_, index) => (
-                <View
-                  key={index}
-                  style={[styles.progressSegment, index < step && styles.progressActive]}
-                />
-              ))}
-            </View>
-          ) : null}
-          {heading ? <Text style={styles.heading}>{heading}</Text> : null}
+            <Text accessibilityRole="header" numberOfLines={1} style={styles.barTitle}>
+              {barTitle ?? heading}
+            </Text>
+            {step ? (
+              <View accessible accessibilityLabel={`${totalSteps}단계 중 ${step}단계`} style={styles.progress}>
+                {Array.from({ length: totalSteps }, (_, index) => (
+                  <View
+                    key={index}
+                    style={[styles.progressSegment, index < step && styles.progressActive]}
+                  />
+                ))}
+              </View>
+            ) : null}
+          </View>
+          {barTitle && heading ? <Text style={styles.heading}>{heading}</Text> : null}
           {description ? <Text style={styles.description}>{description}</Text> : null}
         </View>
       )}
@@ -93,8 +104,9 @@ export function AuthPage({
         ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
-        style={styles.scroll}
+        style={isLogin ? styles.loginScroll : styles.scroll}
       >
+        {scene}
         {children}
       </ScrollView>
       {footer ? (
@@ -159,7 +171,7 @@ export function AuthButton({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color="#FFFFFF" />
+        <ActivityIndicator color="#1B1247" />
       ) : (
         <Text style={[styles.buttonLabel, disabled && styles.buttonLabelDisabled]}>{title}</Text>
       )}
@@ -168,64 +180,80 @@ export function AuthButton({
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 412, width: '100%' },
-    loginHeader: { paddingHorizontal: 20 },
-    header: { paddingHorizontal: 20 },
-    navigation: { alignItems: 'center', flexDirection: 'row', height: 56 },
-    backButton: { alignItems: 'flex-start', height: 44, justifyContent: 'center', marginLeft: -2, width: 40 },
-    progress: { flexDirection: 'row', gap: 4, marginTop: 4 },
-    progressSegment: { backgroundColor: colors.border, borderRadius: 3, flex: 1, height: 6 },
-    progressActive: { backgroundColor: colors.tabBar },
-    heading: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 22,
-      lineHeight: 30,
-      marginTop: 24,
+    title: { borderRadius: 0, borderWidth: 0 },
+    titleName: {
+      color: '#FFFFFF',
+      fontFamily: fontFamilies.galmuri11Bold,
+      fontSize: 44,
+      left: 0,
+      lineHeight: 50,
+      position: 'absolute',
+      right: 0,
+      textAlign: 'center',
+      textShadowColor: colors.ink,
+      textShadowOffset: { height: 3, width: 3 },
+      textShadowRadius: 2,
     },
-    description: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 16,
-      lineHeight: 24,
-      marginTop: 8,
-    },
-    scroll: { flex: 1 },
-    content: { flexGrow: 1, gap: 28, paddingHorizontal: 20, paddingTop: 28 },
-    loginContent: { gap: 0, paddingHorizontal: 20, paddingTop: 40 },
-    footer: { backgroundColor: colors.background, paddingHorizontal: 20, paddingTop: 10 },
-    card: { gap: 12 },
-    field: {
+    // Renewal A: the bar is the way back on its ledge, the name in pixel letters and one dot per step.
+    header: { paddingHorizontal: 16 },
+    navigation: { alignItems: 'center', flexDirection: 'row', gap: 10, height: 52 },
+    backButton: {
+      alignItems: 'center',
       backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 12,
-      height: 52,
-      paddingHorizontal: 16,
+      borderColor: colors.ink,
+      borderRadius: 14,
+      borderWidth: 2,
+      boxShadow: `0 4px 0 ${colors.ink}`,
+      height: 44,
+      justifyContent: 'center',
+      width: 44,
     },
-    fieldLabel: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-      lineHeight: 21,
-      marginBottom: 8,
+    backPressed: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 4 }] },
+    barTitle: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    progress: { flexDirection: 'row', gap: 3 },
+    progressSegment: {
+      backgroundColor: colors.track,
+      borderColor: 'rgba(32, 35, 63, 0.25)',
+      borderWidth: 1,
+      height: 8,
+      width: 8,
     },
-    fieldInput: {
-      color: colors.textPrimary,
-      fontSize: 16,
-      lineHeight: 24,
+    progressActive: { backgroundColor: colors.primary, borderColor: colors.ink },
+    heading: {
+      color: colors.ink,
+      fontFamily: fontFamilies.galmuri11Bold,
+      fontSize: 24,
+      lineHeight: 28,
+      marginTop: 10,
     },
+    description: { ...a.p15, color: colors.textBody, marginTop: 8 },
+    scroll: { flex: 1 },
+    loginScroll: { flexGrow: 0 },
+    content: { flexGrow: 1, gap: 14, paddingHorizontal: 16, paddingTop: 12 },
+    loginContent: { gap: 0, paddingHorizontal: 16, paddingTop: 20 },
+    footer: { backgroundColor: colors.background, paddingHorizontal: 16, paddingTop: 10 },
+    card: { gap: 12 },
+    field: a.field,
+    fieldLabel: a.q,
+    fieldInput: a.input,
     primaryButton: {
       alignItems: 'center',
       backgroundColor: colors.primary,
-      borderRadius: 12,
+      // Renewal A: the dark outline and the ledge that goes down when pressed, as on every button.
+      borderColor: colors.ink,
+      borderRadius: 14,
+      borderWidth: 2,
+      boxShadow: `0 4px 0 ${colors.ink}`,
       height: 56,
       justifyContent: 'center',
       width: '100%',
     },
     buttonDisabled: { backgroundColor: colors.surfaceMuted },
     buttonLabelDisabled: { color: colors.textDisabled },
-    buttonPressed: { opacity: 0.85 },
-    buttonLabel: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    buttonPressed: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 4 }] },
+    buttonLabel: { color: colors.onPrimary, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
   } as const;
 }

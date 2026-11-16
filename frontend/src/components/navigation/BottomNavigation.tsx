@@ -78,6 +78,9 @@ export function BottomNavigation({
     });
   }, [onNavigationLayout]);
 
+  // Renewal A: the home is the lobby with its own round menus, so the tab bar is not drawn there.
+  if (state.routes[state.index]?.name === 'home') return null;
+
   return (
     <View
       ref={navigationRef}

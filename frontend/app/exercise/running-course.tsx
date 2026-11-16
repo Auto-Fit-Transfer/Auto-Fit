@@ -1,45 +1,24 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCanGoBack, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Location from 'expo-location';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Line, Polyline } from 'react-native-svg';
-import CheckIcon from '@/assets/icons/ui/check.svg';
+import CheckIcon from '@/assets/icons/system/Check.svg';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getRunningApiErrorMessage, getRunningCourseDetail, getSavedRunningCourses, previewRunningRoute, saveRunningCourse, startSavedCourseRun, type RunningCourse, type RunningRoutePreview } from '@/src/api/running';
-import { KakaoRouteMap } from '@/src/components/exercise/KakaoRouteMap';
-import { canPreviewRoute, courseDifficultyLabel, previewRouteInput, routePoints, routePolyline } from '@/src/features/running/courseRoute';
-import { KAKAO_MAP_JS_KEY } from '@/src/features/running/kakaoMap';
+import { ALoading } from '@/src/components/a/ALoading';
+import { aForm } from '@/src/components/a/form';
+import { RoutePicture, RunSetup, type RunCondition, type RunIntensity } from '@/src/components/a/RunParts';
+import { canPreviewRoute, courseDifficultyLabel, previewRouteInput, routePoints } from '@/src/features/running/courseRoute';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text, TextInput } from '@/src/components/common';
+import { Text } from '@/src/components/common';
 
 const nameOf = (course: RunningCourse) => course.course_name || course.name || '이름 없는 코스';
 const sourceOf = (course: RunningCourse) => course.source?.source_type ?? course.source_type;
 
-function RouteDiagram({ course, preview }: { course: RunningCourse; preview: RunningRoutePreview | null }) {
-  const { colors } = useAppTheme();
-  const s = useThemedStyles(createSStyles);
-  const points = preview?.path?.length ? preview.path : routePoints(course);
-  const [mapFailed, setMapFailed] = useState(false);
-  const handleMapFailure = useCallback(() => setMapFailed(true), []);
-  const line = routePolyline(points, 320, 220);
-  if (KAKAO_MAP_JS_KEY && points.length >= 2 && !mapFailed) {
-    return <View style={s.map}><KakaoRouteMap points={points} onFailure={handleMapFailure} /></View>;
-  }
-  const ends = line.split(' ');
-  return <View style={s.map}>
-    <Svg height="220" viewBox="0 0 320 220" width="100%">
-      {Array.from({ length: 9 }, (_, index) => <Line key={`h${index}`} x1="0" x2="320" y1={index * 26} y2={index * 26} stroke={colors.border} strokeWidth="1" />)}
-      {Array.from({ length: 13 }, (_, index) => <Line key={`v${index}`} x1={index * 27} x2={index * 27} y1="0" y2="220" stroke={colors.border} strokeWidth="1" />)}
-      {line ? <><Polyline points={line} fill="none" stroke={colors.textPrimary} strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" />
-        <Circle cx={Number(ends[0]?.split(',')[0])} cy={Number(ends[0]?.split(',')[1])} r="6" fill="#FFF" stroke={colors.textPrimary} strokeWidth="3" />
-        <Circle cx={Number(ends.at(-1)?.split(',')[0])} cy={Number(ends.at(-1)?.split(',')[1])} r="6" fill={colors.primary} stroke="#FFF" strokeWidth="2" /></> : null}
-    </Svg>
-    {!line ? <View style={s.mapEmpty}><Text style={s.mapEmptyText}>제공된 경로 좌표가 없어요</Text></View> : null}
-    <View style={s.mapBadge}><Text style={s.mapBadgeText}>경로 도식 · 실제 지도가 아니에요</Text></View>
-  </View>;
-}
-
+// Renewal A: one course as a stage, its map on top, how far and how long under it. The course is
+// kept first (the server starts a run only on a kept course), then the three things before a run
+// are asked and the run starts.
 export default function RunningCourseScreen() {
   const { colors } = useAppTheme();
   const s = useThemedStyles(createSStyles);
@@ -53,8 +32,8 @@ export default function RunningCourseScreen() {
   const [saved, setSaved] = useState(false);
   const [savedCourseId, setSavedCourseId] = useState<string | null>(null);
   const [targetMinutes, setTargetMinutes] = useState('30');
-  const [intensity, setIntensity] = useState<'light' | 'moderate' | 'hard'>('light');
-  const [condition, setCondition] = useState<'good' | 'normal' | 'tired'>('normal');
+  const [intensity, setIntensity] = useState<RunIntensity>('light');
+  const [condition, setCondition] = useState<RunCondition>('normal');
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
   const [previewError, setPreviewError] = useState('');
@@ -146,50 +125,87 @@ export default function RunningCourseScreen() {
   // The official time belongs to the official distance, so a drawn route shows its own.
   const minutes = typeof preview?.estimated_duration_minutes === 'number' ? preview.estimated_duration_minutes : course?.estimated_duration_minutes;
   const canSave = !!course?.selection_token && !validationNeeded && !pathMissing && (!distanceAcceptanceNeeded || acceptDistanceError);
+  const noSave = !canSave || saving;
+  const noStart = starting || path.length < 2;
 
   return <View style={s.root}>
     <ScreenHeader onBack={back} title="러닝 코스" />
-    <ScrollView contentContainerStyle={[s.content, { paddingTop: 8, paddingBottom: insets.bottom + 36 }]}>
-      {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
-      {error && !course ? <Pressable accessibilityRole="button" onPress={() => { setError(''); setPreviewError(''); setLoading(true); setRetry((value) => value + 1); }} style={s.notice}><Text style={s.error}>{error} · 다시 시도</Text></Pressable> : null}
+    {loading ? <ALoading /> : <ScrollView contentContainerStyle={[s.content, { paddingBottom: insets.bottom + 28 }]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      {error && !course ? <Pressable accessibilityRole="button" onPress={() => { setError(''); setPreviewError(''); setLoading(true); setRetry((value) => value + 1); }} style={s.notice}><Text style={s.body}>{error} · 다시 시도</Text></Pressable> : null}
       {course ? <>
-        <Text style={s.eyebrow}>{saved ? '저장한 코스' : '추천 코스'}</Text>
         <Text style={s.courseTitle}>{nameOf(course)}</Text>
         {course.description ? <Text style={s.body}>{course.description}</Text> : null}
-        <View style={s.tags}>{course.region ? <Text style={s.tag}>{course.region}</Text> : null}<Text style={s.tag}>{sourceOf(course) === 'auto_generated' ? '생성 코스' : '공식 코스'}</Text></View>
-        {path.length >= 2 ? <RouteDiagram course={course} preview={preview} /> : null}
-        {path.length >= 2 && sourceOf(course) === 'official_metadata' ? <Text style={s.metricLabel}>길찾기로 그린 경로예요. 공식 코스{preview && typeof course.distance_km === 'number' ? `(${course.distance_km}km)` : ''}와 다를 수 있어요.</Text> : null}
-        <View style={s.metrics}>
-          <View style={s.metric}><Text style={s.metricLabel}>거리</Text><Text style={s.metricValue}>{typeof distanceKm === 'number' ? `${Math.round(distanceKm * 10) / 10}km` : '—'}</Text></View>
-          <View style={s.metric}><Text style={s.metricLabel}>예상 시간</Text><Text style={s.metricValue}>{typeof minutes === 'number' ? `약 ${Math.round(minutes)}분` : '—'}</Text></View>
-          <View style={s.metric}><Text style={s.metricLabel}>난이도</Text><Text style={s.metricValue}>{courseDifficultyLabel(course.difficulty) || '—'}</Text></View>
+        <View style={s.stage}>
+          {path.length >= 2 ? <RoutePicture label={`${nameOf(course)} 경로`} points={path} style={s.map} /> : null}
+          <View style={s.tags}>
+            <Text style={s.tag}>{saved ? '저장한 코스' : sourceOf(course) === 'auto_generated' ? '앱이 만든 코스' : '공식 코스'}</Text>
+            {course.region ? <Text style={s.tag}>{course.region}</Text> : null}
+          </View>
+          <View style={s.metrics}>
+            <View style={s.metric}><Text style={s.metricValue}>{typeof distanceKm === 'number' ? `${Math.round(distanceKm * 10) / 10}km` : '–'}</Text><Text style={s.note}>거리</Text></View>
+            <View style={[s.metric, s.metricNext]}><Text style={s.metricValue}>{typeof minutes === 'number' ? `약 ${Math.round(minutes)}분` : '–'}</Text><Text style={s.note}>예상 시간</Text></View>
+            <View style={[s.metric, s.metricNext]}><Text style={s.metricValue}>{courseDifficultyLabel(course.difficulty) || '–'}</Text><Text style={s.note}>난이도</Text></View>
+          </View>
         </View>
+        {path.length >= 2 && sourceOf(course) === 'official_metadata' ? <Text style={s.note}>길찾기로 그린 경로예요. 공식 코스{preview && typeof course.distance_km === 'number' ? `(${course.distance_km}km)` : ''}와 다를 수 있어요.</Text> : null}
         {validationNeeded ? <View style={s.notice}><Text style={s.body}>{canPreviewRoute(course) ? `경로를 검증하지 못했어요. ${previewError || '잠시 후 다시 시도해 주세요.'}` : '이 코스는 출발지와 도착지만으로 경로를 그릴 수 없어요.'}</Text></View> : null}
         {pathMissing ? <View style={s.notice}><Text style={s.body}>경로 좌표가 없어 이 코스를 저장할 수 없어요.</Text></View> : null}
-        {distanceAcceptanceNeeded ? <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: acceptDistanceError }} onPress={() => setAcceptDistanceError((value) => !value)} style={[s.notice, s.checkRow]}><View style={[s.checkBox, acceptDistanceError && s.checkBoxOn]}>{acceptDistanceError ? <CheckIcon color={colors.onPrimary} height={16} width={16} /> : null}</View><Text style={[s.body, s.grow]}>요청한 거리와 실제 코스가 {course.distance_error_percent ?? '다소'}% 차이 나는 것을 확인했어요.</Text></Pressable> : null}
-        {error && course ? <Text style={s.error}>{error}</Text> : null}
-        <Pressable accessibilityRole="button" disabled={saved || !canSave || saving} onPress={() => void save()} style={[s.button, (saved || !canSave || saving) && s.disabled]}><Text style={[s.buttonText, (saved || !canSave || saving) && s.disabledText]}>{saved ? '저장된 코스예요' : saving ? '저장 중…' : '이 코스 저장하기'}</Text></Pressable>
-        {saved && savedCourseId ? <View style={s.startCard}>
-          <Text style={s.metricLabel}>목표 시간 · 분</Text><TextInput accessibilityLabel="목표 러닝 시간(분)" keyboardType="number-pad" value={targetMinutes} onChangeText={setTargetMinutes} style={s.input} />
-          <Text style={s.metricLabel}>강도</Text><View style={s.choices}>{([['light', '가볍게'], ['moderate', '보통'], ['hard', '강하게']] as const).map(([key, label]) => <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: intensity === key }} onPress={() => setIntensity(key)} style={[s.choice, intensity === key && s.choiceSelected]}><Text style={[s.choiceText, intensity === key && s.choiceTextSelected]}>{label}</Text></Pressable>)}</View>
-          <Text style={s.metricLabel}>오늘 컨디션</Text><View style={s.choices}>{([['good', '좋음'], ['normal', '보통'], ['tired', '피곤함']] as const).map(([key, label]) => <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: condition === key }} onPress={() => setCondition(key)} style={[s.choice, condition === key && s.choiceSelected]}><Text style={[s.choiceText, condition === key && s.choiceTextSelected]}>{label}</Text></Pressable>)}</View>
-          <Pressable accessibilityRole="button" disabled={starting || path.length < 2} onPress={() => void start()} style={[s.button, (starting || path.length < 2) && s.disabled]}><Text style={[s.buttonText, (starting || path.length < 2) && s.disabledText]}>{starting ? '준비 중…' : '이 코스로 러닝 시작하기'}</Text></Pressable><Text style={s.metricLabel}>앱 사용 중 GPS로 실제 이동을 기록해요.</Text>{path.length < 2 ? <Text style={s.error}>경로 좌표가 없어 이 코스로 러닝을 시작할 수 없어요.</Text> : null}</View> : null}
-        <Pressable accessibilityRole="button" onPress={back} style={s.outline}><Text style={s.outlineText}>다른 코스 보기</Text></Pressable>
+        {distanceAcceptanceNeeded && !saved ? <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: acceptDistanceError }} onPress={() => setAcceptDistanceError((value) => !value)} style={[s.notice, s.checkRow]}><View style={[s.tick, acceptDistanceError && s.on]}>{acceptDistanceError ? <CheckIcon color={colors.onPrimary} height={18} width={18} /> : null}</View><Text style={[s.body, s.grow]}>요청한 거리와 실제 코스가 {course.distance_error_percent ?? '다소'}% 차이 나는 것을 확인했어요.</Text></Pressable> : null}
+        {saved && savedCourseId ? <>
+          <RunSetup condition={condition} intensity={intensity} minutes={targetMinutes} onCondition={setCondition} onIntensity={setIntensity} onMinutes={setTargetMinutes} />
+          {error ? <Text accessibilityRole="alert" style={s.error}>{error}</Text> : null}
+          {path.length < 2 ? <Text style={s.error}>경로 좌표가 없어 이 코스로 러닝을 시작할 수 없어요.</Text> : null}
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: noStart }} disabled={noStart} onPress={() => void start()} style={({ pressed }) => [s.go, noStart && s.off, pressed && s.goPressed]}><Text style={s.goText}>{starting ? '준비 중…' : '이 코스로 달리기'}</Text></Pressable>
+        </> : <>
+          {error ? <Text accessibilityRole="alert" style={s.error}>{error}</Text> : null}
+          <Pressable accessibilityRole="button" accessibilityState={{ disabled: noSave }} disabled={noSave} onPress={() => void save()} style={({ pressed }) => [s.go, noSave && s.off, pressed && s.goPressed]}><Text style={s.goText}>{saving ? '저장 중…' : '이 코스 저장하기'}</Text></Pressable>
+          <Text style={[s.note, s.center]}>저장한 코스로 달릴 수 있어요</Text>
+        </>}
+        <Pressable accessibilityRole="button" hitSlop={8} onPress={back} style={s.other}><Text style={s.link}>다른 코스 보기</Text></Pressable>
       </> : null}
-    </ScrollView>
+    </ScrollView>}
   </View>;
 }
 
 function createSStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, gap: 16 },
-    eyebrow: { color: colors.textSecondary, fontSize: 14, marginTop: 12 }, courseTitle: { color: colors.textPrimary, fontSize: 22, fontFamily: fontFamilies.pretendardBold }, body: { color: colors.textBody, fontSize: 14, lineHeight: 20 },
-    tags: { flexDirection: 'row', gap: 7 }, tag: { backgroundColor: colors.surfaceMuted, color: colors.textBody, borderRadius: 8, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 5, fontSize: 12 },
-    map: { height: 220, backgroundColor: colors.surfaceMuted, borderRadius: 16, overflow: 'hidden' }, mapEmpty: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' }, mapEmptyText: { color: colors.textSecondary, fontSize: 14 }, mapBadge: { position: 'absolute', right: 8, top: 8, backgroundColor: colors.surface, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 5 }, mapBadgeText: { color: colors.textBody, fontSize: 12 },
-    metrics: { flexDirection: 'row', gap: 8 }, metric: { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 11, gap: 5 }, metricLabel: { color: colors.textSecondary, fontSize: 12 }, metricValue: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-    notice: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14 }, checkRow: { alignItems: 'center', flexDirection: 'row', gap: 10 }, checkBox: { alignItems: 'center', borderColor: colors.textDisabled, borderRadius: 8, borderWidth: 1, height: 24, justifyContent: 'center', width: 24 }, checkBoxOn: { backgroundColor: colors.primary, borderColor: colors.primary }, grow: { flex: 1 }, error: { color: colors.danger, fontSize: 14, lineHeight: 18 },
-    button: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled }, buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, outline: { height: 56, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-    startCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, gap: 10 }, input: { backgroundColor: colors.surface, height: 52, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, fontSize: 16, color: colors.textPrimary },
-    choices: { flexDirection: 'row', gap: 7 }, choice: { backgroundColor: colors.surface, flex: 1, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }, choiceSelected: { backgroundColor: colors.primary, borderColor: colors.primary }, choiceText: { color: colors.textSecondary, fontSize: 14 }, choiceTextSelected: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    content: { gap: 14, paddingHorizontal: 16, paddingTop: 8 },
+    courseTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    body: { ...a.p15, color: colors.textBody },
+    note: a.note,
+    center: { textAlign: 'center' },
+    // The stage: the map, what kind of course it is on its corner, and its three numbers under it.
+    stage: { ...a.card, overflow: 'hidden' },
+    map: { borderBottomColor: colors.ink, borderBottomWidth: 2, height: 220 },
+    tags: { flexDirection: 'row', gap: 6, left: 10, position: 'absolute', top: 10 },
+    tag: {
+      ...a.p12,
+      backgroundColor: colors.surface,
+      borderColor: colors.ink,
+      borderRadius: 99,
+      borderWidth: 2,
+      color: colors.ink,
+      overflow: 'hidden',
+      paddingHorizontal: 8,
+      paddingVertical: 1,
+    },
+    metrics: { flexDirection: 'row', paddingVertical: 12 },
+    metric: { alignItems: 'center', flex: 1, gap: 2, minWidth: 0 },
+    metricNext: { borderLeftColor: colors.track, borderLeftWidth: 2 },
+    metricValue: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 28 },
+    notice: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, padding: 12 },
+    checkRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+    tick: a.tick,
+    on: a.on,
+    grow: { flex: 1 },
+    error: { ...a.p12, color: colors.danger },
+    go: a.go,
+    goPressed: a.goPressed,
+    goText: a.goText,
+    off: { opacity: 0.4 },
+    other: { alignItems: 'center', height: 44, justifyContent: 'center' },
+    link: a.link,
   } as const;
 }

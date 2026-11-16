@@ -27,27 +27,35 @@ export function NotificationBell() {
     <View>
       <IconButton
         accessibilityLabel={unread > 0 ? `알림, 읽지 않은 알림 ${unread}개` : '알림'}
-        icon={<BellIcon color={colors.textPrimary} height={24} width={24} />}
+        icon={<BellIcon color={colors.ink} height={22} width={22} />}
         onPress={() => router.push('/community/notifications')}
         size={44}
+        style={styles.card}
       />
       {unread > 0 ? <View pointerEvents="none" style={styles.dot} /> : null}
     </View>
   );
 }
 
+// Renewal A: an outlined card on a ledge; what is unread is a violet square on its corner.
 function createStyles({ colors }: AppTheme) {
   return {
+    card: {
+      backgroundColor: colors.surface,
+      borderColor: colors.ink,
+      borderRadius: 14,
+      borderWidth: 2,
+      boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)',
+    },
     dot: {
-      backgroundColor: colors.danger,
-      borderColor: colors.background,
-      borderRadius: 5,
-      borderWidth: 1,
-      height: 10,
+      backgroundColor: colors.primary,
+      borderColor: colors.ink,
+      borderWidth: 2,
+      height: 12,
       position: 'absolute',
-      right: 10,
-      top: 9,
-      width: 10,
+      right: 6,
+      top: 6,
+      width: 12,
     },
   } as const;
 }

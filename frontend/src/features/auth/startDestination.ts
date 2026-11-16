@@ -44,5 +44,6 @@ export async function endSession(auth: SessionEnder, removeSavedSession: () => P
 const PUBLIC_ROUTES = new Set(['(auth)', 'splash']);
 
 export function isPublicRoute(segments: readonly string[]) {
+  if (typeof __DEV__ !== 'undefined' && __DEV__ && segments[0] === 'dev') return true; // development only: sample-data pages under /dev
   return segments.length === 0 || PUBLIC_ROUTES.has(segments[0]);
 }
