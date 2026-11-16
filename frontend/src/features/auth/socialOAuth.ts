@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
+import { AUTH_CALLBACK_PATH, getAuthCallbackParams } from '@/src/features/auth/authCallback';
 import { getSupabaseClient } from '@/src/lib/supabase';
 
 export type SocialLoginProvider = 'google' | 'kakao';
@@ -10,23 +11,12 @@ export type SocialLoginProvider = 'google' | 'kakao';
 export type SocialLoginResult =
   { status: 'cancelled' } | { status: 'redirected' } | { session: Session; status: 'success' };
 
-const oauthCallbackPath = 'auth/callback';
-
 export function getSocialOAuthRedirectUrl() {
-  return Linking.createURL(oauthCallbackPath);
-}
-
-function getOAuthParams(url: string) {
-  const [urlWithoutHash, hash = ''] = url.split('#', 2);
-  const query = urlWithoutHash.includes('?') ? urlWithoutHash.split('?').slice(1).join('?') : '';
-  const params = new URLSearchParams(query);
-
-  new URLSearchParams(hash).forEach((value, key) => params.set(key, value));
-  return params;
+  return Linking.createURL(AUTH_CALLBACK_PATH);
 }
 
 export async function createSupabaseSessionFromOAuthUrl(url: string) {
-  const params = getOAuthParams(url);
+  const params = getAuthCallbackParams(url);
   const oauthError =
     params.get('error_description') ?? params.get('error_code') ?? params.get('error');
 
