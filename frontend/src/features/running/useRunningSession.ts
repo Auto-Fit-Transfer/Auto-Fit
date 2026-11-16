@@ -26,7 +26,9 @@ export function useRunningSession(sessionId: string) {
   const [currentLocation, setCurrentLocation] = useState<LiveLocation | null>(null);
   const [rejection, setRejection] = useState('');
   const [preciseOff, setPreciseOff] = useState(false);
-  const shownAtRef = useRef(0);
+  const shownRef = useRef<{ at: number; location: LiveLocation | null }>({ at: 0, location: null });
+  // The last phone position the server did not call a jump; a refused jump puts the marker back here.
+  const steadyRef = useRef<LiveLocation | null>(null);
   const sessionRef = useRef<RunningSession | null>(null);
   const watchRef = useRef<Location.LocationSubscription | null>(null);
   const queuedRef = useRef<Promise<void>>(Promise.resolve());
@@ -53,8 +55,8 @@ export function useRunningSession(sessionId: string) {
   const showLocation = useCallback((location: Location.LocationObject | null) => {
     if (!location || !mountedRef.current) return null;
     const next = readLiveLocation(location.coords);
-    if (location.timestamp >= shownAtRef.current) {
-      shownAtRef.current = location.timestamp;
+    if (location.timestamp >= shownRef.current.at) {
+      shownRef.current = { at: location.timestamp, location: next };
       // Hide an invalid current fix without changing the server-approved track.
       setCurrentLocation(next);
     }
@@ -89,7 +91,8 @@ export function useRunningSession(sessionId: string) {
   }, [applySession, elapsedNow, sessionId, stopWatch]);
 
   // One position, from the watcher or a QA button, through the same queue: the server decides what counts.
-  const sendPoint = useCallback((position: LiveLocation, source: string) => {
+  // at / before: when this fix was shown and what the map showed before it.
+  const sendPoint = useCallback((position: LiveLocation, source: string, at: number, before: LiveLocation | null) => {
     queuedRef.current = queuedRef.current.then(async () => {
       if (sessionRef.current?.status !== 'in_progress' || trackingHaltedRef.current || !mountedRef.current) return;
       qaLog(`points 보냄 (${source}, 오차 ${meters(position.accuracy)})`);
@@ -102,6 +105,15 @@ export function useRunningSession(sessionId: string) {
       qaLog(`points 응답 200 · ${response.accepted ? '저장됨' : `거절 ${response.reason ?? '이유 없음'}`}`);
       applySession(response.session);
       if (!mountedRef.current) return;
+      if (response.reason === 'gps_jump') {
+        // The marker moved before the server answered. Undo it, unless a newer fix is already on the map.
+        if (shownRef.current.at === at) {
+          const back = steadyRef.current ?? before;
+          shownRef.current = { at, location: back };
+          setCurrentLocation(back);
+          qaLog('gps_jump: 지도 위치를 되돌림');
+        }
+      } else steadyRef.current = position;
       if (response.accepted && response.point) {
         setPoints((current) => [...current, response.point!]);
         setError('');
@@ -116,8 +128,10 @@ export function useRunningSession(sessionId: string) {
 
   // QA buttons only: a test position goes through the watcher's path, map marker included.
   const qaFeed = useCallback((position: LiveLocation) => {
-    const shown = showLocation({ coords: position, timestamp: Date.now() } as Location.LocationObject);
-    if (shown) sendPoint(shown, 'QA 버튼');
+    const at = Date.now();
+    const before = shownRef.current.location;
+    const shown = showLocation({ coords: position, timestamp: at } as Location.LocationObject);
+    if (shown) sendPoint(shown, 'QA 버튼', at, before);
   }, [sendPoint, showLocation]);
 
   const startWatch = useCallback(async () => {
@@ -132,8 +146,9 @@ export function useRunningSession(sessionId: string) {
       const subscription = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.High, distanceInterval: 10, timeInterval: 3000 },
         (location) => {
+          const before = shownRef.current.location;
           const position = showLocation(location);
-          if (position) sendPoint(position, 'watcher');
+          if (position) sendPoint(position, 'watcher', location.timestamp, before);
           else qaLog('watcher 위치 무효 (보내지 않음)');
         },
         () => { qaLog('watcher 오류'); void haltAfterError('위치 신호가 끊겨 러닝을 일시정지했어요.'); },

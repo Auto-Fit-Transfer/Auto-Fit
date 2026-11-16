@@ -141,6 +141,7 @@ async function phone({ last = null, first = null, status = 'in_progress', precis
       getRunningApiErrorMessage: () => 'test error',
       async addRunningTrackPoint(_id, point) {
         calls.points.push(point);
+        if (point.latitude > here.latitude + 0.5) return { session: server, accepted: false, reason: 'gps_jump', point: null };
         const goodAccuracy = point.accuracy_meters !== null && Number.isFinite(point.accuracy_meters) && point.accuracy_meters >= 0 && point.accuracy_meters <= 50;
         if (!goodAccuracy) return { session: server, accepted: false, reason: 'low_accuracy', point: null };
         server = { ...server, distance_meters: server.distance_meters + 10 };
@@ -158,6 +159,7 @@ async function phone({ last = null, first = null, status = 'in_progress', precis
   return {
     read, calls,
     async emit(location) { watch(location); await drain(); },
+    send(location) { watch(location); },
     async background() { appState('background'); await drain(); },
     close() { for (const cleanup of cleanups) cleanup?.(); },
   };
@@ -268,5 +270,40 @@ test('a QA button position goes the phone fix way: marker, the same points queue
     assert.equal(state.rejection, 'low_accuracy');
     assert.equal(state.points.length, 1, 'nothing new is stored');
     assert.equal(fixture.calls.pauses, 0);
+  } finally { fixture.close(); }
+});
+
+test('a real GPS jump the server refuses does not leave the marker and the map centre at the jumped place', async () => {
+  const fixture = await phone({ first: fix({}) });
+  try {
+    await fixture.emit(fix({ latitude: here.latitude + 0.9 }, 11));
+    const state = fixture.read();
+    assert.deepEqual(state.currentLocation, { ...here, accuracy: 12 }, 'back to where the map was before the jump');
+    assert.equal(state.rejection, 'gps_jump', 'the jump notice still shows');
+    assert.equal(state.points.length, 1);
+    assert.equal(state.session.distance_meters, 42);
+    assert.equal(fixture.calls.pauses, 0);
+  } finally { fixture.close(); }
+});
+
+test('a newer fix already on the map is not undone by an older refused jump', async () => {
+  const fixture = await phone({ first: fix({}) });
+  try {
+    fixture.send(fix({ latitude: here.latitude + 0.9 }, 11));
+    fixture.send(fix({ latitude: here.latitude + 0.0002 }, 12));
+    await drain();
+    assert.deepEqual(fixture.read().currentLocation, { ...here, latitude: here.latitude + 0.0002, accuracy: 12 });
+  } finally { fixture.close(); }
+});
+
+test('after an accepted fix, a refused jump goes back to that fix, and small movement or low accuracy still move the marker', async () => {
+  const fixture = await phone({ first: fix({}) });
+  try {
+    const step = { ...here, latitude: here.latitude + 0.0003 };
+    await fixture.emit(fix(step, 11));
+    await fixture.emit(fix({ latitude: here.latitude + 0.9 }, 12));
+    assert.deepEqual(fixture.read().currentLocation, { ...step, accuracy: 12 });
+    await fixture.emit(fix({ ...step, accuracy: 80 }, 13));
+    assert.deepEqual(fixture.read().currentLocation, { ...step, accuracy: 80 }, 'low accuracy is shown as it is');
   } finally { fixture.close(); }
 });
