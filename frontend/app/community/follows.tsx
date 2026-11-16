@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -13,7 +13,8 @@ import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar, CommunityFollowButton } from '@/src/components/community';
 import { subscribeCommunityEvents } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 
 const TABS: { kind: CommunityFollowKind; label: string }[] = [
   { kind: 'followers', label: '팔로워' },
@@ -184,46 +185,19 @@ export default function CommunityFollowsScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: two buttons on ledges for which list (violet = the one open).
+  const a = aForm(colors);
   return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    tabs: {
-      borderBottomColor: colors.border,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      flexDirection: 'row',
-    },
-    tab: {
-      alignItems: 'center',
-      borderBottomColor: 'transparent',
-      borderBottomWidth: 2,
-      flex: 1,
-      paddingVertical: spacing.md,
-    },
-    tabActive: { borderBottomColor: colors.textPrimary },
-    tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
-    tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: spacing.md,
-      justifyContent: 'center',
-      padding: spacing.xxl,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-    row: {
-      alignItems: 'center',
-      borderBottomColor: colors.border,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      flexDirection: 'row',
-      gap: spacing.md,
-      paddingHorizontal: spacing.xl,
-      paddingVertical: spacing.md,
-    },
-    person: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: spacing.md, minWidth: 0 },
-    nickname: {
-      color: colors.textPrimary,
-      flexShrink: 1,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    tabs: { flexDirection: 'row', gap: 8, paddingBottom: 12, paddingHorizontal: 16, paddingTop: 4 },
+    tab: a.seg,
+    tabActive: a.segOn,
+    tabText: a.segText,
+    tabTextActive: a.onText,
+    message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
+    messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
+    row: { alignItems: 'center', borderBottomColor: colors.track, borderBottomWidth: 2, flexDirection: 'row', gap: 12, marginHorizontal: 16, paddingVertical: 12 },
+    person: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 12, minWidth: 0 },
+    nickname: { ...a.p15, color: colors.ink, flexShrink: 1 },
   } as const;
 }

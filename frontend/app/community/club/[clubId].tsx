@@ -5,7 +5,6 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  StyleSheet,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,7 +29,8 @@ import {
 } from '@/src/features/community/communityEvents';
 import { COMMUNITY_RANKING_ENABLED } from '@/src/features/community/communityFeatures';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 
 export default function CommunityClubScreen() {
@@ -294,7 +294,7 @@ export default function CommunityClubScreen() {
             />
           }
           renderItem={({ item }) => (
-            <CommunityPostCard
+            <View style={styles.postWrap}><CommunityPostCard
               onAuthorPress={openProfile}
               onLike={() => void actions.toggleLike(item)}
               onMore={() => actions.openPostMenu(item)}
@@ -303,7 +303,7 @@ export default function CommunityClubScreen() {
               }
               onRepost={() => void actions.toggleRepost(item)}
               post={item}
-            />
+            /></View>
           )}
         />
       )}
@@ -313,63 +313,43 @@ export default function CommunityClubScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: the club's name in big pixel letters, its buttons on ledges, its posts as cards.
+  const a = aForm(colors);
+  const button = { alignItems: 'center', borderColor: colors.ink, borderRadius: 14, borderWidth: 2, height: 46, justifyContent: 'center' } as const;
   return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    info: {
-      borderBottomColor: colors.border,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      gap: spacing.md,
-      paddingBottom: spacing.lg,
-      paddingHorizontal: spacing.xl,
-      paddingTop: spacing.sm,
-    },
-    identity: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-    categoryIcon: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 22 },
-    categoryIconText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14 },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    info: { borderBottomColor: colors.track, borderBottomWidth: 2, gap: 14, paddingBottom: 14, paddingHorizontal: 16, paddingTop: 8 },
+    identity: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+    categoryIcon: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, height: 52, justifyContent: 'center', width: 52 },
+    categoryIconText: { ...a.p12, color: colors.ink },
     identityText: { flex: 1, gap: 2 },
-    category: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-    name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18 },
-    description: { ...typography.body, color: colors.textBody },
-    meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
-    ownerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-    ownerLabel: { color: colors.textSecondary, fontSize: 12 },
-    ownerName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    actionRow: { flexDirection: 'row', gap: spacing.sm },
+    category: a.note,
+    name: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    description: { ...a.p15, color: colors.textBody },
+    meta: a.note,
+    ownerRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+    ownerLabel: a.note,
+    ownerName: { ...a.p12, color: colors.ink },
+    actionRow: { flexDirection: 'row', gap: 8 },
     action: { flex: 1 },
-    membersCard: { minHeight: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.lg, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16 },
+    membersCard: { ...a.card, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 52, paddingHorizontal: 14 },
     membersMore: { alignItems: 'center', flexDirection: 'row', gap: 2 },
-    membersCount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    membersLink: { color: colors.textSecondary, fontSize: 12 },
-    feedHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: spacing.md },
-    feedTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-    sortLabel: { color: colors.textSecondary, fontSize: 12 },
-    rankingLink: {
-      color: colors.primary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-      marginTop: 2,
-    },
-    joinButton: {
-      backgroundColor: colors.surface,
-      alignItems: 'center',
-      borderRadius: 12,
-      borderWidth: 1,
-      minHeight: 44,
-      justifyContent: 'center',
-    },
-    join: { backgroundColor: colors.primary, borderColor: colors.primary },
-    joined: { backgroundColor: colors.surfaceMuted, borderColor: colors.surfaceMuted },
-    pressed: { opacity: 0.75 },
-    joinTextOn: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    joinedText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: spacing.md,
-      justifyContent: 'center',
-      padding: spacing.xxl,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-    empty: { alignItems: 'center', padding: spacing.xxl },
+    membersCount: { ...a.p15, color: colors.ink },
+    membersLink: a.note,
+    feedHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingTop: 6 },
+    feedTitle: { ...a.p15, color: colors.ink },
+    sortLabel: a.note,
+    rankingLink: { ...a.p12, color: colors.ink, textDecorationLine: 'underline' },
+    joinButton: { ...button, backgroundColor: colors.surface, boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)' },
+    join: { backgroundColor: colors.primary, boxShadow: `0 4px 0 ${colors.ink}` },
+    // Already in: flat and grey, it is no longer the thing to press first.
+    joined: { backgroundColor: colors.surfaceMuted, boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)' },
+    pressed: { boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)', transform: [{ translateY: 4 }] },
+    joinTextOn: { ...a.p15, color: colors.onPrimary },
+    joinedText: { ...a.p15, color: colors.ink },
+    message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
+    messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
+    empty: { alignItems: 'center', padding: 32 },
+    postWrap: { marginHorizontal: 16, marginTop: 12 },
   } as const;
 }

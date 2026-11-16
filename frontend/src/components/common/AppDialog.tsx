@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
-import { radius, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { AppButton } from './AppButton';
 import { Text } from './Text';
@@ -82,44 +82,47 @@ export function AppDialog({
   );
 }
 
-// The Figma "Dialog": white card with 24px corners, title, short body, two buttons.
-function createStyles({ colors, text }: AppTheme) {
+function createStyles({ colors }: AppTheme) {
+  // Renewal A: a card with the dark outline, the question in pixel letters, two buttons on ledges.
+  const words = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
   return {
     overlay: {
       alignItems: 'center',
-      backgroundColor: colors.overlay,
+      backgroundColor: 'rgba(22, 24, 46, 0.45)',
       flex: 1,
       justifyContent: 'center',
       padding: 20,
     },
     dialog: {
-      backgroundColor: colors.elevated,
-      borderRadius: radius.dialog,
-      elevation: 8,
+      backgroundColor: colors.surface,
+      borderColor: colors.ink,
+      borderRadius: 22,
+      borderWidth: 2,
+      boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)',
       maxWidth: 340,
-      paddingBottom: 20,
-      paddingHorizontal: 24,
-      paddingTop: 24,
-      shadowColor: '#000000',
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.16,
-      shadowRadius: 24,
+      paddingBottom: 22,
+      paddingHorizontal: 20,
+      paddingTop: 22,
       width: '100%',
     },
     content: { gap: 8 },
-    title: { ...text.title2, color: colors.textPrimary },
-    description: { ...text.body2, color: colors.textSecondary },
-    actions: { flexDirection: 'row', gap: 8, paddingTop: 16 },
+    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    description: { ...words, color: colors.textBody },
+    actions: { flexDirection: 'row', gap: 8, paddingBottom: 4, paddingTop: 16 },
     action: { flex: 1 },
+    // What cannot be undone: the same button, its words in the warning colour.
     destructiveAction: {
       alignItems: 'center',
-      backgroundColor: colors.danger,
-      borderRadius: radius.button,
+      backgroundColor: colors.surface,
+      borderColor: colors.ink,
+      borderRadius: 14,
+      borderWidth: 2,
+      boxShadow: `0 4px 0 ${colors.ink}`,
       justifyContent: 'center',
       minHeight: 44,
       paddingHorizontal: 16,
     },
-    destructiveLabel: { ...text.body2Strong, color: colors.onPrimary },
+    destructiveLabel: { ...words, color: colors.danger },
     pressed: { opacity: 0.85 },
   } as const;
 }

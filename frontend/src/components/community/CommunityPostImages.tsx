@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import CloseIcon from '@/assets/icons/common/X.svg';
 import type { CommunityImage } from '@/src/api/community';
-import { fontFamilies, radius, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 const GAP = 4;
@@ -41,7 +41,8 @@ export function CommunityPostImages({ images, expanded = false }: { images: Comm
   if (!images.length) return null;
 
   if (expanded) {
-    const imageWidth = Math.max(1, Math.min(windowWidth - spacing.xl * 2, 600));
+    // As wide as the inside of the post's card: 16 margin + 2 outline + 14 padding on each side.
+    const imageWidth = Math.max(1, Math.min(windowWidth, 480) - 64);
     return <>
       <View style={[styles.carousel, { width: imageWidth }]}>
         <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={styles.carouselScroll}
@@ -172,38 +173,26 @@ function PhotoViewer({
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: square dots, pixel letters. On the dark viewer the letters stay white (the theme's
+  // colour for letters on violet is dark).
   return {
-    carousel: { aspectRatio: 1.45, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.background },
+    carousel: { aspectRatio: 1.45, backgroundColor: colors.track, borderRadius: 12, overflow: 'hidden' },
     carouselScroll: { flex: 1 },
-    carouselImage: { height: '100%', backgroundColor: colors.background },
-    imageCount: { position: 'absolute', right: 10, top: 10, borderRadius: radius.round, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 8, paddingVertical: 4 },
-    imageCountText: { color: colors.onPrimary, fontSize: 12 },
-    dots: { flexDirection: 'row', alignSelf: 'center', gap: 5 },
-    dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: colors.border },
-    activeDot: { backgroundColor: colors.textPrimary },
-    grid: { borderRadius: radius.lg, gap: GAP, overflow: 'hidden', width: '100%' },
+    carouselImage: { backgroundColor: colors.track, height: '100%' },
+    imageCount: { backgroundColor: colors.ink, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, position: 'absolute', right: 10, top: 10 },
+    imageCountText: { color: '#FFFFFF', fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 },
+    dots: { alignSelf: 'center', flexDirection: 'row', gap: 5 },
+    dot: { backgroundColor: colors.track, height: 6, width: 6 },
+    activeDot: { backgroundColor: colors.ink },
+    grid: { borderRadius: 12, gap: GAP, overflow: 'hidden', width: '100%' },
     moreOverlay: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', bottom: 0, justifyContent: 'center', left: 0, position: 'absolute', right: 0, top: 0 },
-    moreText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    moreText: { color: '#FFFFFF', fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
     group: { flex: 1, gap: GAP },
-    cell: { backgroundColor: colors.border, flex: 1, overflow: 'hidden' },
+    cell: { backgroundColor: colors.track, flex: 1, overflow: 'hidden' },
     viewer: { backgroundColor: '#000000', flex: 1 },
     fullImage: { flex: 1 },
-    viewerBar: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      left: 16,
-      position: 'absolute',
-      right: 16,
-    },
-    counter: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    close: {
-      alignItems: 'center',
-      backgroundColor: 'rgba(0, 0, 0, 0.45)',
-      borderRadius: radius.round,
-      height: 40,
-      justifyContent: 'center',
-      width: 40,
-    },
+    viewerBar: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', left: 16, position: 'absolute', right: 16 },
+    counter: { color: '#FFFFFF', fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 },
+    close: { alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.45)', borderColor: '#FFFFFF', borderRadius: 12, borderWidth: 2, height: 40, justifyContent: 'center', width: 40 },
   } as const;
 }

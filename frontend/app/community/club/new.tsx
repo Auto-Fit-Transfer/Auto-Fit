@@ -23,7 +23,8 @@ import {
 } from '@/src/api/community';
 import { AppButton, AppHeader, Text, TextInput } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 
 // Also the edit screen: with ?clubId= the owner changes name, interest and intro (no cost).
 export default function CommunityNewClubScreen() {
@@ -194,60 +195,24 @@ export default function CommunityNewClubScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: what it costs in an outlined box, then the three questions with pixel letters.
+  const a = aForm(colors);
   return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    form: { gap: spacing.sm, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-    cost: {
-      backgroundColor: colors.primaryLight,
-      borderRadius: 12,
-      gap: 4,
-      marginBottom: spacing.md,
-      padding: spacing.lg,
-    },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    form: { gap: 8, paddingHorizontal: 16, paddingTop: 12 },
+    cost: { backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, gap: 4, marginBottom: 8, padding: 14 },
     costShort: { backgroundColor: colors.dangerLight },
-    costText: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
-    costHint: { ...typography.bodySmall, color: colors.danger },
-    costNote: { ...typography.bodySmall, color: colors.textSecondary },
-    link: {
-      color: colors.primary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-      marginTop: 2,
-    },
-    label: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-      marginTop: spacing.sm,
-    },
-    input: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 16,
-      minHeight: 52,
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-    },
-    multiline: { minHeight: 110, marginBottom: spacing.lg },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-    chip: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: radius.round,
-      borderWidth: 1,
-      paddingHorizontal: spacing.md,
-      paddingVertical: 8,
-    },
-    chipActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-    chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    chipTextActive: { color: colors.primary },
+    costText: { ...a.p15, color: colors.ink },
+    costHint: { ...a.p12, color: colors.danger },
+    costNote: a.note,
+    link: { ...a.link, marginTop: 2 },
+    label: { ...a.q, marginBottom: 0, marginTop: 10 },
+    input: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, minHeight: 48, paddingHorizontal: 12, paddingVertical: 12 },
+    multiline: { marginBottom: 16, minHeight: 110 },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    chip: { ...a.chip, height: 36, paddingHorizontal: 12 },
+    chipActive: a.on,
+    chipText: a.chipText,
+    chipTextActive: a.onText,
   } as const;
 }

@@ -11,7 +11,8 @@ import {
 } from '@/src/api/community';
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -117,46 +118,21 @@ export default function CommunityMembershipScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: spacing.md,
-      justifyContent: 'center',
-      padding: spacing.xxl,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-    body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-    status: {
-      backgroundColor: colors.surface,
-      borderRadius: 16,
-      gap: 4,
-      padding: spacing.xl,
-    },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
+    messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
+    body: { gap: 12, paddingHorizontal: 16, paddingTop: 12 },
+    status: { ...a.card, gap: 4, padding: 18 },
     statusActive: { backgroundColor: colors.primaryLight },
-    statusTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18 },
-    statusText: { ...typography.body, color: colors.textBody },
-    sectionTitle: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-      marginTop: spacing.sm,
-    },
-    benefit: { ...typography.body, color: colors.textBody },
-    notice: {
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      gap: 4,
-      marginBottom: spacing.sm,
-      padding: spacing.lg,
-    },
-    noticeTitle: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-    },
-    noticeText: { ...typography.bodySmall, color: colors.textSecondary },
-    off: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    statusTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    statusText: { ...a.p15, color: colors.textBody },
+    sectionTitle: { ...a.p15, color: colors.ink, marginTop: 8 },
+    benefit: { ...a.p15, color: colors.textBody },
+    notice: { backgroundColor: colors.surface, borderColor: colors.track, borderRadius: 12, borderWidth: 2, gap: 4, marginBottom: 8, padding: 14 },
+    noticeTitle: { ...a.p12, color: colors.ink },
+    noticeText: a.note,
+    off: { ...a.p15, color: colors.textBody, textAlign: 'center' },
   } as const;
 }

@@ -6,6 +6,7 @@ import { koreanDate } from '@/src/lib/koreanDate';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { claimCommunityChallenge, getCommunityChallenges, getCommunityErrorMessage, isProvisionalNote, setCommunityChallengeParticipation, type CommunityChallenge } from '@/src/api/community';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 import { Text } from '@/src/components/common';
 
 const metricLabel: Record<CommunityChallenge['metric'], string> = {
@@ -106,13 +107,38 @@ export default function ChallengeDetail() {
 }
 
 function createSStyles({ colors }: AppTheme) {
+  // Renewal A: the name in big pixel letters, three small boxes, cards on ledges, one main button.
+  const a = aForm(colors);
   return {
-    root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, gap: 17 },
-    phase: { alignSelf: 'flex-start', color: colors.success, backgroundColor: colors.successLight, borderRadius: 999, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 5, fontSize: 12, marginTop: 10 },
-    hero: { color: colors.textPrimary, fontSize: 22, fontFamily: fontFamilies.pretendardBold }, body: { color: colors.textBody, fontSize: 14, lineHeight: 21 }, caption: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
-    stats: { flexDirection: 'row', gap: 8 }, stat: { flex: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, gap: 6 }, statLabel: { color: colors.textSecondary, fontSize: 12 }, statValue: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-    card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 16, gap: 12 }, row: { flexDirection: 'row', justifyContent: 'space-between' }, section: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold }, progressValue: { color: colors.primaryText, fontSize: 14, fontFamily: fontFamilies.pretendardBold },
-    track: { height: 7, borderRadius: 5, backgroundColor: colors.gaugeTrack, overflow: 'hidden' }, fill: { height: 7, backgroundColor: colors.primary }, stepRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 }, stepNumber: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 22, justifyContent: 'center', width: 22 }, stepNumberText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 }, step: { color: colors.textBody, flex: 1, fontSize: 14, lineHeight: 21 }, notice: { backgroundColor: colors.warningLight, borderRadius: 12, padding: 12 }, noticeText: { color: colors.warning, fontSize: 12 },
-    button: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }, buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold }, disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled }, outline: { height: 48, alignItems: 'center', justifyContent: 'center' }, outlineText: { color: colors.textSecondary, fontSize: 12 }, success: { color: colors.success, fontSize: 12 }, error: { color: colors.danger, fontSize: 12, lineHeight: 18 },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    content: { gap: 14, paddingHorizontal: 16 },
+    phase: { ...a.p12, alignSelf: 'flex-start', backgroundColor: colors.successLight, borderRadius: 6, color: colors.ink, marginTop: 8, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 2 },
+    hero: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    body: { ...a.p15, color: colors.textBody },
+    caption: a.note,
+    stats: { flexDirection: 'row', gap: 8 },
+    stat: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, flex: 1, gap: 4, padding: 10 },
+    statLabel: a.note,
+    statValue: { ...a.p12, color: colors.ink },
+    card: { ...a.card, gap: 10, padding: 16 },
+    row: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+    section: { ...a.p15, color: colors.ink },
+    progressValue: { ...a.p15, color: colors.ink },
+    track: { backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 7, borderWidth: 2, height: 14, overflow: 'hidden' },
+    fill: { backgroundColor: colors.primary, height: 10 },
+    stepRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
+    stepNumber: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 7, borderWidth: 2, height: 24, justifyContent: 'center', width: 24 },
+    stepNumberText: { ...a.p12, color: colors.ink },
+    step: { ...a.p15, color: colors.textBody, flex: 1 },
+    notice: { backgroundColor: colors.warningLight, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, padding: 12 },
+    noticeText: { ...a.p12, color: colors.ink },
+    button: { ...a.go, marginTop: 4 },
+    buttonText: a.goText,
+    disabled: { ...a.goOff, boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)' },
+    disabledText: { color: colors.textDisabled },
+    outline: { alignItems: 'center', height: 44, justifyContent: 'center' },
+    outlineText: a.link,
+    success: { ...a.p12, color: colors.success },
+    error: { ...a.p12, color: colors.danger },
   } as const;
 }

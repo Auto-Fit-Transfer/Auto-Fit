@@ -5,7 +5,6 @@ import {
   SectionList,
   Pressable,
   RefreshControl,
-  StyleSheet,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,7 +19,8 @@ import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { AppButton, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
-import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
+import { spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 function describe(item: CommunityNotification) {
   switch (item.type) {
@@ -224,43 +224,31 @@ export default function CommunityNotificationsScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: small chips for which notifications, each one a line with a face; what is not read
+  // yet has a violet square in front of it.
+  const a = aForm(colors);
   return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    filters: { paddingHorizontal: 20, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 7, flexWrap: 'wrap' }, filter: { backgroundColor: colors.background, borderRadius: 999, height: 34, justifyContent: 'center', paddingHorizontal: 12, borderWidth: 1, borderColor: colors.border }, filterSelected: { backgroundColor: colors.primary, borderColor: colors.primary }, filterText: { color: colors.textSecondary, fontSize: 12 }, filterTextSelected: { color: '#FFFFFF' }, markReadButton: { marginLeft: 'auto' }, markRead: { color: colors.textSecondary, fontSize: 12 }, sectionTitle: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardBold, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8 }, readError: { color: colors.danger, fontSize: 12, paddingHorizontal: 20 },
-    availability: { color: colors.textSecondary, fontSize: 12, paddingHorizontal: 20, paddingBottom: 8 },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: spacing.md,
-      justifyContent: 'center',
-      padding: spacing.xxl,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-    row: {
-      borderBottomColor: colors.border,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      flexDirection: 'row',
-      gap: spacing.md,
-      paddingHorizontal: spacing.xl,
-      paddingVertical: spacing.md,
-    },
-    dot: { alignSelf: 'center', backgroundColor: colors.tabBar, borderRadius: 3, height: 6, marginLeft: -10, marginRight: -6, width: 6 },
-    dotRead: { backgroundColor: 'transparent' },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    filters: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingBottom: 12, paddingHorizontal: 16, paddingTop: 10 },
+    filter: a.mini,
+    filterSelected: a.on,
+    filterText: a.miniText,
+    filterTextSelected: a.onText,
+    markReadButton: { marginLeft: 'auto' },
+    markRead: a.link,
+    sectionTitle: { ...a.note, paddingBottom: 4, paddingHorizontal: 18, paddingTop: 16 },
+    readError: { ...a.p12, color: colors.danger, paddingHorizontal: 16 },
+    availability: { ...a.note, paddingBottom: 4, paddingHorizontal: 18 },
+    message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
+    messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
+    row: { borderBottomColor: colors.track, borderBottomWidth: 2, flexDirection: 'row', gap: 10, marginHorizontal: 16, paddingVertical: 14 },
+    dot: { alignSelf: 'center', backgroundColor: colors.primary, borderColor: colors.ink, borderWidth: 2, height: 10, width: 10 },
+    dotRead: { backgroundColor: 'transparent', borderColor: 'transparent' },
     pressed: { opacity: 0.8 },
     body: { flex: 1, gap: 2, minWidth: 0 },
-    text: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 14,
-      lineHeight: 20,
-    },
-    actor: { fontFamily: fontFamilies.pretendardBold },
-    preview: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 12,
-      lineHeight: 18,
-    },
-    time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+    text: { ...a.p15, color: colors.ink },
+    actor: {},
+    preview: a.note,
+    time: a.note,
   } as const;
 }

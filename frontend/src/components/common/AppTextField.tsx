@@ -9,7 +9,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { radius, scaleText, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { Text } from './Text';
 
@@ -100,41 +100,40 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
   );
 });
 
-// The Figma "Input": label, a 52px field with a thin border, and a helper line.
-function createStyles({ colors, text, easyMode, fontStep }: AppTheme) {
-  // This field uses the react-native TextInput, so it is resized here.
-  const inputText = scaleText(text.body1, easyMode, fontStep);
+// Renewal A: a small name above, a white box with the dark outline, pixel letters in it.
+function createStyles({ colors }: AppTheme) {
+  const small = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
   return {
-    label: { ...text.body2Strong, color: colors.textPrimary, marginBottom: 8 },
+    label: { ...small, color: colors.textSecondary, marginBottom: 8 },
     field: {
       alignItems: 'center',
       backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: radius.button,
-      borderWidth: 1,
+      borderColor: colors.ink,
+      borderRadius: 12,
+      borderWidth: 2,
       flexDirection: 'row',
       gap: 8,
-      height: 52,
-      paddingHorizontal: 16,
+      height: 48,
+      paddingHorizontal: 12,
     },
-    fieldEasy: { height: 60 },
-    focused: { borderColor: colors.primary },
-    error: { borderColor: colors.danger, borderWidth: 1.5 },
+    fieldEasy: { height: 56 },
+    focused: {},
+    error: { borderColor: colors.danger },
     disabled: { backgroundColor: colors.surfaceMuted },
     input: {
-      ...inputText,
-      color: colors.textPrimary,
+      color: colors.ink,
       flex: 1,
+      fontFamily: fontFamilies.galmuri14,
+      fontSize: 15,
       height: '100%',
       includeFontPadding: false,
       // Lets a narrow field shrink the input so a unit on the right stays visible.
       minWidth: 0,
-      lineHeight: undefined,
       padding: 0,
       ...noWebFocusRing,
     },
     disabledText: { color: colors.textDisabled },
-    supporting: { ...text.body2, color: colors.textSecondary, marginTop: 8 },
+    supporting: { ...small, color: colors.textSecondary, marginTop: 8 },
     errorText: { color: colors.danger },
   } as const;
 }

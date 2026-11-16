@@ -5,7 +5,6 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  StyleSheet,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,7 +33,8 @@ import {
   subscribeCommunityEvents,
 } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 
 // userId may be 'me' (the server resolves it to the signed-in user).
@@ -286,7 +286,7 @@ export default function CommunityProfileScreen() {
             />
           }
           renderItem={({ item }) => (
-            <CommunityPostCard
+            <View style={styles.postWrap}><CommunityPostCard
               onAuthorPress={openProfile}
               onLike={() => void actions.toggleLike(item)}
               onMore={() => actions.openPostMenu(item)}
@@ -295,7 +295,7 @@ export default function CommunityProfileScreen() {
               }
               onRepost={() => void actions.toggleRepost(item)}
               post={item}
-            />
+            /></View>
           )}
         />
       )}
@@ -337,77 +337,35 @@ function Stat({ label, onPress, value }: { label: string; onPress?: () => void; 
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: the face and three numbers, the name in big pixel letters, my own doors in one card.
+  const a = aForm(colors);
   return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    profile: {
-      borderBottomColor: colors.border,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      gap: spacing.md,
-      paddingBottom: spacing.lg,
-      paddingHorizontal: spacing.xl,
-      paddingTop: spacing.sm,
-    },
-    otherProfile: { paddingTop: spacing.lg },
-    profileTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.lg },
-    bio: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    profile: { gap: 12, paddingBottom: 4, paddingHorizontal: 16, paddingTop: 8 },
+    otherProfile: { paddingTop: 16 },
+    profileTop: { alignItems: 'center', flexDirection: 'row', gap: 16 },
+    bio: { ...a.p15, color: colors.textBody },
     stats: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
-    stat: { alignItems: 'center', minWidth: 56, paddingVertical: spacing.xs },
-    statValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18 },
-    statLabel: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-    },
-    nameRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-    name: {
-      color: colors.textPrimary,
-      flexShrink: 1,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 18,
-    },
-    badge: {
-      backgroundColor: colors.background,
-      borderRadius: 8,
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 12,
-      overflow: 'hidden',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: spacing.md,
-      justifyContent: 'center',
-      padding: spacing.xxl,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-    empty: { alignItems: 'center', padding: spacing.xxl },
-    footer: { paddingVertical: spacing.lg },
-    myRows: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-    otherActions: { flexDirection: 'row', gap: spacing.sm },
+    stat: { alignItems: 'center', minWidth: 56, paddingVertical: 4 },
+    statValue: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    statLabel: a.note,
+    nameRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+    name: { color: colors.ink, flexShrink: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    badge: { ...a.p12, backgroundColor: colors.primaryLight, borderRadius: 6, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6 },
+    message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
+    messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
+    empty: { alignItems: 'center', padding: 32 },
+    footer: { paddingVertical: 16 },
+    myRows: { ...a.card, overflow: 'hidden' },
+    otherActions: { flexDirection: 'row', gap: 8 },
     otherAction: { flex: 1 },
-    postsHeading: { borderTopColor: colors.border, borderTopWidth: StyleSheet.hairlineWidth, marginHorizontal: -spacing.xl, marginTop: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.lg },
-    postsTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-    myRow: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      minHeight: 48,
-      paddingHorizontal: spacing.lg,
-    },
-    myRowPressed: { backgroundColor: colors.surfaceMuted },
+    postsHeading: { borderTopColor: colors.track, borderTopWidth: 2, marginHorizontal: -16, marginTop: 8, paddingHorizontal: 16, paddingTop: 16 },
+    postsTitle: { ...a.p15, color: colors.ink },
+    myRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: 14 },
+    myRowPressed: { backgroundColor: colors.primaryLight },
     myRowEnd: { alignItems: 'center', flexDirection: 'row', gap: 2 },
-    myRowLabel: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-    },
-    myRowValue: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-    },
+    myRowLabel: { ...a.p15, color: colors.ink },
+    myRowValue: a.note,
+    postWrap: { marginHorizontal: 16, marginTop: 12 },
   } as const;
 }

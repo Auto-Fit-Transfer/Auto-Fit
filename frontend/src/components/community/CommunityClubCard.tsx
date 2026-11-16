@@ -4,7 +4,8 @@ import BarbellIcon from '@/assets/icons/deco/Barbell.svg';
 import RunningIcon from '@/assets/icons/deco/SneakerMove.svg';
 import DietIcon from '@/assets/icons/feature/navigator/Diet.svg';
 import { COMMUNITY_CLUB_CATEGORIES, type CommunityClub } from '@/src/api/community';
-import { fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 import { Text } from '@/src/components/common';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 
@@ -49,49 +50,17 @@ export function CommunityClubCard({ club, onPress }: { club: CommunityClub; onPr
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: a card on its ledge, the club's kind in a violet square.
+  const a = aForm(colors);
   return {
-    card: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderWidth: 1,
-      borderRadius: 16,
-      flexDirection: 'row',
-      gap: spacing.md,
-      marginHorizontal: spacing.xl,
-      marginBottom: spacing.sm,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
-    },
-    pressed: { backgroundColor: colors.background },
-    badge: {
-      alignItems: 'center',
-      backgroundColor: colors.background,
-      borderRadius: 20,
-      height: 40,
-      justifyContent: 'center',
-      paddingHorizontal: 4,
-      width: 40,
-    },
-    badgeText: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 12,
-      textAlign: 'center',
-    },
+    card: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 12, marginBottom: 12, marginHorizontal: 16, padding: 12 },
+    pressed: { boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)', transform: [{ translateY: 4 }] },
+    badge: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, height: 44, justifyContent: 'center', width: 44 },
+    badgeText: { ...a.p12, color: colors.ink, textAlign: 'center' },
     body: { flex: 1, gap: 2, minWidth: 0 },
-    titleRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.xs },
-    name: {
-      color: colors.textPrimary,
-      flexShrink: 1,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
-    joined: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 12,
-    },
-    meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+    titleRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+    name: { ...a.p15, color: colors.ink, flexShrink: 1 },
+    joined: { ...a.p12, backgroundColor: colors.primaryLight, borderRadius: 6, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6 },
+    meta: a.note,
   } as const;
 }

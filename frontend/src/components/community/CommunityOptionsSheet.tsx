@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
 import { AppBottomSheet, Text } from '@/src/components/common';
-import { fontFamilies, spacing, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 
 export type CommunityOption = {
   label: string;
@@ -49,16 +49,10 @@ export function CommunityOptionsSheet({
 
 function createStyles({ colors }: AppTheme) {
   return {
-    list: { paddingBottom: spacing.sm },
-    row: {
-      borderBottomColor: colors.border,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      justifyContent: 'center',
-      minHeight: 54,
-      paddingHorizontal: spacing.xs,
-    },
+    list: { paddingBottom: 8 },
+    row: { borderBottomColor: colors.track, borderBottomWidth: 2, justifyContent: 'center', minHeight: 52, paddingHorizontal: 4 },
     pressed: { backgroundColor: colors.primaryLight },
-    label: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
+    label: { color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 },
     destructive: { color: colors.danger },
   } as const;
 }

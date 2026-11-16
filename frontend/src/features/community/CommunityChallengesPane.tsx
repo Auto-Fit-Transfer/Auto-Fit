@@ -19,7 +19,8 @@ import {
   type CommunityChallenge,
 } from '@/src/api/community';
 import { AppButton, Text } from '@/src/components/common';
-import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 
 import { COMMUNITY_RANKING_ENABLED } from './communityFeatures';
 import { useCommunityActions } from './useCommunityActions';
@@ -235,91 +236,34 @@ export function CommunityChallengesPane({ bottomSpace, onBack }: { bottomSpace: 
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: each challenge a card on its ledge, the days done as an outlined bar.
+  const a = aForm(colors);
   return {
     root: { flex: 1 },
-    header: { gap: spacing.sm, padding: spacing.xl, paddingBottom: spacing.sm },
-    backRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm, minHeight: 44 },
-    paneTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 18, lineHeight: 26 },
-    rankingCard: {
-      alignItems: 'center',
-      backgroundColor: colors.primaryLight,
-      borderRadius: radius.lg,
-      flexDirection: 'row',
-      padding: spacing.lg,
-    },
+    header: { gap: 10, paddingBottom: 4, paddingHorizontal: 16, paddingTop: 12 },
+    backRow: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 44 },
+    paneTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    rankingCard: { ...a.card, alignItems: 'center', backgroundColor: colors.primaryLight, flexDirection: 'row', padding: 14 },
     pressed: { opacity: 0.8 },
     rankingBody: { flex: 1, gap: 2 },
-    rankingTitle: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
-    rankingText: { ...typography.bodySmall, color: colors.textBody },
-    note: { ...typography.bodySmall, color: colors.textSecondary },
-    card: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: radius.lg,
-      borderWidth: 1,
-      gap: spacing.xs,
-      marginHorizontal: spacing.xl,
-      marginTop: spacing.md,
-      padding: spacing.lg,
-    },
-    titleRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-    title: {
-      color: colors.textPrimary,
-      flex: 1,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
-    phase: {
-      backgroundColor: colors.background,
-      borderRadius: radius.sm,
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 12,
-      overflow: 'hidden',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
-    phaseOn: { backgroundColor: colors.primaryLight, color: colors.primaryPressed },
-    description: { ...typography.body, color: colors.textBody },
-    meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
-    progressTrack: {
-      backgroundColor: colors.background,
-      borderRadius: radius.round,
-      height: 8,
-      marginTop: spacing.xs,
-      overflow: 'hidden',
-    },
-    progressFill: { backgroundColor: colors.primary, borderRadius: radius.round, height: 8 },
-    progressText: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-      marginBottom: spacing.xs,
-    },
+    rankingTitle: { ...a.p15, color: colors.ink },
+    rankingText: a.note,
+    note: a.note,
+    card: { ...a.card, gap: 8, marginHorizontal: 16, marginTop: 14, padding: 16 },
+    titleRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+    title: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    phase: { ...a.p12, backgroundColor: colors.track, borderRadius: 6, color: colors.textSecondary, overflow: 'hidden', paddingHorizontal: 6 },
+    phaseOn: { backgroundColor: colors.primaryLight, color: colors.ink },
+    description: { ...a.p15, color: colors.textBody },
+    meta: a.note,
+    progressTrack: { backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 7, borderWidth: 2, height: 14, overflow: 'hidden', marginTop: 4 },
+    progressFill: { backgroundColor: colors.primary, height: 10 },
+    progressText: { ...a.p12, color: colors.ink, marginBottom: 4 },
     joinedRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-    joinedText: {
-      color: colors.primaryPressed,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-    },
-    leave: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    done: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-      textAlign: 'center',
-    },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: spacing.md,
-      justifyContent: 'center',
-      padding: spacing.xxl,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    joinedText: { ...a.p15, color: colors.ink },
+    leave: a.link,
+    done: { ...a.note, textAlign: 'center' },
+    message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
+    messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
   } as const;
 }

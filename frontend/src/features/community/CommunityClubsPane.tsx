@@ -15,7 +15,8 @@ import {
 import { AppButton, Text } from '@/src/components/common';
 import { CommunityClubCard } from '@/src/components/community';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
-import { darkColors, fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { darkColors, fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 
 type Scope = 'all' | 'mine';
 
@@ -156,28 +157,16 @@ export function CommunityClubsPane({ bottomSpace }: { bottomSpace: number }) {
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    header: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      paddingHorizontal: spacing.xl,
-      paddingTop: spacing.lg,
-      paddingBottom: spacing.md,
-    },
-    heading: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-    headerActions: { flexDirection: 'row', gap: spacing.xs },
-    switchButton: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radius.sm, borderWidth: 1, justifyContent: 'center', minHeight: 34, paddingHorizontal: spacing.sm },
-    switchText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-    createButton: { backgroundColor: colors.primaryLight, borderRadius: radius.sm, justifyContent: 'center', minHeight: 34, paddingHorizontal: spacing.sm },
-    createText: { color: colors.primary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: spacing.md,
-      justifyContent: 'center',
-      padding: spacing.xxl,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 14, paddingHorizontal: 16, paddingTop: 16 },
+    heading: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    headerActions: { flexDirection: 'row', gap: 8 },
+    switchButton: a.mini,
+    switchText: a.miniText,
+    createButton: { ...a.mini, backgroundColor: colors.primary },
+    createText: { ...a.miniText, color: colors.onPrimary },
+    message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
+    messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
   } as const;
 }

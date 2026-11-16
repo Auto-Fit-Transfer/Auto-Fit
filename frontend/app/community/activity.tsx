@@ -18,7 +18,8 @@ import {
 } from '@/src/api/community';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { COMMUNITY_POST_CATEGORY_LABELS } from '@/src/components/community';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 import { Text } from '@/src/components/common';
 
 type Tab = 'posts' | 'comments' | 'likes' | 'scraps';
@@ -188,35 +189,34 @@ export default function CommunityActivityScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: small outlined tabs (violet = the one open), then one line for each post.
+  const a = aForm(colors);
+  const tab = { ...a.mini, flex: 1, height: 36, paddingHorizontal: 2 } as const;
   return {
-    screen: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: 20 },
-    header: { height: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
-    back: { width: 32, minHeight: 32, justifyContent: 'center' },
-    title: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-    tabs: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: 12, padding: 4, gap: 2 },
-    activeTab: { flex: 1, borderRadius: 12, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center', height: 35 },
-    activeTabText: { color: colors.textPrimary, fontSize: 12, fontFamily: fontFamilies.pretendardMedium },
-    inactiveTab: { flex: 1, alignItems: 'center', justifyContent: 'center', height: 35 },
-    inactiveTabText: { color: colors.textSecondary, fontSize: 12 },
-    tabNote: { color: colors.textSecondary, fontSize: 12, lineHeight: 17, marginTop: 8 },
-    listHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 24, marginBottom: 8 },
-    listTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-    sort: { fontSize: 12, color: colors.textSecondary },
+    screen: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    content: { paddingHorizontal: 16 },
+    tabs: { flexDirection: 'row', gap: 6 },
+    activeTab: { ...tab, backgroundColor: colors.primary },
+    activeTabText: { ...a.miniText, color: colors.onPrimary },
+    inactiveTab: tab,
+    inactiveTabText: a.miniText,
+    listHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4, marginTop: 20 },
+    listTitle: { ...a.p15, color: colors.ink },
+    sort: a.note,
     spinner: { marginVertical: 30 },
-    errorBox: { marginVertical: 20, padding: 15, borderRadius: 12, backgroundColor: colors.dangerLight },
-    error: { color: colors.danger, fontSize: 12 },
-    empty: { alignItems: 'center', paddingVertical: 50, gap: 12 },
-    emptyTitle: { color: colors.textSecondary, fontSize: 14 },
-    writeLink: { color: colors.primary, fontSize: 14 },
-    post: { borderBottomWidth: 1, borderColor: colors.border, flexDirection: 'row', gap: 12, paddingVertical: 16 },
-    postText: { flex: 1, gap: 5 },
-    postTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, lineHeight: 23 },
-    category: { alignSelf: 'flex-start', backgroundColor: colors.surfaceMuted, borderRadius: 8, color: colors.textBody, fontSize: 12, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 3 },
+    errorBox: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, marginVertical: 16, padding: 14 },
+    error: { ...a.p12, color: colors.danger },
+    empty: { alignItems: 'center', gap: 12, paddingVertical: 48 },
+    emptyTitle: { ...a.p15, color: colors.textBody },
+    writeLink: { ...a.p12, color: colors.ink, textDecorationLine: 'underline' },
+    post: { borderBottomColor: colors.track, borderBottomWidth: 2, flexDirection: 'row', gap: 12, paddingVertical: 14 },
+    postText: { flex: 1, gap: 4 },
+    postTitle: { ...a.p15, color: colors.ink },
+    category: { ...a.p12, alignSelf: 'flex-start', backgroundColor: colors.primaryLight, borderRadius: 6, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6 },
     metaRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
     reactions: { alignItems: 'center', flexDirection: 'row', gap: 4 },
-    postPreview: { fontSize: 14, color: colors.textSecondary, lineHeight: 20 },
-    meta: { color: colors.textSecondary, fontSize: 12, marginTop: 2 },
-    thumbnail: { width: 72, height: 72, borderRadius: 12, backgroundColor: colors.background },
+    postPreview: a.note,
+    meta: a.note,
+    thumbnail: { backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, height: 72, width: 72 },
   } as const;
 }

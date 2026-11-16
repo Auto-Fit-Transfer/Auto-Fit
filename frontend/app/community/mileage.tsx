@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -18,6 +18,7 @@ import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { AppButton, Text } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 
 type HistoryFilter = '전체' | '적립' | '사용';
 const FILTERS: HistoryFilter[] = ['전체', '적립', '사용'];
@@ -241,78 +242,43 @@ export default function CommunityMileageScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: my points in big pixel letters on one card, how to earn them with gold amounts, then
+  // each change on its own line.
+  const a = aForm(colors);
   return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: 16,
-      justifyContent: 'center',
-      padding: 28,
-    },
-    messageText: { color: colors.textSecondary, fontSize: 14, textAlign: 'center' },
-    top: { gap: 17, paddingHorizontal: 20, paddingTop: 8 },
-    balanceCard: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      padding: 18,
-    },
-    balanceLabel: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-    },
-    balance: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 32, marginTop: 2 },
-    balanceHelp: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12, marginTop: 2 },
-    statRow: { flexDirection: 'row', gap: 6, marginTop: 16 },
-    stat: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, flex: 1, minWidth: 0, padding: 9 },
-    statLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-    statValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, marginTop: 4 },
-    rules: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, marginTop: -6, paddingHorizontal: 14 },
-    rulesTitle: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
-    ruleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 48 },
-    rule: { color: colors.textBody, flex: 1, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    ruleAmount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    divider: { backgroundColor: colors.border, height: StyleSheet.hairlineWidth },
-    emptyRules: { color: colors.textSecondary, fontSize: 14, paddingVertical: 14 },
-    rulesNote: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12, marginTop: -9 },
-    historyTitle: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
-    historyHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
+    messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
+    top: { gap: 16, paddingHorizontal: 16, paddingTop: 8 },
+    balanceCard: { ...a.card, padding: 16 },
+    balanceLabel: a.note,
+    balance: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 40, marginTop: 4 },
+    balanceHelp: { ...a.note, marginTop: 4 },
+    statRow: { flexDirection: 'row', gap: 6, marginTop: 14 },
+    stat: { backgroundColor: colors.background, borderRadius: 10, flex: 1, minWidth: 0, padding: 8 },
+    statLabel: a.note,
+    statValue: { ...a.p15, color: colors.ink, marginTop: 2 },
+    rules: { ...a.card, marginTop: -6, paddingHorizontal: 14 },
+    rulesTitle: { ...a.p15, color: colors.ink },
+    ruleRow: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between', minHeight: 48 },
+    rule: { ...a.p15, color: colors.textBody, flex: 1 },
+    ruleAmount: a.reward,
+    divider: { backgroundColor: colors.track, height: 2 },
+    emptyRules: { ...a.note, paddingVertical: 14 },
+    rulesNote: { ...a.note, marginTop: -4 },
+    historyTitle: { ...a.p15, color: colors.ink },
+    historyHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
     filters: { flexDirection: 'row', gap: 6 },
-    filter: { backgroundColor: colors.background, alignItems: 'center', borderColor: colors.border, borderRadius: 999, borderWidth: 1, height: 34, justifyContent: 'center', minWidth: 45, paddingHorizontal: 12 },
-    filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-    filterText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-    filterTextActive: { color: '#FFFFFF' },
-    empty: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 14,
-      padding: 24,
-      textAlign: 'center',
-    },
-    row: {
-      alignItems: 'center',
-      borderBottomColor: colors.border,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      flexDirection: 'row',
-      marginHorizontal: 20,
-      minHeight: 60,
-      paddingVertical: 8,
-    },
-    rowBody: { flex: 1, gap: 3 },
-    reason: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-    amount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    filter: a.mini,
+    filterActive: a.on,
+    filterText: a.miniText,
+    filterTextActive: a.onText,
+    empty: { ...a.p15, color: colors.textBody, padding: 24, textAlign: 'center' },
+    row: { alignItems: 'center', borderBottomColor: colors.track, borderBottomWidth: 2, flexDirection: 'row', marginHorizontal: 16, minHeight: 60, paddingVertical: 8 },
+    rowBody: { flex: 1, gap: 2 },
+    reason: { ...a.p15, color: colors.ink },
+    time: a.note,
+    amount: { ...a.p15, color: colors.ink },
     spent: { color: colors.textSecondary },
   } as const;
 }
