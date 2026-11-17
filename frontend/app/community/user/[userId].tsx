@@ -208,6 +208,8 @@ export default function CommunityProfileScreen() {
             onPress={() => router.push('/community/membership')}
             value={mine.member === undefined ? '' : mine.member ? '이용 중' : '미가입'}
           />
+          <MyRow label="내 활동" onPress={() => router.push('/community/activity')} value="" />
+          <MyRow label="차단한 사용자" onPress={() => router.push('/community/blocks')} value="" />
           {mine.moderator ? (
             <MyRow label="운영자 도구" onPress={() => router.push('/community/admin')} value="" />
           ) : null}

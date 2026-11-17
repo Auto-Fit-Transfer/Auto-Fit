@@ -14,10 +14,9 @@ import { STEP_GOAL, useSteps } from '@/src/features/a/useSteps';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { localDayKey } from '@/src/features/exercise/useWeekWorkouts';
 import { nutritionNumber } from '@/src/features/nutritionSummary';
-import { nextTierName } from '@/src/features/tier/tierBadges';
+import { tierLook } from '@/src/features/tier/tierLook';
 import { getSupabaseClient } from '@/src/lib/supabase';
 
-const tierCodes = ['CORE', 'BALANCE', 'ACTIVE', 'FIT', 'PEAK'] as const;
 // The gold +N on a quest is the server's tier rule, as the tier screen states it (app/tier.tsx): a meal record +2, the recommended workout +5, a health paper +15.
 
 async function getSessionName() {
@@ -170,14 +169,6 @@ export default function HomeScreen() {
       : []),
   ];
 
-  const nextName = tier ? nextTierName(tier) : null;
-  const ratio =
-    tier && tier.next_level_points !== null && tier.next_level_points > tier.level_start_points
-      ? Math.min(100, Math.max(0, ((tier.points - tier.level_start_points) / (tier.next_level_points - tier.level_start_points)) * 100))
-      : tier
-        ? 100
-        : 0;
-
   return (
     <>
       <StatusBar style="dark" />
@@ -194,21 +185,7 @@ export default function HomeScreen() {
         onTier={() => router.push('/tier')}
         quests={quests}
         steps={walk.state === 'on' ? { count: walk.steps } : walk.state === 'ask' ? { ask: () => void walk.turnOn() } : null}
-        tier={
-          tier
-            ? {
-                index: Math.max(0, tierCodes.indexOf(tier.tier_code)),
-                name: tier.tier_name,
-                stars: tier.sublevel,
-                ratio,
-                left:
-                  tier.next_level_points !== null
-                    ? `${Math.max(0, tier.next_level_points - tier.points).toLocaleString('ko-KR')}점`
-                    : tier.tier_name,
-                next: nextName ? `${nextName}까지` : '가장 높은 티어',
-              }
-            : null
-        }
+        tier={tier ? tierLook(tier) : null}
         who={who}
       />
     </>

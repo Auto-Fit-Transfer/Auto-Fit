@@ -11,7 +11,8 @@ import { getApiErrorMessage } from '@/src/api/client';
 import { AppBottomSheet, Text } from '@/src/components/common';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
-import { darkColors, fontFamilies } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
+import { darkColors, fontFamilies, lightPalette as colors } from '@/src/theme';
 
 // Renewal A has only the light look, so the choice of mode is not offered.
 const SHOW_THEME_MODES = false;
@@ -48,7 +49,7 @@ export default function DisplaySettingsScreen() {
 
   return (
     <>
-    <ScreenHeader onBack={() => router.back()} title="화면 설정" right={<SimpleReadButton text="화면 설정입니다. 화면 모드, 글자 크기, 간편 모드를 바꿀 수 있어요. 간편 모드를 끄면 기본 화면으로 돌아갑니다." />} />
+    <ScreenHeader onBack={() => router.back()} title="글자 크기" right={<SimpleReadButton text="화면 설정입니다. 화면 모드, 글자 크기, 간편 모드를 바꿀 수 있어요. 간편 모드를 끄면 기본 화면으로 돌아갑니다." />} />
     <ScrollView
       contentContainerStyle={[styles.content, simple && simpleStyles.content, { paddingTop: 8, paddingBottom: insets.bottom + 32 }]}
       style={[styles.root, isDark && dark.root]}
@@ -75,7 +76,6 @@ export default function DisplaySettingsScreen() {
       {saveError ? <Text accessibilityRole="alert" style={styles.error}>{saveError}</Text> : null}
       {serverSynced === false ? <Text style={[styles.note, isDark && dark.secondary]}>이 기기에 저장했어요.</Text> : null}
       {simple ? null : <>
-      <Text style={[styles.sectionTitle, isDark && dark.text]}>글자 크기</Text>
       <View style={[styles.fontCard, isDark && dark.card]}>
         <View style={styles.fontSliderRow}>
           <Text style={[styles.fontSample, isDark && dark.text]}>가</Text>
@@ -105,6 +105,9 @@ export default function DisplaySettingsScreen() {
         </View>
       </View>
       </>}
+      {/* Renewal A has no simple look, so it is not offered; it can only be left when it is already on
+          (the account is the one the first app uses). */}
+      {simple ? (<>
       <Text style={[styles.sectionTitle, isDark && dark.text, simple && simpleStyles.sectionTitle]}>간편 모드</Text>
       <View style={[styles.simpleCard, isDark && dark.card]}>
         <View style={styles.simpleIntro}>
@@ -123,6 +126,7 @@ export default function DisplaySettingsScreen() {
           <Text style={[styles.simpleActionText, isDark && dark.text]}>{simple ? '기본 모드로 바꾸기' : '간편 모드로 바꾸기'}</Text>
         </Pressable>
       </View>
+      </>) : null}
     </ScrollView>
     <AppBottomSheet visible={confirmSimple} onClose={() => setConfirmSimple(false)} title={simple ? '기본 모드로 돌아갈까요?' : '간편 모드로 바꿀까요?'} scrollable="when-overflow" contentStyle={styles.confirmContent} footer={
       <View style={styles.confirmFooter}>
@@ -146,10 +150,12 @@ export default function DisplaySettingsScreen() {
   );
 }
 
+// Renewal A: the look of what A shows here (the choice of mode further down is never drawn).
+const a = aForm(colors);
 const styles = StyleSheet.create({
-  root: { backgroundColor: '#FFFFFF', flex: 1 },
-  content: { gap: 16, paddingHorizontal: 20 },
-  sectionTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+  root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+  content: { gap: 14, paddingHorizontal: 16 },
+  sectionTitle: { ...a.q, marginBottom: 0 },
   modes: { flexDirection: 'row', gap: 8 },
   mode: { backgroundColor: '#FAFBFC', alignItems: 'center', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, flex: 1, gap: 8, padding: 10 },
   selectedMode: { borderColor: '#5246C6', borderWidth: 2, padding: 9 },
@@ -162,47 +168,47 @@ const styles = StyleSheet.create({
   radio: { borderColor: '#C5C5CD', borderRadius: 8, borderWidth: 1, height: 16, width: 16 },
   radioSelected: { alignItems: 'center', borderColor: '#5246C6', justifyContent: 'center' },
   radioDot: { backgroundColor: '#5246C6', borderRadius: 4, height: 8, width: 8 },
-  note: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 12, lineHeight: 18 },
+  note: a.note,
   confirmContent: { gap: 16, paddingBottom: 12 },
-  confirmButton: { alignItems: 'center', backgroundColor: '#5246C6', borderRadius: 12, height: 56, justifyContent: 'center' },
-  confirmButtonText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-  error: { color: '#B34141', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  fontCard: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, gap: 12, padding: 18 },
+  confirmButton: a.go,
+  confirmButtonText: a.goText,
+  error: { ...a.p12, color: colors.danger },
+  fontCard: { ...a.card, gap: 12, padding: 16 },
   fontSliderRow: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 34 },
-  fontSample: { color: '#17161D', fontSize: 12 },
-  fontSampleLarge: { color: '#17161D', fontSize: 22 },
-  fontTrack: { backgroundColor: '#E3E6EB', borderRadius: 2, flex: 1, height: 4, justifyContent: 'center', marginHorizontal: 10 },
-  fontProgress: { backgroundColor: '#5246C6', borderRadius: 2, height: 4 },
+  fontSample: { color: colors.ink, fontFamily: fontFamilies.galmuri11, fontSize: 12 },
+  fontSampleLarge: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22 },
+  fontTrack: { backgroundColor: colors.track, flex: 1, height: 4, justifyContent: 'center', marginHorizontal: 10 },
+  fontProgress: { backgroundColor: colors.primary, height: 4 },
   fontStop: { alignItems: 'center', borderRadius: 12, height: 24, justifyContent: 'center', marginLeft: -12, position: 'absolute', width: 24 },
-  fontTick: { backgroundColor: '#C9CCD2', borderRadius: 3, height: 6, width: 6 },
-  fontStopSelected: { backgroundColor: '#FFFFFF', borderColor: '#5246C6', borderWidth: 2 },
+  fontTick: { backgroundColor: colors.ink, height: 6, width: 6 },
+  fontStopSelected: { backgroundColor: colors.primary, borderColor: colors.ink, borderWidth: 2 },
   fontScaleLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-  fontPreview: { backgroundColor: '#FFFFFF', borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, gap: 6, padding: 13 },
-  fontPreviewCaption: { color: '#5E5D66', fontSize: 12 },
-  fontPreviewText: { color: '#17161D', fontFamily: fontFamilies.pretendardRegular, fontSize: 16, lineHeight: 24 },
-  simpleCard: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 16, borderWidth: 1, gap: 16, padding: 15 },
+  fontPreview: { backgroundColor: colors.background, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, gap: 6, padding: 14 },
+  fontPreviewCaption: a.note,
+  fontPreviewText: { ...a.p15, color: colors.ink },
+  simpleCard: { ...a.card, gap: 14, padding: 14 },
   simpleIntro: { alignItems: 'center', flexDirection: 'row', gap: 14 },
   simplePreview: { backgroundColor: '#FAFBFC', borderColor: '#DFE2E7', borderRadius: 7, borderWidth: 1, gap: 7, height: 74, padding: 9, width: 52 },
   simplePreviewBar: { backgroundColor: '#5246C6', borderRadius: 2, height: 7, width: 23 },
   simplePreviewLine: { backgroundColor: '#E3E6EB', borderRadius: 2, height: 5, width: 30 },
   simpleCopy: { flex: 1, gap: 5 },
-  simpleTitle: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-  simpleDescription: { color: '#5E5D66', fontFamily: fontFamilies.pretendardRegular, fontSize: 12, lineHeight: 16 },
+  simpleTitle: { ...a.p15, color: colors.ink },
+  simpleDescription: a.note,
   simpleState: { color: '#5246C6', fontFamily: fontFamilies.pretendardMedium, fontSize: 12 },
-  simpleAction: { alignItems: 'center', backgroundColor: '#F2F4F6', borderRadius: 12, minHeight: 48, justifyContent: 'center' },
-  simpleActionText: { color: '#17161D', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+  simpleAction: { ...a.mini, height: 44 },
+  simpleActionText: { ...a.p15, color: colors.ink },
   confirmFooter: { gap: 8 },
   cancelButton: { alignItems: 'center', minHeight: 48, justifyContent: 'center' },
-  cancelText: { color: '#17161D', fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
+  cancelText: a.link,
   previewRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 25 },
   previewColumn: { alignItems: 'center', gap: 6 },
   sheetPhone: { borderColor: '#DFE2E7', borderRadius: 12, borderWidth: 1, gap: 8, height: 132, padding: 10, width: 84 },
   sheetPhoneBar: { backgroundColor: '#17161D', borderRadius: 4, height: 7, width: 35 },
   sheetPhoneLine: { backgroundColor: '#F2F4F6', borderRadius: 5, height: 12 },
   sheetPhoneLineLarge: { backgroundColor: '#F2F4F6', borderRadius: 5, height: 22 },
-  previewLabel: { color: '#5E5D66', fontSize: 12 },
+  previewLabel: a.note,
   benefitRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
-  benefitText: { color: '#3B3A42', flex: 1, fontFamily: fontFamilies.pretendardRegular, fontSize: 14, lineHeight: 21 },
+  benefitText: { ...a.p15, color: colors.textBody, flex: 1 },
 });
 
 const simpleStyles = StyleSheet.create({

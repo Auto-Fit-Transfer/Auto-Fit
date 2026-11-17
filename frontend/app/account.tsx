@@ -4,16 +4,14 @@ import { Modal, Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Constants from 'expo-constants';
-import GoogleIcon from '@/assets/icons/auth-redesign/google-logo.svg';
-import KakaoIcon from '@/assets/icons/auth-redesign/kakao-symbol.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import LockIcon from '@/assets/icons/ui/lock.svg';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { apiRequest, getApiErrorMessage } from '@/src/api/client';
-import { FormField } from '@/src/components/main/FormControls';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text } from '@/src/components/common';
+import { aForm } from '@/src/components/a/form';
+import { AppTextField, Text } from '@/src/components/common';
 
 export default function Account() {
   const { colors } = useAppTheme();
@@ -22,7 +20,6 @@ export default function Account() {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('확인 중');
   const [provider, setProvider] = useState('');
-  const [providerKey, setProviderKey] = useState('');
   const version = Constants.expoConfig?.version;
   const [confirm, setConfirm] = useState(false);
   const [confirmation, setConfirmation] = useState('');
@@ -40,7 +37,6 @@ export default function Account() {
         }
         setEmail(data.user?.email || '이메일 없음');
         const currentProvider = data.user?.app_metadata?.provider;
-        setProviderKey(String(currentProvider ?? ''));
         setProvider(currentProvider === 'email' ? '이메일' : currentProvider === 'kakao' ? '카카오' : currentProvider === 'google' ? 'Google' : String(currentProvider ?? '연결된 계정'));
       })
       .catch(() => { if (live) setError('로그인 정보를 확인하지 못했어요.'); });
@@ -77,7 +73,7 @@ export default function Account() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader onBack={() => router.back()} title="계정 설정" />
+      <ScreenHeader onBack={() => router.back()} title="계정" />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 35 }]}>
 
         <View style={styles.section}>
@@ -88,21 +84,6 @@ export default function Account() {
             <View style={styles.row}><Text style={styles.label}>로그인 방식</Text><Text style={styles.value}>{provider || '확인 중'}</Text></View>
           </View>
           <Text style={styles.note}>이메일과 현재 로그인 방식은 여기서 변경할 수 없어요.</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>간편 로그인 연결</Text>
-          <View style={styles.card}>
-            {([['kakao', '카카오', <View key="kakao" style={styles.kakaoMark}><KakaoIcon height={14} width={14} /></View>], ['google', 'Google', <GoogleIcon key="google" height={22} width={22} />]] as const).map(([key, label, icon], index) => (
-              <View key={key}>
-                {index > 0 ? <View style={styles.divider} /> : null}
-                <View style={styles.row}>
-                  <View style={styles.rowStart}>{icon}<Text style={styles.label}>{label}</Text></View>
-                  {providerKey === key ? <View style={styles.connectedPill}><Text style={styles.connected}>연결됨</Text></View> : <Text style={styles.soon}>준비 중</Text>}
-                </View>
-              </View>
-            ))}
-          </View>
         </View>
 
         {provider === '이메일' ? (
@@ -145,7 +126,7 @@ export default function Account() {
           <View style={styles.dialog}>
             <Text style={styles.dialogTitle}>정말 탈퇴하시겠어요?</Text>
             <Text style={styles.dialogDescription}>건강 데이터, 식단·운동 기록과 계정이 영구 삭제됩니다. 이 작업은 되돌릴 수 없습니다.</Text>
-            <FormField label="확인하려면 ‘탈퇴’를 입력하세요" value={confirmation} onChangeText={setConfirmation} editable={!busy} />
+            <AppTextField label="확인하려면 ‘탈퇴’를 입력하세요" value={confirmation} onChangeText={setConfirmation} editable={!busy} />
             {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
             <Pressable accessibilityRole="button" disabled={confirmation !== '탈퇴' || busy} onPress={() => void remove()} style={[styles.deleteButton, (confirmation !== '탈퇴' || busy) && styles.disabled]}>
               <Text style={styles.deleteText}>{busy ? '처리 중…' : '영구 삭제하고 탈퇴'}</Text>
@@ -161,38 +142,38 @@ export default function Account() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: lines in outlined cards, signing out as a white button on its ledge. What cannot be undone
+  // is the same button with its words in the warning colour.
+  const a = aForm(colors);
   return {
-    screen: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: 20 },
-    section: { gap: 11, marginBottom: 28 },
-    sectionTitle: { fontFamily: fontFamilies.pretendardBold, fontSize: 16, color: colors.textPrimary },
-    card: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, backgroundColor: colors.surface, paddingHorizontal: 16 },
-    row: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-    divider: { height: 1, backgroundColor: colors.border },
-    label: { fontFamily: fontFamilies.pretendardMedium, fontSize: 14, color: colors.textPrimary },
-    value: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, flexShrink: 1, textAlign: 'right' },
-    kakaoMark: { alignItems: 'center', backgroundColor: '#FEE500', borderRadius: 11, height: 22, justifyContent: 'center', width: 22 },
-    rowStart: { alignItems: 'center', flexDirection: 'row', flex: 1, gap: 12 },
+    screen: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    content: { paddingHorizontal: 16 },
+    section: { gap: 8, marginBottom: 22 },
+    sectionTitle: { ...a.q, marginBottom: 0, paddingHorizontal: 2 },
+    card: { ...a.card, paddingHorizontal: 14 },
+    row: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between', minHeight: 54 },
+    divider: { backgroundColor: colors.track, height: 2 },
+    label: { ...a.p15, color: colors.ink },
+    value: { ...a.p12, color: colors.ink, flexShrink: 1, textAlign: 'right' },
+    rowStart: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 12 },
     actionCopy: { flex: 1, gap: 2 },
-    soon: { fontSize: 12, color: colors.textSecondary },
-    connectedPill: { backgroundColor: colors.successLight, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-    signOut: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 48, justifyContent: 'center' },
-    signOutText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    soon: a.note,
+    signOut: { ...a.go, ...a.goGhost, height: 52 },
+    signOutText: { ...a.goText, color: colors.ink },
     withdrawButton: { alignItems: 'center', marginTop: 18, paddingVertical: 6 },
-    version: { color: colors.textSecondary, fontSize: 12, marginTop: 6, textAlign: 'center' },
-    note: { fontSize: 12, lineHeight: 18, color: colors.textSecondary },
-    connected: { fontSize: 12, color: colors.success, fontFamily: fontFamilies.pretendardMedium },
-    action: { backgroundColor: colors.surface, gap: 12, minHeight: 64, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    withdraw: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14, textDecorationLine: 'underline' },
-    error: { color: colors.danger, fontSize: 14 },
-    overlay: { flex: 1, padding: 22, backgroundColor: colors.overlay, justifyContent: 'center' },
-    dialog: { padding: 22, borderRadius: 16, backgroundColor: colors.surface, gap: 16 },
-    dialogTitle: { fontSize: 18, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-    dialogDescription: { fontSize: 14, lineHeight: 21, color: colors.textSecondary },
-    deleteButton: { minHeight: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.danger },
+    version: { ...a.note, marginTop: 6, textAlign: 'center' },
+    note: a.note,
+    action: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between', minHeight: 64, paddingHorizontal: 14 },
+    withdraw: a.link,
+    error: { ...a.p12, color: colors.danger },
+    overlay: { backgroundColor: 'rgba(22, 24, 46, 0.45)', flex: 1, justifyContent: 'center', padding: 20 },
+    dialog: { ...a.card, borderRadius: 22, gap: 14, padding: 20 },
+    dialogTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    dialogDescription: { ...a.p15, color: colors.textBody },
+    deleteButton: { ...a.go, ...a.goGhost, height: 52 },
     disabled: { opacity: 0.45 },
-    deleteText: { fontSize: 16, color: colors.onPrimary, fontFamily: fontFamilies.pretendardBold },
+    deleteText: { ...a.goText, color: colors.danger },
     cancel: { alignItems: 'center', paddingVertical: 8 },
-    cancelText: { fontSize: 14, color: colors.textSecondary },
+    cancelText: a.link,
   } as const;
 }

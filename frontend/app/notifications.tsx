@@ -1,18 +1,20 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BarbellIcon from '@/assets/icons/ui/barbell.svg';
 import ChatsIcon from '@/assets/icons/ui/chats-circle.svg';
 import ForkKnifeIcon from '@/assets/icons/ui/fork-knife.svg';
 import HeartbeatIcon from '@/assets/icons/ui/heartbeat.svg';
+import { ASwitch } from '@/src/components/a/ASwitch';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getApiErrorMessage } from '@/src/api/client';
 import {
   getNotificationPreferences, saveNotificationPreferences, type NotificationPreferences,
 } from '@/src/api/userSettings';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 import { Text, TextInput } from '@/src/components/common';
 
 type ToggleKey = {
@@ -109,31 +111,23 @@ export default function Notifications() {
     void persist({ ...preferences, quiet_hours_start: start, quiet_hours_end: end });
   };
 
-  const row = ({ key, label, detail }: ToggleKey) => {
+  const row = ({ key, label, detail }: ToggleKey, index: number) => {
     const Icon = categoryIcons[key];
     return (
-    <View key={key} style={styles.row}>
+    <View key={key} style={[styles.row, index > 0 && styles.rowLine]}>
       {Icon ? <Icon color={colors.textPrimary} height={24} width={24} /> : null}
       <View style={styles.copy}>
         <Text style={styles.label}>{label}</Text>
         <Text style={styles.detail}>{detail}</Text>
       </View>
-      <Switch
-        accessibilityLabel={label}
-        disabled={!preferences || saving}
-        onValueChange={() => toggle(key)}
-        thumbColor={colors.background}
-        {...({ activeThumbColor: colors.background } as object)}
-        trackColor={{ false: colors.textDisabled, true: colors.textPrimary }}
-        value={preferences?.[key] ?? false}
-      />
+      <ASwitch disabled={!preferences || saving} label={label} onChange={() => toggle(key)} value={preferences?.[key] ?? false} />
     </View>
   );
   };
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader onBack={() => router.back()} title="알림 설정" />
+      <ScreenHeader onBack={() => router.back()} title="알림" />
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 32 }]}>
         {loading ? <ActivityIndicator color={colors.primary} /> : null}
         {error ? <Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text accessibilityRole="alert" style={styles.error}>{error} · 다시 시도하기</Text></Pressable> : null}
@@ -142,7 +136,7 @@ export default function Notifications() {
         <View style={styles.card}>{categories.map(row)}</View>
         <Text style={styles.sectionTitle}>그 밖에</Text>
         <View style={styles.card}>
-          {row({ key: 'quiet_hours_enabled', label: '방해 금지 시간', detail: `밤 ${start} ~ 아침 ${end}` })}
+          {row({ key: 'quiet_hours_enabled', label: '방해 금지 시간', detail: `밤 ${start} ~ 아침 ${end}` }, 0)}
           {preferences?.quiet_hours_enabled ? (
             <View style={styles.timeRow}>
               <TextInput accessibilityLabel="방해 금지 시작 시간" keyboardType="numbers-and-punctuation" maxLength={5} onChangeText={setStart} placeholder="23:00" style={styles.timeInput} value={start} />
@@ -151,8 +145,8 @@ export default function Notifications() {
               <Pressable accessibilityRole="button" disabled={saving} onPress={saveHours} style={styles.timeSave}><Text style={styles.timeSaveText}>시간 저장</Text></Pressable>
             </View>
           ) : null}
-          {row({ key: 'push_enabled', label: '푸시 알림', detail: '기기 알림 허용 시 받기' })}
-          {row({ key: 'foreground_push_enabled', label: '앱 실행 중 알림', detail: '앱을 닫지 않아도 알림을 받기' })}
+          {row({ key: 'push_enabled', label: '푸시 알림', detail: '기기 알림 허용 시 받기' }, 1)}
+          {row({ key: 'foreground_push_enabled', label: '앱 실행 중 알림', detail: '앱을 닫지 않아도 알림을 받기' }, 1)}
         </View>
         <Text style={styles.note}>기기 푸시 알림은 준비 중이에요. 고른 설정은 저장돼요.</Text>
       </ScrollView>
@@ -161,21 +155,24 @@ export default function Notifications() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: each kind a line in an outlined card, with the pixel switch.
+  const a = aForm(colors);
   return {
-    screen: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: 20, gap: 15 },
-    sectionTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, marginTop: 13 },
-    card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, paddingHorizontal: 16 },
-    row: { minHeight: 74, flexDirection: 'row', alignItems: 'center', gap: 15, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.border },
-    copy: { flex: 1, gap: 4 },
-    label: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
-    detail: { fontSize: 12, color: colors.textSecondary, lineHeight: 17 },
-    timeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12 },
-    timeInput: { backgroundColor: colors.surface, flex: 1, minWidth: 63, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 8, color: colors.textPrimary, fontSize: 14, textAlign: 'center' },
-    timeSave: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-    timeSaveText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    note: { color: colors.textSecondary, fontSize: 12, lineHeight: 19 },
-    error: { color: colors.danger, fontSize: 12 },
-    saved: { color: colors.success, fontSize: 12 },
+    screen: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    content: { gap: 10, paddingHorizontal: 16 },
+    sectionTitle: { ...a.q, marginBottom: 0, marginTop: 12, paddingHorizontal: 2 },
+    card: { ...a.card, paddingHorizontal: 14 },
+    row: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 66 },
+    rowLine: { borderTopColor: colors.track, borderTopWidth: 2 },
+    copy: { flex: 1, gap: 2 },
+    label: { ...a.p15, color: colors.ink },
+    detail: a.note,
+    timeRow: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingBottom: 14 },
+    timeInput: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 10, borderWidth: 2, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, flex: 1, minWidth: 63, padding: 8, textAlign: 'center' },
+    timeSave: a.mini,
+    timeSaveText: a.miniText,
+    note: a.note,
+    error: { ...a.p12, color: colors.danger },
+    saved: { ...a.p12, color: colors.success },
   } as const;
 }

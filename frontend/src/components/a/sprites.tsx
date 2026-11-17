@@ -62,15 +62,15 @@ export function Hero({
 }
 
 // Just the head, for the name card and the marker on the road.
-export function HeroHead({ who, tier }: { who: Who; tier: number }) {
+export function HeroHead({ who, tier, zoom = 1 }: { who: Who; tier: number; zoom?: number }) {
   const { source, w } = strips[who];
   return (
-    <View accessible={false} style={{ height: 24, overflow: 'hidden', width: 26 }}>
+    <View accessible={false} style={{ height: 24 * zoom, overflow: 'hidden', width: 26 * zoom }}>
       <Image
         resizeMode="stretch"
         source={source}
         style={[
-          { height: CELL, left: -((tier * w) / 2 + w / 4 - 13), position: 'absolute', top: -8, width: w * 2.5 },
+          { height: CELL * zoom, left: -((tier * w) / 2 + w / 4 - 13) * zoom, position: 'absolute', top: -8 * zoom, width: w * 2.5 * zoom },
           pixelated,
         ]}
       />

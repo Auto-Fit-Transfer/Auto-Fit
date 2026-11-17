@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert } from 'react-native';
 import { createChat, decideExerciseAdjustment, getChatMessages, getChats, sendChatMessage } from '@/src/api/chat';
 import { ApiError, getApiErrorMessage } from '@/src/api/client';
@@ -123,6 +123,17 @@ export default function R6ChatScreen() {
       setSending(false);
     }
   };
+
+  // Opened with a question (from the report): it is sent once, as if I had typed it here.
+  const { ask } = useLocalSearchParams<{ ask?: string }>();
+  const asked = useRef(false);
+  useEffect(() => {
+    if (!ask || asked.current || loading || !chatId) return;
+    asked.current = true;
+    void send(ask);
+    // send is made anew on every render; this runs once, when the talk is ready.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ask, chatId, loading]);
 
   const decide = async (pendingActionId: string, decision: 'confirm' | 'cancel') => {
     if (!chatId || deciding) return;

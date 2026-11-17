@@ -1,327 +1,149 @@
-import { signOutOfApp } from '@/src/features/auth/accountSession';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CaretText } from '@/src/components/common/CaretText';
-import MoonIcon from '@/assets/icons/day/Moon.svg';
-import SignOutIcon from '@/assets/icons/system/SignOut.svg';
-import BarbellIcon from '@/assets/icons/ui/barbell.svg';
-import BellIcon from '@/assets/icons/ui/bell.svg';
-import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
-import ChartIcon from '@/assets/icons/ui/chart-line-up.svg';
-import ChatsIcon from '@/assets/icons/ui/chats-circle.svg';
-import ForkKnifeIcon from '@/assets/icons/ui/fork-knife.svg';
-import LockIcon from '@/assets/icons/ui/lock.svg';
-import ShieldIcon from '@/assets/icons/ui/shield-check.svg';
-import TargetIcon from '@/assets/icons/ui/target.svg';
-import UploadIcon from '@/assets/icons/ui/upload-simple.svg';
-import UserIcon from '@/assets/icons/ui/user.svg';
-import { getCommunityMileage, getCommunityProfile, type CommunityProfile } from '@/src/api/community';
+import { getAllergies } from '@/src/api/allergies';
+import { getCommunityProfile, type CommunityProfile } from '@/src/api/community';
 import { getProfile, getProfileName } from '@/src/api/home';
-import { getHabitTierProgress, type HabitTierProgress } from '@/src/api/tier';
-import { getActiveHealthGoal, type HealthGoal } from '@/src/api/userSettings';
-import { getSupabaseClient } from '@/src/lib/supabase';
-import { goals as healthGoals, HealthGoalSheet } from '@/src/components/my/HealthGoalSheet';
+import { getHabitTierProgress } from '@/src/api/tier';
+import { getActiveHealthGoal, getNotificationPreferences, type HealthGoal } from '@/src/api/userSettings';
+import { MeView } from '@/src/components/a/MeView';
+import { WHO_KEY, whoList, type Who } from '@/src/components/a/sprites';
 import { AllergySettingsSheet } from '@/src/components/my/AllergySettingsSheet';
-import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
+import { goals as healthGoals, HealthGoalSheet } from '@/src/components/my/HealthGoalSheet';
+import { useSteps } from '@/src/features/a/useSteps';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
-import { tierBadges } from '@/src/features/tier/tierBadges';
-import { darkColors, fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text } from '@/src/components/common';
+import { tierLook, type TierLook } from '@/src/features/tier/tierLook';
+import { getSupabaseClient } from '@/src/lib/supabase';
 
-// Only FIT and ACTIVE have tinted pills in Figma; the other tiers stay neutral beside their badge.
-const tierPills: Partial<Record<HabitTierProgress['tier_code'], { backgroundColor: string; color: string }>> = {
-  ACTIVE: { backgroundColor: '#FCEFE5', color: '#94481A' },
-  FIT: { backgroundColor: '#ECE9FF', color: '#3A2DB5' },
-};
+const FONT_NAMES = ['가장 작게', '작게', '기본', '크게', '가장 크게'];
 
-type SettingRowProps = {
-  Icon: typeof TargetIcon;
-  label: string;
-  description?: string;
-  onPress: () => void;
-};
-
-function SettingRow({ Icon, label, description, onPress }: SettingRowProps) {
-  const { colors } = useAppTheme();
-  const styles = useThemedStyles(createStyles);
-  const { preferences, isDark } = useDisplayPreferences();
-  const simple = preferences.simple_mode_enabled;
-  return (
-    <Pressable hitSlop={16} accessibilityRole="button" onPress={onPress} style={[styles.settingRow, simple && simpleStyles.settingRow]}>
-      <View style={[styles.settingIcon, isDark && dark.card]}><Icon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={22} width={22} /></View>
-      <View style={styles.settingCopy}>
-        <Text style={[styles.settingLabel, isDark && dark.text, simple && simpleStyles.settingLabel]}>{label}</Text>
-        {description ? <Text style={[styles.settingDescription, isDark && dark.secondary, simple && simpleStyles.settingDescription]}>{description}</Text> : null}
-      </View>
-      <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
-    </Pressable>
-  );
-}
-
+// Renewal A's 내 정보: me and my settings in one place, each line with its value now (a-me.html).
+// Left out on purpose, as decided with the design: short cuts to the report and the exercise settings (one
+// tap from home), signing out (it is in 계정), and the community's own numbers (글 · 팔로워, 마일리지, the
+// people I blocked: one line leads to my community profile, which opens them all).
 export default function MyScreen() {
-  const { colors } = useAppTheme();
-  const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { isDark, preferences } = useDisplayPreferences();
-  const simple = preferences.simple_mode_enabled;
+  const { preferences } = useDisplayPreferences();
+  const walk = useSteps();
+  const [who, setWho] = useState<Who>('worker-f');
   const [name, setName] = useState('회원');
   const [profile, setProfile] = useState<CommunityProfile | null>(null);
-  const [mileage, setMileage] = useState<number | null>(null);
-  const [tier, setTier] = useState<HabitTierProgress | null>(null);
-  const [goal, setGoal] = useState<HealthGoal | null>(null);
-  const [joinedDays, setJoinedDays] = useState<number | null>(null);
-  const [profileError, setProfileError] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
-  const [signOutError, setSignOutError] = useState(false);
-  const [healthGoalVisible, setHealthGoalVisible] = useState(false);
-  const [allergySettingsVisible, setAllergySettingsVisible] = useState(false);
+  const [tier, setTier] = useState<TierLook | null>(null);
+  const [goal, setGoal] = useState<HealthGoal | null | undefined>(undefined); // undefined = not read yet
+  const [allergies, setAllergies] = useState<string[] | null>(null);
+  const [noticesOn, setNoticesOn] = useState<number | null>(null);
+  const [mail, setMail] = useState('');
+  const [days, setDays] = useState<number | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [sheet, setSheet] = useState<'goal' | 'allergy' | null>(null);
 
   const loadGoal = useCallback(() => {
     void getActiveHealthGoal().then(({ goal: active }) => setGoal(active), () => undefined);
+  }, []);
+  const loadAllergies = useCallback(() => {
+    void getAllergies().then(
+      ({ catalog, selected }) =>
+        setAllergies(selected.flatMap((item) => item.custom_name ?? catalog.find((kind) => kind.allergy_type_id === item.allergy_type_id)?.name ?? [])),
+      () => undefined,
+    );
   }, []);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      setProfileError(false);
+      const keep = <T,>(set: (value: T) => void) => (value: T) => {
+        if (active) set(value);
+      };
+      setFailed(false);
       loadGoal();
-      void getProfile()
-        .then((response) => {
-          if (active) setName(getProfileName(response) ?? '회원');
-        })
-        .catch(() => {
-          if (active) setProfileError(true);
-        });
-      void getCommunityProfile('me').then(
-        (result) => {
-          if (active) setProfile(result);
-        },
-        () => {
-          if (active) setProfile(null);
-        },
-      );
-      void getCommunityMileage().then(
-        (result) => {
-          if (active) setMileage(result.balance);
-        },
-        () => {
-          if (active) setMileage(null);
-        },
-      );
-      void getHabitTierProgress().then(
-        ({ progress }) => {
-          if (active) setTier(progress);
-        },
+      loadAllergies();
+      void AsyncStorage.getItem(WHO_KEY).then(keep((saved) => {
+        if (whoList.includes(saved as Who)) setWho(saved as Who);
+      }), () => undefined);
+      void getProfile().then(keep((response) => setName(getProfileName(response) ?? '회원')), keep(() => setFailed(true)));
+      void getCommunityProfile('me').then(keep(setProfile), () => undefined);
+      void getHabitTierProgress().then(keep(({ progress }) => setTier(tierLook(progress))), () => undefined);
+      void getNotificationPreferences().then(
+        keep(({ preferences: kinds }) =>
+          setNoticesOn([kinds.diet_enabled, kinds.exercise_enabled, kinds.health_report_enabled, kinds.community_enabled].filter(Boolean).length),
+        ),
         () => undefined,
       );
       void getSupabaseClient().auth.getSession().then(
-        ({ data }) => {
-          const created = data.session?.user.created_at;
-          if (active && created) setJoinedDays(Math.floor((Date.now() - new Date(created).getTime()) / 86400000) + 1);
-        },
+        keep(({ data }) => {
+          const user = data.session?.user;
+          setMail(user?.email ?? '');
+          if (user?.created_at) setDays(Math.floor((Date.now() - new Date(user.created_at).getTime()) / 86400000) + 1);
+        }),
         () => undefined,
       );
       return () => {
         active = false;
       };
-    }, [loadGoal]),
+    }, [loadAllergies, loadGoal]),
   );
 
-  const openCommunityProfile = () =>
-    router.push({ pathname: '/community/user/[userId]', params: { userId: 'me' } });
-  const signOut = async () => {
-    if (signingOut) return;
-    setSigningOut(true);
-    setSignOutError(false);
-    try {
-      await signOutOfApp();
-      router.replace('/login');
-    } catch {
-      setSigningOut(false);
-      setSignOutError(true);
-    }
-  };
-  const Badge = tier ? tierBadges[tier.tier_code] : null;
-  const pill = tier ? tierPills[tier.tier_code] : undefined;
-  const goalLabel = goal?.goal_type === 'other' && goal.goal_text
-    ? goal.goal_text
-    : healthGoals.find((item) => item.key === goal?.goal_type)?.label;
+  const goalLabel = goal === undefined
+    ? ''
+    : (goal?.goal_type === 'other' && goal.goal_text ? goal.goal_text : healthGoals.find((item) => item.key === goal?.goal_type)?.label) ?? '아직 정하지 않았어요';
+  const allergyLabel = allergies === null
+    ? ''
+    : allergies.length > 2 ? `${allergies[0]} 외 ${allergies.length - 1}가지` : allergies.join(' · ') || '없어요';
 
   return (
     <>
-    <ScrollView
-      contentContainerStyle={[styles.content, simple && simpleStyles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 116 }]}
-      style={[styles.root, isDark && dark.root]}
-    >
-      <View style={styles.titleRow}>
-        <Text accessibilityRole="header" style={[styles.title, isDark && dark.text, simple && simpleStyles.title]}>마이</Text>
-        <SimpleReadButton label="마이 화면 읽어 주기" text={`${name}님의 마이페이지입니다. 마일리지 ${mileage ?? 0}점. 건강 데이터를 올리고 건강 리포트를 볼 수 있어요. 운동 추천과 화면 설정을 확인할 수 있어요.`} />
-      </View>
-
-      <View style={styles.profileRow}>
-        <View style={[styles.avatar, isDark && dark.card]}><UserIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={26} width={26} /></View>
-        <View style={styles.profileCopy}>
-          <Text numberOfLines={1} style={[styles.name, isDark && dark.text, simple && simpleStyles.name]}>{name}</Text>
-          <View style={styles.profileMeta}>
-            {tier && Badge ? (
-              <Pressable accessibilityLabel={`내 티어 ${tier.tier_name} ${tier.sublevel}`} accessibilityRole="button" hitSlop={10} onPress={() => router.push('/tier')} style={[styles.tierPill, pill && { backgroundColor: pill.backgroundColor }]}>
-                <Badge height={16} width={16} />
-                <Text style={[styles.tierPillText, pill && { color: pill.color }]}>{tier.tier_name} {tier.sublevel}</Text>
-              </Pressable>
-            ) : null}
-            {joinedDays ? <Text style={[styles.muted, isDark && dark.secondary]}>함께한 지 {joinedDays}일</Text> : null}
-          </View>
-        </View>
-        <Pressable accessibilityRole="button" onPress={() => router.push('/profile')} style={[styles.profileEdit, isDark && dark.card, simple && simpleStyles.profileEdit]}>
-          <Text style={[styles.profileEditText, isDark && dark.text, simple && simpleStyles.profileEditText]}>프로필 수정</Text>
-        </Pressable>
-      </View>
-
-      {profileError ? (
-        <Pressable accessibilityRole="button" onPress={() => router.push('/profile')} style={styles.inlineError}>
-          <CaretText style={styles.inlineErrorText}>프로필을 불러오지 못했어요. 다시 확인하기</CaretText>
-        </Pressable>
+      <MeView
+        days={days}
+        health={[
+          { key: 'docs', label: '건강 서류', value: '검진표 · 인바디', onPress: () => router.push('/health-data-management') },
+          { key: 'goal', label: '건강 목표', value: goalLabel, onPress: () => setSheet('goal') },
+          { key: 'allergy', label: '알레르기', value: allergyLabel, onPress: () => setSheet('allergy') },
+        ]}
+        name={profile?.nickname || name}
+        notice={failed ? '프로필을 불러오지 못했어요' : null}
+        onBack={() => router.navigate('/home')}
+        onEdit={() => router.push('/profile')}
+        onTier={() => router.push('/tier')}
+        photo={profile?.profile_image_url}
+        settings={[
+          {
+            key: 'community',
+            label: '커뮤니티 활동',
+            value: profile ? `글 ${profile.post_count.toLocaleString('ko-KR')} · 팔로워 ${profile.follower_count.toLocaleString('ko-KR')}` : '',
+            onPress: () => router.push({ pathname: '/community/user/[userId]', params: { userId: 'me' } }),
+          },
+          { key: 'notice', label: '알림', value: noticesOn === null ? '' : noticesOn ? `${noticesOn}가지 켜짐` : '모두 꺼짐', onPress: () => router.push('/notifications') },
+          { key: 'font', label: '글자 크기', value: FONT_NAMES[preferences.font_size_step - 1] ?? '', onPress: () => router.push('/display-settings') },
+          { key: 'account', label: '계정', value: mail, onPress: () => router.push('/account') },
+        ]}
+        steps={
+          walk.state === 'checking' || walk.state === 'unavailable'
+            ? null
+            : { on: walk.state === 'on', onToggle: () => (walk.state === 'on' ? walk.turnOff() : void walk.turnOn()) }
+        }
+        tier={tier}
+        tierIndex={tier?.index ?? 0}
+        who={who}
+      />
+      {sheet === 'goal' ? (
+        <HealthGoalSheet
+          onClose={() => {
+            setSheet(null);
+            loadGoal();
+          }}
+          visible
+        />
       ) : null}
-
-      <Pressable accessibilityRole="button" onPress={openCommunityProfile} style={[styles.stats, isDark && dark.card, simple && simpleStyles.stats]}>
-        <View style={styles.stat}><Text style={[styles.statValue, isDark && dark.text]}>{profile?.post_count ?? '–'}</Text><Text style={[styles.muted, isDark && dark.secondary]}>글</Text></View>
-        <View style={styles.statDivider} />
-        <View style={styles.stat}><Text style={[styles.statValue, isDark && dark.text]}>{profile?.follower_count ?? '–'}</Text><Text style={[styles.muted, isDark && dark.secondary]}>팔로워</Text></View>
-        <View style={styles.statDivider} />
-        <View style={styles.stat}><Text style={[styles.statValue, isDark && dark.text]}>{profile?.following_count ?? '–'}</Text><Text style={[styles.muted, isDark && dark.secondary]}>팔로잉</Text></View>
-      </Pressable>
-
-      <Pressable
-        accessibilityLabel={`마일리지 ${mileage === null ? '확인하기' : `${mileage.toLocaleString()}P`}`}
-        accessibilityRole="button"
-        onPress={() => router.push('/community/mileage')}
-        style={[styles.mileage, isDark && dark.card, simple && simpleStyles.mileage]}
-      >
-        <Text style={[styles.mileageLabel, isDark && dark.text, simple && simpleStyles.mileageText]}>마일리지</Text>
-        <View style={styles.mileageRight}>
-          <Text style={[styles.mileageAmount, isDark && dark.text, simple && simpleStyles.mileageText]}>{mileage === null ? '확인하기' : `${mileage.toLocaleString()}P`}</Text>
-          <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
-        </View>
-      </Pressable>
-
-      <Text style={[styles.sectionTitle, isDark && dark.secondary, simple && simpleStyles.sectionTitle]}>내 건강</Text>
-      <View style={[styles.healthCards, simple && simpleStyles.healthCards]}>
-        <Pressable accessibilityRole="button" onPress={() => router.push('/health-data-management')} style={[styles.healthCard, isDark && dark.card, simple && simpleStyles.healthCard]}>
-          <View style={[styles.settingIcon, isDark && dark.card]}><UploadIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={22} width={22} /></View>
-          <Text style={[styles.healthCardTitle, isDark && dark.text, simple && simpleStyles.healthCardTitle]}>건강 데이터 올리기</Text>
-          <Text style={[styles.healthCardDescription, isDark && dark.secondary, simple && simpleStyles.healthCardDescription]}>새 검진표 · 체성분 결과</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => router.push('/health-report')} style={[styles.healthCard, isDark && dark.card, simple && simpleStyles.healthCard]}>
-          <View style={[styles.settingIcon, isDark && dark.card]}><ChartIcon color={isDark ? darkColors.textPrimary : colors.textPrimary} height={22} width={22} /></View>
-          <Text style={[styles.healthCardTitle, isDark && dark.text, simple && simpleStyles.healthCardTitle]}>건강 리포트</Text>
-          <Text style={[styles.healthCardDescription, isDark && dark.secondary, simple && simpleStyles.healthCardDescription]}>검진 · 인바디 변화</Text>
-        </Pressable>
-      </View>
-
-      <Text style={[styles.sectionTitle, isDark && dark.secondary, simple && simpleStyles.sectionTitle]}>맞춤 추천</Text>
-      <View style={[styles.group, isDark && dark.card]}>
-        <SettingRow Icon={TargetIcon} label="건강 목표 설정" description={goalLabel ? `지금 목표: ${goalLabel}` : '아직 정하지 않았어요'} onPress={() => setHealthGoalVisible(true)} />
-        <View style={[styles.rowDivider, isDark && dark.divider]} />
-        <SettingRow Icon={ForkKnifeIcon} label="식단 설정" description="알레르기" onPress={() => setAllergySettingsVisible(true)} />
-        <View style={[styles.rowDivider, isDark && dark.divider]} />
-        <SettingRow Icon={BarbellIcon} label="운동 설정" description="오늘의 운동 설정으로 이동" onPress={() => router.push('/exercise/condition')} />
-      </View>
-
-      <Text style={[styles.sectionTitle, isDark && dark.secondary, simple && simpleStyles.sectionTitle]}>설정 · 활동</Text>
-      {signOutError ? <Text style={styles.inlineErrorText}>로그아웃하지 못했어요. 다시 시도해 주세요.</Text> : null}
-      <View style={[styles.group, isDark && dark.card]}>
-        <SettingRow Icon={LockIcon} label="계정 설정" onPress={() => router.push('/account')} />
-        <View style={[styles.rowDivider, isDark && dark.divider]} />
-        <SettingRow Icon={BellIcon} label="알림 설정" onPress={() => router.push('/notifications')} />
-        <View style={[styles.rowDivider, isDark && dark.divider]} />
-        <SettingRow Icon={MoonIcon} label="화면 설정" description="다크 모드 · 글자 크기 · 간편 모드" onPress={() => router.push('/display-settings')} />
-        <View style={[styles.rowDivider, isDark && dark.divider]} />
-        <SettingRow Icon={ChatsIcon} label="커뮤니티 활동" description="쓴 글 · 댓글 · 좋아요 · 스크랩" onPress={() => router.push('/community/activity')} />
-        <View style={[styles.rowDivider, isDark && dark.divider]} />
-        <SettingRow Icon={ShieldIcon} label="차단한 사용자" onPress={() => router.push('/community/blocks')} />
-        <View style={[styles.rowDivider, isDark && dark.divider]} />
-        <SettingRow Icon={SignOutIcon} label={signingOut ? '로그아웃 중…' : '로그아웃'} onPress={() => void signOut()} />
-      </View>
-    </ScrollView>
-    {healthGoalVisible ? <HealthGoalSheet visible onClose={() => { setHealthGoalVisible(false); loadGoal(); }} /> : null}
-    {allergySettingsVisible ? <AllergySettingsSheet visible onClose={() => setAllergySettingsVisible(false)} /> : null}
+      {sheet === 'allergy' ? (
+        <AllergySettingsSheet
+          onClose={() => {
+            setSheet(null);
+            loadAllergies();
+          }}
+          visible
+        />
+      ) : null}
     </>
   );
 }
-
-function createStyles({ colors }: AppTheme) {
-  // Renewal A: one dark outline on every piece, a ledge under what can be pressed, pixel letters.
-  const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
-  const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
-  const outline = { backgroundColor: colors.surface, borderColor: colors.ink, borderWidth: 2 } as const;
-  const soft = '0 4px 0 rgba(32, 35, 63, 0.3)';
-  return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    content: { gap: 14, paddingHorizontal: 16 },
-    titleRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
-    profileRow: { alignItems: 'center', flexDirection: 'row', gap: 14 },
-    avatar: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, height: 56, justifyContent: 'center', width: 56 },
-    profileCopy: { flex: 1, gap: 2, minWidth: 0 },
-    name: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
-    profileMeta: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-    tierPill: { alignItems: 'center', backgroundColor: colors.gold, borderColor: colors.ink, borderRadius: 999, borderWidth: 2, flexDirection: 'row', gap: 4, height: 24, paddingLeft: 4, paddingRight: 8 },
-    tierPillText: { ...p12, color: '#2B2000' },
-    muted: { ...p12, color: colors.textSecondary },
-    profileEdit: { ...outline, alignItems: 'center', borderRadius: 10, boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)', height: 34, justifyContent: 'center', paddingHorizontal: 12 },
-    profileEditText: { ...p12, color: colors.ink },
-    inlineError: { ...outline, borderRadius: 12, padding: 10 },
-    inlineErrorText: { ...p12, color: colors.danger },
-    stats: { ...outline, alignItems: 'center', borderRadius: 18, boxShadow: soft, flexDirection: 'row', minHeight: 74 },
-    stat: { alignItems: 'center', flex: 1, gap: 2 },
-    statValue: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
-    statDivider: { backgroundColor: colors.track, height: 28, width: 2 },
-    mileage: { ...outline, alignItems: 'center', borderRadius: 18, boxShadow: soft, flexDirection: 'row', justifyContent: 'space-between', minHeight: 58, paddingHorizontal: 16 },
-    mileageRight: { alignItems: 'center', flexDirection: 'row', gap: 6 },
-    mileageLabel: { ...p15, color: colors.ink },
-    mileageAmount: { ...p15, color: colors.ink },
-    sectionTitle: { ...p12, color: colors.textSecondary, marginTop: 4 },
-    healthCards: { flexDirection: 'row', gap: 10 },
-    healthCard: { ...outline, borderRadius: 18, boxShadow: soft, flex: 1, minHeight: 131, padding: 14 },
-    healthCardTitle: { ...p15, color: colors.ink, marginTop: 10 },
-    healthCardDescription: { ...p12, color: colors.textSecondary, marginTop: 2 },
-    group: { ...outline, borderRadius: 18, boxShadow: soft, overflow: 'hidden' },
-    settingRow: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 8 },
-    settingIcon: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, height: 40, justifyContent: 'center', width: 40 },
-    settingCopy: { flex: 1, gap: 2 },
-    settingLabel: { ...p15, color: colors.ink },
-    settingDescription: { ...p12, color: colors.textSecondary },
-    rowDivider: { backgroundColor: colors.track, height: 2 },
-  } as const;
-}
-
-const simpleStyles = StyleSheet.create({
-  content: { gap: 20 },
-  title: {},
-  name: {},
-  profileEdit: { justifyContent: 'center', minHeight: 48 },
-  profileEditText: {},
-  stats: { height: 82 },
-  mileage: { minHeight: 64 },
-  mileageText: {},
-  sectionTitle: {},
-  healthCards: { flexDirection: 'column' },
-  healthCard: { flexBasis: 'auto', flexGrow: 0, flexShrink: 0, minHeight: 96 },
-  healthCardTitle: {},
-  healthCardDescription: {},
-  settingRow: { minHeight: 75, paddingVertical: 12 },
-  settingLabel: {},
-  settingDescription: {},
-});
-
-const dark = StyleSheet.create({
-  root: { backgroundColor: darkColors.background },
-  card: { backgroundColor: darkColors.surface, borderColor: darkColors.border },
-  text: { color: darkColors.textPrimary },
-  secondary: { color: darkColors.textSecondary },
-  divider: { backgroundColor: darkColors.border },
-});

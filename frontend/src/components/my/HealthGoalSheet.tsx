@@ -10,6 +10,7 @@ import {
 import { getApiErrorMessage } from '@/src/api/client';
 import { AppBottomSheet, Text, TextInput } from '@/src/components/common';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 
 export const goals: { key: HealthGoalType; label: string }[] = [
   { key: 'fat_loss', label: '체지방 감량' },
@@ -140,25 +141,28 @@ export function HealthGoalSheet({ visible, onClose }: Props) {
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: the goal now in a violet box, the five kinds as outlined chips (three, then two).
+  const a = aForm(colors);
   return {
-    content: { gap: 16 },
-    current: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, padding: 13, gap: 6 },
-    currentLabel: { fontSize: 12, color: colors.textSecondary },
-    currentText: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
-    sectionTitle: { fontSize: 14, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
+    content: { gap: 14 },
+    current: { backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, gap: 2, padding: 12 },
+    currentLabel: a.note,
+    currentText: { ...a.p15, color: colors.ink },
+    sectionTitle: { ...a.q, marginBottom: 0 },
     choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    choice: { backgroundColor: colors.surface, width: '48%', minHeight: 36, borderRadius: 20, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-    selected: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
-    choiceText: { fontSize: 12, color: colors.textBody },
-    selectedText: { color: colors.primary, fontFamily: fontFamilies.pretendardBold },
-    optional: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
-    input: { backgroundColor: colors.surface, height: 52, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, color: colors.textPrimary, fontSize: 16 },
-    note: { color: colors.textSecondary, fontSize: 14 },
-    retry: { color: colors.primaryPressed, fontSize: 14 },
-    error: { color: colors.danger, fontSize: 12 },
-    success: { color: colors.success, fontSize: 12 },
-    save: { height: 56, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-    disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled },
-    saveText: { color: colors.onPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    choice: { ...a.chip, flexBasis: '30%', flexGrow: 1, height: 40 },
+    selected: a.on,
+    choiceText: a.chipText,
+    selectedText: a.onText,
+    optional: { color: colors.textSecondary },
+    input: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, height: 48, paddingHorizontal: 12 },
+    note: a.note,
+    retry: a.link,
+    error: { ...a.p12, color: colors.danger },
+    success: { ...a.p12, color: colors.success },
+    save: a.go,
+    disabled: { ...a.goOff, boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)' },
+    disabledText: { color: colors.textDisabled },
+    saveText: a.goText,
   } as const;
 }

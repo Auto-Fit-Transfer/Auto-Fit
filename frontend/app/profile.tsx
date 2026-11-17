@@ -11,6 +11,7 @@ import { getApiErrorMessage } from '@/src/api/client';
 import { CommunityAvatar } from '@/src/components/community';
 import { BirthDatePicker } from '@/src/components/auth';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 import { Text, TextInput } from '@/src/components/common';
 
 function validBirthDate(value: string) {
@@ -227,36 +228,38 @@ export default function ProfileScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: my picture on top, then the questions with pixel letters, the one button on its ledge.
+  const a = aForm(colors);
   return {
-    screen: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: 20 },
-    avatarBlock: { alignItems: 'center', marginTop: 28, marginBottom: 32, gap: 8 },
-    avatarCaption: { fontFamily: fontFamilies.pretendardMedium, color: colors.textPrimary, fontSize: 14 },
-    form: { gap: 22 },
-    field: { gap: 9 },
-    label: { fontFamily: fontFamilies.pretendardMedium, fontSize: 14, color: colors.textPrimary },
-    optional: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
-    input: { minHeight: 52, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, justifyContent: 'center', fontSize: 16, color: colors.textPrimary, backgroundColor: colors.surface },
+    screen: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    content: { paddingHorizontal: 16 },
+    avatarBlock: { alignItems: 'center', gap: 6, marginBottom: 22, marginTop: 16 },
+    avatarCaption: { ...a.p15, color: colors.ink },
+    form: { gap: 18 },
+    field: { gap: 8 },
+    label: { ...a.q, marginBottom: 0 },
+    optional: { color: colors.textSecondary },
+    input: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, justifyContent: 'center', minHeight: 48, paddingHorizontal: 12 },
     dateInput: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-    inputText: { fontSize: 16, color: colors.textPrimary },
-    helper: { fontSize: 12, color: colors.textSecondary, lineHeight: 18 },
-    unavailable: { backgroundColor: colors.surface, justifyContent: 'center' },
-    genderRow: { flexDirection: 'row', gap: 9 },
-    gender: { backgroundColor: colors.background, flex: 1, height: 40, borderWidth: 1, borderColor: colors.border, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
-    genderSelected: { borderColor: colors.primary, backgroundColor: colors.primary },
-    genderText: { fontSize: 14, color: colors.textSecondary },
-    genderTextSelected: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold },
-    healthLink: { backgroundColor: colors.surface, minHeight: 60, padding: 14, borderWidth: 1, borderColor: colors.border, borderRadius: 12, gap: 4 },
-    healthLinkText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-    message: { color: colors.textSecondary, marginTop: 30 },
-    error: { color: colors.danger, marginTop: 18 },
-    success: { color: colors.success, marginTop: 18 },
+    inputText: { ...a.p15, color: colors.ink },
+    helper: a.note,
+    unavailable: { backgroundColor: colors.surfaceMuted },
+    genderRow: { flexDirection: 'row', gap: 8 },
+    gender: a.seg,
+    genderSelected: a.segOn,
+    genderText: a.segText,
+    genderTextSelected: a.onText,
+    healthLink: { ...a.card, gap: 2, padding: 14 },
+    healthLinkText: { ...a.p15, color: colors.ink },
+    message: { ...a.p15, color: colors.textBody, marginTop: 30 },
+    error: { ...a.p12, color: colors.danger, marginTop: 14 },
+    success: { ...a.p12, color: colors.success, marginTop: 14 },
     retry: { paddingVertical: 14 },
-    retryText: { color: colors.primary },
-    footer: { backgroundColor: colors.background, paddingHorizontal: 20, paddingTop: 12 },
-    save: { height: 56, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-    saveDisabled: { backgroundColor: colors.surfaceMuted },
+    retryText: a.link,
+    footer: { backgroundColor: colors.background, paddingHorizontal: 16, paddingTop: 12 },
+    save: a.go,
+    saveDisabled: { ...a.goOff, boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)' },
     disabledText: { color: colors.textDisabled },
-    saveText: { fontFamily: fontFamilies.pretendardBold, color: colors.onPrimary, fontSize: 16 },
+    saveText: a.goText,
   } as const;
 }

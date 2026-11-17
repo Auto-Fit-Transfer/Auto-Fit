@@ -10,6 +10,7 @@ import XIcon from '@/assets/icons/ui/x.svg';
 import { getApiErrorMessage } from '@/src/api/client';
 import { AppBottomSheet, Text, TextInput } from '@/src/components/common';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 
 type Props = { visible: boolean; onClose: () => void };
 
@@ -97,7 +98,7 @@ export function AllergySettingsSheet({ visible, onClose }: Props) {
     <AppBottomSheet
       visible={visible}
       onClose={onClose}
-      title="식단 설정"
+      title="알레르기"
       scrollable="when-overflow"
       keyboardShouldPersistTaps="handled"
       contentStyle={styles.content}
@@ -121,7 +122,6 @@ export function AllergySettingsSheet({ visible, onClose }: Props) {
       ) : null}
       {loaded ? (
         <>
-          <Text style={styles.sectionTitle}>알레르기</Text>
           <View style={styles.chips}>
             <Pressable
               accessibilityRole="checkbox"
@@ -147,7 +147,7 @@ export function AllergySettingsSheet({ visible, onClose }: Props) {
                 onPress={() => { setCustomNames((values) => values.filter((value) => value !== name)); setSaved(false); }}
                 style={[styles.chip, styles.selected]}
               >
-                <View style={styles.customChip}><Text style={styles.selectedText}>{name}</Text><XIcon color={colors.primary} height={14} width={14} /></View>
+                <View style={styles.customChip}><Text style={styles.selectedText}>{name}</Text><XIcon color={colors.onPrimary} height={14} width={14} /></View>
               </Pressable>
             ))}
           </View>
@@ -169,7 +169,7 @@ export function AllergySettingsSheet({ visible, onClose }: Props) {
             <Text style={styles.referenceTitle}>ⓘ 참고용 정보예요</Text>
             <Text style={styles.note}>음식을 먹기 전에는 성분표를 꼭 확인해 주세요.</Text>
           </View>
-          {saved ? <Text accessibilityRole="alert" style={styles.success}>식단 설정을 저장했어요.</Text> : null}
+          {saved ? <Text accessibilityRole="alert" style={styles.success}>알레르기를 저장했어요.</Text> : null}
         </>
       ) : null}
       {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
@@ -178,27 +178,29 @@ export function AllergySettingsSheet({ visible, onClose }: Props) {
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: outlined chips, violet for the ones that are mine.
+  const a = aForm(colors);
   return {
-    content: { gap: 14 },
-    sectionTitle: { fontSize: 14, fontFamily: fontFamilies.pretendardMedium, color: colors.textPrimary },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    chip: { backgroundColor: colors.surface, minHeight: 31, borderWidth: 1, borderColor: colors.border, borderRadius: 17, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
-    selected: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-    chipText: { fontSize: 12, color: colors.textBody },
+    content: { gap: 12 },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    chip: { ...a.chip, height: 36, paddingHorizontal: 12 },
+    selected: a.on,
+    chipText: a.chipText,
     customChip: { alignItems: 'center', flexDirection: 'row', gap: 4 },
-    selectedText: { fontSize: 12, color: colors.primary, fontFamily: fontFamilies.pretendardMedium },
+    selectedText: { ...a.p12, color: colors.onPrimary },
     addRow: { flexDirection: 'row', gap: 8 },
-    input: { backgroundColor: colors.surface, flex: 1, height: 52, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, fontSize: 16, color: colors.textPrimary },
-    addButton: { backgroundColor: colors.surface, width: 56, height: 52, borderWidth: 1, borderColor: colors.border, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    addText: { fontSize: 14, fontFamily: fontFamilies.pretendardMedium, color: colors.textBody },
-    reference: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, padding: 12, gap: 4 },
-    referenceTitle: { fontSize: 12, color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium },
-    note: { color: colors.textSecondary, fontSize: 12, lineHeight: 18 },
-    retry: { color: colors.primaryPressed, fontSize: 14 },
-    error: { color: colors.danger, fontSize: 12 },
-    success: { color: colors.success, fontSize: 12 },
-    save: { height: 56, borderRadius: 12, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-    disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled },
-    saveText: { color: colors.onPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    input: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, flex: 1, height: 48, paddingHorizontal: 12 },
+    addButton: { ...a.mini, height: 48, paddingHorizontal: 14 },
+    addText: a.miniText,
+    reference: { backgroundColor: colors.surface, borderColor: colors.track, borderRadius: 12, borderWidth: 2, gap: 2, padding: 12 },
+    referenceTitle: { ...a.p12, color: colors.ink },
+    note: a.note,
+    retry: a.link,
+    error: { ...a.p12, color: colors.danger },
+    success: { ...a.p12, color: colors.success },
+    save: a.go,
+    disabled: { ...a.goOff, boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)' },
+    disabledText: { color: colors.textDisabled },
+    saveText: a.goText,
   } as const;
 }
