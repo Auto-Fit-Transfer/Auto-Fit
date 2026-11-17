@@ -40,11 +40,13 @@ interface Props {
 }
 
 function createToneStyles(colors: Palette) {
+  // Renewal A: the words of a judgement are dark on a soft ground, never red letters; only the small
+  // square beside a range keeps the tone's own colour.
   return {
-    normal: { color: colors.primaryText, background: colors.primaryLight },
-    warning: { color: colors.warning, background: colors.warningLight },
-    danger: { color: colors.danger, background: colors.dangerLight },
-  } satisfies Record<AnalysisTone, { color: string; background: string }>;
+    normal: { color: colors.ink, background: colors.primaryLight, mark: colors.primary },
+    warning: { color: colors.ink, background: colors.warningLight, mark: colors.warning },
+    danger: { color: colors.ink, background: colors.dangerLight, mark: colors.danger },
+  } satisfies Record<AnalysisTone, { color: string; background: string; mark: string }>;
 }
 
 function SheetHeading({
@@ -80,7 +82,7 @@ function SheetHeading({
       </View>
       <Text
         maxFontSizeMultiplier={1}
-        numberOfLines={1}
+        numberOfLines={2}
         style={[
           styles.headingDescription,
           { fontSize: descriptionFontSize, lineHeight: descriptionLineHeight },
@@ -221,7 +223,7 @@ function CriterionContent({
         </View>
         <View style={styles.currentInfo}>
           <WarningCircleIcon color={colors.primaryPressed} height={16} width={16} />
-          <Text numberOfLines={1} style={styles.currentInfoText}>
+          <Text numberOfLines={2} style={styles.currentInfoText}>
             {criterion.metricName} 판정 결과는 사용자 조건에 따라 달라질 수 있어요.
           </Text>
         </View>
@@ -246,7 +248,7 @@ function CriterionContent({
             return (
               <View key={range.id} style={[styles.rangeRow, { borderColor: rangePalette.color }]}>
                 <View style={[styles.rangeLabel, { backgroundColor: rangePalette.background }]}>
-                  <View style={[styles.rangeDot, { backgroundColor: rangePalette.color }]} />
+                  <View style={[styles.rangeDot, { backgroundColor: rangePalette.mark }]} />
                   <Text style={styles.rangeLabelText}>{range.label}</Text>
                 </View>
                 <Text
@@ -256,7 +258,7 @@ function CriterionContent({
                   {range.value}
                 </Text>
                 {range.isCurrent ? (
-                  <View style={[styles.currentPill, { backgroundColor: rangePalette.color }]}>
+                  <View style={styles.currentPill}>
                     <Text style={styles.currentPillText}>현재 수치</Text>
                   </View>
                 ) : null}
@@ -439,7 +441,7 @@ function createStyles({ colors }: AppTheme) {
     metricName: { ...p15, color: colors.ink },
     metricValue: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
     metricDescription: { ...p12, alignSelf: 'stretch', color: colors.textBody },
-    statusBadge: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 2 },
+    statusBadge: { borderColor: colors.ink, borderRadius: 99, borderWidth: 2, paddingHorizontal: 8, paddingVertical: 1 },
     statusText: p12,
     statusBadgeLarge: { paddingHorizontal: 12, paddingVertical: 4 },
     statusTextLarge: p15,
@@ -470,7 +472,7 @@ function createStyles({ colors }: AppTheme) {
     rangeDot: { height: 10, width: 10 },
     rangeLabelText: { ...p15, color: colors.ink },
     rangeValue: { ...p12, color: colors.textBody, flex: 1, flexShrink: 1, paddingLeft: 10 },
-    currentPill: { borderRadius: 99, marginRight: 10, paddingHorizontal: 6, paddingVertical: 2 },
+    currentPill: { backgroundColor: colors.primary, borderRadius: 99, marginRight: 10, paddingHorizontal: 6, paddingVertical: 2 },
     currentPillText: { ...p12, color: colors.onPrimary },
     referenceButton: { ...outline, alignItems: 'center', borderRadius: 12, boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)', flexDirection: 'row', height: 48, justifyContent: 'space-between', paddingHorizontal: 14 },
     referenceButtonLeft: { alignItems: 'center', flexDirection: 'row', gap: 8 },
