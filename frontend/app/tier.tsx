@@ -1,181 +1,58 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
-import BarbellIcon from '@/assets/icons/ui/barbell.svg';
-import CheckIcon from '@/assets/icons/ui/check.svg';
-import FileIcon from '@/assets/icons/ui/file-text.svg';
-import ForkKnifeIcon from '@/assets/icons/ui/fork-knife.svg';
+
 import { getHabitTierProgress, type HabitTierProgress } from '@/src/api/tier';
-import { getApiErrorMessage } from '@/src/api/client';
-import { Text } from '@/src/components/common';
-import { ScreenHeader } from '@/src/components/common/ScreenHeader';
-import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
-import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
-import { darkTierColors, nextTierName, tierBadges, tierColors, tierDescriptions, tierOrder } from '@/src/features/tier/tierBadges';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { TierView } from '@/src/components/a/TierView';
+import { useKeptWho } from '@/src/components/a/useKeptWho';
+import { nextTierName } from '@/src/features/tier/tierBadges';
+import { tierLook } from '@/src/features/tier/tierLook';
 
-// Points and limits come from the habit tier policy in the database.
-const ways = [
-  { title: '식단 관리', detail: '식사 기록 1번마다, 하루 3번까지', points: 2, Icon: ForkKnifeIcon, path: '/diet' as const },
-  { title: '운동 관리', detail: '추천 운동 완료, 하루 1번', points: 5, Icon: BarbellIcon, path: '/exercise' as const },
-  { title: '건강 데이터', detail: '검진 · 인바디 올리기, 한 달 1번', points: 15, Icon: FileIcon, path: '/health-data-management' as const },
-];
-
+// Renewal A's tier screen. Points and limits come from the habit tier policy in the database.
 export default function TierScreen() {
-  const { colors, isDark } = useAppTheme();
-  const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { preferences } = useDisplayPreferences();
-  const simple = preferences.simple_mode_enabled;
+  const who = useKeptWho();
   const [tier, setTier] = useState<HabitTierProgress | null>(null);
-  const [tierError, setTierError] = useState('');
-  const [tierLoading, setTierLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   useFocusEffect(useCallback(() => {
     let active = true;
     void getHabitTierProgress().then(({ progress }) => {
-      if (active) { setTier(progress); setTierError(''); }
-    }).catch((cause) => {
-      if (active) setTierError(getApiErrorMessage(cause));
-    }).finally(() => {
-      if (active) setTierLoading(false);
+      if (active) { setTier(progress); setFailed(false); }
+    }).catch(() => {
+      if (active) setFailed(true);
     });
     return () => { active = false; };
     // A retry replaces the focus callback and cancels its previous request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [attempt]));
-  const code = tier?.tier_code ?? 'CORE';
-  const Badge = tierBadges[code];
+  const look = tier ? tierLook(tier) : null;
   const nextName = tier ? nextTierName(tier) : null;
-  const tierRatio = tier
-    ? tier.next_level_points === null
-      ? 100
-      : Math.max(0, Math.min(100, ((tier.points - tier.level_start_points) / Math.max(1, tier.next_level_points - tier.level_start_points)) * 100))
-    : 0;
 
   return (
-    <View style={styles.root}>
-      <ScreenHeader
-        onBack={() => router.back()}
-        right={<SimpleReadButton text={`내 티어 화면입니다. ${tier ? `현재 ${tier.tier_name} ${tier.sublevel}, 활동 점수 ${tier.points}점입니다.` : '티어 정보를 확인하고 있어요.'}`} />}
-        title="내 티어"
-      />
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Badge height={120} width={120} />
-          <Text style={[styles.heroTitle, simple && simpleStyles.heroTitle]}>{tier ? `${tier.tier_name} ${tier.sublevel}` : tierLoading ? '티어를 불러오는 중…' : '티어를 확인할 수 없어요'}</Text>
-          {tier ? <Text style={styles.heroDescription}>{tierDescriptions[code]}</Text> : null}
-        </View>
-        {tierError ? (
-          <Pressable accessibilityRole="button" onPress={() => { setTierLoading(true); setAttempt((value) => value + 1); }} style={styles.tierError}>
-            <Text style={styles.tierErrorText}>티어 조회가 지연되고 있어요. 다시 시도하기</Text>
-          </Pressable>
-        ) : null}
-        {tier ? (
-          <View style={[styles.card, styles.pointsCard, simple && simpleStyles.card]}>
-            <View style={styles.spread}>
-              <Text style={styles.points}>
-                {tier.points.toLocaleString()}점
-                {nextName ? <Text style={styles.muted}>  / {nextName} · {tier.next_level_points?.toLocaleString()}점부터</Text> : null}
-              </Text>
-              <Text style={styles.left}>{tier.next_level_points === null ? '가장 높은 단계' : `${Math.max(0, tier.next_level_points - tier.points).toLocaleString()}점 남음`}</Text>
-            </View>
-            <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: tierRatio }} style={styles.track}>
-              <View style={[styles.fill, { backgroundColor: (isDark ? darkTierColors : tierColors)[code], width: `${tierRatio}%` }]} />
-            </View>
-            <View style={styles.spread}>
-              <Text style={styles.muted}>{tier.tier_name} {tier.sublevel} · {tier.level_start_points.toLocaleString()}점</Text>
-              {nextName ? <Text style={styles.muted}>{nextName} · {tier.next_level_points?.toLocaleString()}점</Text> : null}
-            </View>
-          </View>
-        ) : null}
-
-        <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle]}>이렇게 올려 보세요</Text>
-        <View style={styles.card}>
-          {ways.map(({ title, detail, points, Icon, path }, index) => (
-            <Pressable hitSlop={8} key={title} accessibilityRole="button" onPress={() => router.push(path)} style={[styles.way, simple && simpleStyles.way, index > 0 && styles.wayDivider]}>
-              <View style={styles.wayIcon}><Icon color={colors.textPrimary} height={22} width={22} /></View>
-              <View style={styles.wayCopy}>
-                <Text style={[styles.wayTitle, simple && simpleStyles.wayTitle]}>{title}</Text>
-                <Text style={styles.muted}>{detail}</Text>
-              </View>
-              <View style={styles.pill}>
-                <CheckIcon color={colors.success} height={14} width={14} />
-                <Text style={styles.pillText}>+{points}점</Text>
-              </View>
-              <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
-            </Pressable>
-          ))}
-        </View>
-
-        <Text style={[styles.sectionTitle, simple && simpleStyles.sectionTitle]}>티어 단계</Text>
-        <View style={[styles.card, styles.steps]}>
-          <View style={styles.stepRow}>
-            {tierOrder.map((name) => {
-              const StepBadge = tierBadges[name];
-              const current = name === tier?.tier_code;
-              const size = current ? 56 : 40;
-              return (
-                <View key={name} style={simple ? simpleStyles.step : styles.step}>
-                  <StepBadge height={size} width={size} />
-                  <Text numberOfLines={1} style={[styles.stepName, current && { color: isDark ? colors.tier[name].fg : tierColors[name] }]}>{name}</Text>
-                  {current ? <Text style={styles.now}>지금</Text> : null}
-                </View>
-              );
-            })}
-          </View>
-          <Text style={styles.muted}>CORE부터 PEAK까지, 티어마다 3단계씩 올라가요.</Text>
-        </View>
-      </ScrollView>
-    </View>
+    <TierView
+      message={tier ? null : failed ? '티어를 불러오지 못했어요. 다시 시도하기' : '티어를 불러오는 중…'}
+      onBack={() => router.back()}
+      onRetry={failed ? () => { setFailed(false); setAttempt((value) => value + 1); } : undefined}
+      tier={
+        tier && look
+          ? {
+              index: look.index,
+              name: tier.tier_name,
+              stars: tier.sublevel,
+              ratio: look.ratio,
+              points: tier.points,
+              left: tier.next_level_points === null ? '가장 높은 단계예요' : `${nextName}까지 ${look.left}`,
+              from: `${tier.tier_name} ${tier.sublevel} · ${tier.level_start_points.toLocaleString('ko-KR')}점`,
+              to: nextName && tier.next_level_points !== null ? `${nextName} · ${tier.next_level_points.toLocaleString('ko-KR')}점` : null,
+            }
+          : null
+      }
+      ways={[
+        { title: '식단 관리', detail: '식사 기록 1번마다, 하루 3번까지', points: 2, icon: 0, onPress: () => router.push('/diet') },
+        { title: '운동 관리', detail: '추천 운동 완료, 하루 1번', points: 5, icon: 1, onPress: () => router.push('/exercise') },
+        { title: '건강 데이터', detail: '검진 · 인바디 올리기, 한 달 1번', points: 15, icon: 3, onPress: () => router.push('/health-data-management') },
+      ]}
+      who={who}
+    />
   );
 }
-
-function createStyles({ colors }: AppTheme) {
-  // Renewal A: one dark outline on every piece, pixel letters, violet for how far I am, gold for points.
-  const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
-  const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
-  return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    content: { alignSelf: 'center', maxWidth: 412, paddingHorizontal: 16, width: '100%' },
-    hero: { alignItems: 'center', paddingTop: 8 },
-    heroTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 42, marginTop: 8 },
-    heroDescription: { ...p15, color: colors.textBody, marginTop: 2, textAlign: 'center' },
-    tierError: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, marginTop: 16, padding: 12 },
-    tierErrorText: { ...p12, color: colors.danger },
-    card: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 18, borderWidth: 2, boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)', overflow: 'hidden' },
-    pointsCard: { gap: 10, marginTop: 24, padding: 16 },
-    spread: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'space-between' },
-    points: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
-    left: { ...p12, color: colors.ink },
-    muted: { ...p12, color: colors.textSecondary },
-    track: { backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 99, borderWidth: 2, height: 16, overflow: 'hidden' },
-    fill: { borderRadius: 99, height: '100%' },
-    sectionTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28, marginBottom: 12, marginTop: 24 },
-    way: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 76, paddingHorizontal: 14, paddingVertical: 10 },
-    wayDivider: { borderTopColor: colors.track, borderTopWidth: 2 },
-    wayIcon: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, height: 40, justifyContent: 'center', width: 40 },
-    wayCopy: { flex: 1, gap: 2, minWidth: 0 },
-    wayTitle: { ...p15, color: colors.ink },
-    pill: { alignItems: 'center', backgroundColor: colors.gold, borderColor: colors.ink, borderRadius: 999, borderWidth: 2, flexDirection: 'row', gap: 4, height: 26, paddingHorizontal: 8 },
-    pillText: { ...p12, color: '#2B2000' },
-    steps: { gap: 16, padding: 16 },
-    stepRow: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between' },
-    step: { alignItems: 'center', flex: 1, gap: 4 },
-    stepName: { ...p12, color: colors.textSecondary },
-    now: { ...p12, color: colors.ink },
-  } as const;
-}
-
-const simpleStyles = StyleSheet.create({
-  heroTitle: {},
-  card: { padding: 20 },
-  sectionTitle: {},
-  way: { minHeight: 96 },
-  wayTitle: {},
-  // Equal columns clip BALANCE at the enlarged size; the row's space-between spreads natural widths instead.
-  step: { alignItems: 'center', gap: 4 },
-});

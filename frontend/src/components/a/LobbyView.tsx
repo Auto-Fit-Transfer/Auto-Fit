@@ -261,7 +261,7 @@ export function LobbyView({ name, who, tier, quests, bell, steps, onMe, onAsk, o
             <View style={styles.pickShow}>
               {([0, 4] as const).map((at) => (
                 <View key={at} style={styles.pickCell}>
-                  <Hero tier={at} who={pick} zoom={1} />
+                  <Hero exact tier={at} who={pick} zoom={1} />
                   <Text style={styles.small}>{at ? 'PEAK' : '지금'}</Text>
                 </View>
               ))}

@@ -35,7 +35,7 @@ export function ALoading({ label = '불러오는 중', children }: { label?: str
       </View>
       <View style={styles.walk}>
         {/* The two frames of the walk, about as fast as on the home screen. */}
-        <Hero frame={(Math.floor(step / 4) % 2) as 0 | 1} tier={0} who={who} />
+        <Hero frame={(Math.floor(step / 4) % 2) as 0 | 1} exact tier={0} who={who} />
         <View style={styles.shadow} />
       </View>
       <View style={styles.wordRow}>

@@ -62,7 +62,7 @@ export function JoinScene({
           {([0, 4] as const).map((tier) => (
             <View key={tier} style={styles.cell}>
               <Text style={styles.label}>{tier ? 'PEAK' : '지금'}</Text>
-              <Hero tier={tier} who={who} zoom={zoom} />
+              <Hero exact tier={tier} who={who} zoom={zoom} />
             </View>
           ))}
           <View pointerEvents="none" style={[styles.arrowAt, { bottom: 16 * k + 62 * zoom }]}>
@@ -72,7 +72,7 @@ export function JoinScene({
         </View>
       ) : (
         <View style={[styles.one, { bottom: 16 * k }]}>
-          <Hero tier={tier} who={who} zoom={zoom} />
+          <Hero exact tier={tier} who={who} zoom={zoom} />
         </View>
       )}
       {children}

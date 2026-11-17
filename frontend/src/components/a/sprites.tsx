@@ -1,5 +1,7 @@
 import { Image, Platform, View, type ImageStyle } from 'react-native';
 
+import { lookOf, useWorn } from './worn';
+
 // Renewal A's pixel pictures (assets/a). One picture pixel is two screen points; the files are stored
 // four times as large with hard edges, so a phone only ever shrinks them and the pixels stay sharp.
 export type Who = 'worker-f' | 'worker-m' | 'student-f' | 'student-m';
@@ -33,27 +35,33 @@ export const HERO_HEIGHT = CELL * 2;
 
 // The character at a tier (0 CORE … 4 PEAK); frame 0 or 1 are the two steps of the walk.
 // `proud` draws it standing with its hands on its hips instead (the one that answers in 물어보기).
+// It is drawn in the look I wear (a tier I passed, chosen on the tier screen) unless `exact` asks for
+// the tier as given: the tier screen's own row, the choice of who to be, joining, loading.
 export function Hero({
   who,
   tier,
   frame = 0,
   zoom = 2,
   proud = false,
+  exact = false,
 }: {
   who: Who;
   tier: number;
   frame?: 0 | 1;
   zoom?: number;
   proud?: boolean;
+  exact?: boolean;
 }) {
   const { source, w } = (proud ? prouds : strips)[who];
+  const worn = useWorn();
+  const at = exact ? tier : lookOf(tier, worn);
   return (
     <View accessible={false} style={{ height: CELL * zoom, overflow: 'hidden', width: w * zoom }}>
       <Image
         resizeMode="stretch"
         source={source}
         style={[
-          { height: CELL * 2 * zoom, left: -tier * w * zoom, position: 'absolute', top: -frame * CELL * zoom, width: w * 5 * zoom },
+          { height: CELL * 2 * zoom, left: -at * w * zoom, position: 'absolute', top: -frame * CELL * zoom, width: w * 5 * zoom },
           pixelated,
         ]}
       />
@@ -64,13 +72,14 @@ export function Hero({
 // Just the head, for the name card and the marker on the road.
 export function HeroHead({ who, tier, zoom = 1 }: { who: Who; tier: number; zoom?: number }) {
   const { source, w } = strips[who];
+  const at = lookOf(tier, useWorn());
   return (
     <View accessible={false} style={{ height: 24 * zoom, overflow: 'hidden', width: 26 * zoom }}>
       <Image
         resizeMode="stretch"
         source={source}
         style={[
-          { height: CELL * zoom, left: -((tier * w) / 2 + w / 4 - 13) * zoom, position: 'absolute', top: -8 * zoom, width: w * 2.5 * zoom },
+          { height: CELL * zoom, left: -((at * w) / 2 + w / 4 - 13) * zoom, position: 'absolute', top: -8 * zoom, width: w * 2.5 * zoom },
           pixelated,
         ]}
       />
