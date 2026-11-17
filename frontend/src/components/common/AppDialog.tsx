@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 
@@ -31,7 +31,7 @@ export function AppDialog({
   const styles = useThemedStyles(createStyles);
   return (
     <Modal animationType="fade" onRequestClose={onCancel} transparent visible={visible}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.overlay}>
         <Pressable
           accessibilityLabel="대화상자 닫기"
           onPress={onCancel}
@@ -77,7 +77,7 @@ export function AppDialog({
             )}
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -1,19 +1,12 @@
 import { forgetUploadedFile, rememberUploadedFile, uploadedFileFor } from '@/src/features/health-data/healthUploadSession';
 import { logError } from '@/src/lib/logError';
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Alert,
-  Image,
   Keyboard,
-  Platform,
-  Pressable,
-  ScrollView,
-  useWindowDimensions,
-  View,
-  type ViewStyle } from 'react-native';
+  View } from 'react-native';
 import type { SvgProps } from 'react-native-svg';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BMIIcon from '@/assets/icons/data/BMI.svg';
 import BMRIcon from '@/assets/icons/data/BMR.svg';
@@ -28,7 +21,6 @@ import HeightIcon from '@/assets/icons/data/Height.svg';
 import HemoglobinIcon from '@/assets/icons/data/Hemoglobin.svg';
 import MuscleIcon from '@/assets/icons/data/Muscle.svg';
 import WeightIcon from '@/assets/icons/data/Weight.svg';
-import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import {
   confirmHealthDocument,
   getHealthDocument,
@@ -40,14 +32,13 @@ import {
 } from '@/src/api/healthDocuments';
 import { awardTierActivity } from '@/src/api/tier';
 import {
-  AppCard,
-  CustomScrollIndicator,
-  useCustomScrollIndicator,
   Text,
   TextInput,
 } from '@/src/components/common';
 import { aForm } from '@/src/components/a/form';
+import { PaperValuesView } from '@/src/components/a/PaperValuesView';
 import { PaperFailed, PaperReading } from '@/src/components/a/PaperWait';
+import { AppDialog } from '@/src/components/common/AppDialog';
 import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
 import { HealthDataUploadBottomSheet, useHealthFileSelect } from '@/src/components/health-data/HealthDataUploadBottomSheet';
 import {
@@ -58,14 +49,6 @@ import {
 } from '@/src/features/health-data/ocrResults';
 import { type SelectedHealthFile } from '@/src/features/health-data/useHealthFilePicker';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-
-const referenceWidth = 412;
-const referenceHeight = 917;
-const referenceTitleTop = 38;
-const keyboardSafeGap = 16;
-const baseBottomContentPadding = 20;
-const webInnerScrollStyle =
-  Platform.OS === 'web' ? ({ overscrollBehavior: 'contain' } as ViewStyle) : undefined;
 
 const loadingResult: OCRResultItem = {
   apiData: {},
@@ -456,103 +439,6 @@ function buildExtractedDataUpdate(
   };
 }
 
-function MetricRow({
-  definition,
-  disabled,
-  diastolicDraft,
-  draftValue,
-  isEditing,
-  onChangeDraft,
-  onChangeDiastolicDraft,
-  onChangeSystolicDraft,
-  onRowRef,
-  onToggleEdit,
-  systolicDraft,
-  value,
-}: {
-  definition: HealthMetricDefinition;
-  disabled: boolean;
-  diastolicDraft: string;
-  draftValue: string;
-  isEditing: boolean;
-  onChangeDraft: (value: string) => void;
-  onChangeDiastolicDraft: (value: string) => void;
-  onChangeSystolicDraft: (value: string) => void;
-  onRowRef: (instance: View | null) => void;
-  onToggleEdit: () => void;
-  systolicDraft: string;
-  value: string;
-}) {
-  const { colors } = useAppTheme();
-  const styles = useThemedStyles(createStyles);
-  const box = isEditing ? (
-    <View style={styles.metricInputBox}>
-      {definition.inputKind === 'bloodPressure' ? (
-        <>
-          <TextInput
-            accessibilityLabel="수축기 혈압"
-            autoFocus
-            keyboardType="numeric"
-            maxLength={3}
-            onChangeText={(text) => onChangeSystolicDraft(text.replace(/[^0-9]/g, ''))}
-            returnKeyType="next"
-            selectionColor={colors.primary}
-            style={[styles.metricInput, styles.bloodPressureInput]}
-            value={systolicDraft}
-          />
-          <Text style={styles.metricUnit}>/</Text>
-          <TextInput
-            accessibilityLabel="이완기 혈압"
-            keyboardType="numeric"
-            maxLength={3}
-            onChangeText={(text) => onChangeDiastolicDraft(text.replace(/[^0-9]/g, ''))}
-            onSubmitEditing={onToggleEdit}
-            returnKeyType="done"
-            selectionColor={colors.primary}
-            style={[styles.metricInput, styles.bloodPressureInput]}
-            value={diastolicDraft}
-          />
-        </>
-      ) : (
-        <TextInput
-          accessibilityLabel={definition.label}
-          autoFocus
-          keyboardType={definition.keyboardType}
-          maxLength={definition.inputKind === 'date' ? 8 : undefined}
-          onChangeText={(text) => onChangeDraft(sanitizeMetricInput(text, definition.inputKind))}
-          onSubmitEditing={onToggleEdit}
-          returnKeyType="done"
-          selectionColor={colors.primary}
-          style={styles.metricInput}
-          value={draftValue}
-        />
-      )}
-      {definition.unit ? <Text style={styles.metricUnit}>{definition.unit}</Text> : null}
-    </View>
-  ) : null;
-  return (
-    <View ref={onRowRef} style={[styles.metricRow, !value && !isEditing && styles.metricRowMissing]}>
-      <Text style={styles.metricLabel}>{definition.label}</Text>
-      {isEditing ? box : (
-        <Text numberOfLines={1} style={[styles.metricValueText, !value && styles.metricMissing]}>
-          {value || '못 읽었어요'}
-          {value && definition.unit ? <Text style={styles.metricUnit}> {definition.unit}</Text> : null}
-        </Text>
-      )}
-      <Pressable
-        accessibilityLabel={`${definition.label} ${isEditing ? '저장' : '고치기'}`}
-        accessibilityRole="button"
-        disabled={disabled}
-        hitSlop={8}
-        onPress={onToggleEdit}
-        style={({ pressed }) => [isEditing ? styles.saveButton : styles.modifyButton, pressed && styles.pressed]}
-      >
-        <Text style={isEditing ? styles.saveText : styles.modifyText}>{isEditing ? '저장' : '고치기'}</Text>
-      </Pressable>
-    </View>
-  );
-}
-
 export default function OCRResultScreen() {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
@@ -561,8 +447,6 @@ export default function OCRResultScreen() {
     source?: string;
     uploads?: string;
   }>();
-  const insets = useSafeAreaInsets();
-  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
   const uploadItems = useMemo(() => parseUploadRouteItems(uploads), [uploads]);
   const uploadedFileIds = useRef<string[]>([]);
   useEffect(() => {
@@ -576,24 +460,12 @@ export default function OCRResultScreen() {
   const [isSaving, setIsSaving] = useState(false);
   const [isReuploading, setIsReuploading] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isInnerScrollActive, setIsInnerScrollActive] = useState(false);
   const [isReuploadSheetOpen, setIsReuploadSheetOpen] = useState(false);
   const [metricValues, setMetricValues] = useState<Record<string, string>>(() => ({}));
   const [editingMetricKey, setEditingMetricKey] = useState<OCRMetricKey | null>(null);
   const [draftValue, setDraftValue] = useState('');
   const [systolicDraft, setSystolicDraft] = useState('');
   const [diastolicDraft, setDiastolicDraft] = useState('');
-  const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState(0); // 추가
-  const [keyboardCanvasOffset, setKeyboardCanvasOffset] = useState(0);
-  const [measuredContentBottom, setMeasuredContentBottom] = useState(0);
-  const correctionFrame = useRef<number | null>(null);
-  const editingMetricKeyRef = useRef<OCRMetricKey | null>(null);
-  const metricRowRefs = useRef<Partial<Record<OCRMetricKey, View>>>({});
-  const metricListScrollRef = useRef<ScrollView>(null);
-  const keyboardCanvasOffsetRef = useRef(0);
-  const screenViewportRef = useRef<View>(null);
-  const innerScrollIndicator = useCustomScrollIndicator();
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -669,30 +541,7 @@ export default function OCRResultScreen() {
     };
   }, [results]);
 
-  const availableWidth = Math.max(0, windowWidth - insets.left - insets.right);
-  const widthScale = Math.min(1, availableWidth / referenceWidth);
-  const scale = widthScale;
-  const scaledWidth = referenceWidth * widthScale;
-  const canvasLeft = insets.left + (availableWidth - scaledWidth) / 2;
-  const safeTopAdjustment = Math.max(0, insets.top + 8 - referenceTitleTop * scale);
   const currentResult = results[currentIndex] ?? loadingResult;
-  const uploadFileTop = 84;
-  const tabsTop = 162;
-  const extractedCardTop = 224;
-  // The list takes spare height on a tall screen; a short one scrolls with the button below it.
-  const bottomButtonTop = (windowHeight - insets.bottom - safeTopAdjustment) / scale - 76;
-  const extractedCardHeight = Math.max(380, bottomButtonTop - 44 - 12 - extractedCardTop);
-  const privacyTop = extractedCardTop + extractedCardHeight + 12;
-  const nextButtonTop = privacyTop + 44;
-  const contentBottom = Math.max(measuredContentBottom, nextButtonTop + 56);
-  const bottomContentPadding = baseBottomContentPadding + insets.bottom;
-  const contentViewportHeight = safeTopAdjustment + contentBottom * scale;
-  const renderedContentHeight = contentViewportHeight + bottomContentPadding;
-  const needsScroll = contentViewportHeight > windowHeight;
-  const scrollIndicator = useCustomScrollIndicator({
-    enabled: needsScroll,
-    showInitially: true,
-  });
   const metricDefinitions =
     currentResult.type === 'health_checkup' ? healthMetricDefinitions : inbodyMetricDefinitions;
   const uploadedFile: SelectedHealthFile = {
@@ -718,91 +567,6 @@ export default function OCRResultScreen() {
     setLeaveDialogOpen(false);
     router.replace('/home');
   };
-
-  const centerFocusedRow = useCallback(
-    (key: OCRMetricKey, activeKeyboardTop: number) => {
-      const row = metricRowRefs.current[key];
-      const viewport = screenViewportRef.current;
-
-      if (!row || !viewport || editingMetricKeyRef.current !== key) {
-        return;
-      }
-
-      viewport.measureInWindow((_viewportX, viewportTop, _viewportWidth, viewportHeight) => {
-        if (editingMetricKeyRef.current !== key) return;
-
-        row.measureInWindow((_rowX, rowTop, _rowWidth, rowHeight) => {
-          if (editingMetricKeyRef.current !== key) return;
-
-          // 실제로 사용할 수 있는 화면의 위/아래
-          const visibleTop = Math.max(viewportTop, insets.top);
-          const visibleBottom = Math.min(
-            viewportTop + viewportHeight,
-            activeKeyboardTop - keyboardSafeGap,
-          );
-
-          // 키보드를 제외한 화면의 정확한 세로 중앙
-          const visibleCenter = visibleTop + (visibleBottom - visibleTop) / 2;
-
-          // 현재 수정 중인 Row의 세로 중앙
-          const rowCenter = rowTop + rowHeight / 2;
-
-          // Row 중심을 화면 중심으로 옮기기 위해 필요한 거리
-          const deltaY = rowCenter - visibleCenter;
-
-          const targetOffset = Math.max(0, keyboardCanvasOffsetRef.current + deltaY);
-
-          keyboardCanvasOffsetRef.current = targetOffset;
-          setKeyboardCanvasOffset(targetOffset);
-        });
-      });
-    },
-    [insets.top],
-  );
-
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener('keyboardDidShow', (event) => {
-      setKeyboardTop(event.endCoordinates.screenY);
-      setKeyboardHeight(event.endCoordinates.height); // 추가
-    });
-    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardTop(null);
-      setKeyboardHeight(0); // 추가
-      keyboardCanvasOffsetRef.current = 0;
-      setKeyboardCanvasOffset(0);
-      if (correctionFrame.current !== null) {
-        cancelAnimationFrame(correctionFrame.current);
-        correctionFrame.current = null;
-      }
-    });
-
-    return () => {
-      if (correctionFrame.current !== null) cancelAnimationFrame(correctionFrame.current);
-      showSubscription.remove();
-      hideSubscription.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    editingMetricKeyRef.current = editingMetricKey;
-    if (!editingMetricKey || keyboardTop === null) return;
-
-    if (correctionFrame.current !== null) cancelAnimationFrame(correctionFrame.current);
-    correctionFrame.current = requestAnimationFrame(() => {
-      correctionFrame.current = null;
-
-      if (editingMetricKeyRef.current === editingMetricKey) {
-        centerFocusedRow(editingMetricKey, keyboardTop);
-      }
-    });
-
-    return () => {
-      if (correctionFrame.current !== null) {
-        cancelAnimationFrame(correctionFrame.current);
-        correctionFrame.current = null;
-      }
-    };
-  }, [centerFocusedRow, editingMetricKey, keyboardTop, keyboardHeight]);
 
   const applyEditingDraft = (current: Record<string, string>) => {
     if (!editingMetricKey) return current;
@@ -833,7 +597,6 @@ export default function OCRResultScreen() {
     }
 
     if (editingMetricKey === key) {
-      editingMetricKeyRef.current = null;
       setEditingMetricKey(null);
       return;
     }
@@ -848,7 +611,6 @@ export default function OCRResultScreen() {
       setDraftValue(isDate ? currentValue.replace(/[^0-9]/g, '') : currentValue);
     }
 
-    editingMetricKeyRef.current = key;
     setEditingMetricKey(key);
   };
 
@@ -893,17 +655,12 @@ export default function OCRResultScreen() {
 
     const previousIndex = currentIndex - 1;
     const previousResult = results[previousIndex];
-    editingMetricKeyRef.current = null;
-    metricRowRefs.current = {};
     setEditingMetricKey(null);
     setDraftValue('');
     setSystolicDraft('');
     setDiastolicDraft('');
     setCurrentIndex(previousIndex);
     setMetricValues({ ...previousResult.data });
-    metricListScrollRef.current?.scrollTo({ animated: false, y: 0 });
-    keyboardCanvasOffsetRef.current = 0;
-    setKeyboardCanvasOffset(0);
     Keyboard.dismiss();
   };
 
@@ -942,7 +699,7 @@ export default function OCRResultScreen() {
         );
         savedResult = updatedResult;
         setResults((current) =>
-          current.map((result, index) => (index === currentIndex ? savedResult : result)),
+          current.map((result, index) => (index === currentIndex ? updatedResult : result)),
         );
         setMetricValues({ ...savedResult.data });
       }
@@ -980,17 +737,12 @@ export default function OCRResultScreen() {
 
     const nextIndex = currentIndex + 1;
     const nextResult = results[nextIndex];
-    editingMetricKeyRef.current = null;
-    metricRowRefs.current = {};
     setEditingMetricKey(null);
     setDraftValue('');
     setSystolicDraft('');
     setDiastolicDraft('');
     setCurrentIndex(nextIndex);
     setMetricValues({ ...nextResult.data });
-    metricListScrollRef.current?.scrollTo({ animated: false, y: 0 });
-    keyboardCanvasOffsetRef.current = 0;
-    setKeyboardCanvasOffset(0);
     Keyboard.dismiss();
   };
 
@@ -1007,29 +759,9 @@ export default function OCRResultScreen() {
     }
   };
 
-  const metricRows = metricDefinitions.map((definition) => (
-    <MetricRow
-      key={definition.key}
-      definition={definition}
-      disabled={!canEditCurrentResult}
-      diastolicDraft={diastolicDraft}
-      draftValue={editingMetricKey === definition.key ? draftValue : ''}
-      isEditing={editingMetricKey === definition.key}
-      onChangeDraft={setDraftValue}
-      onChangeDiastolicDraft={setDiastolicDraft}
-      onChangeSystolicDraft={setSystolicDraft}
-      onRowRef={(instance) => {
-        if (instance) {
-          metricRowRefs.current[definition.key] = instance;
-        } else {
-          delete metricRowRefs.current[definition.key];
-        }
-      }}
-      onToggleEdit={() => handleMetricEdit(definition.key)}
-      systolicDraft={systolicDraft}
-      value={metricValues[definition.key] ?? ''}
-    />
-  ));
+  const editing = metricDefinitions.find((definition) => definition.key === editingMetricKey) ?? null;
+  const waiting = isSaving || isReuploading || currentResult.ocrStatus !== 'completed';
+  const kinds = [['health_checkup', '건강검진'], ['body_composition', '인바디']] as const;
 
   if (isLoadingResults || results.length === 0) return <PaperReading onBack={handleBack} />;
 
@@ -1051,196 +783,81 @@ export default function OCRResultScreen() {
   }
 
   return (
-    <View ref={screenViewportRef} style={styles.root}>
-      <ScrollView
-        bounces={false}
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            minHeight: Math.max(windowHeight, renderedContentHeight),
-            paddingBottom: bottomContentPadding,
-            paddingTop: safeTopAdjustment,
-          },
-        ]}
-        keyboardDismissMode="none"
-        keyboardShouldPersistTaps="always"
-        onContentSizeChange={scrollIndicator.onContentSizeChange}
-        onLayout={scrollIndicator.onLayout}
-        onMomentumScrollBegin={scrollIndicator.onMomentumScrollBegin}
-        onMomentumScrollEnd={scrollIndicator.onMomentumScrollEnd}
-        onScroll={scrollIndicator.onScroll}
-        onScrollBeginDrag={scrollIndicator.onScrollBeginDrag}
-        onScrollEndDrag={scrollIndicator.onScrollEndDrag}
-        overScrollMode="never"
-        scrollEnabled={needsScroll && !isInnerScrollActive}
-        scrollEventThrottle={16}
-        showsVerticalScrollIndicator={false}
+    <>
+      <PaperValuesView
+        busy={isSaving || isReuploading}
+        canEdit={canEditCurrentResult}
+        cells={metricDefinitions.map((definition) => ({ key: definition.key, label: definition.label, unit: definition.unit, value: metricValues[definition.key] ?? '' }))}
+        fileName={uploadedFile.name}
+        fileTime={uploadTimestamp}
+        kinds={kinds.map(([type, label]) => ({ has: results.some((result) => result.type === type), label, on: currentResult.type === type, type }))}
+        next={{ disabled: waiting, label: isFromHealthDataManagement ? '완료' : '다음' }}
+        note={currentResult.ocrStatus === 'completed' ? '읽어 온 수치는 분석과 추천에만 써요.' : '판독이 끝나면 읽어 온 수치를 확인할 수 있어요.'}
+        onBack={handleBack}
+        onCell={handleMetricEdit}
+        onHome={() => (hasUnsavedEdits ? setLeaveDialogOpen(true) : goHome())}
+        onKind={handleSelectResultType}
+        onNext={() => void handleNext()}
+        onReupload={() => setIsReuploadSheetOpen(true)}
+        previewUri={hasImagePreview ? uploadedFile.uri : null}
+      />
+      {/* The one value being changed: in the middle of the screen, clear of the keyboard. */}
+      <AppDialog
+        cancelText="취소"
+        confirmText="저장"
+        onCancel={() => setEditingMetricKey(null)}
+        onConfirm={() => (editing ? handleMetricEdit(editing.key) : undefined)}
+        title={editing?.label ?? ''}
+        visible={editing !== null}
       >
-        <View style={[styles.canvasSlot, { height: contentBottom * scale }]}>
-          <View
-            style={[
-              styles.canvas,
-              {
-                left: canvasLeft,
-                top: -keyboardCanvasOffset,
-                transform: [{ scale }],
-              },
-            ]}
-          >
-            <Pressable accessibilityLabel="뒤로 가기" accessibilityRole="button" hitSlop={12} onPress={handleBack} style={styles.backButton}>
-              <CaretLeftIcon color={colors.textPrimary} height={24} width={24} />
-            </Pressable>
-            <Text accessibilityRole="header" style={styles.screenTitle}>읽은 수치 확인</Text>
-            <Pressable
-              accessibilityLabel="홈으로 가기"
-              accessibilityRole="button"
-              hitSlop={12}
-              onPress={() => (hasUnsavedEdits ? setLeaveDialogOpen(true) : goHome())}
-              style={styles.homeButton}
-            >
-              <Text style={styles.homeText}>홈</Text>
-            </Pressable>
-
-            <AppCard
-              bordered
-              padding="none"
-              style={[styles.uploadFileCard, { top: uploadFileTop }]}
-            >
-              <View style={styles.uploadFileBottom}>
-                <View style={styles.filePreview}>
-                  {hasImagePreview ? (
-                    <Image
-                      accessibilityLabel={`${uploadedFile.name} 미리보기`}
-                      resizeMode="cover"
-                      source={{ uri: uploadedFile.uri }}
-                      style={styles.filePreviewImage}
-                    />
-                  ) : (
-                    // A sheet of paper with lines, where a photo of the paper cannot be shown.
-                    [0, 1, 2].map((line) => <View key={line} style={styles.paperLine} />)
-                  )}
-                </View>
-                <View style={styles.fileTexts}>
-                  <Text numberOfLines={1} style={styles.fileName}>
-                    {uploadedFile.name}
-                  </Text>
-                  <Text style={styles.uploadTime}>{uploadTimestamp}</Text>
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  disabled={isSaving || isReuploading}
-                  onPress={() => setIsReuploadSheetOpen(true)}
-                  style={({ pressed }) => [styles.reuploadButton, pressed && styles.pressed]}
-                >
-                  <Text style={styles.reuploadText}>다시 올리기</Text>
-                </Pressable>
-              </View>
-            </AppCard>
-
-            <View style={[styles.resultTabs, { top: tabsTop }]}>
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected: currentResult.type === 'health_checkup', disabled: !results.some((result) => result.type === 'health_checkup') }}
-                disabled={!results.some((result) => result.type === 'health_checkup')}
-                onPress={() => handleSelectResultType('health_checkup')}
-                style={[styles.resultTab, currentResult.type === 'health_checkup' && styles.resultTabActive]}
-              >
-                <Text style={[styles.resultTabText, currentResult.type === 'health_checkup' && styles.resultTabTextActive]}>건강검진</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="tab"
-                accessibilityState={{ selected: currentResult.type === 'body_composition', disabled: !results.some((result) => result.type === 'body_composition') }}
-                disabled={!results.some((result) => result.type === 'body_composition')}
-                onPress={() => handleSelectResultType('body_composition')}
-                style={[styles.resultTab, currentResult.type === 'body_composition' && styles.resultTabActive]}
-              >
-                <Text style={[styles.resultTabText, currentResult.type === 'body_composition' && styles.resultTabTextActive]}>인바디</Text>
-              </Pressable>
-            </View>
-
-            <AppCard
-              bordered
-              padding="none"
-              style={[styles.extractedCard, { height: extractedCardHeight, top: extractedCardTop }]}
-            >
-              <View style={styles.metricListViewport}>
-                <ScrollView
-                  key={currentResult.id}
-                  ref={metricListScrollRef}
-                  bounces={false}
-                  keyboardShouldPersistTaps="always"
-                  nestedScrollEnabled
-                  onContentSizeChange={innerScrollIndicator.onContentSizeChange}
-                  onLayout={innerScrollIndicator.onLayout}
-                  onMomentumScrollBegin={innerScrollIndicator.onMomentumScrollBegin}
-                  onMomentumScrollEnd={innerScrollIndicator.onMomentumScrollEnd}
-                  onScroll={innerScrollIndicator.onScroll}
-                  onScrollBeginDrag={innerScrollIndicator.onScrollBeginDrag}
-                  onScrollEndDrag={innerScrollIndicator.onScrollEndDrag}
-                  onTouchCancel={() => setIsInnerScrollActive(false)}
-                  onTouchEnd={() => setIsInnerScrollActive(false)}
-                  onTouchStart={() => setIsInnerScrollActive(true)}
-                  scrollEventThrottle={16}
-                  showsVerticalScrollIndicator={false}
-                  style={[styles.metricList, webInnerScrollStyle]}
-                >
-                  {metricRows}
-                </ScrollView>
-                <CustomScrollIndicator {...innerScrollIndicator.indicatorProps} rightInset={3} />
-              </View>
-            </AppCard>
-
-            <View style={[styles.privacyBox, { top: privacyTop }]}>
-              <Text style={styles.privacyText}>
-                {currentResult.ocrStatus === 'completed'
-                  ? '읽어 온 수치는 분석과 추천에만 써요.'
-                  : '판독이 끝나면 읽어 온 수치를 확인할 수 있어요.'}
-              </Text>
-            </View>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityState={{
-                disabled:
-                  isSaving ||
-                  isReuploading ||
-                  currentResult.ocrStatus !== 'completed',
-              }}
-              disabled={
-                isSaving ||
-                isReuploading ||
-                currentResult.ocrStatus !== 'completed'
-              }
-              onPress={() => void handleNext()}
-              onLayout={(event) => {
-                const { height, y } = event.nativeEvent.layout;
-                setMeasuredContentBottom(y + height);
-              }}
-              style={({ pressed }) => [
-                styles.nextButton,
-                { top: nextButtonTop },
-                (isSaving ||
-                  isReuploading ||
-                  currentResult.ocrStatus !== 'completed') &&
-                  styles.nextButtonDisabled,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={[styles.nextButtonText, (isSaving || isReuploading || currentResult.ocrStatus !== 'completed') && styles.disabledText]}>
-                {isFromHealthDataManagement ? '완료' : '다음'}
-              </Text>
-            </Pressable>
+        {editing ? (
+          <View style={styles.editRow}>
+            {editing.inputKind === 'bloodPressure' ? (
+              <>
+                <TextInput
+                  accessibilityLabel="수축기 혈압"
+                  autoFocus
+                  keyboardType="numeric"
+                  maxLength={3}
+                  onChangeText={(text) => setSystolicDraft(text.replace(/[^0-9]/g, ''))}
+                  returnKeyType="next"
+                  selectionColor={colors.primary}
+                  style={styles.input}
+                  value={systolicDraft}
+                />
+                <Text style={styles.unit}>/</Text>
+                <TextInput
+                  accessibilityLabel="이완기 혈압"
+                  keyboardType="numeric"
+                  maxLength={3}
+                  onChangeText={(text) => setDiastolicDraft(text.replace(/[^0-9]/g, ''))}
+                  onSubmitEditing={() => handleMetricEdit(editing.key)}
+                  returnKeyType="done"
+                  selectionColor={colors.primary}
+                  style={styles.input}
+                  value={diastolicDraft}
+                />
+              </>
+            ) : (
+              <TextInput
+                accessibilityLabel={editing.label}
+                autoFocus
+                keyboardType={editing.keyboardType}
+                maxLength={editing.inputKind === 'date' ? 8 : undefined}
+                onChangeText={(text) => setDraftValue(sanitizeMetricInput(text, editing.inputKind))}
+                onSubmitEditing={() => handleMetricEdit(editing.key)}
+                placeholder={editing.inputKind === 'date' ? '20261103' : undefined}
+                placeholderTextColor={colors.textDisabled}
+                returnKeyType="done"
+                selectionColor={colors.primary}
+                style={styles.input}
+                value={draftValue}
+              />
+            )}
+            {editing.unit ? <Text style={styles.unit}>{editing.unit}</Text> : null}
           </View>
-        </View>
-      </ScrollView>
-      {needsScroll ? (
-        <CustomScrollIndicator
-          {...scrollIndicator.indicatorProps}
-          bottomInset={Math.max(8, insets.bottom + 4)}
-          rightInset={Math.max(4, insets.right + 4)}
-          topInset={Math.max(8, insets.top + 4)}
-        />
-      ) : null}
+        ) : null}
+      </AppDialog>
       <HealthDataUploadBottomSheet
         isBusy={isReuploading || isSaving}
         onClose={() => setIsReuploadSheetOpen(false)}
@@ -1257,109 +874,16 @@ export default function OCRResultScreen() {
         title="홈으로 나갈까요?"
         visible={leaveDialogOpen}
       />
-    </View>
+    </>
   );
 }
 
 function createStyles({ colors }: AppTheme) {
-  // Renewal A: the same sheet of numbers, drawn with the dark outline, ledges and pixel letters.
+  // The box that changes one value; the screen itself is drawn by PaperValuesView.
   const a = aForm(colors);
   return {
-    root: { backgroundColor: colors.background, flex: 1, overflow: 'hidden' },
-    scrollContent: { alignItems: 'center' },
-    canvasSlot: { position: 'relative', width: '100%' },
-    canvas: { height: referenceHeight, position: 'absolute', transformOrigin: 'top left', width: referenceWidth },
-    backButton: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.ink,
-      borderRadius: 14,
-      borderWidth: 2,
-      boxShadow: `0 4px 0 ${colors.ink}`,
-      height: 44,
-      justifyContent: 'center',
-      left: 16,
-      position: 'absolute',
-      top: 18,
-      width: 44,
-    },
-    screenTitle: { ...a.p15, color: colors.ink, left: 70, position: 'absolute', right: 70, textAlign: 'center', top: 30 },
-    homeButton: { ...a.mini, position: 'absolute', right: 16, top: 24 },
-    homeText: a.miniText,
-    uploadFileCard: { backgroundColor: colors.surface, borderRadius: 18, left: 16, position: 'absolute', width: 380 },
-    uploadFileBottom: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 64, paddingLeft: 12, paddingRight: 10 },
-    filePreview: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.ink,
-      borderRadius: 6,
-      borderWidth: 2,
-      gap: 5,
-      height: 44,
-      justifyContent: 'center',
-      overflow: 'hidden',
-      width: 34,
-    },
-    filePreviewImage: { height: '100%', width: '100%' },
-    paperLine: { backgroundColor: colors.track, height: 2, width: 18 },
-    fileTexts: { flex: 1, minWidth: 0 },
-    fileName: { ...a.p15, color: colors.ink },
-    uploadTime: a.note,
-    reuploadButton: a.mini,
-    reuploadText: a.miniText,
-    // 4 taller than its buttons: the ledge they stand on.
-    resultTabs: { flexDirection: 'row', gap: 6, height: 50, left: 16, position: 'absolute', width: 380 },
-    resultTab: a.seg,
-    resultTabActive: a.segOn,
-    resultTabText: a.segText,
-    resultTabTextActive: a.onText,
-    extractedCard: { backgroundColor: colors.surface, borderRadius: 18, left: 16, overflow: 'hidden', position: 'absolute', width: 380 },
-    metricListViewport: { height: '100%', position: 'relative', width: '100%' },
-    metricList: { flex: 1, width: '100%' },
-    metricRow: {
-      alignItems: 'center',
-      borderBottomColor: colors.track,
-      borderBottomWidth: 2,
-      flexDirection: 'row',
-      gap: 8,
-      minHeight: 58,
-      paddingLeft: 14,
-      paddingRight: 10,
-    },
-    // A number the paper did not give: the row is tinted and says so.
-    metricRowMissing: { backgroundColor: colors.primaryLight },
-    metricLabel: { ...a.note, width: 92 },
-    metricValueText: {
-      color: colors.ink,
-      flex: 1,
-      fontFamily: fontFamilies.galmuri11Bold,
-      fontSize: 22,
-      lineHeight: 28,
-      textAlign: 'right',
-    },
-    metricMissing: a.p15,
-    metricInputBox: { ...a.field, flex: 1, gap: 4, height: 44, minWidth: 0, paddingHorizontal: 10 },
-    metricInput: {
-      color: colors.ink,
-      flex: 1,
-      fontFamily: fontFamilies.galmuri11Bold,
-      fontSize: 22,
-      minWidth: 0,
-      padding: 0,
-      textAlign: 'right',
-    },
-    bloodPressureInput: { textAlign: 'center' },
-    metricUnit: a.note,
-    modifyButton: a.mini,
-    modifyText: a.miniText,
-    saveButton: { ...a.mini, backgroundColor: colors.primary },
-    saveText: { ...a.miniText, color: colors.onPrimary },
-    privacyBox: { alignItems: 'center', left: 16, position: 'absolute', right: 16 },
-    privacyText: { ...a.note, textAlign: 'center' },
-    nextButton: { ...a.go, left: 16, position: 'absolute', width: 380 },
-    nextButtonDisabled: a.goOff,
-    disabledText: { color: colors.textDisabled },
-    nextButtonText: a.goText,
-    pressed: { opacity: 0.72 },
+    editRow: { alignItems: 'center', flexDirection: 'row', gap: 8, marginTop: 8 },
+    input: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri14, fontSize: 15, height: 48, paddingHorizontal: 12 },
+    unit: { ...a.p12, color: colors.textSecondary },
   } as const;
 }
