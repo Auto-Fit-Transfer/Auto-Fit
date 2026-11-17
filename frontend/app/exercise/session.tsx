@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { getExerciseApiErrorMessage, recordExerciseDiscomfort } from '@/src/api/exercise';
 import { Text } from '@/src/components/common';
 import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
+import { useHero } from '@/src/components/a/useHero';
 import { R6ExerciseSession, type DiscomfortReport } from '@/src/components/exercise/R6ExerciseSession';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
@@ -27,6 +28,7 @@ export default function ExerciseSessionScreen() {
     currentExercise,
     flushPendingResults,
     recordSymptomStop,
+    cycleCountSpeed,
     goToNextExercise,
     openExitConfirmation,
     openSkipConfirmation,
@@ -36,6 +38,7 @@ export default function ExerciseSessionScreen() {
     skipCurrentExercise,
     togglePause,
   } = useExerciseSession();
+  const { who, tierIndex } = useHero();
   const [finishFailed, setFinishFailed] = useState(false);
   const finishing = useRef(false);
   const phase = session?.phase;
@@ -189,6 +192,7 @@ export default function ExerciseSessionScreen() {
         onAddRest={addRestSeconds}
         onBack={openExitConfirmation}
         onCompleteSet={completeCurrentSet}
+        onCycleSpeed={cycleCountSpeed}
         onReportDiscomfort={reportDiscomfort}
         onReportStop={(report) => void recordSymptomStop(report)}
         onSkip={openSkipConfirmation}
@@ -196,6 +200,8 @@ export default function ExerciseSessionScreen() {
         onStopWorkout={leaveSession}
         onTogglePause={togglePause}
         session={session}
+        tierIndex={tierIndex}
+        who={who}
       />
       <ConfirmDialog
         description="현재 운동의 진행 내용은 저장되지 않아요. 다음 운동으로 이동할까요?"
