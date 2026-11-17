@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { BackHandler, Pressable, ScrollView, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { koreanDate } from '@/src/lib/koreanDate';
 import CalendarIcon from '@/assets/icons/ui/calendar-check.svg';
+import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getProfile, updateProfile, type Profile } from '@/src/api/home';
 import { getCommunityProfile, type CommunityProfile } from '@/src/api/community';
@@ -39,6 +40,9 @@ export default function ProfileScreen() {
   const [saved, setSaved] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const [kept, setKept] = useState(''); // what the server has, to tell whether anything was changed
+  const [leaving, setLeaving] = useState(false);
+  const changed = loaded && JSON.stringify(profile) !== kept;
 
   useEffect(() => {
     let live = true;
@@ -46,6 +50,7 @@ export default function ProfileScreen() {
       .then((response) => {
         if (!live) return;
         setProfile(response.profile ?? {});
+        setKept(JSON.stringify(response.profile ?? {}));
         setLoaded(true);
         setError('');
       })
@@ -61,6 +66,17 @@ export default function ProfileScreen() {
       .catch(() => {});
     return () => { live = false; };
   }, []));
+
+  // What I changed does not vanish without a word: the back button asks first.
+  const leave = () => (changed ? setLeaving(true) : router.back());
+  useFocusEffect(useCallback(() => {
+    if (!changed) return undefined;
+    const back = BackHandler.addEventListener('hardwareBackPress', () => {
+      setLeaving(true);
+      return true;
+    });
+    return () => back.remove();
+  }, [changed]));
 
   const edit = (value: Partial<Profile>) => {
     setProfile((current) => ({ ...current, ...value }));
@@ -88,7 +104,9 @@ export default function ProfileScreen() {
         birth_date: profile.birth_date || null,
         gender: profile.gender || null,
       });
-      setProfile(response.profile ?? { ...profile, name, nickname });
+      const next = response.profile ?? { ...profile, name, nickname };
+      setProfile(next);
+      setKept(JSON.stringify(next));
       setSaved(true);
     } catch (cause) {
       setError(getApiErrorMessage(cause));
@@ -99,7 +117,7 @@ export default function ProfileScreen() {
 
   return (
     <View style={styles.screen}>
-      <ScreenHeader onBack={() => router.back()} title="프로필 수정" />
+      <ScreenHeader onBack={leave} title="프로필 수정" />
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 110 }]}
@@ -222,6 +240,15 @@ export default function ProfileScreen() {
           setPickerVisible(false);
         }}
         visible={pickerVisible}
+      />
+      <ConfirmDialog
+        description="바꾼 내용이 사라져요."
+        onPrimary={() => router.back()}
+        onSecondary={() => setLeaving(false)}
+        primaryLabel="나가기"
+        secondaryLabel="계속 고치기"
+        title="저장하지 않고 나갈까요?"
+        visible={leaving}
       />
     </View>
   );

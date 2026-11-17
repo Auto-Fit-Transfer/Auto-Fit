@@ -32,6 +32,8 @@ export default function ADoneSample() {
       onDifficulty={setDifficulty}
       onDone={nothing}
       onHadPain={setHadPain}
+      onHistory={nothing}
+      onShare={nothing}
       onToggleArea={(area) => setAreas((current) => (current.includes(area) ? current.filter((item) => item !== area) : [...current, area]))}
       rows={bare ? [] : [
         { name: '크런치', text: '3세트 · 20회' },

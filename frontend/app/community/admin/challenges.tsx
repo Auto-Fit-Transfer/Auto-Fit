@@ -10,7 +10,8 @@ import {
 } from '@/src/api/community';
 import { koreanDate } from '@/src/lib/koreanDate';
 import { AppButton, AppHeader, Text } from '@/src/components/common';
-import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 
 const METRIC: Record<CommunityAdminChallenge['metric'], string> = {
   meal_log_days: '식단 기록한 날',
@@ -101,53 +102,20 @@ export default function CommunityAdminChallengesScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: spacing.md,
-      justifyContent: 'center',
-      padding: spacing.xxl,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-    header: { padding: spacing.xl, paddingBottom: spacing.sm },
-    empty: {
-      ...typography.body,
-      color: colors.textSecondary,
-      padding: spacing.xl,
-      textAlign: 'center',
-    },
-    card: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      gap: 4,
-      marginHorizontal: spacing.xl,
-      marginTop: spacing.md,
-      padding: spacing.lg,
-    },
-    pressed: { backgroundColor: colors.background },
-    titleRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-    title: {
-      color: colors.textPrimary,
-      flex: 1,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
-    badge: {
-      backgroundColor: colors.primaryLight,
-      borderRadius: 12,
-      color: colors.primary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 12,
-      overflow: 'hidden',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
-    badgeOff: { backgroundColor: colors.background, color: colors.textSecondary },
-    meta: { color: colors.textBody, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
-    note: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
+    messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
+    header: { padding: 16, paddingBottom: 8 },
+    empty: { ...a.p15, color: colors.textBody, padding: 20, textAlign: 'center' },
+    card: { ...a.card, gap: 4, marginHorizontal: 16, marginTop: 12, padding: 14 },
+    pressed: { boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)', transform: [{ translateY: 4 }] },
+    titleRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+    title: { ...a.p15, color: colors.ink, flex: 1 },
+    badge: { ...a.p12, backgroundColor: colors.primaryLight, borderRadius: 6, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6 },
+    badgeOff: { backgroundColor: colors.track, color: colors.textSecondary },
+    meta: { ...a.p12, color: colors.textBody },
+    note: a.note,
   } as const;
 }

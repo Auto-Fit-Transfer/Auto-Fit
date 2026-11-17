@@ -84,6 +84,8 @@ export default function ExerciseCompletionScreen() {
       onDifficulty={setDifficulty}
       onDone={() => void save()}
       onHadPain={setHadPain}
+      onHistory={() => router.push('/exercise/history')}
+      onShare={sessionId ? () => router.push({ pathname: '/community/compose', params: { share: sessionId } }) : undefined}
       onToggleArea={(area) => setSelectedAreas((current) => (current.includes(area) ? current.filter((item) => item !== area) : [...current, area]))}
       rows={rows}
       stars={session && throughout ? [true, !session.results.some((result) => result.skipped)] : null}

@@ -4,7 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import { AppHeader, Text } from '@/src/components/common';
-import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 
 const TOOLS: { title: string; description: string; href: Href }[] = [
   {
@@ -57,22 +58,15 @@ export default function CommunityAdminScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-    note: { ...typography.bodySmall, color: colors.textSecondary },
-    card: {
-      backgroundColor: colors.surface,
-      alignItems: 'center',
-      borderColor: colors.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      flexDirection: 'row',
-      padding: spacing.lg,
-    },
-    pressed: { backgroundColor: colors.background },
-    cardBody: { flex: 1, gap: 4 },
-    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-    description: { ...typography.bodySmall, color: colors.textBody },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    body: { gap: 12, paddingHorizontal: 16, paddingTop: 12 },
+    note: a.note,
+    card: { ...a.card, alignItems: 'center', flexDirection: 'row', padding: 14 },
+    pressed: { boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)', transform: [{ translateY: 4 }] },
+    cardBody: { flex: 1, gap: 2 },
+    title: { ...a.p15, color: colors.ink },
+    description: a.note,
   } as const;
 }

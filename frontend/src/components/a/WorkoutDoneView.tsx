@@ -54,6 +54,8 @@ export interface WorkoutDoneProps {
   onChange: (value: PostCondition) => void;
   onDone: () => void;
   onBack: () => void;
+  onHistory: () => void; // every workout's record, where one can be kept as my routine
+  onShare?: () => void; // writing a post with this workout attached
 }
 
 export function WorkoutDoneView(props: WorkoutDoneProps) {
@@ -164,6 +166,16 @@ export function WorkoutDoneView(props: WorkoutDoneProps) {
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: button.disabled }} disabled={button.disabled} onPress={props.onDone} style={({ pressed }) => [styles.go, button.disabled && styles.goOff, pressed && styles.goPressed]}>
           <Text style={[styles.goText, button.disabled && styles.offText]}>{button.label}</Text>
         </Pressable>
+        <View style={styles.under}>
+          <Pressable accessibilityRole="link" hitSlop={10} onPress={props.onHistory}>
+            <Text style={styles.link}>운동 기록</Text>
+          </Pressable>
+          {props.onShare ? (
+            <Pressable accessibilityRole="link" hitSlop={10} onPress={props.onShare}>
+              <Text style={styles.link}>커뮤니티에 공유</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </ScrollView>
     </View>
   );
@@ -217,5 +229,7 @@ function createStyles({ colors }: AppTheme) {
     goPressed: a.goPressed,
     goText: a.goText,
     offText: { color: colors.textDisabled },
+    under: { flexDirection: 'row', gap: 18, justifyContent: 'center', paddingVertical: 6 },
+    link: a.link,
   } as const;
 }

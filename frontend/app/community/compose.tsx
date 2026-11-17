@@ -47,7 +47,7 @@ export default function CommunityComposeScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   // Opened from a club: the post goes to that club only.
-  const { clubId, clubName } = useLocalSearchParams<{ clubId?: string; clubName?: string }>();
+  const { clubId, clubName, share } = useLocalSearchParams<{ clubId?: string; clubName?: string; share?: string }>();
   const insets = useSafeAreaInsets();
   const actions = useCommunityActions();
   const [content, setContent] = useState('');
@@ -78,6 +78,26 @@ export default function CommunityComposeScreen() {
     }).catch(() => undefined);
     return () => { active = false; };
   }, [draftKey]);
+
+  // Opened from a finished workout (share = its session): that record is already attached.
+  useEffect(() => {
+    if (!share) return undefined;
+    let active = true;
+    void getMyCommunityActivities()
+      .then(({ items }) => {
+        if (!active) return;
+        const mine = items.find((item) => item.session_id === share);
+        setActivities(items);
+        if (mine) {
+          setSelectedActivity(mine);
+          setCategory('workout');
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [share]);
 
   const saveDraft = async () => {
     if (!content.trim()) { actions.notify('임시저장할 글 내용을 입력해 주세요.'); return; }

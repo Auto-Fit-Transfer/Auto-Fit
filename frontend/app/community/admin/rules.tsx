@@ -18,7 +18,8 @@ import {
 } from '@/src/api/community';
 import { AppButton, AppHeader, Text, TextInput } from '@/src/components/common';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { fontFamilies, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 
 const RULES: Record<
   CommunityAdminRule['rule_key'],
@@ -228,58 +229,21 @@ function RuleCard({
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: spacing.md,
-      justifyContent: 'center',
-      padding: spacing.xxl,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-    body: { gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-    note: { ...typography.bodySmall, color: colors.textSecondary },
-    card: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      gap: spacing.xs,
-      padding: spacing.lg,
-    },
-    cardTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-    provisional: {
-      backgroundColor: colors.dangerLight,
-      borderRadius: 12,
-      color: colors.danger,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 12,
-      overflow: 'hidden',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
-    ruleNote: { ...typography.bodySmall, color: colors.textSecondary },
-    label: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-      marginTop: spacing.xs,
-    },
-    input: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 16,
-      minHeight: 52,
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-    },
-    switchRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs },
-    switchLabel: { ...typography.bodySmall, color: colors.textBody, flex: 1 },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
+    messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
+    body: { gap: 12, paddingHorizontal: 16, paddingTop: 12 },
+    note: a.note,
+    card: { ...a.card, gap: 6, padding: 14 },
+    cardTop: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+    title: { ...a.p15, color: colors.ink },
+    provisional: { ...a.p12, backgroundColor: colors.warningLight, borderRadius: 6, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6 },
+    ruleNote: a.note,
+    label: { ...a.q, marginBottom: 0, marginTop: 6 },
+    input: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, minHeight: 48, paddingHorizontal: 12, paddingVertical: 10 },
+    switchRow: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 4 },
+    switchLabel: { ...a.p12, color: colors.textBody, flex: 1 },
   } as const;
 }

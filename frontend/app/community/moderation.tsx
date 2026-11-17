@@ -5,7 +5,6 @@ import {
   FlatList,
   Pressable,
   RefreshControl,
-  StyleSheet,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,7 +20,8 @@ import {
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
 
 type Status = 'open' | 'resolved';
 
@@ -253,100 +253,34 @@ function ActionButton({
 }
 
 function createStyles({ colors }: AppTheme) {
+  // Renewal A: two buttons on ledges for which reports, each report a card. What removes something is
+  // the same small button with its words in the warning colour.
+  const a = aForm(colors);
   return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    tabs: {
-      borderBottomColor: colors.border,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      flexDirection: 'row',
-    },
-    tab: {
-      alignItems: 'center',
-      borderBottomColor: 'transparent',
-      borderBottomWidth: 2,
-      flex: 1,
-      paddingVertical: spacing.md,
-    },
-    tabActive: { borderBottomColor: colors.textPrimary },
-    tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16 },
-    tabTextActive: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-    note: {
-      ...typography.bodySmall,
-      color: colors.textSecondary,
-      paddingHorizontal: spacing.xl,
-      paddingTop: spacing.md,
-    },
-    card: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 16,
-      borderWidth: 1,
-      gap: spacing.xs,
-      marginHorizontal: spacing.xl,
-      marginTop: spacing.md,
-      padding: spacing.lg,
-    },
-    cardTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-    type: {
-      backgroundColor: colors.dangerLight,
-      borderRadius: 12,
-      color: colors.danger,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 12,
-      overflow: 'hidden',
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
-    author: {
-      color: colors.textPrimary,
-      flex: 1,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
-    count: { color: colors.danger, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    reasons: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    snapshot: {
-      ...typography.body,
-      backgroundColor: colors.surface,
-      borderRadius: 12,
-      color: colors.textPrimary,
-      padding: spacing.md,
-    },
-    detail: { ...typography.bodySmall, color: colors.textBody },
-    meta: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-    actions: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: spacing.sm,
-      justifyContent: 'flex-end',
-      marginTop: spacing.xs,
-    },
-    link: {
-      color: colors.primary,
-      fontFamily: fontFamilies.pretendardMedium,
-      fontSize: 14,
-      marginRight: 'auto',
-    },
-    button: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: radius.round,
-      borderWidth: 1,
-      paddingHorizontal: spacing.md,
-      paddingVertical: 6,
-    },
-    buttonDanger: { borderColor: colors.danger },
-    pressed: { opacity: 0.7 },
-    buttonText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    tabs: { flexDirection: 'row', gap: 8, paddingBottom: 4, paddingHorizontal: 16, paddingTop: 4 },
+    tab: a.seg,
+    tabActive: a.segOn,
+    tabText: a.segText,
+    tabTextActive: a.onText,
+    note: { ...a.note, paddingHorizontal: 16, paddingTop: 12 },
+    card: { ...a.card, gap: 6, marginHorizontal: 16, marginTop: 12, padding: 14 },
+    cardTop: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+    type: { ...a.p12, backgroundColor: colors.warningLight, borderRadius: 6, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6 },
+    author: { ...a.p15, color: colors.ink, flex: 1 },
+    count: { ...a.p12, color: colors.danger },
+    reasons: { ...a.p12, color: colors.textBody },
+    snapshot: { ...a.p15, backgroundColor: colors.background, borderRadius: 12, color: colors.ink, overflow: 'hidden', padding: 12 },
+    detail: { ...a.p12, color: colors.textBody },
+    meta: a.note,
+    actions: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end', marginTop: 4 },
+    link: { ...a.link, marginRight: 'auto' },
+    button: a.mini,
+    buttonDanger: {},
+    pressed: { boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)', transform: [{ translateY: 3 }] },
+    buttonText: a.miniText,
     buttonTextDanger: { color: colors.danger },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: spacing.md,
-      justifyContent: 'center',
-      padding: spacing.xxl,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
+    messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
   } as const;
 }
