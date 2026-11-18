@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { PostureResultView, PostureShootView, PostureTips, PostureWaitView } from '@/src/components/a/PostureViews';
 
 // Development only: renewal A's 자세 분석 with sample values, to look at the screens.
-// ?state=lie | recording | review | blocked | tips | wait | waitfail | result | one | broken
+// ?state=lie | recording | review | blocked | tips | wait | waitfail | result | ten | one | broken
 const nothing = () => undefined;
 const names = ['스쿼트', '푸시업', '플랭크', '런지', '힙 브리지'];
 const kinds = [
@@ -40,7 +40,7 @@ export default function APostureSample() {
       />
     );
   }
-  if (state === 'result' || state === 'one' || state === 'broken') {
+  if (state === 'result' || state === 'ten' || state === 'one' || state === 'broken') {
     return (
       <PostureResultView
         fixes={[
@@ -57,7 +57,7 @@ export default function APostureSample() {
         reps={
           state === 'one'
             ? [{ id: 'r1', number: 1, score: 74, scene: '0:05', angles: squat.slice(0, 2) }]
-            : [84, 72, 76, 80].map((score, index) => ({ id: `r${index}`, number: index + 1, score, scene: `0:0${index * 2 + 2}`, angles: squat }))
+            : (state === 'ten' ? [84, 72, 76, 80, 90, 88, 79, 81, 95, 100] : [84, 72, 76, 80]).map((score, index) => ({ id: `r${index}`, number: index + 1, score, scene: `0:${String(index * 2 + 2).padStart(2, "0")}`, angles: squat }))
         }
         score={state === 'one' ? 74 : 78}
         summary="깊이만 조금 더 내려가면 돼요"

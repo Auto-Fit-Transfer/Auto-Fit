@@ -404,7 +404,7 @@ export function PostureResultView({
                     accessibilityRole="button"
                     key={item.id}
                     onPress={() => setShown(item.id)}
-                    style={({ pressed }) => [styles.rep, pressed && styles.repPressed]}
+                    style={({ pressed }) => [styles.rep, reps.length > 5 ? styles.repGrid : styles.repRow, pressed && styles.repPressed]}
                   >
                     <Text style={styles.note}>{item.number}회째</Text>
                     <Text style={styles.value}>{item.score}</Text>
@@ -610,7 +610,7 @@ function createStyles({ colors }: AppTheme) {
     scoreTop: { alignItems: 'baseline', flexDirection: 'row', justifyContent: 'space-between' },
     score: { ...big, fontSize: 72, lineHeight: 76 },
     scoreUnit: { ...a.p15, color: colors.ink },
-    reps: { borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', gap: 8, marginTop: 18, paddingBottom: 3, paddingTop: 18 },
+    reps: { borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18, paddingBottom: 3, paddingTop: 18 },
     rep: {
       alignItems: 'center',
       backgroundColor: colors.surface,
@@ -618,11 +618,13 @@ function createStyles({ colors }: AppTheme) {
       borderRadius: 12,
       borderWidth: 2,
       boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)',
-      flex: 1,
       gap: 3,
       paddingBottom: 10,
       paddingTop: 9,
     },
+    // Up to five share one row; more go five to a row (ten squats were too narrow to read in one row).
+    repRow: { flex: 1 },
+    repGrid: { width: '18%' },
     repPressed: { backgroundColor: colors.primaryLight },
     inline: { borderTopColor: colors.track, borderTopWidth: 2, marginBottom: -12, marginTop: 14 },
     angle: { alignItems: 'center', flexDirection: 'row', gap: 12, paddingHorizontal: 4, paddingVertical: 14 },
