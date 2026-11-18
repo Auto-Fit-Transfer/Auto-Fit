@@ -16,6 +16,7 @@ export default function ADoneSample() {
   const [change, setChange] = useState<PostCondition>('normal');
   const bare = state === 'bare';
   const skipped = state === 'skipped';
+  const noPoints = state === 'nopoints'; // ?state=nopoints: the +5 rule was not met
   return (
     <WorkoutDoneView
       areas={areas}
@@ -27,6 +28,7 @@ export default function ADoneSample() {
       hadPain={hadPain}
       kcal={bare ? null : 70}
       minutes={8}
+      noPoints={noPoints}
       onBack={nothing}
       onChange={setChange}
       onDifficulty={setDifficulty}

@@ -41,6 +41,7 @@ export interface WorkoutDoneProps {
   rows: { name: string; text: string }[];
   minutes: number | null;
   kcal: number | null;
+  noPoints?: boolean; // the server's +5 rule was not met: the workout is saved, the points are not
   count: number | null; // moves done, shown when the kcal is not known
   tier: TierLook | null;
   difficulty: number | null;
@@ -59,7 +60,7 @@ export interface WorkoutDoneProps {
 }
 
 export function WorkoutDoneView(props: WorkoutDoneProps) {
-  const { who, tierIndex, title, finished, stars, rows, minutes, kcal, count, tier, difficulty, hadPain, areas, change, button } = props;
+  const { who, tierIndex, title, finished, stars, rows, minutes, kcal, count, tier, difficulty, hadPain, areas, change, button, noPoints } = props;
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -137,6 +138,7 @@ export function WorkoutDoneView(props: WorkoutDoneProps) {
             </View>
           </View>
         ) : null}
+        {noPoints ? <Text style={styles.note}>운동 기록은 저장됐지만 티어 점수는 지급되지 않았어요.</Text> : null}
 
         <View style={styles.box}>
           <Text style={styles.body}>오늘 운동은 어땠나요?</Text>

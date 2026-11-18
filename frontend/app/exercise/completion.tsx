@@ -16,7 +16,7 @@ export default function ExerciseCompletionScreen() {
   const router = useRouter();
   const who = useKeptWho();
   const { latestSession, markResultRecordCompleted, refreshHome, resultRecordCompleted, routine } = useExerciseRoutine();
-  const { clearSession, session, summary } = useExerciseSession();
+  const { clearSession, session, summary, workoutPoints } = useExerciseSession();
   const [tier, setTier] = useState<TierLook | null>(null);
   const [difficulty, setDifficulty] = useState<number | null>(null);
   const [hadPain, setHadPain] = useState(false);
@@ -79,6 +79,7 @@ export default function ExerciseCompletionScreen() {
       hadPain={hadPain}
       kcal={session ? summary.calories : null}
       minutes={duration}
+      noPoints={workoutPoints === 'not_awarded'}
       onBack={goHome}
       onChange={setChange}
       onDifficulty={setDifficulty}
