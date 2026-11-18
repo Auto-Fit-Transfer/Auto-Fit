@@ -16,6 +16,11 @@ HEALTH_DOCUMENT_BUCKET = "health-documents"
 MAX_HEALTH_DOCUMENT_BYTES = 10 * 1024 * 1024
 DocumentType = Literal["health_checkup", "body_composition"]
 
+HEALTH_DATA_FIELDS = {
+    "health_checkup": "health_checkup_id,uploaded_file_id,source_type,checkup_date,height_cm,weight_kg,bmi,systolic_bp,diastolic_bp,fasting_glucose,total_cholesterol,hdl_cholesterol,ldl_cholesterol,triglycerides,ast,alt,gamma_gtp,hemoglobin,creatinine,institution_name,checkup_type",
+    "body_composition": "body_composition_id,uploaded_file_id,source_type,measured_at,height_cm,weight_kg,skeletal_muscle_mass_kg,body_fat_mass_kg,body_fat_percentage,bmi,basal_metabolic_rate,visceral_fat_level,body_water_percentage,body_water_liters,protein_percentage,device_name",
+}
+
 
 class HealthCheckupData(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -547,7 +552,54 @@ async def _fetch_document(
         extracted = dict(ocr["extracted_data"])
         review = extracted.pop("_ocr_review", None)
         ocr = {**ocr, "extracted_data": extracted}
+    if ocr is None and uploads[0].get("processing_status") == "manually_confirmed":
+        confirmed = await _fetch_confirmed_health_data(uploads[0], user_id, settings)
+        if confirmed is None:
+            raise HTTPException(status_code=502, detail="Confirmed health data was not found")
+        document_type = uploads[0]["document_type"]
+        allowed = HealthCheckupData if document_type == "health_checkup" else BodyCompositionData
+        ocr = {"status": "completed", "extracted_data": {
+            key: confirmed.get(key) for key in allowed.model_fields
+        }}
     return {"file": uploads[0], "ocr_result": ocr, "ocr_review": review}
+
+
+async def _fetch_confirmed_health_data(file_record: dict[str, Any], user_id: str, settings: Any) -> dict[str, Any] | None:
+    document_type: DocumentType = file_record["document_type"]
+    table = "health_checkups" if document_type == "health_checkup" else "body_compositions"
+    async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
+        response = await client.get(
+            f"{settings.supabase_url}/rest/v1/{table}",
+            headers=_service_headers(settings),
+            params={"select": HEALTH_DATA_FIELDS[document_type],
+                    "uploaded_file_id": f"eq.{file_record['uploaded_file_id']}",
+                    "user_id": f"eq.{user_id}", "limit": "1"},
+        )
+    if not response.is_success:
+        raise HTTPException(status_code=502, detail="Health data lookup failed")
+    rows = response.json()
+    return rows[0] if rows else None
+
+
+async def _purge_confirmed_source(file_record: dict[str, Any], settings: Any) -> None:
+    """Remove original bytes before deleting the temporary OCR record; retries are safe."""
+    storage_path = file_record.get("storage_path")
+    if not isinstance(storage_path, str) or not storage_path:
+        raise HTTPException(status_code=502, detail="Health document storage path is unavailable")
+    async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
+        storage_response = await client.delete(
+            f"{settings.supabase_url}/storage/v1/object/{HEALTH_DOCUMENT_BUCKET}/{storage_path}",
+            headers=_service_headers(settings),
+        )
+        if not storage_response.is_success and storage_response.status_code != 404:
+            raise HTTPException(status_code=502, detail="Health document source deletion failed")
+        ocr_response = await client.delete(
+            f"{settings.supabase_url}/rest/v1/ocr_results",
+            headers=_service_headers(settings),
+            params={"uploaded_file_id": f"eq.{file_record['uploaded_file_id']}"},
+        )
+    if not ocr_response.is_success:
+        raise HTTPException(status_code=502, detail="Health document OCR deletion failed")
 
 
 async def _delete_storage_object(storage_path: str, settings: Any) -> None:
@@ -782,6 +834,14 @@ async def _confirm_document(
 ) -> dict[str, Any]:
     document = await _fetch_document(uploaded_file_id, user_id, settings)
     file_record = document["file"]
+    existing_row = await _fetch_confirmed_health_data(file_record, user_id, settings)
+    if existing_row is not None:
+        if file_record.get("processing_status") != "manually_confirmed":
+            await _mark_document_confirmed(uploaded_file_id, user_id, settings)
+            file_record = {**file_record, "upload_status": "completed", "processing_status": "manually_confirmed"}
+        await _purge_confirmed_source(file_record, settings)
+        return {"file": file_record, "health_data": existing_row, "already_confirmed": True}
+
     ocr_result = document["ocr_result"]
     if ocr_result is None or ocr_result["status"] != "completed":
         raise HTTPException(status_code=409, detail={"code": "OCR_NOT_READY", "message": "OCR must be completed or manually corrected", "fields": None})
@@ -802,46 +862,25 @@ async def _confirm_document(
     )
     table = "health_checkups" if document_type == "health_checkup" else "body_compositions"
     id_field = "health_checkup_id" if document_type == "health_checkup" else "body_composition_id"
-    headers = _service_headers(settings)
-    async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
-        existing_response = await client.get(
-            f"{settings.supabase_url}/rest/v1/{table}",
-            headers=headers,
-            params={
-                "select": "*",
-                "uploaded_file_id": f"eq.{uploaded_file_id}",
-                "user_id": f"eq.{user_id}",
-                "limit": "1",
-            },
-        )
-    if not existing_response.is_success:
-        raise HTTPException(status_code=502, detail="Health data lookup failed")
-    existing = existing_response.json()
-    if existing:
-        if file_record.get("processing_status") != "manually_confirmed":
-            await _mark_document_confirmed(uploaded_file_id, user_id, settings)
-            file_record = {**file_record, "upload_status": "completed", "processing_status": "manually_confirmed"}
-        return {"file": file_record, "health_data": existing[0], "already_confirmed": True}
-
     payload = {
         id_field: str(uuid4()),
         "uploaded_file_id": str(uploaded_file_id),
         "user_id": user_id,
         "source_type": "manual",
-        "raw_data": validated,
         **{key: value for key, value in validated.items() if value is not None},
     }
     async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
         create_response = await client.post(
             f"{settings.supabase_url}/rest/v1/{table}",
             headers=_service_headers(settings, return_representation=True),
-            params={"select": "*"},
+            params={"select": HEALTH_DATA_FIELDS[document_type]},
             json=payload,
         )
     if not create_response.is_success or not create_response.json():
         raise HTTPException(status_code=502, detail="Confirmed health data creation failed")
 
     await _mark_document_confirmed(uploaded_file_id, user_id, settings)
+    await _purge_confirmed_source(file_record, settings)
     return {
         "file": {**file_record, "upload_status": "completed", "processing_status": "manually_confirmed"},
         "health_data": create_response.json()[0],

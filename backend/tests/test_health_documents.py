@@ -276,6 +276,9 @@ def test_ocr_update_endpoint_rejects_client_identity(monkeypatch) -> None:
 
 def test_confirm_health_checkup_maps_reviewed_data_and_user(monkeypatch) -> None:
     calls = []
+    async def purge(file_record, settings):
+        calls.append(("PURGE", file_record, None, None))
+    monkeypatch.setattr(health_documents, "_purge_confirmed_source", purge)
 
     def response(status_code, payload):
         return httpx.Response(status_code, json=payload)
@@ -344,12 +347,17 @@ def test_confirm_health_checkup_maps_reviewed_data_and_user(monkeypatch) -> None
     assert create_call[3]["source_type"] == "manual"
     assert create_call[3]["checkup_date"] == "2026-09-16"
     assert create_call[3]["weight_kg"] == "68.4"
+    assert "raw_data" not in create_call[3]
+    assert any(call[0] == "PURGE" for call in calls)
     assert result["already_confirmed"] is False
     assert result["file"]["processing_status"] == "manually_confirmed"
 
 
 def test_confirm_is_idempotent_when_health_data_already_exists(monkeypatch) -> None:
     post_called = False
+    async def purge(file_record, settings):
+        assert file_record["processing_status"] == "manually_confirmed"
+    monkeypatch.setattr(health_documents, "_purge_confirmed_source", purge)
 
     class FakeClient:
         def __init__(self, **kwargs):
@@ -399,6 +407,9 @@ def test_confirm_is_idempotent_when_health_data_already_exists(monkeypatch) -> N
 
 def test_confirm_retry_repairs_file_status_after_measurement_was_created(monkeypatch) -> None:
     patched = []
+    async def purge(file_record, settings):
+        assert file_record["processing_status"] == "manually_confirmed"
+    monkeypatch.setattr(health_documents, "_purge_confirmed_source", purge)
 
     class FakeClient:
         def __init__(self, **kwargs):
@@ -443,6 +454,36 @@ def test_confirm_retry_repairs_file_status_after_measurement_was_created(monkeyp
     )]
 
 
+@pytest.mark.parametrize("storage_status,ocr_status,expected_calls", [
+    (200, 204, ["storage", "ocr"]),
+    (404, 204, ["storage", "ocr"]),
+    (500, 204, ["storage"]),
+    (200, 500, ["storage", "ocr"]),
+])
+def test_confirmed_source_purge_checks_both_deletions(monkeypatch, storage_status, ocr_status, expected_calls):
+    calls = []
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def delete(self, url, *, headers, params=None):
+            kind = "storage" if "/storage/v1/object/" in url else "ocr"
+            calls.append(kind)
+            if kind == "ocr":
+                assert params == {"uploaded_file_id": f"eq.{FILE_ID}"}
+                return httpx.Response(ocr_status)
+            return httpx.Response(storage_status)
+    monkeypatch.setattr(health_documents.httpx, "AsyncClient", Client)
+    file_record = {"uploaded_file_id": FILE_ID, "storage_path": f"{USER_ID}/2026/09/{FILE_ID}.pdf"}
+    if storage_status == 500 or ocr_status == 500:
+        with pytest.raises(HTTPException) as exc:
+            asyncio.run(health_documents._purge_confirmed_source(file_record, TEST_SETTINGS))
+        assert exc.value.status_code == 502
+    else:
+        asyncio.run(health_documents._purge_confirmed_source(file_record, TEST_SETTINGS))
+    assert calls == expected_calls
+
+
 def test_ocr_missing_configuration_is_failed_not_completed(monkeypatch):
     monkeypatch.setenv("HEALTH_DOCUMENT_OCR_MOCK_ENABLED", "false")
     monkeypatch.delenv("HEALTH_DOCUMENT_OCR_URL", raising=False)
@@ -471,7 +512,8 @@ def test_ocr_provider_response_is_validated(monkeypatch, result, expected):
     monkeypatch.setattr(health_documents.httpx, "AsyncClient", Client)
     data, error = asyncio.run(health_documents._extract_document(b"%PDF-1.7", "application/pdf", "health_checkup"))
     assert error == expected
-    if expected is None: assert data["weight_kg"] == "70"
+    if expected is None:
+        assert data["weight_kg"] == "70"
 
 
 @pytest.mark.parametrize("confirmed", [False, True])
@@ -536,6 +578,7 @@ def test_mock_ocr_upload_review_update_confirm_flow(monkeypatch, document_type, 
         monkeypatch.setattr(health_documents, "_request_ocr", request)
     rows = {"upload_files": [], "ocr_results": [], "health_checkups": [], "body_compositions": []}
     uploads = []
+    deleted_storage = []
 
     class Client:
         def __init__(self, **kwargs): pass
@@ -547,7 +590,8 @@ def test_mock_ocr_upload_review_update_confirm_flow(monkeypatch, document_type, 
                 return httpx.Response(200, json={})
             table = url.rsplit("/", 1)[-1]
             record = dict(json)
-            if table == "upload_files": record["uploaded_at"] = "2026-09-17T00:00:00Z"
+            if table == "upload_files":
+                record["uploaded_at"] = "2026-09-17T00:00:00Z"
             rows[table].append(record)
             return httpx.Response(201, json=[record])
         async def get(self, url, *, headers, params):
@@ -559,8 +603,17 @@ def test_mock_ocr_upload_review_update_confirm_flow(monkeypatch, document_type, 
             table = url.rsplit("/", 1)[-1]
             matches = [r for r in rows[table] if all(
                 r.get(k) == v[3:] for k,v in params.items() if v.startswith("eq."))]
-            for record in matches: record.update(json)
+            for record in matches:
+                record.update(json)
             return httpx.Response(200, json=matches)
+        async def delete(self, url, *, headers, params=None):
+            if "/storage/v1/object/" in url:
+                deleted_storage.append(url)
+                return httpx.Response(200 if len(deleted_storage) == 1 else 404)
+            assert url.endswith("/ocr_results")
+            rows["ocr_results"][:] = [row for row in rows["ocr_results"]
+                if row["uploaded_file_id"] != params["uploaded_file_id"][3:]]
+            return httpx.Response(204)
 
     # TestClient's own HTTP transport is unchanged; only backend external calls use this fake.
     monkeypatch.setattr(health_documents.httpx, "AsyncClient", Client)
@@ -619,7 +672,9 @@ def test_mock_ocr_upload_review_update_confirm_flow(monkeypatch, document_type, 
         assert confirmed.json()["status"] == "confirmed"
         assert confirmed.json()[id_field]
         assert confirmed.json()["health_data"]["weight_kg"] == "69.5"
-        assert "_ocr_review" not in confirmed.json()["health_data"]["raw_data"]
+        assert "raw_data" not in confirmed.json()["health_data"]
+        assert len(deleted_storage) == 1
+        assert rows["ocr_results"] == []
         assert client.get(path).json()["status"] == "confirmed"
         repeated = client.post(path + "/confirm")
         assert repeated.status_code == 200
