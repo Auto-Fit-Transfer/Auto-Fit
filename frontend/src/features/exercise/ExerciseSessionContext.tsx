@@ -12,6 +12,7 @@ import {
 
 import { completeExerciseSession, recordExerciseDiscomfort, recordExerciseItemResult, type ExerciseDiscomfortInput } from '@/src/api/exercise';
 import { awardTierActivity } from '@/src/api/tier';
+import { earnsWorkoutPoints, pointsOutcome, type WorkoutPoints } from '@/src/features/exercise/workoutPoints';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { logError } from '@/src/lib/logError';
 import { mergeAdjustedExercises } from './exerciseAdjustment';
@@ -107,6 +108,8 @@ type ExerciseSessionContextValue = {
   skipRest: () => void;
   skipCurrentExercise: () => void;
   summary: ExerciseSessionSummary;
+  // Whether the finished workout earned its tier points (null: not finished, or the answer did not arrive).
+  workoutPoints: WorkoutPoints;
   toggleGuide: () => void;
   togglePause: () => void;
   cycleCountSpeed: () => void;
@@ -620,8 +623,11 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const [workoutPoints, setWorkoutPoints] = useState<WorkoutPoints>(null);
+
   const clearSession = useCallback(() => {
     setSession(null);
+    setWorkoutPoints(null);
     pendingWritesRef.current.clear();
     reportedResultsRef.current.clear();
     completedSessionRef.current = null;
@@ -645,10 +651,10 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     }
     await flushPendingResults();
     await completeExerciseSession(current.sessionId);
-    // The completed session remains valid if the independent tier service is unavailable.
-    void awardTierActivity('recommended_workout_completed', current.sessionId).catch(
-      () => undefined,
-    );
+    // Ask for the points only when the server's rule can be met; the completed session stays valid either way.
+    setWorkoutPoints(earnsWorkoutPoints(current.results)
+      ? await awardTierActivity('recommended_workout_completed', current.sessionId).then(pointsOutcome, () => null)
+      : 'not_awarded');
     const completedSummary = summarizeSession(current);
     completedSessionRef.current = { sessionId: current.sessionId, summary: completedSummary };
     return completedSummary;
@@ -684,6 +690,7 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
       skipRest: () => dispatch({ now: Date.now(), type: 'finish-rest' }),
       skipCurrentExercise: () => dispatch({ now: Date.now(), type: 'skip-exercise' }),
       summary,
+      workoutPoints,
       toggleGuide: () => dispatch({ type: 'toggle-guide' }),
       togglePause: () => dispatch({ now: Date.now(), type: 'toggle-pause' }),
     }),
@@ -697,6 +704,7 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
       recordSymptomStop,
       session,
       summary,
+      workoutPoints,
     ],
   );
 

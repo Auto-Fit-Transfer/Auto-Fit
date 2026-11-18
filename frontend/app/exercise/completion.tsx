@@ -31,7 +31,7 @@ export default function ExerciseCompletionScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { latestSession, markResultRecordCompleted, refreshHome, resultRecordCompleted } = useExerciseRoutine();
-  const { clearSession, session, summary } = useExerciseSession();
+  const { clearSession, session, summary, workoutPoints } = useExerciseSession();
   const [difficulty, setDifficulty] = useState(3);
   const [hadPain, setHadPain] = useState(false);
   const [change, setChange] = useState<ExerciseSessionFeedbackInput['postCondition']>('normal');
@@ -75,7 +75,7 @@ export default function ExerciseCompletionScreen() {
         <View style={s.check}><CheckIcon color={colors.success} height={28} width={28} /></View>
         <View>
           <Text style={s.title}>오늘 운동을 마쳤어요</Text>
-          <Text style={s.subtitle}>기록이 저장됐어요.</Text>
+          <Text style={s.subtitle}>{workoutPoints === 'not_awarded' ? '운동 기록은 저장됐지만 티어 점수는 지급되지 않았어요.' : '기록이 저장됐어요.'}</Text>
         </View>
         <View style={s.metrics}>
           <View style={s.metric}><Text style={s.metricLabel}>운동 시간</Text><Text style={s.metricValue}>{duration == null ? '—' : `${duration}분`}</Text></View>
