@@ -3,12 +3,14 @@ import json
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
+from pydantic import TypeAdapter, ValidationError
 
 from app.schemas.posture_analysis import (
     PostureAnalysisProgress,
+    PostureAnalysisResponse,
     PostureAnalysisResult,
     PostureCapabilitiesResponse,
+    PostureHoldAnalysisResult,
 )
 
 
@@ -21,6 +23,7 @@ EXAMPLES = json.loads(
 PROGRESS_EXAMPLE = EXAMPLES["progress"]
 CAPABILITIES_EXAMPLE = EXAMPLES["capabilities"]
 RESULT_EXAMPLE = EXAMPLES["result"]
+HOLD_RESULT_EXAMPLE = EXAMPLES["hold_result"]
 
 
 def test_progress_contract() -> None:
@@ -39,7 +42,7 @@ def test_capabilities_contract() -> None:
     result = PostureCapabilitiesResponse.model_validate(
         CAPABILITIES_EXAMPLE
     )
-    assert len(result.exercises) == 10
+    assert len(result.exercises) == 11
     assert result.exercises[0].camera_view == "side"
 
     invalid = deepcopy(CAPABILITIES_EXAMPLE)
@@ -62,6 +65,42 @@ def test_final_result_contract() -> None:
     assert result.assessment.repetition_count == len(result.repetitions)
     assert result.repetitions[0].keypoints[0].joint_code == "head"
     assert result.routine_suggestions == []
+
+
+def test_hold_result_contract_is_discriminated_from_repetitions() -> None:
+    result = PostureHoldAnalysisResult.model_validate(HOLD_RESULT_EXAMPLE)
+    assert result.schema_version == "1.2"
+    assert result.movement_type == "hold"
+    assert result.assessment.hold_duration_ms == 2_000
+    assert result.holds[0].duration_ms == 2_000
+
+    parsed = TypeAdapter(PostureAnalysisResponse).validate_python(
+        HOLD_RESULT_EXAMPLE
+    )
+    assert isinstance(parsed, PostureHoldAnalysisResult)
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        (("holds", 0, "duration_ms"), 1_999),
+        (("assessment", "hold_duration_ms"), 1_999),
+        (("assessment", "verdict"), "needs_correction"),
+        (("findings", 0, "repetition_start"), 1),
+    ],
+)
+def test_invalid_hold_result_is_rejected(
+    path: tuple[object, ...],
+    value: object,
+) -> None:
+    payload = deepcopy(HOLD_RESULT_EXAMPLE)
+    target = payload
+    for part in path[:-1]:
+        target = target[part]  # type: ignore[index]
+    target[path[-1]] = value  # type: ignore[index]
+
+    with pytest.raises(ValidationError):
+        PostureHoldAnalysisResult.model_validate(payload)
 
 
 @pytest.mark.parametrize(

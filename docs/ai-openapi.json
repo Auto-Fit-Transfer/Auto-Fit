@@ -1162,7 +1162,22 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PostureAnalysisResult"
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/PostureAnalysisResult"
+                    },
+                    {
+                      "$ref": "#/components/schemas/PostureHoldAnalysisResult"
+                    }
+                  ],
+                  "title": "Response Analyze Posture Video Posture Analysis Analyze Post",
+                  "discriminator": {
+                    "propertyName": "schema_version",
+                    "mapping": {
+                      "1.1": "#/components/schemas/PostureAnalysisResult",
+                      "1.2": "#/components/schemas/PostureHoldAnalysisResult"
+                    }
+                  }
                 }
               }
             }
@@ -1729,6 +1744,22 @@
             "type": "array",
             "maxItems": 20,
             "title": "Chat History"
+          },
+          "character_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "quni",
+                  "nabi",
+                  "coach"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Id"
           }
         },
         "type": "object",
@@ -2888,6 +2919,22 @@
                 "type": "null"
               }
             ]
+          },
+          "character_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "quni",
+                  "nabi",
+                  "coach"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Character Id"
           }
         },
         "type": "object",
@@ -7718,7 +7765,10 @@
           },
           "movement_type": {
             "type": "string",
-            "const": "repetition",
+            "enum": [
+              "repetition",
+              "hold"
+            ],
             "title": "Movement Type",
             "default": "repetition"
           },
@@ -7875,6 +7925,199 @@
           "instruction"
         ],
         "title": "PostureGuidanceStep"
+      },
+      "PostureHold": {
+        "properties": {
+          "start_offset_ms": {
+            "type": "integer",
+            "maximum": 30000.0,
+            "minimum": 0.0,
+            "title": "Start Offset Ms"
+          },
+          "keyframe_offset_ms": {
+            "type": "integer",
+            "maximum": 30000.0,
+            "minimum": 0.0,
+            "title": "Keyframe Offset Ms"
+          },
+          "end_offset_ms": {
+            "type": "integer",
+            "maximum": 30000.0,
+            "minimum": 0.0,
+            "title": "End Offset Ms"
+          },
+          "duration_ms": {
+            "type": "integer",
+            "maximum": 30000.0,
+            "minimum": 1.0,
+            "title": "Duration Ms"
+          },
+          "score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Score"
+          },
+          "keypoints": {
+            "items": {
+              "$ref": "#/components/schemas/PostureKeypoint"
+            },
+            "type": "array",
+            "maxItems": 18,
+            "minItems": 1,
+            "title": "Keypoints"
+          },
+          "angles": {
+            "items": {
+              "$ref": "#/components/schemas/PostureAngle"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Angles"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "start_offset_ms",
+          "keyframe_offset_ms",
+          "end_offset_ms",
+          "duration_ms",
+          "score",
+          "keypoints",
+          "angles"
+        ],
+        "title": "PostureHold"
+      },
+      "PostureHoldAnalysisResult": {
+        "properties": {
+          "schema_version": {
+            "type": "string",
+            "const": "1.2",
+            "title": "Schema Version",
+            "default": "1.2"
+          },
+          "posture_analysis_job_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Posture Analysis Job Id"
+          },
+          "exercise_code": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Exercise Code"
+          },
+          "camera_view": {
+            "type": "string",
+            "enum": [
+              "side",
+              "front"
+            ],
+            "title": "Camera View"
+          },
+          "movement_type": {
+            "type": "string",
+            "const": "hold",
+            "title": "Movement Type",
+            "default": "hold"
+          },
+          "model_version": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Model Version"
+          },
+          "assessment": {
+            "$ref": "#/components/schemas/PostureHoldAssessment"
+          },
+          "holds": {
+            "items": {
+              "$ref": "#/components/schemas/PostureHold"
+            },
+            "type": "array",
+            "maxItems": 1,
+            "minItems": 1,
+            "title": "Holds"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/PostureFinding"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "routine_suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/PostureRoutineSuggestion"
+            },
+            "type": "array",
+            "title": "Routine Suggestions"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "posture_analysis_job_id",
+          "exercise_code",
+          "camera_view",
+          "model_version",
+          "assessment",
+          "holds",
+          "findings",
+          "routine_suggestions"
+        ],
+        "title": "PostureHoldAnalysisResult"
+      },
+      "PostureHoldAssessment": {
+        "properties": {
+          "overall_score": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 0.0,
+            "title": "Overall Score"
+          },
+          "passing_score": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passing Score"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "within_current_rules",
+              "needs_correction"
+            ],
+            "title": "Verdict"
+          },
+          "hold_duration_ms": {
+            "type": "integer",
+            "maximum": 30000.0,
+            "minimum": 1.0,
+            "title": "Hold Duration Ms"
+          },
+          "summary": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Summary"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "overall_score",
+          "verdict",
+          "hold_duration_ms",
+          "summary"
+        ],
+        "title": "PostureHoldAssessment"
       },
       "PostureKeypoint": {
         "properties": {

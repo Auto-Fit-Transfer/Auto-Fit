@@ -412,6 +412,7 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
 ```json
 {
   "content": "월요일 점심을 바꿔줘",
+  "character_id": "quni",
   "history": [],
   "context": {
     "metric_statuses": {},
@@ -434,6 +435,8 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
 ```
 
 건강 리포트 질문에는 최신 `/health-analysis` 응답의 `analysis.health_score`를 `context.health_score`로 전달한다. 챗봇은 확정된 점수를 다시 계산하지 않으며 `health_score_context` 응답으로 요약·이전 주 비교·변화 사유·우선 행동을 제공한다. 최신 점수가 없으면 `need_health_score_context`를 반환한다.
+
+사용자가 고른 말투는 요청 최상위 `character_id`에 `quni`, `nabi`, `coach` 중 하나로 전달한다. 이는 각각 다정하게, 느긋하게, 단호하게에 대응한다. AI Server는 기존 OpenAI 호출 한 번의 지침에 전체 답변 말투를 적용하며, 고위험 증상과 구조화된 안전 action은 캐릭터에 따라 변경하지 않는다.
 
 운동 중 증상 요청에는 `context.active_exercise_session`을 추가한다.
 
@@ -806,7 +809,7 @@ AI Server는 기록에 없는 수치나 의료 진단을 만들지 않고, 다�
 
 ## 운동 자세 분석
 
-Backend가 전달한 운동 자세 출력 형식은 `app/schemas/posture_analysis.py`의 `PostureCapabilitiesResponse`, `PostureAnalysisProgress`, `PostureAnalysisResult`로 검증한다. Backend는 먼저 `GET /posture-analysis/capabilities`에서 exact 운동 자산 key, 운동별 고정 촬영 방향, rule version과 검증 상태를 확인한다. `POST /posture-analysis/analyze`는 Backend 작업 UUID, `exercise_key`, `exercise_code`, `camera_view`와 영상을 multipart로 받아 MediaPipe Pose Landmarker Full과 선택된 운동별 규칙으로 최종 결과를 동기식 반환한다. 응답 계약 `1.1`은 종합·회차 점수를 정수로 반환하고, 현재 규칙상 교정 항목 유무를 `assessment.verdict=within_current_rules|needs_correction`으로 명시한다. 이는 의료적 정상 판정이 아니다.
+Backend가 전달한 운동 자세 출력 형식은 `app/schemas/posture_analysis.py`의 `PostureCapabilitiesResponse`, `PostureAnalysisProgress`, 반복형 `PostureAnalysisResult`, 유지형 `PostureHoldAnalysisResult`로 검증한다. Backend는 먼저 `GET /posture-analysis/capabilities`에서 exact 운동 자산 key, 운동별 고정 촬영 방향, `movement_type`, rule version과 검증 상태를 확인한다. `POST /posture-analysis/analyze`는 Backend 작업 UUID, `exercise_key`, `exercise_code`, `camera_view`와 영상을 multipart로 받아 MediaPipe Pose Landmarker Full과 선택된 운동별 규칙으로 최종 결과를 동기식 반환한다. 반복형 응답은 계약 `1.1`과 `repetitions`, 플랭크 유지형 응답은 계약 `1.2`와 `holds`/`hold_duration_ms`를 사용한다. 현재 규칙상 교정 항목 유무를 `assessment.verdict=within_current_rules|needs_correction`으로 명시하지만 이는 의료적 정상 판정이 아니다.
 
 등록된 반복형 profile은 스쿼트, 푸시업, 글루트 브리지, 덤벨 바이셉 컬, 벽 지지 카프 레이즈, 런지, 스플릿 스쿼트, 점핑 잭, 덤벨 숄더 프레스, 덤벨 레터럴 레이즈다. 스쿼트만 Linux Docker 실영상 검증을 거친 `validated`이며 나머지는 합성 각도 주기 회귀만 완료한 `experimental`이다. AI Server도 기본 `POSTURE_ALLOW_EXPERIMENTAL=false`에서 experimental POST를 차단하고 Backend 운영 화면도 validated만 활성화한다. 이름 포함 검색이나 유사 운동 fallback은 금지하며 capabilities의 `exercise_key + exercise_code + camera_view` 조합이 정확히 일치해야 한다. 런지·스플릿 스쿼트는 앞다리 혼동을 막기 위해 `analysis_side=left|right`가 필수다.
 

@@ -550,6 +550,14 @@ async def process_chat(
     를 이용하여 적절한 기능으로 라우팅한다.
     """
 
+    # 기존 호출과 테스트 double의 함수 시그니처를 보존하기 위해
+    # 사용자가 말투를 선택한 요청에만 선택 필드를 전달한다.
+    persona_kwargs = (
+        {"character_id": request.character_id}
+        if request.character_id is not None
+        else {}
+    )
+
     # =====================================================
     # 1. Intent Classification
     #
@@ -925,6 +933,7 @@ async def process_chat(
             message=request.content,
             metric_statuses=metric_statuses,
             history=request.history,
+            **persona_kwargs,
         )
 
         return ChatResponse(
@@ -1165,6 +1174,7 @@ async def process_chat(
             metric_statuses=metric_statuses,
             exercise_summary=combined_summary,
             history=request.history,
+            **persona_kwargs,
         )
 
         return ChatResponse(
@@ -1206,6 +1216,7 @@ async def process_chat(
             metric_statuses=metric_statuses,
             exercise_summary=exercise_summary,
             history=request.history,
+            **persona_kwargs,
         )
 
         return ChatResponse(
@@ -1231,6 +1242,7 @@ async def process_chat(
             metric_statuses=metric_statuses,
             diet_summary=diet_summary,
             history=request.history,
+            **persona_kwargs,
         )
 
         return ChatResponse(
@@ -1462,6 +1474,7 @@ async def process_chat(
     answer = await answer_general_chat(
         request.content,
         history=request.history,
+        **persona_kwargs,
     )
 
     return ChatResponse(

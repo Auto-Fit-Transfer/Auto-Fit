@@ -14,12 +14,16 @@ import pytest
 import app.services.posture_analysis_service as posture_service_module
 from app.core.config import Settings, get_settings
 from app.main import app
-from app.schemas.posture_analysis import PostureAnalysisResult
+from app.schemas.posture_analysis import (
+    PostureAnalysisResult,
+    PostureHoldAnalysisResult,
+)
 from app.scripts import download_pose_model
 from app.services.posture_analysis_service import (
     CalfRaisePostureAnalyzer,
     CyclicPostureAnalyzer,
     MediaPipeVideoPoseExtractor,
+    PlankPostureAnalyzer,
     PoseFrame,
     PosePoint,
     PoseVideoSample,
@@ -194,6 +198,43 @@ def _calf_raise_sample() -> PoseVideoSample:
             PoseFrame(
                 timestamp_ms=frame.timestamp_ms,
                 landmarks=landmarks,
+            )
+        )
+    return PoseVideoSample(
+        frames=frames,
+        sampled_frame_count=len(frames),
+        duration_ms=frames[-1].timestamp_ms,
+    )
+
+
+def _plank_sample(
+    *,
+    hip_offset_y: float = 0.0,
+    frame_count: int = 21,
+) -> PoseVideoSample:
+    frames: list[PoseFrame] = []
+    for index in range(frame_count):
+        right_landmarks = {
+            "right_shoulder": _point(0.20, 0.50),
+            "right_hip": _point(0.50, 0.50 + hip_offset_y),
+            "right_ankle": _point(0.80, 0.50),
+        }
+        left_landmarks = {
+            code.replace("right_", "left_"): PosePoint(
+                x=point.x,
+                y=point.y,
+                confidence=0.80,
+            )
+            for code, point in right_landmarks.items()
+        }
+        frames.append(
+            PoseFrame(
+                timestamp_ms=index * 100,
+                landmarks={
+                    "head": _point(0.12, 0.48),
+                    **left_landmarks,
+                    **right_landmarks,
+                },
             )
         )
     return PoseVideoSample(
@@ -393,6 +434,64 @@ def test_calf_raise_uses_normalized_heel_lift_for_repetitions() -> None:
     assert result.repetitions[0].score == 100
 
 
+def test_plank_analyzer_returns_hold_duration_contract() -> None:
+    analyzer = PlankPostureAnalyzer(Settings())
+
+    result = analyzer.analyze(
+        posture_analysis_job_id=uuid4(),
+        sample=_plank_sample(),
+    )
+
+    assert result.schema_version == "1.2"
+    assert result.exercise_code == "plank"
+    assert result.movement_type == "hold"
+    assert result.assessment.hold_duration_ms == 2_000
+    assert result.assessment.verdict == "within_current_rules"
+    assert result.holds[0].duration_ms == 2_000
+    assert result.holds[0].score == 100
+    assert {
+        item.angle_code for item in result.holds[0].angles
+    } == {"body_alignment"}
+    assert {
+        item.finding_code for item in result.findings
+    } == {"stable_plank_alignment"}
+
+
+@pytest.mark.parametrize(
+    ("hip_offset_y", "finding_code"),
+    [
+        (0.08, "plank_hip_sag"),
+        (-0.08, "plank_hip_lift"),
+    ],
+)
+def test_plank_analyzer_distinguishes_hip_sag_and_lift(
+    hip_offset_y: float,
+    finding_code: str,
+) -> None:
+    analyzer = PlankPostureAnalyzer(Settings())
+
+    result = analyzer.analyze(
+        posture_analysis_job_id=uuid4(),
+        sample=_plank_sample(hip_offset_y=hip_offset_y),
+    )
+
+    assert result.assessment.verdict == "needs_correction"
+    assert finding_code in {
+        item.finding_code for item in result.findings
+    }
+    assert result.holds[0].score < 100
+
+
+def test_plank_analyzer_rejects_short_hold() -> None:
+    analyzer = PlankPostureAnalyzer(Settings())
+
+    with pytest.raises(PostureAnalysisError, match="1초 이상"):
+        analyzer.analyze(
+            posture_analysis_job_id=uuid4(),
+            sample=_plank_sample(frame_count=9),
+        )
+
+
 def test_cyclic_analyzer_reports_profile_specific_correction(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -523,6 +622,7 @@ def test_capabilities_use_exact_catalog_keys_and_validation_status() -> None:
 
     assert set(by_code) == {
         "squat",
+        "plank",
         "push_up",
         "glute_bridge",
         "biceps_curl",
@@ -534,8 +634,13 @@ def test_capabilities_use_exact_catalog_keys_and_validation_status() -> None:
         "lateral_raise",
     }
     assert by_code["squat"].validation_status == "validated"
+    assert by_code["plank"].movement_type == "hold"
+    assert by_code["plank"].catalog_exercise_keys == [
+        "ex_0c8105c6325fea"
+    ]
     assert by_code["lunge"].analysis_side_required is True
     assert by_code["push_up"].analysis_side_required is False
+    assert by_code["glute_bridge"].display_name_ko == "힙 브리지"
     assert all(
         item.validation_status == "experimental"
         for code, item in by_code.items()
@@ -828,7 +933,7 @@ async def _test_router_contract() -> None:
         )
         assert unauthorized.status_code == 401
         assert capabilities.status_code == 200
-        assert len(capabilities.json()["exercises"]) == 10
+        assert len(capabilities.json()["exercises"]) == 11
 
         operation = app.openapi()["paths"][
             "/posture-analysis/analyze"
@@ -844,3 +949,79 @@ async def _test_router_contract() -> None:
 
 def test_posture_analysis_router_contract() -> None:
     asyncio.run(_test_router_contract())
+
+
+async def _test_plank_router_hold_contract() -> None:
+    settings = get_settings()
+    previous_key = settings.ai_server_api_key
+    settings.ai_server_api_key = "posture-test-key"
+    original_analyze = PostureAnalysisService.analyze_video
+    expected_job_id = uuid4()
+
+    async def fake_analyze(
+        self: PostureAnalysisService,
+        *,
+        posture_analysis_job_id: UUID,
+        exercise_code: str,
+        camera_view: str,
+        exercise_key: str | None,
+        analysis_side: str | None,
+        video_bytes: bytes,
+        declared_content_type: str | None,
+        progress_callback: object = None,
+    ) -> PostureHoldAnalysisResult:
+        del self, analysis_side, progress_callback
+        assert posture_analysis_job_id == expected_job_id
+        assert exercise_code == "plank"
+        assert camera_view == "side"
+        assert exercise_key == "ex_0c8105c6325fea"
+        assert video_bytes[4:8] == b"ftyp"
+        assert declared_content_type == "video/mp4"
+        return PlankPostureAnalyzer(Settings()).analyze(
+            posture_analysis_job_id=posture_analysis_job_id,
+            sample=_plank_sample(),
+        )
+
+    PostureAnalysisService.analyze_video = fake_analyze  # type: ignore[method-assign]
+    app.openapi_schema = None
+
+    try:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as client:
+            response = await client.post(
+                "/posture-analysis/analyze",
+                data={
+                    "posture_analysis_job_id": str(expected_job_id),
+                    "exercise_code": "plank",
+                    "camera_view": "side",
+                    "exercise_key": "ex_0c8105c6325fea",
+                },
+                files={
+                    "video": (
+                        "plank.mp4",
+                        b"\x00\x00\x00\x18ftypisom" + b"video",
+                        "video/mp4",
+                    )
+                },
+                headers={
+                    "Authorization": "Bearer posture-test-key",
+                },
+            )
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["schema_version"] == "1.2"
+        assert payload["movement_type"] == "hold"
+        assert payload["assessment"]["hold_duration_ms"] == 2_000
+        assert payload["holds"][0]["duration_ms"] == 2_000
+    finally:
+        PostureAnalysisService.analyze_video = original_analyze
+        settings.ai_server_api_key = previous_key
+        app.openapi_schema = None
+
+
+def test_plank_router_serializes_hold_contract() -> None:
+    asyncio.run(_test_plank_router_hold_contract())

@@ -22,6 +22,10 @@ from app.schemas.chat import (
 from app.services.privacy_service import (
     privacy_service,
 )
+from app.services.chat_persona_service import (
+    build_persona_system_instructions,
+    resolve_chat_character,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -305,13 +309,20 @@ async def generate_backend_chat_response(
         prompt = build_backend_prompt(
             request
         )
+        character_id = resolve_chat_character(
+            request.character_id,
+            request.user_info,
+        )
 
         _increment_backend_chat_metric("openai_requests")
 
         response = await asyncio.wait_for(
             client.responses.create(
                 model=settings.openai_model,
-                instructions=SYSTEM_INSTRUCTIONS,
+                instructions=build_persona_system_instructions(
+                    SYSTEM_INSTRUCTIONS,
+                    character_id,
+                ),
                 input=prompt,
 
                 # gpt-5 reasoning이 출력 토큰을 과도하게

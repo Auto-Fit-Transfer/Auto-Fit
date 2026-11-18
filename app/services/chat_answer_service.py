@@ -9,6 +9,7 @@ from openai import AsyncOpenAI
 from app.core.config import get_settings
 
 from app.schemas.chat import (
+    ChatCharacterId,
     ChatHealthScoreQueryType,
     ChatHealthScoreSection,
     ChatHistoryItem,
@@ -32,6 +33,9 @@ from app.services.exercise_context_service import (
     build_exercise_safety_tags,
 )
 from app.services.privacy_service import privacy_service
+from app.services.chat_persona_service import (
+    build_persona_system_instructions,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -145,6 +149,7 @@ async def _request_chat_answer(
     input_text: str,
     max_output_tokens: int,
     fallback_message: str,
+    character_id: ChatCharacterId | None = None,
 ) -> tuple[str, bool]:
     """OpenAI 오류가 Chat API 전체 실패로 전파되지 않게 한다."""
 
@@ -155,7 +160,10 @@ async def _request_chat_answer(
         response = await asyncio.wait_for(
             client.responses.create(
                 model=settings.openai_model,
-                instructions=SYSTEM_INSTRUCTIONS,
+                instructions=build_persona_system_instructions(
+                    SYSTEM_INSTRUCTIONS,
+                    character_id,
+                ),
                 input=input_text,
                 max_output_tokens=max_output_tokens,
             ),
@@ -636,6 +644,7 @@ async def answer_health_question_with_sources(
     message: str,
     metric_statuses: dict[str, str],
     history: list[ChatHistoryItem] | None = None,
+    character_id: ChatCharacterId | None = None,
 ) -> tuple[str, list[RecommendationSource]]:
     """
     건강 질문:
@@ -729,6 +738,7 @@ async def answer_health_question_with_sources(
             "상태가 걱정되거나 증상이 있다면 의료진과 상담하고, "
             "잠시 후 다시 질문해 주세요."
         ),
+        character_id=character_id,
     )
 
     if used_fallback:
@@ -744,6 +754,7 @@ async def answer_health_question(
     message: str,
     metric_statuses: dict[str, str],
     history: list[ChatHistoryItem] | None = None,
+    character_id: ChatCharacterId | None = None,
 ) -> str:
     """기존 내부 호출과 호환되는 건강 답변 문자열 API."""
 
@@ -751,6 +762,7 @@ async def answer_health_question(
         message=message,
         metric_statuses=metric_statuses,
         history=history,
+        character_id=character_id,
     )
     return answer
 
@@ -765,6 +777,7 @@ async def answer_exercise_question(
     metric_statuses: dict[str, str],
     exercise_summary: dict | None,
     history: list[ChatHistoryItem] | None = None,
+    character_id: ChatCharacterId | None = None,
 ) -> str:
     """
     저장된 운동추천을 우선 활용한다.
@@ -825,6 +838,7 @@ async def answer_exercise_question(
             "무리한 운동은 피하고 저장된 운동 계획을 우선 확인한 뒤, "
             "잠시 후 다시 질문해 주세요."
         ),
+        character_id=character_id,
     )
     return answer
 
@@ -839,6 +853,7 @@ async def answer_diet_question(
     metric_statuses: dict[str, str],
     diet_summary: dict | None,
     history: list[ChatHistoryItem] | None = None,
+    character_id: ChatCharacterId | None = None,
 ) -> str:
     """
     Backend DB에 저장된 주간 식단을 우선 활용한다.
@@ -903,6 +918,7 @@ async def answer_diet_question(
             "저장된 식단의 메뉴와 공식 영양정보는 그대로 유지되며, "
             "잠시 후 다시 질문해 주세요."
         ),
+        character_id=character_id,
     )
     return answer
 
@@ -915,6 +931,7 @@ async def answer_diet_question(
 async def answer_general_chat(
     message: str,
     history: list[ChatHistoryItem] | None = None,
+    character_id: ChatCharacterId | None = None,
 ) -> str:
     """
     건강/운동/식단 기능과 무관한 일반 대화.
@@ -953,5 +970,6 @@ async def answer_general_chat(
             "현재 답변 생성이 지연되고 있습니다. "
             "잠시 후 다시 질문해 주세요."
         ),
+        character_id=character_id,
     )
     return answer

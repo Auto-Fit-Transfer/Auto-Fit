@@ -438,6 +438,10 @@ Backend는 최신 `/health-analysis` 응답의 `analysis.health_score`를 가능
 
 `health_score_question`은 확정 snapshot을 설명하는 흐름이다. 점수를 다시 계산하거나 OpenAI가 새 수치를 만들지 않는다.
 
+Frontend의 리포트 준비 질문 버튼도 반드시 이 `/chat/orchestrate` 흐름을 사용한다. 최신 `analysis.health_score`를 함께 보내면 위 네 질문은 AI Server의 결정론적 설명으로 처리되어 HTTP 요청은 한 번 발생하지만 OpenAI 호출은 발생하지 않는다. `왜 체중이 천천히 줄어?`처럼 기간별 체중 추세가 필요한 질문은 현재 health score snapshot만으로 근거를 만들 수 없으므로, Backend가 최소화된 체중 추세 context를 별도 계약으로 제공하기 전에는 준비 질문으로 노출하지 않는다. `다음 주엔 뭘 바꾸면 돼?`는 `다음 주에는 무엇부터 개선해야 해?`로 구체화하면 기존 `priority_actions` 흐름을 사용할 수 있다.
+
+사용자가 선택한 말투를 적용하려면 요청 최상위에 `character_id=quni|nabi|coach`를 전달한다. 다만 건강점수 설명과 고위험 안전 응답처럼 수치·행동 상태를 결정론적으로 반환하는 경로는 캐릭터에 따라 사실이나 안전 문구를 바꾸지 않는다.
+
 ### 7.4 Backend Action 처리
 
 | `action` | `action_status` | `requires_backend_apply` | Backend 처리 |

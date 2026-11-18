@@ -28,8 +28,20 @@
         "limitations": ["팔꿈치 벌어짐과 손 간격은 판단하지 않습니다."]
       },
       {
+        "exercise_code": "plank",
+        "display_name_ko": "플랭크",
+        "camera_view": "side",
+        "movement_type": "hold",
+        "analysis_side_required": false,
+        "validation_status": "experimental",
+        "rule_version": "plank-side-hold-rules-v1",
+        "catalog_exercise_keys": ["ex_0c8105c6325fea"],
+        "capture_instructions": ["어깨부터 발목까지 보이도록 측면에서 촬영하세요."],
+        "limitations": ["실제 체중 부하와 바닥 접촉 여부는 판단하지 않습니다."]
+      },
+      {
         "exercise_code": "glute_bridge",
-        "display_name_ko": "글루트 브리지",
+        "display_name_ko": "힙 브리지",
         "camera_view": "side",
         "movement_type": "repetition",
         "analysis_side_required": false,
@@ -202,6 +214,56 @@
         "explanation": "동작 중 발뒤꿈치 접촉이 유지됐어요.",
         "repetition_start": 1,
         "repetition_end": 1,
+        "guidance_steps": []
+      }
+    ],
+    "routine_suggestions": []
+  },
+  "hold_result": {
+    "schema_version": "1.2",
+    "posture_analysis_job_id": "00000000-0000-4000-8000-000000000002",
+    "exercise_code": "plank",
+    "camera_view": "side",
+    "movement_type": "hold",
+    "model_version": "mediapipe-pose-full-4eaa5eb7+plank-side-hold-rules-v1",
+    "assessment": {
+      "overall_score": 94,
+      "passing_score": null,
+      "verdict": "within_current_rules",
+      "hold_duration_ms": 2000,
+      "summary": "플랭크 자세를 2.0초 유지했고, 현재 구현된 측면 정렬 규칙 안에서 안정적으로 확인됐습니다."
+    },
+    "holds": [
+      {
+        "start_offset_ms": 500,
+        "keyframe_offset_ms": 1500,
+        "end_offset_ms": 2500,
+        "duration_ms": 2000,
+        "score": 94,
+        "keypoints": [
+          {"joint_code": "right_shoulder", "x_normalized": 0.20, "y_normalized": 0.50, "confidence": 0.99},
+          {"joint_code": "right_hip", "x_normalized": 0.50, "y_normalized": 0.50, "confidence": 0.99},
+          {"joint_code": "right_ankle", "x_normalized": 0.80, "y_normalized": 0.50, "confidence": 0.99}
+        ],
+        "angles": [
+          {
+            "angle_code": "body_alignment",
+            "measured_degrees": 178.0,
+            "target_min_degrees": 165.0,
+            "target_max_degrees": null
+          }
+        ]
+      }
+    ],
+    "findings": [
+      {
+        "display_order": 1,
+        "finding_type": "positive",
+        "finding_code": "stable_plank_alignment",
+        "title": "플랭크 정렬이 안정적이에요",
+        "explanation": "현재 측면 정렬 규칙 안에서 확인됐습니다.",
+        "repetition_start": null,
+        "repetition_end": null,
         "guidance_steps": []
       }
     ],

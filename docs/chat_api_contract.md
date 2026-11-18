@@ -1,6 +1,6 @@
 # Auto-Fit Chat API Backend Contract
 
-계약 버전: `1.4`
+계약 버전: `1.5`
 
 이 계약은 Auto-Fit Backend가 AI Server 챗봇을 연결할 때 따라야 하는 요청, 응답, 상태 전이와 저장 책임을 정의한다. 신규 개인화 기능은 `POST /chat/orchestrate`를 사용하며, 기존 `POST /chat`은 이전 Backend 호환용 일반 답변 경로로 유지한다.
 
@@ -25,11 +25,12 @@ Content-Type: application/json
 
 ## Legacy chat contract
 
-`POST /chat`은 `question`, `user_info`, `chat_history`를 받으며 `answer`, `model`과 OpenAI가 사용량을 제공한 경우 선택 필드 `usage`를 반환한다. `user_info`는 계약 호환을 위해 수신하지만 현재 개인화 계산에는 사용하지 않는다.
+`POST /chat`은 `question`, `user_info`, `chat_history`와 선택 필드 `character_id`를 받으며 `answer`, `model`과 OpenAI가 사용량을 제공한 경우 선택 필드 `usage`를 반환한다. `user_info`는 계약 호환을 위해 수신하며, 과거 호출이 `user_info.character_id` 또는 `user_info.character`를 보낸 경우 허용값만 하위 호환으로 읽는다.
 
 ```json
 {
   "question": "운동 방향을 알려줘",
+  "character_id": "quni",
   "user_info": {},
   "chat_history": [
     {
@@ -70,14 +71,31 @@ Content-Type: application/json
 | `history` | 아니요 | 최근 대화 최대 6개, 각 1~500자 |
 | `context` | 아니요 | Backend가 보유한 건강·운동·식단 정보 |
 | `pending_action` | 아니요 | 직전 응답에서 받은 확인 대기 action |
+| `character_id` | 아니요 | `quni`, `nabi`, `coach` 중 사용자가 선택한 말투 |
 
 `history`는 문맥 참고용이며 변경 승인으로 사용되지 않는다. 식단 변경 승인은 현재 요청의 `pending_action`과 명시적인 확인 문구가 모두 있을 때만 처리한다.
 
 운동 중 증상 대응에서는 Backend가 `context.active_exercise_session`에 현재 세션 snapshot을 전달한다. 증상 분류와 고위험 중단 판단은 OpenAI를 호출하지 않는 결정론적 규칙으로 처리한다. 경미한 조정도 `pending_action`과 명시적 확인이 모두 있을 때만 `ready_for_backend_apply`가 된다.
 
+### Character speaking style
+
+Frontend 표시명과 AI Server 식별자는 다음과 같이 고정한다.
+
+| Frontend 표시 | `character_id` | 전체 답변 말투 |
+|---|---|---|
+| 다정하게 | `quni` | 밝고 다정한 존댓말 |
+| 느긋하게 | `nabi` | 차분하고 재촉하지 않는 존댓말 |
+| 단호하게 | `coach` | 비난 없이 핵심과 다음 행동이 분명한 존댓말 |
+
+말투는 기존 한 번의 OpenAI 요청에 system instruction으로 적용하므로 말투 선택만으로 호출 횟수가 늘지 않는다. 임의 문자열이나 사용자가 작성한 프롬프트는 허용하지 않으며 세 식별자 외 값은 `422`다. 말투는 표현만 바꾸며 사실·수치·출처·의료 안전 수준과 구조화된 action 의미는 바꾸지 않는다.
+
+운동 중 고위험 증상, 중단·확인 action처럼 결정론적으로 생성되는 안전 응답은 캐릭터가 선택되어도 문구와 상태가 달라지지 않는다. Backend·Frontend가 답 앞에 별도의 캐릭터 인사말을 추가하면 같은 말투가 중복될 수 있으므로 AI Server 응답을 그대로 표시한다.
+
 ### Health score context
 
 건강 리포트 질문에는 Backend가 가장 최근 `/health-analysis` 응답의 `analysis.health_score`를 `context.health_score`로 전달한다. AI Server는 이 snapshot을 다시 계산하지 않고 설명만 제공한다.
+
+리포트의 준비된 질문 버튼은 일반 `/chat`이 아니라 `/chat/orchestrate`로 보내고 최신 `health_score` snapshot을 함께 전달한다. 현재 지원 문구인 `내 건강 점수를 알려줘`, `지난주보다 좋아졌어?`, `운동 점수가 낮은 이유가 뭐야?`, `무엇부터 개선해야 해?`는 결정론적 경로이므로 HTTP 요청은 한 번 발생하지만 OpenAI 호출은 발생하지 않는다. `왜 체중이 천천히 줄어?`처럼 체중 추세 근거가 필요한 질문은 현재 health score만으로 설명하지 않으며, Backend가 기간별 체중 추세를 별도 구조화 계약으로 제공하기 전에는 준비 질문으로 사용하지 않는다.
 
 ```json
 {

@@ -7,7 +7,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from app.core.config import get_settings
 from app.core.security import security, verify_api_key
 from app.schemas.posture_analysis import (
-    PostureAnalysisResult,
+    PostureAnalysisResponse,
     PostureCapabilitiesResponse,
 )
 from app.services.posture_analysis_service import (
@@ -43,7 +43,7 @@ async def get_posture_analysis_capabilities(
 
 @router.post(
     "/analyze",
-    response_model=PostureAnalysisResult,
+    response_model=PostureAnalysisResponse,
 )
 async def analyze_posture_video(
     video: UploadFile = File(
@@ -55,7 +55,7 @@ async def analyze_posture_video(
     exercise_key: str | None = Form(default=None),
     analysis_side: str | None = Form(default=None),
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
-) -> PostureAnalysisResult:
+) -> PostureAnalysisResponse:
     """영상을 저장하지 않고 등록된 운동별 자세 규칙으로 분석한다."""
 
     verify_api_key(credentials)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -19,6 +19,7 @@ PostureVerdict = Literal[
 
 PostureCameraView = Literal["side", "front"]
 PostureValidationStatus = Literal["validated", "experimental"]
+PostureMovementType = Literal["repetition", "hold"]
 
 PostureJointCode = Literal[
     "head",
@@ -85,7 +86,7 @@ class PostureExerciseCapability(PostureContractModel):
     exercise_code: str = Field(min_length=1)
     display_name_ko: str = Field(min_length=1)
     camera_view: PostureCameraView
-    movement_type: Literal["repetition"] = "repetition"
+    movement_type: PostureMovementType = "repetition"
     analysis_side_required: bool = False
     validation_status: PostureValidationStatus
     rule_version: str = Field(min_length=1)
@@ -207,11 +208,63 @@ class PostureRepetition(PostureContractModel):
         return self
 
 
+class PostureHold(PostureContractModel):
+    start_offset_ms: int = Field(ge=0, le=30_000)
+    keyframe_offset_ms: int = Field(ge=0, le=30_000)
+    end_offset_ms: int = Field(ge=0, le=30_000)
+    duration_ms: int = Field(ge=1, le=30_000)
+    score: int = Field(ge=0, le=100)
+    keypoints: list[PostureKeypoint] = Field(
+        min_length=1,
+        max_length=18,
+    )
+    angles: list[PostureAngle] = Field(
+        min_length=1,
+        max_length=4,
+    )
+
+    @model_validator(mode="after")
+    def validate_hold(self) -> "PostureHold":
+        if not (
+            self.start_offset_ms
+            <= self.keyframe_offset_ms
+            <= self.end_offset_ms
+        ):
+            raise ValueError(
+                "hold offsets must be ordered start <= keyframe <= end"
+            )
+        if self.duration_ms != self.end_offset_ms - self.start_offset_ms:
+            raise ValueError(
+                "duration_ms must equal end_offset_ms - start_offset_ms"
+            )
+
+        joint_codes = [item.joint_code for item in self.keypoints]
+        if len(joint_codes) != len(set(joint_codes)):
+            raise ValueError(
+                "keypoints cannot contain duplicate joint_code values"
+            )
+
+        angle_codes = [item.angle_code for item in self.angles]
+        if len(angle_codes) != len(set(angle_codes)):
+            raise ValueError(
+                "angles cannot contain duplicate angle_code values"
+            )
+        return self
+
+
 class PostureAssessment(PostureContractModel):
     overall_score: int = Field(ge=0, le=100)
     passing_score: int | None = Field(default=None, ge=0, le=100)
     verdict: PostureVerdict
     repetition_count: int = Field(ge=1, le=20)
+    summary: str = Field(min_length=1)
+
+
+class PostureHoldAssessment(PostureContractModel):
+    overall_score: int = Field(ge=0, le=100)
+    passing_score: int | None = Field(default=None, ge=0, le=100)
+    verdict: PostureVerdict
+    hold_duration_ms: int = Field(ge=1, le=30_000)
     summary: str = Field(min_length=1)
 
 
@@ -345,3 +398,74 @@ class PostureAnalysisResult(PostureContractModel):
             )
 
         return self
+
+
+class PostureHoldAnalysisResult(PostureContractModel):
+    schema_version: Literal["1.2"] = "1.2"
+    posture_analysis_job_id: UUID
+    exercise_code: str = Field(min_length=1)
+    camera_view: PostureCameraView
+    movement_type: Literal["hold"] = "hold"
+    model_version: str = Field(min_length=1)
+    assessment: PostureHoldAssessment
+    holds: list[PostureHold] = Field(min_length=1, max_length=1)
+    findings: list[PostureFinding]
+    routine_suggestions: list[PostureRoutineSuggestion]
+
+    @model_validator(mode="after")
+    def validate_hold_result_references(self) -> "PostureHoldAnalysisResult":
+        hold = self.holds[0]
+        if self.assessment.hold_duration_ms != hold.duration_ms:
+            raise ValueError(
+                "assessment.hold_duration_ms must match the hold duration"
+            )
+
+        finding_orders = [item.display_order for item in self.findings]
+        if len(finding_orders) != len(set(finding_orders)):
+            raise ValueError(
+                "findings cannot contain duplicate display_order values"
+            )
+        if any(
+            finding.repetition_start is not None
+            or finding.repetition_end is not None
+            for finding in self.findings
+        ):
+            raise ValueError(
+                "hold findings cannot reference repetition ranges"
+            )
+
+        suggestion_orders = [
+            item.display_order for item in self.routine_suggestions
+        ]
+        if len(suggestion_orders) != len(set(suggestion_orders)):
+            raise ValueError(
+                "routine_suggestions cannot contain duplicate "
+                "display_order values"
+            )
+        known_finding_orders = set(finding_orders)
+        for suggestion in self.routine_suggestions:
+            if suggestion.finding_display_order not in known_finding_orders:
+                raise ValueError(
+                    "routine suggestion must reference an existing finding"
+                )
+
+        has_correction = any(
+            finding.finding_type == "correction"
+            for finding in self.findings
+        )
+        expected_verdict = (
+            "needs_correction"
+            if has_correction
+            else "within_current_rules"
+        )
+        if self.assessment.verdict != expected_verdict:
+            raise ValueError(
+                "assessment.verdict must match correction findings"
+            )
+        return self
+
+
+PostureAnalysisResponse = Annotated[
+    PostureAnalysisResult | PostureHoldAnalysisResult,
+    Field(discriminator="schema_version"),
+]

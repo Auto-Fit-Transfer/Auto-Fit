@@ -205,7 +205,7 @@ async def _run_all() -> None:
         )
     )
 
-    assert examples["contract_version"] == "1.4"
+    assert examples["contract_version"] == "1.5"
 
     legacy = examples["legacy_chat"]
     BackendChatRequest.model_validate(

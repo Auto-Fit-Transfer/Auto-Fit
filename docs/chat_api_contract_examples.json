@@ -1,8 +1,9 @@
 {
-  "contract_version": "1.4",
+  "contract_version": "1.5",
   "legacy_chat": {
     "request": {
       "question": "운동 방향을 알려줘",
+      "character_id": "quni",
       "user_info": {},
       "chat_history": [
         {
@@ -26,6 +27,7 @@
   "health_question": {
     "request": {
       "content": "혈압 관리는 어떻게 해?",
+      "character_id": "nabi",
       "history": [],
       "context": {
         "metric_statuses": {

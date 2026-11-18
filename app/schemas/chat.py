@@ -89,6 +89,13 @@ ChatRole = Literal[
 ]
 
 
+ChatCharacterId = Literal[
+    "quni",
+    "nabi",
+    "coach",
+]
+
+
 ChatHealthScoreQueryType = Literal[
     "summary",
     "comparison",
@@ -406,6 +413,8 @@ class ChatRequest(BaseModel):
 
     pending_action: ChatPendingAction | None = None
 
+    character_id: ChatCharacterId | None = None
+
 
 class ChatIntentResult(BaseModel):
     intent: ChatIntent
@@ -507,6 +516,8 @@ class BackendChatRequest(BaseModel):
         default_factory=list,
         max_length=20,
     )
+
+    character_id: ChatCharacterId | None = None
 
 
 class BackendChatTokenUsage(BaseModel):

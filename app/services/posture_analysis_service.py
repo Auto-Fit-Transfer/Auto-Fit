@@ -4,7 +4,7 @@ import asyncio
 from dataclasses import dataclass
 import hashlib
 import hmac
-from math import acos, degrees, hypot, isfinite
+from math import acos, atan2, degrees, hypot, isfinite
 from pathlib import Path
 import os
 import tempfile
@@ -16,12 +16,16 @@ from app.core.config import Settings, get_settings
 from app.schemas.posture_analysis import (
     PostureCapabilitiesResponse,
     PostureAnalysisProgress,
+    PostureAnalysisResponse,
     PostureAnalysisResult,
     PostureAngle,
     PostureAssessment,
     PostureExerciseCapability,
     PostureFinding,
     PostureGuidanceStep,
+    PostureHold,
+    PostureHoldAnalysisResult,
+    PostureHoldAssessment,
     PostureKeypoint,
     PostureRepetition,
     PostureRoutineSuggestion,
@@ -109,6 +113,7 @@ class _ExerciseDescriptor:
     catalog_exercise_keys: tuple[str, ...]
     capture_instructions: tuple[str, ...]
     limitations: tuple[str, ...]
+    movement_type: Literal["repetition", "hold"] = "repetition"
     analysis_side_required: bool = False
 
 
@@ -166,7 +171,7 @@ class _PostureAnalyzer(Protocol):
         sample: PoseVideoSample,
         analysis_side: Literal["left", "right"] | None = None,
         progress_callback: ProgressCallback | None = None,
-    ) -> PostureAnalysisResult: ...
+    ) -> PostureAnalysisResponse: ...
 
 
 _SQUAT_DESCRIPTOR = _ExerciseDescriptor(
@@ -186,6 +191,25 @@ _SQUAT_DESCRIPTOR = _ExerciseDescriptor(
     limitations=(
         "무릎의 정면 외반과 발 압력은 측면 단일 영상으로 판단하지 않습니다.",
     ),
+    analysis_side_required=False,
+)
+
+_PLANK_DESCRIPTOR = _ExerciseDescriptor(
+    exercise_code="plank",
+    display_name_ko="플랭크",
+    camera_view="side",
+    validation_status="experimental",
+    rule_version="plank-side-hold-rules-v1",
+    catalog_exercise_keys=("ex_0c8105c6325fea",),
+    capture_instructions=(
+        "어깨부터 발목까지 보이도록 정확한 측면에서 고정 촬영하세요.",
+        "플랭크 자세를 잡기 전부터 촬영하고 2초 이상 유지한 뒤 내려오세요.",
+    ),
+    limitations=(
+        "단일 2D 영상은 실제 체중 부하와 바닥 접촉 여부를 판단하지 않습니다.",
+        "골반의 좌우 회전과 어깨·손목의 압력은 판단하지 않습니다.",
+    ),
+    movement_type="hold",
     analysis_side_required=False,
 )
 
@@ -930,6 +954,7 @@ def _make_descriptor(
     catalog_exercise_keys: tuple[str, ...],
     capture_instructions: tuple[str, ...],
     limitations: tuple[str, ...],
+    movement_type: Literal["repetition", "hold"] = "repetition",
     analysis_side_required: bool = False,
 ) -> _ExerciseDescriptor:
     return _ExerciseDescriptor(
@@ -941,6 +966,7 @@ def _make_descriptor(
         catalog_exercise_keys=catalog_exercise_keys,
         capture_instructions=capture_instructions,
         limitations=limitations,
+        movement_type=movement_type,
         analysis_side_required=analysis_side_required,
     )
 
@@ -1351,7 +1377,7 @@ _CYCLIC_EXERCISE_PROFILES = (
     _CyclicExerciseProfile(
         descriptor=_make_descriptor(
             exercise_code="glute_bridge",
-            display_name_ko="글루트 브리지",
+            display_name_ko="힙 브리지",
             camera_view="side",
             rule_version="glute-bridge-side-rules-v1",
             catalog_exercise_keys=("ex_1bb869dd7b0cc4",),
@@ -2068,6 +2094,416 @@ class CalfRaisePostureAnalyzer(CyclicPostureAnalyzer):
         )
 
 
+class PlankPostureAnalyzer:
+    """측면 관절 정렬에서 가장 긴 플랭크 유지 구간을 분석한다."""
+
+    descriptor = _PLANK_DESCRIPTOR
+    _REQUIRED_JOINTS = ("shoulder", "hip", "ankle")
+    _SMOOTHING_ALPHA = 0.35
+    _MAX_FRAME_GAP_MS = 500
+    _MINIMUM_HOLD_DURATION_MS = 1_000
+    _MAX_BODY_AXIS_DEGREES = 35.0
+    _MINIMUM_ENTRY_ALIGNMENT_DEGREES = 135.0
+    _TARGET_ALIGNMENT_DEGREES = 165.0
+    _HIP_OFFSET_TOLERANCE_RATIO = 0.04
+    _CORRECTION_FRAME_RATIO = 0.20
+
+    def __init__(self, settings: Settings) -> None:
+        self.settings = settings
+
+    def analyze(
+        self,
+        *,
+        posture_analysis_job_id: UUID,
+        sample: PoseVideoSample,
+        analysis_side: Literal["left", "right"] | None = None,
+        progress_callback: ProgressCallback | None = None,
+    ) -> PostureHoldAnalysisResult:
+        side = analysis_side or _select_visible_side(
+            sample.frames,
+            joint_names=self._REQUIRED_JOINTS,
+        )
+        frames = _prepare_frames_for_analysis(
+            sample=sample,
+            settings=self.settings,
+            required_joint_names=self._REQUIRED_JOINTS,
+            side=side,
+            bilateral=False,
+            smoothing_alpha=self._SMOOTHING_ALPHA,
+            exercise_name=self.descriptor.display_name_ko,
+        )
+        hold_frames = self._longest_hold_segment(frames, side=side)
+        if not hold_frames:
+            raise PostureAnalysisError(
+                "1초 이상 유지된 플랭크 자세를 인식하지 못했습니다. "
+                "어깨·골반·발목이 보이는 측면 영상으로 다시 촬영해 주세요."
+            )
+
+        if progress_callback:
+            progress_callback(
+                PostureAnalysisProgress(
+                    posture_analysis_job_id=posture_analysis_job_id,
+                    analysis_stage="posture_scoring",
+                    progress_percent=85,
+                    processed_frames=sample.sampled_frame_count,
+                    total_frames=sample.sampled_frame_count,
+                    detected_repetitions=0,
+                )
+            )
+
+        alignments: list[float] = []
+        hip_offsets: list[float] = []
+        frame_scores: list[float] = []
+        for frame in hold_frames:
+            alignment = self._body_alignment(frame, side=side)
+            hip_offset = self._hip_line_offset_ratio(frame, side=side)
+            alignment_penalty = min(
+                40.0,
+                max(0.0, self._TARGET_ALIGNMENT_DEGREES - alignment)
+                * 1.5,
+            )
+            hip_penalty = min(
+                40.0,
+                max(
+                    0.0,
+                    abs(hip_offset) - self._HIP_OFFSET_TOLERANCE_RATIO,
+                )
+                * 500.0,
+            )
+            alignments.append(alignment)
+            hip_offsets.append(hip_offset)
+            frame_scores.append(
+                _clamp(100.0 - alignment_penalty - hip_penalty, 0.0, 100.0)
+            )
+
+        keyframe_index = min(
+            range(len(hold_frames)),
+            key=lambda index: frame_scores[index],
+        )
+        keyframe = hold_frames[keyframe_index]
+        duration_ms = (
+            hold_frames[-1].timestamp_ms - hold_frames[0].timestamp_ms
+        )
+        score = round(sum(frame_scores) / len(frame_scores))
+        findings = self._build_findings(
+            alignments=alignments,
+            hip_offsets=hip_offsets,
+        )
+        correction_titles = [
+            finding.title
+            for finding in findings
+            if finding.finding_type == "correction"
+        ]
+        verdict = (
+            "needs_correction"
+            if correction_titles
+            else "within_current_rules"
+        )
+        if correction_titles:
+            summary = (
+                f"플랭크 자세를 {duration_ms / 1000:.1f}초 분석했습니다. "
+                f"우선 확인할 교정 항목: {', '.join(correction_titles)}."
+            )
+        else:
+            summary = (
+                f"플랭크 자세를 {duration_ms / 1000:.1f}초 유지했고, "
+                "현재 구현된 측면 정렬 규칙 안에서 안정적으로 확인됐습니다."
+            )
+
+        result = PostureHoldAnalysisResult(
+            schema_version="1.2",
+            posture_analysis_job_id=posture_analysis_job_id,
+            exercise_code=self.descriptor.exercise_code,
+            camera_view=self.descriptor.camera_view,
+            movement_type="hold",
+            model_version=_compose_model_version(
+                self.settings,
+                self.descriptor.rule_version,
+            ),
+            assessment=PostureHoldAssessment(
+                overall_score=score,
+                passing_score=None,
+                verdict=verdict,
+                hold_duration_ms=duration_ms,
+                summary=summary,
+            ),
+            holds=[
+                PostureHold(
+                    start_offset_ms=hold_frames[0].timestamp_ms,
+                    keyframe_offset_ms=keyframe.timestamp_ms,
+                    end_offset_ms=hold_frames[-1].timestamp_ms,
+                    duration_ms=duration_ms,
+                    score=score,
+                    keypoints=_build_schema_keypoints(
+                        keyframe,
+                        settings=self.settings,
+                        joint_names=self._REQUIRED_JOINTS,
+                        side=side,
+                        bilateral=False,
+                    ),
+                    angles=[
+                        PostureAngle(
+                            angle_code="body_alignment",
+                            measured_degrees=round(
+                                alignments[keyframe_index],
+                                1,
+                            ),
+                            target_min_degrees=(
+                                self._TARGET_ALIGNMENT_DEGREES
+                            ),
+                            target_max_degrees=None,
+                        )
+                    ],
+                )
+            ],
+            findings=findings,
+            routine_suggestions=[],
+        )
+
+        if progress_callback:
+            progress_callback(
+                PostureAnalysisProgress(
+                    posture_analysis_job_id=posture_analysis_job_id,
+                    analysis_stage="result_summary",
+                    progress_percent=100,
+                    processed_frames=sample.sampled_frame_count,
+                    total_frames=sample.sampled_frame_count,
+                    detected_repetitions=0,
+                )
+            )
+        return result
+
+    def _longest_hold_segment(
+        self,
+        frames: list[PoseFrame],
+        *,
+        side: Literal["left", "right"],
+    ) -> list[PoseFrame]:
+        segments: list[list[PoseFrame]] = []
+        current: list[PoseFrame] = []
+        previous_timestamp_ms: int | None = None
+
+        for frame in frames:
+            alignment = self._body_alignment(frame, side=side)
+            horizontal_enough = (
+                self._body_axis_degrees(frame, side=side)
+                <= self._MAX_BODY_AXIS_DEGREES
+            )
+            continuous = (
+                previous_timestamp_ms is None
+                or frame.timestamp_ms - previous_timestamp_ms
+                <= self._MAX_FRAME_GAP_MS
+            )
+            candidate = (
+                horizontal_enough
+                and alignment >= self._MINIMUM_ENTRY_ALIGNMENT_DEGREES
+            )
+            if not candidate or not continuous:
+                if current:
+                    segments.append(current)
+                current = []
+            if candidate:
+                current.append(frame)
+            previous_timestamp_ms = frame.timestamp_ms
+        if current:
+            segments.append(current)
+
+        eligible = [
+            segment
+            for segment in segments
+            if (
+                segment[-1].timestamp_ms - segment[0].timestamp_ms
+                >= self._MINIMUM_HOLD_DURATION_MS
+            )
+        ]
+        if not eligible:
+            return []
+        return max(
+            eligible,
+            key=lambda segment: (
+                segment[-1].timestamp_ms - segment[0].timestamp_ms,
+                len(segment),
+            ),
+        )
+
+    def _build_findings(
+        self,
+        *,
+        alignments: list[float],
+        hip_offsets: list[float],
+    ) -> list[PostureFinding]:
+        threshold = max(
+            2,
+            round(len(hip_offsets) * self._CORRECTION_FRAME_RATIO),
+        )
+        sag_count = sum(
+            offset > self._HIP_OFFSET_TOLERANCE_RATIO
+            for offset in hip_offsets
+        )
+        lift_count = sum(
+            offset < -self._HIP_OFFSET_TOLERANCE_RATIO
+            for offset in hip_offsets
+        )
+        alignment_count = sum(
+            value < self._TARGET_ALIGNMENT_DEGREES
+            for value in alignments
+        )
+        findings: list[PostureFinding] = []
+
+        if sag_count >= threshold:
+            findings.append(
+                PostureFinding(
+                    display_order=len(findings) + 1,
+                    finding_type="correction",
+                    finding_code="plank_hip_sag",
+                    title="플랭크 중 골반이 처지지 않게 해 주세요",
+                    explanation=(
+                        "어깨와 발목을 잇는 선보다 골반이 아래로 내려간 "
+                        "프레임이 반복해서 확인됐습니다."
+                    ),
+                    repetition_start=None,
+                    repetition_end=None,
+                    guidance_steps=[
+                        PostureGuidanceStep(
+                            sequence_order=1,
+                            instruction=(
+                                "복부와 엉덩이에 힘을 주고 골반을 몸통 선에 "
+                                "맞추세요."
+                            ),
+                        ),
+                        PostureGuidanceStep(
+                            sequence_order=2,
+                            instruction=(
+                                "허리 통증이 있거나 정렬을 유지하기 어렵다면 "
+                                "즉시 자세를 풀고 쉬세요."
+                            ),
+                        ),
+                    ],
+                )
+            )
+        if lift_count >= threshold:
+            findings.append(
+                PostureFinding(
+                    display_order=len(findings) + 1,
+                    finding_type="correction",
+                    finding_code="plank_hip_lift",
+                    title="플랭크 중 골반을 너무 높이 들지 마세요",
+                    explanation=(
+                        "어깨와 발목을 잇는 선보다 골반이 위로 올라간 "
+                        "프레임이 반복해서 확인됐습니다."
+                    ),
+                    repetition_start=None,
+                    repetition_end=None,
+                    guidance_steps=[
+                        PostureGuidanceStep(
+                            sequence_order=1,
+                            instruction=(
+                                "골반을 천천히 낮춰 어깨부터 발목까지 한 선에 "
+                                "가깝게 맞추세요."
+                            ),
+                        )
+                    ],
+                )
+            )
+        if (
+            alignment_count >= threshold
+            and sag_count < threshold
+            and lift_count < threshold
+        ):
+            findings.append(
+                PostureFinding(
+                    display_order=len(findings) + 1,
+                    finding_type="correction",
+                    finding_code="plank_body_alignment",
+                    title="어깨부터 발목까지 정렬을 확인해 주세요",
+                    explanation=(
+                        "어깨·골반·발목 정렬 각도가 현재 기준인 "
+                        f"{self._TARGET_ALIGNMENT_DEGREES:.0f}도보다 작은 "
+                        "프레임이 반복해서 확인됐습니다."
+                    ),
+                    repetition_start=None,
+                    repetition_end=None,
+                    guidance_steps=[
+                        PostureGuidanceStep(
+                            sequence_order=1,
+                            instruction=(
+                                "목을 길게 두고 복부와 엉덩이를 함께 조여 "
+                                "몸통을 한 선으로 유지하세요."
+                            ),
+                        )
+                    ],
+                )
+            )
+
+        if not findings:
+            findings.append(
+                PostureFinding(
+                    display_order=1,
+                    finding_type="positive",
+                    finding_code="stable_plank_alignment",
+                    title="플랭크 정렬이 안정적이에요",
+                    explanation=(
+                        "분석된 유지 구간이 현재 어깨·골반·발목 정렬 "
+                        "규칙 안에서 확인됐습니다."
+                    ),
+                    repetition_start=None,
+                    repetition_end=None,
+                    guidance_steps=[],
+                )
+            )
+        return findings
+
+    @staticmethod
+    def _body_alignment(
+        frame: PoseFrame,
+        *,
+        side: Literal["left", "right"],
+    ) -> float:
+        return _required_angle(
+            frame.landmarks[f"{side}_shoulder"],
+            frame.landmarks[f"{side}_hip"],
+            frame.landmarks[f"{side}_ankle"],
+        )
+
+    @staticmethod
+    def _body_axis_degrees(
+        frame: PoseFrame,
+        *,
+        side: Literal["left", "right"],
+    ) -> float:
+        shoulder = frame.landmarks[f"{side}_shoulder"]
+        ankle = frame.landmarks[f"{side}_ankle"]
+        return degrees(
+            atan2(
+                abs(ankle.y - shoulder.y),
+                abs(ankle.x - shoulder.x),
+            )
+        )
+
+    @staticmethod
+    def _hip_line_offset_ratio(
+        frame: PoseFrame,
+        *,
+        side: Literal["left", "right"],
+    ) -> float:
+        shoulder = frame.landmarks[f"{side}_shoulder"]
+        hip = frame.landmarks[f"{side}_hip"]
+        ankle = frame.landmarks[f"{side}_ankle"]
+        axis_x = ankle.x - shoulder.x
+        axis_y = ankle.y - shoulder.y
+        axis_length = hypot(axis_x, axis_y)
+        if axis_length <= 1e-9 or abs(axis_x) <= 1e-9:
+            raise PostureAnalysisError(
+                "플랭크 몸통 선을 계산할 수 없는 프레임이 포함되어 있습니다."
+            )
+        cross = (
+            axis_x * (hip.y - shoulder.y)
+            - axis_y * (hip.x - shoulder.x)
+        )
+        direction = 1.0 if axis_x > 0 else -1.0
+        return (cross / axis_length) * direction / axis_length
+
+
 class PostureAnalysisService:
     """영상 임시 파일의 생명주기와 실제 자세 분석을 조율한다."""
 
@@ -2119,7 +2555,7 @@ class PostureAnalysisService:
         video_bytes: bytes,
         declared_content_type: str | None,
         progress_callback: ProgressCallback | None = None,
-    ) -> PostureAnalysisResult:
+    ) -> PostureAnalysisResponse:
         (
             normalized_exercise_code,
             normalized_camera_view,
@@ -2156,7 +2592,7 @@ class PostureAnalysisService:
         exercise_code: str = SUPPORTED_EXERCISE_CODE,
         camera_view: str = SUPPORTED_CAMERA_VIEW,
         analysis_side: Literal["left", "right"] | None = None,
-    ) -> PostureAnalysisResult:
+    ) -> PostureAnalysisResponse:
         with _POSTURE_ANALYSIS_SLOTS:
             return self._analyze_video_sync(
                 posture_analysis_job_id,
@@ -2177,7 +2613,7 @@ class PostureAnalysisService:
         exercise_code: str = SUPPORTED_EXERCISE_CODE,
         camera_view: str = SUPPORTED_CAMERA_VIEW,
         analysis_side: Literal["left", "right"] | None = None,
-    ) -> PostureAnalysisResult:
+    ) -> PostureAnalysisResponse:
         temporary_path: Path | None = None
         try:
             with tempfile.NamedTemporaryFile(
@@ -2296,6 +2732,7 @@ def _build_default_analyzer_registry(
 ) -> dict[tuple[str, str], _PostureAnalyzer]:
     analyzers: list[_PostureAnalyzer] = [
         SquatPostureAnalyzer(settings),
+        PlankPostureAnalyzer(settings),
         *[
             (
                 CalfRaisePostureAnalyzer(settings, profile)
@@ -2324,6 +2761,7 @@ def _descriptor_to_schema(
         exercise_code=descriptor.exercise_code,
         display_name_ko=descriptor.display_name_ko,
         camera_view=descriptor.camera_view,
+        movement_type=descriptor.movement_type,
         analysis_side_required=descriptor.analysis_side_required,
         validation_status=descriptor.validation_status,
         rule_version=descriptor.rule_version,

@@ -1116,3 +1116,16 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - 수정 후 실제 시험: 같은 비식별 합성 세션으로 HTTP 200, `ok=true`, `generator=auto-fit-ai`, `summary`, `insights`, `next_session_adjustments`, `safety_notice` 계약 확인; 컨테이너 오류 로그 0건
 - 회귀 테스트: 운동 결과 분석 단독 Docker pytest `8 passed`; 자세 분석·OpenAPI/Backend 계약을 포함한 통합 대상 Docker pytest `48 passed`
 - 잔여 점검: 동일 전역 모델을 사용하는 Recipe·Chat·운동 추천·건강 분석 일부 경로에도 `minimal` 하드코딩이 남아 있다. 기존 식단·레시피 미커밋 변경과 섞지 않고 별도 호환성 변경·비용 승인 시험으로 처리
+
+## 2026-11-18 · A안 자세 분석 5종·챗봇 말투 계약 보강
+
+- 상태: 로컬 AI Server 구현 및 합성 계약 검증 완료, 실제 스마트폰 영상과 Backend/Frontend 통합 검증 대기
+- 자세 분석: 기존 푸시업·런지·힙 브리지 반복형 규칙을 재사용하고, 플랭크를 `movement_type=hold`의 측면 규칙으로 추가
+- 플랭크 결과: 반복형 `schema_version=1.1`을 보존하면서 유지형 `schema_version=1.2`, `holds[0].duration_ms`, `assessment.hold_duration_ms`를 추가. 어깨-골반-발목 정렬과 골반 처짐·들림을 판정
+- 검증 상태: 스쿼트 외 푸시업·플랭크·런지·힙 브리지는 실제 스마트폰 측면 영상 보정 전이므로 `experimental` 유지. 운영 기본값에서는 분석을 차단하고 팀 검증 환경에서만 `POSTURE_ALLOW_EXPERIMENTAL=true` 사용
+- 챗봇 말투: `/chat`과 `/chat/orchestrate` 요청에 선택 `character_id=quni|nabi|coach` 추가. 각각 다정하게·느긋하게·단호하게에 대응하며 기존 한 번의 OpenAI 호출 전체 답변에 적용
+- 안전 보존: 말투는 표현만 바꾸고 사실·수치·출처·의료 안전·구조화 action은 변경하지 않음. 급성 증상 중단 등 결정론적 안전 응답은 캐릭터별로 변형하지 않음
+- 리포트 준비 질문: `/chat/orchestrate`와 최신 `health_score` snapshot을 사용하면 지원된 점수 질문은 OpenAI 호출 없이 처리. 체중 추세 근거가 없는 질문은 별도 report context 계약 전까지 사용하지 않음
+- Backend 작업: 두 자세 응답 버전의 union DTO 및 hold 저장 지원, `character_id` 전달, 리포트 준비 질문에 최신 health score context 전달
+- Frontend 작업: capabilities의 `movement_type`·`validation_status` 기준 노출, 플랭크 유지 시간 UI, 답변 앞 별도 캐릭터 인사말 중복 제거, 준비 질문 문구를 지원 intent에 맞춤
+- 남은 작업: 푸시업·플랭크·런지·힙 브리지 정상/교정/인식불가 측면 영상 실기기 보정, Backend 저장 E2E, 캐릭터별 실제 답변 품질 확인
