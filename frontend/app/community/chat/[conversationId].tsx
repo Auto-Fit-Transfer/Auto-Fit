@@ -2,12 +2,10 @@ import { conversationPeer } from '@/src/features/community/conversationPeers';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  StyleSheet,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,10 +23,12 @@ import {
   type CommunityMessage,
   getCommunityConversations,
 } from '@/src/api/community';
+import { ALoading } from '@/src/components/a/ALoading';
+import { aForm } from '@/src/components/a/form';
 import { AppButton, AppHeader, IconButton, Text, TextInput } from '@/src/components/common';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { COMMUNITY_MESSAGES_ENABLED } from '@/src/features/community/communityFeatures';
 
 // No real-time server: while this screen is shown it checks for new messages every few seconds.
@@ -166,7 +166,7 @@ function CommunityChatScreen() {
           other ? (
             <IconButton
               accessibilityLabel="신고·차단"
-              icon={<MoreIcon color={colors.textBody} height={22} width={22} />}
+              icon={<MoreIcon color={colors.ink} height={22} width={22} />}
               onPress={() => actions.openUserMenu(other)}
               size={44}
             />
@@ -180,7 +180,7 @@ function CommunityChatScreen() {
           <AppButton fullWidth={false} onPress={() => router.back()} title="돌아가기" />
         </View>
       ) : messages === null ? (
-        <ActivityIndicator color={colors.primary} style={styles.message} />
+        <ALoading />
       ) : (
         <FlatList
           contentContainerStyle={styles.list}
@@ -229,7 +229,7 @@ function CommunityChatScreen() {
             onPress={() => void send()}
             style={[styles.send, (!draft.trim() || sending) && styles.sendDisabled]}
           >
-            <SendIcon color={colors.surface} height={20} width={20} />
+            <SendIcon color={colors.onPrimary} height={20} width={20} />
           </Pressable>
         </View>
       )}
@@ -239,65 +239,25 @@ function CommunityChatScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
     root: { backgroundColor: colors.background, flex: 1 },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: spacing.md,
-      justifyContent: 'center',
-      padding: spacing.xxl,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    message: { alignItems: 'center', flex: 1, gap: spacing.md, justifyContent: 'center', padding: spacing.xxl },
+    messageText: { ...a.p15, color: colors.ink, textAlign: 'center' },
     list: { flexGrow: 1, gap: spacing.sm, padding: spacing.lg },
-    empty: {
-      ...typography.body,
-      color: colors.textSecondary,
-      padding: spacing.xl,
-      textAlign: 'center',
-      transform: [{ scaleY: -1 }],
-    },
+    empty: { ...a.p15, color: colors.textSecondary, padding: spacing.xl, textAlign: 'center', transform: [{ scaleY: -1 }] },
     bubbleRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 6 },
     bubbleRowMine: { flexDirection: 'row-reverse' },
-    bubble: { borderRadius: 16, maxWidth: '75%', paddingHorizontal: 14, paddingVertical: 9 },
+    // bubbles as the ask screen draws them: outlined, mine violet
+    bubble: { borderColor: colors.ink, borderRadius: 14, borderWidth: 2, maxWidth: '75%', paddingHorizontal: 13, paddingVertical: 8 },
     bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
-    bubbleOther: { backgroundColor: colors.background, borderBottomLeftRadius: 4 },
-    bubbleText: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 16,
-      lineHeight: 21,
-    },
+    bubbleOther: { backgroundColor: colors.surface, borderBottomLeftRadius: 4 },
+    bubbleText: { ...a.p15, color: colors.ink },
     bubbleTextMine: { color: colors.onPrimary },
-    time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-    composer: {
-      alignItems: 'flex-end',
-      borderTopColor: colors.border,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      flexDirection: 'row',
-      gap: spacing.sm,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.sm,
-    },
-    input: {
-      backgroundColor: colors.surface,
-      borderRadius: 16,
-      color: colors.textPrimary,
-      flex: 1,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 16,
-      maxHeight: 120,
-      paddingHorizontal: spacing.md,
-      paddingVertical: 10,
-    },
-    send: {
-      alignItems: 'center',
-      backgroundColor: colors.primary,
-      borderRadius: radius.round,
-      height: 42,
-      justifyContent: 'center',
-      width: 42,
-    },
+    time: a.note,
+    composer: { alignItems: 'flex-end', borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+    input: { ...a.p15, backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, color: colors.ink, flex: 1, maxHeight: 120, paddingHorizontal: spacing.md, paddingVertical: 10 },
+    send: { alignItems: 'center', backgroundColor: colors.primary, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, boxShadow: `0 3px 0 ${colors.ink}`, height: 44, justifyContent: 'center', width: 44 },
     sendDisabled: { opacity: 0.4 },
   } as const;
 }

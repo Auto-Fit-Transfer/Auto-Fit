@@ -1151,7 +1151,7 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
       <View style={styles.photoFrame}>
         <View style={styles.photoBox}>
           {draft?.photoUri ? (
-            <Image resizeMode="cover" source={{ uri: draft.photoUri }} style={StyleSheet.absoluteFill} />
+                        <Image resizeMode="contain" source={{ uri: draft.photoUri }} style={StyleSheet.absoluteFill} />
           ) : (
             <View style={styles.emptyPhoto}>
               <View style={styles.cameraCircle}>
@@ -1486,11 +1486,12 @@ function createStyles({ colors }: AppTheme) {
     photoScreenTitle: { lineHeight: 29 },
     photoContent: { flex: 1, gap: 20 },
     photoFrame: { flex: 1, minHeight: 0 },
-    photoBox: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderStyle: 'dashed', borderWidth: 2, height: 180, overflow: 'hidden' },
+    // fills the free height; a chosen photo is shown whole (contain), never cut (user, 11/14)
+    photoBox: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderStyle: 'dashed', borderWidth: 2, flex: 1, minHeight: 180, overflow: 'hidden' },
     emptyPhoto: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center' },
     cameraCircle: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 18, borderWidth: 2, height: 64, justifyContent: 'center', width: 64 },
     emptyPhotoText: { color: colors.textSecondary, fontFamily: fontFamilies.galmuri14, fontSize: 15 },
-    photoTip: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, flexDirection: 'row', gap: 5, minHeight: 38, justifyContent: 'center', marginTop: 20, paddingHorizontal: 12, paddingVertical: 6 },
+    photoTip: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, flexDirection: 'row', gap: 5, minHeight: 38, justifyContent: 'center', marginBottom: 14, marginTop: 14, paddingHorizontal: 12, paddingVertical: 6 },
     photoTipText: { color: colors.ink, flexShrink: 1, fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 },
     photoTipLabel: { color: colors.ink },
     photoActions: { gap: 10, marginTop: 'auto' },

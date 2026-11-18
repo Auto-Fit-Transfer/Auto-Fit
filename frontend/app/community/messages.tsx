@@ -2,11 +2,9 @@ import { rememberConversationPeer } from '@/src/features/community/conversationP
 import { useCallback, useRef, useState } from 'react';
 import { Redirect, useFocusEffect, useRouter } from 'expo-router';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
-  StyleSheet,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,10 +14,12 @@ import {
   getCommunityErrorMessage,
   type CommunityConversation,
 } from '@/src/api/community';
+import { ALoading } from '@/src/components/a/ALoading';
+import { aForm } from '@/src/components/a/form';
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
-import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { radius, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { COMMUNITY_MESSAGES_ENABLED } from '@/src/features/community/communityFeatures';
 
 // Conversations with at least one message, most recent first. Reloads when shown again.
@@ -93,7 +93,7 @@ function CommunityMessagesScreen() {
           <AppButton fullWidth={false} onPress={() => void load()} title="다시 시도" />
         </View>
       ) : items === null ? (
-        <ActivityIndicator color={colors.primary} style={styles.message} />
+        <ALoading />
       ) : (
         <FlatList
           contentContainerStyle={{ flexGrow: 1, paddingBottom: insets.bottom + spacing.xl }}
@@ -165,49 +165,21 @@ function CommunityMessagesScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
     root: { backgroundColor: colors.background, flex: 1 },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: spacing.md,
-      justifyContent: 'center',
-      padding: spacing.xxl,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
-    row: {
-      alignItems: 'center',
-      borderBottomColor: colors.border,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      flexDirection: 'row',
-      gap: spacing.md,
-      paddingHorizontal: spacing.xl,
-      paddingVertical: spacing.md,
-    },
-    pressed: { backgroundColor: colors.background },
+    message: { alignItems: 'center', flex: 1, gap: spacing.md, justifyContent: 'center', padding: spacing.xxl },
+    messageText: { ...a.p15, color: colors.ink, textAlign: 'center' },
+    row: { alignItems: 'center', borderBottomColor: colors.track, borderBottomWidth: 2, flexDirection: 'row', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+    pressed: { backgroundColor: colors.primaryLight },
     body: { flex: 1, gap: 2, minWidth: 0 },
     top: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-    nickname: {
-      color: colors.textPrimary,
-      flex: 1,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
-    time: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12 },
-    preview: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardRegular,
-      fontSize: 14,
-    },
-    previewUnread: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-    badge: {
-      alignItems: 'center',
-      backgroundColor: colors.danger,
-      borderRadius: radius.round,
-      minWidth: 20,
-      paddingHorizontal: 6,
-      paddingVertical: 2,
-    },
-    badgeText: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 12 },
+    nickname: { ...a.p15, color: colors.ink, flex: 1 },
+    time: a.note,
+    preview: { ...a.p12, color: colors.textBody },
+    previewUnread: { color: colors.ink },
+    // unread count: violet with the dark outline, not red
+    badge: { alignItems: 'center', backgroundColor: colors.primary, borderColor: colors.ink, borderRadius: radius.round, borderWidth: 2, minWidth: 22, paddingHorizontal: 6 },
+    badgeText: { ...a.p12, color: colors.onPrimary },
   } as const;
 }

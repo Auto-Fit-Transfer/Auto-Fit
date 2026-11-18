@@ -14,7 +14,7 @@ export const TextInput = forwardRef<NativeTextInput, TextInputProps>(function Te
   const base = {
     ...flat,
     color: flat.color ?? colors.textPrimary,
-    fontFamily: flat.fontFamily ?? fontFamilies.pretendardRegular,
+    fontFamily: flat.fontFamily ?? fontFamilies.galmuri14, // renewal A: every letter is a pixel letter unless a style says otherwise
   };
   const textStyle = scaleText(base, easyMode, fontStep);
   return (

@@ -40,7 +40,7 @@ export const Text = forwardRef<NativeText, TextProps>(function Text(
   const base = nested ? flat : {
     ...flat,
     color: flat.color ?? colors.textPrimary,
-    fontFamily: flat.fontFamily ?? fontFamilies.pretendardRegular,
+    fontFamily: flat.fontFamily ?? fontFamilies.galmuri14, // renewal A: every letter is a pixel letter unless a style says otherwise
   };
   // The easy (senior) mode and the font size setting resize every text here.
   const textStyle = scaleText(base, easyMode, fontStep);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { FlatList, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
@@ -12,10 +12,12 @@ import {
   type CommunityRankingMetric,
   type CommunityRankingScope,
 } from '@/src/api/community';
+import { ALoading } from '@/src/components/a/ALoading';
+import { aForm } from '@/src/components/a/form';
 import { AppButton, AppHeader, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { fontFamilies, radius, spacing, typography, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, spacing, useThemedStyles, type AppTheme } from '@/src/theme';
 import { COMMUNITY_RANKING_ENABLED } from '@/src/features/community/communityFeatures';
 
 const METRICS: { label: string; unit: string; value: CommunityRankingMetric }[] = [
@@ -36,7 +38,6 @@ export default function CommunityRankingRoute() {
 }
 
 function CommunityRankingScreen() {
-  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams<{ scope?: string; clubId?: string; clubName?: string }>();
   const router = useRouter();
@@ -184,7 +185,7 @@ function CommunityRankingScreen() {
           keyExtractor={(item) => item.user_id}
           ListEmptyComponent={
             ranking === null ? (
-              <ActivityIndicator color={colors.primary} style={styles.message} />
+              <ALoading />
             ) : (
               <View style={styles.message}>
                 <Text style={styles.messageText}>아직 이번 주 순위가 없어요.</Text>
@@ -223,65 +224,29 @@ function CommunityRankingScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
     root: { backgroundColor: colors.background, flex: 1 },
-    header: { gap: spacing.sm, padding: spacing.xl, paddingBottom: spacing.md },
+    header: { gap: spacing.sm, padding: spacing.lg, paddingBottom: spacing.md },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-    chip: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: radius.round,
-      borderWidth: 1,
-      maxWidth: 160,
-      paddingHorizontal: spacing.md,
-      paddingVertical: 6,
-    },
-    chipActive: { backgroundColor: colors.textPrimary, borderColor: colors.textPrimary },
-    chipText: { color: colors.textBody, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    chipTextActive: { color: colors.surface },
-    week: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
-    optIn: {
-      backgroundColor: colors.primaryLight,
-      borderRadius: 12,
-      gap: spacing.xs,
-      padding: spacing.lg,
-    },
-    optInText: { ...typography.body, color: colors.textPrimary },
-    optInButton: { color: colors.primary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-    optOutButton: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium },
-    note: { ...typography.bodySmall, color: colors.textSecondary },
-    row: {
-      alignItems: 'center',
-      borderBottomColor: colors.border,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      flexDirection: 'row',
-      gap: spacing.md,
-      paddingHorizontal: spacing.xl,
-      paddingVertical: spacing.md,
-    },
+    chip: { ...a.chip, maxWidth: 160, paddingHorizontal: 14 },
+    chipActive: { backgroundColor: colors.primary },
+    chipText: a.chipText,
+    chipTextActive: { color: colors.onPrimary },
+    week: a.note,
+    optIn: { ...a.card, backgroundColor: colors.primaryLight, gap: spacing.xs, padding: spacing.lg },
+    optInText: { ...a.p15, color: colors.ink },
+    optInButton: { ...a.p15, color: colors.ink, textDecorationLine: 'underline' },
+    optOutButton: a.link,
+    note: a.note,
+    row: { alignItems: 'center', borderBottomColor: colors.track, borderBottomWidth: 2, flexDirection: 'row', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
     rowMe: { backgroundColor: colors.primaryLight },
-    rank: {
-      color: colors.textSecondary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-      textAlign: 'center',
-      width: 28,
-    },
-    rankTop: { color: colors.primary },
-    nickname: {
-      color: colors.textPrimary,
-      flex: 1,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 16,
-    },
-    score: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-    message: {
-      alignItems: 'center',
-      flex: 1,
-      gap: spacing.md,
-      justifyContent: 'center',
-      padding: spacing.xxl,
-    },
-    messageText: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+    rank: { color: colors.textSecondary, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26, textAlign: 'center', width: 32 },
+    // the top three in gold, A's colour for points
+    rankTop: { color: colors.gold },
+    nickname: { ...a.p15, color: colors.ink, flex: 1 },
+    score: { ...a.p15, color: colors.ink },
+    message: { alignItems: 'center', flex: 1, gap: spacing.md, justifyContent: 'center', padding: spacing.xxl },
+    messageText: { ...a.p15, color: colors.ink, textAlign: 'center' },
   } as const;
 }

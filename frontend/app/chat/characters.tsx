@@ -5,7 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CheckIcon from '@/assets/icons/ui/check.svg';
 import { ChatCharacterAvatar } from '@/src/components/chat/ChatCharacterAvatar';
 import { chatCharacters, getChatCharacter, loadChatCharacter, saveChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
-import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
+import { aForm } from '@/src/components/a/form';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 
@@ -16,6 +17,7 @@ const samples: Record<ChatCharacterId, string> = {
 };
 
 export default function ChatCharactersScreen() {
+  const { colors } = useAppTheme();
   const s = useThemedStyles(createSStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -61,14 +63,14 @@ export default function ChatCharactersScreen() {
                 <Text style={s.sample}>{samples[character.id]}</Text>
               </View>
               <View style={[s.radio, selected === character.id && s.radioSelected]}>
-                {selected === character.id ? <CheckIcon color="#FFFFFF" height={14} width={14} /> : null}
+                {selected === character.id ? <CheckIcon color={colors.onPrimary} height={14} width={14} /> : null}
               </View>
             </Pressable>
           ))}
         </View>
       </ScrollView>
       <View style={[s.bottom, { paddingBottom: Math.max(12, insets.bottom) }]}>
-        <Pressable accessibilityRole="button" disabled={saving} onPress={() => void save()} style={[s.primaryButton, saving && s.disabled]}>
+        <Pressable accessibilityRole="button" disabled={saving} onPress={() => void save()} style={({ pressed }) => [s.primaryButton, saving && s.disabled, pressed && s.pressed]}>
           <Text style={[s.primaryText, saving && s.disabledText]}>{getChatCharacter(selected).name}와 이야기하기</Text>
         </Pressable>
       </View>
@@ -77,25 +79,29 @@ export default function ChatCharactersScreen() {
 }
 
 function createSStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    root: { backgroundColor: colors.background, flex: 1 },
-    content: { gap: 12, paddingHorizontal: 20, paddingTop: 8 },
-    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 22, lineHeight: 30 },
-    description: { color: colors.textBody, fontSize: 16, lineHeight: 24 },
-    sampleLabel: { color: colors.textBody, fontSize: 14, lineHeight: 21 },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    content: { gap: 12, paddingHorizontal: 16, paddingTop: 8 },
+    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 30 },
+    description: { ...a.p15, color: colors.ink },
+    sampleLabel: a.note,
     list: { gap: 12 },
-    card: { alignItems: 'flex-start', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 16 },
-    selectedCard: { borderColor: colors.primary, borderWidth: 2 },
+    card: { ...a.card, alignItems: 'flex-start', flexDirection: 'row', gap: 12, padding: 14 },
+    // the one chosen: violet ground, the full dark ledge
+    selectedCard: { backgroundColor: colors.primaryLight, boxShadow: `0 4px 0 ${colors.ink}` },
     copy: { flex: 1, gap: 2, minWidth: 0 },
-    name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 24 },
-    role: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14 },
-    cardDescription: { color: colors.textSecondary, fontSize: 14, lineHeight: 21 },
-    sample: { color: colors.textBody, fontSize: 14, lineHeight: 21, marginTop: 2 },
-    radio: { alignItems: 'center', borderColor: colors.textSecondary, borderRadius: 12, borderWidth: 1, height: 24, justifyContent: 'center', width: 24 },
-    radioSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-    bottom: { backgroundColor: colors.background, paddingHorizontal: 20, paddingTop: 8 },
-    primaryButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 12, height: 56, justifyContent: 'center' },
-    primaryText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
-    disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled },
+    name: { ...a.p15, color: colors.ink },
+    role: a.note,
+    cardDescription: { ...a.p12, color: colors.textBody },
+    sample: { ...a.p12, color: colors.ink, marginTop: 2 },
+    radio: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 8, borderWidth: 2, height: 26, justifyContent: 'center', width: 26 },
+    radioSelected: { backgroundColor: colors.primary },
+    bottom: { backgroundColor: colors.background, paddingHorizontal: 16, paddingTop: 8 },
+    primaryButton: { ...a.go, height: 52 },
+    primaryText: { ...a.goText, fontSize: 20, lineHeight: 24 },
+    disabled: a.goOff,
+    disabledText: { color: colors.textDisabled },
+    pressed: a.goPressed,
   } as const;
 }
