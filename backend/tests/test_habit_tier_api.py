@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import json
 
 import httpx
+import pytest
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.testclient import TestClient
 
@@ -143,6 +144,91 @@ def test_archived_workout_cannot_earn_new_tier_points(monkeypatch):
         assert response.status_code == 409
         assert response.json() == {"detail": {"code": "TIER_SOURCE_INCOMPLETE"}}
         assert len(requests) == 2
+
+
+@pytest.mark.parametrize(
+    ("duration_seconds", "completed_sets", "completed_log", "expected_status"),
+    [(0, 1, True, 409), (60, 0, True, 409),
+     (60, 1, False, 409), (60, 1, True, 200)],
+)
+def test_workout_points_require_recorded_time_and_completed_set(
+    monkeypatch, duration_seconds, completed_sets, completed_log, expected_status,
+):
+    source = "00000000-0000-4000-8000-000000000011"
+    recommendation = "00000000-0000-4000-8000-000000000012"
+
+    def handler(request):
+        path = request.url.path
+        if path.endswith("/exercise_sessions"):
+            assert request.url.params["user_id"] == f"eq.{OWNER}"
+            assert "total_duration_seconds" in request.url.params["select"]
+            return httpx.Response(200, json=[{
+                "exercise_session_id": source, "status": "completed",
+                "completed_at": "2026-10-29T01:00:00Z",
+                "exercise_recommendation_id": recommendation,
+                "total_duration_seconds": duration_seconds,
+            }])
+        if path.endswith("/exercise_recommendations"):
+            return httpx.Response(200, json=[{"generator": "auto-fit-ai"}])
+        if path.endswith("/exercise_logs"):
+            assert request.url.params["user_id"] == f"eq.{OWNER}"
+            assert request.url.params["exercise_session_id"] == f"eq.{source}"
+            assert request.url.params["completed"] == "eq.true"
+            assert request.url.params["completed_sets"] == "gte.1"
+            assert request.url.params["duration_minutes"] == "gte.1"
+            return httpx.Response(200, json=[{"completed_sets": 1}]
+                                  if completed_sets and completed_log else [])
+        if path.endswith("/tier_habit_policy_versions"):
+            return httpx.Response(200, json=[{"tier_habit_policy_version_id": "policy"}])
+        if path.endswith("/tier_habit_point_rules"):
+            return httpx.Response(200, json=[{"tier_habit_point_rule_id": "rule"}])
+        assert path.endswith("/user_tier_points")
+        assert expected_status == 200
+        return httpx.Response(201, json=[{"points": 5}])
+
+    with make_client(monkeypatch, handler) as client:
+        response = client.post(f"/api/tier/points/recommended_workout_completed/{source}")
+        assert response.status_code == expected_status
+        if expected_status == 409:
+            assert response.json() == {"detail": {"code": "TIER_SOURCE_INCOMPLETE"}}
+        else:
+            assert response.json() == {"awarded": True, "reason": "awarded"}
+
+
+def test_workout_points_require_time_and_completed_set_on_the_same_item(monkeypatch):
+    source = "00000000-0000-4000-8000-000000000011"
+    recommendation = "00000000-0000-4000-8000-000000000012"
+    logs = [
+        {"completed": True, "completed_sets": 0, "duration_minutes": 1},
+        {"completed": True, "completed_sets": 1, "duration_minutes": 0},
+    ]
+
+    def handler(request):
+        path = request.url.path
+        if path.endswith("/exercise_sessions"):
+            return httpx.Response(200, json=[{
+                "status": "completed", "completed_at": "2026-10-29T01:00:00Z",
+                "exercise_recommendation_id": recommendation, "total_duration_seconds": 60,
+            }])
+        if path.endswith("/exercise_recommendations"):
+            return httpx.Response(200, json=[{"generator": "auto-fit-ai"}])
+        if path.endswith("/exercise_logs"):
+            matches = [row for row in logs
+                       if (request.url.params.get("completed_sets") != "gte.1"
+                           or row["completed_sets"] >= 1)
+                       and (request.url.params.get("duration_minutes") != "gte.1"
+                            or row["duration_minutes"] >= 1)]
+            return httpx.Response(200, json=matches)
+        if path.endswith("/tier_habit_policy_versions"):
+            return httpx.Response(200, json=[{"tier_habit_policy_version_id": "policy"}])
+        if path.endswith("/tier_habit_point_rules"):
+            return httpx.Response(200, json=[{"tier_habit_point_rule_id": "rule"}])
+        return httpx.Response(201, json=[{"points": 5}])
+
+    with make_client(monkeypatch, handler) as client:
+        response = client.post(f"/api/tier/points/recommended_workout_completed/{source}")
+        assert response.status_code == 409
+        assert response.json() == {"detail": {"code": "TIER_SOURCE_INCOMPLETE"}}
 
 
 def test_award_duplicate_and_period_cap_are_nonfatal(monkeypatch):

@@ -95,7 +95,8 @@ async def award_completed_source(user_id: str, event_code: str, source_id: UUID,
                 table, id_column, status_column, required_status, time_column = SOURCE_TABLES[event_code]
                 source_response = await client.get(f"{base}/{table}", headers=headers, params={
                     "select": ",".join((id_column, status_column, time_column,
-                                        *(["exercise_recommendation_id"] if event_code == "recommended_workout_completed" else []))),
+                                        *(["exercise_recommendation_id", "total_duration_seconds"]
+                                          if event_code == "recommended_workout_completed" else []))),
                     id_column: f"eq.{source_id}", "user_id": f"eq.{user_id}", "limit": "1",
                 })
                 if source_response.is_error:
@@ -130,6 +131,32 @@ async def award_completed_source(user_id: str, event_code: str, source_id: UUID,
                     if not isinstance(recommendations, list):
                         raise HTTPException(502, detail={"code": "HABIT_TIER_UNAVAILABLE"})
                     if len(recommendations) != 1 or recommendations[0].get("generator") != "auto-fit-ai":
+                        raise HTTPException(409, detail={"code": "TIER_SOURCE_INCOMPLETE"})
+                    # The app rounds each item's elapsed time to minutes before storage.
+                    # This excludes recorded zero-minute workouts, not every sub-minute attempt.
+                    duration_seconds = source.get("total_duration_seconds")
+                    if not isinstance(duration_seconds, int) or duration_seconds <= 0:
+                        raise HTTPException(409, detail={"code": "TIER_SOURCE_INCOMPLETE"})
+                    completed_set_response = await client.get(
+                        f"{base}/exercise_logs", headers=headers, params={
+                            "select": "exercise_log_id",
+                            "exercise_session_id": f"eq.{source_id}",
+                            "user_id": f"eq.{user_id}",
+                            "completed": "eq.true",
+                            "completed_sets": "gte.1",
+                            "duration_minutes": "gte.1",
+                            "limit": "1",
+                        },
+                    )
+                    if completed_set_response.is_error:
+                        raise HTTPException(502, detail={"code": "HABIT_TIER_UNAVAILABLE"})
+                    try:
+                        completed_set_rows = completed_set_response.json()
+                    except ValueError:
+                        raise HTTPException(502, detail={"code": "HABIT_TIER_UNAVAILABLE"}) from None
+                    if not isinstance(completed_set_rows, list):
+                        raise HTTPException(502, detail={"code": "HABIT_TIER_UNAVAILABLE"})
+                    if not completed_set_rows:
                         raise HTTPException(409, detail={"code": "TIER_SOURCE_INCOMPLETE"})
 
             policy = await client.get(f"{base}/tier_habit_policy_versions", headers=headers,
