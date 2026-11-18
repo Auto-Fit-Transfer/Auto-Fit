@@ -1,84 +1,143 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { koreanDate } from '@/src/lib/koreanDate';
-import { CaretText } from '@/src/components/common/CaretText';
-import { ScreenHeader } from '@/src/components/common/ScreenHeader';
-import { getExerciseHistory, saveRecommendedWorkout } from '@/src/api/exercise';
-import { getRunningApiErrorMessage, getRunningHistory, type RunningSession } from '@/src/api/running';
-import { getApiErrorMessage } from '@/src/api/client';
-import { sessionCalories, sessionLocalDate, sessionMinutes } from '@/src/features/exercise/weeklyMetrics';
-import { canSaveRecommendedHistorySession } from '@/src/features/exercise/historyActions';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text } from '@/src/components/common';
+import { useCallback, useMemo, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
 
+import { getApiErrorMessage } from '@/src/api/client';
+import { getActiveExerciseGoal, getExerciseHistory, getExerciseSessionAnalysis, saveRecommendedWorkout } from '@/src/api/exercise';
+import { getRunningApiErrorMessage, getRunningHistory, type RunningSession } from '@/src/api/running';
+import { RecordView, type RecordMetric, type RecordViewProps } from '@/src/components/a/RecordView';
+import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
+import { chartActivity, chartTop, collectActivityDays, localDayKey, shiftDay, summarizeActivity } from '@/src/features/exercise/goalProgress';
+import { canSaveRecommendedHistorySession } from '@/src/features/exercise/historyActions';
+import { sessionCalories, sessionLocalDate, sessionMinutes } from '@/src/features/exercise/weeklyMetrics';
+import { koreanDate } from '@/src/lib/koreanDate';
+
+// The workout record: the app's 내 운동 and 진행 현황 as one screen (renewal A's a-record.html). What it reads and
+// saves is unchanged: the goal, the workouts and runs of the period, a workout's analysis (rules, no AI call) and
+// saving a recommended workout as my routine.
 type HistoryRow = Awaited<ReturnType<typeof getExerciseHistory>>['history'][number];
-const dayKey = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+type Goal = { goal_type: string; weekly_frequency: number; weekly_duration_minutes: number };
+type Opened = { tell: string | null; next: string[]; failed: boolean } | 'loading';
+const GOALS: Record<string, string> = {
+  muscle_gain: '근육량 늘리기', weight_loss: '체중 감량하기', endurance: '체력 기르기',
+  maintenance: '꾸준히 운동하기', rehabilitation: '무리 없이 회복하기',
+};
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const number = (value: unknown) => {
-  if (typeof value !== 'number' && (typeof value !== 'string' || !value.trim())) return 0;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
 };
+const dayName = (key: string) => `${koreanDate(key)} ${WEEKDAYS[new Date(`${key}T12:00:00`).getDay()]}`;
+const moveName = (log: unknown) => (log && typeof log === 'object' && 'exercise_name' in log ? String(log.exercise_name) : '');
+// The server keeps no routine name with a workout: it is named by its first move.
+const workoutName = (logs: unknown[]) => logs.length ? `${moveName(logs[0]) || '운동'}${logs.length > 1 ? ` 외 ${logs.length - 1}가지` : ''}` : '운동';
+const workoutSub = (session: Record<string, unknown>) => {
+  const minutes = sessionMinutes(session.total_duration_seconds);
+  const calories = sessionCalories(session.total_calories_burned, session.completed_item_count);
+  return [`${dayName(sessionLocalDate(session.started_at))}요일`, minutes ? `${Math.round(minutes)}분` : null, calories ? `${Math.round(calories)}kcal` : null];
+};
 
 export default function ExerciseHistory() {
-  const { colors } = useAppTheme();
-  const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { latestSession } = useExerciseRoutine();
+  const [period, setPeriod] = useState<'week' | 'month'>('week');
+  const [offset, setOffset] = useState(0);
+  const [metric, setMetric] = useState<RecordMetric>('minutes');
+  const [picked, setPicked] = useState<[string, string] | null>(null);
+  const [goal, setGoal] = useState<Goal | null>(null);
   const [rows, setRows] = useState<HistoryRow[]>([]);
-  const [runningRows, setRunningRows] = useState<RunningSession[]>([]);
-  const [runningLoading, setRunningLoading] = useState(true);
-  const [runningError, setRunningError] = useState('');
+  const [runs, setRuns] = useState<RunningSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [opened, setOpened] = useState<Record<string, Opened>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [saveError, setSaveError] = useState('');
   const today = useMemo(() => new Date(), []);
-  const days = useMemo(() => Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(today);
-    date.setDate(date.getDate() - 6 + index);
-    return { key: dayKey(date), label: String(date.getDate()), weekday: ['일', '월', '화', '수', '목', '금', '토'][date.getDay()] };
-  }), [today]);
+  const start = useMemo(() => period === 'week'
+    ? shiftDay(today, -((today.getDay() + 6) % 7) + offset * 7)
+    : new Date(today.getFullYear(), today.getMonth() + offset, 1, 12), [today, period, offset]);
+  const end = useMemo(() => period === 'week'
+    ? shiftDay(start, 6)
+    : new Date(start.getFullYear(), start.getMonth() + 1, 0, 12), [start, period]);
+  // A day either side: the server counts days in UTC, the screen in local days.
+  const from = localDayKey(shiftDay(start, -1));
+  const to = localDayKey(shiftDay(end, 1));
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
+    void retry; // 다시 시도 reads everything again
     let active = true;
-    const from = new Date(today);
-    from.setDate(from.getDate() - 29);
-    void getExerciseHistory(dayKey(from), dayKey(today))
-      .then((response) => { if (active) { setRows(response.history ?? []); setError(''); } })
-      .catch((cause) => { if (active) setError(getApiErrorMessage(cause)); })
-      .finally(() => { if (active) setLoading(false); });
-    void getRunningHistory()
-      .then((response) => {
-        if (active) {
-          setRunningRows((response.sessions ?? []).filter((run) =>
-            sessionLocalDate(run.started_at) >= dayKey(from) && sessionLocalDate(run.started_at) <= dayKey(today)));
-          setRunningError('');
-        }
+    void Promise.all([getActiveExerciseGoal(), getExerciseHistory(from, to), getRunningHistory(from, to)])
+      .then(([goalResponse, exerciseResponse, runningResponse]) => {
+        if (!active) return;
+        setGoal((goalResponse.goal ?? null) as Goal | null);
+        setRows(exerciseResponse.history ?? []);
+        setRuns(runningResponse.sessions ?? []);
+        setError('');
       })
-      .catch((cause) => { if (active) setRunningError(getRunningApiErrorMessage(cause)); })
-      .finally(() => { if (active) setRunningLoading(false); });
+      .catch((cause) => { if (active) setError(getRunningApiErrorMessage(cause) || getApiErrorMessage(cause)); })
+      .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [retry, today]);
+  }, [from, to, retry]));
 
-  const filtered = selectedDay
-    ? rows.filter(({ session }) => sessionLocalDate(session.started_at) === selectedDay)
-    : rows;
-  const filteredRuns = selectedDay
-    ? runningRows.filter((run) => sessionLocalDate(run.started_at) === selectedDay)
-    : runningRows;
-  const completed = rows.filter(({ session }) => session.status === 'completed');
-  const calorieValues = completed.map(({ session }) =>
-    sessionCalories(session.total_calories_burned, session.completed_item_count));
-  const recordedCalories = calorieValues.reduce<number>((total, value) => total + (value ?? 0), 0);
-  const hasUnknownCalories = calorieValues.some((value) => value === null);
-  const minutes = completed.reduce((total, { session }) => total + (sessionMinutes(session.total_duration_seconds) ?? 0), 0)
-    + runningRows.reduce((total, run) => total + number(run.elapsed_seconds) / 60, 0);
+  const week = period === 'week';
+  const first = localDayKey(start);
+  const last = localDayKey(end);
+  const days = collectActivityDays(rows, runs);
+  const summary = summarizeActivity(days, start, end);
+  const bars = chartActivity(days, start, end, period);
+  const span = Math.round((end.getTime() - start.getTime()) / 86400000) + 1;
+  const unit = metric === 'workouts' ? '회' : '분';
+  const target = !goal || metric === 'runningMinutes' ? 0
+    : (metric === 'minutes' ? goal.weekly_duration_minutes : goal.weekly_frequency) * (week ? 1 : Math.ceil(span / 7));
+  const value = summary[metric];
+  // A week's bars are days and a month's are weeks, so the line is the goal of one bar. A day's share of a few workouts is no use.
+  const lineValue = !goal ? 0
+    : metric === 'minutes' ? goal.weekly_duration_minutes / (week ? 7 : 1)
+      : metric === 'workouts' && !week ? goal.weekly_frequency : 0;
+  const top = chartTop(Math.max(lineValue, ...bars.map((bar) => bar[metric])), metric === 'workouts' ? 2 : 30);
+  const todayKey = localDayKey(today);
+  const columns = bars.map((bar, index) => {
+    const a = localDayKey(shiftDay(start, week ? index : index * 7));
+    const b = week ? a : localDayKey(shiftDay(start, Math.min(index * 7 + 6, span - 1)));
+    const amount = bar[metric];
+    return {
+      a, b, key: a, label: bar.label, now: todayKey >= a && todayKey <= b, picked: picked?.[0] === a,
+      name: week ? `${dayName(a)}요일` : `${koreanDate(a)}부터 ${koreanDate(b)}`,
+      text: `${Math.round(amount)}${unit}`, value: amount,
+    };
+  });
+
+  // The list: every workout and run of the period (or of the bar picked), newest first.
+  const [listFrom, listTo] = picked ?? [first, last];
+  const inList = (date: string) => date >= listFrom && date <= listTo;
+  const shown = [
+    ...rows.filter(({ session }) => inList(sessionLocalDate(session.started_at))).map((row) => ({ at: String(row.session.started_at), row, run: null })),
+    ...runs.filter((run) => run.status === 'completed' && inList(sessionLocalDate(run.started_at))).map((run) => ({ at: run.started_at, row: null, run })),
+  ].sort((left, right) => right.at.localeCompare(left.at));
+  const inPeriod = rows.filter(({ session }) => { const date = sessionLocalDate(session.started_at); return date >= first && date <= last; });
+  const kcal = inPeriod.filter(({ session }) => session.status === 'completed')
+    .map(({ session }) => sessionCalories(session.total_calories_burned, session.completed_item_count));
+  const runKcal = runs.filter((run) => run.status === 'completed' && sessionLocalDate(run.started_at) >= first && sessionLocalDate(run.started_at) <= last)
+    .reduce((total, run) => total + number(run.calories_burned), 0);
+  const kcalTotal = kcal.reduce<number>((total, item) => total + (item ?? 0), 0) + runKcal;
+
+  const openRow = (key: string) => {
+    const run = runs.find((item) => item.running_session_id === key);
+    if (run) {
+      router.push({ pathname: '/exercise/run-result', params: { sessionId: run.running_session_id, from: 'history' } });
+      return;
+    }
+    setOpenId(key);
+    setSaveError('');
+    const row = rows.find(({ session }) => String(session.exercise_session_id) === key);
+    if (!row?.feedback || opened[key]) return;
+    setOpened((now) => ({ ...now, [key]: 'loading' }));
+    void getExerciseSessionAnalysis(key)
+      .then(({ analysis }) => setOpened((now) => ({ ...now, [key]: { failed: false, next: analysis.next_session_adjustments, tell: analysis.insights.join(' ') || null } })))
+      .catch(() => setOpened((now) => ({ ...now, [key]: { failed: true, next: [], tell: null } })));
+  };
   const save = async (session: HistoryRow['session']) => {
     const id = session.exercise_recommendation_id;
     if (!canSaveRecommendedHistorySession(session) || typeof id !== 'string') return;
@@ -94,98 +153,84 @@ export default function ExerciseHistory() {
     }
   };
 
-  return (
-    <View style={styles.root}>
-      <ScreenHeader onBack={() => router.back()} title="내 운동" right={<Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="루틴 만들기" onPress={() => router.push('/exercise/routine-builder')}><Text style={styles.link}>만들기</Text></Pressable>} />
-      <ScrollView contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 36 }]}>
-        <View style={styles.tabs}>
-          <View style={[styles.tab, styles.tabActive]}><Text style={styles.tabTextActive}>운동 기록</Text></View>
-          <Pressable accessibilityRole="tab" accessibilityState={{ selected: false }} onPress={() => router.replace('/exercise/saved-routines')} style={styles.tab}><Text style={styles.tabText}>저장한 운동</Text></Pressable>
-        </View>
-        <Text style={styles.sectionTitle}>최근 7일</Text>
-        <View style={styles.week}>
-          {days.map((day) => {
-            const count = rows.filter(({ session }) => sessionLocalDate(session.started_at) === day.key).length
-              + runningRows.filter((run) => sessionLocalDate(run.started_at) === day.key).length;
-            const selected = selectedDay === day.key;
-            return <Pressable key={day.key} accessibilityRole="button" accessibilityState={{ selected }} onPress={() => setSelectedDay(selected ? null : day.key)} style={[styles.day, selected && styles.daySelected]}>
-              <Text style={[styles.dayText, selected && styles.dayTextSelected]}>{day.weekday}</Text>
-              <Text style={[styles.dayText, selected && styles.dayTextSelected]}>{day.label}</Text>
-              <View style={[styles.dayDot, count > 0 && styles.dayDotActive]} />
-            </Pressable>;
-          })}
-        </View>
-        <View style={styles.summary}>
-          <Text style={styles.sectionTitle}>최근 30일 운동</Text>
-          <View style={styles.summaryStats}>
-            <View><Text style={styles.statNumber}>{completed.length + runningRows.length}</Text><Text style={styles.caption}>완료 횟수</Text></View>
-            <View><Text style={styles.statNumber}>{Math.round(minutes)}</Text><Text style={styles.caption}>운동 시간 · 분</Text></View>
-            <View><Text style={styles.statNumber}>{hasUnknownCalories && recordedCalories === 0 ? '—' : Math.round(recordedCalories)}</Text><Text style={styles.caption}>기록된 열량 · kcal</Text></View>
-          </View>
-        </View>
-        <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>{selectedDay ? `${selectedDay} 기록` : '운동 내역'}</Text>
-          <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/exercise/saved-routines')}><CaretText style={styles.link}>저장한 운동</CaretText></Pressable>
-        </View>
-        {loading ? <ActivityIndicator color={colors.primaryText} /> : error ? (
-          <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable>
-        ) : filtered.length === 0 ? <View style={styles.card}><Text style={styles.body}>이 기간에 기록한 운동이 없어요.</Text></View> : filtered.map(({ session, logs }, index) => {
-          const id = typeof session.exercise_recommendation_id === 'string' ? session.exercise_recommendation_id : null;
-          const complete = session.status === 'completed';
-          const canSave = canSaveRecommendedHistorySession(session);
-          const calories = sessionCalories(session.total_calories_burned, session.completed_item_count);
-          return <View key={String(session.exercise_session_id ?? index)} style={styles.card}>
-            <View style={styles.sectionRow}><Text style={styles.cardTitle}>{koreanDate(sessionLocalDate(session.started_at))} 운동</Text><Text style={styles.badge}>{complete ? '완료' : '중단'}</Text></View>
-            <Text style={styles.body}>{[sessionMinutes(session.total_duration_seconds) ? `${sessionMinutes(session.total_duration_seconds)}분` : null, `${number(session.completed_item_count)}개 완료`, calories ? `${Math.round(calories)}kcal` : null].filter(Boolean).join(' · ')}</Text>
-            {logs.length > 0 ? <Text style={styles.caption} numberOfLines={2}>{logs.map((log) => typeof log === 'object' && log && 'exercise_name' in log ? String(log.exercise_name) : '').filter(Boolean).join(' · ')}</Text> : null}
-            {session.recommendation_generator === 'legacy' ? <Text style={styles.caption}>이전 추천 기록 · 참고용이에요. 새 루틴으로 저장할 수 없어요.</Text> : null}
-            {complete && id && !canSave && session.recommendation_generator !== 'legacy' ? <Text style={styles.caption}>추천 정보를 확인할 수 없어 지금은 저장할 수 없어요.</Text> : null}
-            {canSave && id ? <Pressable accessibilityRole="button" disabled={savingId === id || savedIds.includes(id)} onPress={() => void save(session)} style={styles.outlineButton}><Text style={styles.outlineText}>{savedIds.includes(id) ? '저장 완료' : savingId === id ? '저장 중…' : '내 루틴으로 저장'}</Text></Pressable> : null}
-          </View>;
-        })}
-        {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
-        <Text style={styles.sectionTitle}>러닝 기록</Text>
-        {runningLoading ? <ActivityIndicator color={colors.primaryText} /> : runningError ? (
-          <Pressable accessibilityRole="button" onPress={() => { setRunningLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{runningError} · 다시 시도</Text></Pressable>
-        ) : filteredRuns.length === 0 ? <View style={styles.card}><Text style={styles.body}>이 기간에 완료한 러닝이 없어요.</Text></View> :
-          filteredRuns.map((run) => <Pressable key={run.running_session_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercise/run-result', params: { sessionId: run.running_session_id, from: 'history' } })} style={styles.card}>
-            <View style={styles.sectionRow}><Text style={styles.cardTitle}>{koreanDate(sessionLocalDate(run.started_at))} 자유 러닝</Text><CaretText style={styles.link}>결과 보기</CaretText></View>
-            <Text style={styles.body}>{(number(run.distance_meters) / 1000).toFixed(2)}km · {Math.round(number(run.elapsed_seconds) / 60)}분</Text>
-          </Pressable>)}
-      </ScrollView>
-    </View>
-  );
-}
+  const openRowData = rows.find(({ session }) => String(session.exercise_session_id) === openId);
+  let sheet: RecordViewProps['sheet'] = null;
+  if (openRowData) {
+    const { session, logs } = openRowData;
+    const id = typeof session.exercise_recommendation_id === 'string' ? session.exercise_recommendation_id : null;
+    const stopped = session.status !== 'completed';
+    const result = opened[String(session.exercise_session_id)];
+    const ready = result && result !== 'loading' ? result : null;
+    const canSave = canSaveRecommendedHistorySession(session);
+    // What goes into the next workout is only true of the latest one.
+    const latest = latestSession?.sessionId === String(session.exercise_session_id);
+    sheet = {
+      lead: [...workoutSub(session), stopped ? '중단' : null].filter(Boolean).join(' · '),
+      moves: logs.map((log) => {
+        const item = (log ?? {}) as Record<string, unknown>;
+        const skipped = item.skipped === true;
+        const sets = number(item.completed_sets);
+        const reps = number(item.performed_repetitions);
+        return { name: moveName(log) || '운동', skipped, text: skipped ? '건너뜀' : [sets ? `${sets}세트` : null, reps ? `${reps}회` : null].filter(Boolean).join(' · ') || '했어요' };
+      }),
+      next: latest && ready ? ready.next : [],
+      note: saveError
+        || (session.recommendation_generator === 'legacy' ? '이전 추천 기록이라 내 루틴으로 저장할 수 없어요.' : null)
+        || (!stopped && id && !canSave && session.recommendation_generator !== 'legacy' ? '추천 정보를 확인할 수 없어 지금은 저장할 수 없어요.' : null)
+        || (ready?.failed ? '운동 분석을 불러오지 못했어요.' : null),
+      save: canSave && id ? {
+        disabled: savingId === id || savedIds.includes(id),
+        label: savedIds.includes(id) ? '내 루틴에 저장됨' : savingId === id ? '저장 중…' : '내 루틴으로 저장',
+        onPress: () => void save(session),
+      } : null,
+      tell: ready?.tell ?? null,
+      title: workoutName(logs),
+    };
+  }
 
-function createStyles({ colors }: AppTheme) {
-  return {
-    root: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: 20, gap: 18 },
-    tabs: { flexDirection: 'row', backgroundColor: colors.surfaceMuted, borderRadius: 16, padding: 4 },
-    tab: { flex: 1, minHeight: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 12 },
-    tabActive: { backgroundColor: colors.background },
-    tabText: { color: colors.textSecondary, fontSize: 14 },
-    tabTextActive: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
-    sectionTitle: { fontSize: 18, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-    week: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 10, flexDirection: 'row', justifyContent: 'space-between' },
-    day: { flex: 1, alignItems: 'center', gap: 5, paddingVertical: 8, borderRadius: 12 },
-    daySelected: { backgroundColor: colors.primary , borderColor: colors.primary},
-    dayText: { color: colors.textSecondary, fontSize: 14 },
-    dayTextSelected: { color: '#FFFFFF' },
-    dayDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: 'transparent' },
-    dayDotActive: { backgroundColor: '#76CE96' },
-    summary: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 17, gap: 16 },
-    summaryStats: { flexDirection: 'row', justifyContent: 'space-between' },
-    statNumber: { color: colors.textPrimary, fontSize: 22, fontFamily: fontFamilies.pretendardBold },
-    caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 18 },
-    sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    link: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
-    card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 16, gap: 9 },
-    cardTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-    badge: { color: colors.textPrimary, backgroundColor: colors.primaryLight, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 8, fontSize: 12 },
-    body: { color: colors.textPrimary, fontSize: 14, lineHeight: 20 },
-    outlineButton: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 12, height: 48, alignItems: 'center', justifyContent: 'center', marginTop: 5 },
-    outlineText: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
-    error: { color: colors.danger, fontSize: 14 },
-  } as const;
+  const reset = () => { setLoading(true); setPicked(null); };
+  const lastLabel = last.slice(0, 7) === first.slice(0, 7) ? `${Number(last.slice(8))}일` : koreanDate(last);
+  return (
+    <RecordView
+      bars={columns}
+      canForward={offset < 0}
+      error={error ? { onRetry: () => { setLoading(true); setRetry((now) => now + 1); }, text: error } : null}
+      goal={goal ? `${GOALS[goal.goal_type] ?? '운동 목표'} · 주 ${goal.weekly_duration_minutes}분 · 주 ${goal.weekly_frequency}회` : null}
+      left={target ? `목표 ${Math.round(target)}${unit}${value >= target ? ' · 목표 달성' : offset < 0 ? '' : ` · ${Math.ceil(target - value)}${unit} 남음`}` : ''}
+      line={lineValue ? { label: `${week ? '하루' : '한 주'} ${Math.round(lineValue)}${unit}`, value: lineValue } : null}
+      listTitle={picked ? (picked[0] === picked[1] ? `${dayName(picked[0])}요일` : `${koreanDate(picked[0])} – ${koreanDate(picked[1])}`) : `${week ? (offset ? '그 주' : '이번 주') : (offset ? '그 달' : '이번 달')} 운동 ${shown.length}번`}
+      loading={loading}
+      metric={metric}
+      onAll={() => setPicked(null)}
+      onBack={() => router.back()}
+      onBar={(key) => { const column = columns.find((item) => item.key === key); setPicked(picked?.[0] === key || !column ? null : [column.a, column.b]); }}
+      onCloseSheet={() => setOpenId(null)}
+      onGoal={() => router.push('/exercise/goal')}
+      onMetric={setMetric}
+      onMove={(step) => { reset(); setOffset((now) => now + step); }}
+      onPeriod={(next) => { if (next !== period || offset !== 0) reset(); setPeriod(next); setOffset(0); }}
+      onRow={openRow}
+      period={period}
+      range={week ? `${koreanDate(start)} – ${lastLabel}` : `${start.getFullYear()}년 ${start.getMonth() + 1}월`}
+      rows={shown.map(({ row, run }) => run ? {
+        key: run.running_session_id, stopped: false,
+        sub: `${dayName(sessionLocalDate(run.started_at))}요일 · ${Math.round(number(run.elapsed_seconds) / 60)}분`,
+        title: `러닝 ${(number(run.distance_meters) / 1000).toFixed(2)}km`,
+      } : {
+        key: String(row!.session.exercise_session_id),
+        stopped: row!.session.status !== 'completed',
+        sub: workoutSub(row!.session).filter(Boolean).join(' · '),
+        title: workoutName(row!.logs),
+      })}
+      sheet={sheet}
+      showAll={Boolean(picked)}
+      sums={[
+        ['운동한 날', `${summary.activeDays}일`],
+        ['한 번에 평균', `${summary.workouts ? Math.round(summary.minutes / summary.workouts) : 0}분`],
+        ['쓴 열량', kcalTotal ? `${Math.round(kcalTotal)}kcal` : '—'],
+      ]}
+      top={top}
+      value={`${Math.round(value)}${unit}`}
+    />
+  );
 }

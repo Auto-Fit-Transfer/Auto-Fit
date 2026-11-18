@@ -124,7 +124,6 @@ export default function ExerciseScreen() {
         more={[
           { key: 'history', title: '운동 기록', detail: latestDetail, onPress: () => router.push('/exercise/history') },
           { key: 'goal', title: '운동 목표', detail: homeMetrics.targetWorkoutCount ? `주 ${homeMetrics.targetWorkoutCount}회` : undefined, onPress: () => router.push('/exercise/goal') },
-          { key: 'progress', title: '진행 현황', detail: '주간 · 월간 변화', onPress: () => router.push('/exercise/goal-progress') },
           { key: 'guide', title: '부위별 운동 가이드', detail: '불편한 부위의 가이드', onPress: () => router.push('/exercise/body-guide') },
         ]}
         onBack={() => router.navigate('/home')}

@@ -1,14 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { koreanDate } from '@/src/lib/koreanDate';
-import { ScreenHeader } from '@/src/components/common/ScreenHeader';
-import { getActiveExerciseGoal, saveExerciseGoal, type ExerciseGoalInput } from '@/src/api/exercise';
-import { getApiErrorMessage } from '@/src/api/client';
-import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text, TextInput } from '@/src/components/common';
 
+import { getApiErrorMessage } from '@/src/api/client';
+import { getActiveExerciseGoal, saveExerciseGoal, type ExerciseGoalInput } from '@/src/api/exercise';
+import { aForm } from '@/src/components/a/form';
+import { ALoading } from '@/src/components/a/ALoading';
+import { Text } from '@/src/components/common';
+import { AppTextField } from '@/src/components/common/AppTextField';
+import { ScreenHeader } from '@/src/components/common/ScreenHeader';
+import { koreanDate } from '@/src/lib/koreanDate';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
+
+// My workout goal: what for, how long, how many minutes and times a week. What it saves is unchanged.
 const goals: { key: ExerciseGoalInput['goal_type']; label: string }[] = [
   { key: 'muscle_gain', label: '근육량 늘리기' },
   { key: 'weight_loss', label: '체중 감량하기' },
@@ -19,7 +24,6 @@ const goals: { key: ExerciseGoalInput['goal_type']; label: string }[] = [
 const weeksOptions = [2, 4, 8, 12];
 
 export default function ExerciseGoal() {
-  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -79,71 +83,69 @@ export default function ExerciseGoal() {
       setSaving(false);
     }
   };
+  const chip = (label: string, selected: boolean, onPress: () => void, style?: object) => (
+    <Pressable accessibilityRole="button" accessibilityState={{ selected }} key={label} onPress={() => { onPress(); setSaved(false); }} style={[styles.chip, style, selected && styles.on]}>
+      <Text style={[styles.chipText, selected && styles.onText]}>{label}</Text>
+    </Pressable>
+  );
 
   return <View style={styles.root}>
-    <ScreenHeader onBack={() => router.back()} title="운동 목표" right={<Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/exercise/goal-progress')}><Text style={styles.link}>진행 보기</Text></Pressable>} />
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: 8, paddingBottom: insets.bottom + 40 }]}>
-      {loading ? <ActivityIndicator color={colors.primaryText} /> : null}
-      {!loading && !loaded ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.error}>{error} · 다시 시도</Text></Pressable> : null}
-      <View style={styles.card}>
-        <Text style={styles.smallLabel}>목표 기간</Text>
-        <Text style={styles.cardTitle}>{koreanDate(startDate)} – {koreanDate(endDate)}</Text>
-        <View style={styles.weekOptions}>{weeksOptions.map((value) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: weeks === value }} onPress={() => { setWeeks(value); setSaved(false); }} style={[styles.weekChip, weeks === value && styles.selected]}>
-          <Text style={[styles.chipText, weeks === value && styles.selectedText]}>{value}주</Text>
-        </Pressable>)}</View>
-        {!weeksOptions.includes(weeks) ? <Text style={styles.caption}>현재 저장된 목표 기간: {weeks}주</Text> : null}
+    <ScreenHeader onBack={() => router.back()} title="운동 목표" />
+    {loading ? <ALoading /> : <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 16 }]}>
+      {!loaded ? <Pressable accessibilityRole="button" onPress={() => { setLoading(true); setRetry((value) => value + 1); }} style={styles.card}><Text style={styles.body}>{error} · 다시 시도</Text></Pressable> : null}
+      <View style={styles.ask}>
+        <Text style={styles.q}>무엇을 이루고 싶나요?</Text>
+        <View style={styles.grid}>{goals.map((goal) => chip(goal.label, goalType === goal.key, () => setGoalType(goal.key), styles.half))}</View>
       </View>
-      <Text style={styles.sectionTitle}>무엇을 이루고 싶나요?</Text>
-      <View style={styles.goalGrid}>{goals.map((goal) =>
-        <Pressable key={goal.key} accessibilityRole="button" accessibilityState={{ selected: goalType === goal.key }} onPress={() => { setGoalType(goal.key); setSaved(false); }} style={[styles.goalChip, goalType === goal.key && styles.selected]}>
-          <Text style={[styles.chipText, goalType === goal.key && styles.selectedText]}>{goal.label}</Text>
-        </Pressable>)}</View>
-      <View style={styles.card}>
-        <Text style={styles.smallLabel}>일주일 운동 시간</Text>
-        <View style={styles.minuteRow}><TextInput accessibilityLabel="일주일 운동 시간(분)" keyboardType="number-pad" value={weeklyMinutes} onChangeText={(value) => { setWeeklyMinutes(value); setSaved(false); }} style={styles.minuteInput} /><Text style={styles.cardTitle}>분</Text></View>
-        <Text style={styles.caption}>실제 운동 기록과 비교해 진행 상황에 표시해요.</Text>
+      <View style={styles.ask}>
+        <Text style={styles.q}>목표 기간 <Text style={styles.note}> {koreanDate(startDate)} – {koreanDate(endDate)}</Text></Text>
+        <View style={styles.row}>{weeksOptions.map((value) => chip(`${value}주`, weeks === value, () => setWeeks(value), styles.flex))}</View>
+        {!weeksOptions.includes(weeks) ? <Text style={styles.note}>지금 저장된 목표 기간: {weeks}주</Text> : null}
       </View>
-      <Text style={styles.sectionTitle}>일주일에 몇 번 할까요?</Text>
-      <View style={styles.frequency}>{Array.from({ length: 7 }, (_, index) => index + 1).map((value) =>
-        <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: frequency === value }} onPress={() => { setFrequency(value); setSaved(false); }} style={[styles.frequencyChip, frequency === value && styles.selected]}>
-          <Text style={[styles.chipText, frequency === value && styles.selectedText]}>{value}</Text>
-        </Pressable>)}</View>
-      <Text style={styles.caption}>헬스·홈트·러닝 완료 기록을 합쳐 확인해요.</Text>
-      {error && loaded ? <Text style={styles.error}>{error}</Text> : null}
-      {saved ? <Text style={styles.success}>운동 목표를 저장했어요.</Text> : null}
-      <Pressable accessibilityRole="button" disabled={!loaded || saving} onPress={() => void save()} style={[styles.button, (!loaded || saving) && styles.buttonDisabled]}>
-        <Text style={[styles.buttonText, (!loaded || saving) && styles.disabledText]}>{saving ? '저장 중…' : '목표 저장하기'}</Text>
+      <AppTextField
+        accessibilityLabel="일주일 운동 시간(분)"
+        helperText="실제 운동 기록과 견줘 운동 기록 화면에 보여요."
+        keyboardType="number-pad"
+        label="일주일 운동 시간 (분)"
+        onChangeText={(value) => { setWeeklyMinutes(value); setSaved(false); }}
+        value={weeklyMinutes}
+      />
+      <View style={styles.ask}>
+        <Text style={styles.q}>일주일에 몇 번 할까요?</Text>
+        <View style={styles.row}>{Array.from({ length: 7 }, (_, index) => index + 1).map((value) => chip(String(value), frequency === value, () => setFrequency(value), styles.flex))}</View>
+        <Text style={styles.note}>헬스 · 홈트 · 러닝을 마친 기록을 합쳐서 세요.</Text>
+      </View>
+      {error && loaded ? <Text style={styles.note}>{error}</Text> : null}
+      {saved ? <Text style={styles.body}>운동 목표를 저장했어요.</Text> : null}
+      <Pressable accessibilityRole="button" accessibilityState={{ disabled: !loaded || saving }} disabled={!loaded || saving} onPress={() => void save()} style={({ pressed }) => [styles.go, (!loaded || saving) && styles.goOff, pressed && styles.goPressed]}>
+        <Text style={[styles.goText, (!loaded || saving) && styles.offText]}>{saving ? '저장 중…' : '목표 저장하기'}</Text>
       </Pressable>
-    </ScrollView>
+    </ScrollView>}
   </View>;
 }
 
 function createStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    root: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: 20, gap: 17 },
-    link: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
-    sectionTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 16, gap: 10 },
-    smallLabel: { color: colors.textSecondary, fontSize: 14 },
-    cardTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 18 },
-    weekOptions: { flexDirection: 'row', gap: 8 },
-    weekChip: { backgroundColor: colors.surface, flex: 1, borderColor: colors.border, borderWidth: 1, borderRadius: 999, paddingVertical: 9, alignItems: 'center' },
-    goalGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-    goalChip: { backgroundColor: colors.surface, width: '48%', borderColor: colors.border, borderWidth: 1, borderRadius: 999, paddingVertical: 11, alignItems: 'center' },
-    selected: { backgroundColor: colors.primary, borderColor: colors.primary },
-    chipText: { color: colors.textPrimary, fontSize: 14 },
-    selectedText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold },
-    minuteRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    minuteInput: { flex: 1, height: 52, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 16, color: colors.textPrimary, fontSize: 16 },
-    frequency: { flexDirection: 'row', justifyContent: 'space-between', gap: 5 },
-    frequencyChip: { backgroundColor: colors.surface, flex: 1, aspectRatio: 1, borderRadius: 24, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-    button: { height: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 15 },
-    buttonDisabled: { backgroundColor: colors.surfaceMuted },
-    disabledText: { color: colors.textDisabled },
-    buttonText: { color: '#FFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
-    error: { color: colors.danger, fontSize: 14 },
-    success: { color: colors.success, fontSize: 14 },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    content: { gap: 18, paddingHorizontal: 16, paddingTop: 12 },
+    ask: { gap: 10 },
+    q: { ...a.p15, color: colors.ink },
+    note: a.note,
+    body: { ...a.p15, color: colors.ink },
+    card: { ...a.card, padding: 14 },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    row: { flexDirection: 'row', gap: 6 },
+    half: { width: '48.5%' },
+    flex: { flex: 1 },
+    chip: a.chip,
+    chipText: a.segText,
+    on: a.on,
+    onText: a.onText,
+    go: { ...a.go, height: 52 },
+    goOff: a.goOff,
+    goPressed: a.goPressed,
+    goText: { ...a.goText, fontFamily: fontFamilies.galmuri11Bold },
+    offText: { color: colors.textDisabled },
   } as const;
 }

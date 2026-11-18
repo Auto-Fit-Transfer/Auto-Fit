@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 
 import { getExerciseApiErrorMessage, recordExerciseDiscomfort } from '@/src/api/exercise';
 import { Text } from '@/src/components/common';
+import { aForm } from '@/src/components/a/form';
 import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
 import { useHero } from '@/src/components/a/useHero';
 import { R6ExerciseSession, type DiscomfortReport } from '@/src/components/exercise/R6ExerciseSession';
@@ -229,8 +230,8 @@ function createStyles({ colors }: AppTheme) {
   return {
     root: { backgroundColor: colors.background, flex: 1 },
     saving: { alignItems: 'center', backgroundColor: colors.background, flex: 1, gap: 12, justifyContent: 'center', padding: 20 },
-    savingText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 16, textAlign: 'center' },
-    retry: { alignItems: 'center', backgroundColor: colors.background, borderColor: colors.border, borderRadius: 8, borderWidth: 1, height: 40, justifyContent: 'center', paddingHorizontal: 16 },
-    retryText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    savingText: { color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21, textAlign: 'center' },
+    retry: { ...aForm(colors).mini, height: 40, paddingHorizontal: 16 },
+    retryText: aForm(colors).miniText,
   } as const;
 }
