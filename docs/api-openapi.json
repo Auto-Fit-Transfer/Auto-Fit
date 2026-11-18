@@ -3487,6 +3487,18 @@
         "title": "CreatedPostureJob",
         "type": "object"
       },
+      "DailyNutritionSummaryResponse": {
+        "properties": {
+          "summary": {
+            "$ref": "#/components/schemas/NutritionSummary"
+          }
+        },
+        "required": [
+          "summary"
+        ],
+        "title": "DailyNutritionSummaryResponse",
+        "type": "object"
+      },
       "DailyTargetPercentages": {
         "additionalProperties": false,
         "properties": {
@@ -5870,6 +5882,44 @@
         "title": "HealthGoalInput",
         "type": "object"
       },
+      "HealthScoreHistoryItem": {
+        "properties": {
+          "assessed_at": {
+            "format": "date-time",
+            "title": "Assessed At",
+            "type": "string"
+          },
+          "health_assessment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Health Assessment Id"
+          },
+          "measured_on": {
+            "format": "date",
+            "title": "Measured On",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "health_assessment_id",
+          "assessed_at",
+          "measured_on",
+          "score"
+        ],
+        "title": "HealthScoreHistoryItem",
+        "type": "object"
+      },
       "HealthScorePreviewRequest": {
         "additionalProperties": false,
         "properties": {
@@ -6577,6 +6627,86 @@
           }
         },
         "title": "NotificationPreferencesInput",
+        "type": "object"
+      },
+      "NutritionMetric": {
+        "properties": {
+          "consumed": {
+            "title": "Consumed",
+            "type": "number"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          },
+          "unit": {
+            "enum": [
+              "kcal",
+              "g"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "consumed",
+          "target",
+          "unit"
+        ],
+        "title": "NutritionMetric",
+        "type": "object"
+      },
+      "NutritionSummary": {
+        "properties": {
+          "calories": {
+            "$ref": "#/components/schemas/NutritionMetric"
+          },
+          "carbohydrates": {
+            "$ref": "#/components/schemas/NutritionMetric"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "fat": {
+            "$ref": "#/components/schemas/NutritionMetric"
+          },
+          "has_recommendation": {
+            "title": "Has Recommendation",
+            "type": "boolean"
+          },
+          "has_unknown_items": {
+            "title": "Has Unknown Items",
+            "type": "boolean"
+          },
+          "protein": {
+            "$ref": "#/components/schemas/NutritionMetric"
+          },
+          "recorded_meal_count": {
+            "minimum": 0.0,
+            "title": "Recorded Meal Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "has_recommendation",
+          "has_unknown_items",
+          "recorded_meal_count",
+          "calories",
+          "carbohydrates",
+          "protein",
+          "fat"
+        ],
+        "title": "NutritionSummary",
         "type": "object"
       },
       "OCRMetadata": {
@@ -8427,6 +8557,62 @@
         "title": "StartSavedCourse",
         "type": "object"
       },
+      "TierDayPoints": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "points": {
+            "minimum": 0.0,
+            "title": "Points",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "points"
+        ],
+        "title": "TierDayPoints",
+        "type": "object"
+      },
+      "TierProgressResponse": {
+        "properties": {
+          "progress": {
+            "additionalProperties": true,
+            "title": "Progress",
+            "type": "object"
+          },
+          "today_points": {
+            "minimum": 0.0,
+            "title": "Today Points",
+            "type": "integer"
+          },
+          "week": {
+            "items": {
+              "$ref": "#/components/schemas/TierDayPoints"
+            },
+            "maxItems": 7,
+            "minItems": 7,
+            "title": "Week",
+            "type": "array"
+          },
+          "week_points": {
+            "minimum": 0.0,
+            "title": "Week Points",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "progress",
+          "today_points",
+          "week",
+          "week_points"
+        ],
+        "title": "TierProgressResponse",
+        "type": "object"
+      },
       "TrackPointInput": {
         "properties": {
           "accuracy_meters": {
@@ -8771,6 +8957,24 @@
           }
         },
         "title": "WeeklyGenerateRequest",
+        "type": "object"
+      },
+      "WeeklyNutritionSummaryResponse": {
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/NutritionSummary"
+            },
+            "maxItems": 7,
+            "minItems": 7,
+            "title": "Days",
+            "type": "array"
+          }
+        },
+        "required": [
+          "days"
+        ],
+        "title": "WeeklyNutritionSummaryResponse",
         "type": "object"
       },
       "WeeklyPlanResponse": {
@@ -15308,9 +15512,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Diet Nutrition Summary Api Diet Nutrition Summary Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/DailyNutritionSummaryResponse"
                 }
               }
             },
@@ -15562,6 +15764,65 @@
           }
         },
         "summary": "Get Latest Diet Recommendation",
+        "tags": [
+          "Diet"
+        ]
+      }
+    },
+    "/api/diet/summary/weekly": {
+      "get": {
+        "operationId": "get_weekly_diet_summary_api_diet_summary_weekly_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start",
+            "required": true,
+            "schema": {
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WeeklyNutritionSummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Weekly Diet Summary",
         "tags": [
           "Diet"
         ]
@@ -18586,6 +18847,71 @@
         ]
       }
     },
+    "/api/health/scores/history": {
+      "get": {
+        "operationId": "get_health_score_history_api_health_scores_history_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HealthScoreHistoryItem"
+                  },
+                  "title": "Response Get Health Score History Api Health Scores History Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Health Score History",
+        "tags": [
+          "Health Analysis"
+        ]
+      }
+    },
     "/api/home": {
       "get": {
         "operationId": "get_home_api_home_get",
@@ -20726,9 +21052,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Progress Api Tier Progress Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/TierProgressResponse"
                 }
               }
             },

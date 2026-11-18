@@ -17,6 +17,7 @@ READ_PATHS = frozenset({
     "/api/diet/recommendations/latest",
     "/api/diet/meal-logs",
     "/api/diet/nutrition-summary",
+    "/api/diet/summary/weekly",
 })
 WEEKLY_PREFIX = "/api/diet/weekly-recommendations/"
 _stages: ContextVar[dict | None] = ContextVar("diet_timing_stages", default=None)

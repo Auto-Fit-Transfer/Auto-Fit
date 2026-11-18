@@ -1,4 +1,6 @@
+import asyncio
 from contextlib import asynccontextmanager
+from datetime import date
 from types import SimpleNamespace
 import json
 
@@ -12,6 +14,64 @@ from backend.app import habit_tier
 
 OWNER = "00000000-0000-4000-8000-000000000001"
 OTHER = "00000000-0000-4000-8000-000000000002"
+
+
+def test_week_points_use_korean_calendar_days_and_include_zero_days():
+    totals = habit_tier.summarize_week_points([
+        {"points": 2, "occurred_at": "2026-11-15T14:59:59Z"},  # Prior Sunday.
+        {"points": 3, "occurred_at": "2026-11-15T15:00:00Z"},  # Monday 00:00 KST.
+        {"points": 5, "occurred_at": "2026-11-18T01:00:00+00:00"},
+        {"points": 2, "occurred_at": "2026-11-22T14:59:59Z"},  # Sunday 23:59 KST.
+        {"points": 7, "occurred_at": "2026-11-22T15:00:00Z"},  # Next Monday.
+    ], date(2026, 11, 18))
+
+    assert list(totals) == [date(2026, 11, day) for day in range(16, 23)]
+    assert list(totals.values()) == [3, 0, 5, 0, 0, 0, 2]
+
+
+@pytest.mark.parametrize("event", [
+    {"points": 0, "occurred_at": "2026-11-18T01:00:00Z"},
+    {"points": True, "occurred_at": "2026-11-18T01:00:00Z"},
+    {"points": 5, "occurred_at": "2026-11-18T01:00:00"},
+])
+def test_week_points_reject_invalid_events(event):
+    with pytest.raises(ValueError):
+        habit_tier.summarize_week_points([event], date(2026, 11, 18))
+
+
+def test_week_point_reader_scopes_user_paginates_and_uses_korean_boundaries(monkeypatch):
+    monkeypatch.setattr(habit_tier, "POINT_HISTORY_PAGE_SIZE", 2)
+    offsets = []
+
+    def handler(request):
+        assert request.url.path.endswith("/user_tier_points")
+        assert request.url.params["user_id"] == f"eq.{OWNER}"
+        assert request.url.params["occurred_at"] == "gte.2026-11-15T15:00:00+00:00"
+        assert request.url.params["and"] == "(occurred_at.lt.2026-11-22T15:00:00+00:00)"
+        assert request.url.params["order"] == "occurred_at.asc,user_tier_point_id.asc"
+        assert request.headers["apikey"] == "sb_secret_test"
+        offsets.append(request.url.params["offset"])
+        rows = [
+            {"points": 3, "occurred_at": "2026-11-15T15:00:00Z"},
+            {"points": 5, "occurred_at": "2026-11-18T01:00:00Z"},
+            {"points": 2, "occurred_at": "2026-11-22T14:59:59Z"},
+        ]
+        offset = int(request.url.params["offset"])
+        return httpx.Response(200, json=rows[offset:offset + 2])
+
+    @asynccontextmanager
+    async def mock_client_scope():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            yield client
+
+    monkeypatch.setattr(habit_tier, "client_scope", mock_client_scope)
+    settings = SimpleNamespace(
+        supabase_url="https://test.invalid", supabase_service_role_key="sb_secret_test",
+    )
+    totals = asyncio.run(habit_tier.read_week_point_totals(OWNER, settings, date(2026, 11, 18)))
+
+    assert offsets == ["0", "2"]
+    assert list(totals.values()) == [3, 0, 5, 0, 0, 0, 2]
 
 
 def make_client(monkeypatch, handler):
@@ -39,6 +99,9 @@ def make_client(monkeypatch, handler):
 
 def test_tier_progress_uses_verified_user_only(monkeypatch):
     def handler(request):
+        if request.url.path.endswith("/user_tier_points"):
+            assert request.url.params["user_id"] == f"eq.{OWNER}"
+            return httpx.Response(200, json=[])
         assert request.url.path.endswith("/rpc/user_habit_tier_progress")
         assert request.headers["apikey"] == "sb_secret_test"
         assert "authorization" not in request.headers
@@ -53,6 +116,10 @@ def test_tier_progress_uses_verified_user_only(monkeypatch):
         response = client.get("/api/tier/progress", params={"user_id": OTHER})
         assert response.status_code == 200
         assert response.json()["progress"]["points"] == 35
+        assert response.json()["today_points"] == 0
+        assert response.json()["week_points"] == 0
+        assert len(response.json()["week"]) == 7
+        assert [day["points"] for day in response.json()["week"]] == [0] * 7
         assert client.get("/api/tier/progress", headers={"Authorization": ""}).status_code == 401
 
 

@@ -616,6 +616,38 @@ class AuthenticatedUser(BaseModel):
     email: str | None = None
 
 
+class HealthScoreHistoryItem(BaseModel):
+    health_assessment_id: UUID | None
+    assessed_at: datetime
+    measured_on: date
+    score: float
+
+
+class NutritionMetric(BaseModel):
+    consumed: float
+    target: float | None
+    unit: Literal["kcal", "g"]
+
+
+class NutritionSummary(BaseModel):
+    date: date
+    has_recommendation: bool
+    has_unknown_items: bool
+    recorded_meal_count: int = Field(ge=0)
+    calories: NutritionMetric
+    carbohydrates: NutritionMetric
+    protein: NutritionMetric
+    fat: NutritionMetric
+
+
+class DailyNutritionSummaryResponse(BaseModel):
+    summary: NutritionSummary
+
+
+class WeeklyNutritionSummaryResponse(BaseModel):
+    days: list[NutritionSummary] = Field(min_length=7, max_length=7)
+
+
 async def get_current_user(
     authorization: Annotated[str | None, Header()] = None,
     settings: Settings = Depends(get_settings),
@@ -3415,10 +3447,40 @@ def build_daily_nutrition_summary(
         "date": target_date.isoformat(),
         "has_recommendation": recommendation is not None,
         "has_unknown_items": has_unknown_items,
+        "recorded_meal_count": len(logs),
         "calories": metric("calories", "target_calories", "kcal"),
         "carbohydrates": metric("carbohydrates", "target_carbohydrates", "g"),
         "protein": metric("protein", "target_protein", "g"),
         "fat": metric("fat", "target_fat", "g"),
+    }
+
+
+def build_weekly_nutrition_summaries(
+    week_start: date,
+    recommendations_by_date: dict[date, dict[str, Any] | None],
+    logs: list[dict[str, Any]],
+) -> dict[date, dict[str, Any]]:
+    """Apply the existing daily totals to seven Korean calendar days."""
+    if week_start.weekday() != 0:
+        raise ValueError("A nutrition week must start on Monday")
+    logs_by_day = {week_start + timedelta(days=offset): [] for offset in range(7)}
+    for log in logs:
+        timestamp = log.get("eaten_at")
+        if isinstance(timestamp, str):
+            try:
+                timestamp = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise ValueError("Invalid meal log timestamp") from exc
+        if not isinstance(timestamp, datetime) or timestamp.tzinfo is None:
+            raise ValueError("Meal log timestamp requires a timezone")
+        local_day = timestamp.astimezone(KST).date()
+        if local_day in logs_by_day:
+            logs_by_day[local_day].append(log)
+    return {
+        day: build_daily_nutrition_summary(
+            day, recommendations_by_date.get(day), logs_by_day[day],
+        )
+        for day in logs_by_day
     }
 
 
@@ -3630,6 +3692,28 @@ async def get_home(
             fetch_scores(settings.supabase_url, service_headers(settings), user.id, client),
         )
     return build_home_response(profile, rows)
+
+
+@app.get("/api/health/scores/history", tags=["Health Analysis"],
+         response_model=list[HealthScoreHistoryItem])
+async def get_health_score_history(
+    request: Request,
+    response: Response,
+    limit: Annotated[int, Query(ge=1, le=50)] = 12,
+    user: AuthenticatedUser = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> list[HealthScoreHistoryItem]:
+    response.headers["Cache-Control"] = "no-store"
+    client = getattr(request.app.state, "supabase_http_client", None)
+    rows = await fetch_scores(
+        settings.supabase_url, service_headers(settings), user.id, client, limit=limit,
+    )
+    return [HealthScoreHistoryItem(
+        health_assessment_id=row.health_assessment_id,
+        assessed_at=row.assessed_at,
+        measured_on=row.assessed_at.astimezone(KST).date(),
+        score=float(row.overall_score),
+    ) for row in rows]
 
 
 @app.get("/api/profile", tags=["Profile"])
@@ -4398,7 +4482,8 @@ def _public_diet_recipe(row: dict) -> dict | None:
     )}
 
 
-@app.get("/api/diet/nutrition-summary", tags=["Diet"])
+@app.get("/api/diet/nutrition-summary", tags=["Diet"],
+         response_model=DailyNutritionSummaryResponse)
 async def get_diet_nutrition_summary(
     target_date: Annotated[date, Query(alias="date")],
     user: AuthenticatedUser = Depends(get_current_user),
@@ -4424,6 +4509,37 @@ async def get_diet_nutrition_summary(
             logs,
         )
     }
+
+
+@app.get("/api/diet/summary/weekly", tags=["Diet"],
+         response_model=WeeklyNutritionSummaryResponse)
+async def get_weekly_diet_summary(
+    start: date,
+    user: AuthenticatedUser = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+    request: Request = None,
+) -> dict[str, Any]:
+    if start.weekday() != 0:
+        raise HTTPException(422, detail={"code": "INVALID_WEEK_START"})
+    try:
+        next_monday = start + timedelta(days=7)
+        days = [start + timedelta(days=offset) for offset in range(7)]
+    except OverflowError:
+        raise HTTPException(422, detail={"code": "INVALID_WEEK_START"}) from None
+    client = getattr(request.app.state, "supabase_http_client", None) if request else None
+    results = await asyncio.gather(
+        *(fetch_diet_recommendation(user.id, settings, day,
+                                     client=client, include_details=False) for day in days),
+        fetch_meal_logs(user.id, start, next_monday - timedelta(days=1), settings,
+                        client=client, include_photos=False),
+        return_exceptions=True,
+    )
+    for result in results:
+        if isinstance(result, BaseException):
+            raise result
+    recommendations = dict(zip(days, results[:-1]))
+    summaries = build_weekly_nutrition_summaries(start, recommendations, results[-1])
+    return {"days": list(summaries.values())}
 
 
 @app.post("/api/diet/recommendations/generate", tags=["Diet"])

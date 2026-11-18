@@ -2715,6 +2715,34 @@ def test_build_daily_nutrition_summary_reports_unknown_items() -> None:
     assert summary["fat"]["consumed"] == 15.0
 
 
+def test_weekly_nutrition_summary_groups_korean_dates_and_reuses_daily_totals() -> None:
+    monday = main.date(2026, 11, 16)
+    wednesday = main.date(2026, 11, 18)
+    recommendations = {wednesday: {"recommendation": {"target_calories": 1800}}}
+
+    def meal(at: str, calories: int, fat: int | None = 1) -> dict:
+        return {"eaten_at": at, "items": [{
+            "calories": calories, "carbohydrates": 1,
+            "protein": 1, "fat": fat,
+        }]}
+
+    summaries = main.build_weekly_nutrition_summaries(monday, recommendations, [
+        meal("2026-11-15T14:59:59Z", 100),  # Prior Sunday in Korea.
+        meal("2026-11-15T15:00:00Z", 200),  # Monday 00:00 in Korea.
+        meal("2026-11-17T15:00:00Z", 300, None),  # Wednesday 00:00.
+        meal("2026-11-22T14:59:59Z", 400),  # Sunday 23:59.
+        meal("2026-11-22T15:00:00Z", 500),  # Following Monday.
+    ])
+
+    assert list(summaries) == [main.date(2026, 11, day) for day in range(16, 23)]
+    assert [row["calories"]["consumed"] for row in summaries.values()] == [
+        200.0, 0.0, 300.0, 0.0, 0.0, 0.0, 400.0,
+    ]
+    assert summaries[wednesday]["calories"]["target"] == 1800.0
+    assert summaries[wednesday]["has_unknown_items"] is True
+    assert summaries[monday]["has_recommendation"] is False
+
+
 def test_get_diet_nutrition_summary_uses_authenticated_user(monkeypatch) -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="authenticated-user")
@@ -2746,6 +2774,7 @@ def test_get_diet_nutrition_summary_uses_authenticated_user(monkeypatch) -> None
             "date": "2026-09-16",
             "has_recommendation": False,
             "has_unknown_items": False,
+            "recorded_meal_count": 0,
             "calories": {"consumed": 0.0, "target": None, "unit": "kcal"},
             "carbohydrates": {"consumed": 0.0, "target": None, "unit": "g"},
             "protein": {"consumed": 0.0, "target": None, "unit": "g"},
@@ -2756,6 +2785,60 @@ def test_get_diet_nutrition_summary_uses_authenticated_user(monkeypatch) -> None
         assert missing.status_code == 422
     finally:
         main.app.dependency_overrides.clear()
+
+
+def test_weekly_diet_summary_reuses_daily_shape_and_reads_one_meal_range(monkeypatch) -> None:
+    requested_dates = []
+    meal_ranges = []
+
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_recommendation(user_id, settings, recommendation_date,
+                                  *, client=None, include_details=True):
+        assert user_id == "authenticated-user"
+        assert settings == TEST_SETTINGS
+        assert include_details is False
+        requested_dates.append(recommendation_date)
+        if recommendation_date == main.date(2026, 11, 18):
+            return {"recommendation": {"target_calories": 1800}, "meals": []}
+        return None
+
+    async def fake_logs(user_id, from_date, to_date, settings,
+                        *, client=None, include_photos=True):
+        assert user_id == "authenticated-user"
+        assert settings == TEST_SETTINGS
+        assert include_photos is False
+        meal_ranges.append((from_date, to_date))
+        return [{"eaten_at": "2026-11-15T15:00:00Z", "items": [{
+            "calories": 200, "carbohydrates": 20, "protein": 10, "fat": 5,
+        }]}, {"eaten_at": "2026-11-17T15:00:00Z", "items": [{
+            "calories": 300, "carbohydrates": 30, "protein": 15, "fat": 7,
+        }]}]
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "fetch_diet_recommendation", fake_recommendation)
+    monkeypatch.setattr(main, "fetch_meal_logs", fake_logs)
+    try:
+        client = TestClient(main.app)
+        response = client.get("/api/diet/summary/weekly?start=2026-11-16")
+        invalid = client.get("/api/diet/summary/weekly?start=2026-11-17")
+    finally:
+        main.app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    days = response.json()["days"]
+    assert len(days) == 7
+    assert [day["date"] for day in days] == [f"2026-11-{day:02d}" for day in range(16, 23)]
+    assert [day["recorded_meal_count"] for day in days] == [1, 0, 1, 0, 0, 0, 0]
+    assert days[0]["calories"] == {"consumed": 200.0, "target": None, "unit": "kcal"}
+    assert days[2]["calories"] == {"consumed": 300.0, "target": 1800.0, "unit": "kcal"}
+    assert days[2]["carbohydrates"]["consumed"] == 30.0
+    assert requested_dates == [main.date(2026, 11, day) for day in range(16, 23)]
+    assert meal_ranges == [(main.date(2026, 11, 16), main.date(2026, 11, 22))]
+    assert invalid.status_code == 422
+    assert invalid.json() == {"detail": {"code": "INVALID_WEEK_START"}}
 
 
 def test_meal_logs_validate_range_and_use_authenticated_user(monkeypatch) -> None:

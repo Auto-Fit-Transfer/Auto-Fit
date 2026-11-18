@@ -139,6 +139,25 @@ def test_query_is_scoped_and_errors_are_sanitized(monkeypatch, status, payload):
         assert "secret" not in str(exc.value.detail)
 
 
+def test_score_history_can_read_more_than_the_latest_two_without_changing_default():
+    def handler(request):
+        assert request.url.params["user_id"] == "eq.owner"
+        assert request.url.params["limit"] == "12"
+        assert request.url.params["order"] == "assessed_at.desc,health_assessment_id.desc"
+        return httpx.Response(200, json=[
+            {"overall_score": score, "assessed_at": f"2026-11-{day:02d}T00:00:00Z"}
+            for day, score in [(18, 86), (11, 82), (4, 79)]
+        ])
+
+    async def read():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await scores.fetch_scores(
+                "https://example.supabase.co", {}, "owner", client, limit=12,
+            )
+
+    assert [row.overall_score for row in asyncio.run(read())] == [86, 82, 79]
+
+
 def test_assessment_items_are_limited_to_confirmed_parent_ids(monkeypatch):
     original = httpx.AsyncClient
     rows = [

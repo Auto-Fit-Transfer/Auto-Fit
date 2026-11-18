@@ -29,7 +29,7 @@ def diet_client(monkeypatch):
             "/rest/v1/allergy_types": [],
             "/rest/v1/user_allergies": [],
             "/rest/v1/menu_images": [],
-            "/rest/v1/meal_logs": [{"meal_log_id": "private-log", "photo_storage_path": "private-user/photo.png"}],
+            "/rest/v1/meal_logs": [{"meal_log_id": "private-log", "photo_storage_path": "private-user/photo.png", "eaten_at": "2026-09-16T12:00:00Z"}],
             "/rest/v1/meal_log_items": [],
             "/storage/v1/object/sign/meal-photos/private-user/photo.png": {"signedURL": "/signed/private?token=private"},
         }
@@ -79,6 +79,27 @@ def test_real_diet_routes_log_stages_without_sensitive_data(diet_client, caplog,
     assert record["total_ms"] >= max(stage["ms"] for stage in record["stages"].values()) - 0.1
     assert all(secret not in json.dumps(record) for secret in ("private", "secret", "2026-09-16", "Bearer", "example.com"))
     assert diet_timing._stages.get() is None
+
+
+def test_weekly_diet_summary_traces_seven_recommendations_without_sensitive_data(diet_client, caplog):
+    caplog.set_level(logging.INFO, logger="uvicorn.error")
+    response = diet_client.get(
+        "/api/diet/summary/weekly?start=2026-09-14&private=secret-query",
+        headers={"Authorization": "Bearer secret-token"},
+    )
+    assert response.status_code == 200
+    assert len(response.json()["days"]) == 7
+    records = timing_records(caplog)
+    assert len(records) == 1
+    record = records[0]
+    assert record["route"] == "/api/diet/summary/weekly"
+    assert record["trace_id"] == response.headers["x-diet-trace-id"]
+    assert {name: stage["calls"] for name, stage in record["stages"].items()} == {
+        "auth": 1, "recommendation": 7, "meal_logs": 1, "meal_log_items": 1,
+    }
+    assert all(secret not in json.dumps(record) for secret in (
+        "private", "secret", "2026-09-14", "Bearer", "example.com",
+    ))
 
 
 def test_unauthorized_request_is_logged_without_token(diet_client, caplog):

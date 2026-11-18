@@ -14,7 +14,7 @@ def test_every_operation_has_one_documented_feature_group():
             "Diet" if path.startswith("/api/diet/") else
             "Chat" if path.startswith("/api/chats") else
             "health-documents" if path.startswith("/api/health-documents") else
-            "Health Analysis" if path.startswith("/api/health-assessments/") else
+            "Health Analysis" if path.startswith(("/api/health-assessments/", "/api/health/scores/")) else
             "System" if path in ("/health", "/api/test/roundtrip") else
             "Profile"
         )

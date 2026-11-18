@@ -2,14 +2,95 @@
 
 from __future__ import annotations
 
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from backend.app.account_deletion import service_headers
 from backend.app.http_client import client_scope
+
+
+KST = ZoneInfo("Asia/Seoul")
+POINT_HISTORY_PAGE_SIZE = 500
+
+
+class TierDayPoints(BaseModel):
+    date: date
+    points: int = Field(ge=0)
+
+
+class TierProgressResponse(BaseModel):
+    progress: dict[str, Any]
+    today_points: int = Field(ge=0)
+    week: list[TierDayPoints] = Field(min_length=7, max_length=7)
+    week_points: int = Field(ge=0)
+
+
+def summarize_week_points(events: list[dict[str, Any]], target_date: date) -> dict[date, int]:
+    """Bucket immutable point events into the target's Monday-Sunday KST week."""
+    monday = target_date - timedelta(days=target_date.weekday())
+    totals = {monday + timedelta(days=offset): 0 for offset in range(7)}
+    for event in events:
+        points = event.get("points")
+        timestamp = event.get("occurred_at")
+        if type(points) is not int or points <= 0 or not isinstance(timestamp, str):
+            raise ValueError("Invalid tier point event")
+        try:
+            occurred_at = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError("Invalid tier point timestamp") from exc
+        if occurred_at.tzinfo is None:
+            raise ValueError("Tier point timestamp requires a timezone")
+        local_day = occurred_at.astimezone(KST).date()
+        if local_day in totals:
+            totals[local_day] += points
+    return totals
+
+
+async def read_week_point_totals(
+    user_id: str, settings: Any, target_date: date,
+) -> dict[date, int]:
+    """Read one user's point ledger for a KST week without truncating a busy week."""
+    monday = target_date - timedelta(days=target_date.weekday())
+    start = datetime.combine(monday, time.min, tzinfo=KST).astimezone(UTC)
+    end = datetime.combine(monday + timedelta(days=7), time.min, tzinfo=KST).astimezone(UTC)
+    base_params = {
+        "select": "user_tier_point_id,points,occurred_at",
+        "user_id": f"eq.{user_id}",
+        "occurred_at": f"gte.{start.isoformat()}",
+        "and": f"(occurred_at.lt.{end.isoformat()})",
+        "order": "occurred_at.asc,user_tier_point_id.asc",
+        "limit": str(POINT_HISTORY_PAGE_SIZE),
+    }
+    events: list[dict[str, Any]] = []
+    try:
+        async with client_scope() as client:
+            for offset in range(0, 10000, POINT_HISTORY_PAGE_SIZE):
+                response = await client.get(
+                    f"{settings.supabase_url.rstrip('/')}/rest/v1/user_tier_points",
+                    headers=service_headers(settings),
+                    params={**base_params, "offset": str(offset)},
+                )
+                if response.is_error:
+                    raise HTTPException(502, detail={"code": "HABIT_TIER_UNAVAILABLE"})
+                rows = response.json()
+                if not isinstance(rows, list) or len(rows) > POINT_HISTORY_PAGE_SIZE or any(
+                    not isinstance(row, dict) for row in rows
+                ):
+                    raise ValueError("Invalid tier point page")
+                events.extend(rows)
+                if len(rows) < POINT_HISTORY_PAGE_SIZE:
+                    break
+            else:
+                raise ValueError("Tier point week exceeds supported page count")
+        return summarize_week_points(events, target_date)
+    except (httpx.HTTPError, ValueError) as exc:
+        raise HTTPException(502, detail={"code": "HABIT_TIER_UNAVAILABLE"}) from exc
 
 
 async def read_progress(user_id: str, settings: Any) -> dict[str, Any]:
@@ -216,12 +297,20 @@ async def award_completed_source(user_id: str, event_code: str, source_id: UUID,
 def create_habit_tier_router(get_user: Any, get_settings: Any) -> APIRouter:
     router = APIRouter(prefix="/api/tier", tags=["Profile"])
 
-    @router.get("/progress")
+    @router.get("/progress", response_model=TierProgressResponse)
     async def progress(
         user: Any = Depends(get_user),
         settings: Any = Depends(get_settings),
-    ) -> dict[str, Any]:
-        return {"progress": await read_progress(user.id, settings)}
+    ) -> TierProgressResponse:
+        current = await read_progress(user.id, settings)
+        today = datetime.now(KST).date()
+        daily = await read_week_point_totals(user.id, settings, today)
+        return TierProgressResponse(
+            progress=current,
+            today_points=daily[today],
+            week=[TierDayPoints(date=day, points=points) for day, points in daily.items()],
+            week_points=sum(daily.values()),
+        )
 
     @router.post("/points/{event_code}/{source_id}")
     async def award_source(event_code: str, source_id: UUID,

@@ -14,7 +14,8 @@ def test_all_diet_operations_are_grouped_in_openapi() -> None:
         if method in {"get", "post", "patch", "delete"}
     ]
 
-    assert len(diet_operations) == 22
+    assert len(diet_operations) == 23
+    assert "get" in paths["/api/diet/summary/weekly"]
     assert "post" in paths["/api/diet/food-shots/analyze"]
     assert "post" in paths["/api/diet/food-shots/recalculate"]
     assert "get" in paths["/api/diet/weekly-recommendations/{plan_id}/meals/{day}/{meal_type}/recipe"]
@@ -32,6 +33,30 @@ def test_onboarding_status_has_boolean_response_schema() -> None:
     assert response == {"$ref": "#/components/schemas/OnboardingStatusResponse"}
     assert schema["components"]["schemas"]["OnboardingStatusResponse"]["properties"]["completed"]["type"] == "boolean"
     assert schema["components"]["schemas"]["OnboardingStatusResponse"]["required"] == ["completed"]
+
+
+def test_renewal_a_summary_responses_publish_their_fields() -> None:
+    schema = app.openapi()
+    paths = schema["paths"]
+    models = schema["components"]["schemas"]
+    success = lambda path: paths[path]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+
+    assert success("/api/tier/progress") == {"$ref": "#/components/schemas/TierProgressResponse"}
+    assert {"progress", "today_points", "week", "week_points"} <= set(
+        models["TierProgressResponse"]["properties"]
+    )
+    assert success("/api/health/scores/history")["items"] == {
+        "$ref": "#/components/schemas/HealthScoreHistoryItem"
+    }
+    assert success("/api/diet/nutrition-summary") == {
+        "$ref": "#/components/schemas/DailyNutritionSummaryResponse"
+    }
+    assert success("/api/diet/summary/weekly") == {
+        "$ref": "#/components/schemas/WeeklyNutritionSummaryResponse"
+    }
+    assert {"date", "recorded_meal_count", "calories", "carbohydrates", "protein", "fat"} <= set(
+        models["NutritionSummary"]["properties"]
+    )
 
 
 def test_published_openapi_matches_current_application() -> None:

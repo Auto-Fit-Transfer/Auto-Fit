@@ -37,7 +37,10 @@ class AssessmentItem(BaseModel):
 
 async def fetch_scores(
     url: str, headers: dict, user_id: str, client: httpx.AsyncClient | None = None,
+    *, limit: int = 2,
 ) -> list[Assessment]:
+    if type(limit) is not int or not 1 <= limit <= 50:
+        raise ValueError("Health score history limit must be between 1 and 50")
     try:
         async with client_scope(client) as client:
             response = await client.get(
@@ -48,7 +51,7 @@ async def fetch_scores(
                     "user_id": f"eq.{user_id}",
                     "assessed_at": f"lte.{datetime.now(UTC).isoformat()}",
                     "order": "assessed_at.desc,health_assessment_id.desc",
-                    "limit": "2",
+                    "limit": str(limit),
                 },
             )
             response.raise_for_status()
