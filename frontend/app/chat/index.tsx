@@ -20,7 +20,9 @@ const tones: Record<ChatCharacterId, { name: string; greeting: string }> = {
 };
 
 // The first two stay at hand during the talk; all four are offered before the first question.
-const prompts = ['운동 기록 알려줘', '최근 건강 점수 알려줘', '왜 체중이 천천히 줄어?', '오늘 운동 가볍게 해 줘'];
+// The AI answers these score questions from the latest health score without a paid model call (ai contract 1.5);
+// a weight-trend question has no data behind it yet, so it is not offered.
+const prompts = ['운동 기록 알려줘', '내 건강 점수를 알려줘', '무엇부터 개선해야 해?', '오늘 운동 가볍게 해 줘'];
 
 function newMessageId() {
   if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();

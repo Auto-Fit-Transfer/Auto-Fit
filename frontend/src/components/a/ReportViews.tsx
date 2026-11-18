@@ -317,7 +317,8 @@ export interface ReportDetailProps {
   onAsk: (question: string) => void; // goes to 물어보기 with these words
 }
 
-const ASKS = ['왜 체중이 천천히 줄어?', '다음 주엔 뭘 바꾸면 돼?'];
+// Worded as the AI's supported score questions (ai contract 1.5), so they are answered from the score itself.
+const ASKS = ['지난주보다 좋아졌어?', '다음 주에는 무엇부터 개선해야 해?'];
 const STORY = { done: '달성', bonus: '보너스 퀘스트', next: '다음 퀘스트' } as const;
 const GO = { diet: '식단', exercise: '운동' } as const;
 
