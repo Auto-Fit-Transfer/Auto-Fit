@@ -57,12 +57,17 @@ def test_config_checked_at_startup(monkeypatch):
             pass
 
 
-def test_wire_contract_and_data_minimization(monkeypatch):
+@pytest.mark.parametrize("character_id", [None, "nabi"])
+def test_wire_contract_and_data_minimization(monkeypatch, character_id):
     def handler(req):
         assert str(req.url) == "https://ai.example/chat"
         assert req.headers["authorization"] == "Bearer test-only-" + "x" * 32
         body = json.loads(req.content)
-        assert set(body) == {"question", "user_info", "chat_history"}
+        assert set(body) == {"question", "user_info", "chat_history"} | (
+            {"character_id"} if character_id else set()
+        )
+        if character_id:
+            assert body["character_id"] == character_id
         assert body["user_info"] == {} and body["chat_history"] == []
         assert "exercise_sessions" in body["question"]
         assert "private-name" not in body["question"]
@@ -71,7 +76,9 @@ def test_wire_contract_and_data_minimization(monkeypatch):
     answer = summary()
     answer["content"] = "private-name"
     answer["evidence"].append({"metric": "email", "current_value": "private-name"})
-    assert asyncio.run(chat_model.explain_records("이번 주 운동 기록 설명해줘", answer))
+    assert asyncio.run(chat_model.explain_records(
+        "이번 주 운동 기록 설명해줘", answer, character_id=character_id,
+    ))
 
 
 @pytest.mark.parametrize("response", [
@@ -137,7 +144,11 @@ def test_non_ai_routes_never_call_model(monkeypatch, question, missing):
 
 @pytest.mark.parametrize("saved", [False, True])
 def test_http_routes_use_adapter(monkeypatch, saved):
-    enable(monkeypatch, lambda req: httpx.Response(200, json={"answer": "운동 기록 설명", "model": "mock"}))
+    def model_response(req):
+        assert json.loads(req.content)["character_id"] == "coach"
+        return httpx.Response(200, json={"answer": "운동 기록 설명", "model": "mock"})
+
+    enable(monkeypatch, model_response)
     async def records(*args):
         return summary()
     async def exchange(self, chat_id, client_id, content, answer=None):
@@ -154,7 +165,7 @@ def test_http_routes_use_adapter(monkeypatch, saved):
             if saved:
                 path = "/api/chats/11111111-1111-4111-8111-111111111111/messages"
                 body["client_message_id"] = "22222222-2222-4222-8222-222222222222"
-            result = client.post(path, json=body)
+            result = client.post(path, headers={"X-AutoFit-Character": "coach"}, json=body)
         assert result.status_code == (201 if saved else 200)
         answer = result.json()["assistant_message" if saved else "answer"]
         assert answer["response_source"] == "database_ai"

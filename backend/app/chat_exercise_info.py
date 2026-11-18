@@ -1,6 +1,7 @@
 """Public exercise-type lookup, separate from private recommendation records."""
 import httpx
 from backend.app.chat_model import exercise_information
+from backend.app.chat_persona import ChatCharacterId
 from backend.app.chat_storage import fail
 from backend.app.http_client import client_scope
 
@@ -48,7 +49,9 @@ async def load_exercise_types(url, headers):
     return rows
 
 
-async def answer_exercise_information(topic, loader):
+async def answer_exercise_information(
+    topic, loader, character_id: ChatCharacterId | None = None,
+):
     rows = await loader()  # DB errors must not be mistaken for an empty catalogue.
     words = TOPICS.get(topic)
     matches = [r['name'] for r in rows if words is None or any(w in r['name']+' '+(r['category'] or '') for w in words)]
@@ -57,7 +60,7 @@ async def answer_exercise_information(topic, loader):
     if matches:
         answer['content'] = '공용 운동 목록에서 찾은 '+topic+' 운동 종류입니다.\n'+ '\n'.join('- '+name for name in dict.fromkeys(matches[:5])) + '\n일반적인 종류 안내이며 개인 맞춤 추천은 아닙니다.'
         return answer
-    explanation = await exercise_information(topic)
+    explanation = await exercise_information(topic, character_id=character_id)
     if explanation is not None:
         return {**answer, 'response_source':'general_ai', 'content':'공용 DB에 해당 운동 항목이 없어 AI의 일반 정보를 안내합니다. 개인 맞춤 추천은 아닙니다.\n'+explanation}
     return {**answer, 'response_source':'need_more_data', 'needs_more_data':True,

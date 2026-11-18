@@ -164,6 +164,11 @@ def test_orchestrator_receives_only_session_context_and_server_pending(monkeypat
         "context": {"active_exercise_session": SNAPSHOT},
         "pending_action": PENDING_PAYLOAD,
     }]
+    payloads.clear()
+    asyncio.run(exercise_chat_service.call_exercise_orchestrator(
+        "configured", "네", SNAPSHOT, character_id="coach",
+    ))
+    assert payloads[0]["character_id"] == "coach"
 
 
 def test_proposal_stays_pending_without_changing_exercise(client, monkeypatch):
@@ -177,10 +182,11 @@ def test_proposal_stays_pending_without_changing_exercise(client, monkeypatch):
         assert content == "오른쪽 무릎이 살짝 찌릿해"
         assert snapshot == SNAPSHOT
         assert kwargs["history"] == []
+        assert kwargs["character_id"] == "nabi"
         return proposal()
     monkeypatch.setattr(main, "call_exercise_orchestrator", orchestrate)
 
-    result = client.post(f"/api/chats/{CHAT}/messages", json={
+    result = client.post(f"/api/chats/{CHAT}/messages", headers={"X-AutoFit-Character": "nabi"}, json={
         "client_message_id": MESSAGE, "content": "오른쪽 무릎이 살짝 찌릿해",
     })
     assert result.status_code == 201
@@ -422,6 +428,7 @@ def test_confirm_uses_server_pending_payload_and_returns_current_session(client,
         assert content == "네"
         assert snapshot == SNAPSHOT
         assert kwargs["pending_action"] == PENDING_PAYLOAD
+        assert kwargs["character_id"] == "coach"
         return confirmation_response()
     monkeypatch.setattr(main, "call_exercise_orchestrator", orchestrate)
     resolve = AsyncMock(return_value={
@@ -434,7 +441,7 @@ def test_confirm_uses_server_pending_payload_and_returns_current_session(client,
     })
     monkeypatch.setattr(ExerciseChatStore, "resolve_pending", resolve)
 
-    result = client.post(f"/api/chats/{CHAT}/pending-actions/{PENDING}/confirm", json={
+    result = client.post(f"/api/chats/{CHAT}/pending-actions/{PENDING}/confirm", headers={"X-AutoFit-Character": "coach"}, json={
         "idempotency_key": DECISION,
     })
     assert result.status_code == 200
@@ -453,6 +460,7 @@ def test_cancel_consumes_pending_without_applying_exercise(client, monkeypatch):
     async def orchestrate(config, content, snapshot, **kwargs):
         assert content == "취소"
         assert kwargs["pending_action"] == PENDING_PAYLOAD
+        assert kwargs["character_id"] == "quni"
         return cancellation_response()
     monkeypatch.setattr(main, "call_exercise_orchestrator", orchestrate)
     resolve = AsyncMock(return_value={
@@ -464,7 +472,7 @@ def test_cancel_consumes_pending_without_applying_exercise(client, monkeypatch):
     })
     monkeypatch.setattr(ExerciseChatStore, "resolve_pending", resolve)
 
-    result = client.post(f"/api/chats/{CHAT}/pending-actions/{PENDING}/cancel", json={
+    result = client.post(f"/api/chats/{CHAT}/pending-actions/{PENDING}/cancel", headers={"X-AutoFit-Character": "quni"}, json={
         "idempotency_key": DECISION,
     })
     assert result.status_code == 200

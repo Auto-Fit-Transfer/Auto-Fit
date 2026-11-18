@@ -32,7 +32,7 @@ def test_empty_catalog_model_and_outage(monkeypatch,response,source):
     monkeypatch.setattr(info,'exercise_information',model)
     answer=asyncio.run(answer_question('하체 운동 종류 알려줘',forbidden,forbidden,AsyncMock(return_value=[])))
     assert answer['response_source']==source
-    model.assert_awaited_once_with('하체')
+    model.assert_awaited_once_with('하체', character_id=None)
     assert answer['evidence']==[]
 
 @pytest.mark.parametrize('q',['무릎 통증이 있는데 하체 운동 종류 알려줘','디스크 재활 하체 운동 종류','임신 중 하체 운동 종류'])

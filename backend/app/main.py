@@ -38,7 +38,7 @@ from backend.app.chat_records import answer_records
 from backend.app.chat_storage import CHAT_FIELDS, MESSAGE_FIELDS, ChatStore, fail as chat_fail, project
 from backend.app.chat_running import answer_running_course, search_running_courses
 from backend.app.chat_service import ServiceQuery
-from backend.app.chat_persona import ChatCharacterId, apply_chat_persona
+from backend.app.chat_persona import ChatCharacterId
 from backend.app.chat_rate_limit import ChatRateLimiter
 from backend.app.exercise_chat import (
     InvalidExerciseChatResponse,
@@ -4886,8 +4886,9 @@ async def preview_chat_answer(
         lookup_running_courses=lookup_running_courses,
         read_service=read_service,
         allow_general=True,
+        character_id=character_id,
     )
-    return {"answer": apply_chat_persona(answer, character_id)}
+    return {"answer": answer}
 
 
 def get_chat_store(
@@ -4948,6 +4949,7 @@ async def exercise_chat_followup_history(
 async def exercise_chat_answer(
     chat_id: UUID, body: ChatMessageRequest, store: ChatStore,
     settings: Settings, history: list[dict[str, str]],
+    character_id: ChatCharacterId | None,
 ) -> tuple[dict[str, Any], dict[str, Any] | None, dict[str, Any] | None]:
     persistence = ExerciseChatStore(settings.supabase_url, service_headers(settings), store.user_id)
     snapshot = None
@@ -4961,6 +4963,7 @@ async def exercise_chat_answer(
             raise AIServerError("AI_UNAVAILABLE")
         ai_response = await call_exercise_orchestrator(
             config, body.content, snapshot, history=history,
+            character_id=character_id,
         )
         validate_exercise_response(ai_response, snapshot)
     except (AIServerError, InvalidExerciseChatResponse, ValueError, HTTPException) as exc:
@@ -5019,6 +5022,7 @@ async def resolve_exercise_pending_action(
     chat_id: UUID, pending_action_id: UUID, body: ExercisePendingDecisionRequest,
     decision: Literal["confirm", "cancel"], store: ChatStore,
     limiter: ChatRateLimiter, settings: Settings,
+    character_id: ChatCharacterId | None,
 ) -> dict[str, Any]:
     persistence = ExerciseChatStore(settings.supabase_url, service_headers(settings), store.user_id)
     await store.get(str(chat_id))
@@ -5055,6 +5059,7 @@ async def resolve_exercise_pending_action(
             ai_response = await call_exercise_orchestrator(
                 config, "네" if decision == "confirm" else "취소",
                 snapshot, pending_action=pending["payload"],
+                character_id=character_id,
             )
             if isinstance(ai_response, dict) and ai_response.get("action") == "need_exercise_session_context":
                 raise HTTPException(409, detail={
@@ -5109,12 +5114,14 @@ async def resolve_exercise_pending_action(
 )
 async def confirm_exercise_pending_action(
     chat_id: UUID, pending_action_id: UUID, body: ExercisePendingDecisionRequest,
+    character_id: ChatCharacterId | None = Header(default=None, alias="X-AutoFit-Character"),
     store: ChatStore = Depends(get_chat_store),
     limiter: ChatRateLimiter = Depends(get_chat_access),
     settings: Settings = Depends(get_settings),
 ):
     return await resolve_exercise_pending_action(
         chat_id, pending_action_id, body, "confirm", store, limiter, settings,
+        character_id,
     )
 
 
@@ -5124,12 +5131,14 @@ async def confirm_exercise_pending_action(
 )
 async def cancel_exercise_pending_action(
     chat_id: UUID, pending_action_id: UUID, body: ExercisePendingDecisionRequest,
+    character_id: ChatCharacterId | None = Header(default=None, alias="X-AutoFit-Character"),
     store: ChatStore = Depends(get_chat_store),
     limiter: ChatRateLimiter = Depends(get_chat_access),
     settings: Settings = Depends(get_settings),
 ):
     return await resolve_exercise_pending_action(
         chat_id, pending_action_id, body, "cancel", store, limiter, settings,
+        character_id,
     )
 
 
@@ -5177,6 +5186,7 @@ async def send_chat_message(
                 if should_route_exercise_message(body.content, previous_action):
                     answer, session_state, pending_payload = await exercise_chat_answer(
                         chat_id, body, store, settings, exercise_history,
+                        character_id,
                     )
                 else:
                     action_answer = None
@@ -5203,8 +5213,8 @@ async def send_chat_message(
                         load_score_items,
                         lookup_running_courses,
                         read_service,
+                        character_id=character_id,
                     )
-                    answer = apply_chat_persona(answer, character_id)
                 if pending_payload is not None:
                     result = await store.exchange_proposal(
                         chat_id, body.client_message_id, body.content,

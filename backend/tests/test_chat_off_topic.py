@@ -33,7 +33,7 @@ def test_first_off_topic_question_gets_answer_and_gentle_notice(monkeypatch):
     assert '이번에는 간단히 도와드렸어요' in result['content']
     assert '다음부터는' in result['content']
     assert result['evidence'] == []
-    model.assert_awaited_once_with('프랑스 수도가 어디야?')
+    model.assert_awaited_once_with('프랑스 수도가 어디야?', character_id=None)
 
 
 def test_later_off_topic_question_is_not_sent_to_ai(monkeypatch):

@@ -57,13 +57,9 @@ def test_send_or_replay(client, monkeypatch, replay):
     assert len(calls) == (1 if replay else 2)
 
 
-@pytest.mark.parametrize("character_id,introduction", [
-    ("quni", "좋아요, 같이 살펴볼게요."),
-    ("nabi", "천천히 확인해 볼게요."),
-    ("coach", "핵심부터 확인하겠습니다."),
-])
-def test_selected_character_changes_answer_tone_without_changing_evidence(
-    client, monkeypatch, character_id, introduction,
+@pytest.mark.parametrize("character_id", ["quni", "nabi", "coach"])
+def test_selected_character_does_not_prefix_a_backend_greeting(
+    client, monkeypatch, character_id,
 ):
     async def exchange(self, chat_id, client_id, content, answer=None):
         if answer is None:
@@ -79,7 +75,10 @@ def test_selected_character_changes_answer_tone_without_changing_evidence(
     )
     assert result.status_code == 201
     answer = result.json()["assistant_message"]
-    assert answer["content"].startswith(introduction + "\n")
+    assert answer["content"] == (
+        "이번 질문은 Auto-Fit의 운동·식단·건강 관리 범위와 조금 거리가 있고 "
+        "현재 답변을 준비하지 못했어요. 다음 질문은 건강한 변화를 위한 주제로 부탁드릴게요."
+    )
     assert answer["intent"] == "clarification"
     assert answer["needs_more_data"] is True
     assert answer["evidence"] == []

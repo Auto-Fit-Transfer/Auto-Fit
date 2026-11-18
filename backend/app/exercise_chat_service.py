@@ -9,6 +9,7 @@ import httpx
 from fastapi import HTTPException
 
 from backend.app.ai_server import AIEndpoint, AIServerClient, AIServerConfig
+from backend.app.chat_persona import ChatCharacterId
 from backend.app.http_client import client_scope
 
 
@@ -207,11 +208,15 @@ async def call_exercise_orchestrator(
     snapshot: dict[str, Any] | None,
     *, pending_action: dict[str, Any] | None = None,
     history: list[dict[str, str]] | None = None,
+    character_id: ChatCharacterId | None = None,
 ) -> dict[str, Any]:
     context = {"active_exercise_session": snapshot} if snapshot else {}
-    return await AIServerClient(config).post(AIEndpoint.CHAT, {
+    payload = {
         "content": content,
         "history": history or [],
         "context": context,
         "pending_action": pending_action,
-    })
+    }
+    if character_id is not None:
+        payload["character_id"] = character_id
+    return await AIServerClient(config).post(AIEndpoint.CHAT, payload)
