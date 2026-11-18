@@ -65,7 +65,7 @@ from backend.app.diet_ai import (
     mix_meals,
     select_ai_slots,
     apply_inventory_to_ai_meals,
-    food_matches_inventory,
+    food_matches_inventory as food_matches_inventory,
 )
 from backend.app.ai_server import AIEndpoint, AIServerClient, AIServerError, get_ai_server_config
 from backend.app.exercise_ai import ExerciseAIError, build_plan as build_ai_exercise_plan, build_request as build_ai_exercise_request, gif_url_for_exercise
@@ -77,7 +77,11 @@ from backend.app.food_image_generation import (
 )
 from backend.app.food_shots import create_food_shots_router
 from backend.app.home import HomeResponse, build_home_response
-from backend.app.health_documents import create_health_documents_router
+from backend.app.health_documents import create_health_documents_router, purge_pending_health_document_sources
+from backend.app.health_assessment_generation import (
+    generate_confirmed_health_assessment, refresh_deferred_health_assessments,
+    weekly_diet_score_context,
+)
 from backend.app.account_deletion import create_account_deletion_router
 from backend.app.community import create_community_router
 from backend.app.user_settings import create_user_settings_router
@@ -92,7 +96,6 @@ from backend.app.running_sessions import create_running_sessions_router
 from backend.app.weekly_diet import (
     call_ai, create_weekly_diet_router, get_weekly_ai_client, validate_recipe_reply,
 )
-from backend.app.ai_server import AIEndpoint
 from backend.app.weekly_recipe_contract import RecipeReply
 from backend.app.running import create_running_router
 from backend.app.meal_photos import attach_photos, create_meal_photos_router
@@ -3535,6 +3538,31 @@ def build_weekly_nutrition_summaries(
 
 
 
+async def health_document_purge_loop() -> None:
+    offset = 0
+    while True:
+        await asyncio.sleep(60)
+        try:
+            result = await purge_pending_health_document_sources(get_settings(), offset=offset)
+            offset = result["next_offset"]
+        except Exception as exc:
+            logger.warning("Health document purge queue unavailable: %s", type(exc).__name__)
+
+
+async def health_score_refresh_loop() -> None:
+    after_user_id = None
+    while True:
+        await asyncio.sleep(300)
+        try:
+            result = await refresh_deferred_health_assessments(
+                get_settings(), after_user_id=after_user_id,
+                weekly_diet_loader=load_health_score_weekly_diet,
+            )
+            after_user_id = result["next_after"]
+        except Exception as exc:
+            logger.warning("Deferred health assessment sweep unavailable: %s", type(exc).__name__)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_model_config()  # Fail early on invalid opt-in configuration; no network call.
@@ -3542,6 +3570,8 @@ async def lifespan(app: FastAPI):
     async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
         app.state.supabase_http_client = client
         posture_cleanup_task = None
+        health_purge_task = None
+        health_score_task = None
         cleanup_enabled = environment_flag(
             os.getenv("POSTURE_ANALYSIS_CLEANUP_ENABLED"),
             default=environment_flag(
@@ -3550,6 +3580,10 @@ async def lifespan(app: FastAPI):
         if cleanup_enabled:
             posture_cleanup_task = asyncio.create_task(
                 posture_cleanup_loop(client, get_settings()))
+        if environment_flag(os.getenv("HEALTH_DOCUMENT_PURGE_RETRY_ENABLED"), default=True):
+            health_purge_task = asyncio.create_task(health_document_purge_loop())
+        if environment_flag(os.getenv("HEALTH_SCORE_REFRESH_ENABLED"), default=True):
+            health_score_task = asyncio.create_task(health_score_refresh_loop())
         try:
             yield
         finally:
@@ -3557,6 +3591,14 @@ async def lifespan(app: FastAPI):
                 posture_cleanup_task.cancel()
                 with suppress(asyncio.CancelledError):
                     await posture_cleanup_task
+            if health_purge_task is not None:
+                health_purge_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await health_purge_task
+            if health_score_task is not None:
+                health_score_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await health_score_task
             del app.state.supabase_http_client
 
 
@@ -3673,10 +3715,39 @@ app.include_router(create_analysis_summary_router(get_current_user, get_settings
 app.include_router(create_posture_analysis_router(get_current_user, get_settings))
 app.include_router(create_saved_workout_router(get_current_user, get_settings))
 app.include_router(create_running_sessions_router(get_current_user, get_settings))
+
+
+async def load_health_score_weekly_diet(user_id: str, settings: Settings) -> dict[str, Any] | None:
+    today = datetime.now(KST).date()
+    start = today - timedelta(days=today.weekday())
+    days = [start + timedelta(days=offset) for offset in range(7)]
+    results = await asyncio.gather(
+        *(fetch_diet_recommendation(user_id, settings, day, include_details=False) for day in days),
+        fetch_meal_logs(user_id, start, days[-1], settings, include_photos=False),
+        return_exceptions=True,
+    )
+    if any(isinstance(result, BaseException) for result in results):
+        return None
+    try:
+        summaries = build_weekly_nutrition_summaries(
+            start, dict(zip(days, results[:-1])), results[-1],
+        )
+    except (ValueError, TypeError, ArithmeticError):
+        return None
+    return weekly_diet_score_context(list(summaries.values()))
+
+
+async def generate_health_assessment_after_confirmation(user_id: str, settings: Settings) -> dict[str, Any]:
+    return await generate_confirmed_health_assessment(
+        user_id, settings, weekly_diet_loader=load_health_score_weekly_diet,
+    )
+
+
 app.include_router(
     create_health_documents_router(
         current_user_dependency=get_current_user,
         settings_dependency=get_settings,
+        analysis_generator=generate_health_assessment_after_confirmation,
     )
 )
 

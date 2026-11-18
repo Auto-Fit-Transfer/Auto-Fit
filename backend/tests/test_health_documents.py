@@ -276,7 +276,7 @@ def test_ocr_update_endpoint_rejects_client_identity(monkeypatch) -> None:
 
 def test_confirm_health_checkup_maps_reviewed_data_and_user(monkeypatch) -> None:
     calls = []
-    async def purge(file_record, settings):
+    async def purge(file_record, user_id, settings):
         calls.append(("PURGE", file_record, None, None))
     monkeypatch.setattr(health_documents, "_purge_confirmed_source", purge)
 
@@ -317,6 +317,7 @@ def test_confirm_health_checkup_maps_reviewed_data_and_user(monkeypatch) -> None
                             "extracted_data": {
                                 "checkup_date": "2026-09-16",
                                 "weight_kg": "68.4",
+                                "institution_name": "개인 이름이 포함된 검진기관",
                             },
                         }
                     ],
@@ -348,6 +349,7 @@ def test_confirm_health_checkup_maps_reviewed_data_and_user(monkeypatch) -> None
     assert create_call[3]["checkup_date"] == "2026-09-16"
     assert create_call[3]["weight_kg"] == "68.4"
     assert "raw_data" not in create_call[3]
+    assert "institution_name" not in create_call[3]
     assert any(call[0] == "PURGE" for call in calls)
     assert result["already_confirmed"] is False
     assert result["file"]["processing_status"] == "manually_confirmed"
@@ -355,7 +357,7 @@ def test_confirm_health_checkup_maps_reviewed_data_and_user(monkeypatch) -> None
 
 def test_confirm_is_idempotent_when_health_data_already_exists(monkeypatch) -> None:
     post_called = False
-    async def purge(file_record, settings):
+    async def purge(file_record, user_id, settings):
         assert file_record["processing_status"] == "manually_confirmed"
     monkeypatch.setattr(health_documents, "_purge_confirmed_source", purge)
 
@@ -395,6 +397,9 @@ def test_confirm_is_idempotent_when_health_data_already_exists(monkeypatch) -> N
             post_called = True
             raise AssertionError("idempotent confirmation must not insert again")
 
+        async def patch(self, url, headers, params, json):
+            return httpx.Response(200, json=[{"uploaded_file_id": FILE_ID, **json}])
+
     monkeypatch.setattr(health_documents.httpx, "AsyncClient", FakeClient)
     result = asyncio.run(
         health_documents._confirm_document(FILE_ID, USER_ID, TEST_SETTINGS)
@@ -407,7 +412,7 @@ def test_confirm_is_idempotent_when_health_data_already_exists(monkeypatch) -> N
 
 def test_confirm_retry_repairs_file_status_after_measurement_was_created(monkeypatch) -> None:
     patched = []
-    async def purge(file_record, settings):
+    async def purge(file_record, user_id, settings):
         assert file_record["processing_status"] == "manually_confirmed"
     monkeypatch.setattr(health_documents, "_purge_confirmed_source", purge)
 
@@ -447,11 +452,47 @@ def test_confirm_retry_repairs_file_status_after_measurement_was_created(monkeyp
     result = asyncio.run(health_documents._confirm_document(FILE_ID, USER_ID, TEST_SETTINGS))
     assert result["already_confirmed"] is True
     assert result["file"]["processing_status"] == "manually_confirmed"
-    assert patched == [(
-        {"uploaded_file_id": f"eq.{FILE_ID}", "user_id": f"eq.{USER_ID}",
-         "select": "uploaded_file_id,upload_status,processing_status"},
-        {"upload_status": "completed", "processing_status": "manually_confirmed"},
-    )]
+    assert len(patched) == 1
+    assert patched[0][0]["user_id"] == f"eq.{USER_ID}"
+    assert patched[0][1]["processing_status"] == "manually_confirmed"
+    assert patched[0][1]["original_file_name"] is None
+    assert patched[0][1]["file_name"] == "체성분 기록"
+    assert patched[0][1]["source_purge_requested_at"]
+
+
+def test_concurrent_confirm_reuses_row_inserted_by_other_request(monkeypatch):
+    health_reads = 0
+    purged = []
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def get(self, url, *, headers, params):
+            nonlocal health_reads
+            if url.endswith("/upload_files"):
+                return httpx.Response(200, json=[{"uploaded_file_id": FILE_ID,
+                    "document_type": "health_checkup", "processing_status": "awaiting_review"}])
+            if url.endswith("/ocr_results"):
+                return httpx.Response(200, json=[{"status": "completed",
+                    "extracted_data": {"checkup_date": "2026-09-16", "weight_kg": "68.4"}}])
+            health_reads += 1
+            return httpx.Response(200, json=[] if health_reads == 1 else [{
+                "health_checkup_id": "20260916-0000-4000-8000-000000000004",
+                "uploaded_file_id": FILE_ID,
+            }])
+        async def post(self, url, *, headers, params, json):
+            return httpx.Response(409, json={"code": "23505"})
+        async def patch(self, url, *, headers, params, json):
+            return httpx.Response(200, json=[{"uploaded_file_id": FILE_ID}])
+    async def purge(file_record, user_id, settings):
+        purged.append(user_id)
+    monkeypatch.setattr(health_documents.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(health_documents, "_purge_confirmed_source", purge)
+    result = asyncio.run(health_documents._confirm_document(FILE_ID, USER_ID, TEST_SETTINGS))
+    assert result["already_confirmed"] is True
+    assert result["health_data"]["health_checkup_id"] == "20260916-0000-4000-8000-000000000004"
+    assert health_reads == 2
+    assert purged == [USER_ID]
 
 
 @pytest.mark.parametrize("storage_status,ocr_status,expected_calls", [
@@ -473,15 +514,144 @@ def test_confirmed_source_purge_checks_both_deletions(monkeypatch, storage_statu
                 assert params == {"uploaded_file_id": f"eq.{FILE_ID}"}
                 return httpx.Response(ocr_status)
             return httpx.Response(storage_status)
+        async def patch(self, url, *, headers, params, json):
+            kind = "health" if url.endswith(("/health_checkups", "/body_compositions")) else "marker"
+            calls.append(kind)
+            assert params["user_id"] == f"eq.{USER_ID}"
+            if kind == "health":
+                assert json == {"raw_data": None, "institution_name": None, "checkup_type": None}
+            else:
+                assert json["source_purged_at"]
+            return httpx.Response(200, json=[{"uploaded_file_id": FILE_ID}])
     monkeypatch.setattr(health_documents.httpx, "AsyncClient", Client)
-    file_record = {"uploaded_file_id": FILE_ID, "storage_path": f"{USER_ID}/2026/09/{FILE_ID}.pdf"}
+    file_record = {"uploaded_file_id": FILE_ID, "document_type": "health_checkup",
+                   "storage_path": f"{USER_ID}/2026/09/{FILE_ID}.pdf"}
     if storage_status == 500 or ocr_status == 500:
         with pytest.raises(HTTPException) as exc:
-            asyncio.run(health_documents._purge_confirmed_source(file_record, TEST_SETTINGS))
+            asyncio.run(health_documents._purge_confirmed_source(file_record, USER_ID, TEST_SETTINGS))
         assert exc.value.status_code == 502
     else:
-        asyncio.run(health_documents._purge_confirmed_source(file_record, TEST_SETTINGS))
-    assert calls == expected_calls
+        asyncio.run(health_documents._purge_confirmed_source(file_record, USER_ID, TEST_SETTINGS))
+    assert calls == expected_calls + (["health", "marker"] if expected_calls == ["storage", "ocr"] and storage_status in (200, 404) and ocr_status == 204 else [])
+
+
+def test_purge_queue_retries_only_explicitly_requested_confirmed_sources(monkeypatch):
+    calls = []
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def get(self, url, *, headers, params):
+            assert params["source_purge_requested_at"] == "not.is.null"
+            assert params["source_purged_at"] == "is.null"
+            assert "processing_status" not in params
+            assert params["document_type"] == "in.(health_checkup,body_composition)"
+            return httpx.Response(200, json=[{"uploaded_file_id": FILE_ID, "user_id": USER_ID,
+                "document_type": "health_checkup", "processing_status": "manually_confirmed",
+                "storage_path": f"{USER_ID}/{FILE_ID}.pdf"}])
+    async def canonical(file_record, user_id, settings):
+        return {"health_checkup_id": "20260916-0000-4000-8000-000000000004"}
+    async def mark(uploaded_file_id, user_id, document_type, settings):
+        calls.append(("mark", user_id))
+    async def purge(file_record, user_id, settings):
+        calls.append((file_record["uploaded_file_id"], user_id))
+    monkeypatch.setattr(health_documents.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(health_documents, "_fetch_confirmed_health_data", canonical)
+    monkeypatch.setattr(health_documents, "_mark_document_confirmed", mark)
+    monkeypatch.setattr(health_documents, "_purge_confirmed_source", purge)
+    assert asyncio.run(health_documents.purge_pending_health_document_sources(TEST_SETTINGS)) == {
+        "succeeded": 1, "failed": 0, "next_offset": 0,
+    }
+    assert calls == [("mark", USER_ID), (FILE_ID, USER_ID)]
+
+
+@pytest.mark.parametrize("canonical_exists", [False, True])
+def test_purge_queue_recovers_crash_between_measurement_insert_and_status_update(monkeypatch, canonical_exists):
+    calls = []
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def get(self, url, *, headers, params):
+            return httpx.Response(200, json=[{
+                "uploaded_file_id": FILE_ID, "user_id": USER_ID,
+                "document_type": "health_checkup", "processing_status": "awaiting_review",
+                "storage_path": f"{USER_ID}/{FILE_ID}.pdf",
+            }])
+    async def canonical(file_record, user_id, settings):
+        calls.append("lookup")
+        return {"health_checkup_id": "20260916-0000-4000-8000-000000000004"} if canonical_exists else None
+    async def mark(uploaded_file_id, user_id, document_type, settings):
+        calls.append("mark")
+    async def purge(file_record, user_id, settings):
+        calls.append("purge")
+    monkeypatch.setattr(health_documents.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(health_documents, "_fetch_confirmed_health_data", canonical)
+    monkeypatch.setattr(health_documents, "_mark_document_confirmed", mark)
+    monkeypatch.setattr(health_documents, "_purge_confirmed_source", purge)
+    result = asyncio.run(health_documents.purge_pending_health_document_sources(TEST_SETTINGS))
+    assert calls == (["lookup", "mark", "purge"] if canonical_exists else ["lookup"])
+    assert result == {"succeeded": 1 if canonical_exists else 0, "failed": 0,
+                      "next_offset": 0}
+
+
+def test_purge_queue_paginates_past_unfinished_markers(monkeypatch):
+    seen_offsets = []
+    completed = []
+    class Client:
+        def __init__(self, **kwargs): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *args): pass
+        async def get(self, url, *, headers, params):
+            offset = int(params["offset"])
+            seen_offsets.append(offset)
+            ids = [FILE_ID, "20260916-0000-4000-8000-000000000099"] if offset == 0 else [
+                "20260916-0000-4000-8000-000000000098"
+            ]
+            return httpx.Response(200, json=[{"uploaded_file_id": item, "user_id": USER_ID,
+                "document_type": "health_checkup", "storage_path": f"{USER_ID}/{item}.pdf"}
+                for item in ids])
+    async def canonical(file_record, user_id, settings):
+        return {"health_checkup_id": FILE_ID} if file_record["uploaded_file_id"].endswith("098") else None
+    async def mark(uploaded_file_id, user_id, document_type, settings):
+        completed.append("mark")
+    async def purge(file_record, user_id, settings):
+        completed.append("purge")
+    monkeypatch.setattr(health_documents.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(health_documents, "_fetch_confirmed_health_data", canonical)
+    monkeypatch.setattr(health_documents, "_mark_document_confirmed", mark)
+    monkeypatch.setattr(health_documents, "_purge_confirmed_source", purge)
+    first = asyncio.run(health_documents.purge_pending_health_document_sources(TEST_SETTINGS, limit=2))
+    second = asyncio.run(health_documents.purge_pending_health_document_sources(
+        TEST_SETTINGS, limit=2, offset=first["next_offset"],
+    ))
+    assert first == {"succeeded": 0, "failed": 0, "next_offset": 2}
+    assert second == {"succeeded": 1, "failed": 0, "next_offset": 0}
+    assert seen_offsets == [0, 2]
+    assert completed == ["mark", "purge"]
+
+
+@pytest.mark.parametrize("generation_fails", [False, True])
+def test_confirm_reports_analysis_state_without_undoing_saved_document(monkeypatch, generation_fails):
+    async def confirm(uploaded_file_id, user_id, settings):
+        return {"file": {"uploaded_file_id": FILE_ID, "document_type": "health_checkup"},
+                "health_data": {"health_checkup_id": "20260916-0000-4000-8000-000000000004"},
+                "already_confirmed": False}
+    async def generate(user_id, settings, **kwargs):
+        if generation_fails:
+            raise RuntimeError("AI failure contains no health data")
+        return {"status": "saved", "assessment_id": "20260916-0000-4000-8000-000000000006"}
+    monkeypatch.setattr(health_documents, "_confirm_document", confirm)
+    monkeypatch.setattr(main, "generate_confirmed_health_assessment", generate)
+    override_dependencies()
+    try:
+        response = TestClient(main.app).post(f"/api/health-documents/{FILE_ID}/confirm")
+    finally:
+        main.app.dependency_overrides.clear()
+    assert response.status_code == 200
+    assert response.json()["status"] == "confirmed"
+    assert response.json()["analysis_status"] == ("failed" if generation_fails else "saved")
+    assert response.json()["assessment_id"] == (None if generation_fails else "20260916-0000-4000-8000-000000000006")
 
 
 def test_ocr_missing_configuration_is_failed_not_completed(monkeypatch):
@@ -579,6 +749,7 @@ def test_mock_ocr_upload_review_update_confirm_flow(monkeypatch, document_type, 
     rows = {"upload_files": [], "ocr_results": [], "health_checkups": [], "body_compositions": []}
     uploads = []
     deleted_storage = []
+    confirm_operations = []
 
     class Client:
         def __init__(self, **kwargs): pass
@@ -589,6 +760,8 @@ def test_mock_ocr_upload_review_update_confirm_flow(monkeypatch, document_type, 
                 uploads.append(content)
                 return httpx.Response(200, json={})
             table = url.rsplit("/", 1)[-1]
+            if table in {"health_checkups", "body_compositions"}:
+                confirm_operations.append("measurement_insert")
             record = dict(json)
             if table == "upload_files":
                 record["uploaded_at"] = "2026-09-17T00:00:00Z"
@@ -601,6 +774,8 @@ def test_mock_ocr_upload_review_update_confirm_flow(monkeypatch, document_type, 
             return httpx.Response(200, json=matches)
         async def patch(self, url, *, headers, params, json):
             table = url.rsplit("/", 1)[-1]
+            if table == "upload_files" and "source_purge_requested_at" in json:
+                confirm_operations.append("purge_marker")
             matches = [r for r in rows[table] if all(
                 r.get(k) == v[3:] for k,v in params.items() if v.startswith("eq."))]
             for record in matches:
@@ -668,6 +843,7 @@ def test_mock_ocr_upload_review_update_confirm_flow(monkeypatch, document_type, 
                 }})
                 assert acknowledged.status_code == 200
         confirmed = client.post(path + "/confirm")
+        assert confirm_operations[:2] == ["purge_marker", "measurement_insert"]
         assert confirmed.status_code == 200
         assert confirmed.json()["status"] == "confirmed"
         assert confirmed.json()[id_field]
@@ -676,6 +852,9 @@ def test_mock_ocr_upload_review_update_confirm_flow(monkeypatch, document_type, 
         assert len(deleted_storage) == 1
         assert rows["ocr_results"] == []
         assert client.get(path).json()["status"] == "confirmed"
+        assert client.get(path).json()["original_file_name"] == (
+            "건강검진 기록" if document_type == "health_checkup" else "체성분 기록"
+        )
         repeated = client.post(path + "/confirm")
         assert repeated.status_code == 200
         assert repeated.json()[id_field] == confirmed.json()[id_field]

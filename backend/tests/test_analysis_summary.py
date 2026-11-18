@@ -65,6 +65,61 @@ def mock_fetch(monkeypatch, rows, calls):
     monkeypatch.setattr(summary.httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
 
 
+@pytest.mark.parametrize("partial", [True, False])
+def test_latest_score_keeps_partial_health_data_separate_from_total(monkeypatch, partial):
+    calls = []
+    async def current_user():
+        return main.AuthenticatedUser(id="20260916-0000-4000-8000-000000000001")
+    row = {
+        "health_assessment_id": AID,
+        "assessed_at": "2026-11-18T07:00:00Z",
+        "score_status": "partial" if partial else "available",
+        "overall_score": None if partial else "75.5",
+        "health_data_status": "available",
+        "health_data_score": "80.0",
+    }
+    mock_fetch(monkeypatch, [row], calls)
+    main.app.dependency_overrides[main.get_current_user] = current_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    try:
+        response = TestClient(main.app).get("/api/health-assessments/score/latest")
+    finally:
+        main.app.dependency_overrides.pop(main.get_current_user, None)
+        main.app.dependency_overrides.pop(main.get_settings, None)
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    assert response.json() == {
+        "assessment_id": AID, "assessed_at": "2026-11-18T07:00:00Z",
+        "score_status": "partial" if partial else "available",
+        "overall_score": None if partial else 75.5,
+        "health_data": {"status": "available", "score": 80.0},
+    }
+    assert len(calls) == 1
+    assert calls[0].url.params["user_id"] == "eq.20260916-0000-4000-8000-000000000001"
+    assert calls[0].url.params["select"] == (
+        "health_assessment_id,assessed_at,score_status,overall_score,"
+        "health_data_status,health_data_score"
+    )
+
+
+def test_latest_score_rejects_missing_or_inconsistent_assessment(monkeypatch):
+    calls = []
+    rows = []
+    mock_fetch(monkeypatch, rows, calls)
+    with pytest.raises(HTTPException) as missing:
+        asyncio.run(summary.fetch_latest_health_score("owner", TEST_SETTINGS))
+    assert missing.value.status_code == 404
+
+    inconsistent = [{"health_assessment_id": AID,
+                     "assessed_at": "2026-11-18T07:00:00Z",
+                     "score_status": "partial", "overall_score": "75.5",
+                     "health_data_status": "available", "health_data_score": "80"}]
+    rows.extend(inconsistent)
+    with pytest.raises(HTTPException) as invalid:
+        asyncio.run(summary.fetch_latest_health_score("owner", TEST_SETTINGS))
+    assert invalid.value.status_code == 502
+
+
 def test_assessment_writer_merges_validated_analysis_without_losing_popup_snapshot():
     prior = {"popup_criteria": {"bmi": {"criteria_id": "kr-adult-bmi"}}, "model_output": {"version": "v1"}}
     merged = summary.attach_main_analysis(prior, saved_analysis())
@@ -331,7 +386,8 @@ def test_analysis_input_combines_latest_confirmed_checkup_and_inbody(monkeypatch
     assert result.body_composition.body_fat_percentage == 32
     assert result.diet_context.inventory[0].name == "두부"
     assert result.diet_context.allergies == ["우유"]
-    assert result.score_context == {}
+    assert result.score_context["baseline_health_checkup"].health_checkup_id == result.health_checkup.health_checkup_id
+    assert result.score_context["baseline_body_composition"].body_composition_id == result.body_composition.body_composition_id
     assert {call.url.params["user_id"] for call in calls if "user_id" in call.url.params} == {"eq.owner"}
     health_calls = [call for call in calls if call.url.path.endswith(("/health_checkups", "/body_compositions"))]
     assert all(call.url.params["limit"] == "1" for call in health_calls)
@@ -360,6 +416,32 @@ def test_analysis_input_reports_missing_source_without_fabricating_values(monkey
     assert result.missing == ["health_checkup"]
     assert result.health_checkup is None
     assert result.body_composition is not None
+
+
+def test_analysis_input_uses_first_registered_sources_as_health_score_baselines(monkeypatch):
+    real = httpx.AsyncClient
+    def handler(request):
+        if request.url.path.endswith("/health_checkups"):
+            first = request.url.params["order"].startswith("created_at.asc")
+            return httpx.Response(200, json=[{
+                "health_checkup_id": "20260916-0000-4000-8000-000000000004" if first else "20260916-0000-4000-8000-000000000014",
+                "checkup_date": "2026-09-16" if first else "2026-10-16",
+                "fasting_glucose": "100" if first else "90",
+            }])
+        if request.url.path.endswith("/body_compositions"):
+            first = request.url.params["order"].startswith("created_at.asc")
+            return httpx.Response(200, json=[{
+                "body_composition_id": "20260916-0000-4000-8000-000000000003" if first else "20260916-0000-4000-8000-000000000013",
+                "measured_at": "2026-09-16T09:00:00+09:00" if first else "2026-10-16T09:00:00+09:00",
+                "body_fat_percentage": "30" if first else "27",
+            }])
+        return httpx.Response(200, json=[])
+    monkeypatch.setattr(summary.httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
+    result = asyncio.run(summary.fetch_analysis_input("owner", TEST_SETTINGS))
+    assert result.health_checkup.fasting_glucose == 90
+    assert result.score_context["baseline_health_checkup"].fasting_glucose == 100
+    assert result.body_composition.body_fat_percentage == 27
+    assert result.score_context["baseline_body_composition"].body_fat_percentage == 30
 
 
 def test_analysis_input_includes_complete_weekly_exercise_only(monkeypatch):

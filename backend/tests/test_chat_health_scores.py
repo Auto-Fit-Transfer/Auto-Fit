@@ -122,6 +122,7 @@ def test_query_is_scoped_and_errors_are_sanitized(monkeypatch, status, payload):
     def handler(request):
         assert request.url.params["user_id"] == "eq.owner"
         assert request.url.params["select"] == "health_assessment_id,overall_score,assessed_at"
+        assert request.url.params["overall_score"] == "not.is.null"
         assert request.url.params["limit"] == "2"
         assert request.url.params["assessed_at"].startswith("lte.")
         assert request.url.params["order"] == "assessed_at.desc,health_assessment_id.desc"
@@ -142,6 +143,7 @@ def test_query_is_scoped_and_errors_are_sanitized(monkeypatch, status, payload):
 def test_score_history_can_read_more_than_the_latest_two_without_changing_default():
     def handler(request):
         assert request.url.params["user_id"] == "eq.owner"
+        assert request.url.params["overall_score"] == "not.is.null"
         assert request.url.params["limit"] == "12"
         assert request.url.params["order"] == "assessed_at.desc,health_assessment_id.desc"
         return httpx.Response(200, json=[

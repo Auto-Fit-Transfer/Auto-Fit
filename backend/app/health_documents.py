@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Annotated, Any, Callable, Literal
+from typing import Annotated, Any, Awaitable, Callable, Literal
+import logging
 import os
 from uuid import UUID, uuid4
 
@@ -15,10 +16,18 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 HEALTH_DOCUMENT_BUCKET = "health-documents"
 MAX_HEALTH_DOCUMENT_BYTES = 10 * 1024 * 1024
 DocumentType = Literal["health_checkup", "body_composition"]
+logger = logging.getLogger("uvicorn.error")
+CONFIRMED_DOCUMENT_NAMES = {"health_checkup": "건강검진 기록", "body_composition": "체성분 기록"}
+
+
+def _confirmed_file_record(file_record: dict[str, Any]) -> dict[str, Any]:
+    return {**file_record, "upload_status": "completed", "processing_status": "manually_confirmed",
+            "file_name": CONFIRMED_DOCUMENT_NAMES[file_record["document_type"]],
+            "original_file_name": None, "file_size": None, "mime_type": None, "file_type": None}
 
 HEALTH_DATA_FIELDS = {
-    "health_checkup": "health_checkup_id,uploaded_file_id,source_type,checkup_date,height_cm,weight_kg,bmi,systolic_bp,diastolic_bp,fasting_glucose,total_cholesterol,hdl_cholesterol,ldl_cholesterol,triglycerides,ast,alt,gamma_gtp,hemoglobin,creatinine,institution_name,checkup_type",
-    "body_composition": "body_composition_id,uploaded_file_id,source_type,measured_at,height_cm,weight_kg,skeletal_muscle_mass_kg,body_fat_mass_kg,body_fat_percentage,bmi,basal_metabolic_rate,visceral_fat_level,body_water_percentage,body_water_liters,protein_percentage,device_name",
+    "health_checkup": "health_checkup_id,uploaded_file_id,source_type,checkup_date,height_cm,weight_kg,bmi,systolic_bp,diastolic_bp,fasting_glucose,total_cholesterol,hdl_cholesterol,ldl_cholesterol,triglycerides,ast,alt,gamma_gtp,hemoglobin,creatinine",
+    "body_composition": "body_composition_id,uploaded_file_id,source_type,measured_at,height_cm,weight_kg,skeletal_muscle_mass_kg,body_fat_mass_kg,body_fat_percentage,bmi,basal_metabolic_rate,visceral_fat_level,body_water_percentage,body_water_liters,protein_percentage",
 }
 
 
@@ -99,7 +108,7 @@ class UploadMetadata(BaseModel):
     model_config = ConfigDict(extra="allow")
     uploaded_file_id: UUID
     document_type: DocumentType
-    original_file_name: str | None = Field(default=None, description="업로드 시 DB에 보존한 사용자 표시용 원본 파일명")
+    original_file_name: str | None = Field(default=None, description="검토 전 사용자 표시용 원본 파일명; 확정 후 삭제")
 
 
 class OCRMetadata(BaseModel):
@@ -120,7 +129,7 @@ class OCRReview(BaseModel):
 class DocumentResponseBase(BaseModel):
     uploaded_file_id: UUID
     file_name: str
-    original_file_name: str = Field(description="사용자 표시용 원본 파일명. 기존 문서에 값이 없으면 file_name 사용")
+    original_file_name: str = Field(description="검토 전 원본 파일명, 확정 후 일반 기록명. 원본 이름이 없으면 file_name 사용")
     uploaded_at: datetime
     ocr_status: Literal["pending", "processing", "completed", "failed"]
     status: Literal["awaiting_review", "confirmed", "failed"]
@@ -169,6 +178,8 @@ class ConfirmationResponse(BaseModel):
     health_checkup_id: UUID | None = None
     body_composition_id: UUID | None = None
     already_confirmed: bool
+    analysis_status: Literal["saved", "waiting_for_documents", "unavailable", "failed"] = "unavailable"
+    assessment_id: UUID | None = None
     file: UploadMetadata
     health_data: dict[str, Any] = Field(description="저장된 DB 레코드; 생성 ID는 최상위 필드 사용")
 
@@ -581,11 +592,14 @@ async def _fetch_confirmed_health_data(file_record: dict[str, Any], user_id: str
     return rows[0] if rows else None
 
 
-async def _purge_confirmed_source(file_record: dict[str, Any], settings: Any) -> None:
+async def _purge_confirmed_source(file_record: dict[str, Any], user_id: str, settings: Any) -> None:
     """Remove original bytes before deleting the temporary OCR record; retries are safe."""
     storage_path = file_record.get("storage_path")
     if not isinstance(storage_path, str) or not storage_path:
         raise HTTPException(status_code=502, detail="Health document storage path is unavailable")
+    document_type: DocumentType = file_record["document_type"]
+    table = "health_checkups" if document_type == "health_checkup" else "body_compositions"
+    text_fields = ("institution_name", "checkup_type") if document_type == "health_checkup" else ("device_name",)
     async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
         storage_response = await client.delete(
             f"{settings.supabase_url}/storage/v1/object/{HEALTH_DOCUMENT_BUCKET}/{storage_path}",
@@ -598,8 +612,68 @@ async def _purge_confirmed_source(file_record: dict[str, Any], settings: Any) ->
             headers=_service_headers(settings),
             params={"uploaded_file_id": f"eq.{file_record['uploaded_file_id']}"},
         )
-    if not ocr_response.is_success:
-        raise HTTPException(status_code=502, detail="Health document OCR deletion failed")
+        if not ocr_response.is_success:
+            raise HTTPException(status_code=502, detail="Health document OCR deletion failed")
+        health_response = await client.patch(
+            f"{settings.supabase_url}/rest/v1/{table}",
+            headers=_service_headers(settings, return_representation=True),
+            params={"uploaded_file_id": f"eq.{file_record['uploaded_file_id']}",
+                    "user_id": f"eq.{user_id}", "select": "uploaded_file_id"},
+            json={"raw_data": None, **{field: None for field in text_fields}},
+        )
+        if not health_response.is_success or not health_response.json():
+            raise HTTPException(status_code=502, detail="Health document raw data deletion failed")
+        marker_response = await client.patch(
+            f"{settings.supabase_url}/rest/v1/upload_files",
+            headers=_service_headers(settings, return_representation=True),
+            params={"uploaded_file_id": f"eq.{file_record['uploaded_file_id']}",
+                    "user_id": f"eq.{user_id}", "select": "uploaded_file_id"},
+            json={"source_purged_at": datetime.now(UTC).isoformat()},
+        )
+        if not marker_response.is_success or not marker_response.json():
+            raise HTTPException(status_code=502, detail="Health document source purge could not be recorded")
+
+
+async def purge_pending_health_document_sources(
+    settings: Any, *, limit: int = 25, offset: int = 0,
+) -> dict[str, int]:
+    """Finish queued confirmations, including crashes after measurement insertion."""
+    if not 1 <= limit <= 100 or offset < 0:
+        raise ValueError("Invalid health document purge page")
+    async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
+        response = await client.get(
+            f"{settings.supabase_url}/rest/v1/upload_files",
+            headers=_service_headers(settings),
+            params={"select": "uploaded_file_id,user_id,document_type,storage_path,processing_status",
+                    "document_type": "in.(health_checkup,body_composition)",
+                    "source_purge_requested_at": "not.is.null",
+                    "source_purged_at": "is.null",
+                    "order": "source_purge_requested_at.asc,uploaded_file_id.asc",
+                    "limit": str(limit), "offset": str(offset)},
+        )
+    if not response.is_success:
+        raise HTTPException(status_code=502, detail="Health document purge queue lookup failed")
+    rows = response.json()
+    if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
+        raise HTTPException(status_code=502, detail="Health document purge queue response is invalid")
+    succeeded = failed = 0
+    for row in rows:
+        try:
+            # A queued upload is not safe to erase until a canonical row exists.
+            if await _fetch_confirmed_health_data(row, row["user_id"], settings) is None:
+                continue
+            # Also strip identifying file metadata from older confirmed rows.
+            await _mark_document_confirmed(
+                UUID(str(row["uploaded_file_id"])), row["user_id"],
+                row["document_type"], settings,
+            )
+            await _purge_confirmed_source(row, row["user_id"], settings)
+            succeeded += 1
+        except (HTTPException, httpx.RequestError, KeyError, ValueError) as exc:
+            logger.warning("Health document source purge retry failed: %s", type(exc).__name__)
+            failed += 1
+    return {"succeeded": succeeded, "failed": failed,
+            "next_offset": offset + limit if len(rows) == limit else 0}
 
 
 async def _delete_storage_object(storage_path: str, settings: Any) -> None:
@@ -836,10 +910,9 @@ async def _confirm_document(
     file_record = document["file"]
     existing_row = await _fetch_confirmed_health_data(file_record, user_id, settings)
     if existing_row is not None:
-        if file_record.get("processing_status") != "manually_confirmed":
-            await _mark_document_confirmed(uploaded_file_id, user_id, settings)
-            file_record = {**file_record, "upload_status": "completed", "processing_status": "manually_confirmed"}
-        await _purge_confirmed_source(file_record, settings)
+        await _mark_document_confirmed(uploaded_file_id, user_id, file_record["document_type"], settings)
+        file_record = _confirmed_file_record(file_record)
+        await _purge_confirmed_source(file_record, user_id, settings)
         return {"file": file_record, "health_data": existing_row, "already_confirmed": True}
 
     ocr_result = document["ocr_result"]
@@ -867,8 +940,13 @@ async def _confirm_document(
         "uploaded_file_id": str(uploaded_file_id),
         "user_id": user_id,
         "source_type": "manual",
-        **{key: value for key, value in validated.items() if value is not None},
+        **{key: value for key, value in validated.items()
+           if value is not None and key not in {"institution_name", "checkup_type", "device_name"}},
     }
+    # Persist the retry intent before inserting measurements. The worker waits
+    # for the canonical row, so a crash at either boundary cannot erase an
+    # unconfirmed upload or strand a confirmed source without a retry marker.
+    await _request_source_purge(uploaded_file_id, user_id, settings)
     async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
         create_response = await client.post(
             f"{settings.supabase_url}/rest/v1/{table}",
@@ -876,19 +954,27 @@ async def _confirm_document(
             params={"select": HEALTH_DATA_FIELDS[document_type]},
             json=payload,
         )
+    if create_response.status_code == 409:
+        # A concurrent confirmation may have inserted the same upload first.
+        raced_row = await _fetch_confirmed_health_data(file_record, user_id, settings)
+        if raced_row is not None:
+            await _mark_document_confirmed(uploaded_file_id, user_id, document_type, settings)
+            await _purge_confirmed_source(file_record, user_id, settings)
+            return {"file": _confirmed_file_record(file_record),
+                    "health_data": raced_row, "already_confirmed": True}
     if not create_response.is_success or not create_response.json():
         raise HTTPException(status_code=502, detail="Confirmed health data creation failed")
 
-    await _mark_document_confirmed(uploaded_file_id, user_id, settings)
-    await _purge_confirmed_source(file_record, settings)
+    await _mark_document_confirmed(uploaded_file_id, user_id, document_type, settings)
+    await _purge_confirmed_source(file_record, user_id, settings)
     return {
-        "file": {**file_record, "upload_status": "completed", "processing_status": "manually_confirmed"},
+        "file": _confirmed_file_record(file_record),
         "health_data": create_response.json()[0],
         "already_confirmed": False,
     }
 
 
-async def _mark_document_confirmed(uploaded_file_id: UUID, user_id: str, settings: Any) -> None:
+async def _mark_document_confirmed(uploaded_file_id: UUID, user_id: str, document_type: DocumentType, settings: Any) -> None:
     async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
         response = await client.patch(
             f"{settings.supabase_url}/rest/v1/upload_files",
@@ -898,10 +984,26 @@ async def _mark_document_confirmed(uploaded_file_id: UUID, user_id: str, setting
                 "user_id": f"eq.{user_id}",
                 "select": "uploaded_file_id,upload_status,processing_status",
             },
-            json={"upload_status": "completed", "processing_status": "manually_confirmed"},
+            json={"upload_status": "completed", "processing_status": "manually_confirmed",
+                  "file_name": CONFIRMED_DOCUMENT_NAMES[document_type], "original_file_name": None,
+                  "file_size": None, "mime_type": None, "file_type": None,
+                  "source_purge_requested_at": datetime.now(UTC).isoformat()},
         )
     if not response.is_success or not response.json():
         raise HTTPException(status_code=502, detail="Health document status update failed")
+
+
+async def _request_source_purge(uploaded_file_id: UUID, user_id: str, settings: Any) -> None:
+    async with httpx.AsyncClient(timeout=15, trust_env=False) as client:
+        response = await client.patch(
+            f"{settings.supabase_url}/rest/v1/upload_files",
+            headers=_service_headers(settings, return_representation=True),
+            params={"uploaded_file_id": f"eq.{uploaded_file_id}",
+                    "user_id": f"eq.{user_id}", "select": "uploaded_file_id"},
+            json={"source_purge_requested_at": datetime.now(UTC).isoformat()},
+        )
+    if not response.is_success or not response.json():
+        raise HTTPException(status_code=502, detail="Health document source purge could not be queued")
 
 
 class HealthDocumentRoute(APIRoute):
@@ -919,6 +1021,7 @@ def create_health_documents_router(
     *,
     current_user_dependency: Callable[..., Any],
     settings_dependency: Callable[..., Any],
+    analysis_generator: Callable[[str, Any], Awaitable[dict[str, Any]]] | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix="/api/health-documents", tags=["health-documents"], route_class=HealthDocumentRoute)
 
@@ -926,7 +1029,7 @@ def create_health_documents_router(
     async def upload_health_document(
         file: Annotated[UploadFile, File(description="PDF, PNG, JPEG, or HEIC; max 10 MB")],
         document_type: Annotated[DocumentType | None, Form(description="선택: 생략하면 파일 내용으로 서버가 자동 판별합니다. 기존 클라이언트 호환을 위한 명시적 종류 지정.")] = None,
-        original_file_name: Annotated[str | None, Form(max_length=255, description="선택: DocumentPickerAsset.name 등 사용자 원본 파일명. DB에 영구 보존. 생략/공백 시 multipart 파일명 사용. 경로/NUL 제거 및 앞뒤 공백 정리.")] = None,
+        original_file_name: Annotated[str | None, Form(max_length=255, description="선택: DocumentPickerAsset.name 등 검토 중 표시할 원본 파일명. 확정 후 삭제합니다. 생략/공백 시 multipart 파일명 사용; 경로/NUL 제거 및 앞뒤 공백 정리.")] = None,
         user: Any = Depends(current_user_dependency),
         settings: Any = Depends(settings_dependency),
     ) -> dict[str, Any]:
@@ -940,7 +1043,7 @@ def create_health_documents_router(
         return _document_response(document)
 
     @router.get("", response_model=DocumentListResponse, responses=DOCUMENT_ERRORS,
-                description="로그인 사용자의 건강 문서 목록. 최신 업로드 순(동일 시각은 파일 ID 내림차순). 원본 파일명 반환. 미확정/실패 문서 포함; 다른 사용자와 기타 문서 종류 제외. limit 기본 20, 최대 100; offset 기본 0. has_more로 다음 페이지 확인.")
+                description="로그인 사용자의 건강 문서 목록. 최신 업로드 순(동일 시각은 파일 ID 내림차순). 검토 전 원본 파일명, 확정 후 일반 기록명 반환. 미확정/실패 문서 포함; 다른 사용자와 기타 문서 종류 제외. limit 기본 20, 최대 100; offset 기본 0. has_more로 다음 페이지 확인.")
     async def list_health_documents(
         limit: Annotated[int, Query(ge=1, le=100)] = 20,
         offset: Annotated[int, Query(ge=0)] = 0,
@@ -989,15 +1092,29 @@ def create_health_documents_router(
         )
         return _document_response(document)
 
-    @router.post("/{uploaded_file_id}/confirm", response_model=ConfirmationResponse, responses=DOCUMENT_ERRORS, description="검진은 health_checkups, 체성분은 body_compositions에 저장. 재호출은 기존 ID 반환. 날짜 필수.")
+    @router.post("/{uploaded_file_id}/confirm", response_model=ConfirmationResponse, responses=DOCUMENT_ERRORS, description="검진은 health_checkups, 체성분은 body_compositions에 저장. 원본 파일과 OCR 임시 결과는 확정 수치 저장 후 삭제합니다. 두 종류가 모두 있으면 즉시 건강 분석을 실행하며, 분석 실패는 확정 저장을 되돌리지 않습니다. 재호출은 기존 ID를 반환하고 분석을 재시도합니다. 날짜 필수.")
     async def confirm_health_document(
         uploaded_file_id: UUID,
         user: Any = Depends(current_user_dependency),
         settings: Any = Depends(settings_dependency),
     ) -> dict[str, Any]:
         result = await _confirm_document(uploaded_file_id, user.id, settings)
+        analysis = {"status": "unavailable", "assessment_id": None}
+        if analysis_generator is not None:
+            try:
+                analysis = await analysis_generator(user.id, settings)
+                if (not isinstance(analysis, dict)
+                        or analysis.get("status") not in {"saved", "waiting_for_documents", "unavailable"}
+                        or (analysis["status"] == "saved") != (analysis.get("assessment_id") is not None)):
+                    raise ValueError("Invalid health assessment generation outcome")
+            except Exception as exc:
+                # Document confirmation and source purging have already succeeded.
+                # Never log the health values or the upstream response body.
+                logger.warning("Health assessment generation failed: %s", type(exc).__name__)
+                analysis = {"status": "failed", "assessment_id": None}
         return {**result, "uploaded_file_id": uploaded_file_id,
                 "document_type": result["file"]["document_type"], "status": "confirmed",
+                "analysis_status": analysis["status"], "assessment_id": analysis["assessment_id"],
                 "health_checkup_id": result["health_data"].get("health_checkup_id"),
                 "body_composition_id": result["health_data"].get("body_composition_id")}
 

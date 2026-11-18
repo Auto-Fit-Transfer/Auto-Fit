@@ -49,6 +49,7 @@ async def fetch_scores(
                 params={
                     "select": "health_assessment_id,overall_score,assessed_at",
                     "user_id": f"eq.{user_id}",
+                    "overall_score": "not.is.null",
                     "assessed_at": f"lte.{datetime.now(UTC).isoformat()}",
                     "order": "assessed_at.desc,health_assessment_id.desc",
                     "limit": str(limit),

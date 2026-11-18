@@ -9,7 +9,7 @@ from uuid import UUID
 from zoneinfo import ZoneInfo
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.security import HTTPBearer
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
@@ -106,6 +106,31 @@ class MainAnalysisResponse(MainAnalysis):
     assessment_id: UUID
 
 
+class HealthScoreAreaResponse(BaseModel):
+    status: Literal["available", "unavailable"]
+    score: float | None = Field(ge=0, le=100, allow_inf_nan=False)
+
+    @model_validator(mode="after")
+    def validate_score_status(self):
+        if (self.status == "available") != (self.score is not None):
+            raise ValueError("Health-data score and status disagree")
+        return self
+
+
+class LatestHealthScoreResponse(BaseModel):
+    assessment_id: UUID
+    assessed_at: datetime
+    score_status: Literal["available", "partial"]
+    overall_score: float | None = Field(ge=0, le=100, allow_inf_nan=False)
+    health_data: HealthScoreAreaResponse
+
+    @model_validator(mode="after")
+    def validate_total_status(self):
+        if (self.score_status == "available") != (self.overall_score is not None):
+            raise ValueError("Overall score and status disagree")
+        return self
+
+
 class HealthCheckupAnalysisInput(BaseModel):
     health_checkup_id: UUID
     checkup_date: date
@@ -177,6 +202,8 @@ class WeeklyExerciseScoreInput(BaseModel):
 
 
 class AnalysisScoreContext(TypedDict):
+    baseline_health_checkup: NotRequired[HealthCheckupAnalysisInput]
+    baseline_body_composition: NotRequired[BodyCompositionAnalysisInput]
     weekly_exercise: NotRequired[WeeklyExerciseScoreInput]
 
 
@@ -345,20 +372,34 @@ async def fetch_analysis_input(user_id: str, settings: Any) -> AnalysisInputResp
                 raise HTTPException(502, detail="건강 분석 입력 자료 형식을 확인할 수 없습니다.")
             return rows
 
-        checkup_row, body_row, inventory_rows, selected_allergies, allergy_catalog = await asyncio.gather(
+        checkup_row, body_row, baseline_checkup_row, baseline_body_row, inventory_rows, selected_allergies, allergy_catalog = await asyncio.gather(
             latest(
                 "health_checkups",
                 "health_checkup_id,checkup_date,height_cm,weight_kg,bmi,systolic_bp,diastolic_bp,"
                 "fasting_glucose,total_cholesterol,hdl_cholesterol,ldl_cholesterol,triglycerides,"
-                "ast,alt,gamma_gtp,hemoglobin,creatinine,institution_name,checkup_type",
+                "ast,alt,gamma_gtp,hemoglobin,creatinine",
                 "checkup_date.desc,created_at.desc,health_checkup_id.desc",
             ),
             latest(
                 "body_compositions",
                 "body_composition_id,measured_at,height_cm,weight_kg,skeletal_muscle_mass_kg,"
                 "body_fat_mass_kg,body_fat_percentage,bmi,basal_metabolic_rate,visceral_fat_level,"
-                "body_water_percentage,body_water_liters,protein_percentage,device_name",
+                "body_water_percentage,body_water_liters,protein_percentage",
                 "measured_at.desc,created_at.desc,body_composition_id.desc",
+            ),
+            latest(
+                "health_checkups",
+                "health_checkup_id,checkup_date,height_cm,weight_kg,bmi,systolic_bp,diastolic_bp,"
+                "fasting_glucose,total_cholesterol,hdl_cholesterol,ldl_cholesterol,triglycerides,"
+                "ast,alt,gamma_gtp,hemoglobin,creatinine",
+                "created_at.asc,health_checkup_id.asc",
+            ),
+            latest(
+                "body_compositions",
+                "body_composition_id,measured_at,height_cm,weight_kg,skeletal_muscle_mass_kg,"
+                "body_fat_mass_kg,body_fat_percentage,bmi,basal_metabolic_rate,visceral_fat_level,"
+                "body_water_percentage,body_water_liters,protein_percentage",
+                "created_at.asc,body_composition_id.asc",
             ),
             many(
                 "user_food_inventory",
@@ -386,6 +427,8 @@ async def fetch_analysis_input(user_id: str, settings: Any) -> AnalysisInputResp
     try:
         checkup = HealthCheckupAnalysisInput.model_validate(checkup_row) if checkup_row else None
         body = BodyCompositionAnalysisInput.model_validate(body_row) if body_row else None
+        baseline_checkup = HealthCheckupAnalysisInput.model_validate(baseline_checkup_row) if baseline_checkup_row else None
+        baseline_body = BodyCompositionAnalysisInput.model_validate(baseline_body_row) if baseline_body_row else None
     except ValidationError:
         raise HTTPException(502, detail="건강 분석 입력 자료 형식을 확인할 수 없습니다.") from None
     missing = []
@@ -402,6 +445,10 @@ async def fetch_analysis_input(user_id: str, settings: Any) -> AnalysisInputResp
         and name.strip()
     ))
     score_context = await fetch_weekly_exercise_score_context(user_id, settings)
+    if baseline_checkup is not None:
+        score_context["baseline_health_checkup"] = baseline_checkup
+    if baseline_body is not None:
+        score_context["baseline_body_composition"] = baseline_body
     return AnalysisInputResponse(
         ready=not missing,
         missing=missing,
@@ -535,6 +582,50 @@ async def fetch_main_analysis(user_id: str, settings: Any) -> MainAnalysisRespon
         raise HTTPException(502, detail="종합 분석 결과 형식을 확인할 수 없습니다.") from None
 
 
+async def fetch_latest_health_score(user_id: str, settings: Any) -> LatestHealthScoreResponse:
+    key = settings.supabase_service_role_key
+    headers = {"apikey": key}
+    if not key.startswith("sb_secret_"):
+        headers["Authorization"] = f"Bearer {key}"
+    try:
+        async with client_scope() as client:
+            response = await client.get(
+                f"{settings.supabase_url}/rest/v1/health_assessments",
+                headers=headers,
+                params={
+                    "select": (
+                        "health_assessment_id,assessed_at,score_status,overall_score,"
+                        "health_data_status,health_data_score"
+                    ),
+                    "user_id": f"eq.{user_id}",
+                    "assessed_at": f"lte.{datetime.now(UTC).isoformat()}",
+                    "order": "assessed_at.desc,health_assessment_id.desc",
+                    "limit": "1",
+                },
+                timeout=15,
+            )
+            response.raise_for_status()
+            rows = response.json()
+    except (httpx.HTTPError, ValueError):
+        raise HTTPException(502, detail="건강 점수를 조회하지 못했습니다.") from None
+    if not isinstance(rows, list) or len(rows) > 1 or any(not isinstance(row, dict) for row in rows):
+        raise HTTPException(502, detail="건강 점수 형식을 확인할 수 없습니다.")
+    if not rows:
+        raise HTTPException(404, detail="건강 평가를 찾을 수 없습니다.")
+    row = rows[0]
+    try:
+        return LatestHealthScoreResponse.model_validate({
+            "assessment_id": row.get("health_assessment_id"),
+            "assessed_at": row.get("assessed_at"),
+            "score_status": row.get("score_status"),
+            "overall_score": row.get("overall_score"),
+            "health_data": {"status": row.get("health_data_status"),
+                            "score": row.get("health_data_score")},
+        })
+    except ValidationError:
+        raise HTTPException(502, detail="건강 점수 형식을 확인할 수 없습니다.") from None
+
+
 async def refresh_diet_personalization(
     assessment_id: UUID,
     user_id: str,
@@ -627,7 +718,7 @@ def create_analysis_summary_router(current_user_dependency: Callable, settings_d
 
     @router.get(
         "/input", response_model=AnalysisInputResponse, summary="건강검진·인바디 통합 분석 입력 조회",
-        description="본인의 확정된 최신 건강검진 OCR 값, 인바디, 사용 가능한 냉장고 재료와 알레르기를 한 응답으로 반환합니다. 원본 기록의 주간 운동 집계가 완전할 때만 score_context.weekly_exercise를 포함합니다. 두 건강 자료가 모두 있으면 ready=true이며, 누락 자료는 missing에 표시합니다.",
+        description="본인의 확정된 최신 건강검진 수치, 인바디, 사용 가능한 냉장고 재료와 알레르기를 한 응답으로 반환합니다. 최초 등록 수치는 score_context의 baseline으로 제공하고, 원본 기록의 주간 운동 집계가 완전할 때만 weekly_exercise를 포함합니다. 두 건강 자료가 모두 있으면 ready=true이며, 누락 자료는 missing에 표시합니다.",
         responses={401: {"description": "로그인 필요"}, 502: {"description": "자료 조회 또는 저장 형식 오류"}},
     )
     async def analysis_input(user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency)):
@@ -640,6 +731,21 @@ def create_analysis_summary_router(current_user_dependency: Callable, settings_d
     )
     async def latest_analysis(user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency)):
         return await fetch_main_analysis(user.id, settings)
+
+    @router.get(
+        "/score/latest", response_model=LatestHealthScoreResponse,
+        summary="최신 건강데이터 영역 및 종합점수 조회",
+        description="식단·운동 목표가 부족하면 score_status=partial, overall_score=null로 반환하고 건강데이터 영역 점수만 제공할 수 있습니다. 기존 종합점수 이력에는 부분 평가를 포함하지 않습니다.",
+        responses={401: {"description": "로그인 필요"}, 404: {"description": "건강 평가 없음"},
+                   502: {"description": "점수 조회 또는 저장 형식 오류"}},
+    )
+    async def latest_score(
+        response: Response,
+        user: Any = Depends(current_user_dependency),
+        settings: Any = Depends(settings_dependency),
+    ):
+        response.headers["Cache-Control"] = "no-store"
+        return await fetch_latest_health_score(user.id, settings)
 
     @router.post(
         "/{assessment_id}/diet-personalization/refresh",
