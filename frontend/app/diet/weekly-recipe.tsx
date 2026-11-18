@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import PlusIcon from '@/assets/icons/ui/plus.svg';
 import MinusIcon from '@/assets/icons/ui/minus.svg';
+import { aForm } from '@/src/components/a/form';
+import { ALoading } from '@/src/components/a/ALoading';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getDietApiErrorMessage, getWeeklyDietRecipe, type WeeklyDay, type WeeklyMealType, type WeeklyRecipe, type WeeklyRecipeItem } from '@/src/api/diet';
 import { plainFoodName } from '@/src/features/diet/foodName';
@@ -89,13 +91,13 @@ export default function WeeklyRecipeScreen() {
   const meal = data?.meal;
   return <View style={s.root}><ScreenHeader onBack={() => router.back()} title="주간 식단 레시피" />
   <ScrollView contentContainerStyle={[s.content, { paddingTop: 8, paddingBottom: insets.bottom + 40 }]}>
-    {!planId || !day || !mealType ? <Text style={s.muted}>주간 식단에서 레시피를 다시 열어 주세요.</Text> : loading ? <View style={s.loading}><ActivityIndicator color={colors.primaryText} /><Text style={s.muted}>음식별 조리법을 찾고 있어요. 시간이 꽤 걸릴 수 있어요.</Text></View> : error ? <View style={s.error}><Text style={s.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.source}>다시 시도</Text></Pressable></View> : meal ? <>
+    {!planId || !day || !mealType ? <Text style={s.muted}>주간 식단에서 레시피를 다시 열어 주세요.</Text> : loading ? <View style={s.loading}><ALoading label="조리법을 찾는 중"><Text style={s.muted}>음식별 조리법을 찾고 있어요. 시간이 꽤 걸릴 수 있어요.</Text></ALoading></View> : error ? <View style={s.error}><Text style={s.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.source}>다시 시도</Text></Pressable></View> : meal ? <>
       <Text style={s.source}>{dayNames[day]}요일 · {mealNames[mealType]}</Text>
       <Text style={s.title}>{plainFoodName(meal.menu_name || '추천 메뉴')}</Text>
       {Boolean(meal.menu_description) && <Text style={s.body}>{meal.menu_description}</Text>}
       <View style={s.tags}>{meal.tags.map((tag, index) => <Text key={`${tag}:${index}`} style={s.tag}>{tag}</Text>)}</View>
       <View style={s.meta}><Text style={s.body}>{Math.round(meal.estimated_calories_kcal)} kcal</Text><Text style={s.body}>{meal.estimated_duration_minutes == null ? '조리시간 정보 없음' : `약 ${formatNumber(meal.estimated_duration_minutes)}분`}</Text></View>
-      <View style={s.servings}><Text style={s.sectionTitle}>인분</Text><Pressable accessibilityRole="button" accessibilityLabel="인분 줄이기" disabled={servings <= 1} onPress={() => setServings((value) => value - 1)} style={s.servingButton}><MinusIcon color={colors.textPrimary} height={18} width={18} /></Pressable><Text style={s.body}>{servings}인분</Text><Pressable accessibilityRole="button" accessibilityLabel="인분 늘리기" disabled={servings >= 20} onPress={() => setServings((value) => value + 1)} style={s.servingButton}><PlusIcon color={colors.textPrimary} height={18} width={18} /></Pressable></View>
+      <View style={s.servings}><Text style={s.sectionTitle}>인분</Text><Pressable accessibilityRole="button" accessibilityLabel="인분 줄이기" disabled={servings <= 1} onPress={() => setServings((value) => value - 1)} style={[s.servingButton, servings <= 1 && s.off]}><MinusIcon color={colors.ink} height={16} width={16} /></Pressable><Text style={s.body}>{servings}인분</Text><Pressable accessibilityRole="button" accessibilityLabel="인분 늘리기" disabled={servings >= 20} onPress={() => setServings((value) => value + 1)} style={[s.servingButton, servings >= 20 && s.off]}><PlusIcon color={colors.ink} height={16} width={16} /></Pressable></View>
       <View style={s.card}><Text style={s.sectionTitle}>영양 정보</Text><Text style={s.body}>탄수화물 {formatNumber(meal.nutrition.carbohydrate_g)}g · 단백질 {formatNumber(meal.nutrition.protein_g)}g · 지방 {formatNumber(meal.nutrition.fat_g)}g</Text>{meal.daily_target_percentages && <Text style={s.muted}>일일 목표 대비 열량 {formatNumber(meal.daily_target_percentages.calories_percent)}% · 탄수화물 {formatNumber(meal.daily_target_percentages.carbohydrate_percent)}% · 단백질 {formatNumber(meal.daily_target_percentages.protein_percent)}% · 지방 {formatNumber(meal.daily_target_percentages.fat_percent)}%</Text>}</View>
       {meal.personalization_reasons.length > 0 && <View style={s.card}><Text style={s.sectionTitle}>추천 이유</Text>{meal.personalization_reasons.map((reason, index) => <Text key={index} style={s.body}>· {reason}</Text>)}</View>}
       {meal.allergen_notice.length > 0 && <View style={s.notice}><Text style={s.sectionTitle}>알레르기 안내</Text>{meal.allergen_notice.map((notice, index) => <Text key={index} style={s.body}>· {notice}</Text>)}</View>}
@@ -110,11 +112,36 @@ export default function WeeklyRecipeScreen() {
 }
 
 function createSStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
+  const tag = { ...a.p12, borderColor: colors.ink, borderRadius: 8, borderWidth: 2, color: colors.ink, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 } as const;
   return {
-    root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, gap: 14 },
-    loading: { marginTop: 40, alignItems: 'center', gap: 12 },
-    title: { fontSize: 22, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, body: { fontSize: 14, color: colors.textBody, lineHeight: 22 }, muted: { fontSize: 14, color: colors.textSecondary, lineHeight: 21 }, source: { fontSize: 14, color: colors.primaryText, fontFamily: fontFamilies.pretendardMedium }, sectionTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, itemTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, recipeName: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
-    tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 }, tag: { backgroundColor: colors.surfaceMuted, color: colors.textBody, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5, fontSize: 12 }, meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 }, servings: { flexDirection: 'row', alignItems: 'center', gap: 12 }, servingButton: { backgroundColor: colors.surface, width: 32, height: 32, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-    card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 15, gap: 10 }, notice: { backgroundColor: colors.warningLight, borderRadius: 12, padding: 15, gap: 7 }, warning: { color: colors.danger, fontSize: 14, lineHeight: 21 }, ingredient: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 }, step: { flexDirection: 'row', gap: 12 }, stepIndex: { backgroundColor: colors.tabBar, color: '#FFFFFF', borderRadius: 14, overflow: 'hidden', width: 28, height: 28, textAlign: 'center', lineHeight: 28 }, stepCopy: { flex: 1, gap: 4 }, tip: { fontSize: 14, lineHeight: 21, color: colors.textBody, backgroundColor: colors.surfaceMuted, padding: 10, borderRadius: 8 }, related: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12, gap: 3 }, error: { padding: 14, backgroundColor: colors.dangerLight, borderRadius: 12, gap: 10 }, errorText: { color: colors.danger, fontSize: 14 },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    content: { gap: 12, paddingHorizontal: 16 },
+    loading: { height: 460 },
+    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 30 },
+    body: { ...a.p15, color: colors.ink },
+    muted: { ...a.p12, color: colors.textBody },
+    source: a.note,
+    sectionTitle: { ...a.p15, color: colors.ink, marginTop: 4 },
+    itemTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    recipeName: { ...a.p15, color: colors.ink },
+    tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    tag,
+    meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+    servings: { alignItems: 'center', flexDirection: 'row', gap: 12 },
+    servingButton: { ...a.mini, paddingHorizontal: 0, width: 32 },
+    off: { opacity: 0.35 },
+    card: { ...a.card, gap: 10, paddingHorizontal: 14, paddingVertical: 14 },
+    notice: { backgroundColor: colors.warningLight, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, gap: 6, paddingHorizontal: 12, paddingVertical: 10 },
+    // a clash with what I cannot eat: dark letters on the soft ground, not red
+    warning: { ...a.p12, alignSelf: 'flex-start', backgroundColor: colors.warningLight, borderColor: colors.ink, borderRadius: 8, borderWidth: 2, color: colors.ink, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 },
+    ingredient: { flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
+    step: { flexDirection: 'row', gap: 12 },
+    stepIndex: { ...a.p12, backgroundColor: colors.primary, borderColor: colors.ink, borderRadius: 9, borderWidth: 2, color: colors.onPrimary, height: 28, lineHeight: 24, overflow: 'hidden', textAlign: 'center', width: 28 },
+    stepCopy: { flex: 1, gap: 4 },
+    tip: { ...a.p12, backgroundColor: colors.surfaceMuted, borderRadius: 10, color: colors.ink, overflow: 'hidden', padding: 10 },
+    related: { ...a.card, gap: 3, paddingHorizontal: 14, paddingVertical: 12 },
+    error: { ...a.card, gap: 10, padding: 14 },
+    errorText: { ...a.p15, color: colors.ink },
   } as const;
 }

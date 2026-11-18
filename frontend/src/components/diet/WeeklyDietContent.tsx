@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
+import { Alert, Pressable, View } from 'react-native';
 
 import { koreanDate } from '@/src/lib/koreanDate';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
@@ -14,6 +14,8 @@ import {
   generateDietRecommendations, generateWeeklyDiet, getDietApiErrorMessage, getDietRecommendationsByDate, getWeeklyDiet,
   regenerateDietMeal, regenerateWeeklyDietMeal, type WeeklyPlan,
 } from '@/src/api/diet';
+import { aForm } from '@/src/components/a/form';
+import { ALoading } from '@/src/components/a/ALoading';
 import { Text } from '@/src/components/common';
 import { useAllergyNames } from '@/src/features/diet/useAllergyNames';
 import { weeklyDietErrorCode } from '@/src/features/diet/weeklyDietErrors';
@@ -158,12 +160,12 @@ export function WeeklyDietContent() {
 
   return <View style={s.content}>
     <View style={s.weekRow}>
-      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="이전 주" onPress={() => setWeek(moveWeek(week, -1))} style={s.weekButton}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
+      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="이전 주" onPress={() => setWeek(moveWeek(week, -1))} style={s.weekButton}><CaretLeftIcon color={colors.ink} height={14} width={14} /></Pressable>
       <View style={s.weekText}><Text style={s.weekTitle}>{koreanDate(start)}부터 7일</Text></View>
-      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="다음 주" onPress={() => setWeek(moveWeek(week, 1))} style={s.weekButton}><CaretRightIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
+      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="다음 주" onPress={() => setWeek(moveWeek(week, 1))} style={s.weekButton}><CaretRightIcon color={colors.ink} height={14} width={14} /></Pressable>
     </View>
     {Boolean(error) && <View style={s.error}><Text style={s.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setReload((value) => value + 1)}><Text style={s.outlineText}>다시 불러오기</Text></Pressable></View>}
-    {loading && !shownDaily ? <ActivityIndicator color={colors.primaryText} style={s.loading} /> : shownDaily ? <>
+    {loading && !shownDaily ? <View style={s.loading}><ALoading /></View> : shownDaily ? <>
       {Boolean(shownPlan?.result.summary) && <Text numberOfLines={shownPlan?.result.strategy && !detailOpen ? 3 : undefined} style={s.summary}>{shownPlan?.result.summary}</Text>}
       {Boolean(shownPlan?.result.strategy) && <>
         {detailOpen && <Text style={s.muted}>{shownPlan?.result.strategy}</Text>}
@@ -198,12 +200,38 @@ export function WeeklyDietContent() {
 }
 
 function createSStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
+  const mini = { ...a.mini, minHeight: 32 };
   return {
-    content: { gap: 14 },
-    weekRow: { backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 8 }, weekButton: { width: 40, height: 42, alignItems: 'center', justifyContent: 'center' }, weekText: { flex: 1, alignItems: 'center' }, weekTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, muted: { fontSize: 14, color: colors.textSecondary, lineHeight: 21 }, loading: { marginTop: 40 },
-    summary: { fontSize: 16, color: colors.textPrimary, lineHeight: 24, fontFamily: fontFamilies.pretendardBold }, outline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary, padding: 12, borderRadius: 12, alignItems: 'center' }, outlineText: { color: colors.primaryText, fontSize: 14, fontFamily: fontFamilies.pretendardMedium },
-    daySection: { gap: 10, marginTop: 14 }, dayTitle: { fontSize: 18, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, date: { fontSize: 14, color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
-    mealCard: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 14, gap: 7 }, mealHead: { flexDirection: 'row', justifyContent: 'space-between' }, mealLabel: { fontSize: 14, color: colors.primaryText, fontFamily: fontFamilies.pretendardMedium }, kcal: { fontSize: 14, color: colors.textSecondary }, mealTitle: { fontSize: 16, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, foods: { fontSize: 14, color: colors.textBody, lineHeight: 21 }, guidance: { fontSize: 14, color: colors.textSecondary, lineHeight: 21 }, actions: { flexDirection: 'row', gap: 8, marginTop: 4 }, recipeButton: { backgroundColor: colors.primaryLight, borderRadius: 8, minHeight: 34, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center' }, recipeText: { color: colors.primaryText, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, smallOutline: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, minHeight: 34, paddingHorizontal: 16, justifyContent: 'center' }, detailButton: { alignSelf: 'flex-start' },
-    empty: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 20, gap: 12 }, emptyTitle: { fontSize: 18, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold }, error: { padding: 14, backgroundColor: colors.dangerLight, borderRadius: 12, gap: 10 }, errorText: { color: colors.danger, fontSize: 14 },
+    content: { gap: 12 },
+    // the week: ‹ name › as on the workout record
+    weekRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+    weekButton: { ...a.mini, paddingHorizontal: 0, width: 32 },
+    weekText: { alignItems: 'center', flex: 1 },
+    weekTitle: { ...a.p15, color: colors.ink },
+    muted: { ...a.p12, color: colors.textBody },
+    loading: { height: 460 },
+    summary: { ...a.p15, color: colors.ink },
+    outlineText: a.miniText,
+    daySection: { gap: 10, marginTop: 10 },
+    dayTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    date: { ...a.p12, color: colors.textSecondary },
+    mealCard: { ...a.card, gap: 7, paddingHorizontal: 14, paddingVertical: 12 },
+    mealHead: { flexDirection: 'row', justifyContent: 'space-between' },
+    mealLabel: a.note,
+    kcal: { ...a.p12, color: colors.textSecondary },
+    mealTitle: { ...a.p15, color: colors.ink },
+    foods: { ...a.p12, color: colors.textBody },
+    guidance: { ...a.p12, color: colors.textBody },
+    actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+    recipeButton: { ...mini, backgroundColor: colors.primary },
+    recipeText: { ...a.miniText, color: colors.onPrimary },
+    smallOutline: mini,
+    detailButton: { alignSelf: 'flex-start' },
+    empty: { ...a.card, gap: 12, padding: 16 },
+    emptyTitle: { ...a.p15, color: colors.ink },
+    error: { ...a.card, gap: 10, padding: 14 },
+    // no red letters in A: what went wrong is said in dark letters
+    errorText: { ...a.p12, color: colors.ink },
   } as const;
 }

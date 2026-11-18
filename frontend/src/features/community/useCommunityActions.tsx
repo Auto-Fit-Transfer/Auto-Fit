@@ -367,6 +367,6 @@ function createStyles({ colors }: AppTheme) {
       position: 'absolute',
       zIndex: 30,
     },
-    toastText: { color: colors.surface, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
+    toastText: { color: colors.surface, fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 },
   } as const;
 }

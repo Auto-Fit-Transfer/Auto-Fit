@@ -23,7 +23,7 @@ export default function WeeklyDietScreen() {
 
 function createStyles({ colors }: AppTheme) {
   return {
-    root: { flex: 1, backgroundColor: colors.background },
-    content: { paddingHorizontal: 20 },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    content: { paddingHorizontal: 16 },
   } as const;
 }

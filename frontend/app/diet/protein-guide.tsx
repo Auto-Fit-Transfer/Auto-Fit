@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import MinusIcon from '@/assets/icons/ui/minus.svg';
 import PlusIcon from '@/assets/icons/ui/plus.svg';
 import WarningIcon from '@/assets/icons/ui/warning-circle.svg';
 import { getDietApiErrorMessage, getDietNutritionSummary, getDietRecommendationsByDate } from '@/src/api/diet';
+import { aForm } from '@/src/components/a/form';
+import { ALoading } from '@/src/components/a/ALoading';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { nutritionNumber, type NutritionSummary } from '@/src/features/nutritionSummary';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
@@ -42,7 +44,7 @@ function Accordion(props: { title: string; subtitle: string; expanded: boolean; 
   const s = useThemedStyles(createSStyles);
   return <View style={s.card}>
     <Pressable accessibilityRole="button" accessibilityState={{ expanded: props.expanded }} accessibilityLabel={props.title + (props.expanded ? ' 접기' : ' 펼치기')} onPress={props.onPress} style={s.row}>
-      <View style={s.flex}><Text style={s.cardTitle}>{props.title}</Text><Text style={s.secondary}>{props.subtitle}</Text></View>{props.expanded ? <MinusIcon color={colors.textPrimary} height={22} width={22} /> : <PlusIcon color={colors.textPrimary} height={22} width={22} />}
+      <View style={s.flex}><Text style={s.cardTitle}>{props.title}</Text><Text style={s.secondary}>{props.subtitle}</Text></View>{props.expanded ? <MinusIcon color={colors.ink} height={22} width={22} /> : <PlusIcon color={colors.ink} height={22} width={22} />}
     </Pressable>
     {props.expanded && <View style={s.accordionBody}>{props.children}</View>}
   </View>;
@@ -96,7 +98,7 @@ export default function ProteinGuide() {
   return <View style={s.root}>
     <ScreenHeader onBack={back} right={<SimpleReadButton text={'단백질 가이드. 이 날짜의 목표 ' + format(target) + ', 먹은 양 ' + format(consumed) + '.'} />} title="단백질 가이드" />
     <ScrollView contentContainerStyle={[s.content, { paddingTop: 8, paddingBottom: insets.bottom + 32 }]} showsVerticalScrollIndicator={false}>
-      {invalid ? <Text style={s.secondary}>식단에서 단백질 가이드를 다시 열어 주세요.</Text> : loading ? <ActivityIndicator color={colors.primaryText} style={s.loading} /> : error ? <View style={s.card}><Text style={s.secondary}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.link}>다시 시도</Text></Pressable></View> : <>
+      {invalid ? <Text style={s.secondary}>식단에서 단백질 가이드를 다시 열어 주세요.</Text> : loading ? <View style={s.loading}><ALoading /></View> : error ? <View style={s.card}><Text style={s.secondary}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.link}>다시 시도</Text></Pressable></View> : <>
         <View style={s.card}><Text style={s.caption}>이 날짜의 단백질 목표</Text><View style={s.targetRow}><Text style={s.target}>{format(target)}</Text>{perMeal != null && <Text style={s.targetHint}>세 끼로 나누면 한 끼 약 {perMeal}g</Text>}</View><Text style={s.body}>{target == null ? '이 날짜의 목표가 아직 설정되지 않았어요.' : '식단에 설정된 하루 목표를 표시해요.'}</Text></View>
 
         <View style={s.card}><View style={s.row}><Text style={s.sectionTitle}>먹은 단백질</Text><Text style={s.current}>{format(consumed)} <Text style={s.currentTarget}>/ {format(target)}</Text></Text></View><View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: percent }} style={s.track}><View style={[s.fill, { width: `${percent}%` }]} /></View>{mealTotals.length > 0 && <View style={s.chips}>{mealTotals.map((item) => <Text key={item.meal} style={s.chip}>{item.meal} 추천 {Math.round(item.protein)}g</Text>)}</View>}{summary?.has_unknown_items && <Text style={s.secondary}>영양 정보가 없는 기록은 합계에서 제외됐어요.</Text>}</View>
@@ -116,21 +118,52 @@ export default function ProteinGuide() {
           <View style={[s.tipRow, s.divider]}><Text style={s.tipLabel}>고깃집</Text><Text style={s.tipText}>살코기와 채소를 함께 고르고 드신 양을 기록해 보세요.</Text></View>
         </Accordion>
 
-        <View style={s.notice}><WarningIcon color={colors.warning} height={20} width={20} /><Text style={s.noticeText}>알레르기가 있는 식품은 피하고, 가공식품은 성분표를 확인해 주세요.</Text></View>
+        <View style={s.notice}><WarningIcon color={colors.ink} height={18} width={18} /><Text style={s.noticeText}>알레르기가 있는 식품은 피하고, 가공식품은 성분표를 확인해 주세요.</Text></View>
         <Text style={s.source}>목표는 식단 데이터, 먹은 양은 식사 기록 기준이에요. 음식별 영양 성분은 등록된 값과 실제 제품이 다를 수 있어요.</Text>
-        <Pressable accessibilityRole="button" onPress={back} style={s.button}><Text style={s.buttonText}>저녁 식단 확인하기</Text></Pressable>
+        <Pressable accessibilityRole="button" onPress={back} style={({ pressed }) => [s.button, pressed && s.pressed]}><Text style={s.buttonText}>저녁 식단 확인하기</Text></Pressable>
       </>}
     </ScrollView>
   </View>;
 }
 
 function createSStyles({ colors }: AppTheme) {
+  const a = aForm(colors);
   return {
-    root: { flex: 1, backgroundColor: colors.background }, content: { paddingHorizontal: 20, gap: 16 }, loading: { marginTop: 32 },
-    header: { height: 58, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }, backHit: { width: 44, height: 44, justifyContent: 'center' }, back: { color: colors.textPrimary, fontSize: 34, lineHeight: 38 }, headerTitle: { position: 'absolute', left: 54, right: 54, textAlign: 'center', color: colors.textPrimary, fontSize: 18, fontFamily: fontFamilies.pretendardBold },
-    card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1, borderRadius: 16, padding: 16, gap: 12 }, caption: { color: colors.textSecondary, fontSize: 14, lineHeight: 19 }, body: { color: colors.textBody, fontSize: 14, lineHeight: 22 }, secondary: { color: colors.textSecondary, fontSize: 14, lineHeight: 20 }, targetRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', gap: 10 }, target: { color: colors.textPrimary, fontSize: 32, fontFamily: fontFamilies.pretendardBold }, targetHint: { color: colors.textSecondary, fontSize: 14 },
-    row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }, flex: { flex: 1 }, sectionTitle: { color: colors.textPrimary, fontSize: 18, fontFamily: fontFamilies.pretendardBold }, current: { color: colors.textPrimary, fontSize: 18, fontFamily: fontFamilies.pretendardBold }, currentTarget: { color: colors.textSecondary, fontSize: 14, fontFamily: fontFamilies.pretendardRegular }, track: { height: 8, borderRadius: 4, overflow: 'hidden', backgroundColor: colors.gaugeTrack }, fill: { height: 8, backgroundColor: colors.primary }, chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 }, chip: { paddingHorizontal: 8, paddingVertical: 5, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 8, color: colors.textBody, fontSize: 12 },
-    cardTitle: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold }, circleButton: { width: 28, height: 28, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 14, justifyContent: 'center', alignItems: 'center' }, circleText: { fontSize: 21, lineHeight: 23, color: colors.textPrimary }, accordionBody: { gap: 5, paddingTop: 12 }, foodRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10 }, foodName: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, foodProtein: { color: colors.textPrimary, fontSize: 16, fontFamily: fontFamilies.pretendardBold }, divider: { borderTopWidth: 1, borderTopColor: colors.border }, tipRow: { flexDirection: 'row', gap: 10, paddingVertical: 10 }, tipLabel: { backgroundColor: colors.surfaceMuted, borderRadius: 8, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 4, color: colors.textBody, fontSize: 12 }, tipText: { flex: 1, color: colors.textBody, fontSize: 14, lineHeight: 21 },
-    notice: { flexDirection: 'row', gap: 10, alignItems: 'center', backgroundColor: colors.warningLight, borderRadius: 12, padding: 14 }, noticeIcon: { color: colors.warning, fontSize: 18 }, noticeText: { flex: 1, color: colors.textBody, fontSize: 14, lineHeight: 19 }, source: { color: colors.textSecondary, fontSize: 12, lineHeight: 19 }, link: { color: colors.textPrimary, fontSize: 14, fontFamily: fontFamilies.pretendardMedium }, button: { minHeight: 56, backgroundColor: colors.primary, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 6 }, buttonText: { color: '#FFFFFF', fontSize: 16, fontFamily: fontFamilies.pretendardBold },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
+    content: { gap: 14, paddingHorizontal: 16 },
+    loading: { height: 460 },
+    card: { ...a.card, gap: 12, paddingHorizontal: 14, paddingVertical: 14 },
+    caption: a.note,
+    body: { ...a.p15, color: colors.ink },
+    secondary: { ...a.p12, color: colors.textBody },
+    targetRow: { alignItems: 'baseline', flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    target: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 40 },
+    targetHint: { ...a.p12, color: colors.textBody },
+    row: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
+    flex: { flex: 1 },
+    sectionTitle: { ...a.p15, color: colors.ink },
+    current: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    currentTarget: { ...a.p12, color: colors.textSecondary },
+    // the bar of A's tier road: dark outline, violet fill
+    track: { backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 99, borderWidth: 2, height: 16, overflow: 'hidden' },
+    fill: { backgroundColor: colors.primary, height: '100%' },
+    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    chip: { ...a.p12, borderColor: colors.ink, borderRadius: 8, borderWidth: 2, color: colors.ink, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 },
+    cardTitle: { ...a.p15, color: colors.ink },
+    accordionBody: { gap: 5, paddingTop: 12 },
+    foodRow: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingVertical: 10 },
+    foodName: { ...a.p15, color: colors.ink },
+    foodProtein: { ...a.p15, color: colors.ink },
+    divider: { borderTopColor: colors.track, borderTopWidth: 2 },
+    tipRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10, paddingVertical: 10 },
+    tipLabel: { ...a.p12, borderColor: colors.ink, borderRadius: 8, borderWidth: 2, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6, paddingVertical: 1 },
+    tipText: { ...a.p15, color: colors.ink, flex: 1 },
+    notice: { alignItems: 'center', backgroundColor: colors.warningLight, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
+    noticeText: { ...a.p12, color: colors.ink, flex: 1 },
+    source: a.note,
+    link: a.link,
+    button: { ...a.go, height: 52, marginTop: 4 },
+    buttonText: a.goText,
+    pressed: a.goPressed,
   } as const;
 }
