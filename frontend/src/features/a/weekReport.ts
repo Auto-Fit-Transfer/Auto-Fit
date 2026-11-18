@@ -10,6 +10,7 @@ export type WeekDay = {
   state: DayState;
   minutes: number | null; // a finished workout's minutes; null = none that day
   exercises: string[]; // the exercises finished that day, by name
+  regions?: Record<string, Part[]>; // the parts the server stored for an exercise (by name), when it has them
   kcal: number | null; // eaten as recorded; null = no answer
   kcalGoal: number | null;
   protein: number | null;
@@ -33,24 +34,45 @@ export function weekFrame(now: Date): WeekDay[] {
   });
 }
 
-// Which part of the body an exercise trains, read from its name: the server keeps no part on an exercise.
-// The words are the backend chat's own table (backend/app/chat_exercise_info.py TOPICS); the `none` words
-// are exercises that train no single part (warm-up, cardio).
-// shortcut: a name with none of these words is unknown and the report then says nothing about a missing
-// part; ask the server for a part on each exercise when that matters.
-export type Part = 'up' | 'core' | 'low';
-export const PARTS: Part[] = ['up', 'core', 'low'];
-export const PART_NAMES: Record<Part, string> = { up: '상체', core: '코어', low: '하체' };
-const WORDS: Record<Part | 'none', string[]> = {
+// Which part of the body an exercise trains. New records carry the server's body_regions (back-end e236069,
+// from the exercise catalog); full_body is its own part and is never spread over the other three.
+// Older records have none, so the part is read from the name: the words are the backend chat's own table
+// (backend/app/chat_exercise_info.py TOPICS); the `none` words train no single part (warm-up, cardio).
+// shortcut: a name with none of these words is unknown and the report then says nothing about a missing part.
+export type Part = 'up' | 'core' | 'low' | 'full';
+export const PARTS: Part[] = ['up', 'core', 'low', 'full'];
+export const PART_NAMES: Record<Part, string> = { up: '상체', core: '코어', low: '하체', full: '전신' };
+const SPLIT: Part[] = ['up', 'core', 'low']; // the parts a "missing part" can be
+const REGION_PARTS: Record<string, Part> = { upper_body: 'up', core: 'core', lower_body: 'low', full_body: 'full' };
+
+// The server's body_regions as parts; null when it sent nothing usable (an older record).
+export function regionParts(value: unknown): Part[] | null {
+  if (!Array.isArray(value)) return null;
+  const parts = [...new Set(value.map((region) => REGION_PARTS[String(region)]).filter(Boolean))];
+  return parts.length ? parts : null;
+}
+
+// 은/는, 이/가, 을/를: 전신 ends in a consonant, the other parts do not.
+const batchim = (word: string) => (word.charCodeAt(word.length - 1) - 0xac00) % 28 !== 0;
+const josa = (part: Part, pair: [string, string]) => `${PART_NAMES[part]}${batchim(PART_NAMES[part]) ? pair[0] : pair[1]}`;
+const WORDS: Record<Exclude<Part, 'full'> | 'none', string[]> = {
   low: ['하체', '스쿼트', '런지', '레그', '카프'],
   up: ['상체', '푸시업', '풀업', '벤치', '로우'],
   core: ['코어', '복근', '플랭크', '크런치'],
   none: ['유산소', '걷기', '달리기', '자전거', '수영', '스트레칭', '워밍업', '요가'],
 };
-export function partOf(name: string): Part | 'none' | null {
+const WORD_PARTS = ['low', 'up', 'core', 'none'] as const;
+export function partOf(name: string): Exclude<Part, 'full'> | 'none' | null {
   const text = name.replace(/\s/g, '');
-  const found = (['low', 'up', 'core', 'none'] as const).find((part) => WORDS[part].some((word) => text.includes(word)));
+  const found = WORD_PARTS.find((part) => WORDS[part].some((word) => text.includes(word)));
   return found ?? null;
+}
+// The server's parts first, then the name.
+export function partsOf(name: string, regions?: Record<string, Part[]>): Part[] | 'none' | null {
+  const stored = regions?.[name];
+  if (stored?.length) return stored;
+  const part = partOf(name);
+  return part === null || part === 'none' ? part : [part];
 }
 
 export type QuestKey = 'walk' | 'water' | 'stretch' | 'meal' | 'workout';
@@ -84,11 +106,13 @@ export function countWeek(days: WeekDay[], goals: { steps: number; water: number
   for (const day of workoutDays) {
     const trained = new Set<Part>();
     for (const name of new Set(day.exercises)) {
-      const part = partOf(name);
-      if (part === null) sure = false;
-      else if (part !== 'none') {
-        trained.add(part);
-        parts[part].names[name] = (parts[part].names[name] ?? 0) + 1;
+      const found = partsOf(name, day.regions);
+      if (found === null) sure = false;
+      else if (found !== 'none') {
+        for (const part of found) {
+          trained.add(part);
+          parts[part].names[name] = (parts[part].names[name] ?? 0) + 1;
+        }
       }
     }
     for (const part of trained) {
@@ -111,12 +135,13 @@ export function countWeek(days: WeekDay[], goals: { steps: number; water: number
 
   const questTotal = loot.reduce((sum, item) => sum + item.count, 0);
   const full = PARTS.find((part) => parts[part].times >= 2);
-  const empty = sure && workoutDays.length > 0 ? PARTS.find((part) => parts[part].times === 0) : undefined;
+  // A full-body workout trains every part a little, so with one this week no part is called missing.
+  const empty = sure && workoutDays.length > 0 && parts.full.times === 0 ? SPLIT.find((part) => parts[part].times === 0) : undefined;
   const dayNames = (labels: string[]) => labels.map((label) => `${label}요일`).join(' · ');
 
   const say =
     full && empty
-      ? `${PART_NAMES[full]}는 충분하고 ${PART_NAMES[empty]}가 비어 있어요`
+      ? `${josa(full, ['은', '는'])} 충분하고 ${josa(empty, ['이', '가'])} 비어 있어요`
       : workoutDays.length
         ? `이번 주 ${workoutDays.length}일 운동했어요`
         : questTotal
@@ -124,7 +149,7 @@ export function countWeek(days: WeekDay[], goals: { steps: number; water: number
           : '기록이 쌓이면 여기에 모여요';
 
   const story: StoryRow[] = [];
-  if (full) story.push({ kind: 'done', title: `${PART_NAMES[full]}를 ${parts[full].times}번 채웠어요`, note: dayNames(parts[full].days) });
+  if (full) story.push({ kind: 'done', title: `${josa(full, ['을', '를'])} ${parts[full].times}번 채웠어요`, note: dayNames(parts[full].days) });
   else if (workoutDays.length) story.push({ kind: 'done', title: `이번 주 ${workoutDays.length}일 운동했어요`, note: dayNames(workoutDays.map((day) => day.label)) });
   if (protein && protein.average < protein.goal) {
     story.push({ kind: 'bonus', title: '단백질 채우기', note: `하루 평균 ${protein.goal - protein.average}g이 모자라요`, go: 'diet' });

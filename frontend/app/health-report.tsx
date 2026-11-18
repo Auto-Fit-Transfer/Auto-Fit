@@ -13,7 +13,7 @@ import { useKeptWho } from '@/src/components/a/useKeptWho';
 import { R6ConnectionError } from '@/src/components/common/R6ConnectionError';
 import { readQuestLog, WATER_GOAL } from '@/src/features/a/dailyQuests';
 import { readSteps, STEP_GOAL } from '@/src/features/a/useSteps';
-import { countWeek, weekFrame, weightLine, type WeekCount } from '@/src/features/a/weekReport';
+import { countWeek, regionParts, weekFrame, weightLine, type WeekCount } from '@/src/features/a/weekReport';
 import { sessionLocalDate, sessionMinutes } from '@/src/features/exercise/weeklyMetrics';
 import { nutritionNumber } from '@/src/features/nutritionSummary';
 import { tierLook, type TierLook } from '@/src/features/tier/tierLook';
@@ -21,11 +21,13 @@ import { tierLook, type TierLook } from '@/src/features/tier/tierLook';
 type Loaded = { count: WeekCount; trend: ReportTrend; tier: TierLook | null; name: string };
 
 const quiet = <T,>(promise: Promise<T>) => promise.catch(() => null);
-// A workout's exercises that were done, by name.
-const doneNames = (logs: unknown[]) =>
+// A workout's exercises that were done, by name, with the parts the server stored (null on older records).
+const doneMoves = (logs: unknown[]) =>
   logs.flatMap((log) => {
-    const row = log as { exercise_name?: unknown; completed?: unknown } | null;
-    return row && typeof row.exercise_name === 'string' && row.completed !== false ? [row.exercise_name] : [];
+    const row = log as { exercise_name?: unknown; completed?: unknown; body_regions?: unknown } | null;
+    return row && typeof row.exercise_name === 'string' && row.completed !== false
+      ? [{ name: row.exercise_name, parts: regionParts(row.body_regions) }]
+      : [];
   });
 
 // Everything the report shows, read once: this week's workouts and each day's food from the server, water,
@@ -48,11 +50,13 @@ async function loadReport(): Promise<Loaded | null> {
   const sessions = (history?.history ?? []).filter((row) => row.session.status === 'completed');
   const days = frame.map((day, index) => {
     const mine = sessions.filter((row) => sessionLocalDate(row.session.started_at) === day.key);
+    const moves = mine.flatMap((row) => doneMoves(row.logs));
     const food = meals[index]?.summary; // meals has the days lived, in the frame's order
     return {
       ...day,
       minutes: mine.length ? mine.reduce((sum, row) => sum + (sessionMinutes(row.session.total_duration_seconds) ?? 0), 0) : null,
-      exercises: mine.flatMap((row) => doneNames(row.logs)),
+      exercises: moves.map((move) => move.name),
+      regions: Object.fromEntries(moves.flatMap((move) => (move.parts ? [[move.name, move.parts]] : []))),
       kcal: nutritionNumber(food?.calories.consumed),
       kcalGoal: nutritionNumber(food?.calories.target),
       protein: nutritionNumber(food?.protein.consumed),

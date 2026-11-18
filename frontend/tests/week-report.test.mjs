@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { countWeek, partOf, weekFrame, weightLine } from '../src/features/a/weekReport.ts';
+import { countWeek, partOf, regionParts, weekFrame, weightLine } from '../src/features/a/weekReport.ts';
 
 const goals = { steps: 6000, water: 6 };
 // Thursday 12 November 2026.
@@ -82,4 +82,25 @@ test('the weight line is the last five measurements, one a day, oldest first', (
   ]);
   assert.deepEqual(line.map((point) => point.kg), [58, 57.2, 56.6, 56.3, 55.4, 55].slice(-5));
   assert.equal(line.at(-1).date, '2026-11-11');
+});
+
+test('stored parts from the server come first; full body is its own part, never spread over the other three', () => {
+  assert.deepEqual(regionParts(['lower_body']), ['low']);
+  assert.deepEqual(regionParts(['full_body']), ['full']);
+  assert.deepEqual(regionParts(['core', 'core']), ['core']);
+  assert.equal(regionParts(null), null, 'an older record');
+  assert.equal(regionParts([]), null);
+  assert.equal(regionParts(['waist']), null, 'only the four agreed values');
+
+  const count = countWeek(week([
+    { minutes: 20, exercises: ['버피', '맨몸 스쿼트'], regions: { 버피: ['full'] } },
+    { minutes: 20, exercises: ['버피', '데드버그'], regions: { 버피: ['full'], 데드버그: ['core'] } },
+  ]), goals);
+  assert.equal(count.parts.full.times, 2);
+  assert.equal(count.parts.low.times, 1, 'squat is read from its name (no stored part)');
+  assert.equal(count.parts.up.times, 0, 'full body is not added to the upper body');
+  assert.equal(count.parts.core.times, 1);
+  // With full body done this week, no part is called missing; and 전신 takes 을, not 를.
+  assert.equal(count.say, '이번 주 2일 운동했어요');
+  assert.equal(count.story[0].title, '전신을 2번 채웠어요');
 });

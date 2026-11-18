@@ -8,7 +8,7 @@ import TargetIcon from '@/assets/icons/ui/target.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import { AppBottomSheet, Text, TextInput } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
-import { PART_NAMES, PARTS, partOf, type Part, type QuestKey, type WeekCount } from '@/src/features/a/weekReport';
+import { PART_NAMES, PARTS, partsOf, type Part, type QuestKey, type WeekCount } from '@/src/features/a/weekReport';
 import type { TierLook } from '@/src/features/tier/tierLook';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
@@ -145,7 +145,7 @@ export function ReportSummaryView({ who, tierIndex, count, trend, tier, still = 
   const weights = trend.weight;
   const newest = weights[weights.length - 1];
   const day = open === null ? null : count.days[open];
-  const main = day ? (day.exercises.find((name) => PARTS.includes(partOf(name) as Part)) ?? day.exercises[0]) : undefined;
+  const main = day ? (day.exercises.find((name) => Array.isArray(partsOf(name, day.regions))) ?? day.exercises[0]) : undefined;
   const nothing = count.workoutDays === 0 && count.questTotal === 0;
 
   return (
