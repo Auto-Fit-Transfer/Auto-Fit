@@ -15,6 +15,7 @@ from uuid import UUID
 from app.core.config import Settings, get_settings
 from app.schemas.posture_analysis import (
     PostureCapabilitiesResponse,
+    PostureAnalysisErrorCode,
     PostureAnalysisProgress,
     PostureAnalysisResponse,
     PostureAnalysisResult,
@@ -58,6 +59,17 @@ _INDEX_TO_JOINT_CODE = {
 
 class PostureAnalysisError(ValueError):
     """클라이언트가 수정할 수 있는 자세 분석 입력·품질 오류."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        code: PostureAnalysisErrorCode,
+        fields: tuple[str, ...] = (),
+    ) -> None:
+        super().__init__(message)
+        self.code = code
+        self.fields = fields
 
 
 class PostureConfigurationError(RuntimeError):
@@ -220,6 +232,25 @@ _POSTURE_ANALYSIS_SLOTS = BoundedSemaphore(
 )
 
 
+def _validate_video_duration_seconds(
+    duration_seconds: float,
+    settings: Settings,
+) -> None:
+    if duration_seconds < settings.posture_video_min_seconds:
+        minimum_seconds = f"{settings.posture_video_min_seconds:g}"
+        raise PostureAnalysisError(
+            f"영상이 너무 짧습니다. {minimum_seconds}초 이상 촬영해 주세요.",
+            code="VIDEO_TOO_SHORT",
+            fields=("video",),
+        )
+    if duration_seconds > settings.posture_video_max_seconds:
+        raise PostureAnalysisError(
+            "영상 길이가 허용 범위를 초과했습니다.",
+            code="VIDEO_TOO_LONG",
+            fields=("video",),
+        )
+
+
 class MediaPipeVideoPoseExtractor:
     """OpenCV로 영상을 읽고 MediaPipe 33개 관절점을 추출한다."""
 
@@ -269,7 +300,9 @@ class MediaPipeVideoPoseExtractor:
         if not capture.isOpened():
             capture.release()
             raise PostureAnalysisError(
-                "업로드한 영상을 디코딩할 수 없습니다."
+                "업로드한 영상을 디코딩할 수 없습니다.",
+                code="VIDEO_DECODE_FAILED",
+                fields=("video",),
             )
 
         try:
@@ -277,15 +310,16 @@ class MediaPipeVideoPoseExtractor:
             frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
             if not isfinite(fps) or fps <= 0:
                 raise PostureAnalysisError(
-                    "영상의 프레임 속도를 확인할 수 없습니다."
+                    "영상의 프레임 속도를 확인할 수 없습니다.",
+                    code="VIDEO_METADATA_INVALID",
+                    fields=("video",),
                 )
 
             if frame_count > 0:
-                duration_seconds = frame_count / fps
-                if duration_seconds > self.settings.posture_video_max_seconds:
-                    raise PostureAnalysisError(
-                        "영상 길이가 허용 범위를 초과했습니다."
-                    )
+                _validate_video_duration_seconds(
+                    frame_count / fps,
+                    self.settings,
+                )
 
             sample_stride = max(
                 1,
@@ -337,7 +371,9 @@ class MediaPipeVideoPoseExtractor:
                             > self.settings.posture_video_max_seconds * 1000
                         ):
                             raise PostureAnalysisError(
-                                "영상 길이가 허용 범위를 초과했습니다."
+                                "영상 길이가 허용 범위를 초과했습니다.",
+                                code="VIDEO_TOO_LONG",
+                                fields=("video",),
                             )
 
                         last_timestamp_ms = timestamp_ms
@@ -405,7 +441,18 @@ class MediaPipeVideoPoseExtractor:
 
             if sampled_frame_count == 0:
                 raise PostureAnalysisError(
-                    "분석할 수 있는 영상 프레임이 없습니다."
+                    "분석할 수 있는 영상 프레임이 없습니다.",
+                    code="INSUFFICIENT_FRAMES",
+                    fields=("video",),
+                )
+
+            if frame_count <= 0:
+                inferred_duration_seconds = (
+                    last_timestamp_ms + (1000.0 / fps)
+                ) / 1000.0
+                _validate_video_duration_seconds(
+                    inferred_duration_seconds,
+                    self.settings,
                 )
 
             return PoseVideoSample(
@@ -483,7 +530,9 @@ class SquatPostureAnalyzer:
         if not windows:
             raise PostureAnalysisError(
                 "완료된 스쿼트 회차를 인식하지 못했습니다. "
-                "전신이 보이는 측면 영상을 다시 촬영해 주세요."
+                "전신이 보이는 측면 영상을 다시 촬영해 주세요.",
+                code="MOTION_NOT_COMPLETED",
+                fields=("video",),
             )
 
         if progress_callback:
@@ -690,7 +739,9 @@ class SquatPostureAnalyzer:
                 if len(windows) > 20:
                     raise PostureAnalysisError(
                         "한 영상에서는 스쿼트 회차를 최대 20회까지 "
-                        "분석할 수 있습니다."
+                        "분석할 수 있습니다.",
+                        code="TOO_MANY_REPETITIONS",
+                        fields=("video",),
                     )
 
             last_standing_index = index
@@ -1625,7 +1676,9 @@ class CyclicPostureAnalyzer:
         if not windows:
             raise PostureAnalysisError(
                 f"완료된 {self.descriptor.display_name_ko} 회차를 "
-                "인식하지 못했습니다. 촬영 안내에 맞춰 다시 촬영해 주세요."
+                "인식하지 못했습니다. 촬영 안내에 맞춰 다시 촬영해 주세요.",
+                code="MOTION_NOT_COMPLETED",
+                fields=("video",),
             )
 
         if progress_callback:
@@ -1784,7 +1837,9 @@ class CyclicPostureAnalyzer:
                 )
                 if len(windows) > 20:
                     raise PostureAnalysisError(
-                        "한 영상에서는 운동 회차를 최대 20회까지 분석할 수 있습니다."
+                        "한 영상에서는 운동 회차를 최대 20회까지 분석할 수 있습니다.",
+                        code="TOO_MANY_REPETITIONS",
+                        fields=("video",),
                     )
 
             last_rest_index = index
@@ -1984,7 +2039,9 @@ class CalfRaisePostureAnalyzer(CyclicPostureAnalyzer):
     ) -> list[_RepetitionWindow]:
         if side is None:
             raise PostureAnalysisError(
-                "카프 레이즈를 분석할 신체 방향이 없습니다."
+                "카프 레이즈를 분석할 신체 방향이 없습니다.",
+                code="POSE_COVERAGE_LOW",
+                fields=("video",),
             )
 
         windows: list[_RepetitionWindow] = []
@@ -2041,7 +2098,9 @@ class CalfRaisePostureAnalyzer(CyclicPostureAnalyzer):
                 )
                 if len(windows) > 20:
                     raise PostureAnalysisError(
-                        "한 영상에서는 운동 회차를 최대 20회까지 분석할 수 있습니다."
+                        "한 영상에서는 운동 회차를 최대 20회까지 분석할 수 있습니다.",
+                        code="TOO_MANY_REPETITIONS",
+                        fields=("video",),
                     )
 
             last_rest_index = index
@@ -2136,7 +2195,9 @@ class PlankPostureAnalyzer:
         if not hold_frames:
             raise PostureAnalysisError(
                 "1초 이상 유지된 플랭크 자세를 인식하지 못했습니다. "
-                "어깨·골반·발목이 보이는 측면 영상으로 다시 촬영해 주세요."
+                "어깨·골반·발목이 보이는 측면 영상으로 다시 촬영해 주세요.",
+                code="PLANK_HOLD_TOO_SHORT",
+                fields=("video",),
             )
 
         if progress_callback:
@@ -2494,7 +2555,9 @@ class PlankPostureAnalyzer:
         axis_length = hypot(axis_x, axis_y)
         if axis_length <= 1e-9 or abs(axis_x) <= 1e-9:
             raise PostureAnalysisError(
-                "플랭크 몸통 선을 계산할 수 없는 프레임이 포함되어 있습니다."
+                "플랭크 몸통 선을 계산할 수 없는 프레임이 포함되어 있습니다.",
+                code="ANGLE_CALCULATION_FAILED",
+                fields=("video",),
             )
         cross = (
             axis_x * (hip.y - shoulder.y)
@@ -2664,7 +2727,9 @@ class PostureAnalysisService:
         if normalized_exercise_code not in known_codes:
             raise PostureAnalysisError(
                 "지원하지 않는 exercise_code입니다. 지원 목록은 "
-                "GET /posture-analysis/capabilities에서 확인해 주세요."
+                "GET /posture-analysis/capabilities에서 확인해 주세요.",
+                code="UNSUPPORTED_EXERCISE",
+                fields=("exercise_code",),
             )
         if analyzer is None:
             supported_views = sorted(
@@ -2674,7 +2739,9 @@ class PostureAnalysisService:
             )
             raise PostureAnalysisError(
                 f"{normalized_exercise_code}의 camera_view는 "
-                f"{', '.join(supported_views)}만 지원합니다."
+                f"{', '.join(supported_views)}만 지원합니다.",
+                code="CAMERA_VIEW_NOT_SUPPORTED",
+                fields=("camera_view",),
             )
 
         descriptor = analyzer.descriptor
@@ -2683,42 +2750,60 @@ class PostureAnalysisService:
             and not self.settings.posture_allow_experimental
         ):
             raise PostureAnalysisError(
-                "실험 단계 운동은 운영 분석에서 비활성화되어 있습니다."
+                "실험 단계 운동은 운영 분석에서 비활성화되어 있습니다.",
+                code="EXPERIMENTAL_EXERCISE_DISABLED",
+                fields=("exercise_code",),
             )
         normalized_analysis_side: Literal["left", "right"] | None = None
         if analysis_side is not None:
             if analysis_side not in {"left", "right"}:
                 raise PostureAnalysisError(
-                    "analysis_side는 left 또는 right만 지원합니다."
+                    "analysis_side는 left 또는 right만 지원합니다.",
+                    code="ANALYSIS_SIDE_INVALID",
+                    fields=("analysis_side",),
                 )
             normalized_analysis_side = analysis_side
         if descriptor.camera_view == "front" and analysis_side is not None:
             raise PostureAnalysisError(
-                "정면 촬영 운동에는 analysis_side를 보내지 않습니다."
+                "정면 촬영 운동에는 analysis_side를 보내지 않습니다.",
+                code="ANALYSIS_SIDE_NOT_ALLOWED",
+                fields=("analysis_side",),
             )
         if (
             descriptor.analysis_side_required
             and normalized_analysis_side is None
         ):
             raise PostureAnalysisError(
-                f"{descriptor.exercise_code} 분석에는 analysis_side가 필요합니다."
+                f"{descriptor.exercise_code} 분석에는 analysis_side가 필요합니다.",
+                code="ANALYSIS_SIDE_REQUIRED",
+                fields=("analysis_side",),
             )
         if exercise_key is None:
             if normalized_exercise_code != SUPPORTED_EXERCISE_CODE:
                 raise PostureAnalysisError(
-                    "신규 운동 자세 분석에는 정확한 exercise_key가 필요합니다."
+                    "신규 운동 자세 분석에는 정확한 exercise_key가 필요합니다.",
+                    code="EXERCISE_KEY_REQUIRED",
+                    fields=("exercise_key",),
                 )
         elif exercise_key not in descriptor.catalog_exercise_keys:
             raise PostureAnalysisError(
                 "exercise_key가 exercise_code의 검증된 운동 자산과 "
-                "일치하지 않습니다."
+                "일치하지 않습니다.",
+                code="EXERCISE_ASSET_MISMATCH",
+                fields=("exercise_key", "exercise_code"),
             )
 
         if not video_bytes:
-            raise PostureAnalysisError("업로드한 영상이 비어 있습니다.")
+            raise PostureAnalysisError(
+                "업로드한 영상이 비어 있습니다.",
+                code="EMPTY_VIDEO",
+                fields=("video",),
+            )
         if len(video_bytes) > self.settings.posture_video_max_bytes:
             raise PostureAnalysisError(
-                "영상 파일 크기가 허용 범위를 초과했습니다."
+                "영상 파일 크기가 허용 범위를 초과했습니다.",
+                code="VIDEO_FILE_TOO_LARGE",
+                fields=("video",),
             )
         return (
             normalized_exercise_code,
@@ -2783,7 +2868,9 @@ def _select_visible_side(
 ) -> Literal["left", "right"]:
     if not frames:
         raise PostureAnalysisError(
-            "영상에서 사람의 자세를 인식하지 못했습니다."
+            "영상에서 사람의 자세를 인식하지 못했습니다.",
+            code="POSE_NOT_DETECTED",
+            fields=("video",),
         )
 
     def side_score(side: str) -> float:
@@ -2810,6 +2897,13 @@ def _prepare_frames_for_analysis(
     smoothing_alpha: float,
     exercise_name: str,
 ) -> list[PoseFrame]:
+    if not sample.frames:
+        raise PostureAnalysisError(
+            "영상에서 사람의 자세를 인식하지 못했습니다.",
+            code="POSE_NOT_DETECTED",
+            fields=("video",),
+        )
+
     if bilateral:
         required_codes = [
             f"{candidate_side}_{joint_name}"
@@ -2819,7 +2913,9 @@ def _prepare_frames_for_analysis(
     else:
         if side is None:
             raise PostureAnalysisError(
-                "측면 분석에 사용할 신체 방향을 선택하지 못했습니다."
+                "측면 분석에 사용할 신체 방향을 선택하지 못했습니다.",
+                code="POSE_COVERAGE_LOW",
+                fields=("video",),
             )
         required_codes = [
             f"{side}_{joint_name}"
@@ -2842,7 +2938,9 @@ def _prepare_frames_for_analysis(
     if len(valid_frames) < 8 or coverage < settings.posture_min_pose_coverage:
         raise PostureAnalysisError(
             f"{exercise_name} 자세 인식률이 부족합니다. 촬영 안내에 나온 "
-            "관절이 프레임 안에 보이고 조명이 충분한 영상을 사용해 주세요."
+            "관절이 프레임 안에 보이고 조명이 충분한 영상을 사용해 주세요.",
+            code="POSE_COVERAGE_LOW",
+            fields=("video",),
         )
     return _smooth_pose_frames(
         valid_frames,
@@ -2902,7 +3000,9 @@ def _measure_angle_rule(
         sides = (side,)
     else:
         raise PostureAnalysisError(
-            "관절 각도를 계산할 신체 방향이 없습니다."
+            "관절 각도를 계산할 신체 방향이 없습니다.",
+            code="ANGLE_CALCULATION_FAILED",
+            fields=("video",),
         )
 
     if rule.calculation == "joint_asymmetry":
@@ -3005,7 +3105,9 @@ def _heel_lift_ratio(
     )
     if lower_leg_length <= 1e-6:
         raise PostureAnalysisError(
-            "카프 레이즈 뒤꿈치 상승량을 계산할 수 없습니다."
+            "카프 레이즈 뒤꿈치 상승량을 계산할 수 없습니다.",
+            code="ANGLE_CALCULATION_FAILED",
+            fields=("video",),
         )
     return max(0.0, foot_index.y - heel.y) / lower_leg_length
 
@@ -3074,7 +3176,9 @@ def _detect_video_suffix(
     }
     if declared not in allowed_declared_types:
         raise PostureAnalysisError(
-            "지원하지 않는 영상 Content-Type입니다."
+            "지원하지 않는 영상 Content-Type입니다.",
+            code="UNSUPPORTED_VIDEO_TYPE",
+            fields=("video",),
         )
 
     if len(video_bytes) >= 12 and video_bytes[4:8] == b"ftyp":
@@ -3089,7 +3193,9 @@ def _detect_video_suffix(
         return ".avi"
 
     raise PostureAnalysisError(
-        "영상 파일 형식을 확인할 수 없습니다. MP4, MOV, WEBM 또는 AVI를 사용해 주세요."
+        "영상 파일 형식을 확인할 수 없습니다. MP4, MOV, WEBM 또는 AVI를 사용해 주세요.",
+        code="UNSUPPORTED_VIDEO_TYPE",
+        fields=("video",),
     )
 
 
@@ -3129,7 +3235,9 @@ def _required_angle(
     value = _joint_angle(first, vertex, third)
     if value is None:
         raise PostureAnalysisError(
-            "관절 각도를 계산할 수 없는 프레임이 포함되어 있습니다."
+            "관절 각도를 계산할 수 없는 프레임이 포함되어 있습니다.",
+            code="ANGLE_CALCULATION_FAILED",
+            fields=("video",),
         )
     return value
 
@@ -3143,7 +3251,9 @@ def _angle_from_vertical(
     length = hypot(dx, dy)
     if length <= 1e-9:
         raise PostureAnalysisError(
-            "몸통 기울기를 계산할 수 없습니다."
+            "몸통 기울기를 계산할 수 없습니다.",
+            code="ANGLE_CALCULATION_FAILED",
+            fields=("video",),
         )
     return degrees(acos(_clamp(abs(dy) / length, -1.0, 1.0)))
 

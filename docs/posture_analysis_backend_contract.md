@@ -66,7 +66,7 @@ AI Server는 `exercise_key → exercise_code → camera_view` 조합을 exact al
 
 운영 기본값 `POSTURE_ALLOW_EXPERIMENTAL=false`에서는 experimental profile의 POST 분석을 `422`로 차단한다. 팀 검증 서버에서만 이를 `true`로 설정해 실제 영상을 보정하며, validated 전환 후에는 다시 기본값을 유지한다.
 
-기본 제한은 파일 50MB, 영상 30초, 분석 목표 15fps다. 환경변수 `POSTURE_VIDEO_MAX_BYTES`, `POSTURE_VIDEO_MAX_SECONDS`, `POSTURE_TARGET_FPS`로 운영 한도를 조정할 수 있다. 30초 상한은 현재 Backend 회차 offset 저장 제약과 일치하며, Frontend MVP 촬영은 약 8~10초를 사용한다.
+기본 제한은 파일 50MB, 영상 최소 1초·최대 30초, 분석 목표 15fps다. 환경변수 `POSTURE_VIDEO_MAX_BYTES`, `POSTURE_VIDEO_MIN_SECONDS`, `POSTURE_VIDEO_MAX_SECONDS`, `POSTURE_TARGET_FPS`로 운영 한도를 조정할 수 있다. 최소 길이는 최대 길이보다 클 수 없다. 30초 상한은 현재 Backend 회차 offset 저장 제약과 일치하며, Frontend MVP 촬영은 약 8~10초를 사용한다.
 
 분석 본체는 FastAPI event loop를 막지 않도록 worker thread에서 실행하며, 기본 동시 분석 수는 서버 프로세스당 2개다. `POSTURE_MAX_CONCURRENT_ANALYSES`는 실제 CPU·메모리 부하 테스트 후 조정한다.
 
@@ -83,6 +83,59 @@ AI Server는 업로드 원본을 DB나 응답에 저장하지 않는다. 디코�
 | `500` | 분류되지 않은 서버 오류 |
 
 영상 품질이 부족하거나 완료 회차가 없으면 예제 결과를 대신 반환하지 않는다.
+
+### 구조화 오류 응답
+
+자세 분석 서비스가 직접 판정한 `422`, `500`, `503`은 다음 형식을 사용한다.
+
+```json
+{
+  "detail": "영상에서 사람의 자세를 인식하지 못했습니다.",
+  "error": {
+    "code": "POSE_NOT_DETECTED",
+    "message": "영상에서 사람의 자세를 인식하지 못했습니다.",
+    "fields": ["video"]
+  }
+}
+```
+
+- `detail`은 기존 Backend 호환용이며 항상 `error.message`와 같다.
+- Backend와 Frontend는 변경될 수 있는 문구가 아니라 `error.code`로 분기한다.
+- `fields`는 수정이 필요한 multipart form field 이름이다.
+- `422`는 같은 요청으로 자동 재시도하지 않고 입력 또는 촬영 조건을 수정한다.
+- `503`은 짧은 backoff와 제한된 횟수로만 재시도한다.
+- 실패 응답을 성공 DTO로 변환하거나 부분 분석 결과로 저장하지 않는다.
+
+| HTTP | `error.code` | 의미 |
+|---|---|---|
+| `422` | `UNSUPPORTED_EXERCISE` | 미지원 운동 코드 |
+| `422` | `CAMERA_VIEW_NOT_SUPPORTED` | 요청 `camera_view`와 registry 불일치 |
+| `422` | `EXPERIMENTAL_EXERCISE_DISABLED` | 운영 환경의 experimental 운동 차단 |
+| `422` | `ANALYSIS_SIDE_INVALID` | `left`/`right` 외 값 |
+| `422` | `ANALYSIS_SIDE_NOT_ALLOWED` | 정면 운동에 `analysis_side` 전달 |
+| `422` | `ANALYSIS_SIDE_REQUIRED` | 분석할 신체 방향 누락 |
+| `422` | `EXERCISE_KEY_REQUIRED` | 정확한 운동 자산 key 누락 |
+| `422` | `EXERCISE_ASSET_MISMATCH` | key와 운동 코드 불일치 |
+| `422` | `EMPTY_VIDEO` | 빈 영상 파일 |
+| `422` | `VIDEO_FILE_TOO_LARGE` | 파일 크기 초과 |
+| `422` | `UNSUPPORTED_VIDEO_TYPE` | 미지원 Content-Type 또는 파일 signature |
+| `422` | `VIDEO_DECODE_FAILED` | 영상 디코딩 실패 |
+| `422` | `VIDEO_METADATA_INVALID` | FPS 등 영상 metadata 확인 불가 |
+| `422` | `VIDEO_TOO_SHORT` | 기본 1초 미만 영상 |
+| `422` | `VIDEO_TOO_LONG` | 기본 30초 초과 영상 |
+| `422` | `INSUFFICIENT_FRAMES` | 분석 가능한 표본 프레임 없음 |
+| `422` | `POSE_NOT_DETECTED` | 사람 관절점 미검출 |
+| `422` | `POSE_COVERAGE_LOW` | 필수 관절 노출 또는 신뢰도 부족 |
+| `422` | `MOTION_NOT_COMPLETED` | 완료 동작 또는 회차 미검출 |
+| `422` | `PLANK_HOLD_TOO_SHORT` | 1초 이상 유지 구간 미검출 |
+| `422` | `TOO_MANY_REPETITIONS` | 최대 분석 회차 초과 |
+| `422` | `ANGLE_CALCULATION_FAILED` | 관절 각도 계산 불가 |
+| `503` | `MODEL_UNAVAILABLE` | MediaPipe·모델·runtime 장애 |
+| `500` | `INTERNAL_ERROR` | 분류되지 않은 서버 오류 |
+
+`CAMERA_VIEW_NOT_SUPPORTED`는 요청 form의 `camera_view`와 capabilities registry를 비교한 결과다. 실제 영상이 정면인지 측면인지 자동 판별하는 기능은 아직 없으며, 실제 촬영 방향이 맞지 않아 관절 또는 동작을 인식하지 못하면 현재 `POSE_COVERAGE_LOW` 또는 `MOTION_NOT_COMPLETED`가 될 수 있다.
+
+multipart 필수 field 누락, 잘못된 UUID처럼 라우터 진입 전에 FastAPI가 발생시키는 `422`는 기존 `HTTPValidationError` 형식일 수 있다. 인증 실패 `401`도 위 자세 분석 오류 형식을 사용하지 않는다. Backend는 `error`가 없는 `422`를 일반 요청 검증 오류로 처리해야 한다.
 
 ## 모델 준비
 
@@ -199,7 +252,7 @@ Docker image는 build 중 같은 스크립트를 실행한다. 모델 파일은 
 8. Backend proxy의 최대 업로드 크기·timeout과 AI Server의 50MB·30초 제한 일치 여부
 9. 동기식 호출을 유지할지 polling, SSE, callback 중 하나로 전환할지
 10. 실제 스마트폰 검증 영상으로 experimental profile의 임계값을 보정하고 단계적으로 validated 전환하는 절차
-11. Backend 공통 오류 형식으로 `422`, `503`을 매핑하는 방식
+11. AI HTTP 상태와 `error.code`, `error.message`, `error.fields`를 손실 없이 보존하고 실패 작업에 오류 코드를 저장하는 방식
 12. `routine_suggestions`를 운동 자산 CSV의 `exercise_key`와 연결하는 조건 계약
 
 Backend 저장 시 `routine_suggestions[].finding_display_order`는 AI 응답 내부 참조값이다. Backend는 finding을 먼저 저장한 뒤 해당 `display_order`의 실제 finding ID로 매핑해야 한다.

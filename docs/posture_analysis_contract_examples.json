@@ -1,5 +1,13 @@
 {
   "description": "Backend가 전달한 합성 자세 분석 출력 예제이며 실제 사용자 또는 실제 분석값이 아닙니다.",
+  "error": {
+    "detail": "영상에서 사람의 자세를 인식하지 못했습니다.",
+    "error": {
+      "code": "POSE_NOT_DETECTED",
+      "message": "영상에서 사람의 자세를 인식하지 못했습니다.",
+      "fields": ["video"]
+    }
+  },
   "capabilities": {
     "schema_version": "1.0",
     "exercises": [

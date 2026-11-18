@@ -524,6 +524,7 @@ Backend가 매 요청에 제공할 context는 다음과 같다.
 - 실제 섭취량이 목표의 ±10%이면 해당 항목을 100점으로 인정하고, 50% 이상 벗어나면 0점으로 계산한다.
 - 기록되지 않은 식단 일자는 0점이다.
 - 운동은 목표 시간 50%, 주간 횟수 30%, 선택한 운동 목적과 일치하는 추천 운동 수행도 20%로 계산한다.
+- `weekly_exercise`는 Backend가 원본 기록에서 완성한 집계값이며 `goal_aligned_completed_days <= completed_days`여야 한다. 집계가 준비되지 않았으면 부분 객체 대신 필드 전체를 생략한다.
 - 건강데이터는 최초 인바디와 건강검진을 기준 80점으로 시작한다.
 - 건강데이터는 현재와 최초 기준의 인바디·건강검진 데이터가 모두 있어야 계산한다.
 - 건강데이터 개선은 최대 +20점, 악화는 최대 -80점으로 반영한다.
@@ -697,6 +698,12 @@ OpenAI는 서버가 필터링한 `exercise_key` 후보 중 하나를 선택하�
 선택 결과를 다시 검증한 뒤 CSV의 영문 표준명을 조립한다.
 후보 밖의 key를 선택하면 임의 운동으로 대체하지 않고 요청을 실패 처리한다.
 
+각 운동의 `body_regions`도 LLM이 생성하지 않고 같은 CSV metadata로 결정한다.
+허용값은 `upper_body`, `core`, `lower_body`, `full_body`이며 `Waist`는
+`core`로 변환한다. `full_body`는 다른 세 부위로 확장하지 않는 독립 값이다.
+실제 추천에 사용하는 `auto_mapped + primary` 카탈로그 운동은 모두 하나 이상의
+부위를 가져야 하며 미분류 행은 정상 추천으로 반환하지 않는다.
+
 운동 추천 결과의 상위 `intensity`는 `low`, `moderate`, `high` 중 하나를
 필수로 반환한다. 운동별 `intensity`는 생략 또는 `null`일 수 있으며, 값을
 반환한다면 동일한 세 코드 중 하나여야 한다. 운동별 값이 없으면 Backend는
@@ -748,6 +755,7 @@ AI 응답 검증 실패로 처리한다.
           "name": "45도 바이시클 트위스트 크런치",
           "catalog_name_en": "45 Degree Bycicle Twisting Crunch",
           "exercise_modes": ["gym"],
+          "body_regions": ["core"],
           "duration_minutes": 20,
           "intensity": "moderate",
           "instructions": [
@@ -759,6 +767,7 @@ AI 응답 검증 실패로 처리한다.
           "name": "45도 트위스팅 하이퍼익스텐션",
           "catalog_name_en": "45 Degree Twisting Hyperextension",
           "exercise_modes": ["gym"],
+          "body_regions": ["lower_body"],
           "duration_minutes": 20,
           "intensity": "moderate",
           "instructions": [
@@ -770,6 +779,7 @@ AI 응답 검증 실패로 처리한다.
           "name": "45도 리버스 하이퍼익스텐션",
           "catalog_name_en": "45 Degrees Reverse Hyperextension",
           "exercise_modes": ["gym"],
+          "body_regions": ["lower_body"],
           "duration_minutes": 20,
           "intensity": "moderate",
           "instructions": [
@@ -813,7 +823,7 @@ Backend가 전달한 운동 자세 출력 형식은 `app/schemas/posture_analysi
 
 등록된 반복형 profile은 스쿼트, 푸시업, 글루트 브리지, 덤벨 바이셉 컬, 벽 지지 카프 레이즈, 런지, 스플릿 스쿼트, 점핑 잭, 덤벨 숄더 프레스, 덤벨 레터럴 레이즈다. 스쿼트만 Linux Docker 실영상 검증을 거친 `validated`이며 나머지는 합성 각도 주기 회귀만 완료한 `experimental`이다. AI Server도 기본 `POSTURE_ALLOW_EXPERIMENTAL=false`에서 experimental POST를 차단하고 Backend 운영 화면도 validated만 활성화한다. 이름 포함 검색이나 유사 운동 fallback은 금지하며 capabilities의 `exercise_key + exercise_code + camera_view` 조합이 정확히 일치해야 한다. 런지·스플릿 스쿼트는 앞다리 혼동을 막기 위해 `analysis_side=left|right`가 필수다.
 
-영상은 MP4/MOV/WEBM/AVI, 기본 50MB·30초다. 원본과 임시 영상은 저장하지 않으며 요청 처리용 임시 파일도 성공·실패 후 즉시 삭제한다. 품질 부족·완료 회차 미검출·계약 불일치는 `422`, 모델/런타임 미설정은 `503`이다. 작업 상태 저장과 비동기 진행 조회 방식은 Backend와 추가 합의가 필요하다. 전체 요청과 필드 정책은 [운동 자세 분석 Backend 계약](posture_analysis_backend_contract.md)을 따른다.
+영상은 MP4/MOV/WEBM/AVI, 기본 50MB·최소 1초·최대 30초다. 원본과 임시 영상은 저장하지 않으며 요청 처리용 임시 파일도 성공·실패 후 즉시 삭제한다. 품질 부족·완료 회차 미검출·계약 불일치는 `422`, 모델/런타임 미설정은 `503`이다. 자세 분석 서비스가 직접 판정한 실패는 `PostureAnalysisErrorResponse`로 반환한다. Backend는 AI의 원래 HTTP 상태와 `error.code`, `error.message`, `error.fields`를 Frontend까지 보존하고 문구 비교로 분기하지 않는다. `422`는 자동 재시도하지 않으며, `503/MODEL_UNAVAILABLE`만 제한적으로 재시도할 수 있다. 실패 응답에 성공 결과 DTO를 적용하거나 부분 결과를 저장하지 않는다. 라우터 진입 전 FastAPI 요청 검증 `422`는 `error`가 없는 기존 형식일 수 있다. 작업 상태 저장과 비동기 진행 조회 방식은 Backend와 추가 합의가 필요하다. 전체 요청과 필드 정책은 [운동 자세 분석 Backend 계약](posture_analysis_backend_contract.md)을 따른다.
 
 ## 러닝 코스 추천
 

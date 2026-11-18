@@ -145,7 +145,7 @@ debug API는 운영 노출 여부를 별도로 관리해야 한다.
 | 운동 추천 | 기존 LLM 추천 + 로컬 CSV 강제 변경 | 현재 앱은 `rules_v1`만 사용 | Backend 공개 API 사용 | AI 구현, 실제 앱 연동 대기 |
 | 러닝 코스 | 공공 코스·위치 추천·경로 preview·loop·세션 추천 | 인증·저장 Backend 경로 존재 | 러닝 화면 존재 | 구현 완료, provider live 검증 필요 |
 | 챗봇 | 일반 답변·의도 분류·식단 변경·러닝 orchestration | Backend 적용 상태 관리 필요 | 챗 화면 존재 | 구현 완료, 액션 E2E 필요 |
-| 운동 자세 분석 | MediaPipe Pose 기반 10종 registry 분석 | Backend 계약 존재 | 촬영·결과 화면 존재 | 스쿼트 검증 완료, 9종 실영상 보정 대기 |
+| 운동 자세 분석 | MediaPipe Pose 기반 11종 registry 분석 | Backend 계약 존재 | 촬영·결과 화면 존재 | 스쿼트 검증 완료, 10종 실영상 보정 대기 |
 | 음식 이미지 분석 | 분석·재계산 API와 계약 존재 | OCR/이미지 전달 계약 확인 필요 | 촬영·확인 UI 계획 존재 | 부분 구현, provider·E2E 필요 |
 | RAG | 건강 문서 검색·출처 제한·분석 연결 | AI 내부 사용 | 직접 노출하지 않음 | 구현 완료 |
 
@@ -491,21 +491,21 @@ Frontend
 
 - `POST /posture-analysis/analyze`
 - MediaPipe Pose Landmarker Full
-- 운동: `squat`
-- 카메라: `side`
+- 운동: 11종 registry. 운영 검증 완료 범위는 측면 `squat`
+- 카메라: 운동별 고정 `side` 또는 `front`
 - MP4, MOV, WEBM, AVI
-- 기본 제한: 50MB, 60초
+- 기본 제한: 50MB, 최소 1초, 최대 30초
 - 완료 회차와 주요 자세 문제 분석
 - Backend 작업 UUID 계약
 - 원본 및 임시 영상 비영구 저장
 
 현재 제한:
 
-- 운영 검증 완료 범위는 스쿼트 측면이다. 추가 9종은 registry와 규칙 분석이 구현됐지만 실영상 보정 전이므로 기본 설정에서 차단한다.
-- 플랭크·월싯 같은 정적 홀드와 데드리프트·올림픽 리프트·케틀벨 스윙·착지처럼 단일 2D 영상 오판 위험이 큰 운동은 현재 범위에서 제외한다.
+- 운영 검증 완료 범위는 스쿼트 측면이다. 추가 10종은 registry와 규칙 분석이 구현됐지만 실영상 보정 전이므로 기본 설정에서 차단한다.
+- 플랭크는 experimental 유지형 규칙으로 등록했다. 월싯과 데드리프트·올림픽 리프트·케틀벨 스윙·착지처럼 단일 2D 영상 오판 위험이 큰 운동은 현재 범위에서 제외한다.
 - 실시간 스트리밍 분석이 아니라 업로드 영상 동기 분석이다.
 - 모델 파일과 MediaPipe runtime이 없는 배포에서는 `503`이 발생한다.
-- 품질 부족 또는 완료 회차 미검출은 `422`로 처리한다.
+- 품질 부족 또는 완료 회차 미검출은 구조화된 `422` 오류 코드로 처리한다.
 
 관련 문서:
 
@@ -1129,3 +1129,27 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - Backend 작업: 두 자세 응답 버전의 union DTO 및 hold 저장 지원, `character_id` 전달, 리포트 준비 질문에 최신 health score context 전달
 - Frontend 작업: capabilities의 `movement_type`·`validation_status` 기준 노출, 플랭크 유지 시간 UI, 답변 앞 별도 캐릭터 인사말 중복 제거, 준비 질문 문구를 지원 intent에 맞춤
 - 남은 작업: 푸시업·플랭크·런지·힙 브리지 정상/교정/인식불가 측면 영상 실기기 보정, Backend 저장 E2E, 캐릭터별 실제 답변 품질 확인
+
+## 2026-11-18 · 자세 분석 실패 코드 구조화
+
+- 자세 분석 서비스가 판정한 실패를 `detail + error.code/message/fields` 구조로 고정하고 기존 `detail`은 Backend 하위 호환을 위해 유지
+- 사람 미검출, 필수 관절 부족, 영상 길이, 동작 미완료, 플랭크 유지 부족, 요청 운동·자산·촬영 metadata 불일치를 서로 다른 코드로 구분
+- 영상 최소 길이를 기본 1초로 검증하며 최소·최대 길이 환경변수의 역전 설정을 차단
+- 모델·runtime 장애는 `503/MODEL_UNAVAILABLE`, 분류되지 않은 장애는 `500/INTERNAL_ERROR`로 구분
+- 실제 영상의 카메라 방향 자동 판별은 아직 지원하지 않으며 `CAMERA_VIEW_NOT_SUPPORTED`는 요청 metadata와 registry의 불일치만 의미
+- Backend 작업: AI HTTP 상태와 구조화 오류를 Frontend까지 보존하고, `422` 무재시도·`503` 제한 재시도·실패 작업 오류 코드 저장을 적용
+- 호환성: 라우터 진입 전 FastAPI 입력 검증 `422`와 인증 `401`은 자세 분석 구조화 오류 형식이 아닐 수 있음
+- 남은 작업: 실제 스마트폰 영상 보정과 Backend/Frontend E2E
+- 상세 전달 문서: [자세 분석 오류 Backend 인계](posture_analysis_error_backend_handoff_2026-11-18.md)
+
+## 2026-11-18 · 운동 추천 부위·건강점수 집계 계약 보강
+
+- 운동 추천의 `sessions[].exercises[]`에 필수 `body_regions` 배열 추가
+- 허용값은 `upper_body`, `core`, `lower_body`, `full_body`; CSV의 `Waist`를 `core`로 결정론적 변환
+- `body_regions`는 OpenAI 출력값을 사용하지 않고 선택된 `exercise_key`의 카탈로그 metadata로 최종 조립
+- `full_body`는 독립 값으로 유지하며 다른 부위로 중복 확장하지 않음
+- 실제 추천 후보는 하나 이상의 부위를 강제하고 미분류 카탈로그 후보는 실패 처리
+- 건강점수 공식은 시간 50%·수행일 30%·목적 일치일 20%를 유지하고 `goal_aligned_completed_days <= completed_days`를 Schema에서 검증
+- Backend 작업: `body_regions` 수용·검증·저장·Frontend 전달, 원본 운동 기록에서 주간 `completed_minutes/completed_days/goal_aligned_completed_days` 집계
+- 배포 순서: Backend DTO가 새 필드를 먼저 수용한 뒤 AI Server 배포 또는 양측 동시 배포
+- 상세 전달 문서: [운동 부위·건강점수 Backend 인계](exercise_body_regions_health_score_backend_handoff_2026-11-18.md)

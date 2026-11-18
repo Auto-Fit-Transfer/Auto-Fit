@@ -6,6 +6,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from app.schemas.posture_analysis import (
+    PostureAnalysisErrorResponse,
     PostureAnalysisProgress,
     PostureAnalysisResponse,
     PostureAnalysisResult,
@@ -24,6 +25,20 @@ PROGRESS_EXAMPLE = EXAMPLES["progress"]
 CAPABILITIES_EXAMPLE = EXAMPLES["capabilities"]
 RESULT_EXAMPLE = EXAMPLES["result"]
 HOLD_RESULT_EXAMPLE = EXAMPLES["hold_result"]
+ERROR_EXAMPLE = EXAMPLES["error"]
+
+
+def test_error_contract_keeps_legacy_detail() -> None:
+    result = PostureAnalysisErrorResponse.model_validate(ERROR_EXAMPLE)
+
+    assert result.detail == result.error.message
+    assert result.error.code == "POSE_NOT_DETECTED"
+    assert result.error.fields == ["video"]
+
+    invalid = deepcopy(ERROR_EXAMPLE)
+    invalid["detail"] = "different legacy detail"
+    with pytest.raises(ValidationError):
+        PostureAnalysisErrorResponse.model_validate(invalid)
 
 
 def test_progress_contract() -> None:

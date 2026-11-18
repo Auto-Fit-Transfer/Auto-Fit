@@ -1,3 +1,6 @@
+import pytest
+from pydantic import ValidationError
+
 from app.schemas.health_analysis import (
     BodyCompositionInput,
     DietAdherenceDayInput,
@@ -155,6 +158,21 @@ def test_initial_scores_follow_product_policy() -> None:
         "diet",
         "exercise",
     ]
+
+
+def test_weekly_exercise_rejects_goal_days_above_completed_days() -> None:
+    with pytest.raises(
+        ValidationError,
+        match="goal_aligned_completed_days",
+    ):
+        WeeklyExerciseScoreInput(
+            goal_type="body_fat_loss",
+            target_minutes=90,
+            completed_minutes=30,
+            target_days=3,
+            completed_days=1,
+            goal_aligned_completed_days=2,
+        )
 
 
 def test_perfect_week_scores_diet_and_exercise_at_100() -> None:

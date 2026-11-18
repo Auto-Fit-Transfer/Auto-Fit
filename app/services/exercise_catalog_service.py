@@ -7,6 +7,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from app.schemas.recommendation import (
+    ExerciseBodyRegion,
     ExerciseRecommendationRequest,
 )
 
@@ -20,6 +21,13 @@ EXERCISE_CATALOG_PATH = (
 )
 
 CATALOG_CANDIDATE_LIMIT = 48
+
+_BODY_REGION_ORDER: tuple[ExerciseBodyRegion, ...] = (
+    "upper_body",
+    "core",
+    "lower_body",
+    "full_body",
+)
 
 _MACHINE_EQUIPMENT_DETAILS = {
     "machine",
@@ -97,6 +105,7 @@ class ExerciseCatalogCandidate:
     recommended_training_types: tuple[str, ...]
     focus_areas: tuple[str, ...]
     focus_area_details: tuple[str, ...]
+    body_regions: tuple[ExerciseBodyRegion, ...]
     equipment_details: tuple[str, ...]
     assets: tuple[ExerciseAnimationAssetRecord, ...]
 
@@ -111,10 +120,40 @@ class ExerciseCatalogCandidate:
             "focus_area_details": list(
                 self.focus_area_details
             ),
+            "body_regions": list(self.body_regions),
             "equipment_details": list(
                 self.equipment_details
             ),
         }
+
+
+def _derive_body_regions(
+    rows: list[ExerciseCatalogRow],
+) -> tuple[ExerciseBodyRegion, ...]:
+    """Map catalog metadata without guessing from the exercise name."""
+
+    regions: set[ExerciseBodyRegion] = set()
+    for row in rows:
+        if row.focus_area == "upper_body":
+            regions.add("upper_body")
+        elif row.focus_area == "lower_body":
+            regions.add("lower_body")
+        elif row.focus_area == "full_body":
+            regions.add("full_body")
+
+        if row.focus_area_detail.casefold() == "waist":
+            regions.add("core")
+
+    if not regions:
+        raise RuntimeError(
+            "Exercise catalog contains an unmapped body region."
+        )
+
+    return tuple(
+        region
+        for region in _BODY_REGION_ORDER
+        if region in regions
+    )
 
 
 def _parse_optional_bool(value: str) -> bool | None:
@@ -475,6 +514,7 @@ def select_exercise_candidates(
                         }
                     )
                 ),
+                body_regions=_derive_body_regions(group),
                 equipment_details=tuple(
                     sorted(
                         {

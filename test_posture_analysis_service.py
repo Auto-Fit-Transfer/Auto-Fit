@@ -35,6 +35,8 @@ from app.services.posture_analysis_service import (
     _PRESS_ASYMMETRY_RULE,
     _PRESS_PRIMARY_RULE,
     _measure_angle_rule,
+    _prepare_frames_for_analysis,
+    _validate_video_duration_seconds,
 )
 
 
@@ -702,6 +704,57 @@ def test_service_deletes_temporary_video() -> None:
     assert not extractor.temporary_path.exists()
 
 
+def test_video_duration_validation_uses_stable_error_codes() -> None:
+    settings = Settings(
+        posture_video_min_seconds=1.5,
+        posture_video_max_seconds=30,
+    )
+
+    with pytest.raises(PostureAnalysisError) as too_short:
+        _validate_video_duration_seconds(1.49, settings)
+    assert too_short.value.code == "VIDEO_TOO_SHORT"
+    assert too_short.value.fields == ("video",)
+    assert "1.5초 이상" in str(too_short.value)
+
+    with pytest.raises(PostureAnalysisError) as too_long:
+        _validate_video_duration_seconds(30.01, settings)
+    assert too_long.value.code == "VIDEO_TOO_LONG"
+    assert too_long.value.fields == ("video",)
+
+    _validate_video_duration_seconds(1.5, settings)
+    _validate_video_duration_seconds(30, settings)
+
+
+def test_posture_video_duration_settings_reject_invalid_range() -> None:
+    with pytest.raises(ValueError, match="POSTURE_VIDEO_MIN_SECONDS"):
+        Settings(
+            posture_video_min_seconds=2,
+            posture_video_max_seconds=1,
+        )
+
+
+def test_empty_pose_frames_use_same_error_for_front_view() -> None:
+    sample = PoseVideoSample(
+        frames=[],
+        sampled_frame_count=10,
+        duration_ms=1_000,
+    )
+
+    with pytest.raises(PostureAnalysisError) as no_pose:
+        _prepare_frames_for_analysis(
+            sample=sample,
+            settings=Settings(),
+            required_joint_names=("shoulder", "hip"),
+            side=None,
+            bilateral=True,
+            smoothing_alpha=0.5,
+            exercise_name="점핑 잭",
+        )
+
+    assert no_pose.value.code == "POSE_NOT_DETECTED"
+    assert no_pose.value.fields == ("video",)
+
+
 def test_service_rejects_unsupported_request_and_file() -> None:
     service = PostureAnalysisService(
         settings=Settings(posture_allow_experimental=True)
@@ -949,6 +1002,82 @@ async def _test_router_contract() -> None:
 
 def test_posture_analysis_router_contract() -> None:
     asyncio.run(_test_router_contract())
+
+
+async def _test_posture_router_structured_error_contract() -> None:
+    settings = get_settings()
+    previous_key = settings.ai_server_api_key
+    settings.ai_server_api_key = "posture-test-key"
+    original_analyze = PostureAnalysisService.analyze_video
+
+    async def fake_analyze(
+        self: PostureAnalysisService,
+        **kwargs: object,
+    ) -> PostureAnalysisResult:
+        del self, kwargs
+        raise PostureAnalysisError(
+            "영상에서 사람의 자세를 인식하지 못했습니다.",
+            code="POSE_NOT_DETECTED",
+            fields=("video",),
+        )
+
+    PostureAnalysisService.analyze_video = fake_analyze  # type: ignore[method-assign]
+    app.openapi_schema = None
+
+    try:
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as client:
+            response = await client.post(
+                "/posture-analysis/analyze",
+                data={
+                    "posture_analysis_job_id": str(uuid4()),
+                    "exercise_code": "squat",
+                    "camera_view": "side",
+                },
+                files={
+                    "video": (
+                        "squat.mp4",
+                        b"\x00\x00\x00\x18ftypisom" + b"video",
+                        "video/mp4",
+                    )
+                },
+                headers={
+                    "Authorization": "Bearer posture-test-key",
+                },
+            )
+
+        assert response.status_code == 422
+        payload = response.json()
+        assert payload == {
+            "detail": "영상에서 사람의 자세를 인식하지 못했습니다.",
+            "error": {
+                "code": "POSE_NOT_DETECTED",
+                "message": "영상에서 사람의 자세를 인식하지 못했습니다.",
+                "fields": ["video"],
+            },
+        }
+
+        operation = app.openapi()["paths"][
+            "/posture-analysis/analyze"
+        ]["post"]
+        for status_code in ("422", "500", "503"):
+            schema = operation["responses"][status_code]["content"][
+                "application/json"
+            ]["schema"]
+            assert schema["$ref"].endswith(
+                "/PostureAnalysisErrorResponse"
+            )
+    finally:
+        PostureAnalysisService.analyze_video = original_analyze
+        settings.ai_server_api_key = previous_key
+        app.openapi_schema = None
+
+
+def test_posture_router_returns_stable_error_code() -> None:
+    asyncio.run(_test_posture_router_structured_error_contract())
 
 
 async def _test_plank_router_hold_contract() -> None:

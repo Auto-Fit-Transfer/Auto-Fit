@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import (
     BaseSettings,
     SettingsConfigDict,
@@ -293,6 +293,11 @@ class Settings(BaseSettings):
         ge=1_000_000,
         le=200_000_000,
     )
+    posture_video_min_seconds: float = Field(
+        default=1.0,
+        ge=0.5,
+        le=5.0,
+    )
     posture_video_max_seconds: float = Field(
         default=30.0,
         gt=0,
@@ -327,6 +332,17 @@ class Settings(BaseSettings):
         "Healthcare AI Server"
     )
 
+    @model_validator(mode="after")
+    def validate_posture_video_duration_range(self) -> "Settings":
+        if (
+            self.posture_video_min_seconds
+            > self.posture_video_max_seconds
+        ):
+            raise ValueError(
+                "POSTURE_VIDEO_MIN_SECONDS must be less than or equal to "
+                "POSTURE_VIDEO_MAX_SECONDS"
+            )
+        return self
 
     model_config = (
         SettingsConfigDict(

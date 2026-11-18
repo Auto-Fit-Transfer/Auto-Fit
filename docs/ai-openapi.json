@@ -1183,11 +1183,31 @@
             }
           },
           "422": {
-            "description": "Validation Error",
+            "description": "자세 분석 입력·영상 품질 오류",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/PostureAnalysisErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "분류되지 않은 자세 분석 서버 오류",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostureAnalysisErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "자세 분석 모델·런타임 일시 장애",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PostureAnalysisErrorResponse"
                 }
               }
             }
@@ -5029,6 +5049,21 @@
             "minItems": 1,
             "title": "Exercise Modes"
           },
+          "body_regions": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "upper_body",
+                "core",
+                "lower_body",
+                "full_body"
+              ]
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Body Regions"
+          },
           "duration_minutes": {
             "type": "integer",
             "maximum": 200.0,
@@ -5066,6 +5101,7 @@
           "name",
           "catalog_name_en",
           "exercise_modes",
+          "body_regions",
           "duration_minutes"
         ],
         "title": "ExerciseItem"
@@ -7537,6 +7573,78 @@
           "skipped"
         ],
         "title": "PerformedExercise"
+      },
+      "PostureAnalysisErrorDetail": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "UNSUPPORTED_EXERCISE",
+              "CAMERA_VIEW_NOT_SUPPORTED",
+              "EXPERIMENTAL_EXERCISE_DISABLED",
+              "ANALYSIS_SIDE_INVALID",
+              "ANALYSIS_SIDE_NOT_ALLOWED",
+              "ANALYSIS_SIDE_REQUIRED",
+              "EXERCISE_KEY_REQUIRED",
+              "EXERCISE_ASSET_MISMATCH",
+              "EMPTY_VIDEO",
+              "VIDEO_FILE_TOO_LARGE",
+              "UNSUPPORTED_VIDEO_TYPE",
+              "VIDEO_DECODE_FAILED",
+              "VIDEO_METADATA_INVALID",
+              "VIDEO_TOO_SHORT",
+              "VIDEO_TOO_LONG",
+              "INSUFFICIENT_FRAMES",
+              "POSE_NOT_DETECTED",
+              "POSE_COVERAGE_LOW",
+              "MOTION_NOT_COMPLETED",
+              "PLANK_HOLD_TOO_SHORT",
+              "TOO_MANY_REPETITIONS",
+              "ANGLE_CALCULATION_FAILED",
+              "MODEL_UNAVAILABLE",
+              "INTERNAL_ERROR"
+            ],
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Message"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Fields"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "PostureAnalysisErrorDetail"
+      },
+      "PostureAnalysisErrorResponse": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Detail"
+          },
+          "error": {
+            "$ref": "#/components/schemas/PostureAnalysisErrorDetail"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "detail",
+          "error"
+        ],
+        "title": "PostureAnalysisErrorResponse"
       },
       "PostureAnalysisResult": {
         "properties": {

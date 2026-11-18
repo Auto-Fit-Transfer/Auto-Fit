@@ -281,6 +281,7 @@ def _hydrate_catalog_response(
                             for asset in candidate.assets
                         }
                     ),
+                    body_regions=list(candidate.body_regions),
                     duration_minutes=duration_minutes,
                     intensity=selected_exercise.intensity,
                     instructions=(

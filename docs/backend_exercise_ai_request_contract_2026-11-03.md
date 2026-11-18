@@ -111,6 +111,7 @@ AI Server는 구매한 운동 GIF CSV에 존재하는 운동만 추천하며 각
             "name": "45도 바이시클 트위스트 크런치",
             "catalog_name_en": "45 Degree Bycicle Twisting Crunch",
             "exercise_modes": ["gym"],
+            "body_regions": ["core"],
             "duration_minutes": 20,
             "intensity": "moderate",
             "instructions": [
@@ -122,6 +123,7 @@ AI Server는 구매한 운동 GIF CSV에 존재하는 운동만 추천하며 각
             "name": "45도 트위스팅 하이퍼익스텐션",
             "catalog_name_en": "45 Degree Twisting Hyperextension",
             "exercise_modes": ["gym"],
+            "body_regions": ["lower_body"],
             "duration_minutes": 20,
             "intensity": "moderate",
             "instructions": [
@@ -133,6 +135,7 @@ AI Server는 구매한 운동 GIF CSV에 존재하는 운동만 추천하며 각
             "name": "45도 리버스 하이퍼익스텐션",
             "catalog_name_en": "45 Degrees Reverse Hyperextension",
             "exercise_modes": ["gym"],
+            "body_regions": ["lower_body"],
             "duration_minutes": 20,
             "intensity": "moderate",
             "instructions": [
@@ -154,11 +157,19 @@ Backend는 응답 수신 후 다음 항목을 검증합니다.
 - 운동별 `intensity`가 생략 또는 `null`이거나 `low`, `moderate`, `high` 중 하나인지
 - `catalog_version`이 Backend에 배포된 CSV 버전과 일치하는지
 - 모든 `exercise_key`가 Backend CSV에 존재하는지
+- 모든 `body_regions` 값이 `upper_body`, `core`, `lower_body`, `full_body` 중 하나이고 중복이 없는지
+- `body_regions`가 비어 있지 않은지
 - 요청 장소와 운동의 `exercise_modes`가 충돌하지 않는지
 - 요청한 장비로 수행할 수 있는 운동인지
 - 각 세션의 운동별 `duration_minutes` 합계가 요청 시간 이상, `min(요청 시간 + 5분, 200분)` 이하인지
 - 각 세션의 `estimated_duration_minutes`가 운동별 시간의 실제 합계와 정확히 일치하는지
 - 빈 세션 또는 빈 운동 목록을 정상 추천으로 저장하지 않는지
+
+`body_regions`는 AI 문장 생성 결과가 아니라 카탈로그에서 결정론적으로 조립한다.
+기존 `focus_area`의 상체·하체·전신은 그대로 사용하고
+`focus_area_detail=Waist`는 `core`로 매핑한다. `full_body`는 독립 부위로
+저장하며 상체·코어·하체에 중복 집계하지 않는다. 카탈로그가
+지원하는 부위로 매핑되지 않으면 잘못된 부위를 만들지 않고 추천을 실패 처리한다.
 
 ### 세션 시간 검증 및 저장 계약
 

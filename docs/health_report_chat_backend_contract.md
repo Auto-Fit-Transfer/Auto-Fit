@@ -228,6 +228,18 @@ Request Schema는 `HealthAnalysisRequest`, Response Schema는 `HealthAnalysisRes
 
 `score_context` 자체는 하위 호환을 위해 선택값이다. 단, 점수를 표시하려면 위 조건에 맞는 데이터를 Backend가 제공해야 한다.
 
+`weekly_exercise`는 AI Server가 원본 세션을 집계하는 구조가 아니라 Backend가
+주간 운동 기록을 집계해 전달하는 객체다. `goal_aligned_completed_days`는 반드시
+`completed_days` 이하이어야 하며 위반 요청은 `422`다. Backend 집계가 준비되지
+않았다면 누락 필드를 0으로 채운 불완전 객체를 보내지 말고
+`weekly_exercise` 전체를 생략한다. 필드 기본값 0은 하위 호환용이므로 부분 객체는
+실제 운동 0점으로 계산될 수 있다.
+
+건강점수 집계는 티어 +5점 지급과 별도다. 권장 집계는 완료 또는 중도 종료 세션에서
+실제로 완료된 항목의 시간만 합산하고, 미완료·건너뜀·0분 항목은 제외하는 것이다.
+세트 기반 운동과 시간 기반 운동을 구분할 `completion_metric` 또는 동등한 Backend
+metadata 계약은 Backend·Frontend가 확정해야 한다.
+
 `previous_health_score`는 네 점수가 모두 존재할 때만 전달한다. 직전 주 점수가 부분 계산 상태였다면 임의 값으로 채우지 않고 해당 필드 전체를 생략한다.
 
 ### 5.4 점수 정책

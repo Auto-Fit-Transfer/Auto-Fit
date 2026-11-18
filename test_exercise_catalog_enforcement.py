@@ -13,6 +13,7 @@ from app.schemas.recommendation import (
 )
 from app.services.exercise_catalog_service import (
     EXERCISE_CATALOG_PATH,
+    _derive_body_regions,
     _matches_request,
     candidates_by_key,
     get_exercise_catalog_version,
@@ -65,12 +66,43 @@ def test_catalog_candidates_follow_request_constraints() -> None:
     for candidate in candidates:
         assert candidate.exercise_key.startswith("ex_")
         assert candidate.assets
+        assert candidate.body_regions
+        assert len(candidate.body_regions) == len(
+            set(candidate.body_regions)
+        )
+        assert set(candidate.body_regions).issubset(
+            {"upper_body", "core", "lower_body", "full_body"}
+        )
         assert set(
             candidate.recommended_training_types
         ).issubset({"home_training", "bodyweight"})
         for asset in candidate.assets:
             assert asset.exercise_mode == "home_training"
             assert "/Home_Workout/" in asset.animation_path
+
+
+def test_body_regions_are_derived_only_from_catalog_metadata() -> None:
+    rows_by_key = {}
+    for row in load_exercise_catalog():
+        rows_by_key.setdefault(row.exercise_key, []).append(row)
+
+    for focus_area in ("upper_body", "lower_body", "full_body"):
+        group = next(
+            rows
+            for rows in rows_by_key.values()
+            if {row.focus_area for row in rows} == {focus_area}
+        )
+        assert _derive_body_regions(group) == (focus_area,)
+
+    for group in rows_by_key.values():
+        assert _derive_body_regions(group)
+
+    waist_group = next(
+        rows
+        for rows in rows_by_key.values()
+        if "Waist" in {row.focus_area_detail for row in rows}
+    )
+    assert _derive_body_regions(waist_group) == ("core",)
 
 
 def test_backend_contract_filters_multiple_gym_equipment() -> None:
@@ -719,6 +751,7 @@ def test_generate_hydrates_only_catalog_assets(
             for asset in selected.assets
         }
     )
+    assert exercise.body_regions == list(selected.body_regions)
     assert result.catalog_version == (
         get_exercise_catalog_version()
     )
@@ -764,6 +797,7 @@ def _response_with_intensity(
                         name="테스트 운동",
                         catalog_name_en="Test Exercise",
                         exercise_modes=["gym"],
+                        body_regions=["full_body"],
                         duration_minutes=5,
                         intensity=exercise_intensity,
                         instructions=[],
@@ -802,6 +836,25 @@ def test_exercise_item_intensity_can_fall_back_to_result() -> None:
     )
 
     assert response.sessions[0].exercises[0].intensity is None
+
+
+@pytest.mark.parametrize(
+    "invalid_regions",
+    [[], ["other"], ["waist"], ["코어"], ["core", "core"]],
+)
+def test_exercise_item_rejects_invalid_body_regions(
+    invalid_regions: list[str],
+) -> None:
+    with pytest.raises(ValidationError):
+        ExerciseItem(
+            exercise_key="ex_test",
+            name="테스트 운동",
+            catalog_name_en="Test Exercise",
+            exercise_modes=["gym"],
+            body_regions=invalid_regions,
+            duration_minutes=5,
+            instructions=[],
+        )
 
 
 @pytest.mark.parametrize(

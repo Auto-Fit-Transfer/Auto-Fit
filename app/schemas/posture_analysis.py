@@ -20,6 +20,32 @@ PostureVerdict = Literal[
 PostureCameraView = Literal["side", "front"]
 PostureValidationStatus = Literal["validated", "experimental"]
 PostureMovementType = Literal["repetition", "hold"]
+PostureAnalysisErrorCode = Literal[
+    "UNSUPPORTED_EXERCISE",
+    "CAMERA_VIEW_NOT_SUPPORTED",
+    "EXPERIMENTAL_EXERCISE_DISABLED",
+    "ANALYSIS_SIDE_INVALID",
+    "ANALYSIS_SIDE_NOT_ALLOWED",
+    "ANALYSIS_SIDE_REQUIRED",
+    "EXERCISE_KEY_REQUIRED",
+    "EXERCISE_ASSET_MISMATCH",
+    "EMPTY_VIDEO",
+    "VIDEO_FILE_TOO_LARGE",
+    "UNSUPPORTED_VIDEO_TYPE",
+    "VIDEO_DECODE_FAILED",
+    "VIDEO_METADATA_INVALID",
+    "VIDEO_TOO_SHORT",
+    "VIDEO_TOO_LONG",
+    "INSUFFICIENT_FRAMES",
+    "POSE_NOT_DETECTED",
+    "POSE_COVERAGE_LOW",
+    "MOTION_NOT_COMPLETED",
+    "PLANK_HOLD_TOO_SHORT",
+    "TOO_MANY_REPETITIONS",
+    "ANGLE_CALCULATION_FAILED",
+    "MODEL_UNAVAILABLE",
+    "INTERNAL_ERROR",
+]
 
 PostureJointCode = Literal[
     "head",
@@ -63,6 +89,23 @@ class PostureContractModel(BaseModel):
         extra="forbid",
         str_strip_whitespace=True,
     )
+
+
+class PostureAnalysisErrorDetail(PostureContractModel):
+    code: PostureAnalysisErrorCode
+    message: str = Field(min_length=1)
+    fields: list[str] = Field(default_factory=list)
+
+
+class PostureAnalysisErrorResponse(PostureContractModel):
+    detail: str = Field(min_length=1)
+    error: PostureAnalysisErrorDetail
+
+    @model_validator(mode="after")
+    def validate_legacy_detail(self) -> "PostureAnalysisErrorResponse":
+        if self.detail != self.error.message:
+            raise ValueError("detail must match error.message")
+        return self
 
 
 class PostureAnalysisProgress(PostureContractModel):

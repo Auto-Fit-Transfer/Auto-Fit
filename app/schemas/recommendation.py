@@ -155,6 +155,19 @@ ExerciseFocusArea = Literal[
 ]
 
 
+ExerciseBodyRegion = Literal[
+
+    "upper_body",
+
+    "core",
+
+    "lower_body",
+
+    "full_body",
+
+]
+
+
 HomeTrainingEquipment = Literal[
 
     "none",
@@ -634,6 +647,40 @@ class ExerciseItem(BaseModel):
         max_length=2,
 
     )
+
+
+
+    body_regions: list[
+
+        ExerciseBodyRegion
+
+    ] = Field(
+
+        min_length=1,
+
+        max_length=4,
+
+    )
+
+
+
+    @field_validator("body_regions")
+
+    @classmethod
+
+    def validate_unique_body_regions(
+
+        cls,
+
+        value: list[ExerciseBodyRegion],
+
+    ) -> list[ExerciseBodyRegion]:
+
+        if len(value) != len(set(value)):
+
+            raise ValueError("body_regions must be unique")
+
+        return value
 
 
 

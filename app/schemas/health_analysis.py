@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 FreshnessStatus = Literal[
@@ -198,6 +198,15 @@ class WeeklyExerciseScoreInput(BaseModel):
         ge=0,
         le=7,
     )
+
+    @model_validator(mode="after")
+    def validate_goal_aligned_days(self) -> "WeeklyExerciseScoreInput":
+        if self.goal_aligned_completed_days > self.completed_days:
+            raise ValueError(
+                "goal_aligned_completed_days must be less than or equal "
+                "to completed_days"
+            )
+        return self
 
 
 class PreviousHealthScoreInput(BaseModel):
