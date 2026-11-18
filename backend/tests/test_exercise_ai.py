@@ -117,6 +117,43 @@ def test_build_plan_preserves_all_sessions_and_catalog_keys():
     assert [item["plan_session_index"] for item in plan["items"]] == [1, 1, 2]
     assert plan["items"][0]["exercise_key"] == response["result"]["sessions"][0]["exercises"][0]["exercise_key"]
     assert all(item["execution_type"] == "time_based" for item in plan["items"])
+    assert all(len(item["body_regions"]) == 1 for item in plan["items"])
+
+
+def test_catalog_maps_waist_to_core_and_keeps_full_body_separate():
+    _, catalog = load_catalog()
+    assert {record.body_regions for record in catalog.values()} == {
+        ("upper_body",), ("core",), ("lower_body",), ("full_body",),
+    }
+    assert catalog["ex_846f603683467e"].body_regions == ("core",)
+
+
+def test_build_plan_accepts_matching_ai_body_regions():
+    response = ai_response()
+    first = response["result"]["sessions"][0]["exercises"][0]
+    _, catalog = load_catalog()
+    expected = list(catalog[first["exercise_key"]].body_regions)
+    first["body_regions"] = expected
+    assert build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")["items"][0]["body_regions"] == expected
+
+
+@pytest.mark.parametrize("body_regions", [[], ["core", "core"], ["unknown"], ["full_body", "core"]])
+def test_build_plan_rejects_invalid_body_regions(body_regions):
+    response = ai_response()
+    response["result"]["sessions"][0]["exercises"][0]["body_regions"] = body_regions
+    with pytest.raises(ExerciseAIError) as error:
+        build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
+    assert "response_structure_invalid" in error.value.reason_codes
+
+
+def test_build_plan_rejects_body_regions_mismatching_catalog():
+    response = ai_response()
+    first = response["result"]["sessions"][0]["exercises"][0]
+    _, catalog = load_catalog()
+    first["body_regions"] = ["upper_body" if catalog[first["exercise_key"]].body_regions != ("upper_body",) else "core"]
+    with pytest.raises(ExerciseAIError) as error:
+        build_plan(response, PREFERENCES, CONTEXT, "2026-11-03")
+    assert error.value.reason_codes == ("body_regions_mismatch",)
 
 
 def test_build_plan_preserves_explicit_set_and_rep_prescription():
@@ -571,8 +608,13 @@ def test_latest_api_returns_dated_ai_sessions_and_status(monkeypatch):
                 rows = [{"exercise_recommendation_id": recommendation_id,
                          "generator": "auto-fit-ai", "status": "active"}]
             elif url.endswith("/exercise_items"):
+                assert "body_regions" in params["select"]
                 rows = [{"exercise_item_id": "30000000-0000-4000-8000-000000000001",
-                         "plan_session_id": plan_id, "exercise_name": "스쿼트"}]
+                         "plan_session_id": plan_id, "exercise_name": "스쿼트",
+                         "body_regions": ["lower_body"]},
+                        {"exercise_item_id": "30000000-0000-4000-8000-000000000002",
+                         "plan_session_id": plan_id, "exercise_key": "ex_846f603683467e",
+                         "body_regions": None}]
             elif url.endswith("/exercise_plan_sessions"):
                 rows = [{"exercise_plan_session_id": plan_id,
                          "exercise_recommendation_id": recommendation_id,
@@ -612,6 +654,8 @@ def test_latest_api_returns_dated_ai_sessions_and_status(monkeypatch):
         result = response.json()["result"]
         assert result["plan_sessions"][0]["status"] == "completed"
         assert result["items"][0]["plan_session_id"] == plan_id
+        assert result["items"][0]["body_regions"] == ["lower_body"]
+        assert result["items"][1]["body_regions"] is None
         assert result["context"]["available_equipment"] == ["machine"]
     finally:
         main.app.dependency_overrides.clear()

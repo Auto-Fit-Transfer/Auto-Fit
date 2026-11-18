@@ -79,6 +79,9 @@
           "ready": {
             "title": "Ready",
             "type": "boolean"
+          },
+          "score_context": {
+            "$ref": "#/components/schemas/AnalysisScoreContext"
           }
         },
         "required": [
@@ -87,6 +90,15 @@
           "diet_context"
         ],
         "title": "AnalysisInputResponse",
+        "type": "object"
+      },
+      "AnalysisScoreContext": {
+        "properties": {
+          "weekly_exercise": {
+            "$ref": "#/components/schemas/WeeklyExerciseScoreInput"
+          }
+        },
+        "title": "AnalysisScoreContext",
         "type": "object"
       },
       "AnalysisStrategy": {
@@ -8902,6 +8914,58 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "WeeklyExerciseScoreInput": {
+        "properties": {
+          "completed_days": {
+            "maximum": 7.0,
+            "minimum": 0.0,
+            "title": "Completed Days",
+            "type": "integer"
+          },
+          "completed_minutes": {
+            "minimum": 0.0,
+            "title": "Completed Minutes",
+            "type": "integer"
+          },
+          "goal_aligned_completed_days": {
+            "maximum": 7.0,
+            "minimum": 0.0,
+            "title": "Goal Aligned Completed Days",
+            "type": "integer"
+          },
+          "goal_type": {
+            "enum": [
+              "muscle_gain",
+              "body_fat_loss",
+              "weight_management",
+              "regular_exercise"
+            ],
+            "title": "Goal Type",
+            "type": "string"
+          },
+          "target_days": {
+            "maximum": 7.0,
+            "minimum": 1.0,
+            "title": "Target Days",
+            "type": "integer"
+          },
+          "target_minutes": {
+            "minimum": 1.0,
+            "title": "Target Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "goal_type",
+          "target_minutes",
+          "completed_minutes",
+          "target_days",
+          "completed_days",
+          "goal_aligned_completed_days"
+        ],
+        "title": "WeeklyExerciseScoreInput",
+        "type": "object"
+      },
       "WeeklyGenerateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -17549,7 +17613,7 @@
     },
     "/api/health-assessments/input": {
       "get": {
-        "description": "본인의 확정된 최신 건강검진 OCR 값, 인바디, 사용 가능한 냉장고 재료와 알레르기를 한 응답으로 반환합니다. 두 건강 자료가 모두 있으면 ready=true이며, 누락 자료는 missing에 표시합니다.",
+        "description": "본인의 확정된 최신 건강검진 OCR 값, 인바디, 사용 가능한 냉장고 재료와 알레르기를 한 응답으로 반환합니다. 원본 기록의 주간 운동 집계가 완전할 때만 score_context.weekly_exercise를 포함합니다. 두 건강 자료가 모두 있으면 ready=true이며, 누락 자료는 missing에 표시합니다.",
         "operationId": "analysis_input_api_health_assessments_input_get",
         "parameters": [
           {

@@ -1205,7 +1205,7 @@ async def fetch_latest_exercise_recommendation(
     item_params = {
         "select": (
             "exercise_item_id,exercise_recommendation_id,exercise_type_id,"
-            "plan_session_id,exercise_key,exercise_name,sequence_order,"
+            "plan_session_id,exercise_key,exercise_name,body_regions,sequence_order,"
             "duration_minutes,sets,repetitions,"
             "calories_burned,intensity,instruction,execution_type,"
             "target_duration_seconds,target_weight_kg,rest_seconds"
@@ -1726,6 +1726,55 @@ async def enrich_exercise_history_with_recommendation_state(
             },
         })
     return enriched
+
+
+async def enrich_exercise_history_with_body_regions(
+    history: list[dict[str, Any]],
+    settings: Settings,
+) -> list[dict[str, Any]]:
+    """Attach the stored region snapshot to each owned session's exercise log."""
+    item_ids = sorted({
+        str(log["exercise_item_id"])
+        for entry in history for log in entry["logs"]
+        if log.get("exercise_item_id")
+    })
+    items: dict[str, dict[str, Any]] = {}
+    if item_ids:
+        async with retry_pgrst303_scope():
+            async with client_scope() as client:
+                for offset in range(0, len(item_ids), 100):
+                    batch = item_ids[offset:offset + 100]
+                    response = await get_with_pgrst303_retry(
+                        client,
+                        f"{settings.supabase_url}/rest/v1/exercise_items",
+                        headers=service_headers(settings),
+                        params={
+                            "select": "exercise_item_id,exercise_recommendation_id,body_regions",
+                            "exercise_item_id": f"in.({','.join(batch)})",
+                        },
+                    )
+                    if not response.is_success:
+                        raise HTTPException(502, detail="Supabase exercise body regions query failed")
+                    items.update({str(row["exercise_item_id"]): row for row in response.json()})
+    return [
+        {
+            **entry,
+            "logs": [
+                {
+                    **log,
+                    "body_regions": (
+                        item.get("body_regions")
+                        if (item := items.get(str(log.get("exercise_item_id"))))
+                        and str(item.get("exercise_recommendation_id"))
+                        == str(entry["session"].get("exercise_recommendation_id"))
+                        else None
+                    ),
+                }
+                for log in entry["logs"]
+            ],
+        }
+        for entry in history
+    ]
 
 
 async def fetch_completed_exercise_sessions(
@@ -4153,6 +4202,7 @@ async def get_exercise_history(
     history = await enrich_exercise_history_with_recommendation_state(
         history, user.id, settings,
     )
+    history = await enrich_exercise_history_with_body_regions(history, settings)
     return {
         "period": {"from": from_date.isoformat(), "to": to_date.isoformat()},
         "count": len(history),

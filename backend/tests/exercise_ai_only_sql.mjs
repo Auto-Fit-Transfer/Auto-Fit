@@ -8,6 +8,9 @@ const db = new PGlite();
 const migration = readFileSync(new URL(
   '../../supabase/migrations/20261104081014_remove_legacy_exercise_paths.sql', import.meta.url,
 ), 'utf8');
+const bodyRegionsMigration = readFileSync(new URL(
+  '../../supabase/migrations/20261118035110_exercise_body_regions.sql', import.meta.url,
+), 'utf8');
 const owner = '00000000-0000-4000-8000-000000000001';
 const other = '00000000-0000-4000-8000-000000000002';
 const context = '00000000-0000-4000-8000-000000000003';
@@ -109,7 +112,32 @@ try {
   assert.equal((await db.query('select generator from public.exercise_recommendations where exercise_recommendation_id=$1', [historical])).rows[0].generator, 'legacy');
   await db.exec('reset role');
   await db.exec(migration);
-  console.log('AI-only SQL passed: RPC removal, AI contract, ownership, start/resume and pre-archive history.');
+  await db.exec(bodyRegionsMigration);
+  const legacyContext = '00000000-0000-4000-8000-000000000005';
+  const regionContext = '00000000-0000-4000-8000-000000000006';
+  await db.query('insert into public.exercise_recommendation_contexts values ($1,$2,null)', [legacyContext, owner]);
+  await db.query('insert into public.exercise_recommendation_contexts values ($1,$2,null)', [regionContext, owner]);
+  const createWithRegions = (contextId, exercises) => db.query(
+    'select public.create_exercise_recommendation($1,$2,$3,$4) as result',
+    [owner, contextId, plan, exercises],
+  );
+  const valid = [{ ...items[0], body_regions: ['full_body'] }];
+  for (const regions of [null, [], ['core', 'core'], ['other'], ['full_body', 'core']]) {
+    const invalid = [{ ...items[0] }];
+    invalid[0].body_regions = regions;
+    await assert.rejects(() => createWithRegions(regionContext, invalid), /body_regions/);
+  }
+  const transitional = (await createWithRegions(legacyContext, items)).rows[0].result;
+  assert.equal(transitional.items[0].body_regions, null);
+  const withRegions = (await createWithRegions(regionContext, valid)).rows[0].result;
+  assert.deepEqual(withRegions.items[0].body_regions, ['full_body']);
+  assert.deepEqual((await db.query('select body_regions from public.exercise_items where exercise_item_id=$1',
+    [withRegions.items[0].exercise_item_id])).rows[0].body_regions, ['full_body']);
+  await assert.rejects(() => db.query(
+    'update public.exercise_items set body_regions=$1 where exercise_item_id=$2',
+    [['core', 'core'], withRegions.items[0].exercise_item_id],
+  ), /exercise_items_body_regions_valid/);
+  console.log('AI-only SQL passed: RPC ownership, body region validation, persistence and historical rows.');
 } finally {
   await db.close();
 }

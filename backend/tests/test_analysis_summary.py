@@ -316,6 +316,8 @@ def test_analysis_input_combines_latest_confirmed_checkup_and_inbody(monkeypatch
             return httpx.Response(200, json=[{"allergy_type_id": "allergy-1", "custom_name": None}])
         if request.url.path.endswith("/allergy_types"):
             return httpx.Response(200, json=[{"allergy_type_id": "allergy-1", "name": "우유"}])
+        if request.url.path.endswith("/exercise_goals"):
+            return httpx.Response(200, json=[])
         raise AssertionError(f"Unexpected request: {request.url.path}")
 
     monkeypatch.setattr(summary.httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
@@ -329,6 +331,7 @@ def test_analysis_input_combines_latest_confirmed_checkup_and_inbody(monkeypatch
     assert result.body_composition.body_fat_percentage == 32
     assert result.diet_context.inventory[0].name == "두부"
     assert result.diet_context.allergies == ["우유"]
+    assert result.score_context == {}
     assert {call.url.params["user_id"] for call in calls if "user_id" in call.url.params} == {"eq.owner"}
     health_calls = [call for call in calls if call.url.path.endswith(("/health_checkups", "/body_compositions"))]
     assert all(call.url.params["limit"] == "1" for call in health_calls)
@@ -357,6 +360,30 @@ def test_analysis_input_reports_missing_source_without_fabricating_values(monkey
     assert result.missing == ["health_checkup"]
     assert result.health_checkup is None
     assert result.body_composition is not None
+
+
+def test_analysis_input_includes_complete_weekly_exercise_only(monkeypatch):
+    real = httpx.AsyncClient
+
+    def handler(request):
+        return httpx.Response(200, json=[], request=request)
+
+    async def weekly(user_id, settings):
+        assert user_id == "owner"
+        return {"weekly_exercise": {
+            "goal_type": "body_fat_loss", "target_minutes": 90,
+            "completed_minutes": 30, "target_days": 3,
+            "completed_days": 2, "goal_aligned_completed_days": 1,
+        }}
+
+    monkeypatch.setattr(summary.httpx, "AsyncClient", lambda **kwargs: real(transport=httpx.MockTransport(handler), **kwargs))
+    monkeypatch.setattr(summary, "fetch_weekly_exercise_score_context", weekly)
+    result = asyncio.run(summary.fetch_analysis_input("owner", TEST_SETTINGS))
+    assert result.model_dump()["score_context"] == {"weekly_exercise": {
+        "goal_type": "body_fat_loss", "target_minutes": 90,
+        "completed_minutes": 30, "target_days": 3,
+        "completed_days": 2, "goal_aligned_completed_days": 1,
+    }}
 
 
 def test_analysis_input_endpoint_is_authenticated_and_documented(monkeypatch):
@@ -388,10 +415,18 @@ def test_analysis_input_endpoint_is_authenticated_and_documented(monkeypatch):
                 "inventory": [],
                 "allergies": [],
             },
+            "score_context": {},
         }
         operation = main.app.openapi()["paths"]["/api/health-assessments/input"]["get"]
         assert operation["security"]
         assert "AnalysisInputResponse" in main.app.openapi()["components"]["schemas"]
+        schemas = main.app.openapi()["components"]["schemas"]
+        assert schemas["AnalysisInputResponse"]["properties"]["score_context"] == {
+            "$ref": "#/components/schemas/AnalysisScoreContext",
+        }
+        assert schemas["AnalysisScoreContext"]["properties"]["weekly_exercise"] == {
+            "$ref": "#/components/schemas/WeeklyExerciseScoreInput",
+        }
     finally:
         main.app.dependency_overrides.clear()
 

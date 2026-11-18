@@ -423,6 +423,7 @@
     "20261109042905_exercise_chat_proposal_exchange.sql",
     "20261109061727_posture_analysis_contract_v11.sql",
     "20261109070000_posture_analysis_atomic_result.sql",
-    "20261110014003_exercise_chat_pending_retention.sql"
+    "20261110014003_exercise_chat_pending_retention.sql",
+    "20261118035110_exercise_body_regions.sql"
   ]
 }

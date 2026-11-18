@@ -4,7 +4,7 @@ import asyncio
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Literal, NotRequired, TypedDict
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from backend.app.analysis_popups import POPUP_METRIC_KEYS, PopupResponse, fetch_popup_data
 from backend.app.http_client import client_scope
+from backend.app.weekly_exercise_score import HealthExerciseGoal, fetch_weekly_exercise_score_context
 
 KST = ZoneInfo("Asia/Seoul")
 
@@ -160,12 +161,32 @@ class DietContextAnalysisInput(BaseModel):
     allergies: list[str] = Field(default_factory=list, max_length=24)
 
 
+class WeeklyExerciseScoreInput(BaseModel):
+    goal_type: HealthExerciseGoal
+    target_minutes: int = Field(ge=1)
+    completed_minutes: int = Field(ge=0)
+    target_days: int = Field(ge=1, le=7)
+    completed_days: int = Field(ge=0, le=7)
+    goal_aligned_completed_days: int = Field(ge=0, le=7)
+
+    @model_validator(mode="after")
+    def validate_aligned_days(self) -> "WeeklyExerciseScoreInput":
+        if self.goal_aligned_completed_days > self.completed_days:
+            raise ValueError("goal-aligned days cannot exceed completed days")
+        return self
+
+
+class AnalysisScoreContext(TypedDict):
+    weekly_exercise: NotRequired[WeeklyExerciseScoreInput]
+
+
 class AnalysisInputResponse(BaseModel):
     ready: bool
     missing: list[Literal["health_checkup", "body_composition"]]
     health_checkup: HealthCheckupAnalysisInput | None = None
     body_composition: BodyCompositionAnalysisInput | None = None
     diet_context: DietContextAnalysisInput
+    score_context: AnalysisScoreContext = Field(default_factory=dict)
 
 
 def prepare_inventory_snapshot(
@@ -380,6 +401,7 @@ async def fetch_analysis_input(user_id: str, settings: Any) -> AnalysisInputResp
         if isinstance(name := (row.get("custom_name") or allergy_names.get(str(row.get("allergy_type_id")))), str)
         and name.strip()
     ))
+    score_context = await fetch_weekly_exercise_score_context(user_id, settings)
     return AnalysisInputResponse(
         ready=not missing,
         missing=missing,
@@ -390,6 +412,7 @@ async def fetch_analysis_input(user_id: str, settings: Any) -> AnalysisInputResp
             inventory=prepare_inventory_snapshot(inventory_rows, food_names),
             allergies=allergies,
         ),
+        score_context=score_context,
     )
 
 
@@ -604,7 +627,7 @@ def create_analysis_summary_router(current_user_dependency: Callable, settings_d
 
     @router.get(
         "/input", response_model=AnalysisInputResponse, summary="건강검진·인바디 통합 분석 입력 조회",
-        description="본인의 확정된 최신 건강검진 OCR 값, 인바디, 사용 가능한 냉장고 재료와 알레르기를 한 응답으로 반환합니다. 두 건강 자료가 모두 있으면 ready=true이며, 누락 자료는 missing에 표시합니다.",
+        description="본인의 확정된 최신 건강검진 OCR 값, 인바디, 사용 가능한 냉장고 재료와 알레르기를 한 응답으로 반환합니다. 원본 기록의 주간 운동 집계가 완전할 때만 score_context.weekly_exercise를 포함합니다. 두 건강 자료가 모두 있으면 ready=true이며, 누락 자료는 missing에 표시합니다.",
         responses={401: {"description": "로그인 필요"}, 502: {"description": "자료 조회 또는 저장 형식 오류"}},
     )
     async def analysis_input(user: Any = Depends(current_user_dependency), settings: Any = Depends(settings_dependency)):

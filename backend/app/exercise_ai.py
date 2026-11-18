@@ -8,13 +8,15 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from urllib.parse import quote, urlsplit
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 
 CATALOG_PATH = Path(__file__).resolve().parents[1] / "data/exercise_assets/exercise_asset_catalog.csv"
+BodyRegion = Literal["upper_body", "core", "lower_body", "full_body"]
+BODY_REGIONS = frozenset({"upper_body", "core", "lower_body", "full_body"})
 
 
 class ExerciseAIError(ValueError):
@@ -54,6 +56,15 @@ class CatalogExercise:
     home_equipment: frozenset[str]
     gym_styles: frozenset[str]
     asset_paths: tuple[tuple[str, str, str], ...]
+    body_regions: tuple[BodyRegion, ...]
+
+
+def _catalog_body_region(row: dict[str, str]) -> BodyRegion:
+    focus = row["focus_area"].strip()
+    region = "core" if focus == "other" and row["focus_area_detail"].strip() == "Waist" else focus
+    if region not in BODY_REGIONS:
+        raise ExerciseAIError("Exercise catalog has an unknown body region", reason_codes=("catalog_unavailable",))
+    return cast(BodyRegion, region)
 
 
 @lru_cache(maxsize=1)
@@ -72,9 +83,13 @@ def load_catalog() -> tuple[str, dict[str, CatalogExercise]]:
                 if not key or not name:
                     raise ExerciseAIError("Exercise catalog is invalid", reason_codes=("catalog_unavailable",))
                 training_type = row["recommended_training_type"].strip()
+                body_region = _catalog_body_region(row)
                 group = groups.setdefault(key, {"name": name, "training_type": training_type,
                                                 "training_type_by_mode": {}, "modes": set(),
-                                                "equipment": set(), "styles": set(), "assets": {}})
+                                                "equipment": set(), "styles": set(), "assets": {},
+                                                "body_region": body_region})
+                if group["body_region"] != body_region:
+                    raise ExerciseAIError("Exercise catalog has conflicting body regions", reason_codes=("catalog_unavailable",))
                 mode = row["exercise_mode"].strip()
                 group["modes"].add(mode)
                 group["assets"].setdefault((mode, row["gender"].strip()), row["relative_path"].strip())
@@ -89,7 +104,8 @@ def load_catalog() -> tuple[str, dict[str, CatalogExercise]]:
             key: CatalogExercise(value["name"], value["training_type"],
                                  tuple(value["training_type_by_mode"].items()), frozenset(value["modes"]),
                                  frozenset(value["equipment"]), frozenset(value["styles"]),
-                                 tuple((mode, gender, path) for (mode, gender), path in value["assets"].items()))
+                                 tuple((mode, gender, path) for (mode, gender), path in value["assets"].items()),
+                                 (value["body_region"],))
             for key, value in groups.items()
         }
     except (OSError, KeyError, UnicodeError) as exc:
@@ -136,11 +152,22 @@ class AIExercise(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     catalog_name_en: str = Field(min_length=1, max_length=300)
     exercise_modes: list[Literal["gym", "home_training"]] = Field(min_length=1, max_length=2)
+    # The old AI deployment omits this field. Derive it from the identical, versioned catalog
+    # until the AI response rollout is complete; every stored new item still has a nonempty array.
+    body_regions: list[BodyRegion] | None = Field(default=None, min_length=1, max_length=4)
     duration_minutes: int = Field(ge=1, le=200)
     sets: int | None = Field(default=None, ge=1, le=20)
     repetitions: int | None = Field(default=None, ge=1, le=10000)
     intensity: str | None = None
     instructions: list[str] = Field(default_factory=list, max_length=3)
+
+    @field_validator("body_regions")
+    @classmethod
+    def validate_body_regions(cls, regions: list[BodyRegion] | None) -> list[BodyRegion] | None:
+        if regions is not None and (len(regions) != len(set(regions))
+                                    or ("full_body" in regions and len(regions) != 1)):
+            raise ValueError("body_regions must be unique, with full_body on its own")
+        return regions
 
 
 class AISession(BaseModel):
@@ -291,6 +318,9 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
                     or set(exercise.exercise_modes) != expected_modes
                     or exercise.exercise_key in seen):
                 raise ExerciseAIError("Exercise AI returned an invalid catalog exercise", reason_codes=("catalog_exercise_invalid",))
+            body_regions = list(record.body_regions)
+            if exercise.body_regions is not None and exercise.body_regions != body_regions:
+                raise ExerciseAIError("Exercise AI returned incorrect body regions", reason_codes=("body_regions_mismatch",))
             if (not exercise.name.strip()
                     or any(not part.strip() or len(part) > 300 for part in exercise.instructions)):
                 raise ExerciseAIError("Exercise AI returned invalid instructions", reason_codes=("instructions_invalid",))
@@ -312,6 +342,7 @@ def build_plan(response: dict[str, Any], preferences: dict[str, Any],
                 "exercise_key": exercise.exercise_key,
                 "exercise_type_name": type_name,
                 "exercise_name": exercise.name.strip(),
+                "body_regions": body_regions,
                 "duration_minutes": exercise.duration_minutes,
                 "sets": exercise.sets,
                 "repetitions": exercise.repetitions,
