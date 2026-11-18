@@ -2,6 +2,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { PostureResultView, PostureShootView, PostureTips, PostureWaitView } from '@/src/components/a/PostureViews';
+import { failureText } from '@/src/features/exercise/postureFlow';
 
 // Development only: renewal A's 자세 분석 with sample values, to look at the screens.
 // ?state=lie | recording | review | blocked | tips | wait | waitfail | result | ten | one | broken
@@ -27,7 +28,7 @@ export default function APostureSample() {
   if (state === 'wait' || state === 'waitfail') {
     return (
       <PostureWaitView
-        error={state === 'waitfail' ? '분석을 끝내지 못했어요. 온몸이 잘 보이게 다시 찍어 주세요.' : null}
+        error={state === 'waitfail' ? failureText('POSE_COVERAGE_LOW') : null}
         failed={state === 'waitfail'}
         meta="스쿼트 · 옆에서 · 10초 영상"
         onAgain={state === 'waitfail' ? nothing : undefined}

@@ -29,6 +29,21 @@ export function postureVideoProblem({ durationMs, sizeBytes, mimeType }: {
   return null;
 }
 
+// Why an analysis failed, by the AI's error code (ai fa7ef84) as the backend keeps it in the job's failure_code.
+// Any other code, such as the backend's own AI_INPUT_REJECTED, gets null and the screen's general text.
+const FAILURES: Record<string, string> = {
+  VIDEO_TOO_SHORT: '영상이 너무 짧아요. 1초 넘게 찍어 주세요.',
+  POSE_NOT_DETECTED: '사람이 보이지 않았어요. 온몸이 화면에 들어오게 다시 찍어 주세요.',
+  POSE_COVERAGE_LOW: '몸이 잘 보이지 않았어요. 밝은 곳에서 머리부터 발끝까지 보이게 찍어 주세요.',
+  MOTION_NOT_COMPLETED: '끝까지 한 동작을 찾지 못했어요. 시작 자세부터 돌아올 때까지 찍어 주세요.',
+  PLANK_HOLD_TOO_SHORT: '플랭크 자세가 짧았어요. 1초 넘게 버텨 주세요.',
+  CAMERA_VIEW_NOT_SUPPORTED: '지금은 이 운동을 분석할 수 없어요.',
+  EXERCISE_ASSET_MISMATCH: '지금은 이 운동을 분석할 수 없어요.',
+  EXPERIMENTAL_EXERCISE_DISABLED: '지금은 이 운동을 분석할 수 없어요.',
+  MODEL_UNAVAILABLE: '분석 서버가 잠시 쉬고 있어요. 조금 뒤에 다시 해 주세요.',
+};
+export const failureText = (code: string | null | undefined) => (code && Object.hasOwn(FAILURES, code) ? FAILURES[code] : null);
+
 // After an upload error the contract says to read the job first, never to resend blindly.
 export function recoveryAction(status: string): 'reupload' | 'wait' | 'result' | 'new_job' {
   if (status === 'awaiting_upload') return 'reupload';

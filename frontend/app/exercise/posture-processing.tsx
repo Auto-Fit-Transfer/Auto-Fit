@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 import { ApiError, getApiErrorMessage } from '@/src/api/client';
 import { createPostureJob, getPostureCapabilities, getPostureJob, uploadPostureVideo, type PostureVideo } from '@/src/api/posture';
 import { PostureWaitView } from '@/src/components/a/PostureViews';
-import { recoveryAction, stepOf } from '@/src/features/exercise/postureFlow';
+import { failureText, recoveryAction, stepOf } from '@/src/features/exercise/postureFlow';
 
 const steps = [
   { title: '영상 올리기', description: '영상을 서버로 보내요' },
@@ -70,7 +70,7 @@ export default function PostureProcessingScreen() {
       if (job) setStep((current) => Math.max(current, stepOf(job.status)));
       if (!duringUpload && job?.status === 'completed') return showResult(jobId);
       if (!duringUpload && job?.status === 'failed') {
-        setError('분석을 끝내지 못했어요. 온몸이 잘 보이게 다시 찍어 주세요.');
+        setError(failureText(job.failure_code) ?? '분석을 끝내지 못했어요. 온몸이 잘 보이게 다시 찍어 주세요.');
         setNext('again');
         return;
       }
@@ -104,7 +104,7 @@ export default function PostureProcessingScreen() {
       const action = job ? recoveryAction(job.status) : 'reupload';
       if (action === 'result') return showResult(jobId);
       if (action === 'wait') return void follow(jobId, false);
-      setError(problemText(cause));
+      setError(failureText(job?.failure_code) ?? problemText(cause));
       if (action === 'new_job') jobRef.current = null;
       setNext(action === 'reupload' ? 'retry' : 'again');
     }

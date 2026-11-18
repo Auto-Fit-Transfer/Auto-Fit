@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { angleRow, postureVideoProblem, postureVideoType, recoveryAction, secondsLabel, stepOf } from '../src/features/exercise/postureFlow.ts';
+import { angleRow, postureVideoProblem, postureVideoType, recoveryAction, secondsLabel, stepOf, failureText } from '../src/features/exercise/postureFlow.ts';
 
 test('the video type follows the file, so the server sees a matching container', () => {
   assert.deepEqual(postureVideoType('file:///cache/Camera/abc.MOV'), { mimeType: 'video/quicktime', name: 'posture.mov' });
@@ -40,4 +40,13 @@ test('an angle row compares the measured value with the allowed range', () => {
   assert.equal(angleRow({ angle_code: 'hip_flexion', measured_degrees: 60, target_min_degrees: 75, target_max_degrees: null }).status, '15° 모자람');
   assert.equal(angleRow({ angle_code: 'new_code', measured_degrees: 10, target_min_degrees: null, target_max_degrees: 20 }).label, '각도', 'no English code on screen');
   assert.equal(secondsLabel(7_400), '0:07');
+});
+
+test('a failed analysis says why, by the AI error code the job keeps', () => {
+  assert.match(failureText('POSE_NOT_DETECTED'), /온몸이 화면에/);
+  assert.match(failureText('PLANK_HOLD_TOO_SHORT'), /1초 넘게 버텨/);
+  assert.match(failureText('MODEL_UNAVAILABLE'), /조금 뒤에/);
+  assert.equal(failureText('AI_INPUT_REJECTED'), null, 'the backend’s own code until it keeps the AI’s');
+  assert.equal(failureText(null), null);
+  assert.equal(failureText('toString'), null, 'only the listed codes');
 });
