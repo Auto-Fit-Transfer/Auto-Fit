@@ -12,7 +12,7 @@ import {
 
 import { completeExerciseSession, recordExerciseDiscomfort, recordExerciseItemResult, type ExerciseDiscomfortInput } from '@/src/api/exercise';
 import { awardTierActivity } from '@/src/api/tier';
-import { earnsWorkoutPoints, pointsOutcome, type WorkoutPoints } from '@/src/features/exercise/workoutPoints';
+import { earnsWorkoutPoints, pointsOutcome, recordedMinutes, refusalOutcome, type WorkoutPoints } from '@/src/features/exercise/workoutPoints';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { logError } from '@/src/lib/logError';
 import { mergeAdjustedExercises } from './exerciseAdjustment';
@@ -516,7 +516,7 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     task = recordExerciseItemResult(sessionId, result.sessionItemId, {
       completed: result.completed,
       completedSets: result.completedSets,
-      durationMinutes: Math.max(0, Math.round(result.elapsedSeconds / 60)),
+      durationMinutes: recordedMinutes(result.elapsedSeconds),
       performedRepetitions: result.performedRepetitions,
       performedWeightKg: result.performedWeightKg,
       skipReason: result.skipped ? result.skipReason ?? '사용자가 운동을 건너뜀' : null,
@@ -653,7 +653,7 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     await completeExerciseSession(current.sessionId);
     // Ask for the points only when the server's rule can be met; the completed session stays valid either way.
     setWorkoutPoints(earnsWorkoutPoints(current.results)
-      ? await awardTierActivity('recommended_workout_completed', current.sessionId).then(pointsOutcome, () => null)
+      ? await awardTierActivity('recommended_workout_completed', current.sessionId).then(pointsOutcome, refusalOutcome)
       : 'not_awarded');
     const completedSummary = summarizeSession(current);
     completedSessionRef.current = { sessionId: current.sessionId, summary: completedSummary };
