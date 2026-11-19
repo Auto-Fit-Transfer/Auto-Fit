@@ -14,10 +14,11 @@ OTHER = "00000000-0000-4000-8000-000000000002"
 RECOMMENDATION = "00000000-0000-4000-8000-000000000010"
 ROUTINE = "00000000-0000-4000-8000-000000000020"
 ITEM = "00000000-0000-4000-8000-000000000030"
+SESSION_ITEM = "00000000-0000-4000-8000-000000000031"
 
 
 def make_client(monkeypatch, *, fail_items=False,
-                recommendation_generator="auto-fit-ai"):
+                recommendation_generator="auto-fit-ai", start_error=None):
     requests = []
     parents = []
     children = []
@@ -25,6 +26,17 @@ def make_client(monkeypatch, *, fail_items=False,
     def handler(request):
         requests.append(request)
         table = request.url.path.rsplit("/", 1)[-1]
+        if request.method == "POST" and table == "start_saved_workout_routine":
+            if start_error:
+                return httpx.Response(400, json={"message": start_error})
+            return httpx.Response(200, json={
+                "session": {"exercise_session_id": "00000000-0000-4000-8000-000000000040",
+                            "user_workout_routine_id": ROUTINE},
+                "items": [{"exercise_item_id": SESSION_ITEM,
+                           "saved_routine_session_item_id": SESSION_ITEM,
+                           "user_workout_routine_item_id": ITEM,
+                           "exercise_name": "스쿼트"}],
+            })
         if request.method == "GET":
             if table == "exercise_recommendations":
                 return httpx.Response(200, json=[{"exercise_recommendation_id": RECOMMENDATION,
@@ -139,3 +151,40 @@ def test_requires_authentication(monkeypatch):
     client, requests, _, _ = make_client(monkeypatch)
     assert client.get("/api/exercise/saved-routines", headers={"Authorization": ""}).status_code == 401
     assert not requests
+
+
+def test_start_saved_routine_uses_owned_id_and_returns_session_items(monkeypatch):
+    client, requests, _, _ = make_client(monkeypatch)
+    response = client.post(f"/api/exercise/saved-routines/{ROUTINE}/start")
+    assert response.status_code == 200, response.text
+    assert response.json()["result"]["items"][0]["exercise_item_id"] == SESSION_ITEM
+    rpc = requests[-1]
+    assert rpc.url.path.endswith("/rpc/start_saved_workout_routine")
+    assert __import__("json").loads(rpc.content) == {
+        "p_user_id": OWNER, "p_routine_id": ROUTINE,
+    }
+
+
+def test_start_saved_routine_does_not_expose_other_users_or_accept_bad_ids(monkeypatch):
+    client, requests, _, _ = make_client(
+        monkeypatch, start_error="Active saved workout routine not found"
+    )
+    assert client.post(f"/api/exercise/saved-routines/{OTHER}/start").status_code == 404
+    assert client.post("/api/exercise/saved-routines/not-a-uuid/start").status_code == 422
+    assert client.post(f"/api/exercise/saved-routines/{ROUTINE}/start",
+                       headers={"Authorization": ""}).status_code == 401
+    assert len(requests) == 1
+
+
+def test_start_saved_routine_reports_conflict_and_storage_failure_separately(monkeypatch):
+    busy, _, _, _ = make_client(
+        monkeypatch, start_error="Another saved workout routine is in progress"
+    )
+    conflict = busy.post(f"/api/exercise/saved-routines/{ROUTINE}/start")
+    assert conflict.status_code == 409
+    assert conflict.json()["detail"]["code"] == "SAVED_ROUTINE_IN_PROGRESS"
+
+    unavailable, _, _, _ = make_client(monkeypatch, start_error="database unavailable")
+    failure = unavailable.post(f"/api/exercise/saved-routines/{ROUTINE}/start")
+    assert failure.status_code == 502
+    assert failure.json()["detail"]["code"] == "SAVED_ROUTINE_START_FAILED"

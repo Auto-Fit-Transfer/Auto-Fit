@@ -142,6 +142,12 @@ def test_presentation_flow_from_profile_to_progress(monkeypatch) -> None:
     async def completed_sessions(request_user_id, settings):
         return [state["session"]] if state["session"]["status"] == "completed" else []
 
+    async def exercise_session_source(request_user_id, request_session_id, settings):
+        assert request_user_id == user_id
+        assert request_session_id == session_id
+        assert settings == TEST_SETTINGS
+        return {"user_workout_routine_id": None}
+
     async def exchange(self, request_chat_id, request_id, content, answer=None):
         assert self.user_id == user_id and str(request_chat_id) == chat_id
         if answer is None:
@@ -160,6 +166,7 @@ def test_presentation_flow_from_profile_to_progress(monkeypatch) -> None:
     monkeypatch.setattr(main, "fetch_latest_exercise_recommendation", fetch_recommendation)
     monkeypatch.setattr(main, "fetch_exercise_context_for_recommendation", fetch_context_for_recommendation)
     monkeypatch.setattr(main, "call_exercise_session_rpc", exercise_rpc)
+    monkeypatch.setattr(main, "fetch_owned_exercise_session_source", exercise_session_source)
     monkeypatch.setattr(main, "fetch_completed_exercise_sessions", completed_sessions)
     monkeypatch.setattr(ChatStore, "exchange", exchange)
     async def messages(self, chat_id, limit, before):

@@ -70,6 +70,47 @@ def test_unknown_item_metadata_omits_the_entire_ai_weekly_object():
     ), "weight_loss") == {}
 
 
+def test_saved_routine_logs_count_minutes_without_recommendation_points():
+    sessions = {
+        **SESSIONS,
+        "custom": {"status": "completed", "exercise_recommendation_id": None,
+                   "user_workout_routine_id": "custom-routine",
+                   "saved_routine_goal": None},
+        "saved": {"status": "stopped", "exercise_recommendation_id": None,
+                  "user_workout_routine_id": "saved-recommendation",
+                  "saved_routine_goal": "muscle_gain"},
+    }
+    custom = log("custom", None, 6, "2026-11-17T08:00:00+09:00",
+                 saved_routine_session_item_id="custom-item", completed_sets=1)
+    saved = log("saved", None, 4, "2026-11-18T08:00:00+09:00",
+                saved_routine_session_item_id="saved-item", completed_sets=0)
+    totals = aggregate_weekly_exercise(
+        [custom, saved], sessions, ITEMS, {"aligned": "muscle_gain"},
+        goal_type="muscle_gain", week_start=MONDAY,
+        routine_items={
+            "custom-item": {"exercise_session_id": "custom",
+                            "target_duration_seconds": None},
+            "saved-item": {"exercise_session_id": "saved",
+                           "target_duration_seconds": 120},
+        },
+    )
+    assert totals == WeeklyExerciseTotals(
+        completed_minutes=10, completed_days=2, goal_aligned_completed_days=1,
+    )
+
+
+def test_saved_routine_wrong_item_or_missing_metadata_omits_weekly_object():
+    row = log("saved", None, 4, "2026-11-18T08:00:00+09:00",
+              saved_routine_session_item_id="saved-item", completed_sets=1)
+    sessions = {"saved": {"status": "completed", "exercise_recommendation_id": None,
+                          "user_workout_routine_id": "owned-routine"}}
+    assert aggregate_weekly_exercise(
+        [row], sessions, ITEMS, {}, goal_type="muscle_gain", week_start=MONDAY,
+        routine_items={"saved-item": {"exercise_session_id": "another-session",
+                                      "target_duration_seconds": None}},
+    ) is None
+
+
 def test_complete_weekly_object_keeps_zero_activity_as_real_zero():
     totals = aggregate([])
     assert weekly_exercise_score_context(
@@ -126,6 +167,53 @@ def test_fetch_weekly_totals_uses_owner_scoped_original_logs(monkeypatch):
         completed_minutes=5, completed_days=1, goal_aligned_completed_days=1,
     )
     assert len(requests) == 4
+
+
+def test_fetch_weekly_totals_reads_owned_saved_routine_sources(monkeypatch):
+    session_id = "00000000-0000-4000-8000-000000000011"
+    routine_id = "00000000-0000-4000-8000-000000000012"
+    item_id = "00000000-0000-4000-8000-000000000013"
+    queried = []
+
+    def handler(request):
+        table = request.url.path.rsplit("/", 1)[-1]
+        queried.append(table)
+        if table == "exercise_logs":
+            rows = [{"exercise_session_id": session_id, "exercise_item_id": None,
+                     "saved_routine_session_item_id": item_id, "completed": True,
+                     "skipped": False, "completed_sets": 1, "duration_minutes": 4,
+                     "performed_at": "2026-11-16T09:00:00+09:00"}]
+        elif table == "exercise_sessions":
+            assert request.url.params["user_id"] == "eq.owner"
+            rows = [{"exercise_session_id": session_id, "status": "completed",
+                     "exercise_recommendation_id": None,
+                     "user_workout_routine_id": routine_id,
+                     "saved_routine_goal": None}]
+        elif table == "saved_routine_session_items":
+            assert request.url.params["user_id"] == "eq.owner"
+            rows = [{"saved_routine_session_item_id": item_id,
+                     "exercise_session_id": session_id,
+                     "target_duration_seconds": None}]
+        else:
+            raise AssertionError(table)
+        return httpx.Response(200, json=rows)
+
+    @asynccontextmanager
+    async def fake_scope():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            yield client
+
+    monkeypatch.setattr(score, "client_scope", fake_scope)
+    totals = asyncio.run(score.fetch_weekly_exercise_totals(
+        "owner", goal_type="muscle_gain", week_start=MONDAY,
+        settings=SimpleNamespace(supabase_url="https://test.supabase.co",
+                                 supabase_service_role_key="server-only-test-key"),
+    ))
+    assert totals == WeeklyExerciseTotals(
+        completed_minutes=4, completed_days=1, goal_aligned_completed_days=0,
+    )
+    assert queried == ["exercise_logs", "exercise_sessions",
+                       "saved_routine_session_items"]
 
 
 def test_source_query_failure_omits_weekly_exercise(monkeypatch):

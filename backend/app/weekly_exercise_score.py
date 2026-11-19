@@ -48,6 +48,7 @@ def aggregate_weekly_exercise(
     *,
     goal_type: str,
     week_start: date,
+    routine_items: dict[str, dict[str, Any]] | None = None,
 ) -> WeeklyExerciseTotals | None:
     """Count one finished item once, including items finished before a session stop.
 
@@ -61,6 +62,7 @@ def aggregate_weekly_exercise(
     days: set[date] = set()
     aligned_days: set[date] = set()
     minutes = 0
+    routine_items = routine_items or {}
     for log in logs:
         if log.get("completed") is not True or log.get("skipped") is True:
             continue
@@ -71,20 +73,40 @@ def aggregate_weekly_exercise(
             continue
         session_id = log.get("exercise_session_id")
         item_id = log.get("exercise_item_id")
-        if not isinstance(session_id, str) or not isinstance(item_id, str):
+        routine_item_id = log.get("saved_routine_session_item_id")
+        if not isinstance(session_id, str) or (
+            isinstance(item_id, str) == isinstance(routine_item_id, str)
+        ):
             return None
         session = sessions.get(session_id)
-        item = items.get(item_id)
-        if session is None or item is None:
+        if session is None:
             return None
         if session.get("status") not in {"completed", "stopped"}:
             continue
-        recommendation_id = session.get("exercise_recommendation_id")
-        if recommendation_id != item.get("exercise_recommendation_id"):
-            return None
-        if str(recommendation_id) not in recommendation_goals:
-            return None
-        execution_type = item.get("execution_type")
+        if isinstance(routine_item_id, str):
+            item = routine_items.get(routine_item_id)
+            routine_id = session.get("user_workout_routine_id")
+            if (item is None or not isinstance(routine_id, str)
+                    or item.get("exercise_session_id") != session_id
+                    or session.get("exercise_recommendation_id") is not None):
+                return None
+            goal_aligned = session.get("saved_routine_goal") == goal_type
+            if item.get("target_duration_seconds") is not None:
+                execution_type = "time_based"
+            else:
+                execution_type = "count_based"
+            counted_item_id = routine_item_id
+        else:
+            item = items.get(item_id)
+            if item is None or session.get("user_workout_routine_id") is not None:
+                return None
+            recommendation_id = session.get("exercise_recommendation_id")
+            if (recommendation_id != item.get("exercise_recommendation_id")
+                    or str(recommendation_id) not in recommendation_goals):
+                return None
+            goal_aligned = recommendation_goals.get(str(recommendation_id)) == goal_type
+            execution_type = item.get("execution_type")
+            counted_item_id = item_id
         if execution_type == "count_based":
             sets = log.get("completed_sets")
             if isinstance(sets, bool) or not isinstance(sets, int):
@@ -102,13 +124,13 @@ def aggregate_weekly_exercise(
             return None
         if not week_start <= day < week_start + timedelta(days=7):
             continue
-        key = (session_id, item_id)
+        key = (session_id, counted_item_id)
         if key in seen:
             continue
         seen.add(key)
         minutes += duration
         days.add(day)
-        if recommendation_goals.get(str(recommendation_id)) == goal_type:
+        if goal_aligned:
             aligned_days.add(day)
     return WeeklyExerciseTotals(
         completed_minutes=minutes,
@@ -178,8 +200,9 @@ async def fetch_weekly_exercise_totals(
     async with retry_pgrst303_scope():
         async with client_scope() as client:
             logs = await read_rows(client, "exercise_logs", {
-                "select": "exercise_log_id,exercise_session_id,exercise_item_id,performed_at,"
-                          "duration_minutes,completed,skipped,completed_sets",
+                "select": "exercise_log_id,exercise_session_id,exercise_item_id,"
+                          "saved_routine_session_item_id,performed_at,duration_minutes,"
+                          "completed,skipped,completed_sets",
                 "user_id": f"eq.{user_id}",
                 "performed_at": f"gte.{start.isoformat()}",
                 "and": f"(performed_at.lt.{end.isoformat()})",
@@ -192,18 +215,32 @@ async def fetch_weekly_exercise_totals(
                         and isinstance(row.get("duration_minutes"), int)
                         and row["duration_minutes"] >= 1]
             session_ids = {str(row.get("exercise_session_id")) for row in eligible}
-            item_ids = {str(row.get("exercise_item_id")) for row in eligible}
+            item_ids = {str(row["exercise_item_id"]) for row in eligible
+                        if row.get("exercise_item_id") is not None}
+            routine_item_ids = {str(row["saved_routine_session_item_id"])
+                                for row in eligible
+                                if row.get("saved_routine_session_item_id") is not None}
             sessions = await read_by_ids(
                 client, "exercise_sessions", session_ids, "exercise_session_id",
-                "exercise_session_id,exercise_recommendation_id,status", owner_scoped=True,
+                "exercise_session_id,exercise_recommendation_id,"
+                "user_workout_routine_id,saved_routine_goal,status", owner_scoped=True,
             )
             items = await read_by_ids(
                 client, "exercise_items", item_ids, "exercise_item_id",
                 "exercise_item_id,exercise_recommendation_id,execution_type", owner_scoped=False,
             )
-            if sessions is None or items is None:
+            routine_items = await read_by_ids(
+                client, "saved_routine_session_items", routine_item_ids,
+                "saved_routine_session_item_id",
+                "saved_routine_session_item_id,exercise_session_id,"
+                "target_duration_seconds", owner_scoped=True,
+            )
+            if sessions is None or items is None or routine_items is None:
                 return None
-            recommendation_ids = {str(row.get("exercise_recommendation_id")) for row in sessions}
+            recommendation_ids = {
+                str(row["exercise_recommendation_id"]) for row in sessions
+                if row.get("exercise_recommendation_id") is not None
+            }
             recommendations = await read_by_ids(
                 client, "exercise_recommendations", recommendation_ids,
                 "exercise_recommendation_id", "exercise_recommendation_id,goal", owner_scoped=True,
@@ -216,6 +253,8 @@ async def fetch_weekly_exercise_totals(
         {str(row["exercise_item_id"]): row for row in items},
         {str(row["exercise_recommendation_id"]): row.get("goal") for row in recommendations},
         goal_type=goal_type, week_start=week_start,
+        routine_items={str(row["saved_routine_session_item_id"]): row
+                       for row in routine_items},
     )
 
 

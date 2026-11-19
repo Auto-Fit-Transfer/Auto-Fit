@@ -1345,14 +1345,43 @@ async def call_exercise_session_rpc(
     return response.json()
 
 
+async def fetch_owned_exercise_session_source(
+    user_id: str, session_id: str, settings: Settings,
+) -> dict[str, Any]:
+    try:
+        async with client_scope() as client:
+            response = await client.get(
+                f"{settings.supabase_url}/rest/v1/exercise_sessions",
+                headers=service_headers(settings),
+                params={
+                    "select": "exercise_session_id,user_workout_routine_id",
+                    "exercise_session_id": f"eq.{session_id}",
+                    "user_id": f"eq.{user_id}",
+                    "limit": "1",
+                },
+            )
+        rows = response.json() if response.is_success else None
+    except (httpx.HTTPError, ValueError):
+        raise HTTPException(502, detail="Supabase exercise session query failed") from None
+    if not response.is_success:
+        raise HTTPException(502, detail="Supabase exercise session query failed")
+    if not isinstance(rows, list) or not rows:
+        raise HTTPException(404, detail="Exercise session not found")
+    if not isinstance(rows[0], dict) or "user_workout_routine_id" not in rows[0]:
+        raise HTTPException(502, detail="Invalid exercise session source response")
+    return rows[0]
+
+
 async def fetch_latest_exercise_session(
     user_id: str,
     settings: Settings,
+    *,
+    source: Literal["recommendation", "saved_routine"] = "recommendation",
 ) -> dict[str, Any] | None:
     session_params = {
         "select": (
             "exercise_session_id,user_id,exercise_recommendation_id,status,"
-            "plan_session_id,"
+            "plan_session_id,user_workout_routine_id,saved_routine_goal,"
             "started_at,completed_at,planned_item_count,completed_item_count,"
             "skipped_item_count,total_duration_seconds,total_calories_burned,"
             "completion_rate,created_at,updated_at"
@@ -1361,6 +1390,10 @@ async def fetch_latest_exercise_session(
         "order": "started_at.desc",
         "limit": "1",
     }
+    if source == "recommendation":
+        session_params["exercise_recommendation_id"] = "not.is.null"
+    else:
+        session_params["user_workout_routine_id"] = "not.is.null"
     async with client_scope() as client:
         session_response = await client.get(
             f"{settings.supabase_url}/rest/v1/exercise_sessions",
@@ -1379,7 +1412,8 @@ async def fetch_latest_exercise_session(
     session = sessions[0]
     log_params = {
         "select": (
-            "exercise_log_id,exercise_session_id,exercise_item_id,exercise_name,"
+            "exercise_log_id,exercise_session_id,exercise_item_id,"
+            "saved_routine_session_item_id,exercise_name,"
             "performed_at,duration_minutes,calories_burned,intensity,completed,"
             "completed_sets,performed_repetitions,performed_weight_kg,skipped,"
             "skip_reason,note"
@@ -1399,7 +1433,55 @@ async def fetch_latest_exercise_session(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Supabase exercise log query failed",
         )
-    return {"session": session, "logs": log_response.json()}
+    result = {"session": session, "logs": log_response.json()}
+    if source == "saved_routine":
+        async with client_scope() as client:
+            item_response = await client.get(
+                f"{settings.supabase_url}/rest/v1/saved_routine_session_items",
+                headers=service_headers(settings),
+                params={
+                    "select": (
+                        "saved_routine_session_item_id,exercise_session_id,user_id,"
+                        "source_routine_item_id,sequence_order,exercise_type_id,"
+                        "exercise_name,target_duration_seconds,sets,repetitions,"
+                        "target_weight_kg,rest_seconds,instruction,demo_video_url,created_at"
+                    ),
+                    "user_id": f"eq.{user_id}",
+                    "exercise_session_id": f"eq.{session['exercise_session_id']}",
+                    "order": "sequence_order.asc",
+                },
+            )
+        if not item_response.is_success:
+            raise HTTPException(502, detail="Supabase saved routine session item query failed")
+        rows = item_response.json()
+        if not isinstance(rows, list) or not rows or any(not isinstance(row, dict) for row in rows):
+            raise HTTPException(502, detail="Invalid saved routine session items")
+        if any(
+            not isinstance(row.get("saved_routine_session_item_id"), str)
+            or not isinstance(row.get("source_routine_item_id"), str)
+            or row.get("exercise_session_id") != session["exercise_session_id"]
+            or (row.get("target_duration_seconds") is not None and (
+                isinstance(row["target_duration_seconds"], bool)
+                or not isinstance(row["target_duration_seconds"], int)
+                or row["target_duration_seconds"] < 1
+            ))
+            for row in rows
+        ):
+            raise HTTPException(502, detail="Invalid saved routine session items")
+        result["items"] = [
+            {
+                **row,
+                "exercise_item_id": row["saved_routine_session_item_id"],
+                "user_workout_routine_item_id": row["source_routine_item_id"],
+                "execution_type": "time_based" if row.get("target_duration_seconds") is not None
+                else "count_based",
+                "duration_minutes": ceil(row["target_duration_seconds"] / 60)
+                if row.get("target_duration_seconds") is not None else None,
+                "calories_burned": 0,
+            }
+            for row in rows
+        ]
+    return result
 
 
 async def fetch_exercise_discomfort_logs(
@@ -1410,6 +1492,7 @@ async def fetch_exercise_discomfort_logs(
     params = {
         "select": (
             "exercise_discomfort_log_id,exercise_session_id,exercise_item_id,"
+            "saved_routine_session_item_id,"
             "user_id,symptom_type,severity,body_areas,detail,action_taken,"
             "occurred_at,created_at"
         ),
@@ -1488,7 +1571,8 @@ async def fetch_exercise_session_result(
 ) -> dict[str, Any] | None:
     session_params = {
         "select": (
-            "exercise_session_id,user_id,exercise_recommendation_id,status,"
+            "exercise_session_id,user_id,exercise_recommendation_id,"
+            "user_workout_routine_id,saved_routine_goal,status,"
             "started_at,completed_at,planned_item_count,completed_item_count,"
             "skipped_item_count,total_duration_seconds,total_calories_burned,"
             "completion_rate,created_at,updated_at"
@@ -1499,7 +1583,8 @@ async def fetch_exercise_session_result(
     }
     log_params = {
         "select": (
-            "exercise_log_id,exercise_session_id,exercise_item_id,exercise_name,"
+            "exercise_log_id,exercise_session_id,exercise_item_id,"
+            "saved_routine_session_item_id,exercise_name,"
             "performed_at,duration_minutes,calories_burned,intensity,completed,"
             "completed_sets,performed_repetitions,performed_weight_kg,skipped,"
             "skip_reason,note"
@@ -1629,7 +1714,8 @@ async def fetch_exercise_history(
     end = f"{(to_date + timedelta(days=1)).isoformat()}T00:00:00+00:00"
     session_params = {
         "select": (
-            "exercise_session_id,user_id,exercise_recommendation_id,status,"
+            "exercise_session_id,user_id,exercise_recommendation_id,"
+            "user_workout_routine_id,saved_routine_goal,status,"
             "started_at,completed_at,planned_item_count,completed_item_count,"
             "skipped_item_count,total_duration_seconds,total_calories_burned,"
             "completion_rate"
@@ -1642,7 +1728,8 @@ async def fetch_exercise_history(
     }
     log_params = {
         "select": (
-            "exercise_log_id,exercise_session_id,exercise_item_id,exercise_name,"
+            "exercise_log_id,exercise_session_id,exercise_item_id,"
+            "saved_routine_session_item_id,exercise_name,"
             "performed_at,duration_minutes,calories_burned,intensity,completed,"
             "completed_sets,performed_repetitions,performed_weight_kg,skipped,"
             "skip_reason,note"
@@ -4143,8 +4230,11 @@ async def record_exercise_item_result(
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
+    source = await fetch_owned_exercise_session_source(user.id, str(session_id), settings)
+    rpc_name = ("record_saved_routine_item_result"
+                if source.get("user_workout_routine_id") else "record_exercise_item_result")
     result = await call_exercise_session_rpc(
-        "record_exercise_item_result",
+        rpc_name,
         {
             "p_user_id": user.id,
             "p_session_id": str(session_id),
@@ -4183,6 +4273,15 @@ async def get_latest_exercise_session(
     return {"result": result}
 
 
+@app.get("/api/exercise/saved-routines/sessions/latest", tags=["Exercise"])
+async def get_latest_saved_routine_session(
+    user: AuthenticatedUser = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    result = await fetch_latest_exercise_session(user.id, settings, source="saved_routine")
+    return {"result": result}
+
+
 @app.post("/api/exercise/sessions/{session_id}/discomfort", tags=["Exercise"])
 async def record_exercise_discomfort(
     session_id: UUID,
@@ -4190,8 +4289,12 @@ async def record_exercise_discomfort(
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
+    source = await fetch_owned_exercise_session_source(user.id, str(session_id), settings)
+    saved_routine = bool(source.get("user_workout_routine_id"))
+    if saved_routine and body.action_taken == "adjust":
+        raise HTTPException(409, detail={"code": "SAVED_ROUTINE_ADJUSTMENT_UNAVAILABLE"})
     result = await call_exercise_session_rpc(
-        "record_exercise_discomfort",
+        "record_saved_routine_discomfort" if saved_routine else "record_exercise_discomfort",
         {
             "p_user_id": user.id,
             "p_session_id": str(session_id),
@@ -4262,6 +4365,8 @@ async def get_exercise_session_analysis(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Exercise session not found",
         )
+    if result["session"].get("user_workout_routine_id"):
+        raise HTTPException(409, detail={"code": "SAVED_ROUTINE_ANALYSIS_UNAVAILABLE"})
     require_exercise_ai_access(user.id)
     recommendation_id = result["session"].get("exercise_recommendation_id")
     generator = await fetch_exercise_recommendation_generator(

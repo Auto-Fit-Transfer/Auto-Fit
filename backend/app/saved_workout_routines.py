@@ -187,6 +187,37 @@ async def save_routine(user_id: str, settings: Any,
                 "items": saved_items}
 
 
+async def start_saved_routine(user_id: str, routine_id: UUID,
+                              settings: Any) -> dict[str, Any]:
+    try:
+        async with client_scope() as client:
+            response = await client.post(
+                f"{settings.supabase_url}/rest/v1/rpc/start_saved_workout_routine",
+                headers=_headers(settings),
+                json={"p_user_id": user_id, "p_routine_id": str(routine_id)},
+                timeout=15,
+            )
+        if not response.is_success:
+            error = response.json()
+            if not isinstance(error, dict):
+                raise ValueError("Invalid saved routine start error")
+            message = error.get("message", "")
+            if message == "Active saved workout routine not found":
+                raise HTTPException(404, detail={"code": "SAVED_ROUTINE_NOT_FOUND"})
+            if message == "Another saved workout routine is in progress":
+                raise HTTPException(409, detail={"code": "SAVED_ROUTINE_IN_PROGRESS"})
+            if message == "Saved workout routine must contain 1 to 30 items":
+                raise HTTPException(409, detail={"code": "SAVED_ROUTINE_ITEMS_UNAVAILABLE"})
+            raise HTTPException(502, detail={"code": "SAVED_ROUTINE_START_FAILED"})
+        result = response.json()
+        if not isinstance(result, dict) or not isinstance(result.get("session"), dict) \
+                or not isinstance(result.get("items"), list):
+            raise ValueError("Invalid saved routine start response")
+        return result
+    except (httpx.HTTPError, ValueError):
+        raise HTTPException(502, detail={"code": "SAVED_ROUTINE_STORAGE_UNAVAILABLE"}) from None
+
+
 def create_saved_workout_router(current_user_dependency: Callable,
                                 settings_dependency: Callable) -> APIRouter:
     router = APIRouter(prefix="/api/exercise/saved-routines", tags=["Exercise"])
@@ -201,5 +232,12 @@ def create_saved_workout_router(current_user_dependency: Callable,
                            user: Any = Depends(current_user_dependency),
                            settings: Any = Depends(settings_dependency)):
         return {"routine": await save_routine(user.id, settings, input)}
+
+    @router.post("/{routine_id}/start", summary="저장한 루틴으로 운동 세션 시작")
+    async def post_start_routine(routine_id: UUID,
+                                 user: Any = Depends(current_user_dependency),
+                                 settings: Any = Depends(settings_dependency)):
+        result = await start_saved_routine(user.id, routine_id, settings)
+        return {"ok": True, "result": result}
 
     return router

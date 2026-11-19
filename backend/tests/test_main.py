@@ -1135,9 +1135,14 @@ def test_record_exercise_item_result_uses_path_ids_and_user(monkeypatch) -> None
         assert payload["p_skipped"] is False
         return {"log": {"completed": True}}
 
+    async def fake_source(user_id: str, session_id: str, settings: main.Settings):
+        assert user_id == "authenticated-user"
+        return {"user_workout_routine_id": None}
+
     main.app.dependency_overrides[main.get_current_user] = fake_user
     main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
     monkeypatch.setattr(main, "call_exercise_session_rpc", fake_rpc)
+    monkeypatch.setattr(main, "fetch_owned_exercise_session_source", fake_source)
     try:
         response = TestClient(main.app).post(
             "/api/exercise/sessions/00000000-0000-0000-0000-000000000001/items/00000000-0000-0000-0000-000000000002",
@@ -1145,6 +1150,37 @@ def test_record_exercise_item_result_uses_path_ids_and_user(monkeypatch) -> None
         )
         assert response.status_code == 200
         assert response.json()["result"]["log"]["completed"] is True
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_record_saved_routine_item_uses_existing_record_path(monkeypatch) -> None:
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_source(user_id: str, session_id: str, settings: main.Settings):
+        assert user_id == "authenticated-user"
+        return {"user_workout_routine_id": "00000000-0000-4000-8000-000000000009"}
+
+    async def fake_rpc(name: str, payload: dict, settings: main.Settings):
+        assert name == "record_saved_routine_item_result"
+        assert payload["p_user_id"] == "authenticated-user"
+        assert payload["p_item_id"] == "00000000-0000-4000-8000-000000000002"
+        return {"log": {"saved_routine_session_item_id": payload["p_item_id"]}}
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "fetch_owned_exercise_session_source", fake_source)
+    monkeypatch.setattr(main, "call_exercise_session_rpc", fake_rpc)
+    try:
+        response = TestClient(main.app).post(
+            "/api/exercise/sessions/00000000-0000-4000-8000-000000000001/items/00000000-0000-4000-8000-000000000002",
+            json={"completed": True, "skipped": False, "completed_sets": 1,
+                  "duration_minutes": 2},
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["result"]["log"]["saved_routine_session_item_id"] == \
+            "00000000-0000-4000-8000-000000000002"
     finally:
         main.app.dependency_overrides.clear()
 
@@ -1191,6 +1227,97 @@ def test_latest_exercise_session_uses_authenticated_user(monkeypatch) -> None:
         main.app.dependency_overrides.clear()
 
 
+def test_latest_saved_routine_session_uses_separate_source(monkeypatch) -> None:
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_fetch(user_id: str, settings: main.Settings, *, source: str):
+        assert user_id == "authenticated-user"
+        assert settings == TEST_SETTINGS
+        assert source == "saved_routine"
+        return {"session": {"user_workout_routine_id": "saved-routine"}, "logs": []}
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "fetch_latest_exercise_session", fake_fetch)
+    try:
+        response = TestClient(main.app).get("/api/exercise/saved-routines/sessions/latest")
+        assert response.status_code == 200
+        assert response.json()["result"]["session"]["user_workout_routine_id"] == \
+            "saved-routine"
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_latest_session_queries_filter_recommendations_and_saved_routines() -> None:
+    seen_filters = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/exercise_sessions"):
+            assert request.url.params["user_id"] == "eq.authenticated-user"
+            seen_filters.append(dict(request.url.params))
+            return httpx.Response(200, json=[])
+        raise AssertionError(f"Unexpected request: {request.url}")
+
+    async def check() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            async with bind_request_client(client):
+                assert await main.fetch_latest_exercise_session(
+                    "authenticated-user", TEST_SETTINGS
+                ) is None
+                assert await main.fetch_latest_exercise_session(
+                    "authenticated-user", TEST_SETTINGS, source="saved_routine"
+                ) is None
+
+    asyncio.run(check())
+    assert seen_filters[0]["exercise_recommendation_id"] == "not.is.null"
+    assert "user_workout_routine_id" not in seen_filters[0]
+    assert seen_filters[1]["user_workout_routine_id"] == "not.is.null"
+    assert "exercise_recommendation_id" not in seen_filters[1]
+
+
+def test_latest_saved_session_returns_immutable_items_for_resume() -> None:
+    session_id = "00000000-0000-4000-8000-000000000001"
+    snapshot_id = "00000000-0000-4000-8000-000000000002"
+    source_id = "00000000-0000-4000-8000-000000000003"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        table = request.url.path.rsplit("/", 1)[-1]
+        assert request.url.params["user_id"] == "eq.authenticated-user"
+        if table == "exercise_sessions":
+            assert request.url.params["user_workout_routine_id"] == "not.is.null"
+            return httpx.Response(200, json=[{
+                "exercise_session_id": session_id,
+                "user_workout_routine_id": "saved-routine",
+                "status": "in_progress",
+            }])
+        assert request.url.params["exercise_session_id"] == f"eq.{session_id}"
+        if table == "exercise_logs":
+            return httpx.Response(200, json=[])
+        if table == "saved_routine_session_items":
+            return httpx.Response(200, json=[{
+                "saved_routine_session_item_id": snapshot_id,
+                "source_routine_item_id": source_id,
+                "exercise_session_id": session_id,
+                "exercise_name": "스쿼트",
+                "target_duration_seconds": None,
+            }])
+        raise AssertionError(f"Unexpected request: {request.url}")
+
+    async def check() -> dict:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            async with bind_request_client(client):
+                return await main.fetch_latest_exercise_session(
+                    "authenticated-user", TEST_SETTINGS, source="saved_routine"
+                )
+
+    result = asyncio.run(check())
+    assert result["session"]["status"] == "in_progress"
+    assert result["items"][0]["exercise_item_id"] == snapshot_id
+    assert result["items"][0]["user_workout_routine_item_id"] == source_id
+    assert result["items"][0]["duration_minutes"] is None
+
+
 def test_exercise_discomfort_rejects_invalid_severity() -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="authenticated-user")
@@ -1225,9 +1352,13 @@ def test_record_exercise_discomfort_uses_authenticated_user(monkeypatch) -> None
         assert payload["p_action_taken"] == "adjust"
         return {"discomfort": {"severity": 6}, "adjusted_items": [{"intensity": "low"}]}
 
+    async def fake_source(user_id: str, session_id: str, settings: main.Settings):
+        return {"user_workout_routine_id": None}
+
     main.app.dependency_overrides[main.get_current_user] = fake_user
     main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
     monkeypatch.setattr(main, "call_exercise_session_rpc", fake_rpc)
+    monkeypatch.setattr(main, "fetch_owned_exercise_session_source", fake_source)
     try:
         response = TestClient(main.app).post(
             "/api/exercise/sessions/00000000-0000-0000-0000-000000000001/discomfort",
@@ -1242,6 +1373,40 @@ def test_record_exercise_discomfort_uses_authenticated_user(monkeypatch) -> None
         )
         assert response.status_code == 200
         assert len(response.json()["result"]["adjusted_items"]) == 1
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_saved_routine_discomfort_stops_but_cannot_adjust(monkeypatch) -> None:
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_source(user_id: str, session_id: str, settings: main.Settings):
+        return {"user_workout_routine_id": "00000000-0000-4000-8000-000000000009"}
+
+    calls = []
+
+    async def fake_rpc(name: str, payload: dict, settings: main.Settings):
+        calls.append(name)
+        assert name == "record_saved_routine_discomfort"
+        assert payload["p_user_id"] == "authenticated-user"
+        return {"session": {"status": "stopped"}, "adjusted_items": []}
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "fetch_owned_exercise_session_source", fake_source)
+    monkeypatch.setattr(main, "call_exercise_session_rpc", fake_rpc)
+    try:
+        url = "/api/exercise/sessions/00000000-0000-4000-8000-000000000001/discomfort"
+        common = {"symptom_type": "pain", "severity": 6, "body_areas": ["허리"]}
+        adjusted = TestClient(main.app).post(url, json={**common, "action_taken": "adjust"})
+        assert adjusted.status_code == 409
+        assert adjusted.json()["detail"]["code"] == "SAVED_ROUTINE_ADJUSTMENT_UNAVAILABLE"
+        assert not calls
+        stopped = TestClient(main.app).post(url, json={**common, "action_taken": "stop"})
+        assert stopped.status_code == 200
+        assert stopped.json()["result"]["session"]["status"] == "stopped"
+        assert calls == ["record_saved_routine_discomfort"]
     finally:
         main.app.dependency_overrides.clear()
 

@@ -139,6 +139,7 @@ class ExerciseChatStore:
         sessions = await self.request("GET", "exercise_sessions", params={
             "select": SESSION_FIELDS,
             "user_id": f"eq.{self.user_id}",
+            "exercise_recommendation_id": "not.is.null",
             "order": "started_at.desc",
             "limit": "1",
         })

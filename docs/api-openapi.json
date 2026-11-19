@@ -19022,6 +19022,114 @@
         ]
       }
     },
+    "/api/exercise/saved-routines/sessions/latest": {
+      "get": {
+        "operationId": "get_latest_saved_routine_session_api_exercise_saved_routines_sessions_latest_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Latest Saved Routine Session Api Exercise Saved Routines Sessions Latest Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Latest Saved Routine Session",
+        "tags": [
+          "Exercise"
+        ]
+      }
+    },
+    "/api/exercise/saved-routines/{routine_id}/start": {
+      "post": {
+        "operationId": "post_start_routine_api_exercise_saved_routines__routine_id__start_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "routine_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Routine Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "저장한 루틴으로 운동 세션 시작",
+        "tags": [
+          "Exercise"
+        ]
+      }
+    },
     "/api/exercise/sessions/latest": {
       "get": {
         "operationId": "get_latest_exercise_session_api_exercise_sessions_latest_get",

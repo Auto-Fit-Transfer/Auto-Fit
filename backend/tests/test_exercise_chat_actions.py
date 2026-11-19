@@ -50,6 +50,15 @@ PENDING_PAYLOAD = {
 }
 
 
+def test_chat_latest_session_does_not_pick_saved_routine(monkeypatch):
+    store = ExerciseChatStore("https://db.example.invalid", {}, "owner")
+    request = AsyncMock(return_value=[])
+    monkeypatch.setattr(store, "request", request)
+
+    assert asyncio.run(store.latest_session_state()) is None
+    assert request.await_args.kwargs["params"]["exercise_recommendation_id"] == "not.is.null"
+
+
 @pytest.fixture
 def client():
     main.app.dependency_overrides[main.get_current_user] = lambda: main.AuthenticatedUser(id=str(uuid4()))

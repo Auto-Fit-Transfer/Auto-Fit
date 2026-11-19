@@ -429,6 +429,7 @@
     "20261119015900_profile_body_basics.sql",
     "20261119042903_diet_menu_style_preference.sql",
     "20261119055845_weekly_diet_feedback_and_rebalance.sql",
-    "20261119060843_diet_tomorrow_rebalance_preview.sql"
+    "20261119060843_diet_tomorrow_rebalance_preview.sql",
+    "20261119071137_saved_routine_sessions.sql"
   ]
 }
