@@ -3748,6 +3748,31 @@
         "title": "DietMealFeedbackUpdateRequest",
         "type": "object"
       },
+      "DietPreferencesInput": {
+        "additionalProperties": false,
+        "properties": {
+          "menu_style_preference": {
+            "anyOf": [
+              {
+                "enum": [
+                  "everyday",
+                  "health_focused"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Menu Style Preference"
+          }
+        },
+        "required": [
+          "menu_style_preference"
+        ],
+        "title": "DietPreferencesInput",
+        "type": "object"
+      },
       "DietSuggestion": {
         "properties": {
           "action_items": {
@@ -6326,6 +6351,75 @@
         "title": "Meal",
         "type": "object"
       },
+      "MealAdjustment": {
+        "additionalProperties": true,
+        "properties": {
+          "adjustment_policy": {
+            "const": "gentle_rebalance_v1",
+            "title": "Adjustment Policy",
+            "type": "string"
+          },
+          "baseline_calories_kcal": {
+            "exclusiveMinimum": 0.0,
+            "title": "Baseline Calories Kcal",
+            "type": "number"
+          },
+          "estimated_reduction_kcal": {
+            "minimum": 0.0,
+            "title": "Estimated Reduction Kcal",
+            "type": "number"
+          },
+          "limited_by_policy": {
+            "title": "Limited By Policy",
+            "type": "boolean"
+          },
+          "maximum_allowed_reduction_kcal": {
+            "minimum": 0.0,
+            "title": "Maximum Allowed Reduction Kcal",
+            "type": "number"
+          },
+          "remaining_reduction_kcal": {
+            "minimum": 0.0,
+            "title": "Remaining Reduction Kcal",
+            "type": "number"
+          },
+          "requested_reduction_kcal": {
+            "minimum": 0.0,
+            "title": "Requested Reduction Kcal",
+            "type": "number"
+          },
+          "selected_calorie_ratio": {
+            "maximum": 1.0,
+            "minimum": 0.85,
+            "title": "Selected Calorie Ratio",
+            "type": "number"
+          },
+          "selected_calories_kcal": {
+            "minimum": 0.0,
+            "title": "Selected Calories Kcal",
+            "type": "number"
+          },
+          "target_calories_kcal": {
+            "minimum": 0.0,
+            "title": "Target Calories Kcal",
+            "type": "number"
+          }
+        },
+        "required": [
+          "adjustment_policy",
+          "baseline_calories_kcal",
+          "requested_reduction_kcal",
+          "maximum_allowed_reduction_kcal",
+          "target_calories_kcal",
+          "selected_calories_kcal",
+          "estimated_reduction_kcal",
+          "remaining_reduction_kcal",
+          "selected_calorie_ratio",
+          "limited_by_policy"
+        ],
+        "title": "MealAdjustment",
+        "type": "object"
+      },
       "MealLogItemRequest": {
         "additionalProperties": false,
         "properties": {
@@ -8104,6 +8198,16 @@
       "Replacement": {
         "additionalProperties": true,
         "properties": {
+          "adjustment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MealAdjustment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "day": {
             "enum": [
               "monday",
@@ -15775,6 +15879,116 @@
           }
         },
         "summary": "Get Diet Nutrition Summary",
+        "tags": [
+          "Diet"
+        ]
+      }
+    },
+    "/api/diet/preferences": {
+      "get": {
+        "operationId": "get_diet_preferences_api_diet_preferences_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Diet Preferences Api Diet Preferences Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Diet Preferences",
+        "tags": [
+          "Diet"
+        ]
+      },
+      "put": {
+        "operationId": "put_diet_preferences_api_diet_preferences_put",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DietPreferencesInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Diet Preferences Api Diet Preferences Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Diet Preferences",
         "tags": [
           "Diet"
         ]

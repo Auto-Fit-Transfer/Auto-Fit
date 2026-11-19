@@ -20,6 +20,12 @@ class DisplayPreferencesInput(BaseModel):
     simple_mode_enabled: bool = False
 
 
+class DietPreferencesInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    menu_style_preference: Literal["everyday", "health_focused"] | None
+
+
 class HealthGoalInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -72,12 +78,16 @@ class UserSettingsStore:
     async def request(self, method: str, table: str, *,
                       params: dict[str, str] | None = None,
                       payload: dict[str, Any] | None = None,
-                      write: bool = False) -> list[dict[str, Any]]:
+                      write: bool = False,
+                      insert_ignore_conflict: bool = False) -> list[dict[str, Any]]:
         headers = dict(self.headers)
         if write:
             headers["Prefer"] = "return=representation"
             if table in ("user_app_preferences", "notification_settings") and method == "POST":
-                headers["Prefer"] += ",resolution=merge-duplicates"
+                headers["Prefer"] += (
+                    ",resolution=ignore-duplicates,missing=default"
+                    if insert_ignore_conflict else ",resolution=merge-duplicates"
+                )
         try:
             async with client_scope() as client:
                 response = await client.request(
@@ -106,13 +116,45 @@ class UserSettingsStore:
         return rows[0] if rows else DisplayPreferencesInput().model_dump()
 
     async def put_preferences(self, body: DisplayPreferencesInput) -> dict[str, Any]:
-        rows = await self.request("POST", "user_app_preferences", params={
-            "on_conflict": "user_id",
-            "select": "theme_mode,font_size_step,simple_mode_enabled",
-        }, payload={"user_id": self.user_id, **body.model_dump()}, write=True)
+        rows = await self.put_app_fields(
+            body.model_dump(), "theme_mode,font_size_step,simple_mode_enabled",
+        )
+        return rows
+
+    async def put_app_fields(self, values: dict[str, Any], select: str) -> dict[str, Any]:
+        """Update only the requested columns, including under concurrent first writes."""
+        params = {"user_id": f"eq.{self.user_id}", "select": select}
+        rows = await self.request(
+            "PATCH", "user_app_preferences", params=params, payload=values, write=True,
+        )
+        if len(rows) > 1:
+            raise HTTPException(502, detail={"code": "USER_SETTINGS_UNAVAILABLE"})
+        if not rows:
+            rows = await self.request(
+                "POST", "user_app_preferences",
+                params={"on_conflict": "user_id", "select": select},
+                payload={"user_id": self.user_id, **values}, write=True,
+                insert_ignore_conflict=True,
+            )
+        if not rows:
+            rows = await self.request(
+                "PATCH", "user_app_preferences", params=params, payload=values, write=True,
+            )
         if len(rows) != 1:
             raise HTTPException(502, detail={"code": "USER_SETTINGS_UNAVAILABLE"})
         return rows[0]
+
+    async def get_diet_preferences(self) -> dict[str, Any]:
+        rows = await self.request("GET", "user_app_preferences", params={
+            "select": "menu_style_preference",
+            "user_id": f"eq.{self.user_id}", "limit": "1",
+        })
+        return rows[0] if rows else {"menu_style_preference": None}
+
+    async def put_diet_preferences(self, body: DietPreferencesInput) -> dict[str, Any]:
+        return await self.put_app_fields(
+            body.model_dump(), "menu_style_preference",
+        )
 
     async def get_notification_preferences(self) -> dict[str, Any]:
         select = ",".join(NotificationPreferencesInput.model_fields)
@@ -187,5 +229,24 @@ def create_user_settings_router(get_user: Any, get_settings: Any) -> APIRouter:
     async def put_health_goal(body: HealthGoalInput,
                               store: UserSettingsStore = Depends(get_store)) -> dict[str, Any]:
         return {"goal": await store.put_health_goal(body)}
+
+    return router
+
+
+def create_diet_preferences_router(get_user: Any, get_settings: Any) -> APIRouter:
+    router = APIRouter(prefix="/api/diet", tags=["Diet"])
+
+    def get_store(user: Any = Depends(get_user),
+                  settings: Any = Depends(get_settings)) -> UserSettingsStore:
+        return UserSettingsStore(settings, user.id)
+
+    @router.get("/preferences")
+    async def get_diet_preferences(store: UserSettingsStore = Depends(get_store)) -> dict[str, Any]:
+        return {"preferences": await store.get_diet_preferences()}
+
+    @router.put("/preferences")
+    async def put_diet_preferences(body: DietPreferencesInput,
+                                   store: UserSettingsStore = Depends(get_store)) -> dict[str, Any]:
+        return {"preferences": await store.put_diet_preferences(body)}
 
     return router

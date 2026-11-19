@@ -7,10 +7,11 @@ import httpx
 import pytest
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from backend.app import weekly_diet as api, weekly_diet_store as storage, chat_rate_limit
 from backend.app.ai_server import AIEndpoint, AIServerError
-from backend.app.weekly_diet_contract import DAYS, MEALS
+from backend.app.weekly_diet_contract import DAYS, MEALS, NutritionProfile, ReplacementReply
 
 
 OWNER = "00000000-0000-4000-8000-000000000001"
@@ -37,6 +38,66 @@ def weekly_reply():
         }} for day in DAYS],
         "cautions": [], "sources": [],
     }}
+
+
+def test_selected_meal_adjustment_is_validated_without_breaking_ordinary_replacements():
+    meal = weekly_reply()["result"]["weekly_plan"][0]["meals"]["lunch"]
+    reply = {"ok": True, "generator": "auto-fit-ai", "meal": {
+        "day": "monday", "meal_type": "lunch", "meal": meal,
+    }}
+    assert ReplacementReply.model_validate(reply).meal.adjustment is None
+
+    adjusted = deepcopy(reply)
+    adjusted["meal"]["meal"]["estimated_calories_kcal"] = 425
+    adjusted["meal"]["meal"]["items"][0]["calories_kcal"] = 425
+    adjusted["meal"]["adjustment"] = {
+        "adjustment_policy": "gentle_rebalance_v1",
+        "baseline_calories_kcal": 500,
+        "requested_reduction_kcal": 100,
+        "maximum_allowed_reduction_kcal": 75,
+        "target_calories_kcal": 425,
+        "selected_calories_kcal": 425,
+        "estimated_reduction_kcal": 75,
+        "remaining_reduction_kcal": 25,
+        "selected_calorie_ratio": 0.85,
+        "limited_by_policy": True,
+    }
+    assert ReplacementReply.model_validate(adjusted).meal.adjustment.remaining_reduction_kcal == 25
+    for path, value in [
+        (("adjustment", "selected_calorie_ratio"), 0.84),
+        (("adjustment", "maximum_allowed_reduction_kcal"), 100),
+        (("adjustment", "remaining_reduction_kcal"), 20),
+        (("adjustment", "limited_by_policy"), False),
+        (("meal", "estimated_calories_kcal"), 450),
+    ]:
+        inconsistent = deepcopy(adjusted)
+        inconsistent["meal"][path[0]][path[1]] = value
+        with pytest.raises(ValidationError):
+            ReplacementReply.model_validate(inconsistent)
+    excessive = deepcopy(adjusted)
+    excessive["meal"]["adjustment"].update({
+        "requested_reduction_kcal": 10,
+        "target_calories_kcal": 490,
+        "remaining_reduction_kcal": 0,
+        "limited_by_policy": False,
+    })
+    with pytest.raises(ValidationError):
+        ReplacementReply.model_validate(excessive)
+
+
+def test_nutrition_profile_mode_requires_matching_document_flags():
+    profile = {
+        "profile_mode": "health_records", "age_years": 26, "sex": "female",
+        "height_cm": 165.0, "weight_kg": 60.0,
+        "data_sources": {"inbody_available": True, "health_checkup_available": False},
+    }
+    with pytest.raises(ValidationError):
+        NutritionProfile.model_validate(profile)
+    profile["profile_mode"] = "basic_profile"
+    NutritionProfile.model_validate(profile)
+    profile["data_sources"]["health_checkup_available"] = True
+    with pytest.raises(ValidationError):
+        NutritionProfile.model_validate(profile)
 
 
 def recipe_reply(payload):
@@ -76,6 +137,7 @@ def unavailable_recipe_reply(payload):
 @pytest.fixture
 def harness(monkeypatch):
     state = {"rows": [], "recipes": [], "writes": [], "ai_calls": [], "context_calls": [],
+             "adult": True, "age_checks": 0,
              "reply": weekly_reply(), "context": {"food_allergens": ["땅콩"],
              "goal_type": "weight_loss", "metric_statuses": {}}}
 
@@ -91,6 +153,19 @@ def harness(monkeypatch):
         assert user_id == OWNER
         state["context_calls"].append(user_id)
         return deepcopy(state["context"])
+
+    async def load_ai_context(user_id, settings):
+        latest = await load_context(user_id, settings)
+        if state.get("kdri_enabled", True):
+            return latest
+        return {key: value for key, value in latest.items()
+                if key in {"food_allergens", "goal_type", "metric_statuses"}}
+
+    async def require_adult(user_id, settings):
+        assert user_id == OWNER
+        state["age_checks"] += 1
+        if not state["adult"]:
+            raise HTTPException(403, detail={"code": "DIET_ADULT_ONLY"})
 
     class FakeAI:
         async def post(self, endpoint, payload):
@@ -185,7 +260,9 @@ def harness(monkeypatch):
     monkeypatch.setattr(storage, "client_scope", db_scope)
     monkeypatch.setattr(chat_rate_limit, "client_scope", db_scope)
     app = FastAPI()
-    app.include_router(api.create_weekly_diet_router(get_user, settings, load_context))
+    app.include_router(api.create_weekly_diet_router(
+        get_user, settings, load_context, load_ai_context, require_adult,
+    ))
     app.dependency_overrides[api.get_weekly_ai_client] = FakeAI
     monkeypatch.setattr(api, "get_weekly_ai_client", FakeAI)
     with TestClient(app, headers={"Authorization": "Bearer test-owner"}) as client:
@@ -215,6 +292,97 @@ def test_generate_save_and_read_full_week_with_lossless_items(harness):
     recipe = api.recipe_request(state["rows"][0], "monday", "lunch", state["context"])
     assert recipe["items"] == state["reply"]["result"]["weekly_plan"][0]["meals"]["lunch"]["items"]
     assert recipe["items"][0]["portion_g"] == 100.25
+
+
+def test_minor_cannot_generate_or_replace_weekly_diet(harness):
+    client, state = harness
+    state["adult"] = False
+    response = generate(client)
+    assert response.status_code == 403
+    assert response.json()["detail"]["code"] == "DIET_ADULT_ONLY"
+    assert not state["writes"] and not state["ai_calls"]
+
+    state["adult"] = True
+    assert generate(client).status_code == 201
+    writes_before = len(state["writes"])
+    ai_calls_before = len(state["ai_calls"])
+    state["adult"] = False
+    response = client.post(SLOT, json={"expected_version": 1})
+    assert response.status_code == 403
+    assert len(state["writes"]) == writes_before
+    assert len(state["ai_calls"]) == ai_calls_before
+
+
+def test_kdri_snapshot_preserves_selected_menu_style_during_replacement(harness):
+    client, state = harness
+    state["context"].update({
+        "nutrition_profile": {
+            "profile_mode": "basic_profile", "age_years": 26, "sex": "female",
+            "height_cm": 165.0, "weight_kg": 60.0,
+            "data_sources": {"inbody_available": False, "health_checkup_available": False},
+        },
+        "reference_standard": "KDRI_2025",
+        "health_goal": {"goal_type": "maintenance", "goal_text": None},
+        "menu_style_preference": "everyday",
+    })
+    assert generate(client).status_code == 201
+    assert state["ai_calls"][0][1]["menu_style_preference"] == "everyday"
+    assert state["rows"][0]["request_context"]["nutrition_profile"]["age_years"] == 26
+
+    state["context"]["menu_style_preference"] = "health_focused"
+    assert client.get(f"{BASE}/{PLAN}").status_code == 200
+    assert client.post(SLOT, json={"expected_version": 1}).status_code == 200
+    assert state["ai_calls"][1][1]["menu_style_preference"] == "everyday"
+    assert state["rows"][0]["request_context"]["menu_style_preference"] == "everyday"
+
+
+def test_kdri_generate_requires_complete_profile_before_ai_call(harness):
+    client, state = harness
+    state["context"].update({"reference_standard": "KDRI_2025", "nutrition_profile": None})
+    response = generate(client)
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "DIET_PROFILE_INCOMPLETE"
+    assert not state["writes"] and not state["ai_calls"]
+
+
+def test_kdri_flag_rollback_keeps_saved_plan_readable_but_blocks_ai_replacement(harness):
+    client, state = harness
+    state["context"].update({
+        "nutrition_profile": {
+            "profile_mode": "basic_profile", "age_years": 26, "sex": "female",
+            "height_cm": 165.0, "weight_kg": 60.0,
+            "data_sources": {"inbody_available": False, "health_checkup_available": False},
+        },
+        "reference_standard": "KDRI_2025", "menu_style_preference": "everyday",
+    })
+    assert generate(client).status_code == 201
+    state["kdri_enabled"] = False
+    assert client.get(f"{BASE}/{PLAN}").status_code == 200
+    before = len(state["ai_calls"])
+    response = client.post(SLOT, json={"expected_version": 1})
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "AI_KDRI_DISABLED"
+    response = client.post(BASE + "/generate", json={
+        "week_start_date": "2026-10-19", "expected_version": 1,
+    })
+    assert response.status_code == 503
+    assert len(state["ai_calls"]) == before
+
+
+def test_legacy_read_checks_restrictions_without_erasing_kdri_metric_snapshot():
+    row = {"weekly_diet_plan_id": PLAN, "version": 1, "request_context": {
+        "food_allergens": ["땅콩"], "goal_type": "weight_loss",
+        "metric_statuses": {"bmi": "normal"},
+    }}
+    api.require_current_context(row, {
+        "food_allergens": ["땅콩"], "goal_type": "weight_loss", "metric_statuses": {},
+    })
+    with pytest.raises(HTTPException) as changed:
+        api.require_current_context(row, {
+            "food_allergens": ["땅콩"], "goal_type": "weight_loss",
+            "metric_statuses": {"bmi": "high"}, "reference_standard": "KDRI_2025",
+        })
+    assert changed.value.status_code == 409
 
 
 def test_model_handoff_examples_match_actual_requests(harness):
@@ -732,3 +900,74 @@ def test_real_context_loader_keeps_identity_internal_and_fails_on_unknown_allerg
         assert asyncio.run(main.load_weekly_diet_context(OWNER, None)) == {
             "food_allergens": ["땅콩"], "goal_type": "weight_loss", "metric_statuses": {},
         }
+
+
+@pytest.mark.parametrize("stored_style,effective_style", [
+    (None, "balanced"), ("health_focused", "health_focused"),
+])
+def test_kdri_context_uses_confirmed_measurements_goal_and_saved_style(
+    monkeypatch, stored_style, effective_style,
+):
+    from backend.app import main
+
+    async def base_context(user_id, settings):
+        assert user_id == OWNER
+        return {"food_allergens": ["땅콩"], "goal_type": "weight_loss", "metric_statuses": {}}
+
+    async def profile(user_id, settings):
+        return {"birth_date": "2000-11-19", "gender": "female",
+                "height_cm": 165, "weight_kg": 60}
+
+    async def measurements(user_id, settings):
+        return ({"health_checkup_id": "c1", "height_cm": 167, "weight_kg": 64},
+                {"body_composition_id": "b1", "height_cm": 168, "weight_kg": 62})
+
+    async def statuses(user_id, settings, checkup, body):
+        assert checkup["health_checkup_id"] == "c1"
+        assert body["body_composition_id"] == "b1"
+        return {"bmi": "normal"}
+
+    class SettingsStore:
+        def __init__(self, settings, user_id):
+            assert user_id == OWNER
+
+        async def get_health_goal(self):
+            return {"goal_type": "maintenance", "goal_text": None, "user_health_goal_id": "private"}
+
+        async def get_diet_preferences(self):
+            return {"menu_style_preference": stored_style}
+
+    monkeypatch.setenv("DIET_KDRI_ENABLED", "true")
+    monkeypatch.setattr(main, "load_weekly_diet_context", base_context)
+    monkeypatch.setattr(main, "fetch_profile", profile)
+    monkeypatch.setattr(main, "fetch_latest_diet_measurements", measurements)
+    monkeypatch.setattr(main, "fetch_diet_metric_statuses", statuses)
+    monkeypatch.setattr(main, "UserSettingsStore", SettingsStore)
+
+    context = asyncio.run(main.load_weekly_diet_ai_context(OWNER, None))
+    assert context["nutrition_profile"] == {
+        "profile_mode": "health_records", "age_years": 26, "sex": "female",
+        "height_cm": 168.0, "weight_kg": 62.0,
+        "data_sources": {"inbody_available": True, "health_checkup_available": True},
+    }
+    assert context["metric_statuses"] == {"bmi": "normal"}
+    assert context["health_goal"] == {"goal_type": "maintenance", "goal_text": None}
+    assert context["menu_style_preference"] == effective_style
+    assert "user_health_goal_id" not in str(context)
+
+
+def test_kdri_flag_off_does_not_read_new_private_context(monkeypatch):
+    from backend.app import main
+
+    async def base_context(user_id, settings):
+        return {"food_allergens": [], "goal_type": None, "metric_statuses": {}}
+
+    async def unexpected(*args):
+        raise AssertionError("KDRI inputs must not be read with the feature disabled")
+
+    monkeypatch.delenv("DIET_KDRI_ENABLED", raising=False)
+    monkeypatch.setattr(main, "load_weekly_diet_context", base_context)
+    monkeypatch.setattr(main, "fetch_profile", unexpected)
+    assert asyncio.run(main.load_weekly_diet_ai_context(OWNER, None)) == {
+        "food_allergens": [], "goal_type": None, "metric_statuses": {},
+    }

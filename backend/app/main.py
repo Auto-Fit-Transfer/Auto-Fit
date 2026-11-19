@@ -53,6 +53,13 @@ from backend.app.exercise_chat_service import (
 )
 from backend.app.http_client import client_scope, get_with_pgrst303_retry, retry_pgrst303_scope, SharedHttpClientMiddleware
 from backend.app.diet_timing import DietTimingMiddleware, timed_http_client
+from backend.app.diet_nutrition_profile import (
+    build_nutrition_profile, completed_age_years, is_adult_birth_date,
+    is_supported_diet_birth_date,
+)
+from backend.app.diet_health_context import (
+    fetch_diet_metric_statuses, fetch_latest_diet_measurements,
+)
 from backend.app.diet_recipe import daily_recipe_request, daily_source_fingerprint, has_unavailable_recipe, snapshot_fields
 from backend.app.saved_diet_allergy import meal_safety, recipe_conflicts, recipe_ingredients_complete
 from backend.app.diet_ai import (
@@ -84,7 +91,9 @@ from backend.app.health_assessment_generation import (
 )
 from backend.app.account_deletion import create_account_deletion_router
 from backend.app.community import create_community_router
-from backend.app.user_settings import create_user_settings_router
+from backend.app.user_settings import (
+    UserSettingsStore, create_diet_preferences_router, create_user_settings_router,
+)
 from backend.app.health_report import create_health_report_router
 from backend.app.habit_tier import create_habit_tier_router
 from backend.app.analysis_popups import create_analysis_popups_router
@@ -252,8 +261,8 @@ class ProfileUpdateRequest(BaseModel):
     @field_validator("birth_date")
     @classmethod
     def reject_future_birth_date(cls, value: date | None) -> date | None:
-        if value and value > date.today():
-            raise ValueError("birth_date cannot be in the future")
+        if value is not None and completed_age_years(value) < 19:
+            raise ValueError("birth_date must indicate age 19 or older in Asia/Seoul")
         return value
 
     @model_validator(mode="after")
@@ -729,6 +738,21 @@ async def fetch_profile(
             detail="Profile was not created for this user",
         )
     return rows[0]
+
+
+async def require_adult_diet_profile(user_id: str, settings: Settings) -> None:
+    """Check persisted age before any paid or persistent diet generation."""
+    profile = await fetch_profile(user_id, settings)
+    if not is_adult_birth_date(profile.get("birth_date")):
+        raise HTTPException(status_code=403, detail={
+            "code": "DIET_ADULT_ONLY",
+            "message": "만 19세 이상만 식단 추천을 생성하거나 다시 추천할 수 있습니다.",
+        })
+    if not is_supported_diet_birth_date(profile.get("birth_date")):
+        raise HTTPException(status_code=422, detail={
+            "code": "DIET_AGE_UNSUPPORTED",
+            "message": "현재 식단 추천은 만 120세 이하까지 지원합니다.",
+        })
 
 
 async def update_profile(
@@ -3703,13 +3727,46 @@ async def load_weekly_diet_context(user_id: str, settings: Settings) -> dict:
     }
 
 
-app.include_router(create_weekly_diet_router(get_current_user, get_settings, load_weekly_diet_context))
+async def load_weekly_diet_ai_context(user_id: str, settings: Settings) -> dict:
+    """Add confirmed KDRI inputs only after the matching AI deployment is enabled."""
+    context = await load_weekly_diet_context(user_id, settings)
+    if not environment_flag(os.getenv("DIET_KDRI_ENABLED"), default=False):
+        return context
+
+    profile, (checkup, body), goal, diet_preferences = await asyncio.gather(
+        fetch_profile(user_id, settings),
+        fetch_latest_diet_measurements(user_id, settings),
+        UserSettingsStore(settings, user_id).get_health_goal(),
+        UserSettingsStore(settings, user_id).get_diet_preferences(),
+    )
+    try:
+        nutrition_profile = build_nutrition_profile(profile, checkup, body)
+    except ValueError:
+        nutrition_profile = None
+    context.update({
+        "nutrition_profile": nutrition_profile,
+        "reference_standard": "KDRI_2025",
+        "health_goal": (
+            {"goal_type": goal["goal_type"], "goal_text": goal.get("goal_text")}
+            if goal else None
+        ),
+        "menu_style_preference": diet_preferences["menu_style_preference"] or "balanced",
+        "metric_statuses": await fetch_diet_metric_statuses(user_id, settings, checkup, body),
+    })
+    return context
+
+
+app.include_router(create_weekly_diet_router(
+    get_current_user, get_settings, load_weekly_diet_context,
+    load_weekly_diet_ai_context, require_adult_diet_profile,
+))
 app.include_router(create_running_router(get_current_user, get_settings))
 app.include_router(create_meal_photos_router(get_current_user, get_settings))
 app.include_router(create_food_shots_router(get_current_user, get_settings))
 app.include_router(create_account_deletion_router(get_current_user, get_settings))
 app.include_router(create_community_router(get_current_user, get_settings))
 app.include_router(create_user_settings_router(get_current_user, get_settings))
+app.include_router(create_diet_preferences_router(get_current_user, get_settings))
 app.include_router(create_health_report_router(get_current_user, get_settings))
 app.include_router(create_habit_tier_router(get_current_user, get_settings))
 app.include_router(create_analysis_popups_router(get_current_user, get_settings))
@@ -4671,6 +4728,7 @@ async def generate_diet_recommendation(
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
+    await require_adult_diet_profile(user.id, settings)
     target_date = datetime.now(KST).date()
     observed = await fetch_diet_recommendation(user.id, settings, target_date)
     lock = DIET_GENERATION_LOCKS[(user.id, target_date)]
@@ -4754,6 +4812,7 @@ async def regenerate_recommended_diet_meal(
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> RegenerateDietMealResponse:
+    await require_adult_diet_profile(user.id, settings)
     context = await fetch_diet_meal_context(user.id, str(diet_meal_id), settings)
     if (
         context["recommendation"].get("status") != "active"
@@ -5356,6 +5415,7 @@ async def preview_all_ai_diet_recommendation(
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
+    await require_adult_diet_profile(user.id, settings)
     target_date = datetime.now(KST).date()
     inventory, catalog, selected, food_catalog, previous, previous_before = await asyncio.gather(
         fetch_food_inventory(user.id, settings),

@@ -113,7 +113,7 @@ def saved_ingredient_names(meal):
 
 
 def request_context(body: WeeklyGenerateRequest, latest: dict) -> dict:
-    return {
+    context = {
         "metric_statuses": latest.get("metric_statuses", {}),
         "food_allergens": latest["food_allergens"],
         "disliked_foods": body.disliked_foods, "goal_type": latest.get("goal_type"),
@@ -121,10 +121,18 @@ def request_context(body: WeeklyGenerateRequest, latest: dict) -> dict:
         "sido": None, "sigungu": None, "nearby_regions": [],
         "meal_target": body.meal_target.model_dump(mode="json") if body.meal_target else None,
     }
+    for key in ("nutrition_profile", "reference_standard", "health_goal"):
+        if key in latest and latest[key] is not None:
+            context[key] = latest[key]
+    if "menu_style_preference" in latest:
+        context["menu_style_preference"] = latest["menu_style_preference"]
+    return context
 
 
 def require_current_context(row: dict, latest: dict):
-    if any(row["request_context"].get(key) != value for key, value in latest.items()):
+    if any(row["request_context"][key] != value for key, value in latest.items()
+           if key in row["request_context"] and key != "menu_style_preference"
+           and (key != "metric_statuses" or "reference_standard" in latest)):
         raise HTTPException(409, detail={
             "code": "WEEKLY_DIET_CONTEXT_CHANGED",
             "message": "알레르기 또는 목표가 변경되었습니다. 주간 식단 전체를 다시 생성해 주세요.",
@@ -204,7 +212,7 @@ async def require_recipe_current(store, plan_id, version, latest, load_context, 
         fail("WEEKLY_DIET_CONTEXT_CHANGED", 409)
 
 
-def create_weekly_diet_router(get_user, get_settings, load_context):
+def create_weekly_diet_router(get_user, get_settings, load_context, load_ai_context, require_adult):
     router = APIRouter(prefix="/api/diet/weekly-recommendations", tags=["Diet"])
 
     def store_dependency(user=Depends(get_user), settings=Depends(get_settings)):
@@ -234,6 +242,7 @@ def create_weekly_diet_router(get_user, get_settings, load_context):
                  responses={200: {"model": WeeklyPlanResponse, "description": "Existing week regenerated"}})
     async def generate(body: WeeklyGenerateRequest, response: Response, store=Depends(store_dependency),
                        settings=Depends(get_settings), ai=Depends(get_weekly_ai_client)) -> dict[str, Any]:
+        await require_adult(store.user_id, settings)
         existing = await store.get(week_start=body.week_start_date)
         if existing is not None:
             if body.expected_version is None:
@@ -247,14 +256,19 @@ def create_weekly_diet_router(get_user, get_settings, load_context):
             body = WeeklyGenerateRequest.model_validate(options)
         elif body.expected_version is not None:
             fail("WEEKLY_DIET_NOT_FOUND", 404)
-        latest = await load_context(store.user_id, settings)
+        latest = await load_ai_context(store.user_id, settings)
+        if (existing is not None and "reference_standard" in existing["request_context"]
+                and "reference_standard" not in latest):
+            fail("AI_KDRI_DISABLED", 503)
+        if "reference_standard" in latest and latest.get("nutrition_profile") is None:
+            fail("DIET_PROFILE_INCOMPLETE", 422)
         context = request_context(body, latest)
         await store.consume_generation_quota()
         reply = await call_ai(ai, AIEndpoint.DIET, context, WeeklyReply)
         meals = [meal for day in reply["result"]["weekly_plan"] for meal in day["meals"].values()]
         check_restrictions(meals, context)
         check_unique_menus(meals)
-        if latest != await load_context(store.user_id, settings):
+        if latest != await load_ai_context(store.user_id, settings):
             fail("WEEKLY_DIET_CONTEXT_CHANGED", 409)
         if existing is None:
             row = await store.create(body.week_start_date, reply, context)
@@ -267,14 +281,18 @@ def create_weekly_diet_router(get_user, get_settings, load_context):
     async def regenerate(plan_id: UUID, day: Day, meal_type: MealType,
                          body: ReplaceWeeklyMealRequest, store=Depends(store_dependency),
                          settings=Depends(get_settings), ai=Depends(get_weekly_ai_client)) -> dict[str, Any]:
+        await require_adult(store.user_id, settings)
         row = await store.get(plan_id=plan_id)
         if row is None:
             fail("WEEKLY_DIET_NOT_FOUND", 404)
         if row["version"] != body.expected_version:
             fail("WEEKLY_DIET_VERSION_CONFLICT", 409)
-        latest = await load_context(store.user_id, settings)
+        latest = await load_ai_context(store.user_id, settings)
+        if ("reference_standard" in row["request_context"]
+                and "reference_standard" not in latest):
+            fail("AI_KDRI_DISABLED", 503)
         require_current_context(row, latest)
-        context = {**row["request_context"], **latest}
+        context = dict(row["request_context"])
         current = next(entry for entry in row["result"]["weekly_plan"] if entry["day"] == day)["meals"][meal_type]
         excluded = list(dict.fromkeys(
             meal["menu_name"] for entry in row["result"]["weekly_plan"] for meal in entry["meals"].values()
@@ -293,7 +311,7 @@ def create_weekly_diet_router(get_user, get_settings, load_context):
         check_restrictions([replacement["meal"]], context)
         if replacement["meal"]["menu_name"].strip().casefold() in {name.strip().casefold() for name in excluded}:
             fail("AI_DUPLICATE_MENU")
-        if latest != await load_context(store.user_id, settings):
+        if latest != await load_ai_context(store.user_id, settings):
             fail("WEEKLY_DIET_CONTEXT_CHANGED", 409)
         updated = await store.replace(plan_id, body.expected_version, day, meal_type, reply, context)
         return public_plan(updated)

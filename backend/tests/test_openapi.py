@@ -11,10 +11,11 @@ def test_all_diet_operations_are_grouped_in_openapi() -> None:
         for path, methods in paths.items()
         if path.startswith("/api/diet/")
         for method, operation in methods.items()
-        if method in {"get", "post", "patch", "delete"}
+        if method in {"get", "post", "put", "patch", "delete"}
     ]
 
-    assert len(diet_operations) == 23
+    assert len(diet_operations) == 25
+    assert {"get", "put"} <= set(paths["/api/diet/preferences"])
     assert "get" in paths["/api/diet/summary/weekly"]
     assert "post" in paths["/api/diet/food-shots/analyze"]
     assert "post" in paths["/api/diet/food-shots/recalculate"]

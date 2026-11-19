@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 from typing import Annotated, Any, Literal
 from zoneinfo import ZoneInfo
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 Day = Literal["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
@@ -76,10 +76,49 @@ class WeeklyReply(AIData):
     result: WeeklyResult
 
 
+class MealAdjustment(AIData):
+    adjustment_policy: Literal["gentle_rebalance_v1"]
+    baseline_calories_kcal: float = Field(gt=0, allow_inf_nan=False)
+    requested_reduction_kcal: Nonnegative
+    maximum_allowed_reduction_kcal: Nonnegative
+    target_calories_kcal: Nonnegative
+    selected_calories_kcal: Nonnegative
+    estimated_reduction_kcal: Nonnegative
+    remaining_reduction_kcal: Nonnegative
+    selected_calorie_ratio: float = Field(ge=0.85, le=1, allow_inf_nan=False)
+    limited_by_policy: bool
+
+    @model_validator(mode="after")
+    def coherent_calorie_accounting(self):
+        baseline = self.baseline_calories_kcal
+        maximum = self.maximum_allowed_reduction_kcal
+        requested = self.requested_reduction_kcal
+        selected = self.selected_calories_kcal
+        actual = baseline - selected
+        if (maximum > baseline * 0.15 + 0.11
+                or abs(self.target_calories_kcal - (baseline - min(requested, maximum))) > 0.11
+                or selected + 0.11 < self.target_calories_kcal
+                or abs(actual - self.estimated_reduction_kcal) > 0.11
+                or abs(self.remaining_reduction_kcal - max(0, requested - actual)) > 0.11
+                or abs(self.selected_calorie_ratio - selected / baseline) > 0.005
+                or self.limited_by_policy != (requested > maximum + 0.11)):
+            raise ValueError("Inconsistent meal adjustment calories")
+        return self
+
+
 class Replacement(AIData):
     day: Day
     meal_type: MealType
     meal: Meal
+    adjustment: MealAdjustment | None = None
+
+    @model_validator(mode="after")
+    def adjustment_matches_meal(self):
+        if (self.adjustment is not None and abs(
+            self.meal.estimated_calories_kcal - self.adjustment.selected_calories_kcal
+        ) > 0.11):
+            raise ValueError("Meal calories differ from the adjustment")
+        return self
 
 
 class ReplacementReply(AIData):
@@ -115,6 +154,35 @@ class MealTarget(BaseModel):
     carbohydrate_g: float = Field(ge=1, le=1000)
 
 
+class NutritionDataSources(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    inbody_available: bool
+    health_checkup_available: bool
+
+
+class NutritionProfile(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+    profile_mode: Literal["health_records", "basic_profile"]
+    age_years: int = Field(ge=19, le=120)
+    sex: Literal["male", "female"]
+    height_cm: float = Field(ge=80, le=250)
+    weight_kg: float = Field(ge=20, le=400)
+    data_sources: NutritionDataSources
+
+    @model_validator(mode="after")
+    def mode_matches_sources(self):
+        both = self.data_sources.inbody_available and self.data_sources.health_checkup_available
+        if (self.profile_mode == "health_records") != both:
+            raise ValueError("Nutrition profile mode conflicts with source availability")
+        return self
+
+
+class DietHealthGoal(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    goal_type: Literal["fat_loss", "muscle_gain", "fitness", "maintenance", "other"]
+    goal_text: str | None = Field(default=None, max_length=200)
+
+
 class DietRequestContext(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     metric_statuses: dict[str, str]
@@ -126,6 +194,10 @@ class DietRequestContext(BaseModel):
     sigungu: None
     nearby_regions: list = Field(max_length=0)
     meal_target: MealTarget | None
+    nutrition_profile: NutritionProfile | None = None
+    reference_standard: Literal["KDRI_2025"] | None = None
+    health_goal: DietHealthGoal | None = None
+    menu_style_preference: Literal["balanced", "everyday", "health_focused"] | None = None
 
 
 class WeeklyGenerateRequest(BaseModel):

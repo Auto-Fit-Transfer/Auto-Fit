@@ -50,7 +50,7 @@ def test_startup_reads_retry_without_repeating_paid_work(monkeypatch, caplog) ->
                 json={"code": "PGRST303", "message": "JWT issued at future"},
                 request=request,
             )
-        rows = [{"user_id": "one"}] if path == "/rest/v1/profiles" else []
+        rows = [{"user_id": "one", "birth_date": "1990-01-01"}] if path == "/rest/v1/profiles" else []
         return httpx.Response(200, json=rows, request=request)
 
     async def empty(*args, **kwargs):

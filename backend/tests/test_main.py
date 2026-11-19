@@ -17,6 +17,15 @@ TEST_SETTINGS = main.Settings(
 )
 
 
+@pytest.fixture
+def adult_diet_profile(monkeypatch):
+    async def allow_adult(user_id, settings):
+        assert user_id == "authenticated-user"
+        assert settings == TEST_SETTINGS
+
+    monkeypatch.setattr(main, "require_adult_diet_profile", allow_adult)
+
+
 def test_health() -> None:
     client = TestClient(main.app)
     response = client.get("/health")
@@ -235,6 +244,79 @@ def test_profile_current_measurements_round_trip_without_changing_target(monkeyp
             "user_id": "authenticated-user", "height_cm": 175.5,
             "weight_kg": 70.25, "target_weight": 65.0,
         }
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_profile_birth_date_rejects_minor_before_storage(monkeypatch) -> None:
+    async def fake_user():
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def unexpected_update(*args):
+        raise AssertionError("A minor birth date must not be saved")
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "update_profile", unexpected_update)
+    try:
+        response = TestClient(main.app).patch(
+            "/api/profile", json={"birth_date": "2015-01-01"},
+        )
+        assert response.status_code == 422
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+@pytest.mark.parametrize("birth_date", ["2015-01-01", None, "invalid"])
+def test_diet_age_gate_rejects_underage_or_unknown_profile(monkeypatch, birth_date) -> None:
+    async def fake_profile(user_id, settings):
+        assert user_id == "authenticated-user"
+        assert settings == TEST_SETTINGS
+        return {"birth_date": birth_date}
+
+    monkeypatch.setattr(main, "fetch_profile", fake_profile)
+    with pytest.raises(main.HTTPException) as caught:
+        asyncio.run(main.require_adult_diet_profile("authenticated-user", TEST_SETTINGS))
+    assert caught.value.status_code == 403
+    assert caught.value.detail["code"] == "DIET_ADULT_ONLY"
+
+
+def test_diet_age_gate_rejects_age_above_ai_contract(monkeypatch) -> None:
+    async def fake_profile(user_id, settings):
+        return {"birth_date": "1900-01-01"}
+
+    monkeypatch.setattr(main, "fetch_profile", fake_profile)
+    with pytest.raises(main.HTTPException) as caught:
+        asyncio.run(main.require_adult_diet_profile("authenticated-user", TEST_SETTINGS))
+    assert caught.value.status_code == 422
+    assert caught.value.detail["code"] == "DIET_AGE_UNSUPPORTED"
+
+
+@pytest.mark.parametrize("path", [
+    "/api/diet/recommendations/generate",
+    "/api/diet/recommendations/generate-preview",
+    "/api/diet/meals/11111111-1111-1111-1111-111111111111/regenerate",
+])
+def test_daily_diet_generation_paths_stop_minor_before_work(monkeypatch, path) -> None:
+    async def fake_user():
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_profile(user_id, settings):
+        return {"birth_date": "2015-01-01"}
+
+    async def unexpected(*args, **kwargs):
+        raise AssertionError("Diet reads or AI calls must not run for minors")
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "fetch_profile", fake_profile)
+    monkeypatch.setattr(main, "fetch_diet_recommendation", unexpected)
+    monkeypatch.setattr(main, "fetch_diet_meal_context", unexpected)
+    monkeypatch.setattr(main, "fetch_food_inventory", unexpected)
+    try:
+        response = TestClient(main.app).post(path, json={})
+        assert response.status_code == 403
+        assert response.json()["detail"]["code"] == "DIET_ADULT_ONLY"
     finally:
         main.app.dependency_overrides.clear()
 
@@ -2239,7 +2321,7 @@ def test_get_diet_recommendation_by_date_uses_authenticated_user(
         main.app.dependency_overrides.clear()
 
 
-def test_generate_diet_recommendation_uses_user_data(monkeypatch) -> None:
+def test_generate_diet_recommendation_uses_user_data(monkeypatch, adult_diet_profile) -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="authenticated-user")
 
@@ -2431,7 +2513,7 @@ def test_regenerate_diet_meal_calls_owner_scoped_rpc(monkeypatch) -> None:
 
 
 def test_regenerate_recommended_diet_meal_uses_authenticated_user(
-    monkeypatch,
+    monkeypatch, adult_diet_profile,
 ) -> None:
     meal_id = "11111111-1111-1111-1111-111111111111"
 
@@ -2587,7 +2669,7 @@ def test_regenerate_openapi_exposes_inventory_usage_contract() -> None:
 
 
 def test_regenerate_recommended_diet_meal_rejects_finished_meal(
-    monkeypatch,
+    monkeypatch, adult_diet_profile,
 ) -> None:
     meal_id = "11111111-1111-1111-1111-111111111111"
 
@@ -3022,7 +3104,7 @@ def test_resolve_daily_allergy_names_rejects_unresolved_selection() -> None:
     assert error.value.status_code == 502
 
 
-def test_daily_generation_does_not_save_when_ai_rejects_allergens(monkeypatch) -> None:
+def test_daily_generation_does_not_save_when_ai_rejects_allergens(monkeypatch, adult_diet_profile) -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="authenticated-user")
 
@@ -3062,7 +3144,7 @@ def test_daily_generation_does_not_save_when_ai_rejects_allergens(monkeypatch) -
         main.app.dependency_overrides.clear()
 
 
-def test_meal_regeneration_does_not_save_allergen_conflict(monkeypatch, caplog) -> None:
+def test_meal_regeneration_does_not_save_allergen_conflict(monkeypatch, caplog, adult_diet_profile) -> None:
     meal_id = "11111111-1111-1111-1111-111111111111"
 
     async def fake_user() -> main.AuthenticatedUser:
@@ -3391,7 +3473,7 @@ def test_fetch_latest_diet_recommendation_accepts_historical_cutoff(
     assert result is None
 
 
-def test_generate_diet_recommendation_reuses_concurrent_result(monkeypatch) -> None:
+def test_generate_diet_recommendation_reuses_concurrent_result(monkeypatch, adult_diet_profile) -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="authenticated-user")
 
@@ -3428,7 +3510,7 @@ def test_generate_diet_recommendation_reuses_concurrent_result(monkeypatch) -> N
         main.app.dependency_overrides.clear()
 
 
-def test_preview_all_ai_diet_uses_catalog_without_persistence(monkeypatch) -> None:
+def test_preview_all_ai_diet_uses_catalog_without_persistence(monkeypatch, adult_diet_profile) -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="authenticated-user")
 

@@ -9,7 +9,7 @@ from backend.app import diet_refresh
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_refresh_user_query_includes_every_profile(monkeypatch) -> None:
+def test_refresh_user_query_includes_every_adult_profile(monkeypatch) -> None:
     requested_params: list[dict[str, str]] = []
 
     class Response:
@@ -17,7 +17,10 @@ def test_refresh_user_query_includes_every_profile(monkeypatch) -> None:
             pass
 
         def json(self) -> list[dict[str, str]]:
-            return [{"user_id": "complete"}, {"user_id": "incomplete"}]
+            return [
+                {"user_id": "complete", "birth_date": "1990-01-01"},
+                {"user_id": "incomplete", "birth_date": "2000-01-01"},
+            ]
 
     class Client:
         async def get(self, _url, *, headers, params):
@@ -40,7 +43,7 @@ def test_refresh_user_query_includes_every_profile(monkeypatch) -> None:
 
     assert user_ids == ["complete", "incomplete"]
     assert requested_params == [{
-        "select": "user_id",
+        "select": "user_id,birth_date",
         "order": "user_id.asc",
         "limit": "1000",
         "offset": "0",

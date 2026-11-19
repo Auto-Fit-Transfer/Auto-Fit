@@ -8,6 +8,7 @@ import logging
 
 from fastapi import HTTPException
 
+from backend.app.diet_nutrition_profile import is_supported_diet_birth_date
 from backend.app.food_image_generation import generate_missing_menu_images
 from backend.app.http_client import get_with_pgrst303_retry, retry_pgrst303_scope
 from backend.app.main import (
@@ -44,6 +45,8 @@ async def fetch_refresh_user_ids() -> list[str]:
     settings = get_settings()
     user_ids: list[str] = []
     page_size = 1000
+    offset = 0
+    today = datetime.now(KST).date()
     async with client_scope() as client:
         while True:
             response = await get_with_pgrst303_retry(
@@ -51,15 +54,19 @@ async def fetch_refresh_user_ids() -> list[str]:
                 f"{settings.supabase_url}/rest/v1/profiles",
                 headers=service_headers(settings),
                 params={
-                    "select": "user_id",
+                    "select": "user_id,birth_date",
                     "order": "user_id.asc",
                     "limit": str(page_size),
-                    "offset": str(len(user_ids)),
+                    "offset": str(offset),
                 },
             )
             response.raise_for_status()
             page = response.json()
-            user_ids.extend(row["user_id"] for row in page)
+            user_ids.extend(
+                row["user_id"] for row in page
+                if is_supported_diet_birth_date(row.get("birth_date"), today=today)
+            )
+            offset += len(page)
             if len(page) < page_size:
                 return user_ids
 

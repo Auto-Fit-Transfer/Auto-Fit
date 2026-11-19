@@ -5,7 +5,7 @@ from datetime import date
 from backend.app import diet_refresh, main
 
 
-def test_refresh_includes_profiles_without_completed_onboarding(monkeypatch) -> None:
+def test_refresh_includes_adults_without_completed_onboarding_but_excludes_minors(monkeypatch) -> None:
     settings = main.Settings(
         supabase_url="https://example.supabase.co",
         supabase_publishable_key="publishable-test",
@@ -19,7 +19,12 @@ def test_refresh_includes_profiles_without_completed_onboarding(monkeypatch) -> 
             pass
 
         def json(self):
-            return [{"user_id": "complete"}, {"user_id": "incomplete"}]
+            return [
+                {"user_id": "complete", "birth_date": "1990-01-01"},
+                {"user_id": "incomplete", "birth_date": "2000-01-01"},
+                {"user_id": "minor", "birth_date": "2015-01-01"},
+                {"user_id": "unknown", "birth_date": None},
+            ]
 
     class Client:
         async def get(self, url, *, headers, params):
@@ -35,7 +40,7 @@ def test_refresh_includes_profiles_without_completed_onboarding(monkeypatch) -> 
 
     assert asyncio.run(diet_refresh.fetch_refresh_user_ids()) == ["complete", "incomplete"]
     assert requested_params == [{
-        "select": "user_id", "order": "user_id.asc", "limit": "1000", "offset": "0",
+        "select": "user_id,birth_date", "order": "user_id.asc", "limit": "1000", "offset": "0",
     }]
 
 
