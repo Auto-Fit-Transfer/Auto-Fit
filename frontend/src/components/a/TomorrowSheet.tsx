@@ -1,17 +1,20 @@
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
+import CheckIcon from '@/assets/icons/system/Check.svg';
 import { AppBottomSheet, Text } from '@/src/components/common';
-import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { ALoading } from './ALoading';
 import { aForm } from './form';
 
-// Renewal A's 내일 맞추기 (a-diet.html, the flow agreed with AI on 11/19, the choice asked for by the user 11/19):
-// when today went over the goal even after the workout's calories, I am asked first whether to let it go as a
-// cheat day or eat a little less tomorrow (a light user must not feel pushed). Only "less" goes on: the AI
-// proposes tomorrow's four meals, lighter but with every meal and the protein kept; I look and say yes, and
-// the server saves the four at once. A view that only shows what it is given: the diet tab fills it once the
-// back-end and AI calls exist (until then only /dev/a-tomorrow shows it).
+// Renewal A's 내일 맞추기 (a-diet.html; the user's choices of 11/19): when today went over the goal even after the
+// workout's calories, I am asked first whether to let it go as a cheat day or adjust tomorrow (a light user must
+// not feel pushed). Adjusting does not remake the whole day: I pick the meals of tomorrow to make lighter, what
+// went over is shared among them, and only those come back changed; I look at the day and say yes. A view that
+// only shows what it is given: the diet tab fills it once the back-end and AI calls exist (until then only
+// /dev/a-tomorrow shows it).
+export type TomorrowMeal = { slot: string; menu: string; kcal: number | null };
 export type TomorrowPlan = {
   meals: { slot: string; menu: string; kcal: number | null; changed: boolean }[];
   kcal: number | null;
@@ -25,20 +28,30 @@ export interface TomorrowSheetProps {
   eaten: number | null;
   target: number | null;
   burned: number | null; // today's workout and run calories (an estimate)
-  state: 'choose' | 'loading' | 'ready' | 'error' | 'saving' | 'saved';
+  state: 'choose' | 'pick' | 'loading' | 'ready' | 'error' | 'saving' | 'saved';
+  tomorrow: TomorrowMeal[]; // tomorrow's meals as they are now, to pick from
   plan: TomorrowPlan | null;
   error: string;
   onClose: () => void;
   onRetry: () => void;
   onSave: () => void;
   onCheat: () => void; // let it go: nothing changes tomorrow
-  onLess: () => void; // ask the AI for a lighter tomorrow
+  onAdjust: () => void; // go on to pick the meals
+  onPick: (slots: string[]) => void; // ask the AI for lighter versions of these meals only
 }
 
 const number = (value: number | null) => (value == null ? '—' : Math.round(value).toLocaleString('ko-KR'));
 
-export function TomorrowSheet({ visible, over, eaten, target, burned, state, plan, error, onClose, onRetry, onSave, onCheat, onLess }: TomorrowSheetProps) {
+// What each picked meal gives up: what went over, shared evenly (the server keeps every meal above its floor).
+export const shareOf = (over: number, picked: number) => (picked > 0 ? Math.round(over / picked) : 0);
+
+export function TomorrowSheet({ visible, over, eaten, target, burned, state, tomorrow, plan, error, onClose, onRetry, onSave, onCheat, onAdjust, onPick }: TomorrowSheetProps) {
   const styles = useThemedStyles(createStyles);
+  const { colors } = useAppTheme();
+  const [picked, setPicked] = useState<string[]>([]);
+  const close = () => { setPicked([]); onClose(); };
+  const toggle = (slot: string) => setPicked((now) => (now.includes(slot) ? now.filter((item) => item !== slot) : [...now, slot]));
+  const share = shareOf(over, picked.length);
   const button = (label: string, onPress: () => void, ghost = false, disabled = false) => (
     <Pressable
       accessibilityRole="button"
@@ -52,7 +65,7 @@ export function TomorrowSheet({ visible, over, eaten, target, burned, state, pla
   );
 
   return (
-    <AppBottomSheet onClose={onClose} scrollable="when-overflow" title="내일 맞추기" visible={visible}>
+    <AppBottomSheet onClose={close} scrollable="when-overflow" title="내일 맞추기" visible={visible}>
       <View style={styles.content}>
         {state === 'choose' ? (
           <>
@@ -75,19 +88,48 @@ export function TomorrowSheet({ visible, over, eaten, target, burned, state, pla
             <Text style={styles.q}>목표보다 {number(over)}kcal 더 먹었어요. 어떻게 할까요?</Text>
             <View style={styles.duo}>
               <View style={styles.grow}>{button('치팅 데이로 넘기기', onCheat, true)}</View>
-              <View style={styles.grow}>{button('내일 덜 먹기', onLess)}</View>
+              <View style={styles.grow}>{button('내일 조절하기', onAdjust)}</View>
             </View>
+          </>
+        ) : state === 'pick' ? (
+          <>
+            <Text style={styles.q}>가볍게 할 끼니를 골라 주세요</Text>
+            <Text style={styles.note}>더 먹은 {number(over)}kcal를 고른 끼니에 나눠서 줄여요.</Text>
+            {tomorrow.length ? (
+              <View style={styles.card}>
+                {tomorrow.map((meal, index) => {
+                  const on = picked.includes(meal.slot);
+                  return (
+                    <Pressable
+                      key={meal.slot}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: on }}
+                      onPress={() => toggle(meal.slot)}
+                      style={[styles.row, index > 0 && styles.line]}
+                    >
+                      <View style={[styles.tick, on && styles.tickOn]}>{on ? <CheckIcon color={colors.onPrimary} height={16} width={16} /> : null}</View>
+                      <Text style={styles.slot}>{meal.slot}</Text>
+                      <Text numberOfLines={2} style={[styles.body, styles.grow]}>{meal.menu}</Text>
+                      <Text style={styles.kcal}>{on ? `−${number(share)}` : number(meal.kcal)}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : (
+              <Text style={styles.body}>내일 식단이 아직 없어요.</Text>
+            )}
+            {button(picked.length ? `${picked.length}끼 가볍게 바꾸기` : '끼니를 골라 주세요', () => onPick(picked), false, picked.length === 0)}
           </>
         ) : (
           <>
-            <Text style={styles.q}>더 먹은 {number(over)}kcal를 내일 식단에서 맞춰요</Text>
+            <Text style={styles.q}>더 먹은 {number(over)}kcal를 고른 끼니에서 맞춰요</Text>
             <Text style={styles.note}>끼니는 거르지 않고, 단백질은 지키면서 가볍게 바꿔요.</Text>
           </>
         )}
 
         {state === 'loading' ? (
           <View style={styles.wait}>
-            <ALoading label="내일 식단을 짜는 중" />
+            <ALoading label="고른 끼니를 다시 짜는 중" />
           </View>
         ) : null}
         {state === 'error' ? (
@@ -157,5 +199,7 @@ function createStyles({ colors }: AppTheme) {
     pressed: a.goPressed,
     goText: { ...a.goText, fontSize: 20, lineHeight: 24 },
     ghostText: { color: colors.ink },
+    tick: { ...a.tick, height: 26, width: 26 },
+    tickOn: a.on,
   } as const;
 }
