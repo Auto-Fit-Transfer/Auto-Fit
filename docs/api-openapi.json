@@ -1,6 +1,112 @@
 {
   "components": {
     "schemas": {
+      "ActualItem": {
+        "additionalProperties": false,
+        "properties": {
+          "calories": {
+            "anyOf": [
+              {
+                "maximum": 100000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calories"
+          },
+          "carbohydrates": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Carbohydrates"
+          },
+          "fat": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fat"
+          },
+          "food_name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Food Name",
+            "type": "string"
+          },
+          "protein": {
+            "anyOf": [
+              {
+                "maximum": 10000.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Protein"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "maximum": 100000.0,
+                "type": "number"
+              },
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "unit": {
+            "maxLength": 20,
+            "minLength": 1,
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "food_name",
+          "quantity",
+          "unit"
+        ],
+        "title": "ActualItem",
+        "type": "object"
+      },
       "AllergySelectionRequest": {
         "additionalProperties": false,
         "properties": {
@@ -166,6 +272,7 @@
           "basal_metabolic_rate": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -177,6 +284,7 @@
           "bmi": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -193,6 +301,7 @@
           "body_fat_mass_kg": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -204,6 +313,7 @@
           "body_fat_percentage": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -215,6 +325,7 @@
           "body_water_liters": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -226,6 +337,7 @@
           "body_water_percentage": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -248,6 +360,7 @@
           "height_cm": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -264,6 +377,7 @@
           "protein_percentage": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -275,6 +389,7 @@
           "skeletal_muscle_mass_kg": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -286,6 +401,7 @@
           "visceral_fat_level": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -297,6 +413,7 @@
           "weight_kg": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -324,6 +441,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -341,6 +459,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -358,6 +477,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -375,6 +495,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -392,6 +513,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -409,6 +531,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -438,6 +561,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -468,6 +592,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -485,6 +610,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -502,6 +628,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -519,6 +646,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -538,6 +666,7 @@
           "basal_metabolic_rate": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -550,6 +679,7 @@
           "bmi": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -562,6 +692,7 @@
           "body_fat_mass_kg": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -574,6 +705,7 @@
           "body_fat_percentage": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -586,6 +718,7 @@
           "body_water_liters": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -598,6 +731,7 @@
           "body_water_percentage": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -622,6 +756,7 @@
           "height_cm": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -647,6 +782,7 @@
           "protein_percentage": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -659,6 +795,7 @@
           "skeletal_muscle_mass_kg": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -671,6 +808,7 @@
           "visceral_fat_level": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -683,6 +821,7 @@
           "weight_kg": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -929,6 +1068,47 @@
           "client_message_id"
         ],
         "title": "ChatMessageRequest",
+        "type": "object"
+      },
+      "CheatDecisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "const": "cheat",
+            "title": "Decision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "decision"
+        ],
+        "title": "CheatDecisionRequest",
+        "type": "object"
+      },
+      "CheatDecisionResponse": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "decision": {
+            "const": "cheat",
+            "title": "Decision",
+            "type": "string"
+          },
+          "ok": {
+            "const": true,
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "date",
+          "decision"
+        ],
+        "title": "CheatDecisionResponse",
         "type": "object"
       },
       "CommunityActivityItem": {
@@ -3163,6 +3343,69 @@
         "title": "CompleteOnboardingRequest",
         "type": "object"
       },
+      "ConfirmResponse": {
+        "properties": {
+          "applied_meal_types": {
+            "items": {
+              "enum": [
+                "breakfast",
+                "lunch",
+                "dinner",
+                "snack"
+              ],
+              "type": "string"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Applied Meal Types",
+            "type": "array"
+          },
+          "decision": {
+            "const": "adjusted",
+            "title": "Decision",
+            "type": "string"
+          },
+          "failed_meals": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Failed Meals",
+            "type": "array"
+          },
+          "ok": {
+            "const": true,
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "tomorrow_date": {
+            "format": "date",
+            "title": "Tomorrow Date",
+            "type": "string"
+          },
+          "version": {
+            "minimum": 2.0,
+            "title": "Version",
+            "type": "integer"
+          },
+          "weekly_diet_plan_id": {
+            "format": "uuid",
+            "title": "Weekly Diet Plan Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "weekly_diet_plan_id",
+          "version",
+          "tomorrow_date",
+          "applied_meal_types",
+          "failed_meals",
+          "decision"
+        ],
+        "title": "ConfirmResponse",
+        "type": "object"
+      },
       "ConfirmationResponse": {
         "properties": {
           "already_confirmed": {
@@ -3621,6 +3864,38 @@
       "DatedWeeklyResult": {
         "additionalProperties": true,
         "properties": {
+          "daily_target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResolvedMealTarget"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "slot_targets": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/ResolvedMealTarget"
+                },
+                "propertyNames": {
+                  "enum": [
+                    "breakfast",
+                    "lunch",
+                    "dinner",
+                    "snack"
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slot Targets"
+          },
           "strategy": {
             "title": "Strategy",
             "type": "string"
@@ -4245,6 +4520,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -4470,6 +4746,230 @@
         "title": "FavoriteRequest",
         "type": "object"
       },
+      "FeedbackCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "actual_items": {
+            "items": {
+              "$ref": "#/components/schemas/ActualItem"
+            },
+            "maxItems": 20,
+            "title": "Actual Items",
+            "type": "array"
+          },
+          "eaten_at": {
+            "format": "date-time",
+            "title": "Eaten At",
+            "type": "string"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "feedback_type": {
+            "enum": [
+              "eaten",
+              "different_food",
+              "skipped"
+            ],
+            "title": "Feedback Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_version",
+          "feedback_type"
+        ],
+        "title": "FeedbackCreate",
+        "type": "object"
+      },
+      "FeedbackListResponse": {
+        "properties": {
+          "feedback": {
+            "items": {
+              "$ref": "#/components/schemas/FeedbackRecord"
+            },
+            "title": "Feedback",
+            "type": "array"
+          },
+          "legacy_feedback": {
+            "items": {
+              "$ref": "#/components/schemas/LegacyFeedbackRecord"
+            },
+            "title": "Legacy Feedback",
+            "type": "array"
+          },
+          "ok": {
+            "const": true,
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "feedback",
+          "legacy_feedback"
+        ],
+        "title": "FeedbackListResponse",
+        "type": "object"
+      },
+      "FeedbackRecord": {
+        "properties": {
+          "feedback_type": {
+            "enum": [
+              "eaten",
+              "different_food",
+              "skipped"
+            ],
+            "title": "Feedback Type",
+            "type": "string"
+          },
+          "meal_log_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Log Id"
+          },
+          "meal_type": {
+            "enum": [
+              "breakfast",
+              "lunch",
+              "dinner",
+              "snack"
+            ],
+            "title": "Meal Type",
+            "type": "string"
+          },
+          "plan_day": {
+            "enum": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ],
+            "title": "Plan Day",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "weekly_diet_feedback_id": {
+            "format": "uuid",
+            "title": "Weekly Diet Feedback Id",
+            "type": "string"
+          },
+          "weekly_diet_plan_id": {
+            "format": "uuid",
+            "title": "Weekly Diet Plan Id",
+            "type": "string"
+          },
+          "weekly_plan_version": {
+            "minimum": 1.0,
+            "title": "Weekly Plan Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "weekly_diet_feedback_id",
+          "weekly_diet_plan_id",
+          "plan_day",
+          "meal_type",
+          "weekly_plan_version",
+          "feedback_type",
+          "meal_log_id",
+          "recorded_at"
+        ],
+        "title": "FeedbackRecord",
+        "type": "object"
+      },
+      "FeedbackResponse": {
+        "properties": {
+          "feedback": {
+            "$ref": "#/components/schemas/FeedbackRecord"
+          },
+          "meal_log_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Log Id"
+          },
+          "ok": {
+            "const": true,
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "feedback",
+          "meal_log_id"
+        ],
+        "title": "FeedbackResponse",
+        "type": "object"
+      },
+      "FeedbackUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "actual_items": {
+            "items": {
+              "$ref": "#/components/schemas/ActualItem"
+            },
+            "maxItems": 20,
+            "title": "Actual Items",
+            "type": "array"
+          },
+          "eaten_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eaten At"
+          },
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "feedback_type": {
+            "enum": [
+              "eaten",
+              "different_food",
+              "skipped"
+            ],
+            "title": "Feedback Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_version",
+          "feedback_type"
+        ],
+        "title": "FeedbackUpdate",
+        "type": "object"
+      },
       "FinalDirection": {
         "properties": {
           "from": {
@@ -4541,6 +5041,7 @@
           "quantity": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -4611,6 +5112,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -4686,6 +5188,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5095,6 +5598,7 @@
           "alt": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5106,6 +5610,7 @@
           "ast": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5117,6 +5622,7 @@
           "bmi": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5144,6 +5650,7 @@
           "creatinine": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5166,6 +5673,7 @@
           "fasting_glucose": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5177,6 +5685,7 @@
           "gamma_gtp": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5188,6 +5697,7 @@
           "hdl_cholesterol": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5204,6 +5714,7 @@
           "height_cm": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5215,6 +5726,7 @@
           "hemoglobin": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5237,6 +5749,7 @@
           "ldl_cholesterol": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5259,6 +5772,7 @@
           "total_cholesterol": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5270,6 +5784,7 @@
           "triglycerides": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5281,6 +5796,7 @@
           "weight_kg": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5308,6 +5824,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5325,6 +5842,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5342,6 +5860,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5384,6 +5903,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5415,6 +5935,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5432,6 +5953,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5449,6 +5971,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5466,6 +5989,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5483,6 +6007,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5512,6 +6037,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5543,6 +6069,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5560,6 +6087,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5577,6 +6105,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5596,6 +6125,7 @@
           "alt": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5608,6 +6138,7 @@
           "ast": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5620,6 +6151,7 @@
           "bmi": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5657,6 +6189,7 @@
           "creatinine": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5683,6 +6216,7 @@
           "fasting_glucose": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5695,6 +6229,7 @@
           "gamma_gtp": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5707,6 +6242,7 @@
           "hdl_cholesterol": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5719,6 +6255,7 @@
           "height_cm": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5731,6 +6268,7 @@
           "hemoglobin": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5755,6 +6293,7 @@
           "ldl_cholesterol": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5781,6 +6320,7 @@
           "total_cholesterol": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5793,6 +6333,7 @@
           "triglycerides": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -5805,6 +6346,7 @@
           "weight_kg": {
             "anyOf": [
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -6224,6 +6766,92 @@
         "title": "LatestHealthScoreResponse",
         "type": "object"
       },
+      "LegacyFeedbackRecord": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "diet_feedback_id": {
+            "format": "uuid",
+            "title": "Diet Feedback Id",
+            "type": "string"
+          },
+          "diet_meal_id": {
+            "format": "uuid",
+            "title": "Diet Meal Id",
+            "type": "string"
+          },
+          "feedback_type": {
+            "enum": [
+              "eaten",
+              "different_food",
+              "skipped"
+            ],
+            "title": "Feedback Type",
+            "type": "string"
+          },
+          "meal_log_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meal Log Id"
+          },
+          "meal_type": {
+            "enum": [
+              "breakfast",
+              "lunch",
+              "dinner",
+              "snack"
+            ],
+            "title": "Meal Type",
+            "type": "string"
+          },
+          "plan_day": {
+            "enum": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ],
+            "title": "Plan Day",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "source": {
+            "const": "daily",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "date",
+          "plan_day",
+          "meal_type",
+          "diet_feedback_id",
+          "diet_meal_id",
+          "feedback_type",
+          "meal_log_id",
+          "recorded_at"
+        ],
+        "title": "LegacyFeedbackRecord",
+        "type": "object"
+      },
       "MainAnalysisResponse": {
         "properties": {
           "assessment_id": {
@@ -6431,6 +7059,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -6447,6 +7076,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -6463,6 +7093,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -6485,6 +7116,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -6501,6 +7133,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               }
             ],
@@ -7136,6 +7769,76 @@
         "title": "PopupResponse",
         "type": "object"
       },
+      "PreviewMeal": {
+        "properties": {
+          "actual_reduction_kcal": {
+            "minimum": 0.0,
+            "title": "Actual Reduction Kcal",
+            "type": "number"
+          },
+          "adjustment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MealAdjustment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after": {
+            "$ref": "#/components/schemas/Meal"
+          },
+          "before": {
+            "$ref": "#/components/schemas/Meal"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Code"
+          },
+          "meal_type": {
+            "enum": [
+              "breakfast",
+              "lunch",
+              "dinner",
+              "snack"
+            ],
+            "title": "Meal Type",
+            "type": "string"
+          },
+          "requested_reduction_kcal": {
+            "minimum": 0.0,
+            "title": "Requested Reduction Kcal",
+            "type": "number"
+          },
+          "status": {
+            "enum": [
+              "unchanged",
+              "ready",
+              "unavailable"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "meal_type",
+          "status",
+          "before",
+          "after",
+          "requested_reduction_kcal",
+          "actual_reduction_kcal"
+        ],
+        "title": "PreviewMeal",
+        "type": "object"
+      },
       "PreviewRequest": {
         "properties": {
           "end": {
@@ -7171,6 +7874,80 @@
           "end"
         ],
         "title": "PreviewRequest",
+        "type": "object"
+      },
+      "PreviewResponse": {
+        "properties": {
+          "base_version": {
+            "minimum": 1.0,
+            "title": "Base Version",
+            "type": "integer"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "failed_meal_types": {
+            "items": {
+              "enum": [
+                "breakfast",
+                "lunch",
+                "dinner",
+                "snack"
+              ],
+              "type": "string"
+            },
+            "title": "Failed Meal Types",
+            "type": "array"
+          },
+          "ok": {
+            "const": true,
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "preview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preview Id"
+          },
+          "today": {
+            "$ref": "#/components/schemas/TodayStatus"
+          },
+          "tomorrow": {
+            "$ref": "#/components/schemas/TomorrowPreview"
+          },
+          "weekly_diet_plan_id": {
+            "format": "uuid",
+            "title": "Weekly Diet Plan Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ok",
+          "preview_id",
+          "expires_at",
+          "weekly_diet_plan_id",
+          "base_version",
+          "today",
+          "tomorrow",
+          "failed_meal_types"
+        ],
+        "title": "PreviewResponse",
         "type": "object"
       },
       "ProfileUpdateRequest": {
@@ -7242,6 +8019,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,6}0*$)\\d{0,3}\\.\\d{0,2}0*$)",
                 "type": "string"
               },
               {
@@ -7283,6 +8061,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
                 "type": "string"
               },
               {
@@ -7299,6 +8078,7 @@
                 "type": "number"
               },
               {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*(?:\\d{0,3}|(?=[\\d.]{1,6}0*$)\\d{0,3}\\.\\d{0,2}0*$)",
                 "type": "string"
               },
               {
@@ -7362,6 +8142,52 @@
           "status"
         ],
         "title": "Range",
+        "type": "object"
+      },
+      "RebalanceConfirmRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "preview_id": {
+            "format": "uuid",
+            "title": "Preview Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "preview_id"
+        ],
+        "title": "RebalanceConfirmRequest",
+        "type": "object"
+      },
+      "RebalancePreviewRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1.0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "meal_types": {
+            "items": {
+              "enum": [
+                "breakfast",
+                "lunch",
+                "dinner",
+                "snack"
+              ],
+              "type": "string"
+            },
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Meal Types",
+            "type": "array"
+          }
+        },
+        "required": [
+          "expected_version",
+          "meal_types"
+        ],
+        "title": "RebalancePreviewRequest",
         "type": "object"
       },
       "RecalculateItem": {
@@ -8320,6 +9146,44 @@
         "title": "ReportRequest",
         "type": "object"
       },
+      "ResolvedMealTarget": {
+        "additionalProperties": false,
+        "description": "The goal actually used by AI, independent of menu estimated calories.",
+        "properties": {
+          "calories_kcal": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 5000.0,
+            "title": "Calories Kcal",
+            "type": "number"
+          },
+          "carbohydrate_g": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1000.0,
+            "title": "Carbohydrate G",
+            "type": "number"
+          },
+          "fat_g": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1000.0,
+            "title": "Fat G",
+            "type": "number"
+          },
+          "protein_g": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1000.0,
+            "title": "Protein G",
+            "type": "number"
+          }
+        },
+        "required": [
+          "calories_kcal",
+          "carbohydrate_g",
+          "protein_g",
+          "fat_g"
+        ],
+        "title": "ResolvedMealTarget",
+        "type": "object"
+      },
       "RoundtripRequest": {
         "additionalProperties": false,
         "properties": {
@@ -8868,6 +9732,249 @@
         "title": "TierProgressResponse",
         "type": "object"
       },
+      "TodayStatus": {
+        "properties": {
+          "consumed_kcal": {
+            "minimum": 0.0,
+            "title": "Consumed Kcal",
+            "type": "number"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "none",
+              "cheat",
+              "adjusted"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "exercise_burned_kcal": {
+            "minimum": 0.0,
+            "title": "Exercise Burned Kcal",
+            "type": "number"
+          },
+          "has_unknown_calories": {
+            "title": "Has Unknown Calories",
+            "type": "boolean"
+          },
+          "overage_kcal": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Overage Kcal"
+          },
+          "running_burned_kcal": {
+            "minimum": 0.0,
+            "title": "Running Burned Kcal",
+            "type": "number"
+          },
+          "target_kcal": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Kcal"
+          },
+          "total_burned_kcal": {
+            "minimum": 0.0,
+            "title": "Total Burned Kcal",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "consumed_kcal",
+          "has_unknown_calories",
+          "exercise_burned_kcal",
+          "running_burned_kcal",
+          "total_burned_kcal",
+          "decision"
+        ],
+        "title": "TodayStatus",
+        "type": "object"
+      },
+      "TodayStatusResponse": {
+        "properties": {
+          "ok": {
+            "const": true,
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "target_status": {
+            "enum": [
+              "available",
+              "weekly_plan_missing",
+              "target_pending"
+            ],
+            "title": "Target Status",
+            "type": "string"
+          },
+          "today": {
+            "$ref": "#/components/schemas/TodayStatus"
+          },
+          "tomorrow_plan": {
+            "$ref": "#/components/schemas/TomorrowPlanStatus"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "weekly_diet_plan_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekly Diet Plan Id"
+          }
+        },
+        "required": [
+          "ok",
+          "target_status",
+          "weekly_diet_plan_id",
+          "version",
+          "today",
+          "tomorrow_plan"
+        ],
+        "title": "TodayStatusResponse",
+        "type": "object"
+      },
+      "TomorrowPlanStatus": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "target_status": {
+            "enum": [
+              "available",
+              "weekly_plan_missing",
+              "target_pending"
+            ],
+            "title": "Target Status",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          },
+          "weekly_diet_plan_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weekly Diet Plan Id"
+          }
+        },
+        "required": [
+          "date",
+          "target_status",
+          "weekly_diet_plan_id",
+          "version"
+        ],
+        "title": "TomorrowPlanStatus",
+        "type": "object"
+      },
+      "TomorrowPreview": {
+        "properties": {
+          "actual_reduction_kcal": {
+            "minimum": 0.0,
+            "title": "Actual Reduction Kcal",
+            "type": "number"
+          },
+          "daily_target_kcal": {
+            "exclusiveMinimum": 0.0,
+            "title": "Daily Target Kcal",
+            "type": "number"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "floor_kcal": {
+            "minimum": 0.0,
+            "title": "Floor Kcal",
+            "type": "number"
+          },
+          "meals": {
+            "items": {
+              "$ref": "#/components/schemas/PreviewMeal"
+            },
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Meals",
+            "type": "array"
+          },
+          "total_after_kcal": {
+            "minimum": 0.0,
+            "title": "Total After Kcal",
+            "type": "number"
+          },
+          "total_before_kcal": {
+            "minimum": 0.0,
+            "title": "Total Before Kcal",
+            "type": "number"
+          },
+          "unapplied_reduction_kcal": {
+            "minimum": 0.0,
+            "title": "Unapplied Reduction Kcal",
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "daily_target_kcal",
+          "floor_kcal",
+          "total_before_kcal",
+          "total_after_kcal",
+          "actual_reduction_kcal",
+          "unapplied_reduction_kcal",
+          "meals"
+        ],
+        "title": "TomorrowPreview",
+        "type": "object"
+      },
       "TrackPointInput": {
         "properties": {
           "accuracy_meters": {
@@ -9286,6 +10393,16 @@
       },
       "WeeklyPlanResponse": {
         "properties": {
+          "daily_target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ResolvedMealTarget"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "generator": {
             "maxLength": 200,
             "minLength": 1,
@@ -15840,6 +16957,20 @@
             }
           },
           {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "default": "daily",
+              "enum": [
+                "daily",
+                "weekly"
+              ],
+              "title": "Source",
+              "type": "string"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -16243,6 +17374,20 @@
             }
           },
           {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "default": "daily",
+              "enum": [
+                "daily",
+                "weekly"
+              ],
+              "title": "Source",
+              "type": "string"
+            }
+          },
+          {
             "in": "header",
             "name": "authorization",
             "required": false,
@@ -16282,6 +17427,114 @@
           }
         },
         "summary": "Get Weekly Diet Summary",
+        "tags": [
+          "Diet"
+        ]
+      }
+    },
+    "/api/diet/tomorrow-rebalance/decision": {
+      "post": {
+        "operationId": "choose_cheat_api_diet_tomorrow_rebalance_decision_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheatDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheatDecisionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Choose Cheat",
+        "tags": [
+          "Diet"
+        ]
+      }
+    },
+    "/api/diet/tomorrow-rebalance/status": {
+      "get": {
+        "operationId": "get_status_api_diet_tomorrow_rebalance_status_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TodayStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Status",
         "tags": [
           "Diet"
         ]
@@ -16476,6 +17729,267 @@
           }
         },
         "summary": "Get Plan",
+        "tags": [
+          "Diet"
+        ]
+      }
+    },
+    "/api/diet/weekly-recommendations/{plan_id}/feedback": {
+      "get": {
+        "operationId": "get_feedback_api_diet_weekly_recommendations__plan_id__feedback_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Feedback",
+        "tags": [
+          "Diet"
+        ]
+      }
+    },
+    "/api/diet/weekly-recommendations/{plan_id}/meals/{day}/{meal_type}/feedback": {
+      "patch": {
+        "operationId": "patch_feedback_api_diet_weekly_recommendations__plan_id__meals__day___meal_type__feedback_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "enum": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "saturday",
+                "sunday"
+              ],
+              "title": "Day",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "meal_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "breakfast",
+                "lunch",
+                "dinner",
+                "snack"
+              ],
+              "title": "Meal Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Feedback",
+        "tags": [
+          "Diet"
+        ]
+      },
+      "post": {
+        "operationId": "post_feedback_api_diet_weekly_recommendations__plan_id__meals__day___meal_type__feedback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "day",
+            "required": true,
+            "schema": {
+              "enum": [
+                "monday",
+                "tuesday",
+                "wednesday",
+                "thursday",
+                "friday",
+                "saturday",
+                "sunday"
+              ],
+              "title": "Day",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "meal_type",
+            "required": true,
+            "schema": {
+              "enum": [
+                "breakfast",
+                "lunch",
+                "dinner",
+                "snack"
+              ],
+              "title": "Meal Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Feedback",
         "tags": [
           "Diet"
         ]
@@ -16682,6 +18196,144 @@
           }
         },
         "summary": "Regenerate",
+        "tags": [
+          "Diet"
+        ]
+      }
+    },
+    "/api/diet/weekly-recommendations/{plan_id}/tomorrow-rebalance/confirm": {
+      "post": {
+        "operationId": "confirm_api_diet_weekly_recommendations__plan_id__tomorrow_rebalance_confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RebalanceConfirmRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm",
+        "tags": [
+          "Diet"
+        ]
+      }
+    },
+    "/api/diet/weekly-recommendations/{plan_id}/tomorrow-rebalance/preview": {
+      "post": {
+        "operationId": "preview_api_diet_weekly_recommendations__plan_id__tomorrow_rebalance_preview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Plan Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RebalancePreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview",
         "tags": [
           "Diet"
         ]

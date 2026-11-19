@@ -427,6 +427,8 @@
     "20261118035110_exercise_body_regions.sql",
     "20261118060000_health_assessment_generation.sql",
     "20261119015900_profile_body_basics.sql",
-    "20261119042903_diet_menu_style_preference.sql"
+    "20261119042903_diet_menu_style_preference.sql",
+    "20261119055845_weekly_diet_feedback_and_rebalance.sql",
+    "20261119060843_diet_tomorrow_rebalance_preview.sql"
   ]
 }

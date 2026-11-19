@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from backend.app import weekly_diet as api, weekly_diet_store as storage, chat_rate_limit
 from backend.app.ai_server import AIEndpoint, AIServerError
-from backend.app.weekly_diet_contract import DAYS, MEALS, NutritionProfile, ReplacementReply
+from backend.app.weekly_diet_contract import DAYS, MEALS, NutritionProfile, ReplacementReply, WeeklyReply
 
 
 OWNER = "00000000-0000-4000-8000-000000000001"
@@ -25,6 +25,11 @@ RECIPE = f"{BASE}/{PLAN}/meals/monday/lunch/recipe"
 def weekly_reply():
     return {"ok": True, "generator": "auto-fit-ai", "result": {
         "summary": "합성 테스트 식단", "strategy": "계약 검증",
+        "daily_target": {"calories_kcal": 662, "carbohydrate_g": 141,
+                         "protein_g": 14, "fat_g": 5},
+        "slot_targets": {meal_type: {"calories_kcal": 165.5,
+                                    "carbohydrate_g": 35.25, "protein_g": 3.5,
+                                    "fat_g": 1.25} for meal_type in MEALS},
         "weekly_plan": [{"day": day, "meals": {
             meal_type: {
                 "menu_name": f"{day} {meal_type}", "menu_description": "합성 음식",
@@ -38,6 +43,21 @@ def weekly_reply():
         }} for day in DAYS],
         "cautions": [], "sources": [],
     }}
+
+
+def test_ai_target_snapshot_rejects_string_numbers_and_mismatched_macros():
+    valid = weekly_reply()
+    WeeklyReply.model_validate(valid)
+
+    string_value = deepcopy(valid)
+    string_value["result"]["daily_target"]["calories_kcal"] = "662"
+    with pytest.raises(ValidationError):
+        WeeklyReply.model_validate(string_value)
+
+    mismatched_macros = deepcopy(valid)
+    mismatched_macros["result"]["slot_targets"]["lunch"]["protein_g"] += 2
+    with pytest.raises(ValidationError):
+        WeeklyReply.model_validate(mismatched_macros)
 
 
 def test_selected_meal_adjustment_is_validated_without_breaking_ordinary_replacements():
@@ -280,6 +300,7 @@ def test_generate_save_and_read_full_week_with_lossless_items(harness):
     plan = response.json()
     assert [row["date"] for row in plan["result"]["weekly_plan"]] == [f"2026-10-{day}" for day in range(19, 26)]
     assert len(plan["result"]["weekly_plan"]) == 7
+    assert plan["daily_target"]["calories_kcal"] == 662
     assert sum(len(row["meals"]) for row in plan["result"]["weekly_plan"]) == 28
     assert state["rows"][0]["result"] == state["reply"]["result"]
     assert "user_id" not in plan and "request_context" not in plan
@@ -333,7 +354,26 @@ def test_kdri_snapshot_preserves_selected_menu_style_during_replacement(harness)
     assert client.get(f"{BASE}/{PLAN}").status_code == 200
     assert client.post(SLOT, json={"expected_version": 1}).status_code == 200
     assert state["ai_calls"][1][1]["menu_style_preference"] == "everyday"
+    assert state["ai_calls"][1][1]["meal_target"] == state["reply"]["result"]["slot_targets"]["lunch"]
     assert state["rows"][0]["request_context"]["menu_style_preference"] == "everyday"
+
+
+def test_kdri_generation_rejects_ai_reply_without_actual_target(harness):
+    client, state = harness
+    state["context"].update({
+        "nutrition_profile": {
+            "profile_mode": "basic_profile", "age_years": 26, "sex": "female",
+            "height_cm": 165.0, "weight_kg": 60.0,
+            "data_sources": {"inbody_available": False, "health_checkup_available": False},
+        },
+        "reference_standard": "KDRI_2025",
+    })
+    state["reply"]["result"].pop("daily_target")
+    state["reply"]["result"].pop("slot_targets")
+    response = generate(client)
+    assert response.status_code == 502
+    assert response.json()["detail"]["code"] == "AI_TARGET_MISSING"
+    assert not state["rows"]
 
 
 def test_kdri_generate_requires_complete_profile_before_ai_call(harness):

@@ -265,6 +265,8 @@ def create_weekly_diet_router(get_user, get_settings, load_context, load_ai_cont
         context = request_context(body, latest)
         await store.consume_generation_quota()
         reply = await call_ai(ai, AIEndpoint.DIET, context, WeeklyReply)
+        if "reference_standard" in latest and reply["result"].get("daily_target") is None:
+            fail("AI_TARGET_MISSING")
         meals = [meal for day in reply["result"]["weekly_plan"] for meal in day["meals"].values()]
         check_restrictions(meals, context)
         check_unique_menus(meals)
@@ -303,6 +305,9 @@ def create_weekly_diet_router(get_user, get_settings, load_context, load_ai_cont
             # Use explicit saved ingredients; food items are not recipe ingredients.
             "current_ingredients": saved_ingredient_names(current),
         }
+        slot_targets = row["result"].get("slot_targets")
+        if slot_targets is not None:
+            payload["meal_target"] = slot_targets[meal_type]
         await store.consume_generation_quota()
         reply = await call_ai(ai, AIEndpoint.REPLACE_MEAL, payload, ReplacementReply)
         replacement = reply["meal"]

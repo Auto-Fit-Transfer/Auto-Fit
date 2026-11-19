@@ -30,6 +30,17 @@ class Nutrition(AIData):
     fat_g: Nonnegative
 
 
+class ResolvedMealTarget(BaseModel):
+    """The goal actually used by AI, independent of menu estimated calories."""
+
+    model_config = ConfigDict(extra="forbid", strict=True, allow_inf_nan=False)
+
+    calories_kcal: float = Field(gt=0, le=5000)
+    carbohydrate_g: float = Field(gt=0, le=1000)
+    protein_g: float = Field(gt=0, le=1000)
+    fat_g: float = Field(gt=0, le=1000)
+
+
 class FoodItem(Nutrition):
     food_name: Text
     portion_g: float = Field(gt=0, allow_inf_nan=False)
@@ -61,6 +72,8 @@ class WeeklyResult(AIData):
     summary: str
     strategy: str
     weekly_plan: list[DailyMeals] = Field(min_length=7, max_length=7)
+    daily_target: ResolvedMealTarget | None = None
+    slot_targets: dict[MealType, ResolvedMealTarget] | None = None
 
     @field_validator("weekly_plan")
     @classmethod
@@ -68,6 +81,19 @@ class WeeklyResult(AIData):
         if tuple(entry.day for entry in value) != DAYS:
             raise ValueError("Weekdays must appear exactly once, Monday through Sunday")
         return value
+
+    @model_validator(mode="after")
+    def target_snapshot_is_complete(self):
+        if (self.daily_target is None) != (self.slot_targets is None):
+            raise ValueError("Daily and slot targets must be returned together")
+        if self.slot_targets is not None:
+            if set(self.slot_targets) != set(MEALS):
+                raise ValueError("Every meal type needs an original target")
+            for field in ("calories_kcal", "carbohydrate_g", "protein_g", "fat_g"):
+                total = sum(getattr(target, field) for target in self.slot_targets.values())
+                if abs(total - getattr(self.daily_target, field)) > 1:
+                    raise ValueError(f"Slot {field} targets do not add up to the daily target")
+        return self
 
 
 class WeeklyReply(AIData):
@@ -143,6 +169,7 @@ class WeeklyPlanResponse(BaseModel):
     version: int = Field(ge=1)
     generator: Text
     result: DatedWeeklyResult
+    daily_target: ResolvedMealTarget | None = None
     last_replacement: ReplacementReply | None = None
 
 

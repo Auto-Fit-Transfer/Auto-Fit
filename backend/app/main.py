@@ -105,6 +105,10 @@ from backend.app.running_sessions import create_running_sessions_router
 from backend.app.weekly_diet import (
     call_ai, create_weekly_diet_router, get_weekly_ai_client, validate_recipe_reply,
 )
+from backend.app.weekly_diet_feedback import create_weekly_feedback_router
+from backend.app.diet_rebalance import create_diet_rebalance_router
+from backend.app.diet_rebalance_preview import create_weekly_rebalance_router
+from backend.app.weekly_diet_store import WeeklyDietStore
 from backend.app.weekly_recipe_contract import RecipeReply
 from backend.app.running import create_running_router
 from backend.app.meal_photos import attach_photos, create_meal_photos_router
@@ -3326,6 +3330,9 @@ async def update_recommended_meal(
         except ValueError:
             error = {}
         check_saved_meal_allergy_rpc_error(error)
+        if (isinstance(error, dict) and error.get("code") == "23505"
+                and error.get("message") == "DIET_WEEKLY_RECORD_EXISTS"):
+            raise HTTPException(409, detail={"code": "DIET_WEEKLY_RECORD_EXISTS"})
         missing = (
             response.status_code == 400
             and isinstance(error, dict)
@@ -3369,6 +3376,8 @@ async def record_recommended_meal(
         check_saved_meal_allergy_rpc_error(error)
         code = error.get("code")
         message = error.get("message")
+        if code == "23505" and message == "DIET_WEEKLY_RECORD_EXISTS":
+            raise HTTPException(409, detail={"code": "DIET_WEEKLY_RECORD_EXISTS"})
         duplicate = (
             response.status_code == 400
             and code == "P0001"
@@ -3757,6 +3766,16 @@ async def load_weekly_diet_ai_context(user_id: str, settings: Settings) -> dict:
 
 
 app.include_router(create_weekly_diet_router(
+    get_current_user, get_settings, load_weekly_diet_context,
+    load_weekly_diet_ai_context, require_adult_diet_profile,
+))
+app.include_router(create_weekly_feedback_router(
+    get_current_user, get_settings, load_weekly_diet_context,
+))
+app.include_router(create_diet_rebalance_router(
+    get_current_user, get_settings, load_weekly_diet_context,
+))
+app.include_router(create_weekly_rebalance_router(
     get_current_user, get_settings, load_weekly_diet_context,
     load_weekly_diet_ai_context, require_adult_diet_profile,
 ))
@@ -4662,6 +4681,22 @@ def _public_diet_recipe(row: dict) -> dict | None:
     )}
 
 
+async def weekly_target_recommendation(user_id: str, settings: Settings,
+                                       week_start: date) -> dict[str, Any]:
+    plan = await WeeklyDietStore(settings, user_id).get(week_start=week_start)
+    if plan is None:
+        raise HTTPException(404, detail={"code": "WEEKLY_DIET_NOT_FOUND"})
+    target = plan["result"].get("daily_target")
+    if target is None:
+        raise HTTPException(409, detail={"code": "DIET_TARGET_UNAVAILABLE"})
+    return {"recommendation": {
+        "target_calories": target["calories_kcal"],
+        "target_carbohydrates": target["carbohydrate_g"],
+        "target_protein": target["protein_g"],
+        "target_fat": target["fat_g"],
+    }}
+
+
 @app.get("/api/diet/nutrition-summary", tags=["Diet"],
          response_model=DailyNutritionSummaryResponse)
 async def get_diet_nutrition_summary(
@@ -4669,11 +4704,15 @@ async def get_diet_nutrition_summary(
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
     request: Request = None,
+    source: Literal["daily", "weekly"] = "daily",
 ) -> dict[str, Any]:
     client = getattr(request.app.state, "supabase_http_client", None) if request else None
     results = await asyncio.gather(
-        fetch_diet_recommendation(user.id, settings, target_date,
-                                  client=client, include_details=False),
+        (weekly_target_recommendation(
+            user.id, settings, target_date - timedelta(days=target_date.weekday()),
+        ) if source == "weekly" else fetch_diet_recommendation(
+            user.id, settings, target_date, client=client, include_details=False,
+        )),
         fetch_meal_logs(user.id, target_date, target_date, settings,
                         client=client, include_photos=False),
         return_exceptions=True,
@@ -4698,6 +4737,7 @@ async def get_weekly_diet_summary(
     user: AuthenticatedUser = Depends(get_current_user),
     settings: Settings = Depends(get_settings),
     request: Request = None,
+    source: Literal["daily", "weekly"] = "daily",
 ) -> dict[str, Any]:
     if start.weekday() != 0:
         raise HTTPException(422, detail={"code": "INVALID_WEEK_START"})
@@ -4707,9 +4747,17 @@ async def get_weekly_diet_summary(
     except OverflowError:
         raise HTTPException(422, detail={"code": "INVALID_WEEK_START"}) from None
     client = getattr(request.app.state, "supabase_http_client", None) if request else None
+    recommendations = (
+        await weekly_target_recommendation(user.id, settings, start)
+        if source == "weekly" else None
+    )
+    daily_calls = (
+        [fetch_diet_recommendation(user.id, settings, day,
+                                   client=client, include_details=False) for day in days]
+        if source == "daily" else []
+    )
     results = await asyncio.gather(
-        *(fetch_diet_recommendation(user.id, settings, day,
-                                     client=client, include_details=False) for day in days),
+        *daily_calls,
         fetch_meal_logs(user.id, start, next_monday - timedelta(days=1), settings,
                         client=client, include_photos=False),
         return_exceptions=True,
@@ -4717,8 +4765,9 @@ async def get_weekly_diet_summary(
     for result in results:
         if isinstance(result, BaseException):
             raise result
-    recommendations = dict(zip(days, results[:-1]))
-    summaries = build_weekly_nutrition_summaries(start, recommendations, results[-1])
+    by_date = ({day: recommendations for day in days} if source == "weekly"
+               else dict(zip(days, results[:-1])))
+    summaries = build_weekly_nutrition_summaries(start, by_date, results[-1])
     return {"days": list(summaries.values())}
 
 

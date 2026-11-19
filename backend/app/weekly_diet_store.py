@@ -24,6 +24,17 @@ def fail(code: str, status: int = 502):
         "WEEKLY_DIET_NOT_FOUND": "주간 식단을 찾을 수 없습니다.",
         "WEEKLY_DIET_EXISTS": "해당 주의 식단이 이미 있습니다.",
         "WEEKLY_DIET_VERSION_CONFLICT": "식단이 변경되었습니다. 새로 조회한 뒤 다시 시도해 주세요.",
+        "WEEKLY_FEEDBACK_NOT_FOUND": "해당 끼니의 기록을 찾을 수 없습니다.",
+        "WEEKLY_FEEDBACK_EXISTS": "해당 끼니는 이미 기록됐습니다. 수정 요청을 사용해 주세요.",
+        "WEEKLY_FEEDBACK_LEGACY_EXISTS": "기존 테스트 앱에서 이미 기록한 끼니입니다.",
+        "WEEKLY_FEEDBACK_INVALID": "끼니 기록의 입력값이 올바르지 않습니다.",
+        "WEEKLY_FEEDBACK_DATE_MISMATCH": "기록 날짜가 주간 식단의 요일과 다릅니다.",
+        "DIET_REBALANCE_ALREADY_DECIDED": "오늘 식단 조절 방법을 이미 선택했습니다.",
+        "DIET_REBALANCE_DATE_CHANGED": "날짜가 바뀌었습니다. 오늘 기록을 다시 조회해 주세요.",
+        "DIET_REBALANCE_STATUS_CHANGED": "오늘 식사·운동 기록이 바뀌었습니다. 새 미리보기를 만들어 주세요.",
+        "DIET_REBALANCE_PREVIEW_NOT_FOUND": "미리보기를 찾을 수 없습니다.",
+        "DIET_REBALANCE_PREVIEW_EXPIRED": "미리보기가 만료됐습니다. 다시 만들어 주세요.",
+        "DIET_DAILY_FLOOR_REACHED": "하루 목표의 85% 아래로 줄일 수 없습니다.",
     }.get(code, "주간 식단을 처리하지 못했습니다.")})
 
 
@@ -53,7 +64,20 @@ class WeeklyDietStore:
                 code = error.get("message")
                 if code == "WEEKLY_DIET_NOT_FOUND":
                     fail(code, 404)
-                if code in {"WEEKLY_DIET_VERSION_CONFLICT", "WEEKLY_DIET_CONTEXT_CHANGED"}:
+                if code == "WEEKLY_FEEDBACK_NOT_FOUND":
+                    fail(code, 404)
+                if code == "DIET_REBALANCE_PREVIEW_NOT_FOUND":
+                    fail(code, 404)
+                if code in {"WEEKLY_FEEDBACK_EXISTS", "WEEKLY_FEEDBACK_LEGACY_EXISTS"}:
+                    fail(code, 409)
+                if code in {"WEEKLY_FEEDBACK_INVALID", "WEEKLY_FEEDBACK_DATE_MISMATCH"}:
+                    fail(code, 422)
+                if code == "DIET_REBALANCE_INVALID_PREVIEW":
+                    fail(code, 422)
+                if code in {"WEEKLY_DIET_VERSION_CONFLICT", "WEEKLY_DIET_CONTEXT_CHANGED",
+                            "DIET_REBALANCE_ALREADY_DECIDED", "DIET_REBALANCE_DATE_CHANGED",
+                            "DIET_REBALANCE_STATUS_CHANGED",
+                            "DIET_REBALANCE_PREVIEW_EXPIRED", "DIET_DAILY_FLOOR_REACHED"}:
                     fail(code, 409)
                 if error.get("code") == "23505":
                     fail("WEEKLY_DIET_EXISTS", 409)
@@ -188,5 +212,6 @@ def public_plan(row: dict) -> dict:
         "week_start_date": row["week_start_date"], "timezone": "Asia/Seoul",
         "version": row["version"], "generator": row["generator"],
         "result": dated_result(row["result"], date.fromisoformat(row["week_start_date"])),
+        "daily_target": row["result"].get("daily_target"),
         "last_replacement": row.get("last_replacement"),
     }

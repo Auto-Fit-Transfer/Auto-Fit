@@ -14,7 +14,7 @@ def test_all_diet_operations_are_grouped_in_openapi() -> None:
         if method in {"get", "post", "put", "patch", "delete"}
     ]
 
-    assert len(diet_operations) == 25
+    assert len(diet_operations) == 32
     assert {"get", "put"} <= set(paths["/api/diet/preferences"])
     assert "get" in paths["/api/diet/summary/weekly"]
     assert "post" in paths["/api/diet/food-shots/analyze"]
@@ -23,6 +23,9 @@ def test_all_diet_operations_are_grouped_in_openapi() -> None:
     assert "post" in paths["/api/diet/meal-logs/{meal_log_id}/photo"]
     assert "get" in paths["/api/diet/meals/{diet_meal_id}/recipe"]
     assert "patch" in paths["/api/diet/meals/{diet_meal_id}/feedback"]
+    assert "get" in paths["/api/diet/tomorrow-rebalance/status"]
+    assert "post" in paths["/api/diet/weekly-recommendations/{plan_id}/tomorrow-rebalance/preview"]
+    assert "post" in paths["/api/diet/weekly-recommendations/{plan_id}/tomorrow-rebalance/confirm"]
     assert all(operation["tags"] == ["Diet"] for operation in diet_operations)
 
 

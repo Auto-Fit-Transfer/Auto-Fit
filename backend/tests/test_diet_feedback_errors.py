@@ -103,3 +103,24 @@ def test_duplicate_fallback_does_not_hide_update_failure(monkeypatch):
         asyncio.run(main.record_recommended_meal("owner", "meal",
                     main.DietMealFeedbackRequest(feedback_type="skipped"), SETTINGS))
     assert caught.value.status_code == 404
+
+
+@pytest.mark.parametrize("operation", ["record", "update"])
+def test_legacy_daily_feedback_reports_weekly_slot_conflict(monkeypatch, operation):
+    calls = []
+
+    def handler(request):
+        calls.append(request.url.path)
+        return httpx.Response(409, json={"code": "23505",
+                                         "message": "DIET_WEEKLY_RECORD_EXISTS"})
+
+    mock_rpc(monkeypatch, handler)
+    body = (main.DietMealFeedbackRequest(feedback_type="eaten") if operation == "record"
+            else main.DietMealFeedbackUpdateRequest(feedback_type="eaten"))
+    function = (main.record_recommended_meal if operation == "record"
+                else main.update_recommended_meal)
+    with pytest.raises(HTTPException) as caught:
+        asyncio.run(function("owner", "meal", body, SETTINGS))
+    assert caught.value.status_code == 409
+    assert caught.value.detail == {"code": "DIET_WEEKLY_RECORD_EXISTS"}
+    assert len(calls) == 1
