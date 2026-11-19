@@ -54,6 +54,9 @@ def main() -> None:
                 "protein_g": 4.0,
                 "fat_g": 2.0,
                 "carbohydrate_g": 7.0,
+                "food_code": "FOOD-TOFU-001",
+                "data_code": "DATA-TOFU-001",
+                "source_name": "식품의약품안전처 식품영양성분 DB",
             },
             {
                 "food_name": "현미밥",
@@ -62,6 +65,9 @@ def main() -> None:
                 "protein_g": 4.5,
                 "fat_g": 1.5,
                 "carbohydrate_g": 48.0,
+                "food_code": "FOOD-RICE-001",
+                "data_code": "DATA-RICE-001",
+                "source_name": "식품의약품안전처 식품영양성분 DB",
             },
         ],
         "totals": {

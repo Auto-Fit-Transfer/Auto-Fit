@@ -16,6 +16,7 @@ from app.core.security import (
 
 from app.schemas.recommendation import (
     DietGenerateResponse,
+    DietDayRegenerateResponse,
     DietMealRegenerateResponse,
     DietRecipeRequest,
     DietRecipeResponse,
@@ -23,10 +24,12 @@ from app.schemas.recommendation import (
     ExerciseGenerateResponse,
     ExerciseRecommendationRequest,
     ReplaceMealRequest,
+    ReplaceDayRequest,
 )
 
 from app.services.diet_recommendation_service import (
     generate_diet_recommendation,
+    generate_replacement_day,
     generate_replacement_meal,
 )
 
@@ -347,6 +350,65 @@ async def recommend_diet_recipe(
             detail=(
                 "Diet recipe generation failed."
             ),
+        )
+
+
+# =========================================================
+# Replace Day
+# =========================================================
+
+
+@router.post(
+    "/diet/replace-day",
+    response_model=(
+        DietDayRegenerateResponse
+    ),
+)
+async def replace_diet_day(
+    request: ReplaceDayRequest,
+    credentials: (
+        HTTPAuthorizationCredentials
+        | None
+    ) = Depends(
+        security
+    ),
+) -> DietDayRegenerateResponse:
+    """오늘 과다 섭취 이후 내일 네 끼 전체 변경안을 생성한다."""
+
+    verify_api_key(
+        credentials
+    )
+
+    try:
+        result = await generate_replacement_day(
+            request
+        )
+
+        return DietDayRegenerateResponse(
+            ok=True,
+            generator=GENERATOR_NAME,
+            result=result,
+        )
+
+    except RuntimeError:
+        logger.exception(
+            "Diet day replacement service unavailable."
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Diet day replacement service "
+                "is temporarily unavailable."
+            ),
+        )
+
+    except Exception:
+        logger.exception(
+            "Diet day replacement failed."
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Diet day replacement failed.",
         )
 
 

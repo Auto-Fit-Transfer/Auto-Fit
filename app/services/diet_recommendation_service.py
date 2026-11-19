@@ -29,9 +29,13 @@ from app.graphs.nodes.rag_node import rag_node
 
 from app.schemas.recommendation import (
 
+    DietDayPlan,
+
     DietFoodItem,
 
     DietMeal,
+
+    DietNutritionTotal,
 
     DietRecommendationMetadataResponse,
 
@@ -50,6 +54,10 @@ from app.schemas.recommendation import (
     ReplaceMealRequest,
 
     ReplaceMealResponse,
+
+    ReplaceDayRequest,
+
+    ReplaceDayResponse,
 
 )
 
@@ -727,6 +735,14 @@ METADATA_MAX_OUTPUT_TOKENS = 2500
 
 
 REPLACE_MEAL_MAX_OUTPUT_TOKENS = 1000
+
+REPLACE_DAY_MAX_OUTPUT_TOKENS = 1400
+
+GENTLE_REBALANCE_POLICY = "gentle_rebalance_v1"
+
+GENTLE_REBALANCE_MIN_CALORIE_RATIO = 0.85
+
+GENTLE_REBALANCE_MAX_CALORIE_RATIO = 1.0
 
 
 # =========================================================
@@ -2031,6 +2047,15 @@ def _compact_verified_candidate(
                 "carbohydrate_g": item.get(
                     "carbohydrate_g"
                 ),
+                "food_code": item.get(
+                    "food_code"
+                ),
+                "data_code": item.get(
+                    "data_code"
+                ),
+                "source_name": item.get(
+                    "source_name"
+                ),
             }
             for item in items
             if item.get(
@@ -2152,6 +2177,148 @@ def _select_replacement_candidate(
             or 0.0
         ),
     )
+
+
+def _filter_replacement_day_candidates(
+    *,
+    candidates: list[dict[str, Any]],
+    blocked_menu_names: list[str],
+) -> list[dict[str, Any]]:
+    """현재 하루 메뉴와 명시적 제외 메뉴를 후보 Pool에서 제거한다."""
+
+    blocked = {
+        _normalize_text(str(name or ""))
+        for name in blocked_menu_names
+        if str(name or "").strip()
+    }
+
+    return [
+        copy.deepcopy(candidate)
+        for candidate in candidates
+        if (
+            _normalize_text(
+                str(candidate.get("menu_name") or "")
+            )
+            and _normalize_text(
+                str(candidate.get("menu_name") or "")
+            )
+            not in blocked
+        )
+    ]
+
+
+def _apply_gentle_rebalance_candidate_scores(
+    candidates: list[dict[str, Any]],
+    *,
+    calorie_target: float,
+    required_unique_count: int = 1,
+) -> list[dict[str, Any]]:
+    """
+    정상 목표의 85~100% 열량 후보를 우선한다.
+
+    오늘 초과분을 내일에서 그대로 차감하지 않으며, 안전하게 검증된
+    정상 후보가 없는 경우를 대비해 범위 밖 후보도 제거하지 않는다.
+    """
+
+    if required_unique_count < 1:
+        raise ValueError("required_unique_count must be at least 1")
+
+    target = max(float(calorie_target or 0.0), 1.0)
+    adjusted: list[dict[str, Any]] = []
+
+    for source in candidates:
+        candidate = copy.deepcopy(source)
+        nutrition = candidate.get("nutrition") or {}
+        calories = max(
+            float(nutrition.get("calories_kcal", 0.0) or 0.0),
+            0.0,
+        )
+        ratio = calories / target
+
+        if (
+            GENTLE_REBALANCE_MIN_CALORIE_RATIO
+            <= ratio
+            <= GENTLE_REBALANCE_MAX_CALORIE_RATIO
+        ):
+            # 범위 안에서는 중앙값에 가까운 후보를 가장 우선한다.
+            center = (
+                GENTLE_REBALANCE_MIN_CALORIE_RATIO
+                + GENTLE_REBALANCE_MAX_CALORIE_RATIO
+            ) / 2.0
+            # 공식 후보의 기존 점수 범위를 충분히 넘어서는 가중치로
+            # 목표 범위 후보가 존재하면 실제 선택에서도 우선되게 한다.
+            bonus = 1000.0 - abs(ratio - center) * 20.0
+        elif 0.75 <= ratio < GENTLE_REBALANCE_MIN_CALORIE_RATIO:
+            bonus = 8.0
+        elif GENTLE_REBALANCE_MAX_CALORIE_RATIO < ratio <= 1.05:
+            bonus = 6.0
+        else:
+            bonus = -min(abs(ratio - 0.925) * 20.0, 15.0)
+
+        candidate["final_score"] = float(
+            candidate.get("final_score", 0.0) or 0.0
+        ) + bonus
+        candidate["_gentle_calorie_ratio"] = round(ratio, 4)
+        adjusted.append(candidate)
+
+    # 공백 차이처럼 표기만 다른 메뉴를 한 후보로 취급하고, 같은
+    # 정규화 이름에서는 최종 점수가 가장 높은 후보만 유지한다.
+    deduplicated: dict[str, dict[str, Any]] = {}
+    for candidate in adjusted:
+        menu_key = _normalize_text(
+            str(candidate.get("menu_name") or "")
+        )
+        if not menu_key:
+            continue
+        current = deduplicated.get(menu_key)
+        if current is None or float(
+            candidate.get("final_score", 0.0) or 0.0
+        ) > float(current.get("final_score", 0.0) or 0.0):
+            deduplicated[menu_key] = candidate
+
+    unique_candidates = list(deduplicated.values())
+    preferred_candidates = [
+        candidate
+        for candidate in unique_candidates
+        if (
+            GENTLE_REBALANCE_MIN_CALORIE_RATIO
+            <= float(candidate["_gentle_calorie_ratio"])
+            <= GENTLE_REBALANCE_MAX_CALORIE_RATIO
+        )
+    ]
+
+    # 목표 범위 후보가 슬롯 수보다 적어 fallback Pool을 함께 쓸 때도
+    # 범위 후보가 먼저 선택되도록 점수 tier를 확실히 분리한다.
+    non_preferred_candidates = [
+        candidate
+        for candidate in unique_candidates
+        if candidate not in preferred_candidates
+    ]
+    if preferred_candidates and non_preferred_candidates:
+        lowest_preferred_score = min(
+            float(candidate.get("final_score", 0.0) or 0.0)
+            for candidate in preferred_candidates
+        )
+        highest_fallback_score = max(
+            float(candidate.get("final_score", 0.0) or 0.0)
+            for candidate in non_preferred_candidates
+        )
+        priority_shift = max(
+            0.0,
+            highest_fallback_score - lowest_preferred_score + 1.0,
+        )
+        if priority_shift:
+            for candidate in preferred_candidates:
+                candidate["final_score"] = float(
+                    candidate.get("final_score", 0.0) or 0.0
+                ) + priority_shift
+
+    # 필요한 슬롯 수만큼 목표 범위 고유 후보가 있으면 해당 tier만
+    # 사용한다. 부족할 때만 안전하게 검증된 범위 밖 후보를 허용한다.
+    if len(preferred_candidates) >= required_unique_count:
+        return preferred_candidates
+
+    return unique_candidates
 
 
 def _filter_replacement_candidates_by_style(
@@ -3422,6 +3589,7 @@ def _select_schedule_candidate(
     max_primary_family_repeat: int,
     max_carb_family_repeat: int,
     max_side_family_repeat: int,
+    allow_menu_reuse: bool = True,
 ) -> dict[str, Any]:
     """
     한 슬롯의 최종 후보를 선택한다.
@@ -3624,6 +3792,11 @@ def _select_schedule_candidate(
         )
         return best
 
+    if not allow_menu_reuse:
+        raise RuntimeError(
+            "하루 네 끼를 모두 새 메뉴로 구성할 고유 후보가 부족합니다."
+        )
+
     # 5차: 고유 메뉴만으로 슬롯을 채울 수 없으면 검증 후보의
     # 주간 재사용을 허용한다. 같은 날 primary 중복은 계속 막는다.
     best = select_best(
@@ -3680,6 +3853,7 @@ def _build_fixed_partial_schedule(
     max_primary_family_repeat: int = 2,
     max_carb_family_repeat: int = 5,
     max_side_family_repeat: int = 3,
+    allow_menu_reuse: bool = True,
 ) -> tuple[
     dict[
         str,
@@ -3803,6 +3977,9 @@ def _build_fixed_partial_schedule(
                     max_side_family_repeat=(
                         max_side_family_repeat
                     ),
+                    allow_menu_reuse=(
+                        allow_menu_reuse
+                    ),
                 )
             )
 
@@ -3908,6 +4085,9 @@ def _build_fixed_partial_schedule(
                 max_primary_family_repeat=999,
                 max_carb_family_repeat=999,
                 max_side_family_repeat=999,
+                allow_menu_reuse=(
+                    allow_menu_reuse
+                ),
             )
         )
 
@@ -4113,6 +4293,36 @@ def _apply_fixed_schedule_to_partial_response(
 
     return DietWeeklyPlanPartResponse.model_validate(
         {"weekly_plan": updated_days}
+    )
+
+
+def _calculate_day_plan_nutrition(
+    day_plan: DietDayPlan,
+) -> DietNutritionTotal:
+    """네 끼의 메뉴 전체 영양정보를 하루 합계로 계산한다."""
+
+    calories_kcal = 0.0
+    carbohydrate_g = 0.0
+    protein_g = 0.0
+    fat_g = 0.0
+
+    for meal_type in (
+        "breakfast",
+        "lunch",
+        "dinner",
+        "snack",
+    ):
+        meal = getattr(day_plan.meals, meal_type)
+        calories_kcal += float(meal.estimated_calories_kcal)
+        carbohydrate_g += float(meal.nutrition.carbohydrate_g)
+        protein_g += float(meal.nutrition.protein_g)
+        fat_g += float(meal.nutrition.fat_g)
+
+    return DietNutritionTotal(
+        calories_kcal=round(calories_kcal, 4),
+        carbohydrate_g=round(carbohydrate_g, 4),
+        protein_g=round(protein_g, 4),
+        fat_g=round(fat_g, 4),
     )
 
 
@@ -6465,6 +6675,269 @@ async def generate_diet_recommendation(
 
 
 
+
+
+# =========================================================
+# Replace Day
+# =========================================================
+
+
+async def generate_replacement_day(
+    request: ReplaceDayRequest,
+) -> ReplaceDayResponse:
+    """
+    오늘 과다 섭취 이후 내일 네 끼 전체 변경안을 만든다.
+
+    메뉴와 영양값은 공식 Food DB 후보에서 확정하고 OpenAI는 짧은
+    설명만 생성한다. 오늘 초과량을 그대로 차감하지 않고 정상 목표의
+    85~100% 열량 후보를 우선하는 완만한 보정 정책을 사용한다.
+    """
+
+    total_start = perf_counter()
+    settings = get_settings()
+
+    if not settings.openai_api_key:
+        raise RuntimeError(
+            "OPENAI_API_KEY is not configured"
+        )
+
+    client = AsyncOpenAI(
+        api_key=settings.openai_api_key
+    )
+
+    metric_statuses = request.metric_statuses or {}
+    food_allergens = request.food_allergens or []
+    safety_tags = build_diet_safety_tags(metric_statuses)
+    health_goal = _resolve_diet_health_goal(request)
+    menu_style_preference = _resolve_menu_style_preference(
+        request
+    )
+
+    (
+        rag_context,
+        prepared_candidates,
+    ) = await asyncio.gather(
+        _get_diet_rag_context(metric_statuses),
+        _prepare_verified_food_candidates(
+            request=request,
+            metric_statuses=metric_statuses,
+            food_allergens=food_allergens,
+        ),
+    )
+
+    safe_rag_context = _build_safe_rag_context(
+        rag_context
+    )
+    (
+        verified_meal_candidates,
+        verified_snack_candidates,
+        _verified_candidate_metadata,
+    ) = prepared_candidates
+
+    verified_meal_candidates = (
+        _apply_health_goal_candidate_scores(
+            verified_meal_candidates,
+            health_goal,
+        )
+    )
+    verified_snack_candidates = (
+        _apply_health_goal_candidate_scores(
+            verified_snack_candidates,
+            health_goal,
+        )
+    )
+
+    current_menu_names = list(
+        request.current_menu_names.model_dump().values()
+    )
+    blocked_menu_names = [
+        *current_menu_names,
+        *(request.excluded_menu_names or []),
+    ]
+    verified_meal_candidates = (
+        _filter_replacement_day_candidates(
+            candidates=verified_meal_candidates,
+            blocked_menu_names=blocked_menu_names,
+        )
+    )
+    verified_snack_candidates = (
+        _filter_replacement_day_candidates(
+            candidates=verified_snack_candidates,
+            blocked_menu_names=blocked_menu_names,
+        )
+    )
+
+    if menu_style_preference != MENU_STYLE_BALANCED:
+        verified_meal_candidates = (
+            _filter_replacement_candidates_by_style(
+                candidates=verified_meal_candidates,
+                menu_style_preference=menu_style_preference,
+            )
+        )
+
+    nutrition_targets = _resolve_nutrition_targets(request)
+    meal_target = nutrition_targets["meal_target"]
+    snack_target = nutrition_targets["snack_target"]
+    verified_meal_candidates = (
+        _apply_gentle_rebalance_candidate_scores(
+            verified_meal_candidates,
+            calorie_target=float(
+                meal_target["calories_kcal"]
+            ),
+            required_unique_count=3,
+        )
+    )
+    verified_snack_candidates = (
+        _apply_gentle_rebalance_candidate_scores(
+            verified_snack_candidates,
+            calorie_target=float(
+                snack_target["calories_kcal"]
+            ),
+            required_unique_count=1,
+        )
+    )
+
+    if not verified_meal_candidates:
+        raise RuntimeError(
+            "현재 하루 메뉴와 다른 검증 일반 식사 후보가 없습니다."
+        )
+
+    if not verified_snack_candidates:
+        raise RuntimeError(
+            "현재 하루 메뉴와 다른 검증 간식 후보가 없습니다."
+        )
+
+    family_limits = _calculate_feasible_family_limits(
+        candidates=verified_meal_candidates,
+        total_meal_slots=3,
+    )
+    fixed_schedule, _ = _build_fixed_partial_schedule(
+        days=[request.target_day],
+        meal_candidates=verified_meal_candidates,
+        snack_candidates=verified_snack_candidates,
+        used_menu_names=set(),
+        primary_counts={},
+        carb_counts={},
+        side_counts={},
+        previous_primary_family=None,
+        menu_style_preference=menu_style_preference,
+        max_primary_family_repeat=family_limits["primary"],
+        max_carb_family_repeat=family_limits["carb"],
+        max_side_family_repeat=family_limits["side"],
+        allow_menu_reuse=False,
+    )
+
+    generated = await _request_diet_days_from_llm(
+        client=client,
+        model=settings.openai_diet_model,
+        days=[request.target_day],
+        max_output_tokens=REPLACE_DAY_MAX_OUTPUT_TOKENS,
+        metric_statuses=metric_statuses,
+        safety_tags=safety_tags,
+        food_allergens=food_allergens,
+        health_goal=health_goal,
+        additional_input=request.additional_input,
+        safe_rag_context=safe_rag_context,
+        fixed_schedule=fixed_schedule,
+    )
+
+    if len(generated.weekly_plan) != 1:
+        raise RuntimeError(
+            "하루 식단 변경안이 정확히 한 요일로 생성되지 않았습니다."
+        )
+
+    day_plan = generated.weekly_plan[0]
+    selected_menu_names = [
+        getattr(day_plan.meals, meal_type).menu_name
+        for meal_type in (
+            "breakfast",
+            "lunch",
+            "dinner",
+            "snack",
+        )
+    ]
+    normalized_selected_names = [
+        _normalize_text(name)
+        for name in selected_menu_names
+    ]
+    normalized_blocked_names = {
+        _normalize_text(name)
+        for name in blocked_menu_names
+    }
+    if (
+        len(normalized_selected_names)
+        != len(set(normalized_selected_names))
+    ):
+        raise RuntimeError(
+            "하루 네 끼 변경안에 정규화 기준 중복 메뉴가 있습니다."
+        )
+    if set(normalized_selected_names) & normalized_blocked_names:
+        raise RuntimeError(
+            "하루 네 끼 변경안에 제외 대상 메뉴가 포함되었습니다."
+        )
+
+    daily_nutrition = _calculate_day_plan_nutrition(
+        day_plan
+    )
+
+    selected_candidates = fixed_schedule[request.target_day]
+    used_out_of_band_fallback = any(
+        not (
+            GENTLE_REBALANCE_MIN_CALORIE_RATIO
+            <= float(
+                selected_candidates[meal_type].get(
+                    "_gentle_calorie_ratio",
+                    0.0,
+                )
+            )
+            <= GENTLE_REBALANCE_MAX_CALORIE_RATIO
+        )
+        for meal_type in (
+            "breakfast",
+            "lunch",
+            "dinner",
+            "snack",
+        )
+    )
+    cautions = [
+        "오늘의 초과 섭취량을 내일 식단에서 전부 차감하지 않습니다.",
+        "네 끼를 유지하면서 안전한 범위의 가벼운 메뉴를 우선했습니다.",
+    ]
+    if used_out_of_band_fallback:
+        cautions.append(
+            "일부 슬롯은 안전한 목표 범위 후보가 부족해 정상 검증 후보를 사용했습니다."
+        )
+
+    logger.info(
+        "Replacement day generated day=%s policy=%s "
+        "meal_candidates=%d snack_candidates=%d target_source=%s "
+        "menu_style=%s elapsed_seconds=%.2f",
+        request.target_day,
+        GENTLE_REBALANCE_POLICY,
+        len(verified_meal_candidates),
+        len(verified_snack_candidates),
+        nutrition_targets.get("target_source"),
+        menu_style_preference,
+        perf_counter() - total_start,
+    )
+
+    return ReplaceDayResponse(
+        target_date=request.target_date,
+        target_day=request.target_day,
+        replacement_scope=request.replacement_scope,
+        adjustment_reason=request.adjustment_reason,
+        adjustment_policy=GENTLE_REBALANCE_POLICY,
+        replaced_meal_types=[
+            "breakfast",
+            "lunch",
+            "dinner",
+            "snack",
+        ],
+        day_plan=day_plan,
+        daily_nutrition=daily_nutrition,
+        cautions=cautions,
+        sources=_build_sources_from_rag(rag_context),
+    )
 
 
 # =========================================================

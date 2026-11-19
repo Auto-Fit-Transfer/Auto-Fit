@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Literal
 
 
@@ -857,6 +858,41 @@ class DietMealTarget(BaseModel):
     )
 
 
+class DietNutritionTotal(BaseModel):
+    """하루 섭취량 또는 하루 식단 합계를 나타내는 영양정보."""
+
+    model_config = ConfigDict(
+        allow_inf_nan=False,
+    )
+
+    calories_kcal: float = Field(
+        ge=0,
+        le=10000,
+    )
+
+    carbohydrate_g: float = Field(
+        ge=0,
+        le=2000,
+    )
+
+    protein_g: float = Field(
+        ge=0,
+        le=2000,
+    )
+
+    fat_g: float = Field(
+        ge=0,
+        le=2000,
+    )
+
+
+class DietDayNutritionComparison(BaseModel):
+    """오늘의 목표 영양정보와 실제 섭취 영양정보."""
+
+    target: DietMealTarget
+    actual: DietNutritionTotal
+
+
 DietNutritionProfileMode = Literal[
     "health_records",
     "basic_profile",
@@ -1181,6 +1217,23 @@ class DietFoodItem(BaseModel):
         le=1000,
     )
 
+    # Backend가 공식 Food DB 원본을 추적할 때 사용할 수 있는
+    # 선택 식별자다. 영양 계산에는 사용하지 않는다.
+    food_code: str | None = Field(
+        default=None,
+        max_length=100,
+    )
+
+    data_code: str | None = Field(
+        default=None,
+        max_length=100,
+    )
+
+    source_name: str | None = Field(
+        default=None,
+        max_length=200,
+    )
+
 
 
 
@@ -1419,10 +1472,10 @@ class DietDayNarrative(BaseModel):
 
 
 class DietWeeklyNarrativePartResponse(BaseModel):
-    """주간 식단 생성용 경량 LLM Structured Output."""
+    """주간 또는 하루 식단 생성용 경량 LLM Structured Output."""
 
     weekly_plan: list[DietDayNarrative] = Field(
-        min_length=3,
+        min_length=1,
         max_length=4,
     )
 
@@ -1481,7 +1534,7 @@ class DietWeeklyPlanPartResponse(BaseModel):
 
     ] = Field(
 
-        min_length=3,
+        min_length=1,
 
         max_length=4,
 
@@ -1916,6 +1969,222 @@ class ReplaceMealResponse(BaseModel):
         default_factory=list
 
     )
+
+
+# =========================================================
+# Replace Day
+# =========================================================
+
+
+class DietCurrentMenuNames(BaseModel):
+    """교체할 하루에 현재 저장된 네 끼 메뉴명."""
+
+    breakfast: str = Field(min_length=1, max_length=100)
+    lunch: str = Field(min_length=1, max_length=100)
+    dinner: str = Field(min_length=1, max_length=100)
+    snack: str = Field(min_length=1, max_length=100)
+
+    @field_validator(
+        "breakfast",
+        "lunch",
+        "dinner",
+        "snack",
+    )
+    @classmethod
+    def validate_non_blank_menu_name(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("current menu names must not be blank.")
+        return normalized
+
+
+class ReplaceDayRequest(DietRecommendationRequest):
+    """
+    오늘 과다 섭취 이후 내일 네 끼 전체 변경안을 요청한다.
+
+    AI Server는 날짜와 요일 일치를 검증한다. 사용자 기준 실제 내일인지의
+    판단은 사용자 시간대를 보유한 Backend가 요청 전에 검증한다.
+    """
+
+    target_date: date
+    target_day: DietDay
+
+    replacement_scope: Literal[
+        "all_four_meals"
+    ] = "all_four_meals"
+
+    adjustment_reason: Literal[
+        "over_target_intake"
+    ] = "over_target_intake"
+
+    today_nutrition: DietDayNutritionComparison
+
+    current_menu_names: DietCurrentMenuNames
+
+    excluded_menu_names: list[str] = Field(
+        default_factory=list,
+        max_length=50,
+    )
+
+    @field_validator("excluded_menu_names")
+    @classmethod
+    def validate_excluded_menu_names(
+        cls,
+        value: list[str],
+    ) -> list[str]:
+        normalized_names: list[str] = []
+        seen: set[str] = set()
+
+        for raw_name in value:
+            name = raw_name.strip()
+            if not name:
+                raise ValueError(
+                    "excluded menu names must not be blank."
+                )
+            if len(name) > 100:
+                raise ValueError(
+                    "excluded menu names must be 100 characters or fewer."
+                )
+
+            dedupe_key = name.lower().replace(" ", "")
+            if dedupe_key in seen:
+                continue
+            seen.add(dedupe_key)
+            normalized_names.append(name)
+
+        return normalized_names
+
+    @model_validator(mode="after")
+    def validate_replace_day_request(self):
+        day_by_weekday = (
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday",
+        )
+        expected_day = day_by_weekday[
+            self.target_date.weekday()
+        ]
+
+        if self.target_day != expected_day:
+            raise ValueError(
+                "target_date weekday must match target_day."
+            )
+
+        target = self.today_nutrition.target
+        actual = self.today_nutrition.actual
+        exceeds_target = any(
+            actual_value > target_value
+            for actual_value, target_value in (
+                (actual.calories_kcal, target.calories_kcal),
+                (actual.carbohydrate_g, target.carbohydrate_g),
+                (actual.protein_g, target.protein_g),
+                (actual.fat_g, target.fat_g),
+            )
+        )
+
+        if not exceeds_target:
+            raise ValueError(
+                "today_nutrition.actual must exceed at least one target."
+            )
+
+        return self
+
+
+class ReplaceDayResponse(BaseModel):
+    """Backend가 사용자 확인 후 원자적으로 저장할 하루 변경안."""
+
+    target_date: date
+    target_day: DietDay
+
+    replacement_scope: Literal[
+        "all_four_meals"
+    ] = "all_four_meals"
+
+    adjustment_reason: Literal[
+        "over_target_intake"
+    ] = "over_target_intake"
+
+    adjustment_policy: Literal[
+        "gentle_rebalance_v1"
+    ] = "gentle_rebalance_v1"
+
+    replaced_meal_types: list[DietMealType] = Field(
+        min_length=4,
+        max_length=4,
+    )
+
+    day_plan: DietDayPlan
+    daily_nutrition: DietNutritionTotal
+
+    cautions: list[str] = Field(
+        default_factory=list,
+        max_length=5,
+    )
+
+    sources: list[RecommendationSource] = Field(
+        default_factory=list,
+    )
+
+    @model_validator(mode="after")
+    def validate_replace_day_response(self):
+        expected_meal_types = [
+            "breakfast",
+            "lunch",
+            "dinner",
+            "snack",
+        ]
+
+        if self.replaced_meal_types != expected_meal_types:
+            raise ValueError(
+                "replaced_meal_types must contain all four meals in order."
+            )
+
+        if self.day_plan.day != self.target_day:
+            raise ValueError(
+                "day_plan.day must match target_day."
+            )
+
+        meals = self.day_plan.meals
+        meal_values = [
+            meals.breakfast,
+            meals.lunch,
+            meals.dinner,
+            meals.snack,
+        ]
+        calculated = {
+            "calories_kcal": sum(
+                meal.estimated_calories_kcal
+                for meal in meal_values
+            ),
+            "carbohydrate_g": sum(
+                meal.nutrition.carbohydrate_g
+                for meal in meal_values
+            ),
+            "protein_g": sum(
+                meal.nutrition.protein_g
+                for meal in meal_values
+            ),
+            "fat_g": sum(
+                meal.nutrition.fat_g
+                for meal in meal_values
+            ),
+        }
+
+        for field_name, expected_value in calculated.items():
+            actual_value = getattr(
+                self.daily_nutrition,
+                field_name,
+            )
+            if abs(actual_value - expected_value) > 0.01:
+                raise ValueError(
+                    "daily_nutrition must match the four meal totals."
+                )
+
+        return self
 
 # =========================================================
 # Diet Recipe
@@ -2445,3 +2714,12 @@ class DietMealRegenerateResponse(BaseModel):
 
 
     meal: ReplaceMealResponse
+
+
+class DietDayRegenerateResponse(BaseModel):
+
+    ok: bool = True
+
+    generator: str
+
+    result: ReplaceDayResponse

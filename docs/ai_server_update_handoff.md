@@ -1153,3 +1153,20 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - Backend 작업: `body_regions` 수용·검증·저장·Frontend 전달, 원본 운동 기록에서 주간 `completed_minutes/completed_days/goal_aligned_completed_days` 집계
 - 배포 순서: Backend DTO가 새 필드를 먼저 수용한 뒤 AI Server 배포 또는 양측 동시 배포
 - 상세 전달 문서: [운동 부위·건강점수 Backend 인계](exercise_body_regions_health_score_backend_handoff_2026-11-18.md)
+
+## 2026-11-19 · 내일 네 끼 전체 변경안 API
+
+- 상태: AI Server 로컬 구현·OpenAPI·결정론적 검증 완료, Backend 원자적 저장·Frontend 확인 화면·E2E 대기
+- 관련 커밋: 미커밋
+- 신규 API: `POST /recommend/diet/replace-day`
+- 변경 범위: 많이 먹은 날 다음 날의 `breakfast`, `lunch`, `dinner`, `snack` 네 끼를 모두 새 메뉴로 제안. 기존 한 끼 재추천 API는 그대로 유지
+- 보정 정책: `gentle_rebalance_v1`; 오늘 초과 섭취량을 내일에서 그대로 차감하지 않고 기존 한 끼·간식 목표의 약 85~100% 열량 후보를 우선
+- 안전 우선순위: 알레르기·기피 음식과 공식 Food DB 검증 → 건강목표·KDRI/명시 목표 → 사용자 메뉴 스타일 → 완만한 열량 우선순위
+- 중복 방지: 현재 네 메뉴와 `excluded_menu_names`를 후보 Pool에서 먼저 제거하고 새 네 메뉴 간 재사용도 금지. 고유 후보가 부족하면 일부 결과 없이 503
+- AI 역할: OpenAI는 고정 메뉴의 짧은 설명과 guidance만 생성. 메뉴·중량·열량·탄단지는 기존 공식 Food DB 후보값으로 재조립
+- 저장 상세: 각 item의 기존 이름·중량·열량·탄단지와 선택적 `food_code`, `data_code`, `source_name` 보존. 레시피는 기존 `/recommend/diet/recipe`에서 필요 시 한 끼씩 조회
+- Backend 작업: 신규 AI endpoint/DTO 연결, KDRI·메뉴 스타일 snapshot 전달, 날짜·요일·네 Meal·알레르기 재검증, 사용자 확인 후 version 검증과 하루 네 슬롯 원자적 교체 RPC 추가
+- Frontend 작업: 네 끼 변경안과 하루 합계를 미리 표시하고 확인/취소 제공. AI Server 직접 호출 금지
+- 테스트 결과: 신규 하루 변경·기존 재추천/스케줄·라우터 오류 매핑 22개, OpenAPI·Schema·KDRI·알레르기·기존 식단 69개, Recipe·LLM resilience 31개로 집중 검증 122개 통과. 식단 변경과 무관한 기존 러닝 수동 이벤트 루프 테스트 1개를 제외한 전체 비-live 회귀 `332 passed, 4 deselected`; syntax compile·diff check 통과
+- 실제 외부 호출: 비용과 운영 데이터 보호를 위해 OpenAI·식품안전나라 실호출은 수행하지 않음
+- 상세 계약: [내일 네 끼 변경 Backend 계약](diet_replace_day_backend_contract_2026-11-19.md), [Backend-AI 통합 명세](backend_ai_integration_spec.md), [AI OpenAPI snapshot](ai-openapi.json)

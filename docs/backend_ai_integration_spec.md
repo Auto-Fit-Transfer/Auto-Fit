@@ -85,6 +85,7 @@ Content-Type: application/json
 |---|---|---|---|---|
 | 1 | `POST /recommend/diet` | 건강 상태, 알레르기, 기피 음식, 목표, 지역, 한 끼 영양 목표 | 7일 식단과 Food DB 기반 음식 item | Backend |
 | 1 | `POST /recommend/diet/replace-meal` | 현재 식단 슬롯, 제외 메뉴, 사용자 조건 | 교체할 Meal 하나 | Backend |
+| 1 | `POST /recommend/diet/replace-day` | 내일 날짜·현재 네 메뉴·오늘 목표/실제 섭취량·사용자 조건 | 내일 네 끼 전체 변경안과 하루 영양 합계 | Backend 확인 후 원자적 저장 |
 | 1 | `POST /recommend/diet/recipe` | 선택한 Meal의 `items`, 알레르기, 기피 음식 | 음식별 공식 또는 LLM 레시피 | 필요 시 Backend cache |
 | 1 | `POST /food-analysis/analyze` | 스마트폰 음식 이미지 파일 | 음식 후보·예상 중량·공식 DB 영양정보 | 확인 전 임시 결과 |
 | 1 | `POST /food-analysis/recalculate` | 사용자가 확인·수정한 음식명과 중량 | 공식 DB로 재계산한 영양정보 | Backend 최종 저장 |
@@ -312,6 +313,68 @@ Content-Type: application/json
 ```
 
 Backend는 응답의 `day`와 `meal_type`이 요청 대상과 같은지 확인한 뒤 해당 슬롯 하나만 transaction으로 교체한다. AI Server는 DB를 직접 변경하지 않는다.
+
+## 내일 네 끼 전체 변경
+
+`POST /recommend/diet/replace-day`는 많이 먹은 날의 다음 날 식단을
+가볍게 조정하는 변경안 생성 API다. 기존 네 메뉴와 명시적 제외 메뉴를
+모두 후보에서 제거하고 아침·점심·저녁·간식을 한 번에 새로 제안한다.
+
+Backend는 사용자 시간대 기준 실제 다음 날인지 검증한다. 현재 앱 정책은
+`Asia/Seoul` 기준이다. AI Server는 사용자 시간대를 보유하지 않으므로
+`target_date`와 `target_day`의 요일 일치만 검증한다.
+
+오늘 초과량을 다음 날에서 그대로 차감하지 않는다. 알레르기·기피 음식,
+KDRI 또는 명시 영양 목표, 건강목표와 메뉴 스타일을 유지하면서 정상 목표의
+약 85~100% 열량 후보를 우선하는 `gentle_rebalance_v1` 정책을 사용한다.
+
+```json
+{
+  "target_date": "2026-11-20",
+  "target_day": "friday",
+  "replacement_scope": "all_four_meals",
+  "adjustment_reason": "over_target_intake",
+  "today_nutrition": {
+    "target": {
+      "calories_kcal": 2000,
+      "carbohydrate_g": 250,
+      "protein_g": 100,
+      "fat_g": 60
+    },
+    "actual": {
+      "calories_kcal": 2300,
+      "carbohydrate_g": 280,
+      "protein_g": 110,
+      "fat_g": 75
+    }
+  },
+  "current_menu_names": {
+    "breakfast": "기존 아침",
+    "lunch": "기존 점심",
+    "dinner": "기존 저녁",
+    "snack": "기존 간식"
+  },
+  "excluded_menu_names": [],
+  "metric_statuses": {},
+  "food_allergens": [],
+  "disliked_foods": [],
+  "health_goal": null,
+  "meal_target": null,
+  "nutrition_profile": null,
+  "reference_standard": "KDRI_2025",
+  "menu_style_preference": "balanced"
+}
+```
+
+응답의 `result.day_plan`에는 네 끼가 모두 포함된다. 각 Meal은 메뉴명·설명,
+메뉴 전체 열량·탄단지와 공식 Food DB 기반 `items`를 포함한다. 각 item에는
+`food_name`, `portion_g`, 열량·탄단지와 선택적 `food_code`, `data_code`,
+`source_name`이 포함될 수 있다. `result.daily_nutrition`은 네 끼 합계다.
+
+Backend는 응답을 곧바로 저장하지 않고 사용자 확인을 받은 뒤 대상 날짜의
+네 슬롯을 한 transaction으로 교체한다. 일부 슬롯만 저장하거나 한 슬롯이
+누락된 결과를 정상 처리해서는 안 된다. 한 끼만 바꾸는 동작은 기존
+`POST /recommend/diet/replace-meal`을 계속 사용한다.
 
 ## Recipe 조회
 

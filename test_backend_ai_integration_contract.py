@@ -42,6 +42,10 @@ EXPECTED_OPERATIONS = {
         "ReplaceMealRequest",
         "DietMealRegenerateResponse",
     ),
+    "/recommend/diet/replace-day": (
+        "ReplaceDayRequest",
+        "DietDayRegenerateResponse",
+    ),
     "/recommend/diet/recipe": (
         "DietRecipeRequest",
         "DietRecipeResponse",

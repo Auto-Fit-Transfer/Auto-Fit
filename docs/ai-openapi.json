@@ -1407,6 +1407,53 @@
         ]
       }
     },
+    "/recommend/diet/replace-day": {
+      "post": {
+        "tags": [
+          "recommendation"
+        ],
+        "summary": "Replace Diet Day",
+        "description": "오늘 과다 섭취 이후 내일 네 끼 전체 변경안을 생성한다.",
+        "operationId": "replace_diet_day_recommend_diet_replace_day_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceDayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DietDayRegenerateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/recommend/diet/replace-meal": {
       "post": {
         "tags": [
@@ -3373,6 +3420,60 @@
         "type": "object",
         "title": "DietContextInput"
       },
+      "DietCurrentMenuNames": {
+        "properties": {
+          "breakfast": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Breakfast"
+          },
+          "lunch": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Lunch"
+          },
+          "dinner": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Dinner"
+          },
+          "snack": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Snack"
+          }
+        },
+        "type": "object",
+        "required": [
+          "breakfast",
+          "lunch",
+          "dinner",
+          "snack"
+        ],
+        "title": "DietCurrentMenuNames",
+        "description": "교체할 하루에 현재 저장된 네 끼 메뉴명."
+      },
+      "DietDayNutritionComparison": {
+        "properties": {
+          "target": {
+            "$ref": "#/components/schemas/DietMealTarget"
+          },
+          "actual": {
+            "$ref": "#/components/schemas/DietNutritionTotal"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target",
+          "actual"
+        ],
+        "title": "DietDayNutritionComparison",
+        "description": "오늘의 목표 영양정보와 실제 섭취 영양정보."
+      },
       "DietDayPlan": {
         "properties": {
           "day": {
@@ -3398,6 +3499,28 @@
           "meals"
         ],
         "title": "DietDayPlan"
+      },
+      "DietDayRegenerateResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok",
+            "default": true
+          },
+          "generator": {
+            "type": "string",
+            "title": "Generator"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ReplaceDayResponse"
+          }
+        },
+        "type": "object",
+        "required": [
+          "generator",
+          "result"
+        ],
+        "title": "DietDayRegenerateResponse"
       },
       "DietFoodItem": {
         "properties": {
@@ -3436,6 +3559,42 @@
             "maximum": 1000.0,
             "minimum": 0.0,
             "title": "Carbohydrate G"
+          },
+          "food_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Food Code"
+          },
+          "data_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Code"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name"
           }
         },
         "type": "object",
@@ -3801,6 +3960,43 @@
         "title": "DietNutritionProfile",
         "description": "KDRI 성인 기준 조회에 필요한 최소 프로필.\n\n키와 몸무게는 입력 출처 보존 및 향후 개인화 확장을 위해 받는다.\n현재 KDRI 요약표의 집단 EER 조회에는 나이와 성별만 사용한다."
       },
+      "DietNutritionTotal": {
+        "properties": {
+          "calories_kcal": {
+            "type": "number",
+            "maximum": 10000.0,
+            "minimum": 0.0,
+            "title": "Calories Kcal"
+          },
+          "carbohydrate_g": {
+            "type": "number",
+            "maximum": 2000.0,
+            "minimum": 0.0,
+            "title": "Carbohydrate G"
+          },
+          "protein_g": {
+            "type": "number",
+            "maximum": 2000.0,
+            "minimum": 0.0,
+            "title": "Protein G"
+          },
+          "fat_g": {
+            "type": "number",
+            "maximum": 2000.0,
+            "minimum": 0.0,
+            "title": "Fat G"
+          }
+        },
+        "type": "object",
+        "required": [
+          "calories_kcal",
+          "carbohydrate_g",
+          "protein_g",
+          "fat_g"
+        ],
+        "title": "DietNutritionTotal",
+        "description": "하루 섭취량 또는 하루 식단 합계를 나타내는 영양정보."
+      },
       "DietRecipeDailyTargetPercentages": {
         "properties": {
           "calories_percent": {
@@ -4095,6 +4291,42 @@
             "maximum": 1000.0,
             "minimum": 0.0,
             "title": "Carbohydrate G"
+          },
+          "food_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Food Code"
+          },
+          "data_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Code"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name"
           }
         },
         "type": "object",
@@ -4146,6 +4378,42 @@
             "maximum": 1000.0,
             "minimum": 0.0,
             "title": "Carbohydrate G"
+          },
+          "food_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Food Code"
+          },
+          "data_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Data Code"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name"
           },
           "recipe_available": {
             "type": "boolean",
@@ -8816,6 +9084,276 @@
         },
         "type": "object",
         "title": "RefrigeratorContextOutput"
+      },
+      "ReplaceDayRequest": {
+        "properties": {
+          "metric_statuses": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Metric Statuses"
+          },
+          "food_allergens": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Food Allergens"
+          },
+          "disliked_foods": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Disliked Foods"
+          },
+          "goal_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal Type"
+          },
+          "health_goal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DietHealthGoal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "additional_input": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Additional Input"
+          },
+          "sido": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sido"
+          },
+          "sigungu": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sigungu"
+          },
+          "nearby_regions": {
+            "items": {
+              "$ref": "#/components/schemas/DietNearbyRegion"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Nearby Regions"
+          },
+          "meal_target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DietMealTarget"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nutrition_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DietNutritionProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reference_standard": {
+            "type": "string",
+            "const": "KDRI_2025",
+            "title": "Reference Standard",
+            "default": "KDRI_2025"
+          },
+          "menu_style_preference": {
+            "type": "string",
+            "enum": [
+              "balanced",
+              "everyday",
+              "health_focused"
+            ],
+            "title": "Menu Style Preference",
+            "default": "balanced"
+          },
+          "target_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Target Date"
+          },
+          "target_day": {
+            "type": "string",
+            "enum": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ],
+            "title": "Target Day"
+          },
+          "replacement_scope": {
+            "type": "string",
+            "const": "all_four_meals",
+            "title": "Replacement Scope",
+            "default": "all_four_meals"
+          },
+          "adjustment_reason": {
+            "type": "string",
+            "const": "over_target_intake",
+            "title": "Adjustment Reason",
+            "default": "over_target_intake"
+          },
+          "today_nutrition": {
+            "$ref": "#/components/schemas/DietDayNutritionComparison"
+          },
+          "current_menu_names": {
+            "$ref": "#/components/schemas/DietCurrentMenuNames"
+          },
+          "excluded_menu_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 50,
+            "title": "Excluded Menu Names"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_date",
+          "target_day",
+          "today_nutrition",
+          "current_menu_names"
+        ],
+        "title": "ReplaceDayRequest",
+        "description": "오늘 과다 섭취 이후 내일 네 끼 전체 변경안을 요청한다.\n\nAI Server는 날짜와 요일 일치를 검증한다. 사용자 기준 실제 내일인지의\n판단은 사용자 시간대를 보유한 Backend가 요청 전에 검증한다."
+      },
+      "ReplaceDayResponse": {
+        "properties": {
+          "target_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Target Date"
+          },
+          "target_day": {
+            "type": "string",
+            "enum": [
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday",
+              "sunday"
+            ],
+            "title": "Target Day"
+          },
+          "replacement_scope": {
+            "type": "string",
+            "const": "all_four_meals",
+            "title": "Replacement Scope",
+            "default": "all_four_meals"
+          },
+          "adjustment_reason": {
+            "type": "string",
+            "const": "over_target_intake",
+            "title": "Adjustment Reason",
+            "default": "over_target_intake"
+          },
+          "adjustment_policy": {
+            "type": "string",
+            "const": "gentle_rebalance_v1",
+            "title": "Adjustment Policy",
+            "default": "gentle_rebalance_v1"
+          },
+          "replaced_meal_types": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "breakfast",
+                "lunch",
+                "dinner",
+                "snack"
+              ]
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 4,
+            "title": "Replaced Meal Types"
+          },
+          "day_plan": {
+            "$ref": "#/components/schemas/DietDayPlan"
+          },
+          "daily_nutrition": {
+            "$ref": "#/components/schemas/DietNutritionTotal"
+          },
+          "cautions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 5,
+            "title": "Cautions"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationSource"
+            },
+            "type": "array",
+            "title": "Sources"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_date",
+          "target_day",
+          "replaced_meal_types",
+          "day_plan",
+          "daily_nutrition"
+        ],
+        "title": "ReplaceDayResponse",
+        "description": "Backend가 사용자 확인 후 원자적으로 저장할 하루 변경안."
       },
       "ReplaceMealRequest": {
         "properties": {
