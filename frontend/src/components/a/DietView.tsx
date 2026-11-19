@@ -37,7 +37,8 @@ function dateAtOffset(today: Date, offset: number) {
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'];
 const PLOT = 72;
 
-export function DietView(props: R6DietHomeProps & { week?: DayCalories[] | null }) {
+// onAdjust: 내일 맞추기 (TomorrowSheet). The tab passes it once the back-end and AI calls exist.
+export function DietView(props: R6DietHomeProps & { week?: DayCalories[] | null; onAdjust?: () => void }) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -165,6 +166,15 @@ export function DietView(props: R6DietHomeProps & { week?: DayCalories[] | null 
             ))}
           </View>
           {props.hasUnknownItems ? <Text style={styles.small}>영양 정보가 없는 음식은 합계에서 제외됐어요.</Text> : null}
+          {/* over today's goal (a-diet.html): made up tomorrow, only on the day itself */}
+          {props.onAdjust && isToday && eaten != null && target && eaten > target ? (
+            <View style={[styles.spread, styles.over]}>
+              <Text style={[styles.body, styles.grow]}>목표보다 {number(eaten - target)}kcal 더 먹었어요</Text>
+              <Pressable accessibilityRole="button" onPress={props.onAdjust} style={({ pressed }) => [styles.mini, pressed && styles.pressedSoft]}>
+                <Text style={[styles.small, styles.miniText]}>내일 맞추기</Text>
+              </Pressable>
+            </View>
+          ) : null}
           {props.nutritionError ? (
             <Pressable accessibilityRole="button" onPress={props.onRetryNutrition}>
               <Text style={styles.link}>{props.nutritionError} · 다시 시도</Text>
@@ -370,6 +380,8 @@ function createStyles({ colors }: AppTheme) {
     mainsLabel: { color: colors.textSecondary, fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17, marginRight: 2 },
     pip: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 4, borderWidth: 2, height: 14, width: 14 },
     pipOn: { backgroundColor: colors.primary },
+    over: { borderTopColor: colors.track, borderTopWidth: 2, paddingTop: 10 },
+    grow: { flex: 1, minWidth: 0 },
     plot: { borderBottomColor: colors.ink, borderBottomWidth: 2, flexDirection: 'row', height: PLOT + 20 },
     col: { alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
     // the number sits over the goal line on a white ground, as in the prototype
