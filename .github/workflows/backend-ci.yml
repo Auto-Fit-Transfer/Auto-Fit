@@ -79,6 +79,8 @@ jobs:
           test "$actual" = "${expected}|true|true|false|true|true"
       - name: Verify archived exercise sessions are read-only
         run: docker exec -i supabase_db_Auto-Fit psql -U postgres -d postgres -v ON_ERROR_STOP=1 < backend/tests/archived_exercise_session_sql.sql
+      - name: Verify one active exercise session per account
+        run: docker exec -i supabase_db_Auto-Fit psql -U postgres -d postgres -v ON_ERROR_STOP=1 < backend/tests/exercise_one_active_sql.sql
       - name: Verify non-AI exercise archive upgrade
         run: |
           set -o pipefail
