@@ -1,0 +1,207 @@
+Auto-Fit 공공데이터 및 공개 참고자료 목록
+작성 기준일: 2026-10-16
+인코딩: UTF-8
+
+※ 크기 표기 기준
+- OpenAPI 자료: 호출 시점과 요청 건수에 따라 응답 크기가 달라지므로 "가변"으로 표기
+- 로컬 파일 자료: 현재 repository에 저장된 파일의 실제 byte와 KiB/MiB를 표기
+- 1 KiB = 1,024 bytes, 1 MiB = 1,048,576 bytes
+
+
+[1] 식품 영양성분 공공데이터
+
+출처
+식품의약품안전처·농촌진흥청 국립식량과학원·해양수산부 국립수산과학원 / 공공데이터포털
+https://www.data.go.kr/data/15100064/standard.do
+
+데이터이름 및 항목
+전국통합식품영양성분정보표준데이터
+- 식품코드
+- 식품명
+- 영양성분 함량 기준량
+- 에너지(kcal)
+- 탄수화물(g)
+- 단백질(g)
+- 지방(g)
+- 출처명
+- 식품중량
+- 데이터 생성일자 및 기준일자
+
+Auto-Fit 실제 사용 항목
+- 식품명
+- 영양성분 함량 기준량
+- 에너지(kcal)
+- 탄수화물(g)
+- 단백질(g)
+- 지방(g)
+
+크기
+OpenAPI 전체 조회 데이터로 고정 파일 크기 없음 / 요청 건수에 따라 가변
+
+
+[2] 공식 조리 레시피 공공데이터
+
+출처
+식품의약품안전처 식품안전나라
+https://www.foodsafetykorea.go.kr/api/openApiInfo.do?menu_grp=MENU_GRP31&menu_no=661&svc_no=COOKRCP01
+
+데이터이름 및 항목
+조리식품의 레시피 DB (COOKRCP01)
+- 일련번호
+- 메뉴명
+- 조리방법
+- 요리종류
+- 중량(1인분)
+- 열량
+- 탄수화물
+- 단백질
+- 지방
+- 나트륨
+- 재료정보
+- 만드는 법 01~20
+- 조리 이미지
+- 저감 조리법 TIP
+
+Auto-Fit 실제 사용 항목
+- 레시피 ID
+- 메뉴명
+- 조리방법 및 요리종류
+- 1인분 중량
+- 재료 원문과 재료별 g
+- 조리 순서
+- 조리 팁
+- 이미지 URL
+
+크기
+OpenAPI 검색 결과 데이터로 고정 파일 크기 없음 / 검색어와 반환 건수에 따라 가변
+
+
+[3] 지역특산물 공공데이터
+
+출처
+농촌진흥청 농사로
+https://www.nongsaro.go.kr/portal/ps/psz/psza/contentMain.ps?menuId=PS00191
+
+데이터이름 및 항목
+농사로 지역특산물 OpenAPI
+- 지역명
+- 시도
+- 시군구
+- 콘텐츠 번호
+- 특산물명
+- 이미지 URL
+- 상세 링크 URL
+- 서비스 기준일
+
+Auto-Fit 실제 사용 항목
+- 시도 및 시군구
+- 특산물명
+- 식품 후보 매칭어
+- 서비스 기준일
+- 출처 기관
+
+크기
+OpenAPI 전체 목록 데이터로 고정 파일 크기 없음 / 지역 및 반환 건수에 따라 가변
+
+
+[4] 질병관리청 만성콩팥병 건강정보
+
+출처
+질병관리청 국가건강정보포털
+https://health.kdca.go.kr/healthinfo/biz/health/gnrlzHealthInfo/gnrlzHealthInfo/gnrlzHealthInfoView.do?cntnts_sn=5457
+
+데이터이름 및 항목
+만성콩팥병
+- 정의 및 질환 설명
+- 원인 및 위험요인
+- 증상
+- 진단 및 검사
+- 치료와 건강관리 정보
+
+크기
+29,205 bytes / 28.52 KiB
+로컬 파일: data/rag_sources/kidney/kdca_ckd_info.txt
+
+
+[5] 질병관리청 대사이상지방간질환 건강정보
+
+출처
+질병관리청 국가건강정보포털
+https://health.kdca.go.kr/healthinfo/biz/health/gnrlzHealthInfo/gnrlzHealthInfo/gnrlzHealthInfoView.do?cntnts_sn=6673
+
+데이터이름 및 항목
+대사이상지방간질환
+- 정의 및 질환 설명
+- 위험요인
+- 관련 대사질환
+- 진단 및 검사
+- 치료와 생활관리 정보
+
+크기
+19,992 bytes / 19.52 KiB
+로컬 파일: data/rag_sources/liver/kdca_masld_info.txt
+
+
+[6] 공개 건강 전문지침 RAG 자료
+
+출처
+대한고혈압학회
+
+데이터이름 및 항목
+2026년 제6판 고혈압 진료지침(수정본)
+- 혈압 분류
+- 고혈압 위험도
+- 생활요법
+- 진단 및 관리 지침
+
+크기
+627,510 bytes / 612.80 KiB
+로컬 파일: data/rag_sources/blood_pressure/korean_hypertension_guideline_2026.txt
+
+
+출처
+대한당뇨병학회
+
+데이터이름 및 항목
+2025 당뇨병 진료지침 제9판
+- 혈당 및 당화혈색소 기준
+- 당뇨병 위험도
+- 영양 및 운동 관리
+- 진단과 관리 지침
+
+크기
+1,157,990 bytes / 1,130.85 KiB
+로컬 파일: data/rag_sources/glucose/korean_diabetes_guideline_2025.txt
+
+
+출처
+한국지질·동맥경화학회
+
+데이터이름 및 항목
+이상지질혈증 진료지침 2026
+- 총콜레스테롤
+- LDL 및 HDL 콜레스테롤
+- 중성지방
+- 생활습관과 영양 관리
+
+크기
+779,830 bytes / 761.55 KiB
+로컬 파일: data/rag_sources/lipid/korean_lipid_guideline_2026.txt
+
+
+출처
+대한비만학회
+
+데이터이름 및 항목
+대한비만학회 비만 진료지침 2022 8판
+- BMI 및 비만 분류
+- 비만 위험도
+- 식사 및 신체활동 관리
+- 비만 평가와 관리 지침
+
+크기
+39,791 bytes / 38.86 KiB
+로컬 파일: data/rag_sources/obesity/korean_obesity_guideline_2022.txt
+
+RAG 공개자료 총 크기
+2,654,318 bytes / 2.53 MiB
