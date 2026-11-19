@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import { File } from 'expo-file-system';
 
 import type { FoodShotResponse } from '@/src/features/diet/foodShot';
-import { weeklyDietErrorMessage } from '@/src/features/diet/weeklyDietErrors';
+import { weeklyDietErrorCode, weeklyDietErrorMessage } from '@/src/features/diet/weeklyDietErrors';
 
 type ApiObject = Record<string, unknown>;
 
@@ -253,17 +253,140 @@ export function getWeeklyDietRecipe(planId: string, day: WeeklyDay, mealType: We
   return apiRequest<WeeklyRecipe>(`/api/diet/weekly-recommendations/${encodeURIComponent(planId)}/meals/${day}/${mealType}/recipe?servings=${servings}`);
 }
 
+type Summary = import('@/src/features/nutritionSummary').NutritionSummary;
+
+// Renewal A reads its goals from the week's plan (source=weekly, back-end 01a28952). A week without a plan, or a
+// plan made before the server kept a day target, answers 404/409: then only what was eaten is shown, from the
+// daily source, with every target left empty (no made-up goal).
+const noWeeklyTarget = (error: unknown) =>
+  error instanceof ApiError && (error.status === 404 || error.status === 409)
+  && ['WEEKLY_DIET_NOT_FOUND', 'DIET_TARGET_UNAVAILABLE'].includes(weeklyDietErrorCode(error.detail) ?? '');
+const withoutTargets = (summary: Summary): Summary => ({
+  ...summary,
+  calories: { ...summary.calories, target: null },
+  carbohydrates: { ...summary.carbohydrates, target: null },
+  protein: { ...summary.protein, target: null },
+  fat: { ...summary.fat, target: null },
+});
+
 // One week's daily summaries in one call (back-end 2d19a51); start is a Monday.
-export function getDietWeeklySummary(start: string) {
-  return apiRequest<{ days: import('@/src/features/nutritionSummary').NutritionSummary[] }>(
-    `/api/diet/summary/weekly?start=${encodeURIComponent(start)}`,
+export async function getDietWeeklySummary(start: string) {
+  const path = `/api/diet/summary/weekly?start=${encodeURIComponent(start)}`;
+  try {
+    return await apiRequest<{ days: Summary[] }>(`${path}&source=weekly`);
+  } catch (error) {
+    if (!noWeeklyTarget(error)) throw error;
+    const response = await apiRequest<{ days: Summary[] }>(path);
+    return { ...response, days: response.days.map(withoutTargets) };
+  }
+}
+
+export async function getDietNutritionSummary(date: string) {
+  const path = `/api/diet/nutrition-summary?${new URLSearchParams({ date }).toString()}`;
+  try {
+    return await apiRequest<{ summary: Summary }>(`${path}&source=weekly`);
+  } catch (error) {
+    if (!noWeeklyTarget(error)) throw error;
+    const response = await apiRequest<{ summary: Summary }>(path);
+    return { ...response, summary: withoutTargets(response.summary) };
+  }
+}
+
+// 일반식 / 건강식 (back-end 958336ab): null = not chosen; the server sends the AI 'balanced' then.
+export type MenuStylePreference = 'everyday' | 'health_focused' | null;
+
+export function getDietPreferences() {
+  return apiRequest<{ preferences?: { menu_style_preference?: MenuStylePreference } }>('/api/diet/preferences');
+}
+
+export function saveDietPreferences(menuStylePreference: MenuStylePreference) {
+  return apiRequest<{ preferences?: { menu_style_preference?: MenuStylePreference } }>('/api/diet/preferences', {
+    method: 'PUT',
+    body: JSON.stringify({ menu_style_preference: menuStylePreference }),
+  });
+}
+
+// Recording a meal of the week's plan (back-end 01a28952). legacy_feedback = recorded earlier in the daily app.
+export type WeeklyFeedbackType = 'eaten' | 'different_food' | 'skipped';
+export type WeeklyFeedbackRecord = {
+  feedback_type: WeeklyFeedbackType;
+  meal_log_id: string | null;
+  meal_type: WeeklyMealType;
+  plan_day: WeeklyDay;
+  recorded_at: string;
+};
+
+export function getWeeklyDietFeedback(planId: string) {
+  return apiRequest<{ feedback: WeeklyFeedbackRecord[]; legacy_feedback: WeeklyFeedbackRecord[] }>(
+    `/api/diet/weekly-recommendations/${encodeURIComponent(planId)}/feedback`,
   );
 }
 
-export function getDietNutritionSummary(date: string) {
-  const params = new URLSearchParams({ date });
-  return apiRequest<{ summary: import('@/src/features/nutritionSummary').NutritionSummary }>(
-    `/api/diet/nutrition-summary?${params.toString()}`,
+export function saveWeeklyDietFeedback(
+  planId: string,
+  day: WeeklyDay,
+  mealType: WeeklyMealType,
+  input: { feedback_type: WeeklyFeedbackType; expected_version: number; eaten_at?: string | null; actual_items?: DietActualItem[] },
+  update: boolean,
+) {
+  return apiRequest<{ meal_log_id: string | null }>(
+    `/api/diet/weekly-recommendations/${encodeURIComponent(planId)}/meals/${day}/${mealType}/feedback`,
+    { method: update ? 'PATCH' : 'POST', body: JSON.stringify(input) },
+  );
+}
+
+// 내일 맞추기 (back-end 01a28952): the server reckons today in Korean time.
+export type RebalanceToday = {
+  consumed_kcal: number;
+  date: string;
+  decision: 'none' | 'cheat' | 'adjusted';
+  exercise_burned_kcal: number;
+  running_burned_kcal: number;
+  total_burned_kcal: number;
+  has_unknown_calories: boolean;
+  overage_kcal: number | null;
+  target_kcal: number | null;
+};
+export type RebalanceStatus = {
+  target_status: 'available' | 'weekly_plan_missing' | 'target_pending';
+  today: RebalanceToday;
+  tomorrow_plan: { date: string; target_status: string; version: number | null; weekly_diet_plan_id: string | null };
+};
+type RebalanceMeal = { menu_name: string; estimated_calories_kcal: number };
+export type RebalancePreview = {
+  preview_id: string | null;
+  failed_meal_types: WeeklyMealType[];
+  tomorrow: {
+    actual_reduction_kcal: number;
+    daily_target_kcal: number;
+    unapplied_reduction_kcal: number;
+    total_after_kcal: number;
+    meals: { meal_type: WeeklyMealType; status: 'unchanged' | 'ready' | 'unavailable'; before: RebalanceMeal; after: RebalanceMeal | null }[];
+  };
+};
+
+export function getRebalanceStatus() {
+  return apiRequest<RebalanceStatus>('/api/diet/tomorrow-rebalance/status');
+}
+
+export function saveRebalanceCheat() {
+  return apiRequest<{ decision: string }>('/api/diet/tomorrow-rebalance/decision', {
+    method: 'POST',
+    body: JSON.stringify({ decision: 'cheat' }),
+  });
+}
+
+export function previewRebalance(planId: string, expectedVersion: number, mealTypes: WeeklyMealType[]) {
+  return apiRequest<RebalancePreview>(`/api/diet/weekly-recommendations/${encodeURIComponent(planId)}/tomorrow-rebalance/preview`, {
+    method: 'POST',
+    body: JSON.stringify({ expected_version: expectedVersion, meal_types: mealTypes }),
+  });
+}
+
+export function confirmRebalance(planId: string, previewId: string) {
+  return apiRequest<{ applied_meal_types: WeeklyMealType[] }>(
+    `/api/diet/weekly-recommendations/${encodeURIComponent(planId)}/tomorrow-rebalance/confirm`,
+    { method: 'POST', body: JSON.stringify({ preview_id: previewId }) },
   );
 }
 

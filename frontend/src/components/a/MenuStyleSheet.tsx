@@ -48,7 +48,7 @@ export function MenuStyleSheet({ visible, value, saving, error, onClose, onSave 
             </Pressable>
           );
         })}
-        <Text style={styles.note}>아침 · 점심 · 저녁에 적용돼요. 간식은 그대로예요.</Text>
+        <Text style={styles.note}>새로 짜는 7일 식단의 아침 · 점심 · 저녁부터 적용돼요. 간식은 그대로예요.</Text>
         {error ? <Text style={styles.body}>{error}</Text> : null}
         <Pressable
           accessibilityRole="button"

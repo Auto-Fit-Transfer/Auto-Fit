@@ -8,7 +8,7 @@ import type { MenuStyle } from '@/src/features/diet/menuStyle';
 import type { R6Meal } from '@/src/components/diet/R6DietHome';
 
 // Development only (isPublicRoute lets /dev open without signing in while __DEV__): renewal A's
-// diet tab with sample data, to look at the screen. ?state=first|after|loading|error|over|covered|style|stylefail
+// diet tab with sample data, to look at the screen. ?state=first|after|loading|error|over|covered|style|stylefail|noweek
 const nothing = () => undefined;
 const meal = (
   id: R6Meal['id'],
@@ -28,7 +28,7 @@ export default function ADietSample() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const first = state === 'first';
   const after = state === 'after';
-  const meals: R6Meal[] = state === 'loading' || state === 'error' ? [] : [
+  const meals: R6Meal[] = state === 'loading' || state === 'error' || state === 'noweek' ? [] : [
     first
       ? meal('breakfast', '아침', '그릭요거트 볼', 320, 'recommended', '체지방 감량 목표에 맞춰 아침은 가볍게 골랐어요')
       : meal('breakfast', '아침', '현미밥 · 연어구이 · 두부샐러드', 480, 'eaten', '', '08:12 사진으로 기록 · 탄 62g 단 31g 지 14g'),
@@ -80,6 +80,8 @@ export default function ADietSample() {
         // ?state=over: 2,160 eaten, 300 burned, 1,700 goal → 160 over / ?state=covered: the workout used it up
         burned={over ? 300 : state === 'covered' ? 500 : null}
         menuStyle={menuStyle}
+        // ?state=noweek: the week has no plan yet
+        onMakeWeek={state === 'noweek' ? nothing : undefined}
         onMenuStyle={styled ? () => setStyleOpen(true) : undefined}
         week={first ? null : [1620, 1480, 1810, after ? 1240 : 480, null, null, null].map((kcal, index) => ({ date: `2026-11-${String(9 + index).padStart(2, '0')}`, kcal, target: 1700 }))}
       />

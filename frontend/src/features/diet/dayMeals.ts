@@ -29,7 +29,7 @@ export type Meal = {
   macros: string;
 };
 
-const mealPresentation: Record<MealType, string> = {
+export const mealPresentation: Record<MealType, string> = {
   breakfast: '아침', lunch: '점심', dinner: '저녁', snack: '간식',
 };
 

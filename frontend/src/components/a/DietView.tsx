@@ -47,6 +47,8 @@ export function DietView(props: R6DietHomeProps & {
   burned?: number | null;
   menuStyle?: MenuStyle | null;
   onMenuStyle?: () => void;
+  over?: number | null; // the server's overage (after the workout); when given it wins over the sum here
+  onMakeWeek?: () => void; // the week has no plan yet
 }) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
@@ -76,6 +78,7 @@ export function DietView(props: R6DietHomeProps & {
   const next = props.meals.find((meal) => meal.status === 'recommended');
   const todayKey = `${props.today.getFullYear()}-${String(props.today.getMonth() + 1).padStart(2, '0')}-${String(props.today.getDate()).padStart(2, '0')}`;
   const weekTarget = props.week?.find((day) => day.target)?.target ?? target ?? null;
+  const overBy = props.over !== undefined ? props.over : eaten != null && target ? eaten - target - (props.burned ?? 0) : null;
   // a little room over the tallest bar (or the goal) for its number
   const weekTop = Math.max(weekTarget ?? 0, ...(props.week ?? []).map((day) => day.kcal ?? 0)) * 1.15;
   // breakfast, lunch and dinner the user answered with what they ate (the planned menu or something else)
@@ -176,11 +179,11 @@ export function DietView(props: R6DietHomeProps & {
           </View>
           {props.hasUnknownItems ? <Text style={styles.small}>영양 정보가 없는 음식은 합계에서 제외됐어요.</Text> : null}
           {/* over today's goal (a-diet.html): made up tomorrow, only on the day itself */}
-          {props.onAdjust && isToday && eaten != null && target && eaten > target ? (
-            eaten - target - (props.burned ?? 0) > 0 ? (
+          {props.onAdjust && isToday && ((overBy ?? 0) > 0 || (eaten != null && target && eaten > target && overBy != null)) ? (
+            (overBy ?? 0) > 0 ? (
               <View style={[styles.spread, styles.over]}>
                 <Text style={[styles.body, styles.grow]}>
-                  목표보다 {number(eaten - target - (props.burned ?? 0))}kcal 더 먹었어요{props.burned ? ` (운동 ${number(props.burned)}kcal 빼고)` : ''}
+                  목표보다 {number(overBy)}kcal 더 먹었어요{props.burned ? ` (운동 ${number(props.burned)}kcal 빼고)` : ''}
                 </Text>
                 <Pressable accessibilityRole="button" onPress={props.onAdjust} style={({ pressed }) => [styles.mini, pressed && styles.pressedSoft]}>
                   <Text style={[styles.small, styles.miniText]}>내일 맞추기</Text>
@@ -227,7 +230,13 @@ export function DietView(props: R6DietHomeProps & {
             </Pressable>
           ) : null}
           {!props.mealsLoading && !props.mealsError && props.meals.length === 0 ? (
-            <Text style={styles.small}>이 날짜에 추천된 식단이 없어요.</Text>
+            props.onMakeWeek ? (
+              <Pressable accessibilityRole="button" onPress={props.onMakeWeek} style={({ pressed }) => [styles.go, pressed && styles.pressed]}>
+                <Text style={styles.goText}>이번 주 식단 짜기</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.small}>이 날짜에 추천된 식단이 없어요.</Text>
+            )
           ) : null}
           {props.meals.map((meal) => {
             const recommended = meal.status === 'recommended';

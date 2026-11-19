@@ -15,6 +15,8 @@ const TOMORROW: TomorrowMeal[] = [
 const PLAN: TomorrowPlan = {
   cut: 165,
   left: 35,
+  failed: 0,
+  canSave: true,
   kcal: 1535,
   meals: [
     { changed: false, kcal: 420, menu: '그릭요거트 볼 · 삶은 달걀', slot: '아침' },

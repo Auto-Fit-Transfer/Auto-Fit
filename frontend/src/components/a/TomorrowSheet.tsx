@@ -24,6 +24,8 @@ export type TomorrowPlan = {
   why: string | null; // the AI's one line about the change
   cut: number | null; // from the server's adjustment: kcal really taken off the picked meals
   left: number | null; // and what stayed, since a meal gives up at most 15%
+  failed: number; // picked meals the AI found no safe lighter menu for: they stay as they are
+  canSave: boolean; // the server gave a preview to confirm (nothing changed means nothing to save)
 };
 
 export interface TomorrowSheetProps {
@@ -168,6 +170,7 @@ export function TomorrowSheet({ visible, over, eaten, target, burned, state, tom
                 {number(plan.cut)}kcal 줄였어요.{plan.left ? ` ${number(plan.left)}kcal는 줄이지 않았어요(한 끼는 15%까지만 줄여요).` : ''}
               </Text>
             ) : null}
+            {plan.failed ? <Text style={styles.body}>{plan.failed}끼는 맞는 메뉴를 못 찾아 그대로 둬요.</Text> : null}
             {plan.why ? <Text style={styles.body}>{plan.why}</Text> : null}
             {state === 'saved' ? (
               <>
@@ -177,7 +180,7 @@ export function TomorrowSheet({ visible, over, eaten, target, burned, state, tom
             ) : (
               <View style={styles.duo}>
                 <View style={styles.grow}>{button('그대로 두기', onClose, true, state === 'saving')}</View>
-                <View style={styles.grow}>{button(state === 'saving' ? '바꾸는 중…' : '이대로 바꾸기', onSave, false, state === 'saving')}</View>
+                <View style={styles.grow}>{button(state === 'saving' ? '바꾸는 중…' : '이대로 바꾸기', onSave, false, state === 'saving' || !plan.canSave)}</View>
               </View>
             )}
           </>

@@ -1,34 +1,44 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MealRecordSheets, type MealRecordDraft } from '@/src/components/diet/MealRecordSheets';
 import { DietView } from '@/src/components/a/DietView';
+import { MenuStyleSheet } from '@/src/components/a/MenuStyleSheet';
+import { TomorrowSheet, type TomorrowPlan, type TomorrowSheetProps } from '@/src/components/a/TomorrowSheet';
 import {
+  confirmRebalance,
   getDietApiErrorMessage,
   getDietMealLogs,
   getDietNutritionSummary,
+  getDietPreferences,
   getDietWeeklySummary,
-  getDietRecommendationsByDate,
+  getRebalanceStatus,
   getWeeklyDiet,
-  generateDietRecommendations,
-  regenerateDietMeal,
-  submitDietMealFeedback,
-  updateDietMealFeedback,
+  getWeeklyDietFeedback,
+  previewRebalance,
+  regenerateWeeklyDietMeal,
+  saveDietPreferences,
+  saveRebalanceCheat,
+  saveWeeklyDietFeedback,
   uploadDietMealPhoto,
   type DietActualItem,
-  type DietFeedbackInput,
+  type MenuStylePreference,
+  type RebalanceStatus,
+  type WeeklyFeedbackRecord,
+  type WeeklyFeedbackType,
   type WeeklyPlan,
 } from '@/src/api/diet';
 import { ApiError } from '@/src/api/client';
 import { awardTierActivity } from '@/src/api/tier';
 import { mealAllergyNotice } from '@/src/features/diet/allergyConflict';
 import { useAllergyNames } from '@/src/features/diet/useAllergyNames';
+import { menuStyleFailure } from '@/src/features/diet/menuStyle';
 import { weeklyDietErrorCode } from '@/src/features/diet/weeklyDietErrors';
 import {
   isApiRecord,
   macroLabel,
-  mapRecommendationMeals,
   mapWeeklyMeals,
+  mealPresentation,
   readArray,
   readMealType,
   readNumber,
@@ -39,24 +49,17 @@ import {
   type MealType,
 } from '@/src/features/diet/dayMeals';
 import { loadWeekCalories, type DayCalories } from '@/src/features/diet/weekCalories';
-import { mergeDayMeals, weekStartOf } from '@/src/features/diet/weeklyMeals';
+import { weekStartOf, weeklyDayFor } from '@/src/features/diet/weeklyMeals';
+import { previewPlan, weeklyStatuses } from '@/src/features/diet/weeklyRecords';
 import { nutritionNumber, type NutritionSummary } from '@/src/features/nutritionSummary';
 
+// Renewal A's diet tab. Since 11/19 (user + 현호, back-end 01a28952) the day shown is the week's AI plan, not the
+// daily recommendation: 일반식/건강식 and 내일 맞추기 change that one plan, and meals are recorded against it.
 const dateWindowMin = -6;
 const dateWindowMax = 6;
 
 type MealStatuses = Record<MealType, MealStatus>;
-
-type NutritionGoal = {
-  targetKey: NutritionTargetKey;
-  label: string;
-  current: number | null;
-  target: number | null;
-  unit: string;
-};
-
 type NutritionTargetKey = 'calories' | 'carbohydrates' | 'fat' | 'protein';
-type RecommendationNutritionTargets = Partial<Record<NutritionTargetKey, number>>;
 
 const defaultMealStatuses: MealStatuses = {
   breakfast: 'recommended',
@@ -65,36 +68,11 @@ const defaultMealStatuses: MealStatuses = {
   snack: 'recommended',
 };
 
-// Values remain empty until the selected date's backend summary is loaded.
-const nutritionGoals: NutritionGoal[] = [
-  {
-    targetKey: 'calories',
-    label: '열량',
-    current: null,
-    target: null,
-    unit: 'kcal',
-  },
-  {
-    targetKey: 'carbohydrates',
-    label: '탄수화물',
-    current: null,
-    target: null,
-    unit: 'g',
-  },
-  {
-    targetKey: 'protein',
-    label: '단백질',
-    current: null,
-    target: null,
-    unit: 'g',
-  },
-  {
-    targetKey: 'fat',
-    label: '지방',
-    current: null,
-    target: null,
-    unit: 'g',
-  },
+const nutritionGoals: { targetKey: NutritionTargetKey; label: string; unit: string }[] = [
+  { targetKey: 'calories', label: '열량', unit: 'kcal' },
+  { targetKey: 'carbohydrates', label: '탄수화물', unit: 'g' },
+  { targetKey: 'protein', label: '단백질', unit: 'g' },
+  { targetKey: 'fat', label: '지방', unit: 'g' },
 ];
 
 function addDays(source: Date, amount: number) {
@@ -114,25 +92,6 @@ function localClock(value: string | undefined) {
   const date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.getTime())) return undefined;
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-}
-
-function mapRecommendationNutritionTargets(result: unknown): RecommendationNutritionTargets {
-  if (!isApiRecord(result) || !isApiRecord(result.recommendation)) return {};
-
-  const recommendation = result.recommendation;
-  return {
-    calories: readNumber(recommendation, ['target_calories']),
-    carbohydrates: readNumber(recommendation, ['target_carbohydrates']),
-    fat: readNumber(recommendation, ['target_fat']),
-    protein: readNumber(recommendation, ['target_protein']),
-  };
-}
-
-function feedbackTypeToStatus(value: unknown): MealStatus | undefined {
-  if (value === 'eaten') return 'eaten';
-  if (value === 'different_food') return 'modified';
-  if (value === 'skipped') return 'skipped';
-  return undefined;
 }
 
 function mapLogDraft(log: ApiRecord, mealId: MealType): MealRecordDraft | undefined {
@@ -176,6 +135,17 @@ function mapLogDraft(log: ApiRecord, mealId: MealType): MealRecordDraft | undefi
   };
 }
 
+const errorCode = (error: unknown) => (error instanceof ApiError ? weeklyDietErrorCode(error.detail) : null);
+const isConflict = (error: unknown) => error instanceof ApiError && error.status === 409;
+
+function rebalanceError(error: unknown) {
+  const code = errorCode(error);
+  if (code === 'DIET_DAILY_FLOOR_REACHED') return '내일 식단이 이미 가벼워서 더 줄일 수 없어요.';
+  if (code === 'DIET_TARGET_UNAVAILABLE') return '아직 하루 목표가 없어서 내일 식단을 맞출 수 없어요.';
+  if (isConflict(error)) return '오늘 기록이나 식단이 바뀌었어요. 다시 맞춰 주세요.';
+  return menuStyleFailure(error instanceof ApiError ? error.status : undefined) ?? getDietApiErrorMessage(error);
+}
+
 export default function DietScreen() {
   const router = useRouter();
   const [today] = useState(() => {
@@ -185,19 +155,15 @@ export default function DietScreen() {
   });
   const [selectedDateOffset, setSelectedDateOffset] = useState(0);
   const [selectedDateKey, setSelectedDateKey] = useState(() => toDateKey(today));
-  const [statusesByDate, setStatusesByDate] = useState<Record<string, Partial<MealStatuses>>>({});
+  const [logStatusesByDate, setLogStatusesByDate] = useState<Record<string, Partial<MealStatuses>>>({});
   const [recordingMealId, setRecordingMealId] = useState<MealType | null>(null);
-  const [recommendedMeals, setRecommendedMeals] = useState<Meal[]>([]);
-  const [recommendationNutritionTargets, setRecommendationNutritionTargets] =
-    useState<RecommendationNutritionTargets>({});
-  const [recommendationError, setRecommendationError] = useState<string | null>(null);
   const [nutritionSummary, setNutritionSummary] = useState<NutritionSummary | null>(null);
   const [weekCalories, setWeekCalories] = useState<DayCalories[] | null>(null);
   const [nutritionError, setNutritionError] = useState<string | null>(null);
-  const [recommendationLoading, setRecommendationLoading] = useState(true);
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan | null>(null);
   const [weeklyError, setWeeklyError] = useState<string | null>(null);
   const [weeklyLoading, setWeeklyLoading] = useState(true);
+  const [feedback, setFeedback] = useState<{ planId: string; list: WeeklyFeedbackRecord[]; legacy: WeeklyFeedbackRecord[] } | null>(null);
   const [feedbackMealIds, setFeedbackMealIds] = useState<Set<MealType>>(() => new Set());
   const [regeneratingMealIds, setRegeneratingMealIds] = useState<Set<MealType>>(() => new Set());
   const [mealRecordsByDate, setMealRecordsByDate] = useState<
@@ -206,172 +172,89 @@ export default function DietScreen() {
   const [mealLogMetaByDate, setMealLogMetaByDate] = useState<
     Record<string, Partial<Record<MealType, { photoUrl?: string; time?: string }>>>
   >({});
+  // 일반식 / 건강식: undefined until the server answers (an older server hides the button)
+  const [menuStyle, setMenuStyle] = useState<MenuStylePreference | undefined>(undefined);
+  const [styleSheet, setStyleSheet] = useState<{ open: boolean; saving: boolean; error: string }>({ open: false, saving: false, error: '' });
+  // 내일 맞추기
+  const [rebalance, setRebalance] = useState<RebalanceStatus | null>(null);
+  const [tomorrowOpen, setTomorrowOpen] = useState(false);
+  const [tomorrowState, setTomorrowState] = useState<TomorrowSheetProps['state']>('choose');
+  const [tomorrowPlanPreview, setTomorrowPlanPreview] = useState<TomorrowPlan | null>(null);
+  const [tomorrowError, setTomorrowError] = useState('');
+  const [tomorrowWeek, setTomorrowWeek] = useState<WeeklyPlan | null>(null);
+  const pickedRef = useRef<MealType[]>([]);
+  const previewIdRef = useRef<string | null>(null);
   const feedbackRequestMealIdsRef = useRef(new Set<MealType>());
+  const regenerateRequestMealIdsRef = useRef(new Set<MealType>());
   const isMountedRef = useRef(true);
   const mealLogsRequestRef = useRef(0);
-  const mealLogEntriesByDateRef = useRef(new Map<string, unknown[]>());
-  const recommendationRequestRef = useRef(0);
-  const recommendationMealsByDateRef = useRef<{ dateKey: string | null; meals: Meal[] }>({
-    dateKey: null,
-    meals: [],
-  });
   const nutritionSummaryRequestRef = useRef(0);
-  const regenerateRequestMealIdsRef = useRef(new Set<MealType>());
-  const dayRegenerateBusyRef = useRef(false);
-  const [dayRegenerating, setDayRegenerating] = useState(false);
   const weeklyRequestRef = useRef(0);
 
-  const displayedNutritionGoals = useMemo(
-    () =>
-      nutritionGoals.map((goal) => ({
-        ...goal,
-        current:
-          nutritionSummary?.date === selectedDateKey
-            ? nutritionNumber(nutritionSummary[goal.targetKey]?.consumed)
-            : null,
-        target:
-          nutritionSummary?.date === selectedDateKey
-            ? nutritionNumber(nutritionSummary[goal.targetKey]?.target)
-            : (recommendationNutritionTargets[goal.targetKey] ?? null),
-      })),
-    [recommendationNutritionTargets, nutritionSummary, selectedDateKey],
-  );
-  const recommendationStatuses = useMemo(
-    () =>
-      recommendedMeals.reduce<MealStatuses>(
-        (currentStatuses, meal) => ({
-          ...currentStatuses,
-          [meal.id]: meal.recommendationStatus ?? currentStatuses[meal.id],
-        }),
-        { ...defaultMealStatuses },
-      ),
-    [recommendedMeals],
-  );
-  const selectedStatuses = useMemo<MealStatuses>(
-    () => ({
-      ...recommendationStatuses,
-      ...(statusesByDate[selectedDateKey] ?? {}),
-    }),
-    [recommendationStatuses, selectedDateKey, statusesByDate],
-  );
   const todayDateKey = toDateKey(new Date());
   const feedbackEnabled = selectedDateKey === todayDateKey;
   const showRecordControls = selectedDateKey <= todayDateKey;
   const selectedWeek = weekStartOf(selectedDateKey);
   const allergyNames = useAllergyNames();
-  const shownMeals = useMemo(
-    () => (recommendationLoading || recommendationError
-      ? recommendedMeals
-      : mergeDayMeals(recommendedMeals, mapWeeklyMeals(weeklyPlan, selectedDateKey))),
-    [recommendationError, recommendationLoading, recommendedMeals, selectedDateKey, weeklyPlan],
+  const shownMeals = useMemo(() => mapWeeklyMeals(weeklyPlan, selectedDateKey), [selectedDateKey, weeklyPlan]);
+  const selectedDay = weeklyDayFor(weeklyPlan, selectedDateKey)?.day ?? null;
+  const weekly = useMemo(
+    () => weeklyStatuses(selectedDay, feedback && weeklyPlan && feedback.planId === weeklyPlan.weekly_diet_plan_id ? feedback.list : [],
+      feedback && weeklyPlan && feedback.planId === weeklyPlan.weekly_diet_plan_id ? feedback.legacy : []),
+    [feedback, selectedDay, weeklyPlan],
   );
+  const selectedStatuses = useMemo<MealStatuses>(
+    () => ({ ...defaultMealStatuses, ...(logStatusesByDate[selectedDateKey] ?? {}), ...weekly.statuses }),
+    [logStatusesByDate, selectedDateKey, weekly.statuses],
+  );
+  const displayedNutritionGoals = nutritionGoals.map((goal) => ({
+    label: goal.label,
+    unit: goal.unit,
+    current: nutritionSummary?.date === selectedDateKey ? nutritionNumber(nutritionSummary[goal.targetKey]?.consumed) : null,
+    target: nutritionSummary?.date === selectedDateKey ? nutritionNumber(nutritionSummary[goal.targetKey]?.target) : null,
+  }));
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
     };
-  }, []);
+  }, []));
 
-  const applyMealLogs = useCallback((dateKey: string, sourceMeals: Meal[], entries: unknown[]) => {
-    const mealsByDietId = new Map(
-      sourceMeals
-        .filter((meal): meal is Meal & { dietMealId: string } => Boolean(meal.dietMealId))
-        .map((meal) => [meal.dietMealId, meal]),
-    );
-    const nextStatuses: Partial<MealStatuses> = {};
-    const nextRecords: Partial<Record<MealType, MealRecordDraft>> = {};
-    const nextLogMeta: Partial<Record<MealType, { photoUrl?: string; time?: string }>> = {};
-
-    entries.forEach((entry) => {
-      if (!isApiRecord(entry)) return;
-      const dietMealId = readString(entry, ['diet_meal_id', 'meal_id']);
-      const targetMeal =
-        (dietMealId ? mealsByDietId.get(dietMealId) : undefined) ??
-        sourceMeals.find(
-          (meal) =>
-            meal.id ===
-            readMealType(readString(entry, ['meal_type', 'meal_category', 'type', 'time_of_day'])),
-        );
-      const nextStatus = feedbackTypeToStatus(readString(entry, ['feedback_type', 'type']));
-      if (!targetMeal || !nextStatus) return;
-
-      nextStatuses[targetMeal.id] = nextStatus;
-      nextLogMeta[targetMeal.id] = {
-        photoUrl: readString(entry, ['image_url']),
-        time: localClock(readString(entry, ['eaten_at', 'created_at'])),
-      };
-      if (nextStatus === 'modified') {
-        const draft = mapLogDraft(entry, targetMeal.id);
-        if (draft) nextRecords[targetMeal.id] = draft;
-      }
-    });
-
-    setStatusesByDate((current) => ({ ...current, [dateKey]: nextStatuses }));
-    setMealRecordsByDate((current) => ({ ...current, [dateKey]: nextRecords }));
-    setMealLogMetaByDate((current) => ({ ...current, [dateKey]: nextLogMeta }));
-  }, []);
-
-  const loadMealLogs = useCallback(
-    async (dateKey: string) => {
-      const requestId = ++mealLogsRequestRef.current;
-      try {
-        const response = await getDietMealLogs(dateKey, dateKey);
-        if (!isMountedRef.current || requestId !== mealLogsRequestRef.current) return;
-
-        const entries = readArray(response.logs);
-        mealLogEntriesByDateRef.current.set(dateKey, entries);
-
-        const recommendationSnapshot = recommendationMealsByDateRef.current;
-        if (recommendationSnapshot.dateKey === dateKey && recommendationSnapshot.meals.length > 0) {
-          applyMealLogs(dateKey, recommendationSnapshot.meals, entries);
+  // photos, times and different foods come from the meal logs; whether a meal is recorded comes from the plan's feedback
+  const loadMealLogs = useCallback(async (dateKey: string) => {
+    const requestId = ++mealLogsRequestRef.current;
+    try {
+      const response = await getDietMealLogs(dateKey, dateKey);
+      if (!isMountedRef.current || requestId !== mealLogsRequestRef.current) return;
+      const statuses: Partial<MealStatuses> = {};
+      const records: Partial<Record<MealType, MealRecordDraft>> = {};
+      const meta: Partial<Record<MealType, { photoUrl?: string; time?: string }>> = {};
+      readArray(response.logs).forEach((entry) => {
+        if (!isApiRecord(entry)) return;
+        const mealId = readMealType(readString(entry, ['meal_type', 'meal_category', 'type', 'time_of_day']));
+        if (!mealId) return;
+        meta[mealId] = {
+          photoUrl: readString(entry, ['image_url']),
+          time: localClock(readString(entry, ['eaten_at', 'created_at'])),
+        };
+        const type = readString(entry, ['feedback_type', 'type']);
+        if (type === 'different_food') {
+          statuses[mealId] = 'modified';
+          const draft = mapLogDraft(entry, mealId);
+          if (draft) records[mealId] = draft;
+        } else if (type === 'eaten' || type === 'skipped') {
+          statuses[mealId] = type;
         }
-      } catch (error) {
-        if (!isMountedRef.current || requestId !== mealLogsRequestRef.current) return;
-        Alert.alert('식사 기록을 불러오지 못했어요', getDietApiErrorMessage(error));
-      }
-    },
-    [applyMealLogs],
-  );
-
-  const loadRecommendations = useCallback(
-    async (dateKey: string) => {
-      const requestId = ++recommendationRequestRef.current;
-      recommendationMealsByDateRef.current = { dateKey, meals: [] };
-      mealLogEntriesByDateRef.current.delete(dateKey);
-      if (isMountedRef.current) {
-        setRecommendationError(null);
-        setRecommendationLoading(true);
-        setRecommendedMeals([]);
-        setRecommendationNutritionTargets({});
-      }
-
-      try {
-        const response = await getDietRecommendationsByDate(dateKey);
-        const mappedMeals = mapRecommendationMeals(response.result);
-        const mappedNutritionTargets = mapRecommendationNutritionTargets(response.result);
-
-        if (!isMountedRef.current || requestId !== recommendationRequestRef.current) return false;
-
-        setRecommendedMeals(mappedMeals);
-        setRecommendationNutritionTargets(mappedNutritionTargets);
-        recommendationMealsByDateRef.current = { dateKey, meals: mappedMeals };
-        const mealLogEntries = mealLogEntriesByDateRef.current.get(dateKey);
-        if (mealLogEntries) applyMealLogs(dateKey, mappedMeals, mealLogEntries);
-        return true;
-      } catch (error) {
-        if (!isMountedRef.current || requestId !== recommendationRequestRef.current) return false;
-        const message = getDietApiErrorMessage(error);
-        setRecommendationError(message);
-        return false;
-      } finally {
-        if (isMountedRef.current && requestId === recommendationRequestRef.current) {
-          setRecommendationLoading(false);
-        }
-      }
-    },
-    [applyMealLogs],
-  );
+      });
+      setLogStatusesByDate((current) => ({ ...current, [dateKey]: statuses }));
+      setMealRecordsByDate((current) => ({ ...current, [dateKey]: records }));
+      setMealLogMetaByDate((current) => ({ ...current, [dateKey]: meta }));
+    } catch (error) {
+      if (!isMountedRef.current || requestId !== mealLogsRequestRef.current) return;
+      Alert.alert('식사 기록을 불러오지 못했어요', getDietApiErrorMessage(error));
+    }
+  }, []);
 
   const loadNutritionSummary = useCallback(async (dateKey: string) => {
     const requestId = ++nutritionSummaryRequestRef.current;
@@ -391,21 +274,38 @@ export default function DietScreen() {
     }
   }, []);
 
+  const loadFeedback = useCallback(async (planId: string) => {
+    try {
+      const response = await getWeeklyDietFeedback(planId);
+      if (isMountedRef.current) setFeedback({ planId, list: response.feedback ?? [], legacy: response.legacy_feedback ?? [] });
+    } catch {
+      // an older server: the meal logs still tell what was recorded
+    }
+  }, []);
+
   const loadWeeklyPlan = useCallback(async (weekStart: string) => {
     const requestId = ++weeklyRequestRef.current;
     setWeeklyLoading(true);
     setWeeklyError(null);
     try {
       const plan = await getWeeklyDiet(weekStart);
-      if (isMountedRef.current && requestId === weeklyRequestRef.current) setWeeklyPlan(plan);
+      if (!isMountedRef.current || requestId !== weeklyRequestRef.current) return;
+      setWeeklyPlan(plan);
+      void loadFeedback(plan.weekly_diet_plan_id);
     } catch (error) {
       if (!isMountedRef.current || requestId !== weeklyRequestRef.current) return;
       setWeeklyPlan(null);
-      const noPlan = error instanceof ApiError && error.status === 404 && weeklyDietErrorCode(error.detail) === 'WEEKLY_DIET_NOT_FOUND';
-      if (!noPlan) setWeeklyError(getDietApiErrorMessage(error));
+      if (errorCode(error) !== 'WEEKLY_DIET_NOT_FOUND') setWeeklyError(getDietApiErrorMessage(error));
     } finally {
       if (isMountedRef.current && requestId === weeklyRequestRef.current) setWeeklyLoading(false);
     }
+  }, [loadFeedback]);
+
+  const loadRebalance = useCallback(() => {
+    void getRebalanceStatus().then(
+      (status) => { if (isMountedRef.current) setRebalance(status); },
+      () => { if (isMountedRef.current) setRebalance(null); },
+    );
   }, []);
 
   useFocusEffect(useCallback(() => {
@@ -414,144 +314,168 @@ export default function DietScreen() {
 
   useFocusEffect(useCallback(() => {
     const frame = requestAnimationFrame(() => {
-      void loadRecommendations(selectedDateKey);
       void loadNutritionSummary(selectedDateKey);
       void loadMealLogs(selectedDateKey);
     });
     return () => cancelAnimationFrame(frame);
-  }, [loadMealLogs, loadNutritionSummary, loadRecommendations, selectedDateKey]));
+  }, [loadMealLogs, loadNutritionSummary, selectedDateKey]));
 
-  const openMealRecord = useCallback((mealId: MealType) => {
-    setRecordingMealId(mealId);
-  }, []);
+  useFocusEffect(useCallback(() => {
+    loadRebalance();
+    void getDietPreferences().then(
+      (response) => { if (isMountedRef.current) setMenuStyle(response.preferences?.menu_style_preference ?? null); },
+      () => undefined,
+    );
+  }, [loadRebalance]));
 
-  const saveDietMealFeedback = useCallback(
-    async (dietMealId: string, input: DietFeedbackInput, hasExistingFeedback: boolean) => {
-      const response = await (hasExistingFeedback
-        ? updateDietMealFeedback(dietMealId, input)
-        : submitDietMealFeedback(dietMealId, input));
-      if (input.feedbackType !== 'skipped' && isApiRecord(response.result)) {
-        const mealLog = isApiRecord(response.result.meal_log) ? response.result.meal_log : null;
-        const mealLogId = mealLog ? readString(mealLog, ['meal_log_id', 'id']) : undefined;
-        if (mealLogId) {
-          // A point-service outage must not undo a meal that was already recorded.
-          void awardTierActivity('meal_log', mealLogId).catch(() => undefined);
-        }
+  const reloadAfterChange = useCallback((dateKey: string) => {
+    void loadMealLogs(dateKey);
+    void loadNutritionSummary(dateKey);
+    void loadWeeklyPlan(weekStartOf(dateKey));
+    loadRebalance();
+  }, [loadMealLogs, loadNutritionSummary, loadRebalance, loadWeeklyPlan]);
+
+  // One record against the week's plan; the plan's version guards it (409 = the plan changed: read it again).
+  const saveFeedback = useCallback(
+    async (mealId: MealType, input: { feedback_type: WeeklyFeedbackType; eaten_at?: string | null; actual_items?: DietActualItem[] }) => {
+      const meal = shownMeals.find((candidate) => candidate.id === mealId);
+      if (!weeklyPlan || !meal?.weekly) throw new Error('식단 정보를 다시 불러온 뒤 시도해 주세요.');
+      const response = await saveWeeklyDietFeedback(
+        weeklyPlan.weekly_diet_plan_id,
+        meal.weekly.day,
+        mealId,
+        { ...input, expected_version: weeklyPlan.version },
+        weekly.recorded.has(mealId),
+      );
+      if (input.feedback_type !== 'skipped' && response.meal_log_id) {
+        // A point-service outage must not undo a meal that was already recorded.
+        void awardTierActivity('meal_log', response.meal_log_id).catch(() => undefined);
       }
       return response;
     },
-    [],
+    [shownMeals, weekly.recorded, weeklyPlan],
   );
+
+  const failedSave = useCallback((title: string, error: unknown, dateKey: string) => {
+    if (isConflict(error)) {
+      reloadAfterChange(dateKey);
+      Alert.alert(title, '식단이나 기록이 바뀌어서 다시 불러왔어요. 한 번 더 눌러 주세요.');
+    } else {
+      Alert.alert(title, getDietApiErrorMessage(error));
+    }
+  }, [reloadAfterChange]);
+
+  const markBusy = (mealId: MealType, busy: boolean) => {
+    if (busy) feedbackRequestMealIdsRef.current.add(mealId);
+    else feedbackRequestMealIdsRef.current.delete(mealId);
+    setFeedbackMealIds((current) => {
+      const next = new Set(current);
+      if (busy) next.add(mealId);
+      else next.delete(mealId);
+      return next;
+    });
+  };
 
   const submitFeedback = useCallback(
     async (mealId: MealType, status: Extract<MealStatus, 'eaten' | 'skipped'>) => {
-      const meal = recommendedMeals.find((candidate) => candidate.id === mealId);
-      const dietMealId = meal?.dietMealId;
-      if (!dietMealId || feedbackRequestMealIdsRef.current.has(mealId)) {
-        Alert.alert(
-          '식사 상태를 저장할 수 없어요',
-          '추천 식단 정보를 다시 불러온 뒤 시도해 주세요.',
-        );
-        return false;
-      }
-
+      if (feedbackRequestMealIdsRef.current.has(mealId)) return false;
       const dateKey = selectedDateKey;
-      const hasExistingFeedback = selectedStatuses[mealId] !== 'recommended';
-      feedbackRequestMealIdsRef.current.add(mealId);
-      setFeedbackMealIds((current) => new Set(current).add(mealId));
+      const update = weekly.recorded.has(mealId);
+      markBusy(mealId, true);
       try {
-        await saveDietMealFeedback(
-          dietMealId,
-          {
-            ...(status === 'eaten'
-              ? {
-                  ...(hasExistingFeedback ? { actualItems: [] } : {}),
-                  eatenAt: new Date().toISOString(),
-                }
-              : hasExistingFeedback
-                ? { actualItems: [], eatenAt: null }
-                : {}),
-            feedbackType: status,
-          },
-          hasExistingFeedback,
-        );
+        await saveFeedback(mealId, status === 'eaten'
+          ? { feedback_type: 'eaten', eaten_at: new Date().toISOString(), ...(update ? { actual_items: [] } : {}) }
+          : { feedback_type: 'skipped', ...(update ? { actual_items: [], eaten_at: null } : {}) });
         if (!isMountedRef.current) return false;
-
-        setStatusesByDate((current) => ({
-          ...current,
-          [dateKey]: { ...(current[dateKey] ?? {}), [mealId]: status },
-        }));
         setMealRecordsByDate((current) => {
           const dateRecords = current[dateKey];
           if (!dateRecords?.[mealId]) return current;
-
           const nextDateRecords = { ...dateRecords };
           delete nextDateRecords[mealId];
           return { ...current, [dateKey]: nextDateRecords };
         });
-        void loadMealLogs(dateKey);
-        void loadNutritionSummary(dateKey);
+        reloadAfterChange(dateKey);
+        return true;
+      } catch (error) {
+        if (isMountedRef.current) failedSave('식사 상태를 저장하지 못했어요', error, dateKey);
+        return false;
+      } finally {
+        if (isMountedRef.current) markBusy(mealId, false);
+      }
+    },
+    [failedSave, reloadAfterChange, saveFeedback, selectedDateKey, weekly.recorded],
+  );
+
+  const completeMealRecord = useCallback(
+    async (draft: MealRecordDraft) => {
+      const mealId = draft.mealId as MealType;
+      const actualItems: DietActualItem[] = draft.foods.map((food) => ({
+        calories: food.kcal ?? null,
+        carbohydrates: food.carbs ?? null,
+        fat: food.fat ?? null,
+        food_name: food.name.trim(),
+        protein: food.protein ?? null,
+        quantity: food.amount,
+        unit: food.unit.trim(),
+      }));
+      if (
+        feedbackRequestMealIdsRef.current.has(mealId) ||
+        actualItems.length < 1 ||
+        actualItems.length > 20 ||
+        actualItems.some((item) => !item.food_name || !item.unit || (typeof item.quantity === 'number' && item.quantity <= 0))
+      ) {
+        Alert.alert('식사 기록을 저장할 수 없어요', '음식명, 수량, 단위를 확인해 주세요.');
+        return false;
+      }
+
+      const dateKey = selectedDateKey;
+      let feedbackSaved = false;
+      markBusy(mealId, true);
+      try {
+        const response = await saveFeedback(mealId, { actual_items: actualItems, eaten_at: new Date().toISOString(), feedback_type: 'different_food' });
+        feedbackSaved = true;
+        if (draft.photoUri) {
+          if (!response.meal_log_id) throw new Error('식사는 기록됐지만 사진을 연결할 식사 기록을 찾지 못했어요.');
+          try {
+            await uploadDietMealPhoto(response.meal_log_id, { fileName: draft.photoFileName, mimeType: draft.photoMimeType, uri: draft.photoUri });
+          } catch (error) {
+            // A lost success response can be retried and return 409 because the same meal log
+            // already owns the uploaded photo. In that case the desired state is complete.
+            if (!(error instanceof ApiError) || error.status !== 409) throw error;
+          }
+        }
+        if (!isMountedRef.current) return false;
+        setMealRecordsByDate((current) => ({ ...current, [dateKey]: { ...(current[dateKey] ?? {}), [mealId]: draft } }));
+        setRecordingMealId(null);
+        reloadAfterChange(dateKey);
         return true;
       } catch (error) {
         if (isMountedRef.current) {
-          Alert.alert('식사 상태를 저장하지 못했어요', getDietApiErrorMessage(error));
+          if (feedbackSaved) {
+            Alert.alert('식사는 기록했지만 사진을 저장하지 못했어요', `${getDietApiErrorMessage(error)}\n사진 저장을 다시 시도해 주세요.`);
+          } else {
+            failedSave('식사 기록을 저장하지 못했어요', error, dateKey);
+          }
         }
         return false;
       } finally {
-        feedbackRequestMealIdsRef.current.delete(mealId);
-        if (isMountedRef.current) {
-          setFeedbackMealIds((current) => {
-            const next = new Set(current);
-            next.delete(mealId);
-            return next;
-          });
-        }
+        if (isMountedRef.current) markBusy(mealId, false);
       }
     },
-    [
-      loadMealLogs,
-      loadNutritionSummary,
-      recommendedMeals,
-      saveDietMealFeedback,
-      selectedDateKey,
-      selectedStatuses,
-    ],
+    [failedSave, reloadAfterChange, saveFeedback, selectedDateKey],
   );
 
   const regenerateMeal = useCallback(
     async (mealId: MealType) => {
-      const currentMeal = recommendedMeals.find((meal) => meal.id === mealId);
-      const dietMealId = currentMeal?.dietMealId;
-      if (!dietMealId || regenerateRequestMealIdsRef.current.has(mealId)) return;
-
+      const meal = shownMeals.find((candidate) => candidate.id === mealId);
+      if (!weeklyPlan || !meal?.weekly || regenerateRequestMealIdsRef.current.has(mealId)) return;
       regenerateRequestMealIdsRef.current.add(mealId);
       setRegeneratingMealIds((current) => new Set(current).add(mealId));
       try {
-        const response = await regenerateDietMeal(dietMealId);
-
-        const rawRegeneratedMeal = response.meal;
-
-        if (!isMountedRef.current) return;
-
-        const mealForMapping =
-          isApiRecord(rawRegeneratedMeal) && response.used_ingredients !== undefined
-            ? { ...rawRegeneratedMeal, used_ingredients: response.used_ingredients }
-            : rawRegeneratedMeal;
-        const regeneratedMeal = mapRecommendationMeals({ meals: [mealForMapping] }).find(
-          (meal) => meal.id === mealId,
-        );
-        if (regeneratedMeal) {
-          setRecommendedMeals((current) => current.map((meal) => (meal.id === mealId ? regeneratedMeal : meal)));
-          return;
-        }
-
-        // The regenerate response schema is free-form. Re-read the selected date using the
-        // established recommendation mapper rather than constructing a meal client-side.
-        await loadRecommendations(selectedDateKey);
+        const plan = await regenerateWeeklyDietMeal(weeklyPlan.weekly_diet_plan_id, meal.weekly.day, mealId, weeklyPlan.version);
+        if (isMountedRef.current) setWeeklyPlan(plan);
       } catch (error) {
-        if (isMountedRef.current) {
-          Alert.alert('식단을 다시 추천하지 못했어요', getDietApiErrorMessage(error));
-        }
+        if (isMountedRef.current) failedSave('식단을 다시 추천하지 못했어요', error, selectedDateKey);
       } finally {
         regenerateRequestMealIdsRef.current.delete(mealId);
         if (isMountedRef.current) {
@@ -563,176 +487,116 @@ export default function DietScreen() {
         }
       }
     },
-    [loadRecommendations, recommendedMeals, selectedDateKey],
+    [failedSave, selectedDateKey, shownMeals, weeklyPlan],
   );
 
-  // Paid AI call that replaces today's whole plan, so it asks first and ignores a double tap.
-  const runDayRegenerate = useCallback(async () => {
-    if (dayRegenerateBusyRef.current) return;
-    dayRegenerateBusyRef.current = true;
-    setDayRegenerating(true);
-    try {
-      await generateDietRecommendations();
-      await loadRecommendations(selectedDateKey);
-    } catch (error) {
-      if (isMountedRef.current) Alert.alert('식단을 다시 추천하지 못했어요', getDietApiErrorMessage(error));
-    } finally {
-      dayRegenerateBusyRef.current = false;
-      if (isMountedRef.current) setDayRegenerating(false);
-    }
-  }, [loadRecommendations, selectedDateKey]);
-
-  const regenerateDay = useCallback(() => {
-    Alert.alert('오늘 식단을 다시 추천받을까요?', '오늘 식단 전체가 새 추천으로 바뀌어요.', [
+  const requestAlternativeMeal = useCallback((mealId: MealType) => {
+    Alert.alert('다른 식단을 추천받을까요?', '선택한 끼니만 새로운 식단으로 바꿔드려요.', [
       { style: 'cancel', text: '취소' },
-      { onPress: () => void runDayRegenerate(), text: '다시 추천' },
+      { onPress: () => void regenerateMeal(mealId), text: '새로 추천받기' },
     ]);
-  }, [runDayRegenerate]);
+  }, [regenerateMeal]);
 
-  const requestAlternativeMeal = useCallback(
-    (mealId: MealType) => {
-      if (recommendationLoading) return;
-      Alert.alert('다른 식단을 추천받을까요?', '선택한 끼니만 새로운 식단으로 바꿔드려요.', [
-        { style: 'cancel', text: '취소' },
-        { onPress: () => void regenerateMeal(mealId), text: '새로 추천받기' },
-      ]);
+  const saveMenuStyle = async (style: Exclude<MenuStylePreference, null>) => {
+    setStyleSheet({ open: true, saving: true, error: '' });
+    try {
+      const response = await saveDietPreferences(style);
+      if (!isMountedRef.current) return;
+      setMenuStyle(response.preferences?.menu_style_preference ?? style);
+      setStyleSheet({ open: false, saving: false, error: '' });
+    } catch (error) {
+      if (isMountedRef.current) setStyleSheet({ open: true, saving: false, error: getDietApiErrorMessage(error) });
+    }
+  };
+
+  // 내일 맞추기: the server reckons today's food, workout and goal; the app only shows them and asks.
+  const tomorrowDate = rebalance?.tomorrow_plan.date ?? null;
+  const tomorrowSource = tomorrowDate && weeklyPlan && weekStartOf(tomorrowDate) === weeklyPlan.week_start_date ? weeklyPlan : tomorrowWeek;
+  const tomorrowMeals = tomorrowDate ? mapWeeklyMeals(tomorrowSource, tomorrowDate) : [];
+  const overToday = rebalance && rebalance.target_status === 'available' && rebalance.today.decision === 'none'
+    ? rebalance.today.overage_kcal
+    : null;
+
+  const runPreview = async (mealTypes: MealType[]) => {
+    const plan = rebalance?.tomorrow_plan;
+    if (!plan?.weekly_diet_plan_id || plan.version == null) {
+      setTomorrowError('내일 식단이 아직 없어요.');
+      setTomorrowState('error');
+      return;
+    }
+    pickedRef.current = mealTypes;
+    setTomorrowState('loading');
+    try {
+      const preview = await previewRebalance(plan.weekly_diet_plan_id, plan.version, mealTypes);
+      if (!isMountedRef.current) return;
+      previewIdRef.current = preview.preview_id;
+      setTomorrowPlanPreview(previewPlan(preview, mealPresentation));
+      setTomorrowState('ready');
+    } catch (error) {
+      if (!isMountedRef.current) return;
+      if (isConflict(error)) loadRebalance();
+      setTomorrowError(rebalanceError(error));
+      setTomorrowState('error');
+    }
+  };
+
+  const tomorrowProps: Omit<TomorrowSheetProps, 'visible'> = {
+    over: Math.round(rebalance?.today.overage_kcal ?? 0),
+    eaten: rebalance?.today.consumed_kcal ?? null,
+    target: rebalance?.today.target_kcal ?? null,
+    burned: rebalance?.today.total_burned_kcal ?? null,
+    state: tomorrowState,
+    tomorrow: tomorrowMeals.map((meal) => ({ slot: meal.title, menu: meal.foods, kcal: meal.kcal ?? null })),
+    plan: tomorrowPlanPreview,
+    error: tomorrowError,
+    onClose: () => setTomorrowOpen(false),
+    onRetry: () => void runPreview(pickedRef.current),
+    onCheat: () => {
+      void saveRebalanceCheat().then(
+        () => { if (isMountedRef.current) { setTomorrowOpen(false); loadRebalance(); } },
+        (error) => Alert.alert('저장하지 못했어요', getDietApiErrorMessage(error)),
+      );
     },
-    [regenerateMeal, recommendationLoading],
-  );
-
-  const completeMealRecord = useCallback(
-    async (draft: MealRecordDraft) => {
-      const mealId = draft.mealId as MealType;
-      const meal = recommendedMeals.find((candidate) => candidate.id === mealId);
-      const dietMealId = meal?.dietMealId;
-      const actualItems: DietActualItem[] = draft.foods.map((food) => ({
-        calories: food.kcal ?? null,
-        carbohydrates: food.carbs ?? null,
-        fat: food.fat ?? null,
-        food_name: food.name.trim(),
-        protein: food.protein ?? null,
-        quantity: food.amount,
-        unit: food.unit.trim(),
-      }));
-
-      if (
-        !dietMealId ||
-        feedbackRequestMealIdsRef.current.has(mealId) ||
-        actualItems.length < 1 ||
-        actualItems.length > 20 ||
-        actualItems.some(
-          (item) =>
-            !item.food_name ||
-            !item.unit ||
-            (typeof item.quantity === 'number' && item.quantity <= 0),
-        )
-      ) {
-        Alert.alert('식사 기록을 저장할 수 없어요', '음식명, 수량, 단위를 확인해 주세요.');
-        return false;
-      }
-
-      const dateKey = selectedDateKey;
-      const hasExistingFeedback = selectedStatuses[mealId] !== 'recommended';
-      let feedbackSaved = false;
-      feedbackRequestMealIdsRef.current.add(mealId);
-      setFeedbackMealIds((current) => new Set(current).add(mealId));
-      try {
-        const feedbackResponse = await saveDietMealFeedback(
-          dietMealId,
-          {
-            actualItems,
-            eatenAt: new Date().toISOString(),
-            feedbackType: 'different_food',
-          },
-          hasExistingFeedback,
+    onAdjust: () => {
+      setTomorrowState('pick');
+      if (tomorrowDate && (!weeklyPlan || weekStartOf(tomorrowDate) !== weeklyPlan.week_start_date)) {
+        void getWeeklyDiet(weekStartOf(tomorrowDate)).then(
+          (plan) => { if (isMountedRef.current) setTomorrowWeek(plan); },
+          () => { if (isMountedRef.current) setTomorrowWeek(null); },
         );
-        feedbackSaved = true;
-
-        if (draft.photoUri) {
-          const result = isApiRecord(feedbackResponse.result)
-            ? feedbackResponse.result
-            : undefined;
-          const mealLog = result && isApiRecord(result.meal_log) ? result.meal_log : undefined;
-          const mealLogId = mealLog ? readString(mealLog, ['meal_log_id', 'id']) : undefined;
-
-          if (!mealLogId) {
-            throw new Error('식사는 기록됐지만 사진을 연결할 식사 기록을 찾지 못했어요.');
-          }
-
-          try {
-            await uploadDietMealPhoto(mealLogId, {
-              fileName: draft.photoFileName,
-              mimeType: draft.photoMimeType,
-              uri: draft.photoUri,
-            });
-          } catch (error) {
-            // A lost success response can be retried and return 409 because the same meal log
-            // already owns the uploaded photo. In that case the desired state is complete.
-            if (!(error instanceof ApiError) || error.status !== 409) throw error;
-          }
-        }
-        if (!isMountedRef.current) return false;
-
-        setMealRecordsByDate((current) => ({
-          ...current,
-          [dateKey]: {
-            ...(current[dateKey] ?? {}),
-            [mealId]: draft,
-          },
-        }));
-        setStatusesByDate((current) => ({
-          ...current,
-          [dateKey]: { ...(current[dateKey] ?? {}), [mealId]: 'modified' },
-        }));
-        setRecordingMealId(null);
-        void loadMealLogs(dateKey);
-        void loadNutritionSummary(dateKey);
-        return true;
-      } catch (error) {
-        if (isMountedRef.current) {
-          Alert.alert(
-            feedbackSaved ? '식사는 기록했지만 사진을 저장하지 못했어요' : '식사 기록을 저장하지 못했어요',
-            feedbackSaved
-              ? `${getDietApiErrorMessage(error)}\n사진 저장을 다시 시도해 주세요.`
-              : getDietApiErrorMessage(error),
-          );
-        }
-        return false;
-      } finally {
-        feedbackRequestMealIdsRef.current.delete(mealId);
-        if (isMountedRef.current) {
-          setFeedbackMealIds((current) => {
-            const next = new Set(current);
-            next.delete(mealId);
-            return next;
-          });
-        }
       }
     },
-    [
-      loadMealLogs,
-      loadNutritionSummary,
-      recommendedMeals,
-      saveDietMealFeedback,
-      selectedDateKey,
-      selectedStatuses,
-    ],
-  );
+    onPick: (slots) => {
+      const types = (Object.keys(mealPresentation) as MealType[]).filter((type) => slots.includes(mealPresentation[type]));
+      void runPreview(types);
+    },
+    onSave: () => {
+      const planId = rebalance?.tomorrow_plan.weekly_diet_plan_id;
+      const previewId = previewIdRef.current;
+      if (!planId || !previewId) return;
+      setTomorrowState('saving');
+      void confirmRebalance(planId, previewId).then(
+        () => {
+          if (!isMountedRef.current) return;
+          setTomorrowState('saved');
+          reloadAfterChange(selectedDateKey);
+          if (tomorrowDate) void getWeeklyDiet(weekStartOf(tomorrowDate)).then((plan) => { if (isMountedRef.current) setTomorrowWeek(plan); }, () => undefined);
+        },
+        (error) => {
+          if (!isMountedRef.current) return;
+          if (isConflict(error)) loadRebalance();
+          setTomorrowError(rebalanceError(error));
+          setTomorrowState('error');
+        },
+      );
+    },
+  };
 
   const moveSelectedDate = (amount: number) => {
-    const nextOffset = Math.max(
-      dateWindowMin,
-      Math.min(dateWindowMax, selectedDateOffset + amount),
-    );
+    const nextOffset = Math.max(dateWindowMin, Math.min(dateWindowMax, selectedDateOffset + amount));
     if (nextOffset === selectedDateOffset) return;
-
-    const nextDateKey = toDateKey(addDays(today, nextOffset));
-    recommendationMealsByDateRef.current = { dateKey: nextDateKey, meals: [] };
-    setRecommendedMeals([]);
-    setRecommendationError(null);
-    setRecommendationLoading(true);
     setSelectedDateOffset(nextOffset);
-    setSelectedDateKey(nextDateKey);
+    setSelectedDateKey(toDateKey(addDays(today, nextOffset)));
   };
 
   return (
@@ -742,10 +606,10 @@ export default function DietScreen() {
         today={today}
         selectedDateOffset={selectedDateOffset}
         selectedDateKey={selectedDateKey}
-        goals={displayedNutritionGoals.map(({ label, current, target, unit }) => ({ label, current, target, unit }))}
+        goals={displayedNutritionGoals}
         nutritionError={nutritionError}
         hasUnknownItems={nutritionSummary?.date === selectedDateKey && Boolean(nutritionSummary.has_unknown_items)}
-        meals={shownMeals.map((meal) => {
+        meals={shownMeals.map((meal: Meal) => {
           const record = mealRecordsByDate[selectedDateKey]?.[meal.id];
           const log = mealLogMetaByDate[selectedDateKey]?.[meal.id];
           const recordedFoods = record?.foods;
@@ -768,38 +632,45 @@ export default function DietScreen() {
               : null,
             photoUrl: photoUrl ?? undefined,
             status,
-            canSave: feedbackEnabled && Boolean(meal.dietMealId),
+            // recorded earlier in the daily app: shown as recorded, not saved twice
+            canSave: feedbackEnabled && Boolean(meal.weekly) && !weekly.locked.has(meal.id),
             pending: feedbackMealIds.has(meal.id),
             regenerating: regeneratingMealIds.has(meal.id),
             allergyWarning: notice?.message ?? null,
             allergyBlocked: Boolean(notice?.blocked),
-            canRegenerateDay: Boolean(notice?.regenerateDay) && feedbackEnabled,
+            canRegenerateDay: false,
           };
         })}
-        mealsLoading={recommendationLoading || (recommendedMeals.length === 0 && weeklyLoading)}
-        mealsError={recommendationError ?? (!recommendationLoading && recommendedMeals.length === 0 ? weeklyError : null)}
+        mealsLoading={weeklyLoading}
+        mealsError={weeklyError}
+        onMakeWeek={() => router.push('/diet/weekly')}
         onSelectDateOffset={(offset) => moveSelectedDate(offset - selectedDateOffset)}
         onRetryNutrition={() => void loadNutritionSummary(selectedDateKey)}
-        onRetryMeals={() => {
-          void loadRecommendations(selectedDateKey);
-          void loadWeeklyPlan(selectedWeek);
-        }}
-        onRecord={openMealRecord}
+        onRetryMeals={() => void loadWeeklyPlan(selectedWeek)}
+        onRecord={setRecordingMealId}
         onStatusChange={(mealId, status) => void submitFeedback(mealId, status)}
         onAlternative={requestAlternativeMeal}
-        onRegenerateDay={regenerateDay}
-        dayRegenerating={dayRegenerating}
+        onRegenerateDay={() => router.push('/diet/weekly')}
+        dayRegenerating={false}
         onOpenRecipe={(mealId) => {
           const meal = shownMeals.find((item) => item.id === mealId);
           if (meal?.weekly) {
             router.push({ pathname: '/diet/weekly-recipe', params: { planId: meal.weekly.planId, day: meal.weekly.day, mealType: meal.id } });
-          } else if (meal?.dietMealId) {
-            router.push({ pathname: '/diet/recipe', params: { date: selectedDateKey, mealId: meal.dietMealId } });
           }
         }}
         onOpenProteinGuide={() => router.push({ pathname: '/diet/protein-guide', params: { date: selectedDateKey } })}
         onOpenWeekly={() => router.push('/diet/weekly')}
         showRecordControls={showRecordControls}
+        menuStyle={menuStyle ?? null}
+        onMenuStyle={menuStyle === undefined ? undefined : () => setStyleSheet({ open: true, saving: false, error: '' })}
+        over={rebalance ? overToday : undefined}
+        burned={rebalance?.today.total_burned_kcal ?? null}
+        onAdjust={overToday && overToday > 0 ? () => {
+          setTomorrowState('choose');
+          setTomorrowPlanPreview(null);
+          setTomorrowError('');
+          setTomorrowOpen(true);
+        } : undefined}
       />
       <MealRecordSheets
         initialDraft={recordingMealId ? mealRecordsByDate[selectedDateKey]?.[recordingMealId] : undefined}
@@ -808,6 +679,15 @@ export default function DietScreen() {
         onComplete={completeMealRecord}
         visible={recordingMealId !== null}
       />
+      <MenuStyleSheet
+        error={styleSheet.error}
+        onClose={() => setStyleSheet({ open: false, saving: false, error: '' })}
+        onSave={(style) => void saveMenuStyle(style)}
+        saving={styleSheet.saving}
+        value={menuStyle ?? null}
+        visible={styleSheet.open}
+      />
+      <TomorrowSheet visible={tomorrowOpen} {...tomorrowProps} />
     </View>
   );
 }
