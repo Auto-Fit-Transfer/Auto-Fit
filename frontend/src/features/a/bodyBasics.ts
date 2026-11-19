@@ -3,9 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updateProfile } from '@/src/api/home';
 
 // Height and current weight from sign-up, for each person's daily calorie goal (user, 11/19: with the age from
-// the birthday and the sex already asked). The profile API does not take these two yet (back-end to add
-// height_cm · weight_kg), so they wait on this phone and are sent once the server takes them; sign-up never
-// fails for it.
+// the birthday and the sex already asked). The profile API takes them from back-end 6e3ae915; until that runs
+// (or when the network fails) they wait on this phone and go when the home tab opens; sign-up never fails for it.
 const KEY = 'auto-fit.a.body-basics.v1';
 type Basics = { height_cm: number; weight_kg: number; sent: boolean };
 
@@ -26,8 +25,11 @@ async function send(basics: Basics) {
   }
 }
 
+// The server keeps two decimals (back-end 6e3ae915) and refuses a third, so 170.555 goes as 170.56.
+const twoDecimals = (value: string) => Math.round(Number(value.trim()) * 100) / 100;
+
 export async function saveBodyBasics(height: string, weight: string) {
-  const basics: Basics = { height_cm: Number(height.trim()), weight_kg: Number(weight.trim()), sent: false };
+  const basics: Basics = { height_cm: twoDecimals(height), weight_kg: twoDecimals(weight), sent: false };
   try {
     await AsyncStorage.setItem(KEY, JSON.stringify(basics));
   } catch {
