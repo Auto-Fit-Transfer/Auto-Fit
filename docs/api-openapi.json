@@ -7140,6 +7140,22 @@
             ],
             "title": "Gender"
           },
+          "height_cm": {
+            "anyOf": [
+              {
+                "maximum": 250.0,
+                "minimum": 100.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height Cm"
+          },
           "name": {
             "anyOf": [
               {
@@ -7180,6 +7196,22 @@
               }
             ],
             "title": "Target Weight"
+          },
+          "weight_kg": {
+            "anyOf": [
+              {
+                "maximum": 500.0,
+                "minimum": 20.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Weight Kg"
           }
         },
         "title": "ProfileUpdateRequest",

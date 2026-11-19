@@ -237,6 +237,8 @@ class ProfileUpdateRequest(BaseModel):
     bio: str | None = Field(default=None, max_length=50)
     birth_date: date | None = None
     gender: Literal["male", "female", "other"] | None = None
+    height_cm: Decimal | None = Field(default=None, ge=100, le=250, max_digits=5, decimal_places=2)
+    weight_kg: Decimal | None = Field(default=None, ge=20, le=500, max_digits=5, decimal_places=2)
     target_weight: Decimal | None = Field(default=None, ge=20, le=500)
     activity_level: Literal[
         "sedentary", "light", "moderate", "active", "very_active"
@@ -700,7 +702,7 @@ async def fetch_profile(
 ) -> dict[str, Any]:
     params = {
         "select": (
-            "user_id,name,nickname,bio,birth_date,gender,target_weight,"
+            "user_id,name,nickname,bio,birth_date,gender,height_cm,weight_kg,target_weight,"
             "activity_level,onboarding_completed_at,updated_at"
         ),
         "user_id": f"eq.{user_id}",
@@ -736,7 +738,7 @@ async def update_profile(
 ) -> dict[str, Any]:
     params = {
         "select": (
-            "user_id,name,nickname,bio,birth_date,gender,target_weight,"
+            "user_id,name,nickname,bio,birth_date,gender,height_cm,weight_kg,target_weight,"
             "activity_level,onboarding_completed_at,updated_at"
         ),
         "user_id": f"eq.{user_id}",

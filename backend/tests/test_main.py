@@ -211,6 +211,80 @@ def test_profile_update_uses_authenticated_user_id(monkeypatch) -> None:
         main.app.dependency_overrides.clear()
 
 
+def test_profile_current_measurements_round_trip_without_changing_target(monkeypatch) -> None:
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_update(user_id: str, updates: dict, settings: main.Settings):
+        assert user_id == "authenticated-user"
+        assert updates == {"height_cm": "175.5", "weight_kg": "70.25"}
+        assert settings == TEST_SETTINGS
+        return {"user_id": user_id, "height_cm": 175.5, "weight_kg": 70.25,
+                "target_weight": 65.0}
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "update_profile", fake_update)
+
+    try:
+        response = TestClient(main.app).patch(
+            "/api/profile", json={"height_cm": 175.5, "weight_kg": 70.25},
+        )
+        assert response.status_code == 200
+        assert response.json()["profile"] == {
+            "user_id": "authenticated-user", "height_cm": 175.5,
+            "weight_kg": 70.25, "target_weight": 65.0,
+        }
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+@pytest.mark.parametrize("body", [
+    {"height_cm": 99.99}, {"height_cm": 250.01},
+    {"weight_kg": 19.99}, {"weight_kg": 500.01},
+    {"height_cm": 175.001}, {"weight_kg": 70.001},
+    {"height_cm": "NaN"},
+])
+def test_profile_current_measurements_reject_out_of_range_or_precision(body) -> None:
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    try:
+        assert TestClient(main.app).patch("/api/profile", json=body).status_code == 422
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+def test_profile_storage_selects_current_measurements_for_get_and_patch() -> None:
+    operations = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params["user_id"] == "eq.authenticated-user"
+        selected = request.url.params["select"].split(",")
+        assert "height_cm" in selected and "weight_kg" in selected
+        if request.method == "PATCH":
+            assert json.loads(request.content) == {"height_cm": "175.5"}
+        operations.append(request.method)
+        return httpx.Response(200, json=[{
+            "user_id": "authenticated-user", "height_cm": 175.5,
+            "weight_kg": 70.25, "target_weight": 65,
+        }])
+
+    async def check() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            assert (await main.fetch_profile("authenticated-user", TEST_SETTINGS, client))[
+                "height_cm"] == 175.5
+            async with bind_request_client(client):
+                updated = await main.update_profile(
+                    "authenticated-user", {"height_cm": "175.5"}, TEST_SETTINGS)
+            assert updated["weight_kg"] == 70.25
+
+    asyncio.run(check())
+    assert operations == ["GET", "PATCH"]
+
+
 def test_profile_update_rejects_client_supplied_user_id() -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="authenticated-user")
