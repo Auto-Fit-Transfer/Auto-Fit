@@ -6,7 +6,9 @@ import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { ALoading } from './ALoading';
 import { aForm } from './form';
 
-// Renewal A's 내일 맞추기 (a-diet.html, the flow agreed with AI on 11/19): when today went over the goal, the AI
+// Renewal A's 내일 맞추기 (a-diet.html, the flow agreed with AI on 11/19, the choice asked for by the user 11/19):
+// when today went over the goal even after the workout's calories, I am asked first whether to let it go as a
+// cheat day or eat a little less tomorrow (a light user must not feel pushed). Only "less" goes on: the AI
 // proposes tomorrow's four meals, lighter but with every meal and the protein kept; I look and say yes, and
 // the server saves the four at once. A view that only shows what it is given: the diet tab fills it once the
 // back-end and AI calls exist (until then only /dev/a-tomorrow shows it).
@@ -19,18 +21,23 @@ export type TomorrowPlan = {
 
 export interface TomorrowSheetProps {
   visible: boolean;
-  over: number; // kcal over today's goal
-  state: 'loading' | 'ready' | 'error' | 'saving' | 'saved';
+  over: number; // kcal over today's goal after the workout's calories
+  eaten: number | null;
+  target: number | null;
+  burned: number | null; // today's workout and run calories (an estimate)
+  state: 'choose' | 'loading' | 'ready' | 'error' | 'saving' | 'saved';
   plan: TomorrowPlan | null;
   error: string;
   onClose: () => void;
   onRetry: () => void;
   onSave: () => void;
+  onCheat: () => void; // let it go: nothing changes tomorrow
+  onLess: () => void; // ask the AI for a lighter tomorrow
 }
 
 const number = (value: number | null) => (value == null ? '—' : Math.round(value).toLocaleString('ko-KR'));
 
-export function TomorrowSheet({ visible, over, state, plan, error, onClose, onRetry, onSave }: TomorrowSheetProps) {
+export function TomorrowSheet({ visible, over, eaten, target, burned, state, plan, error, onClose, onRetry, onSave, onCheat, onLess }: TomorrowSheetProps) {
   const styles = useThemedStyles(createStyles);
   const button = (label: string, onPress: () => void, ghost = false, disabled = false) => (
     <Pressable
@@ -47,8 +54,36 @@ export function TomorrowSheet({ visible, over, state, plan, error, onClose, onRe
   return (
     <AppBottomSheet onClose={onClose} scrollable="when-overflow" title="내일 맞추기" visible={visible}>
       <View style={styles.content}>
-        <Text style={styles.q}>더 먹은 {number(over)}kcal를 내일 식단에서 맞춰요</Text>
-        <Text style={styles.note}>끼니는 거르지 않고, 단백질은 지키면서 가볍게 바꿔요.</Text>
+        {state === 'choose' ? (
+          <>
+            <View style={styles.card}>
+              <View style={styles.row}>
+                <Text style={[styles.body, styles.grow]}>오늘 먹은 양</Text>
+                <Text style={styles.kcal}>{number(eaten)}kcal</Text>
+              </View>
+              {burned ? (
+                <View style={[styles.row, styles.line]}>
+                  <Text style={[styles.body, styles.grow]}>운동으로 쓴 열량</Text>
+                  <Text style={styles.kcal}>−{number(burned)}kcal</Text>
+                </View>
+              ) : null}
+              <View style={[styles.row, styles.line]}>
+                <Text style={[styles.body, styles.grow]}>오늘 목표</Text>
+                <Text style={styles.kcal}>{number(target)}kcal</Text>
+              </View>
+            </View>
+            <Text style={styles.q}>목표보다 {number(over)}kcal 더 먹었어요. 어떻게 할까요?</Text>
+            <View style={styles.duo}>
+              <View style={styles.grow}>{button('치팅 데이로 넘기기', onCheat, true)}</View>
+              <View style={styles.grow}>{button('내일 덜 먹기', onLess)}</View>
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.q}>더 먹은 {number(over)}kcal를 내일 식단에서 맞춰요</Text>
+            <Text style={styles.note}>끼니는 거르지 않고, 단백질은 지키면서 가볍게 바꿔요.</Text>
+          </>
+        )}
 
         {state === 'loading' ? (
           <View style={styles.wait}>

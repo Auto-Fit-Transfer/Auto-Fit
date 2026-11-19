@@ -36,7 +36,7 @@ export default function ADietSample() {
     meal('dinner', '저녁', '두부버섯 볶음 · 현미밥 · 나물', 520, 'recommended', '하루 목표 1,700kcal 안에 들어오게 520kcal로 맞췄어요'),
   ];
   // ?state=over: today went past the goal, so 내일 맞추기 shows
-  const over = state === 'over';
+  const over = state === 'over' || state === 'covered';
   const eaten = over ? 2160 : first ? 0 : after ? 1240 : 480;
 
   return (
@@ -69,7 +69,9 @@ export default function ADietSample() {
         showRecordControls
         today={new Date(2026, 10, 12)}
         // Monday 9 to Sunday 15 November; Thursday the 12th is today
-        onAdjust={over ? () => undefined : undefined}
+        onAdjust={over || state === 'covered' ? () => undefined : undefined}
+        // ?state=over: 2,160 eaten, 300 burned, 1,700 goal → 160 over / ?state=covered: the workout used it up
+        burned={over ? 300 : state === 'covered' ? 500 : null}
         week={first ? null : [1620, 1480, 1810, after ? 1240 : 480, null, null, null].map((kcal, index) => ({ date: `2026-11-${String(9 + index).padStart(2, '0')}`, kcal, target: 1700 }))}
       />
     </View>

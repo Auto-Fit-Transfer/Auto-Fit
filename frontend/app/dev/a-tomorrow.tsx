@@ -3,7 +3,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { TomorrowSheet, type TomorrowPlan } from '@/src/components/a/TomorrowSheet';
 
 // Development only: renewal A's 내일 맞추기 sheet with a sample proposal (no server call exists yet).
-// ?state=loading | ready (default) | saving | saved | error
+// ?state=choose (cheat day or less, first) | loading | ready (default) | saving | saved | error
 const nothing = () => undefined;
 const PLAN: TomorrowPlan = {
   kcal: 1480,
@@ -19,15 +19,21 @@ const PLAN: TomorrowPlan = {
 
 export default function ATomorrowSample() {
   const { state } = useLocalSearchParams<{ state?: string }>();
-  const shown = state === 'loading' || state === 'saving' || state === 'saved' || state === 'error' ? state : 'ready';
+  const shown = state === 'choose' || state === 'loading' || state === 'saving' || state === 'saved' || state === 'error' ? state : 'ready';
   return (
     <TomorrowSheet
       error={shown === 'error' ? '내일 식단을 짜지 못했어요. 잠시 후 다시 시도해 주세요.' : ''}
       onClose={nothing}
       onRetry={nothing}
       onSave={nothing}
-      over={460}
-      plan={shown === 'loading' || shown === 'error' ? null : PLAN}
+      onCheat={nothing}
+      onLess={nothing}
+      // 2,500 eaten, 300 burned in the workout, a 2,000 goal: 200 over
+      eaten={2500}
+      burned={300}
+      target={2000}
+      over={200}
+      plan={shown === 'choose' || shown === 'loading' || shown === 'error' ? null : PLAN}
       state={shown}
       visible
     />

@@ -38,7 +38,8 @@ const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'];
 const PLOT = 72;
 
 // onAdjust: 내일 맞추기 (TomorrowSheet). The tab passes it once the back-end and AI calls exist.
-export function DietView(props: R6DietHomeProps & { week?: DayCalories[] | null; onAdjust?: () => void }) {
+// burned: today's workout and run calories, taken off before anything counts as over (user, 11/19).
+export function DietView(props: R6DietHomeProps & { week?: DayCalories[] | null; onAdjust?: () => void; burned?: number | null }) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -168,12 +169,19 @@ export function DietView(props: R6DietHomeProps & { week?: DayCalories[] | null;
           {props.hasUnknownItems ? <Text style={styles.small}>영양 정보가 없는 음식은 합계에서 제외됐어요.</Text> : null}
           {/* over today's goal (a-diet.html): made up tomorrow, only on the day itself */}
           {props.onAdjust && isToday && eaten != null && target && eaten > target ? (
-            <View style={[styles.spread, styles.over]}>
-              <Text style={[styles.body, styles.grow]}>목표보다 {number(eaten - target)}kcal 더 먹었어요</Text>
-              <Pressable accessibilityRole="button" onPress={props.onAdjust} style={({ pressed }) => [styles.mini, pressed && styles.pressedSoft]}>
-                <Text style={[styles.small, styles.miniText]}>내일 맞추기</Text>
-              </Pressable>
-            </View>
+            eaten - target - (props.burned ?? 0) > 0 ? (
+              <View style={[styles.spread, styles.over]}>
+                <Text style={[styles.body, styles.grow]}>
+                  목표보다 {number(eaten - target - (props.burned ?? 0))}kcal 더 먹었어요{props.burned ? ` (운동 ${number(props.burned)}kcal 빼고)` : ''}
+                </Text>
+                <Pressable accessibilityRole="button" onPress={props.onAdjust} style={({ pressed }) => [styles.mini, pressed && styles.pressedSoft]}>
+                  <Text style={[styles.small, styles.miniText]}>내일 맞추기</Text>
+                </Pressable>
+              </View>
+            ) : (
+              // the workout already used up what went over: nothing to ask
+              <Text style={[styles.body, styles.over]}>운동으로 {number(props.burned)}kcal를 써서 오늘 목표 안이에요.</Text>
+            )
           ) : null}
           {props.nutritionError ? (
             <Pressable accessibilityRole="button" onPress={props.onRetryNutrition}>
