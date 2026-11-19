@@ -1170,3 +1170,21 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - 테스트 결과: 신규 하루 변경·기존 재추천/스케줄·라우터 오류 매핑 22개, OpenAPI·Schema·KDRI·알레르기·기존 식단 69개, Recipe·LLM resilience 31개로 집중 검증 122개 통과. 식단 변경과 무관한 기존 러닝 수동 이벤트 루프 테스트 1개를 제외한 전체 비-live 회귀 `332 passed, 4 deselected`; syntax compile·diff check 통과
 - 실제 외부 호출: 비용과 운영 데이터 보호를 위해 OpenAI·식품안전나라 실호출은 수행하지 않음
 - 상세 계약: [내일 네 끼 변경 Backend 계약](diet_replace_day_backend_contract_2026-11-19.md), [Backend-AI 통합 명세](backend_ai_integration_spec.md), [AI OpenAPI snapshot](ai-openapi.json)
+
+## 2026-11-19 · 선택형 내일 맞추기 한 끼 안전 하한 보강
+
+- 상태: AI Server 로컬 구현·OpenAPI·결정론적 검증 완료, Backend 미리보기·원자적 저장과 Frontend 선택 화면 E2E 대기
+- 관련 커밋: 미커밋
+- 변경 API: 기존 `POST /recommend/diet/replace-meal`에 optional `adjustment_policy`, `requested_calorie_reduction_kcal` 요청 필드와 optional `adjustment` 응답 요약 추가
+- 호환성: 일반 한 끼 재추천은 신규 필드를 생략하며 기존 후보 선택과 응답을 유지한다. 기존 `/recommend/diet/replace-day` 네 끼 전체 변경도 유지한다.
+- 입력 계약: 선택형 보정에서만 `adjustment_policy="gentle_rebalance_v1"`; `meal_target`은 낮춘 값이 아니라 교체 전 해당 슬롯의 원래 목표이며 간식도 원래 간식 목표를 전달
+- 안전 하한: 요청 감소량은 원래 목표의 최대 15%까지만 반영하고, 공식 Food DB 후보는 원래 목표의 85~100%로 엄격히 제한. 작은 감소 요청에서는 요청량보다 더 줄이지 않도록 하한을 높임
+- 실패 정책: strict 범위 내 알레르기·기피 음식·메뉴 스타일 검증 후보가 없으면 범위 밖 fallback 없이 503
+- 응답 계약: 기준 목표, 요청·최대 허용·목표·실제 감소량, 미반영량, 선택 열량 비율과 정책 제한 여부를 `adjustment`에 결정론적으로 반환
+- 소수점 안전성: strict 경계와 응답 비율은 반올림 전 원값으로 계산해 85%·100% 경계와 작은 양수 감소 요청이 응답 검증에서 뒤집히지 않도록 함
+- 로그 보호: 재추천 후보 로그에서 메뉴명과 전체 건강·선호·위치 metadata를 제거하고 후보 수, target source, 스타일, 정책 코드만 기록
+- KDRI 회귀: `nutrition_profile.age_years` 18세 거부와 기존 19세 성인 경계를 검증. Backend가 미성년자의 프로필을 생략해 기본 목표로 우회하지 않도록 계약 명시
+- Backend 작업: 여러 선택 슬롯을 DB 변경 없는 미리보기로 생성하고 사용자 승인 후 식단 version을 확인해 한 transaction으로 저장; AI 응답의 날짜·슬롯·열량 범위·알레르기를 재검증
+- Frontend 작업: 선택 슬롯과 요청 감량량을 Backend에 전달하고, 응답의 실제 감소량·미반영량·정책 제한 안내를 확인 화면에 표시. AI Server 직접 호출 금지
+- 테스트 결과: 선택형/일반 재추천·소수점 경계·KDRI·네 끼 변경·OpenAPI·스케줄 집중 회귀 `52 passed`; Recipe·알레르기·Food DB·주간 식단 비-live 회귀 `71 passed`; Python compile 통과
+- 실제 외부 호출: OpenAI·식품안전나라 실호출 없이 fake Structured Output과 공식 후보 fixture로 검증

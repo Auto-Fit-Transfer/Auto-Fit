@@ -1904,6 +1904,44 @@ class ReplaceMealRequest(BaseModel):
 
     menu_style_preference: DietMenuStylePreference = "balanced"
 
+    # 일반 재추천은 None을 유지한다. 많이 먹은 다음 날 사용자가 고른
+    # 끼니를 가볍게 조정할 때만 완만한 보정 정책을 명시한다.
+    adjustment_policy: Literal[
+        "gentle_rebalance_v1"
+    ] | None = None
+
+    # adjustment_policy가 있을 때 meal_target은 낮춘 목표가 아니라
+    # 교체 전 원래 슬롯의 기준 목표다. 간식이면 간식 기준 목표를 보낸다.
+    requested_calorie_reduction_kcal: float | None = Field(
+        default=None,
+        gt=0,
+        le=5000,
+    )
+
+    @model_validator(mode="after")
+    def validate_gentle_rebalance_contract(self):
+        if self.adjustment_policy is None:
+            if self.requested_calorie_reduction_kcal is not None:
+                raise ValueError(
+                    "requested_calorie_reduction_kcal requires "
+                    "adjustment_policy."
+                )
+            return self
+
+        if self.meal_target is None:
+            raise ValueError(
+                "gentle_rebalance_v1 requires the original slot "
+                "meal_target."
+            )
+
+        if self.requested_calorie_reduction_kcal is None:
+            raise ValueError(
+                "gentle_rebalance_v1 requires "
+                "requested_calorie_reduction_kcal."
+            )
+
+        return self
+
 
 class ReplaceMealLLMResponse(BaseModel):
 
@@ -1934,6 +1972,27 @@ class ReplaceMealLLMResponse(BaseModel):
 
 
 
+
+
+class ReplaceMealAdjustmentSummary(BaseModel):
+    """완만한 한 끼 보정의 기준, 실제 감소량과 남은 요청량."""
+
+    adjustment_policy: Literal[
+        "gentle_rebalance_v1"
+    ] = "gentle_rebalance_v1"
+
+    baseline_calories_kcal: float = Field(gt=0)
+    requested_reduction_kcal: float = Field(gt=0)
+    maximum_allowed_reduction_kcal: float = Field(ge=0)
+    target_calories_kcal: float = Field(gt=0)
+    selected_calories_kcal: float = Field(gt=0)
+    estimated_reduction_kcal: float = Field(ge=0)
+    remaining_reduction_kcal: float = Field(ge=0)
+    selected_calorie_ratio: float = Field(
+        ge=0.85,
+        le=1.0,
+    )
+    limited_by_policy: bool = False
 
 
 class ReplaceMealResponse(BaseModel):
@@ -1969,6 +2028,8 @@ class ReplaceMealResponse(BaseModel):
         default_factory=list
 
     )
+
+    adjustment: ReplaceMealAdjustmentSummary | None = None
 
 
 # =========================================================

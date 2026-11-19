@@ -49,6 +49,8 @@ from app.schemas.recommendation import (
 
     RecommendationSource,
 
+    ReplaceMealAdjustmentSummary,
+
     ReplaceMealLLMResponse,
 
     ReplaceMealRequest,
@@ -1766,13 +1768,25 @@ def _resolve_nutrition_targets(
     kdri_bundle = _extract_kdri_target_bundle(payload)
 
     if explicit_meal_target is not None:
+        snack_target = (
+            dict(kdri_bundle["snack_target"])
+            if kdri_bundle is not None
+            else dict(DEFAULT_SNACK_TARGET)
+        )
+
+        # 선택형 내일 맞추기에서는 meal_target이 낮춘 목표가 아니라
+        # 선택한 슬롯의 원래 기준 목표다. 간식을 선택한 경우에도 같은
+        # 기준으로 공식 간식 후보를 생성할 수 있도록 snack target에 쓴다.
+        if (
+            payload.get("adjustment_policy")
+            == GENTLE_REBALANCE_POLICY
+            and payload.get("target_meal") == "snack"
+        ):
+            snack_target = dict(explicit_meal_target)
+
         return {
             "meal_target": explicit_meal_target,
-            "snack_target": (
-                dict(kdri_bundle["snack_target"])
-                if kdri_bundle is not None
-                else dict(DEFAULT_SNACK_TARGET)
-            ),
+            "snack_target": snack_target,
             "target_source": "explicit",
             "reference_standard": (
                 kdri_bundle.get("reference_standard")
@@ -2319,6 +2333,170 @@ def _apply_gentle_rebalance_candidate_scores(
         return preferred_candidates
 
     return unique_candidates
+
+
+def _filter_strict_gentle_rebalance_candidates(
+    candidates: list[dict[str, Any]],
+    *,
+    baseline_calories_kcal: float,
+    requested_reduction_kcal: float,
+) -> tuple[list[dict[str, Any]], dict[str, float | bool]]:
+    """
+    선택형 내일 맞추기 후보를 원래 목표의 안전 범위로 제한한다.
+
+    Backend가 보내는 meal_target은 낮춘 값이 아니라 선택 슬롯의 원래
+    목표여야 한다. 요청 감소량은 원래 목표의 최대 15%까지만 반영하고,
+    그보다 낮거나 원래 목표를 초과하는 후보는 반환하지 않는다.
+    """
+
+    baseline = float(baseline_calories_kcal)
+    requested = float(requested_reduction_kcal)
+
+    if baseline <= 0 or requested <= 0:
+        raise ValueError(
+            "Gentle rebalance baseline and requested reduction must be positive."
+        )
+
+    maximum_reduction = baseline * (
+        1.0 - GENTLE_REBALANCE_MIN_CALORIE_RATIO
+    )
+    effective_reduction = min(requested, maximum_reduction)
+    target_calories = baseline - effective_reduction
+    minimum_allowed_calories = max(
+        baseline * GENTLE_REBALANCE_MIN_CALORIE_RATIO,
+        target_calories,
+    )
+    maximum_allowed_calories = (
+        baseline * GENTLE_REBALANCE_MAX_CALORIE_RATIO
+    )
+
+    eligible: list[dict[str, Any]] = []
+
+    for source in candidates:
+        candidate = copy.deepcopy(source)
+        nutrition = candidate.get("nutrition") or {}
+        calories = float(
+            nutrition.get("calories_kcal", 0.0) or 0.0
+        )
+
+        if not (
+            minimum_allowed_calories
+            <= calories
+            <= maximum_allowed_calories
+        ):
+            continue
+
+        ratio = calories / baseline
+        distance_ratio = abs(calories - target_calories) / baseline
+        original_score = float(
+            candidate.get("final_score", 0.0) or 0.0
+        )
+
+        # 목표 감소량과의 거리를 최우선으로 하고, 동일 거리에 가까운
+        # 후보 사이에서만 기존 공식 후보 점수를 tie-breaker로 사용한다.
+        candidate["final_score"] = (
+            10000.0
+            - distance_ratio * 1000.0
+            + max(min(original_score, 1000.0), -1000.0) * 0.001
+        )
+        candidate["_gentle_calorie_ratio"] = round(ratio, 4)
+        eligible.append(candidate)
+
+    if not eligible:
+        raise RuntimeError(
+            "선택한 끼니의 원래 목표 85~100% 범위에서 "
+            "안전한 검증 후보를 찾지 못했습니다."
+        )
+
+    return eligible, {
+        # strict 경계와 응답 ratio 계산이 같은 기준을 쓰도록 내부값은
+        # 반올림하지 않는다. 화면 표시는 Frontend가 포맷한다.
+        "baseline_calories_kcal": baseline,
+        "requested_reduction_kcal": requested,
+        "maximum_allowed_reduction_kcal": maximum_reduction,
+        "effective_requested_reduction_kcal": effective_reduction,
+        "target_calories_kcal": target_calories,
+        "limited_by_policy": requested > maximum_reduction,
+    }
+
+
+def _build_gentle_rebalance_adjustment_summary(
+    *,
+    adjustment_context: dict[str, float | bool],
+    selected_calories_kcal: float,
+) -> tuple[ReplaceMealAdjustmentSummary, list[str]]:
+    """원값 기준 보정 요약과 결정론적 안내를 조립한다."""
+
+    baseline_calories = float(
+        adjustment_context["baseline_calories_kcal"]
+    )
+    requested_reduction = float(
+        adjustment_context["requested_reduction_kcal"]
+    )
+    selected_calories = float(selected_calories_kcal)
+    selected_ratio = selected_calories / baseline_calories
+
+    if not (
+        GENTLE_REBALANCE_MIN_CALORIE_RATIO
+        <= selected_ratio
+        <= GENTLE_REBALANCE_MAX_CALORIE_RATIO
+    ):
+        raise RuntimeError(
+            "Selected gentle rebalance candidate is outside the "
+            "allowed calorie range."
+        )
+
+    estimated_reduction = max(
+        baseline_calories - selected_calories,
+        0.0,
+    )
+    remaining_reduction = max(
+        requested_reduction - estimated_reduction,
+        0.0,
+    )
+    limited_by_policy = bool(
+        adjustment_context["limited_by_policy"]
+    )
+    public_requested_reduction = round(requested_reduction, 6)
+    if public_requested_reduction <= 0:
+        # Schema는 임의의 양수 요청을 허용하므로 작은 유효값을 0으로
+        # 바꾸지 않는다.
+        public_requested_reduction = requested_reduction
+
+    summary = ReplaceMealAdjustmentSummary(
+        baseline_calories_kcal=round(baseline_calories, 6),
+        requested_reduction_kcal=public_requested_reduction,
+        maximum_allowed_reduction_kcal=round(
+            float(
+                adjustment_context["maximum_allowed_reduction_kcal"]
+            ),
+            6,
+        ),
+        target_calories_kcal=round(
+            float(adjustment_context["target_calories_kcal"]),
+            6,
+        ),
+        selected_calories_kcal=round(selected_calories, 6),
+        estimated_reduction_kcal=round(estimated_reduction, 6),
+        remaining_reduction_kcal=round(remaining_reduction, 6),
+        selected_calorie_ratio=round(selected_ratio, 6),
+        limited_by_policy=limited_by_policy,
+    )
+
+    cautions: list[str] = []
+    if limited_by_policy:
+        cautions.append(
+            "한 끼 목표를 과도하게 낮추지 않도록 "
+            "원래 목표의 최대 15%까지만 반영했습니다."
+        )
+    if remaining_reduction > 0.05:
+        cautions.append(
+            "요청한 감소량 중 약 "
+            f"{round(remaining_reduction, 1):g}kcal은 "
+            "이 끼니에서 반영되지 않았습니다."
+        )
+
+    return summary, cautions
 
 
 def _filter_replacement_candidates_by_style(
@@ -7065,14 +7243,6 @@ async def generate_replacement_meal(
             health_goal,
         )
     )
-    verified_candidate_metadata = {
-        **verified_candidate_metadata,
-        "health_goal": health_goal,
-        "menu_style_preference": menu_style_preference,
-    }
-
-
-
     candidate_pool = (
         verified_snack_candidates
         if request.target_meal == "snack"
@@ -7082,8 +7252,31 @@ async def generate_replacement_meal(
         )
     )
 
+    adjustment_context: dict[str, float | bool] | None = None
 
+    if request.adjustment_policy == GENTLE_REBALANCE_POLICY:
+        if (
+            request.meal_target is None
+            or request.requested_calorie_reduction_kcal is None
+        ):
+            # Pydantic validator가 먼저 차단하지만, Service를 직접 호출하는
+            # 경로에서도 잘못된 보정 요청을 일반 재추천으로 처리하지 않는다.
+            raise RuntimeError(
+                "Gentle rebalance requires the original meal target "
+                "and requested calorie reduction."
+            )
 
+        candidate_pool, adjustment_context = (
+            _filter_strict_gentle_rebalance_candidates(
+                candidate_pool,
+                baseline_calories_kcal=(
+                    request.meal_target.calories_kcal
+                ),
+                requested_reduction_kcal=(
+                    request.requested_calorie_reduction_kcal
+                ),
+            )
+        )
     selected_candidate = (
         _select_replacement_candidate(
             candidates=(
@@ -7101,12 +7294,14 @@ async def generate_replacement_meal(
 
 
     logger.info(
-        "Verified replacement candidate selected meal_type=%s menu=%s metadata=%s",
+        "Verified replacement candidate selected meal_type=%s "
+        "candidate_count=%s target_source=%s menu_style=%s "
+        "adjustment_policy=%s",
         request.target_meal,
-        selected_candidate.get(
-            "menu_name"
-        ),
-        verified_candidate_metadata,
+        len(candidate_pool),
+        verified_candidate_metadata.get("target_source") or "unknown",
+        menu_style_preference,
+        request.adjustment_policy or "none",
     )
 
 
@@ -7465,6 +7660,26 @@ Structured Output Schema를 정확히 따른다.
         )
     )
 
+    adjustment_summary: ReplaceMealAdjustmentSummary | None = None
+    final_cautions = list(result.cautions)
+
+    if adjustment_context is not None:
+        (
+            adjustment_summary,
+            deterministic_cautions,
+        ) = _build_gentle_rebalance_adjustment_summary(
+            adjustment_context=adjustment_context,
+            selected_calories_kcal=(
+                validated_meal.estimated_calories_kcal
+            ),
+        )
+
+        for caution in deterministic_cautions:
+            if caution not in final_cautions:
+                final_cautions.append(caution)
+
+        final_cautions = final_cautions[:5]
+
 
 
     final_result = (
@@ -7491,7 +7706,7 @@ Structured Output Schema를 정확히 따른다.
 
             cautions=(
 
-                result.cautions
+                final_cautions
 
             ),
 
@@ -7500,6 +7715,8 @@ Structured Output Schema를 정확히 따른다.
                 sources
 
             ),
+
+            adjustment=adjustment_summary,
 
         )
 

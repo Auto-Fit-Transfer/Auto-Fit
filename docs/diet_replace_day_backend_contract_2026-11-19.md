@@ -15,6 +15,13 @@
 목표의 약 85~100% 열량 후보를 우선하고, 알레르기·기피 음식·공식 Food DB
 검증과 단백질 안전성을 우선한다.
 
+이 문서의 API는 네 끼 전체 교체 전용이다. 사용자가 내일의 일부 끼니만 직접
+고르는 화면은 각 슬롯을 `/recommend/diet/replace-meal`의 선택형
+`gentle_rebalance_v1` 계약으로 미리보기하고, 사용자 승인 후 Backend가 선택
+슬롯 전체를 원자적으로 저장한다. 이 API의 85~100%는 네 끼 고유 후보가
+부족할 때 fallback을 허용하는 soft priority이고, 선택형 한 끼 API는 범위 밖
+fallback을 금지하는 strict range다.
+
 ## 2. AI Server 요청
 
 ```http

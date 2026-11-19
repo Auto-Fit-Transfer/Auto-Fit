@@ -39,6 +39,28 @@ def test_kdri_adult_group_boundaries(
     ) == expected_group
 
 
+@pytest.mark.parametrize("invalid_age", [18, 121])
+def test_kdri_rejects_out_of_range_nutrition_profile(
+    invalid_age: int,
+) -> None:
+    with pytest.raises(ValueError):
+        resolve_kdri_adult_group_id(
+            age_years=invalid_age,
+            sex="male",
+        )
+
+    with pytest.raises(ValueError):
+        DietRecommendationRequest(
+            nutrition_profile={
+                "profile_mode": "basic_profile",
+                "age_years": invalid_age,
+                "sex": "male",
+                "height_cm": 175,
+                "weight_kg": 75,
+            }
+        )
+
+
 def test_kdri_target_uses_official_eer_and_versioned_autofit_policy() -> None:
     result = calculate_kdri_diet_targets(
         age_years=34,

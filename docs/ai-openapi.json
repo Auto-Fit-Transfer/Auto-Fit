@@ -9355,6 +9355,75 @@
         "title": "ReplaceDayResponse",
         "description": "Backend가 사용자 확인 후 원자적으로 저장할 하루 변경안."
       },
+      "ReplaceMealAdjustmentSummary": {
+        "properties": {
+          "adjustment_policy": {
+            "type": "string",
+            "const": "gentle_rebalance_v1",
+            "title": "Adjustment Policy",
+            "default": "gentle_rebalance_v1"
+          },
+          "baseline_calories_kcal": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Baseline Calories Kcal"
+          },
+          "requested_reduction_kcal": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Requested Reduction Kcal"
+          },
+          "maximum_allowed_reduction_kcal": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Maximum Allowed Reduction Kcal"
+          },
+          "target_calories_kcal": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Target Calories Kcal"
+          },
+          "selected_calories_kcal": {
+            "type": "number",
+            "exclusiveMinimum": 0.0,
+            "title": "Selected Calories Kcal"
+          },
+          "estimated_reduction_kcal": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Estimated Reduction Kcal"
+          },
+          "remaining_reduction_kcal": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Remaining Reduction Kcal"
+          },
+          "selected_calorie_ratio": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.85,
+            "title": "Selected Calorie Ratio"
+          },
+          "limited_by_policy": {
+            "type": "boolean",
+            "title": "Limited By Policy",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "baseline_calories_kcal",
+          "requested_reduction_kcal",
+          "maximum_allowed_reduction_kcal",
+          "target_calories_kcal",
+          "selected_calories_kcal",
+          "estimated_reduction_kcal",
+          "remaining_reduction_kcal",
+          "selected_calorie_ratio"
+        ],
+        "title": "ReplaceMealAdjustmentSummary",
+        "description": "완만한 한 끼 보정의 기준, 실제 감소량과 남은 요청량."
+      },
       "ReplaceMealRequest": {
         "properties": {
           "metric_statuses": {
@@ -9525,6 +9594,31 @@
             ],
             "title": "Menu Style Preference",
             "default": "balanced"
+          },
+          "adjustment_policy": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "gentle_rebalance_v1"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adjustment Policy"
+          },
+          "requested_calorie_reduction_kcal": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 5000.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Calorie Reduction Kcal"
           }
         },
         "type": "object",
@@ -9578,6 +9672,16 @@
             },
             "type": "array",
             "title": "Sources"
+          },
+          "adjustment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReplaceMealAdjustmentSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",

@@ -277,11 +277,42 @@ Content-Type: application/json
   "sido": null,
   "sigungu": null,
   "nearby_regions": [],
-  "meal_target": null
+  "meal_target": null,
+  "adjustment_policy": null,
+  "requested_calorie_reduction_kcal": null
 }
 ```
 
 요일은 `monday`부터 `sunday`, 식사 유형은 `breakfast`, `lunch`, `dinner`, `snack` 중 하나다. `excluded_menu_names`에는 현재 메뉴뿐 아니라 주간 식단에서 이미 사용한 메뉴를 함께 보내야 반복을 줄일 수 있다.
+
+일반 한 끼 재추천은 두 보정 필드를 생략하거나 `null`로 보내며 기존 동작을
+유지한다. 사용자가 내일의 일부 끼니를 골라 가볍게 조정하는 경우에만 다음
+계약을 사용한다.
+
+```json
+{
+  "target_day": "tuesday",
+  "target_meal": "lunch",
+  "current_menu_name": "기존 점심",
+  "excluded_menu_names": ["기존 점심"],
+  "meal_target": {
+    "calories_kcal": 500,
+    "carbohydrate_g": 60,
+    "protein_g": 30,
+    "fat_g": 15
+  },
+  "adjustment_policy": "gentle_rebalance_v1",
+  "requested_calorie_reduction_kcal": 100
+}
+```
+
+- `meal_target`은 낮춘 목표가 아니라 교체 전 해당 슬롯의 원래 목표다.
+- 간식을 고른 경우에도 원래 간식 목표를 `meal_target`으로 보낸다.
+- 요청 감소량은 원래 목표의 최대 15%까지만 반영한다.
+- 후보 열량은 원래 목표의 85~100%이며, 작은 감소 요청이면 요청량보다 더
+  줄이지 않도록 하한을 더 높인다.
+- 범위 안의 공식 Food DB 후보가 없으면 범위 밖 결과로 대체하지 않고 503을
+  반환한다.
 
 ### 응답과 저장
 
@@ -307,12 +338,35 @@ Content-Type: application/json
       "guidance": "..."
     },
     "cautions": [],
-    "sources": []
+    "sources": [],
+    "adjustment": null
   }
 }
 ```
 
+선택형 보정 요청에서는 `adjustment`가 다음처럼 반환된다.
+
+```json
+{
+  "adjustment_policy": "gentle_rebalance_v1",
+  "baseline_calories_kcal": 500,
+  "requested_reduction_kcal": 100,
+  "maximum_allowed_reduction_kcal": 75,
+  "target_calories_kcal": 425,
+  "selected_calories_kcal": 425,
+  "estimated_reduction_kcal": 75,
+  "remaining_reduction_kcal": 25,
+  "selected_calorie_ratio": 0.85,
+  "limited_by_policy": true
+}
+```
+
 Backend는 응답의 `day`와 `meal_type`이 요청 대상과 같은지 확인한 뒤 해당 슬롯 하나만 transaction으로 교체한다. AI Server는 DB를 직접 변경하지 않는다.
+
+여러 끼를 고르는 화면에서는 각 슬롯 결과를 미리보기로만 생성하고 그 과정에서
+DB를 수정하지 않는다. 사용자가 최종 확인하면 Backend가 식단 version을 다시
+검증한 뒤 선택 슬롯 전체를 한 transaction으로 저장하며, 하나라도 실패하면
+전체 rollback한다.
 
 ## 내일 네 끼 전체 변경
 
@@ -375,6 +429,10 @@ Backend는 응답을 곧바로 저장하지 않고 사용자 확인을 받은 �
 네 슬롯을 한 transaction으로 교체한다. 일부 슬롯만 저장하거나 한 슬롯이
 누락된 결과를 정상 처리해서는 안 된다. 한 끼만 바꾸는 동작은 기존
 `POST /recommend/diet/replace-meal`을 계속 사용한다.
+
+이 네 끼 API의 85~100%는 고유한 네 후보가 부족할 때 안전 후보 fallback을
+허용하는 soft priority다. 선택형 `/replace-meal`의 strict range와 같은
+규칙으로 해석하지 않는다.
 
 ## Recipe 조회
 
