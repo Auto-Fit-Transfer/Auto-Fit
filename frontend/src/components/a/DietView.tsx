@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import Svg, { Line } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BackIcon from '@/assets/icons/ui/caret-left.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import { AppBottomSheet, Text } from '@/src/components/common';
 import type { R6DietHomeProps, R6Meal } from '@/src/components/diet/R6DietHome';
+import type { DayCalories } from '@/src/features/diet/weekCalories';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
@@ -32,7 +34,10 @@ function dateAtOffset(today: Date, offset: number) {
   return date;
 }
 
-export function DietView(props: R6DietHomeProps) {
+const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'];
+const PLOT = 72;
+
+export function DietView(props: R6DietHomeProps & { week?: DayCalories[] | null }) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -59,6 +64,12 @@ export function DietView(props: R6DietHomeProps) {
   const eatenRatio = eaten != null && target ? Math.min(100, (eaten / target) * 100) : 0;
   const plannedRatio = target ? Math.min(100, ((eaten ?? 0) + planned) / target * 100) : 0;
   const next = props.meals.find((meal) => meal.status === 'recommended');
+  const todayKey = `${props.today.getFullYear()}-${String(props.today.getMonth() + 1).padStart(2, '0')}-${String(props.today.getDate()).padStart(2, '0')}`;
+  const weekTarget = props.week?.find((day) => day.target)?.target ?? target ?? null;
+  // a little room over the tallest bar (or the goal) for its number
+  const weekTop = Math.max(weekTarget ?? 0, ...(props.week ?? []).map((day) => day.kcal ?? 0)) * 1.15;
+  // breakfast, lunch and dinner the user answered with what they ate (the planned menu or something else)
+  const mains = props.meals.filter((meal) => meal.id !== 'snack' && (meal.status === 'eaten' || meal.status === 'modified')).length;
   const say = next?.note
     ? next.note
     : props.meals.length > 0 && !next
@@ -83,6 +94,13 @@ export function DietView(props: R6DietHomeProps) {
           <Text accessibilityRole="header" style={styles.heading}>
             {isToday ? '오늘의 식단' : `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 식단`}
           </Text>
+          {/* the quest "세 끼 기록" (a-diet.html): a mark for each of the three meals recorded that day */}
+          <View accessibilityLabel={`세 끼 기록 ${mains} / 3`} accessible style={styles.mains}>
+            <Text style={styles.mainsLabel}>세 끼 기록</Text>
+            {[0, 1, 2].map((index) => (
+              <View key={index} style={[styles.pip, index < mains && styles.pipOn]} />
+            ))}
+          </View>
           <SimpleReadButton
             text={`${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 식단입니다. 먹은 양은 ${number(eaten)}킬로칼로리입니다.`}
           />
@@ -261,6 +279,40 @@ export function DietView(props: R6DietHomeProps) {
             {props.selectedDateOffset < 0 ? '지난 날짜의 사진 기록은 아직 지원하지 않아요' : '오늘의 추천 식단을 불러오면 기록할 수 있어요'}
           </Text>
         ) : null}
+        {/* this week (a-diet.html): what was eaten each day against the day's goal, the dashed line */}
+        {props.week && weekTop > 0 ? (
+          <View style={styles.card}>
+            <View style={styles.spread}>
+              <Text style={styles.body}>이번 주</Text>
+              {weekTarget ? <Text style={styles.small}>하루 목표 {number(weekTarget)}kcal</Text> : null}
+            </View>
+            <View style={styles.plot}>
+              {props.week.map((day) => {
+                const height = day.kcal ? Math.max(4, Math.round((day.kcal / weekTop) * PLOT)) : 0;
+                return (
+                  <View accessibilityLabel={`${day.date} ${day.kcal == null ? '기록 없음' : `${number(day.kcal)}킬로칼로리`}`} accessible key={day.date} style={styles.col}>
+                    {height ? <Text numberOfLines={1} style={styles.n}>{number(day.kcal)}</Text> : null}
+                    {height ? <View style={[styles.weekBar, { height }, day.date === props.selectedDateKey && styles.weekBarOn]} /> : null}
+                  </View>
+                );
+              })}
+              {weekTarget ? (
+                <View pointerEvents="none" style={[styles.gline, { bottom: Math.round((weekTarget / weekTop) * PLOT) }]}>
+                  <Svg height={2} width="100%">
+                    <Line stroke={colors.textSecondary} strokeDasharray="5 4" strokeWidth={2} x1="0" x2="100%" y1="1" y2="1" />
+                  </Svg>
+                </View>
+              ) : null}
+            </View>
+            <View style={styles.labels}>
+              {props.week.map((day, index) => (
+                <Text key={day.date} style={[styles.small, styles.wd, day.date === todayKey && styles.wdNow]}>
+                  {day.date === todayKey ? '오늘' : WEEKDAYS[index]}
+                </Text>
+              ))}
+            </View>
+          </View>
+        ) : null}
       </ScrollView>
 
       <AppBottomSheet onClose={() => setPickerOpen(false)} title="어느 끼니를 기록할까요?" visible={pickerOpen}>
@@ -314,6 +366,21 @@ function createStyles({ colors }: AppTheme) {
     bar: { alignItems: 'center', flexDirection: 'row', gap: 10, height: 48 },
     back: { ...outline, alignItems: 'center', borderRadius: 14, boxShadow: ledge, height: 44, justifyContent: 'center', width: 44 },
     heading: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    mains: { alignItems: 'center', flexDirection: 'row', gap: 4 },
+    mainsLabel: { color: colors.textSecondary, fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17, marginRight: 2 },
+    pip: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 4, borderWidth: 2, height: 14, width: 14 },
+    pipOn: { backgroundColor: colors.primary },
+    plot: { borderBottomColor: colors.ink, borderBottomWidth: 2, flexDirection: 'row', height: PLOT + 20 },
+    col: { alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
+    // the number sits over the goal line on a white ground, as in the prototype
+    n: { ...p12, backgroundColor: colors.surface, color: colors.ink, fontSize: 11, marginBottom: 2, paddingHorizontal: 2, zIndex: 1 },
+    weekBar: { backgroundColor: colors.primaryLight, borderColor: colors.ink, borderBottomWidth: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, borderWidth: 2, width: 20 },
+    // the day on show is violet, like the chosen date above
+    weekBarOn: { backgroundColor: colors.primary },
+    gline: { height: 2, left: 0, position: 'absolute', right: 0 },
+    labels: { flexDirection: 'row', marginTop: -4 },
+    wd: { flex: 1, textAlign: 'center' },
+    wdNow: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold },
     ask: { alignItems: 'center', flexDirection: 'row', gap: 12 },
     face: {
       alignItems: 'center',

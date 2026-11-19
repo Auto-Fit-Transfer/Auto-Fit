@@ -90,6 +90,20 @@ export function getHealthAssessmentPopups(assessmentId: string) {
   return apiRequest<PopupResponse>(`/api/health-assessments/${encodeURIComponent(assessmentId)}/popups`);
 }
 
+// The latest assessment's score, also while only the health-data part is scored (back-end d5b96a9a).
+// 404: no assessment yet. 502: could not be read; not the same as no score.
+export type HealthScoreLatest = {
+  assessment_id: string;
+  assessed_at: string;
+  score_status: 'partial' | 'available';
+  overall_score: number | null;
+  health_data: { status: 'available' | 'unavailable'; score: number | null };
+};
+
+export function getLatestHealthScore() {
+  return apiRequest<HealthScoreLatest>('/api/health-assessments/score/latest');
+}
+
 export function isHealthAnalysisNotFound(error: unknown) {
   return error instanceof ApiError && error.status === 404;
 }

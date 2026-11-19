@@ -5,6 +5,7 @@ import { getApiErrorMessage } from '@/src/api/client';
 import { getActiveExerciseGoal, getExerciseHistory, getExerciseSessionAnalysis, saveRecommendedWorkout } from '@/src/api/exercise';
 import { getRunningApiErrorMessage, getRunningHistory, type RunningSession } from '@/src/api/running';
 import { RecordView, type RecordMetric, type RecordViewProps } from '@/src/components/a/RecordView';
+import { HealthGoalSheet } from '@/src/components/my/HealthGoalSheet';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { chartActivity, chartTop, collectActivityDays, localDayKey, shiftDay, summarizeActivity } from '@/src/features/exercise/goalProgress';
 import { canSaveRecommendedHistorySession } from '@/src/features/exercise/historyActions';
@@ -54,6 +55,7 @@ export default function ExerciseHistory() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   const [saveError, setSaveError] = useState('');
+  const [goalOpen, setGoalOpen] = useState(false);
   const today = useMemo(() => new Date(), []);
   const start = useMemo(() => period === 'week'
     ? shiftDay(today, -((today.getDay() + 6) % 7) + offset * 7)
@@ -191,6 +193,7 @@ export default function ExerciseHistory() {
   const reset = () => { setLoading(true); setPicked(null); };
   const lastLabel = last.slice(0, 7) === first.slice(0, 7) ? `${Number(last.slice(8))}일` : koreanDate(last);
   return (
+    <>
     <RecordView
       bars={columns}
       canForward={offset < 0}
@@ -205,7 +208,7 @@ export default function ExerciseHistory() {
       onBack={() => router.back()}
       onBar={(key) => { const column = columns.find((item) => item.key === key); setPicked(picked?.[0] === key || !column ? null : [column.a, column.b]); }}
       onCloseSheet={() => setOpenId(null)}
-      onGoal={() => router.push('/exercise/goal')}
+      onGoal={() => setGoalOpen(true)}
       onMetric={setMetric}
       onMove={(step) => { reset(); setOffset((now) => now + step); }}
       onPeriod={(next) => { if (next !== period || offset !== 0) reset(); setPeriod(next); setOffset(0); }}
@@ -232,5 +235,7 @@ export default function ExerciseHistory() {
       top={top}
       value={`${Math.round(value)}${unit}`}
     />
+    {goalOpen ? <HealthGoalSheet onClose={() => { setGoalOpen(false); setRetry((now) => now + 1); }} visible /> : null}
+    </>
   );
 }

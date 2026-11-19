@@ -7,6 +7,7 @@ import {
   getDietApiErrorMessage,
   getDietMealLogs,
   getDietNutritionSummary,
+  getDietWeeklySummary,
   getDietRecommendationsByDate,
   getWeeklyDiet,
   generateDietRecommendations,
@@ -37,6 +38,7 @@ import {
   type MealStatus,
   type MealType,
 } from '@/src/features/diet/dayMeals';
+import { loadWeekCalories, type DayCalories } from '@/src/features/diet/weekCalories';
 import { mergeDayMeals, weekStartOf } from '@/src/features/diet/weeklyMeals';
 import { nutritionNumber, type NutritionSummary } from '@/src/features/nutritionSummary';
 
@@ -190,6 +192,7 @@ export default function DietScreen() {
     useState<RecommendationNutritionTargets>({});
   const [recommendationError, setRecommendationError] = useState<string | null>(null);
   const [nutritionSummary, setNutritionSummary] = useState<NutritionSummary | null>(null);
+  const [weekCalories, setWeekCalories] = useState<DayCalories[] | null>(null);
   const [nutritionError, setNutritionError] = useState<string | null>(null);
   const [recommendationLoading, setRecommendationLoading] = useState(true);
   const [weeklyPlan, setWeeklyPlan] = useState<WeeklyPlan | null>(null);
@@ -373,6 +376,10 @@ export default function DietScreen() {
   const loadNutritionSummary = useCallback(async (dateKey: string) => {
     const requestId = ++nutritionSummaryRequestRef.current;
     setNutritionError(null);
+    // the week's bars come with the day's numbers, so a meal recorded shows in both
+    void loadWeekCalories(weekStartOf(dateKey), toDateKey(new Date()), getDietWeeklySummary, getDietNutritionSummary)
+      .then((days) => { if (isMountedRef.current && requestId === nutritionSummaryRequestRef.current) setWeekCalories(days); })
+      .catch(() => undefined);
     try {
       const response = await getDietNutritionSummary(dateKey);
       if (!isMountedRef.current || requestId !== nutritionSummaryRequestRef.current) return;
@@ -731,6 +738,7 @@ export default function DietScreen() {
   return (
     <View style={{ flex: 1 }}>
       <DietView
+        week={weekCalories}
         today={today}
         selectedDateOffset={selectedDateOffset}
         selectedDateKey={selectedDateKey}

@@ -7,6 +7,7 @@ import BarbellIcon from '@/assets/icons/ui/barbell.svg';
 import ChatsIcon from '@/assets/icons/ui/chats-circle.svg';
 import ForkKnifeIcon from '@/assets/icons/ui/fork-knife.svg';
 import HeartbeatIcon from '@/assets/icons/ui/heartbeat.svg';
+import TargetIcon from '@/assets/icons/ui/target.svg';
 import { ASwitch } from '@/src/components/a/ASwitch';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { getApiErrorMessage } from '@/src/api/client';
@@ -15,6 +16,7 @@ import {
 } from '@/src/api/userSettings';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { aForm } from '@/src/components/a/form';
+import { QUEST_NOTICES, questNoticeAvailable, readQuestNotice, setQuestNotice } from '@/src/features/a/questNotice';
 import { Text, TextInput } from '@/src/components/common';
 
 type ToggleKey = {
@@ -72,6 +74,25 @@ export default function Notifications() {
     // Retry replaces the focus callback after a failed request.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retry]));
+
+  // 퀘스트 알림 lives on the phone (src/features/a/questNotice.ts), not in the server's preferences
+  const [questOn, setQuestOn] = useState(false);
+  const [questBusy, setQuestBusy] = useState(false);
+  const [questDenied, setQuestDenied] = useState(false);
+  useFocusEffect(useCallback(() => {
+    let live = true;
+    void readQuestNotice().then((on) => { if (live) setQuestOn(on); });
+    return () => { live = false; };
+  }, []));
+  const toggleQuest = () => {
+    if (questBusy) return;
+    setQuestBusy(true);
+    void setQuestNotice(!questOn)
+      .then((result) => { setQuestOn(result === 'on'); setQuestDenied(result === 'denied'); })
+      .catch(() => setQuestOn(false))
+      .finally(() => setQuestBusy(false));
+  };
+  const questTimes = QUEST_NOTICES.map((notice) => `${notice.hour > 12 ? `오후 ${notice.hour - 12}` : `오전 ${notice.hour}`}시`).join(' · ');
 
   const persist = async (next: NotificationPreferences) => {
     if (saving) return;
@@ -133,7 +154,19 @@ export default function Notifications() {
         {error ? <Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text accessibilityRole="alert" style={styles.error}>{error} · 다시 시도하기</Text></Pressable> : null}
         {saved ? <Text accessibilityRole="alert" style={styles.saved}>설정을 저장했어요.</Text> : null}
         <Text style={styles.sectionTitle}>알림 종류</Text>
-        <View style={styles.card}>{categories.map(row)}</View>
+        <View style={styles.card}>
+          {questNoticeAvailable ? (
+            <View style={styles.row}>
+              <TargetIcon color={colors.textPrimary} height={24} width={24} />
+              <View style={styles.copy}>
+                <Text style={styles.label}>퀘스트 알림</Text>
+                <Text style={styles.detail}>{questDenied ? '휴대폰 설정에서 Auto-Fit 알림을 허용해 주세요' : `물 · 스트레칭 · 걸음 (${questTimes})`}</Text>
+              </View>
+              <ASwitch disabled={questBusy} label="퀘스트 알림" onChange={toggleQuest} value={questOn} />
+            </View>
+          ) : null}
+          {categories.map((category, index) => row(category, questNoticeAvailable ? index + 1 : index))}
+        </View>
         <Text style={styles.sectionTitle}>그 밖에</Text>
         <View style={styles.card}>
           {row({ key: 'quiet_hours_enabled', label: '방해 금지 시간', detail: `밤 ${start} ~ 아침 ${end}` }, 0)}

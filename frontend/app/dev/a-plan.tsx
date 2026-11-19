@@ -6,13 +6,15 @@ import { RoutinePlanView } from '@/src/components/a/RoutinePlanView';
 // Development only: renewal A's "today's routine, all of it" with a sample routine, to look at it
 // without signing in. ?state=week (a plan over several days) | short (three moves) | empty | loading
 const nothing = () => undefined;
+// a stand-in picture for the demo clip: the bought clips must not be in this public code
+const DEMO = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#fff"/><text x="160" y="96" font-size="16" text-anchor="middle" fill="#6E7389">시범 영상 자리</text></svg>')}`;
 const MOVES = [
-  { id: '1', name: '스쿼트', posture: true, text: '3세트 · 15회 · 쉬는 시간 30초' },
-  { id: '2', name: '푸시업', posture: false, text: '3세트 · 12회 · 쉬는 시간 30초' },
-  { id: '3', name: '플랭크', posture: false, text: '3세트 · 40초 · 쉬는 시간 20초' },
-  { id: '4', name: '런지', posture: false, text: '3세트 · 좌우 12회 · 쉬는 시간 30초' },
-  { id: '5', name: '힙 브리지', posture: false, text: '3세트 · 15회 · 쉬는 시간 20초' },
-  { id: '6', name: '버드독', posture: false, text: '2세트 · 좌우 10회 · 쉬는 시간 20초' },
+  { id: '1', name: '스쿼트', posture: true, text: '3세트 · 15회 · 쉬는 시간 30초', demo: DEMO, how: '발을 어깨너비로 벌리고, 무릎이 발끝과 같은 쪽을 보게 앉았다 일어나요.' },
+  { id: '2', name: '푸시업', posture: false, text: '3세트 · 12회 · 쉬는 시간 30초', demo: null, how: null },
+  { id: '3', name: '플랭크', posture: false, text: '3세트 · 40초 · 쉬는 시간 20초', demo: null, how: null },
+  { id: '4', name: '런지', posture: false, text: '3세트 · 좌우 12회 · 쉬는 시간 30초', demo: null, how: null },
+  { id: '5', name: '힙 브리지', posture: false, text: '3세트 · 15회 · 쉬는 시간 20초', demo: null, how: null },
+  { id: '6', name: '버드독', posture: false, text: '2세트 · 좌우 10회 · 쉬는 시간 20초', demo: null, how: null },
 ];
 
 export default function APlanSample() {

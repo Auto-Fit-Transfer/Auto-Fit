@@ -253,6 +253,13 @@ export function getWeeklyDietRecipe(planId: string, day: WeeklyDay, mealType: We
   return apiRequest<WeeklyRecipe>(`/api/diet/weekly-recommendations/${encodeURIComponent(planId)}/meals/${day}/${mealType}/recipe?servings=${servings}`);
 }
 
+// One week's daily summaries in one call (back-end 2d19a51); start is a Monday.
+export function getDietWeeklySummary(start: string) {
+  return apiRequest<{ days: import('@/src/features/nutritionSummary').NutritionSummary[] }>(
+    `/api/diet/summary/weekly?start=${encodeURIComponent(start)}`,
+  );
+}
+
 export function getDietNutritionSummary(date: string) {
   const params = new URLSearchParams({ date });
   return apiRequest<{ summary: import('@/src/features/nutritionSummary').NutritionSummary }>(

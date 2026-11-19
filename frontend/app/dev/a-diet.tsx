@@ -66,6 +66,8 @@ export default function ADietSample() {
         selectedDateOffset={0}
         showRecordControls
         today={new Date(2026, 10, 12)}
+        // Monday 9 to Sunday 15 November; Thursday the 12th is today
+        week={first ? null : [1620, 1480, 1810, after ? 1240 : 480, null, null, null].map((kcal, index) => ({ date: `2026-11-${String(9 + index).padStart(2, '0')}`, kcal, target: 1700 }))}
       />
     </View>
   );

@@ -147,6 +147,9 @@ export type HealthDocumentConfirmationResponse = {
   health_data: Record<string, unknown>;
   status: 'confirmed';
   uploaded_file_id: string;
+  // back-end d5b96a9a: what became of the score after this confirmation (absent on an older server)
+  analysis_status?: 'saved' | 'waiting_for_documents' | 'failed' | 'unavailable';
+  assessment_id?: string | null;
 };
 
 export type HealthDocumentListItem = {

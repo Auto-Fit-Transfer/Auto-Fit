@@ -7,7 +7,9 @@ import {
   getLatestHealthAnalysis,
   isHealthAnalysisNotFound,
 } from '@/src/api/healthAnalysis';
+import { getLatestHealthScore, type HealthScoreLatest } from '@/src/api/healthAnalysis';
 import { getHome, type HomeResponse } from '@/src/api/home';
+import { scoreCard } from '@/src/features/healthScore';
 import { getHabitTierProgress } from '@/src/api/tier';
 import { AnalysisView } from '@/src/components/a/AnalysisView';
 import { useKeptWho } from '@/src/components/a/useKeptWho';
@@ -21,6 +23,7 @@ export default function TotalAnalysisScreen() {
   const who = useKeptWho();
   const [data, setData] = useState<AnalysisDisplayData | null>(null);
   const [home, setHome] = useState<HomeResponse | null>(null);
+  const [latest, setLatest] = useState<HealthScoreLatest | 'missing' | 'failed' | null>(null);
   const [tier, setTier] = useState<TierLook | null>(null);
   const [state, setState] = useState<'loading' | 'ready' | 'empty' | 'error'>('loading');
   const [error, setError] = useState('');
@@ -36,6 +39,11 @@ export default function TotalAnalysisScreen() {
       }).catch(() => {
         if (live) setTier(null);
       });
+      setLatest(null);
+      // the score card's own read: a partial assessment is not in /api/home (back-end d5b96a9a)
+      void getLatestHealthScore()
+        .then((r) => { if (live) setLatest(r); })
+        .catch((e) => { if (live) setLatest(isHealthAnalysisNotFound(e) ? 'missing' : 'failed'); });
       void getHome()
         .then((r) => {
           if (live) setHome(r);
@@ -73,6 +81,7 @@ export default function TotalAnalysisScreen() {
   return (
     <>
       <AnalysisView
+        card={latest === null ? null : scoreCard(latest, home ? { score: home.health_score.score ?? null, total: home.health_score.total_score ?? null } : null)}
         data={data}
         delta={home?.score_change.change ?? null}
         error={error}
@@ -86,11 +95,10 @@ export default function TotalAnalysisScreen() {
         onRetry={() => setAttempt((v) => v + 1)}
         onTier={() => router.push('/tier')}
         onUpload={() => router.push('/upload')}
-        score={home?.health_score.score ?? null}
+        onDocs={() => router.push('/health-data-management')}
         state={state}
         tier={tier ? { left: `${tier.next} ${tier.left}`, name: tier.name, stars: tier.stars } : null}
         tierIndex={tier?.index ?? 0}
-        total={home?.health_score.total_score ?? null}
         who={who}
       />
       <TotalAnalysisBottomSheet sheet={sheet} onClose={() => setSheet(null)} onOpenReference={openReference} />

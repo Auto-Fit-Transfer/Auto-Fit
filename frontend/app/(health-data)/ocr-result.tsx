@@ -30,6 +30,9 @@ import {
   updateHealthDocumentOcrResult,
   uploadHealthDocument,
 } from '@/src/api/healthDocuments';
+import { ApiError } from '@/src/api/client';
+import { confirmNotice, type ConfirmNotice } from '@/src/features/healthScore';
+
 import { awardTierActivity } from '@/src/api/tier';
 import {
   Text,
@@ -49,6 +52,14 @@ import {
 } from '@/src/features/health-data/ocrResults';
 import { type SelectedHealthFile } from '@/src/features/health-data/useHealthFilePicker';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+
+// A 502 can come after the numbers were already saved: ask again once with the same id, never a new upload
+// (back-end d5b96a9a). Confirming twice is safe: the server answers already_confirmed.
+const confirmOnce = (uploadedFileId: string) =>
+  confirmHealthDocument(uploadedFileId).catch((error: unknown) => {
+    if (error instanceof ApiError && error.status === 502) return confirmHealthDocument(uploadedFileId);
+    throw error;
+  });
 
 const loadingResult: OCRResultItem = {
   apiData: {},
@@ -686,6 +697,7 @@ export default function OCRResultScreen() {
 
     const isLastResult = currentIndex >= results.length - 1;
     let savedResult = updateResultData(currentResult, committedValues);
+    let notice: ConfirmNotice = null;
 
     setIsSaving(true);
     try {
@@ -705,7 +717,8 @@ export default function OCRResultScreen() {
       }
 
       if (isLastResult) {
-        const confirmations = await Promise.all(results.map((result) => confirmHealthDocument(result.uploadedFileId)));
+        const confirmations = await Promise.all(results.map((result) => confirmOnce(result.uploadedFileId)));
+        notice = confirmNotice(confirmations);
         for (const confirmation of confirmations) {
           const sourceId = confirmation.health_checkup_id ?? confirmation.body_composition_id;
           if (sourceId) {
@@ -727,11 +740,33 @@ export default function OCRResultScreen() {
 
     if (isLastResult) {
       Keyboard.dismiss();
-      if (isFromHealthDataManagement) {
-        router.dismissTo('/health-data-management');
-      } else {
-        router.push('/total-analysis');
-      }
+      const go = () => {
+        if (isFromHealthDataManagement) {
+          router.dismissTo('/health-data-management');
+        } else {
+          router.push('/total-analysis');
+        }
+      };
+      const told = notice;
+      if (!told) return go();
+      // what became of the score: the numbers are saved in every case
+      Alert.alert(told.title, told.body, told.retry.length
+        ? [
+            { text: '나중에', style: 'cancel', onPress: go },
+            {
+              text: '다시 시도',
+              onPress: () => {
+                void Promise.all(told.retry.map(confirmOnce))
+                  .then((again) => {
+                    const still = confirmNotice(again);
+                    if (still) Alert.alert(still.title, still.body);
+                  })
+                  .catch((error: unknown) => Alert.alert('다시 시도하지 못했어요', getHealthDocumentErrorMessage(error)))
+                  .finally(go);
+              },
+            },
+          ]
+        : [{ text: '확인', onPress: go }]);
       return;
     }
 

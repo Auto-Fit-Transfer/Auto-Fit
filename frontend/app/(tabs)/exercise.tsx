@@ -7,6 +7,7 @@ import { Alert } from 'react-native';
 import { getExerciseApiErrorMessage } from '@/src/api/exercise';
 import { getHabitTierProgress } from '@/src/api/tier';
 import { ExerciseView, type ExerciseViewProps } from '@/src/components/a/ExerciseView';
+import { HealthGoalSheet } from '@/src/components/my/HealthGoalSheet';
 import { WHO_KEY, whoList, type Who } from '@/src/components/a/sprites';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
@@ -25,6 +26,7 @@ export default function ExerciseScreen() {
   // The context keeps the last recommendation even when it was made on an earlier day.
   const routine = status === 'not-created' ? null : loadedRoutine;
   const [isStarting, setIsStarting] = useState(false);
+  const [goalOpen, setGoalOpen] = useState(false);
   const [who, setWho] = useState<Who>('worker-f');
   const [tierIndex, setTierIndex] = useState(0);
 
@@ -123,7 +125,7 @@ export default function ExerciseScreen() {
         main={main}
         more={[
           { key: 'history', title: '운동 기록', detail: latestDetail, onPress: () => router.push('/exercise/history') },
-          { key: 'goal', title: '운동 목표', detail: homeMetrics.targetWorkoutCount ? `주 ${homeMetrics.targetWorkoutCount}회` : undefined, onPress: () => router.push('/exercise/goal') },
+          { key: 'goal', title: '운동 목표', detail: homeMetrics.targetWorkoutCount ? `주 ${homeMetrics.targetWorkoutCount}회` : undefined, onPress: () => setGoalOpen(true) },
           { key: 'guide', title: '부위별 운동 가이드', detail: '불편한 부위의 가이드', onPress: () => router.push('/exercise/body-guide') },
         ]}
         onBack={() => router.navigate('/home')}
@@ -132,6 +134,8 @@ export default function ExerciseScreen() {
         tierIndex={tierIndex}
         who={who}
       />
+      {/* the one goal box of 내 정보: the exercise numbers live in it with the rest of the goal */}
+      {goalOpen ? <HealthGoalSheet onClose={() => { setGoalOpen(false); void refreshHome(); }} visible /> : null}
     </>
   );
 }

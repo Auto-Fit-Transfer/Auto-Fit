@@ -110,6 +110,8 @@ export default function ExerciseSummaryScreen() {
         moves: routine.exercises.map((exercise) => ({
           id: exercise.id,
           name: exercise.name,
+          demo: exercise.demoGifUrl && /^https:[/][/]/i.test(exercise.demoGifUrl) ? exercise.demoGifUrl : null,
+          how: exercise.instruction?.trim() || null,
           posture: exercise.name.includes('스쿼트'),
           text: exercise.prescription || '자세한 운동 방법은 시작 후 확인해 주세요.',
         })),

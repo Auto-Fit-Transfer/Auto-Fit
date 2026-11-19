@@ -7,6 +7,7 @@ import MinusIcon from '@/assets/icons/ui/minus.svg';
 import PlusIcon from '@/assets/icons/ui/plus.svg';
 import WarningIcon from '@/assets/icons/ui/warning-circle.svg';
 import type { AnalysisDisplayData, AnalysisReason, MetricCriterion } from '@/src/components/analysis/totalAnalysisData';
+import type { ScoreCard } from '@/src/features/healthScore';
 import { Text } from '@/src/components/common';
 import { CaretText } from '@/src/components/common/CaretText';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
@@ -22,8 +23,7 @@ import { HeroHead, type Who } from './sprites';
 export interface AnalysisViewProps {
   who: Who;
   tierIndex: number;
-  score: number | null;
-  total: number | null;
+  card: ScoreCard | null; // null while it is read
   delta: number | null;
   message: string | null; // what the server says about the change in score
   tier: { name: string; stars: number; left: string | null } | null;
@@ -33,6 +33,7 @@ export interface AnalysisViewProps {
   onBack: () => void;
   onTier: () => void;
   onUpload: () => void;
+  onDocs: () => void;
   onRetry: () => void;
   onDiet: () => void;
   onExercise: () => void;
@@ -42,7 +43,12 @@ export interface AnalysisViewProps {
 }
 
 export function AnalysisView(props: AnalysisViewProps) {
-  const { who, tierIndex, score, total, delta, message, tier, state, error, data } = props;
+  const { who, tierIndex, card, message, tier, state, error, data } = props;
+  // only a finished overall score has a change, a bar and a tier beside it (back-end d5b96a9a)
+  const overall = card?.kind === 'overall';
+  const score = card?.kind === 'overall' || card?.kind === 'partial' ? card.score : null;
+  const total = card?.kind === 'overall' ? card.total : card?.kind === 'partial' ? 100 : null;
+  const delta = overall ? props.delta : null;
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -69,7 +75,7 @@ export function AnalysisView(props: AnalysisViewProps) {
         ) : null}
 
         <View style={[styles.card, styles.scoreCard]}>
-          <Text style={styles.note}>건강 점수</Text>
+          <Text style={styles.note}>{card && card.kind !== 'overall' && card.kind !== 'none' ? '건강 데이터 점수' : '건강 점수'}</Text>
           <View style={styles.scoreRow}>
             <Text style={styles.score}>
               {score ?? '—'}
@@ -81,10 +87,22 @@ export function AnalysisView(props: AnalysisViewProps) {
               </View>
             ) : null}
           </View>
+          {card?.kind === 'partial' ? <Text style={styles.body}>검진표 · 인바디로 낸 점수예요. 종합 점수는 일주일 식단 · 운동 기록이 모이면 나와요.</Text> : null}
+          {card?.kind === 'check' || card?.kind === 'failed' ? (
+            <View style={styles.tierRow}>
+              <Text style={[styles.body, styles.grow]}>{card.kind === 'check' ? '측정 수치를 확인해 주세요.' : '점수를 불러오지 못했어요.'}</Text>
+              <Pressable accessibilityRole="button" hitSlop={6} onPress={card.kind === 'check' ? props.onDocs : props.onRetry} style={({ pressed }) => [styles.mini, pressed && styles.sunk]}>
+                <Text style={styles.miniText}>{card.kind === 'check' ? '건강 서류 보기' : '다시 시도'}</Text>
+              </Pressable>
+            </View>
+          ) : null}
+          {overall || card?.kind === 'none' ? (
           <View style={styles.bar}>
             <View style={[styles.barFill, { width: `${ratio}%` }]} />
           </View>
-          {message && message !== say ? <Text style={styles.body}>{message}</Text> : null}
+          ) : null}
+          {overall && message && message !== say ? <Text style={styles.body}>{message}</Text> : null}
+          {overall || card?.kind === 'none' ? (
           <View style={styles.tierRow}>
             <View style={styles.grow}>
               <Text style={styles.strong}>
@@ -106,6 +124,7 @@ export function AnalysisView(props: AnalysisViewProps) {
               <Text style={styles.miniText}>티어 보기</Text>
             </Pressable>
           </View>
+          ) : null}
         </View>
 
         {state !== 'ready' || !data ? (

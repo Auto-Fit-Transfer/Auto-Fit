@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Image, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import CaretDownIcon from '@/assets/icons/ui/caret-down.svg';
 import MinusIcon from '@/assets/icons/ui/minus.svg';
 import PlusIcon from '@/assets/icons/ui/plus.svg';
 import { Text } from '@/src/components/common';
@@ -26,7 +27,7 @@ export interface RoutinePlanProps {
     reasons: string[];
     days: { id: string; date: string; name: string; meta: string; status: string; selected: boolean }[];
     listTitle: string;
-    moves: { id: string; name: string; text: string; posture: boolean }[];
+    moves: { id: string; name: string; text: string; posture: boolean; demo: string | null; how: string | null }[];
   } | null;
   loading: boolean;
   button: { label: string; disabled: boolean };
@@ -42,6 +43,7 @@ export function RoutinePlanView({ header, routine, loading, button, onBack, onCh
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const [open, setOpen] = useState(false);
+  const [openMove, setOpenMove] = useState<string | null>(null);
   const mini = (label: string, onPress: () => void, accessibilityLabel?: string) => (
     <Pressable accessibilityLabel={accessibilityLabel} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.mini, pressed && styles.miniPressed]}>
       <Text style={styles.miniText}>{label}</Text>
@@ -125,15 +127,41 @@ export function RoutinePlanView({ header, routine, loading, button, onBack, onCh
 
         <View style={styles.list}>
           <Text style={[styles.body, styles.listTitle]}>{routine.listTitle}</Text>
-          {routine.moves.map((move) => (
-            <View key={move.id} style={styles.move}>
-              <View style={styles.grow}>
-                <Text style={styles.body}>{move.name}</Text>
-                <Text style={styles.note}>{move.text}</Text>
+          {routine.moves.map((move) => {
+            // a move opens to its demo clip and how to do it (a-exercise.html), one at a time
+            const canOpen = Boolean(move.demo || move.how);
+            const shown = canOpen && openMove === move.id;
+            return (
+              <View key={move.id} style={styles.moveWrap}>
+                <View style={styles.move}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: !canOpen, expanded: shown }}
+                    disabled={!canOpen}
+                    onPress={() => setOpenMove(shown ? null : move.id)}
+                    style={styles.moveHead}
+                  >
+                    <View style={styles.grow}>
+                      <Text style={styles.body}>{move.name}</Text>
+                      <Text style={styles.note}>{move.text}</Text>
+                    </View>
+                    {canOpen ? (
+                      <View style={shown ? styles.flip : undefined}>
+                        <CaretDownIcon color={colors.ink} height={18} width={18} />
+                      </View>
+                    ) : null}
+                  </Pressable>
+                  {move.posture ? mini('자세 촬영', onPosture, `${move.name} 자세 촬영`) : null}
+                </View>
+                {shown ? (
+                  <View style={styles.more}>
+                    {move.demo ? <Image accessibilityLabel={`${move.name} 동작 시범`} resizeMode="contain" source={{ uri: move.demo }} style={styles.demo} /> : null}
+                    {move.how ? <Text style={styles.sub}>{move.how}</Text> : null}
+                  </View>
+                ) : null}
               </View>
-              {move.posture ? mini('자세 촬영', onPosture, `${move.name} 자세 촬영`) : null}
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         <Pressable
@@ -156,6 +184,7 @@ function createStyles({ colors }: AppTheme) {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     content: { gap: 12, paddingHorizontal: 16, paddingTop: 12 },
     grow: { flex: 1, minWidth: 0 },
+    flip: { transform: [{ rotate: '180deg' }] },
     center: { textAlign: 'center' },
     note: a.note,
     body: { ...a.p15, color: colors.ink },
@@ -182,7 +211,12 @@ function createStyles({ colors }: AppTheme) {
 
     list: { ...a.card, paddingBottom: 4, paddingHorizontal: 14, paddingTop: 12 },
     listTitle: { paddingBottom: 10 },
-    move: { alignItems: 'center', borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', gap: 10, minHeight: 56, paddingVertical: 10 },
+    moveWrap: { borderTopColor: colors.track, borderTopWidth: 2 },
+    move: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 56, paddingVertical: 10 },
+    moveHead: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 8 },
+    more: { gap: 8, paddingBottom: 12 },
+    // the clips are 16:9 on white; shown whole
+    demo: { aspectRatio: 16 / 9, backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, width: '100%' },
 
     // little to say: one bundle, a little above the middle
     empty: { alignItems: 'stretch', flex: 1, gap: 14, justifyContent: 'center', paddingBottom: 120, paddingHorizontal: 16 },
