@@ -30,6 +30,18 @@ def test_private_link_uses_catalog_path_and_bounded_get_signature(private_config
     assert "test-secret-key" not in urls["known"]
 
 
+@pytest.mark.parametrize("location", ["outdoor", "other"])
+def test_private_link_uses_home_asset_for_outdoor_and_other(private_config, location):
+    _, catalog = exercise_ai.load_catalog()
+    key, _ = next((key, record) for key, record in catalog.items()
+                  if any(mode == "home_training" and gender == "male"
+                         for mode, gender, _ in record.asset_paths))
+    expected = exercise_gifs.private_gif_urls({key}, "home", "male")[key]
+    actual = exercise_gifs.private_gif_urls({key}, location, "male")[key]
+    assert actual is not None
+    assert urlsplit(actual).path == urlsplit(expected).path
+
+
 @pytest.mark.parametrize("name,value", [
     ("EXERCISE_GIF_PREFIX", "../other"), ("EXERCISE_GIF_PREFIX", "/absolute"),
     ("EXERCISE_GIF_URL_TTL_SECONDS", "14401"), ("EXERCISE_GIF_URL_TTL_SECONDS", "bad"),

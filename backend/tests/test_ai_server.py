@@ -199,6 +199,30 @@ def test_posture_new_exercise_rejects_missing_key_before_network():
         ))
 
 
+@pytest.mark.parametrize("status,body,expected", [
+    (422, {"detail": "private", "error": {"code": "VIDEO_TOO_SHORT", "message": "private"}}, "VIDEO_TOO_SHORT"),
+    (422, {"error": {"code": "POSE_NOT_DETECTED", "fields": ["video"]}}, "POSE_NOT_DETECTED"),
+    (503, {"error": {"code": "MODEL_UNAVAILABLE"}}, "MODEL_UNAVAILABLE"),
+    (422, {"error": {"code": "NOT_IN_CONTRACT"}}, "AI_INPUT_REJECTED"),
+    (422, {"detail": [{"validation": "failed"}]}, "AI_INPUT_REJECTED"),
+    (422, b"not-json", "AI_INPUT_REJECTED"),
+    (422, b"x" * (ai_server.MAX_POSTURE_ERROR_BYTES + 1), "AI_INPUT_REJECTED"),
+])
+def test_posture_analysis_preserves_only_known_bounded_failure_codes(status, body, expected):
+    def handler(request):
+        return httpx.Response(status, content=body) if isinstance(body, bytes) else httpx.Response(status, json=body)
+
+    with pytest.raises(ai_server.AIServerError) as error:
+        asyncio.run(make_client(handler).analyze_posture_video(
+            video=io.BytesIO(b"video-data"), content_type="video/mp4", filename="capture.mp4",
+            posture_analysis_job_id="00000000-0000-4000-8000-000000000011",
+            exercise_key="ex_96dcb551b33a8e", exercise_code="squat", camera_view="side",
+        ))
+    assert error.value.code == expected
+    assert error.value.upstream_status == status
+    assert "private" not in str(error.value)
+
+
 @pytest.mark.parametrize("status,code", [(422, "AI_INPUT_REJECTED"), (503, "AI_UNAVAILABLE")])
 def test_posture_transport_maps_errors_without_response_body(status, code):
     def handler(_):

@@ -393,6 +393,18 @@ def test_gif_url_resolves_primary_asset_by_mode_and_gender():
         gif_url_for_exercise(key, "gym", "female", "http://cdn.example.invalid")
 
 
+@pytest.mark.parametrize("location", ["outdoor", "other"])
+def test_outdoor_and_other_locations_use_home_demo_gif(location):
+    _, catalog = load_catalog()
+    key, _ = next((key, record) for key, record in catalog.items()
+                  if any(mode == "home_training" and gender == "male"
+                         for mode, gender, _ in record.asset_paths))
+    base = "https://cdn.example.invalid/exercises"
+    assert gif_url_for_exercise(key, location, "male", base) == gif_url_for_exercise(
+        key, "home", "male", base,
+    )
+
+
 def test_gif_url_is_exposed_only_for_existing_https_object(monkeypatch):
     _, catalog = load_catalog()
     key, _ = next((key, record) for key, record in catalog.items()

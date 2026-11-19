@@ -194,6 +194,20 @@ def test_ai_rejection_marks_failed_after_video_delete(monkeypatch, tmp_path):
     assert not video_path.exists()
 
 
+def test_structured_ai_failure_code_is_stored_without_result(monkeypatch, tmp_path):
+    error = posture_workflow.AIServerError("POSE_NOT_DETECTED", 422)
+    events, state, video_path, settings = configure(
+        monkeypatch, tmp_path, ai_error=error)
+    with pytest.raises(HTTPException) as response:
+        invoke(settings)
+    assert response.value.status_code == 422
+    assert state["status"] == "failed"
+    assert state["failure_code"] == "POSE_NOT_DETECTED"
+    assert ("rpc", "save") not in events
+    assert events.index(("storage", "DELETE")) < events.index(("patch", "failed"))
+    assert not video_path.exists()
+
+
 def test_other_user_cannot_stage_or_upload(monkeypatch, tmp_path):
     events, _, video_path, settings = configure(monkeypatch, tmp_path, owner=False)
     with pytest.raises(HTTPException) as response:

@@ -130,7 +130,7 @@ def gif_url_for_exercise(exercise_key: str, location: str, gender: str,
 
 def gif_path_for_exercise(exercise_key: str, location: str, gender: str) -> str | None:
     """Resolve a safe primary GIF path from the server-owned catalog."""
-    if location not in {"home", "gym"} or gender not in {"male", "female"}:
+    if location not in {"home", "gym", "outdoor", "other"} or gender not in {"male", "female"}:
         return None
     _, catalog = load_catalog()
     record = catalog.get(exercise_key)

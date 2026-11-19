@@ -84,8 +84,24 @@ class AIServerError(RuntimeError):
 HTTP_TIMEOUT_SECONDS = 60
 WALL_TIMEOUT_SECONDS = 65
 MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+MAX_POSTURE_ERROR_BYTES = 4096
 POSTURE_HTTP_TIMEOUT_SECONDS = 180
 POSTURE_WALL_TIMEOUT_SECONDS = 185
+POSTURE_ERROR_CODES = {
+    422: frozenset({
+        "UNSUPPORTED_EXERCISE", "CAMERA_VIEW_NOT_SUPPORTED",
+        "EXPERIMENTAL_EXERCISE_DISABLED", "ANALYSIS_SIDE_INVALID",
+        "ANALYSIS_SIDE_NOT_ALLOWED", "ANALYSIS_SIDE_REQUIRED",
+        "EXERCISE_KEY_REQUIRED", "EXERCISE_ASSET_MISMATCH",
+        "EMPTY_VIDEO", "VIDEO_FILE_TOO_LARGE", "UNSUPPORTED_VIDEO_TYPE",
+        "VIDEO_DECODE_FAILED", "VIDEO_METADATA_INVALID", "VIDEO_TOO_SHORT",
+        "VIDEO_TOO_LONG", "INSUFFICIENT_FRAMES", "POSE_NOT_DETECTED",
+        "POSE_COVERAGE_LOW", "MOTION_NOT_COMPLETED", "PLANK_HOLD_TOO_SHORT",
+        "TOO_MANY_REPETITIONS", "ANGLE_CALCULATION_FAILED",
+    }),
+    503: frozenset({"MODEL_UNAVAILABLE"}),
+    500: frozenset({"INTERNAL_ERROR"}),
+}
 
 
 def _invalid_constant(value: str):
@@ -106,6 +122,26 @@ def _unique_object(pairs: list[tuple[str, object]]) -> dict:
             raise ValueError("Duplicate JSON key")
         result[key] = value
     return result
+
+
+async def _posture_failure_code(response: httpx.Response) -> str | None:
+    """Read only a bounded, known code; never keep upstream error prose."""
+    allowed = POSTURE_ERROR_CODES.get(response.status_code)
+    if allowed is None:
+        return None
+    data = bytearray()
+    async for chunk in response.aiter_bytes():
+        if len(data) + len(chunk) > MAX_POSTURE_ERROR_BYTES:
+            return None
+        data.extend(chunk)
+    try:
+        payload = json.loads(data, object_pairs_hook=_unique_object)
+    except (ValueError, RecursionError):
+        return None
+    if not isinstance(payload, dict) or not isinstance(payload.get("error"), dict):
+        return None
+    code = payload["error"].get("code")
+    return code if isinstance(code, str) and code in allowed else None
 
 
 class AIServerClient:
@@ -186,6 +222,8 @@ class AIServerClient:
                                 415: "AI_UNSUPPORTED_IMAGE", 422: "AI_INPUT_REJECTED",
                                 500: "AI_INTERNAL_ERROR", 503: "AI_UNAVAILABLE",
                             }.get(response.status_code, "AI_HTTP_ERROR")
+                            if path == PostureEndpoint.ANALYZE.value:
+                                code = await _posture_failure_code(response) or code
                             retry_header = response.headers.get("retry-after", "")
                             retry_after = (int(retry_header) if retry_header.isascii()
                                            and retry_header.isdecimal()
