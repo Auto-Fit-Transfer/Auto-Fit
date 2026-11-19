@@ -184,6 +184,13 @@ def test_start_saved_routine_reports_conflict_and_storage_failure_separately(mon
     assert conflict.status_code == 409
     assert conflict.json()["detail"]["code"] == "SAVED_ROUTINE_IN_PROGRESS"
 
+    active_ai, _, _, _ = make_client(
+        monkeypatch, start_error="Another exercise session is in progress"
+    )
+    cross_source = active_ai.post(f"/api/exercise/saved-routines/{ROUTINE}/start")
+    assert cross_source.status_code == 409
+    assert cross_source.json()["detail"]["code"] == "EXERCISE_SESSION_IN_PROGRESS"
+
     unavailable, _, _, _ = make_client(monkeypatch, start_error="database unavailable")
     failure = unavailable.post(f"/api/exercise/saved-routines/{ROUTINE}/start")
     assert failure.status_code == 502

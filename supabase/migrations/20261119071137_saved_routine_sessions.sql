@@ -71,6 +71,33 @@ revoke all on public.saved_routine_session_items
   from public, anon, authenticated, service_role;
 grant select, insert on public.saved_routine_session_items to service_role;
 
+-- Existing users may already have several active historical sessions, so a new
+-- global unique index cannot be applied without changing their records. Guard
+-- only new starts and serialize them per account across both workout sources.
+create function public.guard_new_active_exercise_session()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if new.status <> 'in_progress' then
+    return new;
+  end if;
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('autofit-exercise-session:' || new.user_id::text, 0)
+  );
+  if exists (
+    select 1 from public.exercise_sessions existing
+    where existing.user_id = new.user_id and existing.status = 'in_progress'
+  ) then
+    raise exception 'Another exercise session is in progress';
+  end if;
+  return new;
+end;
+$$;
+revoke all on function public.guard_new_active_exercise_session()
+  from public, anon, authenticated;
+create trigger aa_guard_new_active_exercise_session
+  before insert on public.exercise_sessions for each row
+  execute function public.guard_new_active_exercise_session();
+
 create function public.start_saved_workout_routine(
   p_user_id uuid, p_routine_id uuid
 )
@@ -83,6 +110,9 @@ declare
   v_goal text;
   v_constraint text;
 begin
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended('autofit-exercise-session:' || p_user_id::text, 0)
+  );
   select * into v_routine
   from public.user_workout_routines
   where user_workout_routine_id = p_routine_id

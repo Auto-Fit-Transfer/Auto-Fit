@@ -206,6 +206,8 @@ async def start_saved_routine(user_id: str, routine_id: UUID,
                 raise HTTPException(404, detail={"code": "SAVED_ROUTINE_NOT_FOUND"})
             if message == "Another saved workout routine is in progress":
                 raise HTTPException(409, detail={"code": "SAVED_ROUTINE_IN_PROGRESS"})
+            if message == "Another exercise session is in progress":
+                raise HTTPException(409, detail={"code": "EXERCISE_SESSION_IN_PROGRESS"})
             if message == "Saved workout routine must contain 1 to 30 items":
                 raise HTTPException(409, detail={"code": "SAVED_ROUTINE_ITEMS_UNAVAILABLE"})
             raise HTTPException(502, detail={"code": "SAVED_ROUTINE_START_FAILED"})

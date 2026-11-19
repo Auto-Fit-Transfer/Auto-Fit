@@ -1052,6 +1052,24 @@ def test_start_exercise_session_uses_authenticated_user(monkeypatch) -> None:
         main.app.dependency_overrides.clear()
 
 
+def test_ai_start_reports_another_active_workout_conflict() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path.endswith("/rpc/start_exercise_plan_session")
+        return httpx.Response(400, json={"message": "Another exercise session is in progress"})
+
+    async def check() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            async with bind_request_client(client):
+                with pytest.raises(main.HTTPException) as failure:
+                    await main.call_exercise_session_rpc(
+                        "start_exercise_plan_session", {"p_user_id": "owner"}, TEST_SETTINGS
+                    )
+        assert failure.value.status_code == 409
+        assert failure.value.detail == {"code": "EXERCISE_SESSION_IN_PROGRESS"}
+
+    asyncio.run(check())
+
+
 def test_start_exercise_session_skips_stopped_day(monkeypatch) -> None:
     stopped_id = "00000000-0000-0000-0000-000000000001"
     next_id = "00000000-0000-0000-0000-000000000002"
