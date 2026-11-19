@@ -9,6 +9,7 @@ import { getHabitTierProgress, type HabitTierProgress } from '@/src/api/tier';
 import { LobbyView, type LobbyQuest } from '@/src/components/a/LobbyView';
 import { WHO_KEY, whoList, type Who } from '@/src/components/a/sprites';
 import { NotificationBell } from '@/src/components/community/NotificationBell';
+import { flushBodyBasics } from '@/src/features/a/bodyBasics';
 import { useDailyQuests, WATER_GOAL } from '@/src/features/a/dailyQuests';
 import { STEP_GOAL, useSteps } from '@/src/features/a/useSteps';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
@@ -48,6 +49,8 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      // height · weight from sign-up that the server could not take yet
+      void flushBodyBasics();
       // The character I chose is kept on this phone.
       void AsyncStorage.getItem(WHO_KEY)
         .then((saved) => {

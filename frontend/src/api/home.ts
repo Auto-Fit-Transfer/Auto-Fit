@@ -29,6 +29,9 @@ export type Profile = {
   birth_date?: string | null;
   gender?: 'male' | 'female' | 'other' | null;
   target_weight?: number | null;
+  // asked at sign-up for the calorie goal; the server takes them once the back-end adds the two fields
+  height_cm?: number | null;
+  weight_kg?: number | null;
   activity_level?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active' | null;
 };
 export type ProfileResponse = { profile?: Profile | null };

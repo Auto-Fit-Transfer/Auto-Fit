@@ -13,6 +13,7 @@ import {
 import { AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import { useSignup, type SignupExerciseGoal } from '@/src/features/signup/SignupContext';
+import { bodyBasicsError, saveBodyBasics } from '@/src/features/a/bodyBasics';
 import { aForm } from '@/src/components/a/form';
 import { useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
@@ -57,6 +58,9 @@ export default function SignUpStep5Screen() {
   const { draft, resetDraft } = useSignup();
   const inFlight = useRef(false);
   const [targetWeight, setTargetWeight] = useState('');
+  // height and weight now, for the daily calorie goal with the age and sex of step 1
+  const [height, setHeight] = useState('');
+  const [weightNow, setWeightNow] = useState('');
   const [frequency, setFrequency] = useState(3);
   const [minutes, setMinutes] = useState('120');
   const [weeks, setWeeks] = useState<number | null>(13);
@@ -95,6 +99,12 @@ export default function SignUpStep5Screen() {
       Alert.alert('목표 체중을 확인해 주세요', '목표 체중은 20~500kg 사이로 입력해 주세요.');
       return;
     }
+    const basicsError = bodyBasicsError(height, weightNow);
+    // skipping the goal may leave them out, but what is written must be right
+    if (basicsError && (!skipGoal || height.trim() || weightNow.trim())) {
+      Alert.alert('키 · 몸무게를 확인해 주세요', basicsError);
+      return;
+    }
     if (!isPostLogin && (!draft.name || !draft.birthDate || !draft.gender)) {
       Alert.alert('회원가입 정보가 없습니다', '기본 정보부터 다시 입력해 주세요.');
       router.replace('/signup/step1');
@@ -120,6 +130,7 @@ export default function SignUpStep5Screen() {
           weekly_duration_minutes: m,
           goal_period_weeks: w,
         });
+      if (!basicsError) await saveBodyBasics(height, weightNow);
       await completeOnboarding();
       resetDraft();
       router.replace({ pathname: '/upload', params: { source: 'onboarding' } });
@@ -147,6 +158,30 @@ export default function SignUpStep5Screen() {
       onContinue={() => void finish()}
     >
       <View style={styles.form}>
+        <View style={styles.pair}>
+          <AuthTextField
+            accessibilityLabel="키"
+            containerStyle={styles.grow}
+            keyboardType="decimal-pad"
+            label="키"
+            maxLength={5}
+            onChangeText={setHeight}
+            placeholder="160"
+            rightElement={<Text style={styles.unit}>cm</Text>}
+            value={height}
+          />
+          <AuthTextField
+            accessibilityLabel="지금 몸무게"
+            containerStyle={styles.grow}
+            keyboardType="decimal-pad"
+            label="지금 몸무게"
+            maxLength={5}
+            onChangeText={setWeightNow}
+            placeholder="55.0"
+            rightElement={<Text style={styles.unit}>kg</Text>}
+            value={weightNow}
+          />
+        </View>
         {showWeight ? (
           <AuthTextField
             accessibilityLabel="목표 몸무게"
@@ -206,6 +241,8 @@ function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     form: { gap: 14 },
+    pair: { flexDirection: 'row', gap: 10 },
+    grow: { flex: 1 },
     sectionTitle: a.q,
     chips: { flexDirection: 'row', gap: 6 },
     chip: { ...a.chip, flex: 1 },
