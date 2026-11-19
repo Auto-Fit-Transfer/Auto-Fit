@@ -34,7 +34,7 @@ export interface RoutinePlanProps {
   onBack: () => void;
   onChange: () => void; // answer the questions again
   onPickDay: (id: string) => void;
-  onPosture: () => void;
+  onPosture: (moveId: string) => void;
   onStart: () => void;
 }
 
@@ -151,7 +151,7 @@ export function RoutinePlanView({ header, routine, loading, button, onBack, onCh
                       </View>
                     ) : null}
                   </Pressable>
-                  {move.posture ? mini('자세 촬영', onPosture, `${move.name} 자세 촬영`) : null}
+                  {move.posture ? mini('자세 촬영', () => onPosture(move.id), `${move.name} 자세 촬영`) : null}
                 </View>
                 {shown ? (
                   <View style={styles.more}>

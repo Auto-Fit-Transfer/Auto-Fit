@@ -3,10 +3,12 @@ import { useRouter, type Href } from 'expo-router';
 import { Alert, BackHandler, Platform } from 'react-native';
 
 import { getExerciseApiErrorMessage } from '@/src/api/exercise';
+import { getPostureCapabilities, type PostureCapability } from '@/src/api/posture';
 import { RoutinePlanView } from '@/src/components/a/RoutinePlanView';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
 import { exerciseEquipmentLabels, exerciseIntensityLabels, exerciseLocationLabels } from '@/src/features/exercise/exerciseData';
+import { postureFor } from '@/src/features/exercise/postureMatch';
 
 // Today's routine, all of it. What it reads and starts is unchanged.
 export default function ExerciseSummaryScreen() {
@@ -16,6 +18,15 @@ export default function ExerciseSummaryScreen() {
   const { beginSession } = useExerciseSession();
   const [isStarting, setIsStarting] = useState(false);
   const goBack = useCallback(() => router.dismissTo('/exercise'), [router]);
+  // Only moves the server has validated for posture analysis get 자세 촬영 (the team's five, 11/15), never a name guess.
+  const [postureList, setPostureList] = useState<PostureCapability[]>([]);
+  useEffect(() => {
+    let active = true;
+    void getPostureCapabilities()
+      .then((data) => { if (active) setPostureList(data.exercises); })
+      .catch(() => undefined); // no list, no button
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (routine) return undefined;
@@ -93,7 +104,12 @@ export default function ExerciseSummaryScreen() {
       onBack={goBack}
       onChange={() => router.push(routine ? { pathname: '/exercise/condition', params: { source: 'summary' } } : '/exercise/condition')}
       onPickDay={selectPlanSession}
-      onPosture={() => router.push('/exercise/posture-capture' as Href)}
+      onPosture={(moveId) => {
+        const pick = postureFor(postureList, routine?.exercises.find((item) => item.id === moveId));
+        router.push(pick
+          ? { pathname: '/exercise/posture-capture', params: { exerciseCode: pick.exercise_code, cameraView: pick.camera_view } }
+          : '/exercise/posture-capture' as Href);
+      }}
       onStart={() => void handleStart()}
       routine={routine ? {
         days: routine.planSessions.map((plan) => ({
@@ -112,7 +128,7 @@ export default function ExerciseSummaryScreen() {
           name: exercise.name,
           demo: exercise.demoGifUrl && /^https:[/][/]/i.test(exercise.demoGifUrl) ? exercise.demoGifUrl : null,
           how: exercise.instruction?.trim() || null,
-          posture: exercise.name.includes('스쿼트'),
+          posture: Boolean(postureFor(postureList, exercise)),
           text: exercise.prescription || '자세한 운동 방법은 시작 후 확인해 주세요.',
         })),
         reasons: routine.reasons.length ? routine.reasons : ['오늘 입력한 운동 시간과 장소, 컨디션을 바탕으로 추천했어요.'],

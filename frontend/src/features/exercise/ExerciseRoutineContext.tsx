@@ -179,6 +179,7 @@ function mapExerciseItems(result: ApiRecord): ExerciseItem[] {
         demoVideoUrl: readString(item, ['demo_video_url']),
         durationMinutes: readNumber(item, ['duration_minutes']),
         executionType: readString(item, ['execution_type']),
+        exerciseKey: readString(item, ['exercise_key']),
         id,
         instruction: readString(item, ['instruction']),
         intensity: readString(item, ['intensity']),

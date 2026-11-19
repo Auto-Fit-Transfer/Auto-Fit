@@ -18,6 +18,7 @@ export interface ExerciseItem {
   demoVideoUrl: string | null;
   durationMinutes: number | null;
   executionType: string | null;
+  exerciseKey?: string | null; // the catalog key; posture analysis is matched on it
   id: string;
   instruction: string | null;
   intensity: string | null;
