@@ -94,6 +94,12 @@ export default function ProfileScreen() {
     if (profile.birth_date && !validBirthDate(profile.birth_date)) {
       return setError('올바른 생년월일을 선택해 주세요.');
     }
+    // the same adults-only rule as sign-up
+    const ageLimit = new Date();
+    ageLimit.setFullYear(ageLimit.getFullYear() - 19);
+    if (profile.birth_date && new Date(profile.birth_date + 'T00:00:00') > ageLimit) {
+      return setError('만 19세 이상만 이용할 수 있어요.');
+    }
     setSaving(true);
     setError('');
     try {

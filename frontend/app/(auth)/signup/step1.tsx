@@ -15,7 +15,7 @@ import { getSupabaseClient } from '@/src/lib/supabase';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
 const consentItems = [
-  { key: 'age', label: '만 14세 이상이에요', required: true },
+  { key: 'age', label: '만 19세 이상이에요', required: true },
   { key: 'service', label: '서비스 이용약관', required: true },
   { key: 'privacy', label: '개인정보 수집 · 이용', required: true },
   {
@@ -108,9 +108,10 @@ export default function SignUpStep1Screen() {
   };
   const characterMessage = () => {
     if (!birthday) return '생년월일을 선택해 주세요.';
+    // adults only (user, 11/19): meals are planned for grown-ups (KDRI targets start at 19), not for growing children
     const ageLimit = new Date();
-    ageLimit.setFullYear(ageLimit.getFullYear() - 14);
-    if (birthday > ageLimit) return '만 14세 이상부터 가입할 수 있어요.';
+    ageLimit.setFullYear(ageLimit.getFullYear() - 19);
+    if (birthday > ageLimit) return '만 19세 이상부터 가입할 수 있어요.';
     if (!gender) return '성별을 선택해 주세요.';
     return undefined;
   };
