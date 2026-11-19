@@ -32,18 +32,20 @@ Authorization: Bearer <AI_SERVER_API_KEY>
 | `exercise_code` | 촬영 | 상태 | 허용 `exercise_key` |
 |---|---|---|---|
 | `squat` | `side` | `validated` | `ex_96dcb551b33a8e`, `ex_3fb808cb84e33d` |
-| `push_up` | `side` | `experimental` | `ex_f6c866501f5ac0` |
-| `plank` | `side` | `experimental` | `ex_0c8105c6325fea` |
+| `push_up` | `side` | `experimental` | `ex_f6c866501f5ac0`, `ex_fcefe9818d1b7b` |
+| `plank` | `side` | `experimental` | `ex_0c8105c6325fea`, `ex_20ad307ede1a03` |
 | `glute_bridge` | `side` | `experimental` | `ex_1bb869dd7b0cc4` |
 | `biceps_curl` | `side` | `experimental` | `ex_a0b65fb7225b0a` |
 | `calf_raise` | `side` | `experimental` | `ex_4da43055d05edf` |
-| `lunge` | `side` | `experimental` | `ex_b34acd08bef11a` |
+| `lunge` | `side` | `experimental` | `ex_b34acd08bef11a`, `ex_cbe084d8bcb64e` |
 | `split_squat` | `side` | `experimental` | `ex_65d9303b043376` |
 | `jumping_jack` | `front` | `experimental` | `ex_3ecaba64725e87` |
 | `shoulder_press` | `front` | `experimental` | `ex_b81e8a03ab0cb0` |
 | `lateral_raise` | `front` | `experimental` | `ex_f830e9dd981059` |
 
 `exercise_code`는 자세 규칙 식별자이고 `exercise_key`는 구매 운동 자산 CSV의 `ex_<hash>` 식별자다. 두 값을 동일하게 취급하지 않는다. 스쿼트 twist, 점프 스쿼트, 푸시업 row, 머신·바벨 변형 등은 이름이 비슷해도 위 allowlist에 없으면 지원하지 않는다.
+
+푸시업·플랭크·런지는 여성 자산 key와 함께 실제 동작 정의가 가장 가까운 남성 catalog key를 팀 실영상 검증용 allowlist에 등록했다. 세 운동은 아직 `experimental`이며 key가 추가됐다는 사실만으로 운영 검증이 완료된 것은 아니다. 힙 브리지는 남성 catalog에 `Glute Bridge Two Legs On Floor`와 정확히 같은 자산이 없으므로 `Heel Glute Bridge`나 bench 변형을 자동 연결하지 않는다. 정확한 남성 바닥 양발 자산이 추가되고 실제 영상이 통과하기 전에는 기존 key만 유지한다.
 
 ## 영상 분석 요청
 

@@ -1114,6 +1114,13 @@ LLM은 검증된 메뉴의 설명과 guidance를 보조하며 영양값을 덮�
 - 원본 영상을 영구 저장하지 않는다.
 - Frontend에 노출할 종목은 하드코딩하지 않고
   `GET /posture-analysis/capabilities`의 `validated` 상태를 기준으로 한다.
+- 성별별 운동 자산이 서로 다른 `exercise_key`를 사용하면 catalog 의미가 같은
+  후보만 `experimental` descriptor에 추가하고, 실제 영상으로 동일한 기본 동작을
+  확인한 exact key만 `validated` allowlist에 남긴다.
+- 푸시업·플랭크·런지는 남성 실기기 검증을 위한 exact 후보 key가 등록되어 있지만
+  실제 영상 보정 전까지 `experimental`을 유지한다.
+- 힙 브리지는 남성 바닥 양발 기본 동작 자산이 현재 없으므로 Heel/bench 변형을
+  이름 유사만으로 연결하지 않는다.
 - `experimental` 종목은 실제 영상 검증 전 운영 지원 완료로 표현하지 않는다.
 - 사람 미검출, 영상 길이, 촬영 방향, 관절 부족, 동작 미완료 등
   구조화 error code를 유지한다.

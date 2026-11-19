@@ -212,7 +212,10 @@ _PLANK_DESCRIPTOR = _ExerciseDescriptor(
     camera_view="side",
     validation_status="experimental",
     rule_version="plank-side-hold-rules-v1",
-    catalog_exercise_keys=("ex_0c8105c6325fea",),
+    catalog_exercise_keys=(
+        "ex_0c8105c6325fea",
+        "ex_20ad307ede1a03",
+    ),
     capture_instructions=(
         "어깨부터 발목까지 보이도록 정확한 측면에서 고정 촬영하세요.",
         "플랭크 자세를 잡기 전부터 촬영하고 2초 이상 유지한 뒤 내려오세요.",
@@ -1400,7 +1403,10 @@ _CYCLIC_EXERCISE_PROFILES = (
             display_name_ko="푸시업",
             camera_view="side",
             rule_version="push-up-side-rules-v1",
-            catalog_exercise_keys=("ex_f6c866501f5ac0",),
+            catalog_exercise_keys=(
+                "ex_f6c866501f5ac0",
+                "ex_fcefe9818d1b7b",
+            ),
             capture_instructions=(
                 "머리부터 발목까지 보이도록 측면에서 촬영하세요.",
                 "팔을 편 자세로 시작해 2~5회 후 같은 자세로 끝내세요.",
@@ -1431,6 +1437,9 @@ _CYCLIC_EXERCISE_PROFILES = (
             display_name_ko="힙 브리지",
             camera_view="side",
             rule_version="glute-bridge-side-rules-v1",
+            # 남성 catalog에는 현재 바닥 양발 힙 브리지와 정확히
+            # 같은 자산이 없다. Heel/bench 변형을 이름 유사만으로
+            # 연결하지 않고 exact 자산이 추가될 때까지 여성 key만 둔다.
             catalog_exercise_keys=("ex_1bb869dd7b0cc4",),
             capture_instructions=(
                 "어깨부터 발목까지 보이도록 측면에서 촬영하세요.",
@@ -1503,7 +1512,10 @@ _CYCLIC_EXERCISE_PROFILES = (
             display_name_ko="런지",
             camera_view="side",
             rule_version="lunge-side-rules-v1",
-            catalog_exercise_keys=("ex_b34acd08bef11a",),
+            catalog_exercise_keys=(
+                "ex_b34acd08bef11a",
+                "ex_cbe084d8bcb64e",
+            ),
             capture_instructions=(
                 "전신과 양발이 보이도록 측면에서 촬영하세요.",
                 "같은 방향의 런지를 2~5회 수행하세요.",

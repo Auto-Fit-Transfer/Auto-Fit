@@ -59,6 +59,24 @@ def test_capabilities_contract() -> None:
     )
     assert len(result.exercises) == 11
     assert result.exercises[0].camera_view == "side"
+    by_code = {
+        item.exercise_code: item for item in result.exercises
+    }
+    assert by_code["push_up"].catalog_exercise_keys == [
+        "ex_f6c866501f5ac0",
+        "ex_fcefe9818d1b7b",
+    ]
+    assert by_code["plank"].catalog_exercise_keys == [
+        "ex_0c8105c6325fea",
+        "ex_20ad307ede1a03",
+    ]
+    assert by_code["lunge"].catalog_exercise_keys == [
+        "ex_b34acd08bef11a",
+        "ex_cbe084d8bcb64e",
+    ]
+    assert by_code["glute_bridge"].catalog_exercise_keys == [
+        "ex_1bb869dd7b0cc4"
+    ]
 
     invalid = deepcopy(CAPABILITIES_EXAMPLE)
     invalid["exercises"][0]["validation_status"] = "production"

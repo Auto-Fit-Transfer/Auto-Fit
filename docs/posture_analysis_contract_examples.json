@@ -31,7 +31,7 @@
         "analysis_side_required": false,
         "validation_status": "experimental",
         "rule_version": "push-up-side-rules-v1",
-        "catalog_exercise_keys": ["ex_f6c866501f5ac0"],
+        "catalog_exercise_keys": ["ex_f6c866501f5ac0", "ex_fcefe9818d1b7b"],
         "capture_instructions": ["머리부터 발목까지 보이도록 측면에서 촬영하세요."],
         "limitations": ["팔꿈치 벌어짐과 손 간격은 판단하지 않습니다."]
       },
@@ -43,7 +43,7 @@
         "analysis_side_required": false,
         "validation_status": "experimental",
         "rule_version": "plank-side-hold-rules-v1",
-        "catalog_exercise_keys": ["ex_0c8105c6325fea"],
+        "catalog_exercise_keys": ["ex_0c8105c6325fea", "ex_20ad307ede1a03"],
         "capture_instructions": ["어깨부터 발목까지 보이도록 측면에서 촬영하세요."],
         "limitations": ["실제 체중 부하와 바닥 접촉 여부는 판단하지 않습니다."]
       },
@@ -91,7 +91,7 @@
         "analysis_side_required": true,
         "validation_status": "experimental",
         "rule_version": "lunge-side-rules-v1",
-        "catalog_exercise_keys": ["ex_b34acd08bef11a"],
+        "catalog_exercise_keys": ["ex_b34acd08bef11a", "ex_cbe084d8bcb64e"],
         "capture_instructions": ["같은 방향의 런지를 측면에서 촬영하세요."],
         "limitations": ["무릎 정면 외반은 판단하지 않습니다."]
       },

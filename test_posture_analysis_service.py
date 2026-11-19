@@ -19,6 +19,7 @@ from app.schemas.posture_analysis import (
     PostureHoldAnalysisResult,
 )
 from app.scripts import download_pose_model
+from app.services.exercise_catalog_service import load_exercise_catalog
 from app.services.posture_analysis_service import (
     CalfRaisePostureAnalyzer,
     CyclicPostureAnalyzer,
@@ -638,7 +639,8 @@ def test_capabilities_use_exact_catalog_keys_and_validation_status() -> None:
     assert by_code["squat"].validation_status == "validated"
     assert by_code["plank"].movement_type == "hold"
     assert by_code["plank"].catalog_exercise_keys == [
-        "ex_0c8105c6325fea"
+        "ex_0c8105c6325fea",
+        "ex_20ad307ede1a03",
     ]
     assert by_code["lunge"].analysis_side_required is True
     assert by_code["push_up"].analysis_side_required is False
@@ -655,8 +657,80 @@ def test_capabilities_use_exact_catalog_keys_and_validation_status() -> None:
     ]
     assert len(all_keys) == len(set(all_keys))
     assert by_code["push_up"].catalog_exercise_keys == [
-        "ex_f6c866501f5ac0"
+        "ex_f6c866501f5ac0",
+        "ex_fcefe9818d1b7b",
     ]
+    assert by_code["lunge"].catalog_exercise_keys == [
+        "ex_b34acd08bef11a",
+        "ex_cbe084d8bcb64e",
+    ]
+    # Heel/bench bridge는 현재 floor bridge 규칙과 다른 변형이므로
+    # 정확한 남성 바닥 양발 자산이 생길 때까지 허용하지 않는다.
+    assert by_code["glute_bridge"].catalog_exercise_keys == [
+        "ex_1bb869dd7b0cc4"
+    ]
+
+
+def test_male_posture_keys_exist_in_active_catalog() -> None:
+    rows = load_exercise_catalog()
+    male_names_by_key = {
+        row.exercise_key: row.exercise_name_en
+        for row in rows
+        if row.asset.gender == "male"
+    }
+
+    assert male_names_by_key["ex_fcefe9818d1b7b"] == "Push Up M"
+    assert (
+        male_names_by_key["ex_20ad307ede1a03"]
+        == "Front Elbow Plank"
+    )
+    assert (
+        male_names_by_key["ex_cbe084d8bcb64e"]
+        == "Forward Lunge"
+    )
+    assert "ex_1bb869dd7b0cc4" not in male_names_by_key
+
+
+@pytest.mark.parametrize(
+    ("exercise_code", "exercise_key", "analysis_side"),
+    [
+        ("push_up", "ex_fcefe9818d1b7b", None),
+        ("plank", "ex_20ad307ede1a03", None),
+        ("lunge", "ex_cbe084d8bcb64e", "right"),
+    ],
+)
+def test_team_validation_accepts_male_catalog_keys(
+    exercise_code: str,
+    exercise_key: str,
+    analysis_side: str | None,
+) -> None:
+    service = PostureAnalysisService(
+        settings=Settings(posture_allow_experimental=True)
+    )
+    video_bytes = b"\x00\x00\x00\x18ftypisom" + b"video"
+
+    assert service._validate_request(
+        exercise_code=exercise_code,
+        camera_view="side",
+        exercise_key=exercise_key,
+        analysis_side=analysis_side,  # type: ignore[arg-type]
+        video_bytes=video_bytes,
+    ) == (exercise_code, "side", analysis_side)
+
+
+def test_male_catalog_key_cannot_cross_posture_profiles() -> None:
+    service = PostureAnalysisService(
+        settings=Settings(posture_allow_experimental=True)
+    )
+    video_bytes = b"\x00\x00\x00\x18ftypisom" + b"video"
+
+    with pytest.raises(PostureAnalysisError, match="일치하지 않습니다"):
+        service._validate_request(
+            exercise_code="push_up",
+            camera_view="side",
+            exercise_key="ex_cbe084d8bcb64e",
+            video_bytes=video_bytes,
+        )
 
 
 class _FakeExtractor:
@@ -828,7 +902,13 @@ def test_service_rejects_unsupported_request_and_file() -> None:
         )
 
 
-def test_service_blocks_experimental_profiles_by_default() -> None:
+@pytest.mark.parametrize(
+    "exercise_key",
+    ["ex_f6c866501f5ac0", "ex_fcefe9818d1b7b"],
+)
+def test_service_blocks_experimental_profiles_by_default(
+    exercise_key: str,
+) -> None:
     service = PostureAnalysisService(settings=Settings())
     video_bytes = b"\x00\x00\x00\x18ftypisom" + b"video"
 
@@ -836,7 +916,7 @@ def test_service_blocks_experimental_profiles_by_default() -> None:
         service._validate_request(
             exercise_code="push_up",
             camera_view="side",
-            exercise_key="ex_f6c866501f5ac0",
+            exercise_key=exercise_key,
             video_bytes=video_bytes,
         )
 

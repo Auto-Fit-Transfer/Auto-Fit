@@ -1188,3 +1188,13 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - Frontend 작업: 선택 슬롯과 요청 감량량을 Backend에 전달하고, 응답의 실제 감소량·미반영량·정책 제한 안내를 확인 화면에 표시. AI Server 직접 호출 금지
 - 테스트 결과: 선택형/일반 재추천·소수점 경계·KDRI·네 끼 변경·OpenAPI·스케줄 집중 회귀 `52 passed`; Recipe·알레르기·Food DB·주간 식단 비-live 회귀 `71 passed`; Python compile 통과
 - 실제 외부 호출: OpenAI·식품안전나라 실호출 없이 fake Structured Output과 공식 후보 fixture로 검증
+
+## 2026-11-19 · 자세 분석 남성 루틴 catalog key 보완
+
+- 상태: AI Server capability allowlist와 계약·회귀 테스트 보완, 실제 남성 스마트폰 영상 검증 및 `validated` 전환 대기
+- 변경 목적: Frontend가 `validated` capability의 exact `exercise_key`로 자세 촬영 버튼을 표시하므로 남성 루틴에서도 같은 기본 동작을 정확히 연결
+- 추가 key: 푸시업 `ex_fcefe9818d1b7b` (`Push Up M`), 플랭크 `ex_20ad307ede1a03` (`Front Elbow Plank`), 런지 `ex_cbe084d8bcb64e` (`Forward Lunge`)
+- 검증 상태: 세 남성 key는 팀 실영상 검증을 위한 allowlist에 추가했지만 해당 profile은 모두 `experimental`을 유지. 운영 기본값에서는 계속 차단되고 Frontend도 노출하지 않음
+- 제외: `Plank On Hands`, `Static Lunge`는 다른 변형이라 자동 상속하지 않음. 힙 브리지는 정확한 남성 바닥 양발 자산이 없어 `Heel Glute Bridge`와 bench 변형을 연결하지 않음
+- Frontend/Backend 영향: Schema 변경 없음. capabilities 배열에 key가 추가되며, 향후 운동별 실영상 검증 후 상태를 `validated`로 바꾸면 기존 exact-key 매칭 흐름으로 남성 루틴에도 촬영 버튼이 활성화됨
+- 개인정보·비용: 실제 사용자 영상, OpenAI 또는 외부 API 호출 없음
