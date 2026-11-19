@@ -857,6 +857,97 @@ class DietMealTarget(BaseModel):
     )
 
 
+DietNutritionProfileMode = Literal[
+    "health_records",
+    "basic_profile",
+]
+
+DietNutritionSex = Literal[
+    "male",
+    "female",
+]
+
+DietReferenceStandard = Literal[
+    "KDRI_2025",
+]
+
+DietMenuStylePreference = Literal[
+    "balanced",
+    "everyday",
+    "health_focused",
+]
+
+
+class DietNutritionDataSources(BaseModel):
+    """Backend가 확인한 건강자료 보유 상태."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
+    inbody_available: bool = False
+    health_checkup_available: bool = False
+
+
+class DietNutritionProfile(BaseModel):
+    """
+    KDRI 성인 기준 조회에 필요한 최소 프로필.
+
+    키와 몸무게는 입력 출처 보존 및 향후 개인화 확장을 위해 받는다.
+    현재 KDRI 요약표의 집단 EER 조회에는 나이와 성별만 사용한다.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
+    profile_mode: DietNutritionProfileMode
+
+    age_years: int = Field(
+        ge=19,
+        le=120,
+    )
+
+    sex: DietNutritionSex
+
+    height_cm: float = Field(
+        ge=80,
+        le=250,
+    )
+
+    weight_kg: float = Field(
+        ge=20,
+        le=400,
+    )
+
+    data_sources: DietNutritionDataSources = Field(
+        default_factory=DietNutritionDataSources,
+    )
+
+    @model_validator(mode="after")
+    def validate_profile_mode_sources(self):
+        has_inbody = self.data_sources.inbody_available
+        has_checkup = self.data_sources.health_checkup_available
+
+        if self.profile_mode == "health_records" and not (
+            has_inbody and has_checkup
+        ):
+            raise ValueError(
+                "health_records mode requires both InBody and "
+                "health checkup data."
+            )
+
+        if self.profile_mode == "basic_profile" and (
+            has_inbody and has_checkup
+        ):
+            raise ValueError(
+                "basic_profile mode cannot be used when both health "
+                "record sources are available."
+            )
+
+        return self
+
+
 class DietNearbyRegion(BaseModel):
     """
     현재 시군구에 특산물이 없을 때 사용할 근교 행정구역 정보.
@@ -937,6 +1028,14 @@ class DietRecommendationRequest(BaseModel):
 
     # Backend/Rule Engine에서 준비된 한 끼 영양 목표
     meal_target: DietMealTarget | None = None
+
+    # 명시적 meal_target이 없을 때만 KDRI 기준 목표 계산에 사용한다.
+    nutrition_profile: DietNutritionProfile | None = None
+
+    reference_standard: DietReferenceStandard = "KDRI_2025"
+
+    # balanced는 기존 일반식 17 + 건강식 4 정책을 보존한다.
+    menu_style_preference: DietMenuStylePreference = "balanced"
 
 
 # =========================================================
@@ -1745,6 +1844,12 @@ class ReplaceMealRequest(BaseModel):
     )
 
     meal_target: DietMealTarget | None = None
+
+    nutrition_profile: DietNutritionProfile | None = None
+
+    reference_standard: DietReferenceStandard = "KDRI_2025"
+
+    menu_style_preference: DietMenuStylePreference = "balanced"
 
 
 class ReplaceMealLLMResponse(BaseModel):

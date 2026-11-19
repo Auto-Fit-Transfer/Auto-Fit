@@ -16,7 +16,10 @@ from openai import AsyncOpenAI
 from pydantic import BaseModel, Field, field_validator
 
 from app.core.config import get_settings
-from app.services.food_catalog_service import ALLERGY_KEYWORD_MAP
+from app.services.food_catalog_service import (
+    ALLERGY_KEYWORD_MAP,
+    get_allergy_keywords,
+)
 from app.services.recipe_service import RecipeService
 
 
@@ -1480,32 +1483,11 @@ class MealRecipeService:
         self,
         allergies: list[str] | None,
     ) -> set[str]:
-
-        result: set[str] = set()
-
-        for allergy in (
+        return get_allergy_keywords(
             self._normalize_string_list(
                 allergies
             )
-        ):
-
-            result.add(
-                allergy
-            )
-
-            mapped = (
-                ALLERGY_KEYWORD_MAP.get(
-                    allergy,
-                    set(),
-                )
-            )
-
-            for keyword in mapped:
-                result.add(
-                    keyword.lower()
-                )
-
-        return result
+        )
 
     # ==================================================
     # 텍스트에 알레르기/기피 재료가 존재하는지 검사
@@ -2893,7 +2875,23 @@ class MealRecipeService:
             if matched:
                 notices.append(canonical)
 
-        return notices
+        # 상세 알레르기명이 검출되면 같은 의미의 상위 분류를
+        # 중복 표시하지 않는다. 상위 분류만 검출된 경우에는 유지한다.
+        aggregate_specifics = {
+            "견과류": {"땅콩", "호두", "잣"},
+            "갑각류": {"새우", "게"},
+            "생선": {"고등어"},
+        }
+        notice_set = set(notices)
+
+        return [
+            notice
+            for notice in notices
+            if not (
+                notice in aggregate_specifics
+                and aggregate_specifics[notice] & notice_set
+            )
+        ]
 
     @staticmethod
     def _meal_estimated_duration(

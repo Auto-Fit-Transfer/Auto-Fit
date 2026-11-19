@@ -236,6 +236,15 @@ async def _run_replacement_action_test() -> None:
                     metric_statuses={"blood_pressure": "high"},
                     food_allergens=["계란"],
                     disliked_foods=["버섯"],
+                    health_goal={"goal_type": "fat_loss"},
+                    nutrition_profile={
+                        "profile_mode": "basic_profile",
+                        "age_years": 34,
+                        "sex": "male",
+                        "height_cm": 175,
+                        "weight_kg": 75,
+                    },
+                    menu_style_preference="everyday",
                     diet_summary=_diet_summary(),
                 ),
             )
@@ -255,6 +264,15 @@ async def _run_replacement_action_test() -> None:
                     metric_statuses={"blood_pressure": "high"},
                     food_allergens=["계란"],
                     disliked_foods=["버섯"],
+                    health_goal={"goal_type": "fat_loss"},
+                    nutrition_profile={
+                        "profile_mode": "basic_profile",
+                        "age_years": 34,
+                        "sex": "male",
+                        "height_cm": 175,
+                        "weight_kg": 75,
+                    },
+                    menu_style_preference="everyday",
                     diet_summary=_diet_summary(),
                 ),
             )
@@ -275,6 +293,12 @@ async def _run_replacement_action_test() -> None:
     ]
     assert request.food_allergens == ["계란"]
     assert request.disliked_foods == ["버섯"]
+    assert request.health_goal is not None
+    assert request.health_goal.goal_type == "fat_loss"
+    assert request.nutrition_profile is not None
+    assert request.nutrition_profile.age_years == 34
+    assert request.reference_standard == "KDRI_2025"
+    assert request.menu_style_preference == "everyday"
 
     assert result.action == "diet_replace"
     assert result.action_status == "ready_for_backend_apply"

@@ -17,6 +17,7 @@ def _candidate(
     *,
     score: float,
     calories: float,
+    menu_style: str = "everyday",
 ) -> dict:
     return {
         "menu_name": menu_name,
@@ -37,6 +38,7 @@ def _candidate(
             "carbohydrate_g": 48.6,
         },
         "final_score": score,
+        "menu_style": menu_style,
         "local_specialties": ["지역 식재료"],
     }
 
@@ -216,9 +218,19 @@ def _run_chat_context_test() -> None:
             "fat_g": 15,
             "carbohydrate_g": 60,
         },
+        nutrition_profile={
+            "profile_mode": "basic_profile",
+            "age_years": 34,
+            "sex": "male",
+            "height_cm": 175,
+            "weight_kg": 75,
+        },
+        menu_style_preference="health_focused",
     )
     assert context.disliked_foods == ["버섯"]
     assert context.meal_target is not None
+    assert context.nutrition_profile is not None
+    assert context.menu_style_preference == "health_focused"
 
     menu_names = _extract_weekly_menu_names(
         {
@@ -251,9 +263,49 @@ def _run_chat_context_test() -> None:
     ]
 
 
+def _run_style_filter_test() -> None:
+    everyday = _candidate(
+        "일반식",
+        score=100.0,
+        calories=500.0,
+        menu_style="everyday",
+    )
+    health = _candidate(
+        "건강식",
+        score=90.0,
+        calories=480.0,
+        menu_style="health_focused",
+    )
+
+    filtered = service._filter_replacement_candidates_by_style(
+        candidates=[everyday, health],
+        menu_style_preference="health_focused",
+    )
+    assert filtered == [health]
+
+    try:
+        service._filter_replacement_candidates_by_style(
+            candidates=[everyday],
+            menu_style_preference="health_focused",
+        )
+    except RuntimeError as exc:
+        assert "health_focused" in str(exc)
+    else:
+        raise AssertionError("재추천이 반대 메뉴 스타일을 허용했습니다.")
+
+
+def test_replacement_style_filter_contract() -> None:
+    _run_style_filter_test()
+
+
+def test_chat_context_preserves_diet_profile_and_style() -> None:
+    _run_chat_context_test()
+
+
 def main() -> None:
     _run_selection_failure_test()
     _run_chat_context_test()
+    _run_style_filter_test()
     asyncio.run(
         _run_pipeline_test()
     )

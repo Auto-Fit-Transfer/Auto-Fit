@@ -11,9 +11,13 @@ from pydantic import (
 
 from app.schemas.recommendation import (
     DietDay,
+    DietHealthGoal,
+    DietMenuStylePreference,
     DietMealType,
     DietMealTarget,
     DietNearbyRegion,
+    DietNutritionProfile,
+    DietReferenceStandard,
     RecommendationSource,
 )
 from app.schemas.health_analysis import (
@@ -254,6 +258,8 @@ class ChatContext(BaseModel):
 
     goal_type: str | None = None
 
+    health_goal: DietHealthGoal | None = None
+
     food_allergens: list[str] | None = None
 
     disliked_foods: list[str] | None = None
@@ -273,6 +279,12 @@ class ChatContext(BaseModel):
     nearby_regions: list[DietNearbyRegion] | None = None
 
     meal_target: DietMealTarget | None = None
+
+    nutrition_profile: DietNutritionProfile | None = None
+
+    reference_standard: DietReferenceStandard = "KDRI_2025"
+
+    menu_style_preference: DietMenuStylePreference = "balanced"
 
     exercise_summary: dict | None = None
 

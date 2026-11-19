@@ -6,6 +6,8 @@ from typing import Any
 
 import asyncio
 
+import re
+
 
 
 import httpx
@@ -386,6 +388,28 @@ ALLERGY_KEYWORD_MAP = {
 
         "라떼",
 
+        "분유",
+
+        "연유",
+
+        "유청",
+
+        "카제인",
+
+        "밀크",
+
+        "milk",
+
+        "dairy",
+
+        "yogurt",
+
+        "cheese",
+
+        "butter",
+
+        "cream",
+
     },
 
 
@@ -418,6 +442,20 @@ ALLERGY_KEYWORD_MAP = {
 
         "에그",
 
+        "메추리알",
+
+        "마요네즈",
+
+        "난백",
+
+        "난황",
+
+        "egg",
+
+        "eggs",
+
+        "mayonnaise",
+
     },
 
 
@@ -429,6 +467,14 @@ ALLERGY_KEYWORD_MAP = {
         "달걀",
 
         "에그",
+
+        "메추리알",
+
+        "마요네즈",
+
+        "난백",
+
+        "난황",
 
     },
 
@@ -447,6 +493,26 @@ ALLERGY_KEYWORD_MAP = {
         "간장",
 
         "콩나물",
+
+        "두유",
+
+        "유부",
+
+        "청국장",
+
+        "낫토",
+
+        "템페",
+
+        "soy",
+
+        "soybean",
+
+        "tofu",
+
+        "miso",
+
+        "natto",
 
     },
 
@@ -484,6 +550,36 @@ ALLERGY_KEYWORD_MAP = {
 
         "만두",
 
+        "글루텐",
+
+        "밀가루",
+
+        "라면",
+
+        "우동",
+
+        "쿠키",
+
+        "케이크",
+
+        "또띠아",
+
+        "wheat",
+
+        "gluten",
+
+        "flour",
+
+        "bread",
+
+        "noodle",
+
+        "pasta",
+
+        "cookie",
+
+        "cake",
+
     },
 
 
@@ -494,6 +590,12 @@ ALLERGY_KEYWORD_MAP = {
 
         "막국수",
 
+        "소바",
+
+        "buckwheat",
+
+        "soba",
+
     },
 
 
@@ -503,6 +605,54 @@ ALLERGY_KEYWORD_MAP = {
         "땅콩",
 
         "피넛",
+
+        "peanut",
+
+    },
+
+
+
+    "견과류": {
+
+        "견과류",
+
+        "견과",
+
+        "호두",
+
+        "아몬드",
+
+        "땅콩",
+
+        "캐슈",
+
+        "캐슈넛",
+
+        "피스타치오",
+
+        "마카다미아",
+
+        "헤이즐넛",
+
+        "피칸",
+
+        "잣",
+
+        "walnut",
+
+        "almond",
+
+        "peanut",
+
+        "cashew",
+
+        "pistachio",
+
+        "macadamia",
+
+        "hazelnut",
+
+        "pecan",
 
     },
 
@@ -527,6 +677,44 @@ ALLERGY_KEYWORD_MAP = {
     "새우": {
 
         "새우",
+
+        "shrimp",
+
+        "prawn",
+
+    },
+
+
+
+    "갑각류": {
+
+        "갑각류",
+
+        "새우",
+
+        "게",
+
+        "꽃게",
+
+        "대게",
+
+        "킹크랩",
+
+        "가재",
+
+        "랍스터",
+
+        "크랩",
+
+        "shrimp",
+
+        "prawn",
+
+        "crab",
+
+        "lobster",
+
+        "crustacean",
 
     },
 
@@ -554,6 +742,52 @@ ALLERGY_KEYWORD_MAP = {
 
 
 
+    "생선": {
+
+        "생선",
+
+        "어류",
+
+        "연어",
+
+        "고등어",
+
+        "참치",
+
+        "대구",
+
+        "명태",
+
+        "동태",
+
+        "황태",
+
+        "갈치",
+
+        "꽁치",
+
+        "삼치",
+
+        "조기",
+
+        "멸치",
+
+        "어묵",
+
+        "salmon",
+
+        "mackerel",
+
+        "tuna",
+
+        "cod",
+
+        "fish",
+
+    },
+
+
+
     "오징어": {
 
         "오징어",
@@ -576,6 +810,26 @@ ALLERGY_KEYWORD_MAP = {
 
         "꼬막",
 
+        "가리비",
+
+        "소라",
+
+        "재첩",
+
+        "키조개",
+
+        "골뱅이",
+
+        "clam",
+
+        "mussel",
+
+        "oyster",
+
+        "abalone",
+
+        "scallop",
+
     },
 
 
@@ -586,6 +840,12 @@ ALLERGY_KEYWORD_MAP = {
 
         "피치",
 
+        "황도",
+
+        "백도",
+
+        "peach",
+
     },
 
 
@@ -593,6 +853,28 @@ ALLERGY_KEYWORD_MAP = {
     "토마토": {
 
         "토마토",
+
+    },
+
+
+
+    "참깨": {
+
+        "참깨",
+
+        "깨",
+
+        "참기름",
+
+        "깨소금",
+
+        "세서미",
+
+        "타히니",
+
+        "sesame",
+
+        "tahini",
 
     },
 
@@ -645,6 +927,84 @@ ALLERGY_KEYWORD_MAP = {
     },
 
 }
+
+
+ALLERGY_NAME_ALIASES = {
+    "milk": "우유",
+    "dairy": "우유",
+    "유제품": "우유",
+    "달걀": "계란",
+    "egg": "계란",
+    "eggs": "계란",
+    "난류": "계란",
+    "알류": "계란",
+    "peanut": "땅콩",
+    "nuts": "견과류",
+    "tree nuts": "견과류",
+    "tree_nuts": "견과류",
+    "밀(글루텐)": "밀",
+    "wheat": "밀",
+    "gluten": "밀",
+    "콩": "대두",
+    "콩(대두)": "대두",
+    "soy": "대두",
+    "soybean": "대두",
+    "buckwheat": "메밀",
+    "crab": "갑각류",
+    "crustacean": "갑각류",
+    "crustaceans": "갑각류",
+    "shellfish": "조개",
+    "clam": "조개",
+    "조개류": "조개",
+    "패류": "조개",
+    "fish": "생선",
+    "어류": "생선",
+    "peach": "복숭아",
+    "sesame": "참깨",
+}
+
+
+def get_allergy_keywords(
+    allergies: list[str] | None,
+) -> set[str]:
+    """사용자 알레르기명을 식품 검색용 금지 키워드로 확장한다."""
+
+    result: set[str] = set()
+
+    for raw_allergy in allergies or []:
+        normalized = re.sub(
+            r"\s+",
+            " ",
+            str(raw_allergy).strip().lower(),
+        )
+        if not normalized:
+            continue
+
+        candidates = {normalized}
+        without_parenthetical = re.sub(
+            r"[\(（][^\)）]*[\)）]",
+            "",
+            normalized,
+        ).strip()
+        if without_parenthetical:
+            candidates.add(without_parenthetical)
+
+        for candidate in candidates:
+            canonical = ALLERGY_NAME_ALIASES.get(
+                candidate,
+                candidate,
+            )
+            result.add(candidate)
+            result.add(canonical)
+            result.update(
+                keyword.lower()
+                for keyword in ALLERGY_KEYWORD_MAP.get(
+                    canonical,
+                    set(),
+                )
+            )
+
+    return result
 
 
 
@@ -1417,61 +1777,13 @@ class FoodCatalogService:
 
 
 
-        for allergy in allergies:
+        for keyword in get_allergy_keywords(
+            allergies
+        ):
 
-
-
-            allergy = (
-
-                str(allergy)
-
-                .strip()
-
-                .lower()
-
-            )
-
-
-
-            if not allergy:
-
-                continue
-
-
-
-            if allergy in text:
+            if keyword in text:
 
                 return True
-
-
-
-            mapped = (
-
-                ALLERGY_KEYWORD_MAP.get(
-
-                    allergy,
-
-                    set(),
-
-                )
-
-            )
-
-
-
-            for keyword in mapped:
-
-
-
-                if (
-
-                    keyword.lower()
-
-                    in text
-
-                ):
-
-                    return True
 
 
 

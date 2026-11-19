@@ -4,6 +4,7 @@ from app.schemas.health_analysis import (
     DietContextInput,
     InventoryItemInput,
 )
+from app.services.food_catalog_service import get_allergy_keywords
 
 
 @dataclass
@@ -39,18 +40,18 @@ def _has_allergy_conflict(
     allergies: list[str],
 ) -> bool:
     """
-    MVP용 보수적 문자열 기반 알레르기 충돌 검사.
+    공용 알레르기 키워드 확장을 사용하는 보수적 충돌 검사.
 
-    현재 Backend가 재료명과 알레르기 문자열을 보내므로
-    재료명에 알레르기명이 포함되는 경우 제외한다.
+    Backend가 보낸 알레르기명뿐 아니라 UI 선택값의 별칭과
+    대표 파생 식품도 함께 검사한다.
 
     예:
     item.name = "우유"
     allergies = ["우유"]
     -> True
 
-    향후 식품/알레르기 ontology가 생기면
-    별도 매핑 테이블로 교체할 수 있다.
+    사용자 직접 입력 알레르기는 입력한 이름의 직접 일치를
+    최소 안전 기준으로 사용한다.
     """
 
     item_name = _normalize_text(
@@ -60,15 +61,10 @@ def _has_allergy_conflict(
     if not item_name:
         return False
 
-    for allergy in allergies:
-        allergy_name = _normalize_text(
-            allergy
-        )
-
-        if not allergy_name:
-            continue
-
-        if allergy_name in item_name:
+    for keyword in get_allergy_keywords(
+        allergies
+    ):
+        if keyword in item_name:
             return True
 
     return False

@@ -62,6 +62,10 @@ from app.services.diet_context_service import (
 )
 
 from app.services.food_catalog_service import FoodCatalogService
+from app.services.kdri_nutrition_service import (
+    KDRI_REFERENCE_STANDARD,
+    calculate_kdri_diet_targets,
+)
 from app.services.local_specialty_service import LocalSpecialtyService
 
 
@@ -750,6 +754,104 @@ DEFAULT_SNACK_TARGET = {
 VERIFIED_MEAL_CANDIDATE_LIMIT = 40
 VERIFIED_SNACK_CANDIDATE_LIMIT = 20
 
+# 주간 28끼 중 간식 7끼는 별도 안전 간식 정책을 사용한다.
+# 아침/점심/저녁 21끼에는 친숙한 일반식 17끼와 명시적 건강식
+# 4끼를 배치한다. 비율은 안전하게 검증된 후보가 충분할 때의
+# 목표이며, 후보 부족 시 알레르기/영양 규칙이 비율보다 우선한다.
+MENU_STYLE_BALANCED = "balanced"
+MENU_STYLE_EVERYDAY = "everyday"
+MENU_STYLE_HEALTH_FOCUSED = "health_focused"
+WEEKLY_EVERYDAY_MAIN_MEAL_TARGET = 17
+WEEKLY_HEALTH_MAIN_MEAL_TARGET = 4
+WEEKLY_HEALTH_FOCUSED_SLOTS = frozenset(
+    {
+        ("monday", "breakfast"),
+        ("wednesday", "lunch"),
+        ("friday", "dinner"),
+        ("sunday", "lunch"),
+    }
+)
+
+# 공식 음식 DB의 원순서가 특정 생선/해초/샐러드에 치우쳐 있어
+# 역할별 조합 상한(현재 8개)을 적용하기 전에 친숙한 식사 유형을
+# 먼저 고르게 선택한다. 이 순서는 안전 필터 이후에만 적용된다.
+EVERYDAY_ROLE_PRIORITY_KEYWORDS: dict[str, tuple[str, ...]] = {
+    "main": (
+        "제육",
+        "불고기",
+        "오징어볶음",
+        "닭볶음",
+        "구이",
+        "조림",
+        "찜",
+        "수육",
+        "전",
+        "볶음",
+    ),
+    "carb": (
+        "쌀밥",
+        "흰밥",
+        "보리밥",
+        "잡곡밥",
+        "현미밥",
+        "콩밥",
+        "고구마",
+        "옥수수",
+    ),
+    "side": (
+        "배추김치",
+        "김치",
+        "계란",
+        "콩나물",
+        "시금치",
+        "감자",
+        "멸치",
+        "두부",
+        "나물",
+        "무침",
+    ),
+    "mixed": (
+        "비빔밥",
+        "덮밥",
+        "볶음밥",
+        "카레라이스",
+        "김밥",
+        "국밥",
+        "오므라이스",
+        "샌드위치",
+        "죽",
+    ),
+    "protein_side": (
+        "닭가슴살",
+        "참치",
+        "치킨",
+        "두부",
+        "계란",
+        "냉채",
+        "샐러드",
+    ),
+}
+
+EXPLICIT_HEALTH_MENU_KEYWORDS = (
+    "샐러드",
+    "닭가슴살",
+    "곤약",
+    "프로틴",
+    "고단백",
+    "저염",
+    "저당",
+    "오트밀",
+    "귀리",
+    "퀴노아",
+    "두부면",
+    "냉채",
+)
+
+CONVENIENCE_MENU_MARKERS = (
+    "간편조리세트",
+    "밀키트",
+)
+
 DIET_HEALTH_GOAL_TYPES = {
     "fat_loss",
     "muscle_gain",
@@ -928,6 +1030,239 @@ def _normalize_text(
         .strip()
         .lower()
         .replace(" ", "")
+    )
+
+
+def _food_candidate_family_key(
+    food: dict[str, Any],
+) -> str:
+    """비슷한 공식 음식 변형을 우선 후보에서 한 번만 선택한다."""
+
+    normalized = _normalize_text(
+        str(food.get("food_name") or "")
+    )
+    if not normalized:
+        return ""
+
+    base = re.split(r"[_\(（/]", normalized, maxsplit=1)[0]
+    return base or normalized
+
+
+def _prioritize_food_group_for_lifestyle(
+    *,
+    role: str,
+    foods: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """
+    공식 DB 원순서와 무관하게 친숙한 음식군을 조합 후보 앞쪽에 둔다.
+
+    음식 자체를 추가하거나 안전 필터를 우회하지 않으며, 이미 검증된
+    동일 목록의 순서만 바꾼다. downstream은 기존 상한을 그대로 쓴다.
+    """
+
+    source = list(foods)
+    keywords = EVERYDAY_ROLE_PRIORITY_KEYWORDS.get(role, ())
+    if not source or not keywords:
+        return source
+
+    selected_indexes: set[int] = set()
+    selected_families: set[str] = set()
+    prioritized: list[dict[str, Any]] = []
+
+    for keyword in keywords:
+        normalized_keyword = _normalize_text(keyword)
+        matches: list[tuple[int, dict[str, Any]]] = []
+
+        for index, food in enumerate(source):
+            if index in selected_indexes:
+                continue
+
+            name = str(food.get("food_name") or "")
+            normalized_name = _normalize_text(name)
+            family = _food_candidate_family_key(food)
+
+            if (
+                not normalized_name
+                or normalized_keyword not in normalized_name
+                or (family and family in selected_families)
+            ):
+                continue
+
+            matches.append((index, food))
+
+        if not matches:
+            continue
+
+        index, selected = min(
+            matches,
+            key=lambda item: (
+                any(
+                    marker in str(item[1].get("food_name") or "")
+                    for marker in CONVENIENCE_MENU_MARKERS
+                ),
+                len(str(item[1].get("food_name") or "")),
+                item[0],
+            ),
+        )
+        prioritized.append(selected)
+        selected_indexes.add(index)
+        family = _food_candidate_family_key(selected)
+        if family:
+            selected_families.add(family)
+
+    # 키워드 우선 후보 뒤에는 새로운 음식군을 먼저 배치하고,
+    # 마지막에 같은 음식군의 변형을 원래 순서대로 보존한다.
+    remaining_unique: list[dict[str, Any]] = []
+    remaining_variants: list[dict[str, Any]] = []
+
+    for index, food in enumerate(source):
+        if index in selected_indexes:
+            continue
+        family = _food_candidate_family_key(food)
+        if family and family not in selected_families:
+            remaining_unique.append(food)
+            selected_families.add(family)
+        else:
+            remaining_variants.append(food)
+
+    return [*prioritized, *remaining_unique, *remaining_variants]
+
+
+def _prioritize_food_groups_for_lifestyle(
+    groups: dict[str, list[dict[str, Any]]],
+) -> dict[str, list[dict[str, Any]]]:
+    return {
+        role: _prioritize_food_group_for_lifestyle(
+            role=role,
+            foods=foods,
+        )
+        for role, foods in groups.items()
+    }
+
+
+def _classify_meal_candidate_style(
+    candidate: dict[str, Any],
+) -> str:
+    """후보를 일반식 또는 명시적 건강식으로 내부 분류한다."""
+
+    explicit = str(candidate.get("menu_style") or "").strip()
+    if explicit in {
+        MENU_STYLE_EVERYDAY,
+        MENU_STYLE_HEALTH_FOCUSED,
+    }:
+        return explicit
+
+    pattern = str(candidate.get("pattern") or "")
+    items = candidate.get("items") or []
+    item_names = [
+        _normalize_text(str(item.get("food_name") or ""))
+        for item in items
+        if isinstance(item, dict)
+    ]
+    primary_name = item_names[0] if item_names else ""
+
+    if pattern == "protein_side_carb_side":
+        return MENU_STYLE_HEALTH_FOCUSED
+
+    if any(
+        _normalize_text(keyword) in primary_name
+        for keyword in EXPLICIT_HEALTH_MENU_KEYWORDS
+    ):
+        return MENU_STYLE_HEALTH_FOCUSED
+
+    return MENU_STYLE_EVERYDAY
+
+
+def _preferred_menu_style_for_slot(
+    *,
+    day: str,
+    meal_type: str,
+    menu_style_preference: str = MENU_STYLE_BALANCED,
+) -> str:
+    if menu_style_preference == MENU_STYLE_EVERYDAY:
+        return MENU_STYLE_EVERYDAY
+    if menu_style_preference == MENU_STYLE_HEALTH_FOCUSED:
+        return MENU_STYLE_HEALTH_FOCUSED
+    if (day, meal_type) in WEEKLY_HEALTH_FOCUSED_SLOTS:
+        return MENU_STYLE_HEALTH_FOCUSED
+    return MENU_STYLE_EVERYDAY
+
+
+def _prefer_menu_style_candidates(
+    *,
+    candidates: list[dict[str, Any]],
+    preferred_style: str,
+    used_menu_names: set[str],
+    strict_style: bool = False,
+) -> list[dict[str, Any]]:
+    """
+    balanced는 기존 17:4 목표를 위해 필요할 때 교차 스타일을 허용한다.
+
+    명시적 everyday/health_focused는 같은 스타일 후보만 유지하고,
+    후보가 없으면 반대 스타일을 섞지 않고 실패한다.
+    """
+
+    preferred = [
+        candidate
+        for candidate in candidates
+        if _classify_meal_candidate_style(candidate) == preferred_style
+    ]
+    unused_preferred = [
+        candidate
+        for candidate in preferred
+        if str(candidate.get("menu_name") or "").strip()
+        not in used_menu_names
+    ]
+
+    if strict_style:
+        if preferred:
+            # 이미 선택된 메뉴뿐이어도 같은 스타일 후보를 유지한다.
+            # downstream 스케줄러가 다양성 규칙을 단계적으로 완화한다.
+            return preferred
+
+        raise RuntimeError(
+            "선택한 메뉴 스타일의 안전한 검증 후보가 없습니다: "
+            f"{preferred_style}"
+        )
+
+    if unused_preferred:
+        return preferred
+
+    logger.warning(
+        "Diet menu style target relaxed preferred=%s "
+        "preferred_candidates=%d used_menus=%d",
+        preferred_style,
+        len(preferred),
+        len(used_menu_names),
+    )
+    return candidates
+
+
+def _resolve_menu_style_preference(request: Any) -> str:
+    payload = _request_payload(request)
+    preference = str(
+        payload.get("menu_style_preference")
+        or MENU_STYLE_BALANCED
+    ).strip()
+
+    if preference not in {
+        MENU_STYLE_BALANCED,
+        MENU_STYLE_EVERYDAY,
+        MENU_STYLE_HEALTH_FOCUSED,
+    }:
+        raise RuntimeError("Unsupported diet menu style preference.")
+
+    return preference
+
+
+def _menu_style_targets(preference: str) -> tuple[int, int]:
+    if preference == MENU_STYLE_EVERYDAY:
+        return (21, 0)
+    if preference == MENU_STYLE_HEALTH_FOCUSED:
+        return (0, 21)
+    return (
+        WEEKLY_EVERYDAY_MAIN_MEAL_TARGET,
+        WEEKLY_HEALTH_MAIN_MEAL_TARGET,
     )
 
 
@@ -1355,14 +1690,9 @@ def _coerce_target_dict(
     return result
 
 
-def _extract_meal_target(
-    request: Any,
-) -> dict[str, float]:
-
-    payload = _request_payload(
-        request
-    )
-
+def _extract_explicit_meal_target(
+    payload: dict[str, Any],
+) -> dict[str, float] | None:
     raw_target = _first_non_empty(
         payload,
         [
@@ -1371,10 +1701,122 @@ def _extract_meal_target(
             "meal_nutrition_target",
         ],
     )
+    if raw_target is None:
+        return None
 
     return _coerce_target_dict(
         raw_target,
         DEFAULT_MEAL_TARGET,
+    )
+
+
+def _extract_kdri_target_bundle(
+    payload: dict[str, Any],
+) -> dict[str, Any] | None:
+    profile = payload.get("nutrition_profile")
+    if not isinstance(profile, dict):
+        return None
+
+    reference_standard = str(
+        payload.get("reference_standard")
+        or KDRI_REFERENCE_STANDARD
+    ).strip()
+    if reference_standard != KDRI_REFERENCE_STANDARD:
+        raise RuntimeError("Unsupported diet nutrition reference standard.")
+
+    try:
+        target_bundle = calculate_kdri_diet_targets(
+            age_years=int(profile["age_years"]),
+            sex=str(profile["sex"]),
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RuntimeError(
+            "KDRI 영양 목표 계산에 필요한 프로필이 올바르지 않습니다."
+        ) from exc
+
+    return {
+        **target_bundle,
+        "profile_mode": profile.get("profile_mode"),
+    }
+
+
+def _resolve_nutrition_targets(
+    request: Any,
+) -> dict[str, Any]:
+    """명시 목표 → KDRI → 기존 기본값 순서로 목표를 결정한다."""
+
+    payload = _request_payload(request)
+    explicit_meal_target = _extract_explicit_meal_target(payload)
+    kdri_bundle = _extract_kdri_target_bundle(payload)
+
+    if explicit_meal_target is not None:
+        return {
+            "meal_target": explicit_meal_target,
+            "snack_target": (
+                dict(kdri_bundle["snack_target"])
+                if kdri_bundle is not None
+                else dict(DEFAULT_SNACK_TARGET)
+            ),
+            "target_source": "explicit",
+            "reference_standard": (
+                kdri_bundle.get("reference_standard")
+                if kdri_bundle is not None
+                else None
+            ),
+            "reference_group_id": (
+                kdri_bundle.get("reference_group_id")
+                if kdri_bundle is not None
+                else None
+            ),
+            "policy_version": (
+                kdri_bundle.get("policy_version")
+                if kdri_bundle is not None
+                else None
+            ),
+            "profile_mode": (
+                kdri_bundle.get("profile_mode")
+                if kdri_bundle is not None
+                else None
+            ),
+            "daily_target": (
+                kdri_bundle.get("daily_target")
+                if kdri_bundle is not None
+                else None
+            ),
+        }
+
+    if kdri_bundle is not None:
+        return {
+            **kdri_bundle,
+            "meal_target": dict(kdri_bundle["meal_target"]),
+            "snack_target": dict(kdri_bundle["snack_target"]),
+        }
+
+    return {
+        "meal_target": dict(DEFAULT_MEAL_TARGET),
+        "snack_target": dict(DEFAULT_SNACK_TARGET),
+        "target_source": "default",
+        "reference_standard": None,
+        "reference_group_id": None,
+        "policy_version": None,
+        "profile_mode": None,
+        "daily_target": None,
+    }
+
+
+def _extract_meal_target(
+    request: Any,
+) -> dict[str, float]:
+    return dict(
+        _resolve_nutrition_targets(request)["meal_target"]
+    )
+
+
+def _extract_snack_target(
+    request: Any,
+) -> dict[str, float]:
+    return dict(
+        _resolve_nutrition_targets(request)["snack_target"]
     )
 
 
@@ -1473,8 +1915,9 @@ def _build_diet_candidate_cache_key(
     food_allergens: list[str],
 ) -> str:
     sido, sigungu, nearby_regions = _extract_location_context(request)
+    nutrition_targets = _resolve_nutrition_targets(request)
     payload = {
-        "version": "verified_food_candidates_v1",
+        "version": "verified_food_candidates_v3",
         "health_profile": _extract_health_profile(metric_statuses),
         "food_allergens": sorted(
             _normalize_text(item)
@@ -1484,7 +1927,19 @@ def _build_diet_candidate_cache_key(
             _normalize_text(item)
             for item in _extract_disliked_foods(request)
         ),
-        "meal_target": _extract_meal_target(request),
+        "meal_target": nutrition_targets["meal_target"],
+        "snack_target": nutrition_targets["snack_target"],
+        "target_basis": {
+            "target_source": nutrition_targets.get("target_source"),
+            "reference_standard": nutrition_targets.get(
+                "reference_standard"
+            ),
+            "reference_group_id": nutrition_targets.get(
+                "reference_group_id"
+            ),
+            "policy_version": nutrition_targets.get("policy_version"),
+            "profile_mode": nutrition_targets.get("profile_mode"),
+        },
         "location": {
             "sido": sido,
             "sigungu": sigungu,
@@ -1549,6 +2004,9 @@ def _compact_verified_candidate(
         [],
     )
 
+    family_signature = _candidate_family_signature(meal)
+    menu_style = _classify_meal_candidate_style(meal)
+
     return {
         "menu_name": _candidate_menu_name(
             items
@@ -1612,6 +2070,9 @@ def _compact_verified_candidate(
         "final_score": meal.get(
             "final_score"
         ),
+        "pattern": meal.get("pattern"),
+        "menu_style": menu_style,
+        "_family_signature": family_signature,
         "local_specialties": [
             item.get(
                 "specialty_name"
@@ -1691,6 +2152,31 @@ def _select_replacement_candidate(
             or 0.0
         ),
     )
+
+
+def _filter_replacement_candidates_by_style(
+    *,
+    candidates: list[dict[str, Any]],
+    menu_style_preference: str,
+) -> list[dict[str, Any]]:
+    """명시적으로 선택한 메인 식사 스타일을 재추천에서도 유지한다."""
+
+    if menu_style_preference == MENU_STYLE_BALANCED:
+        return candidates
+
+    filtered = [
+        candidate
+        for candidate in candidates
+        if _classify_meal_candidate_style(candidate)
+        == menu_style_preference
+    ]
+    if not filtered:
+        raise RuntimeError(
+            "선택한 메뉴 스타일의 안전한 재추천 후보가 없습니다: "
+            f"{menu_style_preference}"
+        )
+
+    return filtered
 
 
 def _apply_verified_candidate_to_meal(
@@ -2118,15 +2604,11 @@ async def _prepare_verified_food_candidates_uncached(
         )
     )
 
-    meal_target = (
-        _extract_meal_target(
-            request
-        )
-    )
+    nutrition_targets = _resolve_nutrition_targets(request)
 
-    snack_target = dict(
-        DEFAULT_SNACK_TARGET
-    )
+    meal_target = dict(nutrition_targets["meal_target"])
+
+    snack_target = dict(nutrition_targets["snack_target"])
 
     # -----------------------------------------------------
     # 지역 특산물
@@ -2233,6 +2715,7 @@ async def _prepare_verified_food_candidates_uncached(
             personalized_foods
         )
     )
+    groups = _prioritize_food_groups_for_lifestyle(groups)
 
     # -----------------------------------------------------
     # 아침/점심/저녁용 조합 후보
@@ -2300,6 +2783,18 @@ async def _prepare_verified_food_candidates_uncached(
     metadata = {
         "meal_target": meal_target,
         "snack_target": snack_target,
+        "nutrition_target_basis": {
+            "target_source": nutrition_targets.get("target_source"),
+            "reference_standard": nutrition_targets.get(
+                "reference_standard"
+            ),
+            "reference_group_id": nutrition_targets.get(
+                "reference_group_id"
+            ),
+            "policy_version": nutrition_targets.get("policy_version"),
+            "profile_mode": nutrition_targets.get("profile_mode"),
+            "daily_target": nutrition_targets.get("daily_target"),
+        },
         "disliked_foods": (
             disliked_foods
         ),
@@ -2600,6 +3095,14 @@ def _candidate_family_signature(
     """
     후보의 primary/carb/side family를 추출한다.
     """
+
+    stored_signature = candidate.get("_family_signature")
+    if isinstance(stored_signature, dict):
+        return {
+            "primary": str(stored_signature.get("primary") or ""),
+            "carbs": list(stored_signature.get("carbs") or []),
+            "sides": list(stored_signature.get("sides") or []),
+        }
 
     items = (
         candidate.get(
@@ -3173,6 +3676,7 @@ def _build_fixed_partial_schedule(
     carb_counts: dict[str, int] | None = None,
     side_counts: dict[str, int] | None = None,
     previous_primary_family: str | None = None,
+    menu_style_preference: str = MENU_STYLE_BALANCED,
     max_primary_family_repeat: int = 2,
     max_carb_family_repeat: int = 5,
     max_side_family_repeat: int = 3,
@@ -3253,10 +3757,24 @@ def _build_fixed_partial_schedule(
             "dinner",
         ):
 
+            preferred_style = _preferred_menu_style_for_slot(
+                day=day,
+                meal_type=meal_type,
+                menu_style_preference=menu_style_preference,
+            )
+            style_candidates = _prefer_menu_style_candidates(
+                candidates=meal_candidates,
+                preferred_style=preferred_style,
+                used_menu_names=used_menu_names,
+                strict_style=(
+                    menu_style_preference != MENU_STYLE_BALANCED
+                ),
+            )
+
             selected = (
                 _select_schedule_candidate(
                     candidates=(
-                        meal_candidates
+                        style_candidates
                     ),
                     used_menu_names=(
                         used_menu_names
@@ -3412,6 +3930,24 @@ def _build_fixed_partial_schedule(
         result,
         previous_primary_family,
     )
+
+
+def _count_schedule_menu_styles(
+    *schedules: dict[str, dict[str, dict[str, Any]]],
+) -> dict[str, int]:
+    counts = {
+        MENU_STYLE_EVERYDAY: 0,
+        MENU_STYLE_HEALTH_FOCUSED: 0,
+    }
+    for schedule in schedules:
+        for meals in schedule.values():
+            for meal_type in ("breakfast", "lunch", "dinner"):
+                candidate = meals.get(meal_type)
+                if not isinstance(candidate, dict):
+                    continue
+                style = _classify_meal_candidate_style(candidate)
+                counts[style] = counts.get(style, 0) + 1
+    return counts
 
 
 def _compact_fixed_schedule_for_prompt(
@@ -4707,6 +5243,8 @@ async def _request_diet_days_from_llm(
 
 - menu_description은 한국어 한 문장으로 간결하게 작성한다.
 - guidance는 가장 중요한 내용 한 문장만 작성한다.
+- 일반식은 다이어트식처럼 과장하지 말고 친숙하고 맛있게 설명한다.
+- 건강식도 훈계조 표현 대신 사용자가 쉽게 먹을 수 있는 방법을 안내한다.
 - 불필요한 설명은 작성하지 않는다.
 
 Structured Output Schema를 정확히 따른다.
@@ -5320,6 +5858,9 @@ async def generate_diet_recommendation(
     health_goal = _resolve_diet_health_goal(
         request
     )
+    menu_style_preference = _resolve_menu_style_preference(
+        request
+    )
 
 
 
@@ -5381,6 +5922,7 @@ async def generate_diet_recommendation(
     verified_candidate_metadata = {
         **verified_candidate_metadata,
         "health_goal": health_goal,
+        "menu_style_preference": menu_style_preference,
     }
 
     if not verified_meal_candidates:
@@ -5437,8 +5979,8 @@ async def generate_diet_recommendation(
 
     # -----------------------------------------------------
     # LLM 호출 전에 서버가 요일/식사별 메뉴를 확정한다.
-    # 두 그룹은 서로 다른 후보 집합을 사용하므로
-    # 월~일 전체 menu_name 중복도 방지된다.
+    # 두 그룹은 동일 후보 Pool과 주간 사용 상태를 공유하므로
+    # 월~일 전체 다양성 규칙을 일관되게 적용한다.
     # -----------------------------------------------------
 
     # -----------------------------------------------------
@@ -5510,6 +6052,9 @@ async def generate_diet_recommendation(
                 side_family_counts
             ),
             previous_primary_family=None,
+            menu_style_preference=(
+                menu_style_preference
+            ),
             max_primary_family_repeat=(
                 family_limits[
                     "primary"
@@ -5559,6 +6104,9 @@ async def generate_diet_recommendation(
             previous_primary_family=(
                 previous_primary_family
             ),
+            menu_style_preference=(
+                menu_style_preference
+            ),
             max_primary_family_repeat=(
                 family_limits[
                     "primary"
@@ -5578,6 +6126,24 @@ async def generate_diet_recommendation(
     )
 
 
+
+    menu_style_counts = _count_schedule_menu_styles(
+        first_fixed_schedule,
+        second_fixed_schedule,
+    )
+    (
+        target_everyday_count,
+        target_health_count,
+    ) = _menu_style_targets(menu_style_preference)
+    logger.info(
+        "Weekly menu style distribution preference=%s everyday=%d "
+        "health_focused=%d targets=%d/%d",
+        menu_style_preference,
+        menu_style_counts.get(MENU_STYLE_EVERYDAY, 0),
+        menu_style_counts.get(MENU_STYLE_HEALTH_FOCUSED, 0),
+        target_everyday_count,
+        target_health_count,
+    )
 
     logger.info(
         "Weekly family diversity primary=%s carbs=%s sides=%s",
@@ -6011,6 +6577,9 @@ async def generate_replacement_meal(
     health_goal = _resolve_diet_health_goal(
         request
     )
+    menu_style_preference = _resolve_menu_style_preference(
+        request
+    )
     verified_meal_candidates = (
         _apply_health_goal_candidate_scores(
             verified_meal_candidates,
@@ -6026,6 +6595,7 @@ async def generate_replacement_meal(
     verified_candidate_metadata = {
         **verified_candidate_metadata,
         "health_goal": health_goal,
+        "menu_style_preference": menu_style_preference,
     }
 
 
@@ -6033,7 +6603,10 @@ async def generate_replacement_meal(
     candidate_pool = (
         verified_snack_candidates
         if request.target_meal == "snack"
-        else verified_meal_candidates
+        else _filter_replacement_candidates_by_style(
+            candidates=verified_meal_candidates,
+            menu_style_preference=menu_style_preference,
+        )
     )
 
 

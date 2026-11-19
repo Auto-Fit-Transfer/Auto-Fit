@@ -2405,6 +2405,16 @@
             ],
             "title": "Goal Type"
           },
+          "health_goal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DietHealthGoal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "food_allergens": {
             "anyOf": [
               {
@@ -2497,6 +2507,32 @@
                 "type": "null"
               }
             ]
+          },
+          "nutrition_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DietNutritionProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reference_standard": {
+            "type": "string",
+            "const": "KDRI_2025",
+            "title": "Reference Standard",
+            "default": "KDRI_2025"
+          },
+          "menu_style_preference": {
+            "type": "string",
+            "enum": [
+              "balanced",
+              "everyday",
+              "health_focused"
+            ],
+            "title": "Menu Style Preference",
+            "default": "balanced"
           },
           "exercise_summary": {
             "anyOf": [
@@ -3695,6 +3731,76 @@
         "title": "DietNearbyRegion",
         "description": "현재 시군구에 특산물이 없을 때 사용할 근교 행정구역 정보.\n\n정확한 GPS 좌표는 AI 서버에 전달하지 않고,\nBackend에서 계산한 행정구역 + 거리만 전달한다."
       },
+      "DietNutritionDataSources": {
+        "properties": {
+          "inbody_available": {
+            "type": "boolean",
+            "title": "Inbody Available",
+            "default": false
+          },
+          "health_checkup_available": {
+            "type": "boolean",
+            "title": "Health Checkup Available",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DietNutritionDataSources",
+        "description": "Backend가 확인한 건강자료 보유 상태."
+      },
+      "DietNutritionProfile": {
+        "properties": {
+          "profile_mode": {
+            "type": "string",
+            "enum": [
+              "health_records",
+              "basic_profile"
+            ],
+            "title": "Profile Mode"
+          },
+          "age_years": {
+            "type": "integer",
+            "maximum": 120.0,
+            "minimum": 19.0,
+            "title": "Age Years"
+          },
+          "sex": {
+            "type": "string",
+            "enum": [
+              "male",
+              "female"
+            ],
+            "title": "Sex"
+          },
+          "height_cm": {
+            "type": "number",
+            "maximum": 250.0,
+            "minimum": 80.0,
+            "title": "Height Cm"
+          },
+          "weight_kg": {
+            "type": "number",
+            "maximum": 400.0,
+            "minimum": 20.0,
+            "title": "Weight Kg"
+          },
+          "data_sources": {
+            "$ref": "#/components/schemas/DietNutritionDataSources"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "profile_mode",
+          "age_years",
+          "sex",
+          "height_cm",
+          "weight_kg"
+        ],
+        "title": "DietNutritionProfile",
+        "description": "KDRI 성인 기준 조회에 필요한 최소 프로필.\n\n키와 몸무게는 입력 출처 보존 및 향후 개인화 확장을 위해 받는다.\n현재 KDRI 요약표의 집단 EER 조회에는 나이와 성별만 사용한다."
+      },
       "DietRecipeDailyTargetPercentages": {
         "properties": {
           "calories_percent": {
@@ -4644,6 +4750,32 @@
                 "type": "null"
               }
             ]
+          },
+          "nutrition_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DietNutritionProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reference_standard": {
+            "type": "string",
+            "const": "KDRI_2025",
+            "title": "Reference Standard",
+            "default": "KDRI_2025"
+          },
+          "menu_style_preference": {
+            "type": "string",
+            "enum": [
+              "balanced",
+              "everyday",
+              "health_focused"
+            ],
+            "title": "Menu Style Preference",
+            "default": "balanced"
           }
         },
         "type": "object",
@@ -8829,6 +8961,32 @@
                 "type": "null"
               }
             ]
+          },
+          "nutrition_profile": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DietNutritionProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reference_standard": {
+            "type": "string",
+            "const": "KDRI_2025",
+            "title": "Reference Standard",
+            "default": "KDRI_2025"
+          },
+          "menu_style_preference": {
+            "type": "string",
+            "enum": [
+              "balanced",
+              "everyday",
+              "health_focused"
+            ],
+            "title": "Menu Style Preference",
+            "default": "balanced"
           }
         },
         "type": "object",

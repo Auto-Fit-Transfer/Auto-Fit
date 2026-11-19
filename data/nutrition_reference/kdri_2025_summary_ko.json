@@ -1,0 +1,702 @@
+{
+  "schema_version": "1.0.0",
+  "dataset": {
+    "id": "kdri_2025_summary_ko",
+    "title_ko": "2025 한국인 영양소 섭취기준 요약표",
+    "publisher": "보건복지부",
+    "publication_year": 2025,
+    "source_type": "official_summary_pdf",
+    "source_file": {
+      "file_name": "2025 KDRI_요약표_국문_2025.12.29.pdf",
+      "sha256": "605ff8431ea7b6c465165bb5335aba580dcd4d56ba13a69583e62d163a7cc0c2"
+    },
+    "source_pages": {
+      "acceptable_macronutrient_distribution_ranges": {
+        "pdf_page": 1,
+        "printed_page": "viii"
+      },
+      "energy_and_macronutrients": {
+        "pdf_page": 2,
+        "printed_page": "ix"
+      },
+      "protein": {
+        "pdf_page": 3,
+        "printed_page": "x"
+      },
+      "water": {
+        "pdf_page": 4,
+        "printed_page": "xi"
+      },
+      "sodium": {
+        "pdf_page": 9,
+        "printed_page": "xvi"
+      }
+    }
+  },
+  "scope": {
+    "coverage": "Auto-Fit 식단 목표 산정에 직접 사용할 핵심 기준의 구조화본",
+    "included": [
+      "에너지 필요추정량",
+      "탄수화물",
+      "단백질",
+      "지방 에너지적정비율",
+      "식이섬유",
+      "수분",
+      "나트륨",
+      "당류 및 콜레스테롤 일반 지침",
+      "임신부 및 수유부 부가량"
+    ],
+    "excluded": [
+      "개별 아미노산",
+      "지용성 및 수용성 비타민",
+      "콜린",
+      "나트륨 외 다량무기질",
+      "미량무기질"
+    ],
+    "intended_use": [
+      "연령 및 성별 기준 집단의 영양 기준 조회",
+      "Backend가 산정한 개인별 목표의 범위 검증",
+      "식단 추천용 일일 및 끼니별 영양 목표 생성의 기준 데이터"
+    ],
+    "limitations": [
+      "에너지 필요추정량은 기준 집단 값이며 개인의 키, 몸무게, 활동량과 건강 목표를 반영한 처방값이 아니다.",
+      "개인별 목표는 Backend가 검증된 정책으로 계산하고 이 데이터는 기준 및 안전 범위로 사용한다.",
+      "빈 표 셀은 0이 아니라 기준 미설정 또는 요약표 미제공을 뜻하므로 null로 저장한다.",
+      "임신부 및 수유부 값은 별도 표시가 없는 한 동일 연령 기준에 더하는 부가량이다.",
+      "현재 Auto-Fit 응답 정책은 메뉴 전체의 열량, 탄수화물, 단백질, 지방을 우선 사용한다."
+    ]
+  },
+  "definitions": {
+    "eer": {
+      "label_ko": "에너지 필요추정량",
+      "label_en": "estimated energy requirement"
+    },
+    "ear": {
+      "label_ko": "평균필요량",
+      "label_en": "estimated average requirement"
+    },
+    "rni": {
+      "label_ko": "권장섭취량",
+      "label_en": "recommended nutrient intake"
+    },
+    "ai": {
+      "label_ko": "충분섭취량",
+      "label_en": "adequate intake"
+    },
+    "ul": {
+      "label_ko": "상한섭취량",
+      "label_en": "tolerable upper intake level"
+    },
+    "cdrr": {
+      "label_ko": "만성질환위험감소섭취량",
+      "label_en": "chronic disease risk reduction intake",
+      "note": "상한섭취량과 다른 기준이다."
+    },
+    "amdr": {
+      "label_ko": "에너지적정비율",
+      "label_en": "acceptable macronutrient distribution range"
+    }
+  },
+  "general_guidance": {
+    "macronutrient_energy_distribution_rules": [
+      {
+        "id": "age_1_2_years",
+        "applies_to": {
+          "sex": "all",
+          "age": {
+            "unit": "year",
+            "min_inclusive": 1,
+            "max_inclusive": 2
+          }
+        },
+        "carbohydrate_percent": {
+          "min_inclusive": 50,
+          "max_inclusive": 65
+        },
+        "protein_percent": {
+          "min_inclusive": 10,
+          "max_inclusive": 20
+        },
+        "fat_percent": {
+          "min_inclusive": 20,
+          "max_inclusive": 35
+        },
+        "saturated_fat_percent": null,
+        "trans_fat_percent": null
+      },
+      {
+        "id": "age_3_18_years",
+        "applies_to": {
+          "sex": "all",
+          "age": {
+            "unit": "year",
+            "min_inclusive": 3,
+            "max_inclusive": 18
+          }
+        },
+        "carbohydrate_percent": {
+          "min_inclusive": 50,
+          "max_inclusive": 65
+        },
+        "protein_percent": {
+          "min_inclusive": 10,
+          "max_inclusive": 20
+        },
+        "fat_percent": {
+          "min_inclusive": 15,
+          "max_inclusive": 30
+        },
+        "saturated_fat_percent": {
+          "max_exclusive": 8
+        },
+        "trans_fat_percent": {
+          "max_exclusive": 1
+        }
+      },
+      {
+        "id": "age_19_plus",
+        "applies_to": {
+          "sex": "all",
+          "age": {
+            "unit": "year",
+            "min_inclusive": 19,
+            "max_inclusive": null
+          }
+        },
+        "carbohydrate_percent": {
+          "min_inclusive": 50,
+          "max_inclusive": 65
+        },
+        "protein_percent": {
+          "min_inclusive": 10,
+          "max_inclusive": 20
+        },
+        "fat_percent": {
+          "min_inclusive": 15,
+          "max_inclusive": 30
+        },
+        "saturated_fat_percent": {
+          "max_exclusive": 7
+        },
+        "trans_fat_percent": {
+          "max_exclusive": 1
+        }
+      },
+      {
+        "id": "pregnancy_and_lactation",
+        "applies_to": {
+          "special_condition": [
+            "pregnancy",
+            "lactation"
+          ]
+        },
+        "carbohydrate_percent": {
+          "min_inclusive": 50,
+          "max_inclusive": 65
+        },
+        "protein_percent": {
+          "min_inclusive": 10,
+          "max_inclusive": 20
+        },
+        "fat_percent": {
+          "min_inclusive": 15,
+          "max_inclusive": 30
+        },
+        "saturated_fat_percent": null,
+        "trans_fat_percent": null
+      }
+    ],
+    "sugars": {
+      "total_sugars_percent_of_energy": {
+        "max_inclusive": 20
+      },
+      "added_sugars_percent_of_energy": {
+        "max_inclusive": 10
+      },
+      "note_ko": "가당음료를 포함한 첨가당 섭취를 가능한 줄인다."
+    },
+    "cholesterol": {
+      "applies_to_age_years": {
+        "min_inclusive": 19,
+        "max_inclusive": null
+      },
+      "unit": "mg/day",
+      "max_exclusive": 300,
+      "classification": "guidance"
+    }
+  },
+  "population_groups": {
+    "infant_0_5_months": {
+      "sex": "all",
+      "source_sex_label_ko": "영아",
+      "life_stage": "infant",
+      "age": {
+        "unit": "month",
+        "min_inclusive": 0,
+        "max_inclusive": 5
+      }
+    },
+    "infant_6_11_months": {
+      "sex": "all",
+      "source_sex_label_ko": "영아",
+      "life_stage": "infant",
+      "age": {
+        "unit": "month",
+        "min_inclusive": 6,
+        "max_inclusive": 11
+      }
+    },
+    "child_1_2_years": {
+      "sex": "all",
+      "source_sex_label_ko": "유아",
+      "life_stage": "child",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 1,
+        "max_inclusive": 2
+      }
+    },
+    "child_3_5_years": {
+      "sex": "all",
+      "source_sex_label_ko": "유아",
+      "life_stage": "child",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 3,
+        "max_inclusive": 5
+      }
+    },
+    "male_6_8_years": {
+      "sex": "male",
+      "source_sex_label_ko": "남자",
+      "life_stage": "child",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 6,
+        "max_inclusive": 8
+      }
+    },
+    "male_9_11_years": {
+      "sex": "male",
+      "source_sex_label_ko": "남자",
+      "life_stage": "child",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 9,
+        "max_inclusive": 11
+      }
+    },
+    "male_12_14_years": {
+      "sex": "male",
+      "source_sex_label_ko": "남자",
+      "life_stage": "adolescent",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 12,
+        "max_inclusive": 14
+      }
+    },
+    "male_15_18_years": {
+      "sex": "male",
+      "source_sex_label_ko": "남자",
+      "life_stage": "adolescent",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 15,
+        "max_inclusive": 18
+      }
+    },
+    "male_19_29_years": {
+      "sex": "male",
+      "source_sex_label_ko": "남자",
+      "life_stage": "adult",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 19,
+        "max_inclusive": 29
+      }
+    },
+    "male_30_49_years": {
+      "sex": "male",
+      "source_sex_label_ko": "남자",
+      "life_stage": "adult",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 30,
+        "max_inclusive": 49
+      }
+    },
+    "male_50_64_years": {
+      "sex": "male",
+      "source_sex_label_ko": "남자",
+      "life_stage": "adult",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 50,
+        "max_inclusive": 64
+      }
+    },
+    "male_65_74_years": {
+      "sex": "male",
+      "source_sex_label_ko": "남자",
+      "life_stage": "adult",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 65,
+        "max_inclusive": 74
+      }
+    },
+    "male_75_plus_years": {
+      "sex": "male",
+      "source_sex_label_ko": "남자",
+      "life_stage": "adult",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 75,
+        "max_inclusive": null
+      }
+    },
+    "female_6_8_years": {
+      "sex": "female",
+      "source_sex_label_ko": "여자",
+      "life_stage": "child",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 6,
+        "max_inclusive": 8
+      }
+    },
+    "female_9_11_years": {
+      "sex": "female",
+      "source_sex_label_ko": "여자",
+      "life_stage": "child",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 9,
+        "max_inclusive": 11
+      }
+    },
+    "female_12_14_years": {
+      "sex": "female",
+      "source_sex_label_ko": "여자",
+      "life_stage": "adolescent",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 12,
+        "max_inclusive": 14
+      }
+    },
+    "female_15_18_years": {
+      "sex": "female",
+      "source_sex_label_ko": "여자",
+      "life_stage": "adolescent",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 15,
+        "max_inclusive": 18
+      }
+    },
+    "female_19_29_years": {
+      "sex": "female",
+      "source_sex_label_ko": "여자",
+      "life_stage": "adult",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 19,
+        "max_inclusive": 29
+      }
+    },
+    "female_30_49_years": {
+      "sex": "female",
+      "source_sex_label_ko": "여자",
+      "life_stage": "adult",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 30,
+        "max_inclusive": 49
+      }
+    },
+    "female_50_64_years": {
+      "sex": "female",
+      "source_sex_label_ko": "여자",
+      "life_stage": "adult",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 50,
+        "max_inclusive": 64
+      }
+    },
+    "female_65_74_years": {
+      "sex": "female",
+      "source_sex_label_ko": "여자",
+      "life_stage": "adult",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 65,
+        "max_inclusive": 74
+      }
+    },
+    "female_75_plus_years": {
+      "sex": "female",
+      "source_sex_label_ko": "여자",
+      "life_stage": "adult",
+      "age": {
+        "unit": "year",
+        "min_inclusive": 75,
+        "max_inclusive": null
+      }
+    }
+  },
+  "recommendations": {
+    "infant_0_5_months": {
+      "energy": { "unit": "kcal/day", "eer": 500 },
+      "carbohydrate": { "unit": "g/day", "ear": null, "rni": null, "ai": 55 },
+      "protein": { "unit": "g/day", "ear": null, "rni": null, "ai": 10 },
+      "fat": { "unit": "g/day", "ai": 25 },
+      "dietary_fiber": { "unit": "g/day", "ai": null },
+      "water": { "unit": "mL/day", "liquid_ai": 700, "total_ai": 700 },
+      "sodium": { "unit": "mg/day", "ai": 110, "cdrr": null }
+    },
+    "infant_6_11_months": {
+      "energy": { "unit": "kcal/day", "eer": 600 },
+      "carbohydrate": { "unit": "g/day", "ear": null, "rni": null, "ai": 85 },
+      "protein": { "unit": "g/day", "ear": 12, "rni": 15, "ai": null },
+      "fat": { "unit": "g/day", "ai": 25 },
+      "dietary_fiber": { "unit": "g/day", "ai": null },
+      "water": { "unit": "mL/day", "liquid_ai": 500, "total_ai": 800 },
+      "sodium": { "unit": "mg/day", "ai": 370, "cdrr": null }
+    },
+    "child_1_2_years": {
+      "energy": { "unit": "kcal/day", "eer": 900 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 15, "rni": 20, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 10 },
+      "water": { "unit": "mL/day", "liquid_ai": 700, "total_ai": 1000 },
+      "sodium": { "unit": "mg/day", "ai": 630, "cdrr": 1000 }
+    },
+    "child_3_5_years": {
+      "energy": { "unit": "kcal/day", "eer": 1400 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 20, "rni": 25, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 15 },
+      "water": { "unit": "mL/day", "liquid_ai": 1100, "total_ai": 1500 },
+      "sodium": { "unit": "mg/day", "ai": 1000, "cdrr": 1500 }
+    },
+    "male_6_8_years": {
+      "energy": { "unit": "kcal/day", "eer": 1700 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 30, "rni": 35, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 20 },
+      "water": { "unit": "mL/day", "liquid_ai": 800, "total_ai": 1700 },
+      "sodium": { "unit": "mg/day", "ai": 1100, "cdrr": 1700 }
+    },
+    "male_9_11_years": {
+      "energy": { "unit": "kcal/day", "eer": 2000 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 40, "rni": 50, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 20 },
+      "water": { "unit": "mL/day", "liquid_ai": 900, "total_ai": 2000 },
+      "sodium": { "unit": "mg/day", "ai": 1300, "cdrr": 2000 }
+    },
+    "male_12_14_years": {
+      "energy": { "unit": "kcal/day", "eer": 2500 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 50, "rni": 60, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 25 },
+      "water": { "unit": "mL/day", "liquid_ai": 1100, "total_ai": 2400 },
+      "sodium": { "unit": "mg/day", "ai": 1500, "cdrr": 2300 }
+    },
+    "male_15_18_years": {
+      "energy": { "unit": "kcal/day", "eer": 2700 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 55, "rni": 65, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 25 },
+      "water": { "unit": "mL/day", "liquid_ai": 1200, "total_ai": 2600 },
+      "sodium": { "unit": "mg/day", "ai": 1500, "cdrr": 2300 }
+    },
+    "male_19_29_years": {
+      "energy": { "unit": "kcal/day", "eer": 2600 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 50, "rni": 65, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 30 },
+      "water": { "unit": "mL/day", "liquid_ai": 1200, "total_ai": 2600 },
+      "sodium": { "unit": "mg/day", "ai": 1500, "cdrr": 2300 }
+    },
+    "male_30_49_years": {
+      "energy": { "unit": "kcal/day", "eer": 2500 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 50, "rni": 65, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 30 },
+      "water": { "unit": "mL/day", "liquid_ai": 1200, "total_ai": 2500 },
+      "sodium": { "unit": "mg/day", "ai": 1500, "cdrr": 2300 }
+    },
+    "male_50_64_years": {
+      "energy": { "unit": "kcal/day", "eer": 2200 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 50, "rni": 60, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 30 },
+      "water": { "unit": "mL/day", "liquid_ai": 1000, "total_ai": 2200 },
+      "sodium": { "unit": "mg/day", "ai": 1500, "cdrr": 2300 }
+    },
+    "male_65_74_years": {
+      "energy": { "unit": "kcal/day", "eer": 2000 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 50, "rni": 60, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 30 },
+      "water": { "unit": "mL/day", "liquid_ai": 1000, "total_ai": 2100 },
+      "sodium": { "unit": "mg/day", "ai": 1300, "cdrr": 1900 }
+    },
+    "male_75_plus_years": {
+      "energy": { "unit": "kcal/day", "eer": 1900 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 50, "rni": 60, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 30 },
+      "water": { "unit": "mL/day", "liquid_ai": 1100, "total_ai": 2100 },
+      "sodium": { "unit": "mg/day", "ai": 1200, "cdrr": 1800 }
+    },
+    "female_6_8_years": {
+      "energy": { "unit": "kcal/day", "eer": 1500 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 30, "rni": 35, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 15 },
+      "water": { "unit": "mL/day", "liquid_ai": 800, "total_ai": 1600 },
+      "sodium": { "unit": "mg/day", "ai": 1100, "cdrr": 1700 }
+    },
+    "female_9_11_years": {
+      "energy": { "unit": "kcal/day", "eer": 1800 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 40, "rni": 45, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 20 },
+      "water": { "unit": "mL/day", "liquid_ai": 900, "total_ai": 1900 },
+      "sodium": { "unit": "mg/day", "ai": 1300, "cdrr": 2000 }
+    },
+    "female_12_14_years": {
+      "energy": { "unit": "kcal/day", "eer": 2000 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 45, "rni": 55, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 20 },
+      "water": { "unit": "mL/day", "liquid_ai": 900, "total_ai": 2000 },
+      "sodium": { "unit": "mg/day", "ai": 1500, "cdrr": 2300 }
+    },
+    "female_15_18_years": {
+      "energy": { "unit": "kcal/day", "eer": 2000 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 45, "rni": 55, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 20 },
+      "water": { "unit": "mL/day", "liquid_ai": 900, "total_ai": 2000 },
+      "sodium": { "unit": "mg/day", "ai": 1500, "cdrr": 2300 }
+    },
+    "female_19_29_years": {
+      "energy": { "unit": "kcal/day", "eer": 2000 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 45, "rni": 55, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 20 },
+      "water": { "unit": "mL/day", "liquid_ai": 1000, "total_ai": 2100 },
+      "sodium": { "unit": "mg/day", "ai": 1500, "cdrr": 2300 }
+    },
+    "female_30_49_years": {
+      "energy": { "unit": "kcal/day", "eer": 1900 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 40, "rni": 50, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 20 },
+      "water": { "unit": "mL/day", "liquid_ai": 1000, "total_ai": 2000 },
+      "sodium": { "unit": "mg/day", "ai": 1500, "cdrr": 2300 }
+    },
+    "female_50_64_years": {
+      "energy": { "unit": "kcal/day", "eer": 1700 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 40, "rni": 50, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 25 },
+      "water": { "unit": "mL/day", "liquid_ai": 1000, "total_ai": 1900 },
+      "sodium": { "unit": "mg/day", "ai": 1500, "cdrr": 2300 }
+    },
+    "female_65_74_years": {
+      "energy": { "unit": "kcal/day", "eer": 1600 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 40, "rni": 50, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 25 },
+      "water": { "unit": "mL/day", "liquid_ai": 900, "total_ai": 1800 },
+      "sodium": { "unit": "mg/day", "ai": 1300, "cdrr": 1900 }
+    },
+    "female_75_plus_years": {
+      "energy": { "unit": "kcal/day", "eer": 1500 },
+      "carbohydrate": { "unit": "g/day", "ear": 100, "rni": 130, "ai": null },
+      "protein": { "unit": "g/day", "ear": 40, "rni": 50, "ai": null },
+      "fat": { "unit": "g/day", "ai": null },
+      "dietary_fiber": { "unit": "g/day", "ai": 25 },
+      "water": { "unit": "mL/day", "liquid_ai": 1000, "total_ai": 1800 },
+      "sodium": { "unit": "mg/day", "ai": 1200, "cdrr": 1800 }
+    }
+  },
+  "special_conditions": {
+    "pregnancy": {
+      "values_are_additions": true,
+      "applies_to": "동일 연령 여성 기준",
+      "energy_eer_kcal_per_day": {
+        "trimester_1": 0,
+        "trimester_2": 340,
+        "trimester_3": 450
+      },
+      "carbohydrate_g_per_day": {
+        "ear": 35,
+        "rni": 45
+      },
+      "protein_g_per_day": {
+        "trimester_1": {
+          "ear": null,
+          "rni": null
+        },
+        "trimester_2": {
+          "ear": 8,
+          "rni": 10
+        },
+        "trimester_3": {
+          "ear": 25,
+          "rni": 30
+        }
+      },
+      "dietary_fiber_ai_g_per_day": 5,
+      "water_ml_per_day": {
+        "liquid_ai": null,
+        "total_ai": 200
+      }
+    },
+    "lactation": {
+      "values_are_additions": true,
+      "applies_to": "동일 연령 여성 기준",
+      "energy_eer_kcal_per_day": 340,
+      "carbohydrate_g_per_day": {
+        "ear": 55,
+        "rni": 70
+      },
+      "protein_g_per_day": {
+        "ear": 20,
+        "rni": 25
+      },
+      "dietary_fiber_ai_g_per_day": 5,
+      "water_ml_per_day": {
+        "liquid_ai": 500,
+        "total_ai": 700
+      }
+    }
+  }
+}

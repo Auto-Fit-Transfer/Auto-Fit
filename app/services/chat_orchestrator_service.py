@@ -1413,6 +1413,10 @@ async def process_chat(
                 context.goal_type
             ),
 
+            health_goal=(
+                context.health_goal
+            ),
+
             additional_input=(
                 context.additional_input
             ),
@@ -1432,6 +1436,18 @@ async def process_chat(
 
             meal_target=(
                 context.meal_target
+            ),
+
+            nutrition_profile=(
+                context.nutrition_profile
+            ),
+
+            reference_standard=(
+                context.reference_standard
+            ),
+
+            menu_style_preference=(
+                context.menu_style_preference
             ),
         )
 
