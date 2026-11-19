@@ -1,11 +1,14 @@
+import { useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { View } from 'react-native';
 
 import { DietView } from '@/src/components/a/DietView';
+import { MenuStyleSheet } from '@/src/components/a/MenuStyleSheet';
+import type { MenuStyle } from '@/src/features/diet/menuStyle';
 import type { R6Meal } from '@/src/components/diet/R6DietHome';
 
 // Development only (isPublicRoute lets /dev open without signing in while __DEV__): renewal A's
-// diet tab with sample data, to look at the screen. ?state=first|after|loading|error
+// diet tab with sample data, to look at the screen. ?state=first|after|loading|error|over|covered|style|stylefail
 const nothing = () => undefined;
 const meal = (
   id: R6Meal['id'],
@@ -38,6 +41,10 @@ export default function ADietSample() {
   // ?state=over: today went past the goal, so 내일 맞추기 shows
   const over = state === 'over' || state === 'covered';
   const eaten = over ? 2160 : first ? 0 : after ? 1240 : 480;
+  // ?state=style: the 일반식 / 건강식 button and its sheet (none chosen yet) / stylefail: the 503 advice
+  const styled = state === 'style' || state === 'stylefail';
+  const [menuStyle, setMenuStyle] = useState<MenuStyle | null>(null);
+  const [styleOpen, setStyleOpen] = useState(state === 'stylefail');
 
   return (
     <View style={{ flex: 1 }}>
@@ -72,7 +79,17 @@ export default function ADietSample() {
         onAdjust={over || state === 'covered' ? () => undefined : undefined}
         // ?state=over: 2,160 eaten, 300 burned, 1,700 goal → 160 over / ?state=covered: the workout used it up
         burned={over ? 300 : state === 'covered' ? 500 : null}
+        menuStyle={menuStyle}
+        onMenuStyle={styled ? () => setStyleOpen(true) : undefined}
         week={first ? null : [1620, 1480, 1810, after ? 1240 : 480, null, null, null].map((kcal, index) => ({ date: `2026-11-${String(9 + index).padStart(2, '0')}`, kcal, target: 1700 }))}
+      />
+      <MenuStyleSheet
+        error={state === 'stylefail' ? '이 방식에 맞는 안전한 메뉴가 부족해요. 다른 방식으로 바꾸거나 다시 시도해 주세요.' : ''}
+        onClose={() => setStyleOpen(false)}
+        onSave={(value) => { setMenuStyle(value); setStyleOpen(false); }}
+        saving={false}
+        value={state === 'stylefail' ? 'health_focused' : menuStyle}
+        visible={styleOpen}
       />
     </View>
   );

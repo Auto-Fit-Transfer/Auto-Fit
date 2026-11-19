@@ -9,6 +9,7 @@ import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import { AppBottomSheet, Text } from '@/src/components/common';
 import type { R6DietHomeProps, R6Meal } from '@/src/components/diet/R6DietHome';
 import type { DayCalories } from '@/src/features/diet/weekCalories';
+import { menuStyleLabel, type MenuStyle } from '@/src/features/diet/menuStyle';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
@@ -39,7 +40,14 @@ const PLOT = 72;
 
 // onAdjust: 내일 맞추기 (TomorrowSheet). The tab passes it once the back-end and AI calls exist.
 // burned: today's workout and run calories, taken off before anything counts as over (user, 11/19).
-export function DietView(props: R6DietHomeProps & { week?: DayCalories[] | null; onAdjust?: () => void; burned?: number | null }) {
+// onMenuStyle: 일반식 / 건강식 (MenuStyleSheet). The tab passes it once the back-end saves the choice.
+export function DietView(props: R6DietHomeProps & {
+  week?: DayCalories[] | null;
+  onAdjust?: () => void;
+  burned?: number | null;
+  menuStyle?: MenuStyle | null;
+  onMenuStyle?: () => void;
+}) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -192,7 +200,18 @@ export function DietView(props: R6DietHomeProps & { week?: DayCalories[] | null;
 
         <View style={styles.card}>
           <View style={styles.spread}>
-            <Text style={styles.title}>{isToday ? '오늘 식단' : '선택한 날 식단'}</Text>
+            <Text style={[styles.title, styles.grow]}>{isToday ? '오늘 식단' : '선택한 날 식단'}</Text>
+            {/* on today only, as in a-diet.html: beside '선택한 날 식단' it would push the title onto two lines */}
+            {props.onMenuStyle && isToday ? (
+              <Pressable
+                accessibilityLabel="건강식 위주와 일반식 위주 중 고르기"
+                accessibilityRole="button"
+                onPress={props.onMenuStyle}
+                style={({ pressed }) => [styles.mini, pressed && styles.pressedSoft]}
+              >
+                <Text style={[styles.small, styles.miniText]}>{menuStyleLabel(props.menuStyle)}</Text>
+              </Pressable>
+            ) : null}
             <Pressable
               accessibilityRole="button"
               onPress={props.onOpenWeekly}
