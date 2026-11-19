@@ -11,14 +11,16 @@ const TOMORROW: TomorrowMeal[] = [
   { kcal: 180, menu: '바나나 · 라떼', slot: '간식' },
   { kcal: 540, menu: '두부 스테이크 · 나물 · 잡곡밥', slot: '저녁' },
 ];
-// lunch and dinner were picked: the 200 over is shared, 100 each
+// lunch and dinner were picked: 100 each asked, 15% lets 84 and 81 go, 35 stays
 const PLAN: TomorrowPlan = {
-  kcal: 1500,
+  cut: 165,
+  left: 35,
+  kcal: 1535,
   meals: [
     { changed: false, kcal: 420, menu: '그릭요거트 볼 · 삶은 달걀', slot: '아침' },
-    { changed: true, kcal: 460, menu: '현미밥 · 닭가슴살 샐러드 · 된장국(국물 반만)', slot: '점심' },
+    { changed: true, kcal: 476, menu: '현미밥 · 닭가슴살 샐러드 · 된장국(국물 반만)', slot: '점심' },
     { changed: false, kcal: 180, menu: '바나나 · 라떼', slot: '간식' },
-    { changed: true, kcal: 440, menu: '두부 스테이크 · 나물 · 잡곡밥 반 공기', slot: '저녁' },
+    { changed: true, kcal: 459, menu: '두부 스테이크 · 나물 · 잡곡밥 반 공기', slot: '저녁' },
   ],
   target: 1700,
   why: '단백질은 그대로 두고, 점심 국물과 저녁 밥 양을 줄였어요.',

@@ -5,6 +5,8 @@ import CheckIcon from '@/assets/icons/system/Check.svg';
 import { AppBottomSheet, Text } from '@/src/components/common';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
+import { plannedCuts } from '@/src/features/diet/tomorrowAdjust';
+
 import { ALoading } from './ALoading';
 import { aForm } from './form';
 
@@ -20,6 +22,8 @@ export type TomorrowPlan = {
   kcal: number | null;
   target: number | null;
   why: string | null; // the AI's one line about the change
+  cut: number | null; // from the server's adjustment: kcal really taken off the picked meals
+  left: number | null; // and what stayed, since a meal gives up at most 15%
 };
 
 export interface TomorrowSheetProps {
@@ -42,8 +46,6 @@ export interface TomorrowSheetProps {
 
 const number = (value: number | null) => (value == null ? '—' : Math.round(value).toLocaleString('ko-KR'));
 
-// What each picked meal gives up: what went over, shared evenly (the server keeps every meal above its floor).
-export const shareOf = (over: number, picked: number) => (picked > 0 ? Math.round(over / picked) : 0);
 
 export function TomorrowSheet({ visible, over, eaten, target, burned, state, tomorrow, plan, error, onClose, onRetry, onSave, onCheat, onAdjust, onPick }: TomorrowSheetProps) {
   const styles = useThemedStyles(createStyles);
@@ -51,7 +53,10 @@ export function TomorrowSheet({ visible, over, eaten, target, burned, state, tom
   const [picked, setPicked] = useState<string[]>([]);
   const close = () => { setPicked([]); onClose(); };
   const toggle = (slot: string) => setPicked((now) => (now.includes(slot) ? now.filter((item) => item !== slot) : [...now, slot]));
-  const share = shareOf(over, picked.length);
+  const pickedMeals = tomorrow.filter((meal) => picked.includes(meal.slot));
+  const cuts = plannedCuts(over, pickedMeals.map((meal) => meal.kcal));
+  const cutOf = (slot: string) => cuts[pickedMeals.findIndex((meal) => meal.slot === slot)] ?? 0;
+  const cutSum = cuts.reduce((sum, cut) => sum + cut, 0);
   const button = (label: string, onPress: () => void, ghost = false, disabled = false) => (
     <Pressable
       accessibilityRole="button"
@@ -94,7 +99,7 @@ export function TomorrowSheet({ visible, over, eaten, target, burned, state, tom
         ) : state === 'pick' ? (
           <>
             <Text style={styles.q}>가볍게 할 끼니를 골라 주세요</Text>
-            <Text style={styles.note}>더 먹은 {number(over)}kcal를 고른 끼니에 나눠서 줄여요.</Text>
+            <Text style={styles.note}>더 먹은 {number(over)}kcal를 고른 끼니에 나눠서 줄여요. 한 끼는 15%까지만 줄여요.</Text>
             {tomorrow.length ? (
               <View style={styles.card}>
                 {tomorrow.map((meal, index) => {
@@ -110,7 +115,7 @@ export function TomorrowSheet({ visible, over, eaten, target, burned, state, tom
                       <View style={[styles.tick, on && styles.tickOn]}>{on ? <CheckIcon color={colors.onPrimary} height={16} width={16} /> : null}</View>
                       <Text style={styles.slot}>{meal.slot}</Text>
                       <Text numberOfLines={2} style={[styles.body, styles.grow]}>{meal.menu}</Text>
-                      <Text style={styles.kcal}>{on ? `−${number(share)}` : number(meal.kcal)}</Text>
+                      <Text style={styles.kcal}>{on ? `−${number(cutOf(meal.slot))}` : number(meal.kcal)}</Text>
                     </Pressable>
                   );
                 })}
@@ -118,6 +123,7 @@ export function TomorrowSheet({ visible, over, eaten, target, burned, state, tom
             ) : (
               <Text style={styles.body}>내일 식단이 아직 없어요.</Text>
             )}
+            {picked.length ? <Text style={styles.body}>고른 끼니로 약 {number(cutSum)}kcal 줄여요.</Text> : null}
             {button(picked.length ? `${picked.length}끼 가볍게 바꾸기` : '끼니를 골라 주세요', () => onPick(picked), false, picked.length === 0)}
           </>
         ) : (
@@ -157,6 +163,11 @@ export function TomorrowSheet({ visible, over, eaten, target, burned, state, tom
                 </Text>
               </View>
             </View>
+            {plan.cut != null ? (
+              <Text style={styles.body}>
+                {number(plan.cut)}kcal 줄였어요.{plan.left ? ` ${number(plan.left)}kcal는 줄이지 않았어요(한 끼는 15%까지만 줄여요).` : ''}
+              </Text>
+            ) : null}
             {plan.why ? <Text style={styles.body}>{plan.why}</Text> : null}
             {state === 'saved' ? (
               <>
