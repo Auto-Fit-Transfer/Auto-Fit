@@ -62,6 +62,11 @@ def test_capabilities_contract() -> None:
     by_code = {
         item.exercise_code: item for item in result.exercises
     }
+    assert by_code["squat"].catalog_exercise_keys == [
+        "ex_96dcb551b33a8e",
+        "ex_3fb808cb84e33d",
+        "ex_25ef8b2dc77bb2",
+    ]
     assert by_code["push_up"].catalog_exercise_keys == [
         "ex_f6c866501f5ac0",
         "ex_fcefe9818d1b7b",

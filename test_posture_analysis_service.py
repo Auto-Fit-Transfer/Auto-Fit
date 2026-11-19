@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import csv
 from copy import deepcopy
 import hashlib
 import json
@@ -637,6 +638,11 @@ def test_capabilities_use_exact_catalog_keys_and_validation_status() -> None:
         "lateral_raise",
     }
     assert by_code["squat"].validation_status == "validated"
+    assert by_code["squat"].catalog_exercise_keys == [
+        "ex_96dcb551b33a8e",
+        "ex_3fb808cb84e33d",
+        "ex_25ef8b2dc77bb2",
+    ]
     assert by_code["plank"].movement_type == "hold"
     assert by_code["plank"].catalog_exercise_keys == [
         "ex_0c8105c6325fea",
@@ -689,6 +695,81 @@ def test_male_posture_keys_exist_in_active_catalog() -> None:
         == "Forward Lunge"
     )
     assert "ex_1bb869dd7b0cc4" not in male_names_by_key
+
+
+def test_squat_pov_compatibility_key_matches_raw_catalog_identity() -> None:
+    catalog_path = (
+        ROOT
+        / "data"
+        / "exercise_assets"
+        / "exercise_asset_catalog.csv"
+    )
+    with catalog_path.open(
+        encoding="utf-8-sig",
+        newline="",
+    ) as catalog_file:
+        rows = [
+            row
+            for row in csv.DictReader(catalog_file)
+            if row["exercise_key"] == "ex_25ef8b2dc77bb2"
+        ]
+
+    assert len(rows) == 2
+    assert {row["gender"] for row in rows} == {"male"}
+    assert {row["exercise_mode"] for row in rows} == {
+        "home_training"
+    }
+    assert {row["recommended_training_type"] for row in rows} == {
+        "bodyweight"
+    }
+    assert {row["home_equipment"] for row in rows} == {"none"}
+    assert {row["exercise_name_en"] for row in rows} == {
+        "Bodyweight Squat"
+    }
+    assert {row["exercise_name_raw"] for row in rows} == {
+        "Bodyweight-Squat-(male)"
+    }
+    assert {row["target_area_raw"] for row in rows} == {
+        "Thighs-FRONT-POV",
+        "Thighs-SIDE-POV",
+    }
+
+
+@pytest.mark.parametrize(
+    "exercise_key",
+    [
+        "ex_96dcb551b33a8e",
+        "ex_3fb808cb84e33d",
+        "ex_25ef8b2dc77bb2",
+    ],
+)
+def test_validated_squat_accepts_all_exact_catalog_keys(
+    exercise_key: str,
+) -> None:
+    service = PostureAnalysisService(settings=Settings())
+    video_bytes = b"\x00\x00\x00\x18ftypisom" + b"video"
+
+    assert service._validate_request(
+        exercise_code="squat",
+        camera_view="side",
+        exercise_key=exercise_key,
+        video_bytes=video_bytes,
+    ) == ("squat", "side", None)
+
+
+def test_squat_pov_key_cannot_cross_posture_profiles() -> None:
+    service = PostureAnalysisService(
+        settings=Settings(posture_allow_experimental=True)
+    )
+    video_bytes = b"\x00\x00\x00\x18ftypisom" + b"video"
+
+    with pytest.raises(PostureAnalysisError, match="일치하지 않습니다"):
+        service._validate_request(
+            exercise_code="push_up",
+            camera_view="side",
+            exercise_key="ex_25ef8b2dc77bb2",
+            video_bytes=video_bytes,
+        )
 
 
 @pytest.mark.parametrize(

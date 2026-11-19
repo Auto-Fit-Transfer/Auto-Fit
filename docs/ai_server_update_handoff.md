@@ -1194,6 +1194,8 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - 상태: AI Server capability allowlist와 계약·회귀 테스트 보완, 실제 남성 스마트폰 영상 검증 및 `validated` 전환 대기
 - 변경 목적: Frontend가 `validated` capability의 exact `exercise_key`로 자세 촬영 버튼을 표시하므로 남성 루틴에서도 같은 기본 동작을 정확히 연결
 - 추가 key: 푸시업 `ex_fcefe9818d1b7b` (`Push Up M`), 플랭크 `ex_20ad307ede1a03` (`Front Elbow Plank`), 런지 `ex_cbe084d8bcb64e` (`Forward Lunge`)
+- validated 스쿼트 호환 key: 기존 남성 `ex_3fb808cb84e33d`와 같은 `Bodyweight-Squat-(male)` 동작의 FRONT/SIDE POV 묶음 `ex_25ef8b2dc77bb2`를 exact allowlist에 추가
+- catalog 경계: POV 묶음은 `target_area_requires_review` 상태이므로 자세 분석의 기존·저장 루틴 key 호환만 제공하며, 운동 추천 후보·부위·GIF primary 자산으로 자동 승격하지 않음
 - 검증 상태: 세 남성 key는 팀 실영상 검증을 위한 allowlist에 추가했지만 해당 profile은 모두 `experimental`을 유지. 운영 기본값에서는 계속 차단되고 Frontend도 노출하지 않음
 - 제외: `Plank On Hands`, `Static Lunge`는 다른 변형이라 자동 상속하지 않음. 힙 브리지는 정확한 남성 바닥 양발 자산이 없어 `Heel Glute Bridge`와 bench 변형을 연결하지 않음
 - Frontend/Backend 영향: Schema 변경 없음. capabilities 배열에 key가 추가되며, 향후 운동별 실영상 검증 후 상태를 `validated`로 바꾸면 기존 exact-key 매칭 흐름으로 남성 루틴에도 촬영 버튼이 활성화됨

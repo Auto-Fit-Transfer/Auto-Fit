@@ -195,6 +195,9 @@ _SQUAT_DESCRIPTOR = _ExerciseDescriptor(
     catalog_exercise_keys=(
         "ex_96dcb551b33a8e",
         "ex_3fb808cb84e33d",
+        # 같은 남성 Bodyweight Squat의 FRONT/SIDE POV 자산 묶음 key다.
+        # catalog 추천 승격과 별개로 기존 루틴의 exact key를 호환한다.
+        "ex_25ef8b2dc77bb2",
     ),
     capture_instructions=(
         "전신과 양발이 모두 보이도록 측면에서 촬영하세요.",

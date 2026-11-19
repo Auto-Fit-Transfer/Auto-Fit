@@ -19,7 +19,7 @@
         "analysis_side_required": false,
         "validation_status": "validated",
         "rule_version": "squat-side-rules-v2",
-        "catalog_exercise_keys": ["ex_96dcb551b33a8e", "ex_3fb808cb84e33d"],
+        "catalog_exercise_keys": ["ex_96dcb551b33a8e", "ex_3fb808cb84e33d", "ex_25ef8b2dc77bb2"],
         "capture_instructions": ["전신과 양발이 모두 보이도록 측면에서 촬영하세요."],
         "limitations": ["무릎의 정면 외반과 발 압력은 판단하지 않습니다."]
       },
