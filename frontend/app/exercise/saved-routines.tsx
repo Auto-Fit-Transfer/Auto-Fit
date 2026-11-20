@@ -1,16 +1,25 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { Pressable, ScrollView, View } from 'react-native';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import MinusIcon from '@/assets/icons/ui/minus.svg';
 import PlusIcon from '@/assets/icons/ui/plus.svg';
 import { getApiErrorMessage } from '@/src/api/client';
-import { getSavedWorkoutRoutines, type SavedWorkoutRoutine } from '@/src/api/exercise';
+import {
+  completeExerciseSession,
+  getExerciseApiErrorMessage,
+  getLatestSavedRoutineSession,
+  getSavedWorkoutRoutines,
+  startSavedRoutine,
+  type SavedWorkoutRoutine,
+} from '@/src/api/exercise';
 import { aForm } from '@/src/components/a/form';
 import { ALoading } from '@/src/components/a/ALoading';
 import { Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
+import { savedRoutineRun } from '@/src/features/exercise/ExerciseRoutineContext';
+import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
 import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 // My saved routines: the recommended ones I kept and the ones I made. What it reads is unchanged. The record
@@ -29,6 +38,33 @@ export default function SavedRoutines() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  const [starting, setStarting] = useState<string | null>(null);
+  const { beginSession } = useExerciseSession();
+
+  // Starts (or, after the app was closed, picks up) a saved routine as its own session (back-end fc0bd14).
+  const start = async (routine: SavedWorkoutRoutine) => {
+    if (starting) return;
+    setStarting(routine.user_workout_routine_id);
+    try {
+      const answer = await startSavedRoutine(routine.user_workout_routine_id);
+      const latest = await getLatestSavedRoutineSession().catch(() => null);
+      const sessionId = (answer.result as { session?: { exercise_session_id?: unknown } } | undefined)?.session?.exercise_session_id;
+      const logs = latest?.result && latest.result.session.exercise_session_id === sessionId ? latest.result.logs : [];
+      const run = savedRoutineRun(routine.name, answer, logs);
+      if (!run) throw new Error('운동 정보를 확인할 수 없어요.');
+      if (run.routine.exercises.length === 0 && typeof sessionId === 'string') {
+        await completeExerciseSession(sessionId);
+        Alert.alert('이미 다 기록한 루틴이에요', '이 루틴 운동을 마친 것으로 저장했어요.');
+        return;
+      }
+      beginSession(run.routine, run.started);
+      router.push('/exercise/session' as Href);
+    } catch (cause) {
+      Alert.alert('운동을 시작하지 못했어요', getExerciseApiErrorMessage(cause));
+    } finally {
+      setStarting(null);
+    }
+  };
   const load = useCallback(() => {
     let active = true;
     if (retry > 0) setError('');
@@ -68,7 +104,11 @@ export default function SavedRoutines() {
                   <Text style={styles.num}>{item.sequence_order}</Text>
                   <Text style={[styles.body, styles.grow]}>{item.exercise_name}</Text>
                   <Text style={styles.note}>{[item.sets && `${item.sets}세트`, item.repetitions && `${item.repetitions}회`, item.target_duration_seconds && `${Math.round(item.target_duration_seconds / 60)}분`].filter(Boolean).join(' · ') || '운동 정보 없음'}</Text>
-                </View>)}</View> : null}
+                </View>)}
+                <Pressable accessibilityRole="button" accessibilityState={{ disabled: starting !== null }} disabled={starting !== null} onPress={() => void start(routine)} style={({ pressed }) => [styles.go, pressed && styles.goPressed]}>
+                  <Text style={styles.goText}>{starting === routine.user_workout_routine_id ? '준비 중…' : '이 루틴으로 운동하기'}</Text>
+                </Pressable>
+              </View> : null}
             </View>;
           })}</View>}
       <Pressable accessibilityRole="button" onPress={() => router.push('/exercise/routine-builder')} style={({ pressed }) => [styles.go, pressed && styles.goPressed]}><Text style={styles.goText}>새 루틴 만들기</Text></Pressable>

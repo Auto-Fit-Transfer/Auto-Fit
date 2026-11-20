@@ -45,7 +45,7 @@ type Props = {
   onBack: () => void;
   onCompleteSet: () => void;
   // Resolves to how many remaining items changed, or null when the report failed.
-  onReportDiscomfort: (report: DiscomfortReport) => Promise<number | null>;
+  onReportDiscomfort?: (report: DiscomfortReport) => Promise<number | null>; // absent: the workout cannot be lightened (a saved routine)
   // Records a high-risk stop in the background; the stop screen does not wait for it.
   onReportStop: (report: DiscomfortReport) => void;
   onSkip: () => void;
@@ -141,6 +141,7 @@ export function R6ExerciseSession({
       onReportStop(report);
       return;
     }
+    if (!onReportDiscomfort) return;
     setSubmitting(true);
     const changed = await onReportDiscomfort(report);
     setSubmitting(false);
@@ -314,7 +315,7 @@ export function R6ExerciseSession({
                 <TextInput accessibilityLabel="불편한 내용" maxLength={200} onChangeText={setNote} placeholder="예) 당길 때 오른쪽 어깨가 찌릿해요 (선택)" placeholderTextColor={colors.textDisabled} style={s.input} value={note} />
                 <View style={s.actions}>
                   {chosenFeeling.stops ? null : <Pressable accessibilityRole="button" onPress={() => { setSheetOpen(false); setResumeAfterSheet(false); onBack(); }} style={s.secondaryButton}><Text style={s.secondaryText}>오늘은 그만하기</Text></Pressable>}
-                  <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting || needsPart }} disabled={submitting || needsPart} onPress={() => void submitDiscomfort()} style={[s.primaryButton, (submitting || needsPart) && s.disabled]}><Text style={[s.primaryText, (submitting || needsPart) && s.disabledText]}>{submitting ? '바꾸는 중…' : chosenFeeling.stops ? '운동 중단하기' : '남은 운동 강도 낮추기'}</Text></Pressable>
+                  {chosenFeeling.stops || onReportDiscomfort ? <Pressable accessibilityRole="button" accessibilityState={{ disabled: submitting || needsPart }} disabled={submitting || needsPart} onPress={() => void submitDiscomfort()} style={[s.primaryButton, (submitting || needsPart) && s.disabled]}><Text style={[s.primaryText, (submitting || needsPart) && s.disabledText]}>{submitting ? '바꾸는 중…' : chosenFeeling.stops ? '운동 중단하기' : '남은 운동 강도 낮추기'}</Text></Pressable> : null}
                 </View>
               </>
             )}

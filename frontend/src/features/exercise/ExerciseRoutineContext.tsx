@@ -36,6 +36,7 @@ import {
   type ExerciseRoutine,
 } from './exerciseData';
 import { mapPersistedExerciseCondition } from './exerciseCondition';
+import { recordedItemIds } from './savedRoutine';
 
 type ApiRecord = Record<string, unknown>;
 type ExerciseLoadState = 'empty' | 'error' | 'loading' | 'ready';
@@ -313,6 +314,29 @@ function mapStartedExerciseSession(response: unknown): StartedExerciseSession | 
   const session = readRecord(result, 'session');
   if (!session) return null;
   return { items: Array.isArray(result.items) ? result.items : [], session };
+}
+
+// A saved routine as the session screen runs it: the items copied when it started, minus the ones this session
+// already recorded (opened again after the app was closed; the server refuses a second record of an item).
+export function savedRoutineRun(name: string, startAnswer: unknown, logs: unknown[]) {
+  const started = mapStartedExerciseSession(startAnswer);
+  const result = getResult(startAnswer);
+  if (!started || !result) return null;
+  const recorded = recordedItemIds(logs);
+  const routine: ExerciseRoutine = {
+    estimatedCalories: null,
+    exercises: mapExerciseItems(result).filter((item) => !recorded.has(item.id)),
+    generator: null,
+    id: null,
+    intensity: '',
+    planSessions: [],
+    reasons: [],
+    selectedPlanSessionId: null,
+    subtitle: '',
+    title: name,
+    totalDurationMinutes: null,
+  };
+  return { routine, started };
 }
 
 function toDateKey(value: string) {

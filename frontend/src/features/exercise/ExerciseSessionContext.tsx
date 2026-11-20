@@ -12,7 +12,8 @@ import {
 
 import { completeExerciseSession, recordExerciseDiscomfort, recordExerciseItemResult, type ExerciseDiscomfortInput } from '@/src/api/exercise';
 import { awardTierActivity } from '@/src/api/tier';
-import { earnsWorkoutPoints, pointsOutcome, recordedMinutes, refusalOutcome, type WorkoutPoints } from '@/src/features/exercise/workoutPoints';
+import { earnsWorkoutPoints, pointsOutcome, refusalOutcome, type WorkoutPoints } from '@/src/features/exercise/workoutPoints';
+import { itemMinutes } from '@/src/features/exercise/savedRoutine';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { logError } from '@/src/lib/logError';
 import { mergeAdjustedExercises } from './exerciseAdjustment';
@@ -73,6 +74,7 @@ export type ExerciseSessionState = {
   restRemainingMs: number;
   restTotalMs: number;
   results: ExerciseSessionResult[];
+  savedRoutine: string | null; // the saved routine's name; null for the recommended workout
   sessionId: string;
   setRemainingMs: number;
   skipConfirmationVisible: boolean;
@@ -516,7 +518,7 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     task = recordExerciseItemResult(sessionId, result.sessionItemId, {
       completed: result.completed,
       completedSets: result.completedSets,
-      durationMinutes: recordedMinutes(result.elapsedSeconds),
+      durationMinutes: itemMinutes(result.elapsedSeconds, result.completed, Boolean(sessionRef.current?.savedRoutine)),
       performedRepetitions: result.performedRepetitions,
       performedWeightKg: result.performedWeightKg,
       skipReason: result.skipped ? result.skipReason ?? '사용자가 운동을 건너뜀' : null,
@@ -615,6 +617,7 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
         restRemainingMs: 0,
         restTotalMs: 0,
         results: [],
+        savedRoutine: typeof startedSession.session.user_workout_routine_id === 'string' ? routine.title : null,
         sessionId,
         setRemainingMs: initialSetRemainingMs(exercises[0]),
         skipConfirmationVisible: false,
@@ -652,7 +655,8 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     await flushPendingResults();
     await completeExerciseSession(current.sessionId);
     // Ask for the points only when the server's rule can be met; the completed session stays valid either way.
-    setWorkoutPoints(earnsWorkoutPoints(current.results)
+    // A saved routine never asks for the recommended workout's +5 (back-end fc0bd14).
+    setWorkoutPoints(current.savedRoutine ? null : earnsWorkoutPoints(current.results)
       ? await awardTierActivity('recommended_workout_completed', current.sessionId).then(pointsOutcome, refusalOutcome)
       : 'not_awarded');
     const completedSummary = summarizeSession(current);

@@ -106,7 +106,8 @@ export default function ExerciseSessionScreen() {
     const allSkipped = session.phase === 'all-skipped';
     try {
       const completedSummary = await completeSession();
-      markRoutineCompleted({
+      // A saved routine is not today's recommended workout, so that one stays as it was.
+      if (!session.savedRoutine) markRoutineCompleted({
         calories: completedSummary.calories,
         durationMinutes: completedSummary.durationMinutes,
         itemCount: completedSummary.completedCount,
@@ -194,7 +195,7 @@ export default function ExerciseSessionScreen() {
         onBack={openExitConfirmation}
         onCompleteSet={completeCurrentSet}
         onCycleSpeed={cycleCountSpeed}
-        onReportDiscomfort={reportDiscomfort}
+        onReportDiscomfort={session.savedRoutine ? undefined : reportDiscomfort}
         onReportStop={(report) => void recordSymptomStop(report)}
         onSkip={openSkipConfirmation}
         onSkipRest={skipRest}

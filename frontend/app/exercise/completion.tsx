@@ -15,8 +15,12 @@ import { tierLook, type TierLook } from '@/src/features/tier/tierLook';
 export default function ExerciseCompletionScreen() {
   const router = useRouter();
   const who = useKeptWho();
-  const { latestSession, markResultRecordCompleted, refreshHome, resultRecordCompleted, routine } = useExerciseRoutine();
+  const { latestSession: recommended, markResultRecordCompleted, refreshHome, resultRecordCompleted: recordedBefore, routine } = useExerciseRoutine();
   const { clearSession, session, summary, workoutPoints } = useExerciseSession();
+  // A saved routine is its own session: no AI analysis after it, and the recommended workout's totals are not its own.
+  const saved = session?.savedRoutine ?? null;
+  const latestSession = saved ? null : recommended;
+  const resultRecordCompleted = saved ? false : recordedBefore;
   const [tier, setTier] = useState<TierLook | null>(null);
   const [difficulty, setDifficulty] = useState<number | null>(null);
   const [hadPain, setHadPain] = useState(false);
@@ -47,7 +51,7 @@ export default function ExerciseCompletionScreen() {
         postCondition: hadPain ? change : 'good',
         uncomfortableAreas: hadPain ? selectedAreas : [],
       });
-      markResultRecordCompleted();
+      if (!saved) markResultRecordCompleted();
       goHome();
     } catch (error) {
       Alert.alert('운동 느낌을 저장하지 못했어요', getExerciseApiErrorMessage(error));
@@ -77,7 +81,7 @@ export default function ExerciseCompletionScreen() {
       difficulty={difficulty}
       finished={count === null || count > 0}
       hadPain={hadPain}
-      kcal={session ? summary.calories : null}
+      kcal={session && !saved ? summary.calories : null}
       minutes={duration}
       noPoints={workoutPoints === 'not_awarded'}
       onBack={goHome}
@@ -92,7 +96,7 @@ export default function ExerciseCompletionScreen() {
       stars={session && throughout ? [true, !session.results.some((result) => result.skipped)] : null}
       tier={tier}
       tierIndex={tier?.index ?? 0}
-      title={routine?.title ?? '오늘의 운동'}
+      title={saved ?? routine?.title ?? '오늘의 운동'}
       who={who}
     />
   );

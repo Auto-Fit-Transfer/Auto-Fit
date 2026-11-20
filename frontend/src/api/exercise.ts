@@ -187,8 +187,13 @@ export function getExerciseApiErrorMessage(error: unknown) {
         return '로그인이 만료되었습니다. 다시 로그인해 주세요.';
       case 404:
         return '운동 정보를 찾지 못했어요.';
-      case 409:
+      case 409: {
+        // One workout at a time per account (back-end fc0bd14).
+        const code = (error.detail as { code?: unknown } | null | undefined)?.code;
+        if (code === 'SAVED_ROUTINE_IN_PROGRESS') return '다른 루틴이 진행 중이에요. 그 루틴을 이어서 끝낸 뒤 시작해 주세요.';
+        if (code === 'EXERCISE_SESSION_IN_PROGRESS') return '진행 중인 운동이 있어요. 그 운동을 이어서 끝낸 뒤 시작해 주세요.';
         return '이미 처리 중인 운동 요청이 있어요. 잠시 후 다시 시도해 주세요.';
+      }
       case 422:
         return '운동 조건 또는 현재 설정을 다시 확인해 주세요.';
       default:
@@ -243,6 +248,18 @@ export type SavedWorkoutRoutine = {
   updated_at: string;
   items: SavedWorkoutItem[];
 };
+
+// A saved routine runs as its own session (back-end fc0bd14). Starting the same routine again returns the
+// session already in progress, with the items copied when it started.
+export function startSavedRoutine(routineId: string) {
+  return apiRequest<ExerciseApiResponse>(`/api/exercise/saved-routines/${encodeURIComponent(routineId)}/start`, { method: 'POST' });
+}
+
+export function getLatestSavedRoutineSession() {
+  return apiRequest<{ result: { session: Record<string, unknown>; logs: unknown[]; items: unknown[] } | null }>(
+    '/api/exercise/saved-routines/sessions/latest',
+  );
+}
 
 export function getSavedWorkoutRoutines() {
   return apiRequest<{ routines: SavedWorkoutRoutine[] }>('/api/exercise/saved-routines');
