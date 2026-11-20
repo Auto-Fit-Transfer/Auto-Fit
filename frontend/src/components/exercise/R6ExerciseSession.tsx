@@ -20,6 +20,7 @@ import { HeroHead, type Who } from '@/src/components/a/sprites';
 import { discomfortFeelings as feelings } from '@/src/features/exercise/discomfortFeelings';
 import type { ExerciseSessionExercise, ExerciseSessionState } from '@/src/features/exercise/ExerciseSessionContext';
 import { defaultVoiceGuideSettings, loadVoiceGuideSettings, saveVoiceGuideSettings, speakGuide, stopGuide, type VoiceGuideSettings } from '@/src/features/exercise/voiceGuide';
+import { msToFirstMinute } from '@/src/features/exercise/savedRoutine';
 import { fontFamilies, lightPalette, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
 
@@ -155,6 +156,9 @@ export function R6ExerciseSession({
   const burned = session.results.reduce((sum, result) => sum + (result.caloriesBurned ?? 0), 0);
   // "클리어!" for a moment when a move's last set is done; a move that was skipped gets none.
   const [cleared, setCleared] = useState<string | null>(null);
+  // A saved routine's last set cannot finish before 1 recorded minute: the tip says how long is left.
+  const lastSet = session.phase === 'exercise' && session.currentSet >= exercise.totalSets;
+  const minuteLeft = lastSet ? Math.ceil(msToFirstMinute(Boolean(session.savedRoutine), session.elapsedExerciseMs) / 1000) : 0;
   const before = useRef({ index: session.currentExerciseIndex, name: exercise.name });
   useEffect(() => {
     const was = before.current;
@@ -225,7 +229,9 @@ export function R6ExerciseSession({
             ) : (
               <>
                 <View style={s.face}><HeroHead tier={tierIndex} who={who} /></View>
-                <Text style={s.capText}>{exercise.instruction ?? '무리하지 않고 천천히 움직여 주세요.'}</Text>
+                <Text accessibilityLiveRegion={minuteLeft ? 'polite' : 'none'} style={s.capText}>
+                  {minuteLeft ? `1분을 채워야 기록돼요. ${minuteLeft}초 더 이어서 해 주세요. 그만하려면 건너뛰기를 눌러요.` : exercise.instruction ?? '무리하지 않고 천천히 움직여 주세요.'}
+                </Text>
               </>
             )}
           </View>

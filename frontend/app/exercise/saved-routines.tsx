@@ -49,7 +49,8 @@ export default function SavedRoutines() {
       const answer = await startSavedRoutine(routine.user_workout_routine_id);
       const latest = await getLatestSavedRoutineSession().catch(() => null);
       const sessionId = (answer.result as { session?: { exercise_session_id?: unknown } } | undefined)?.session?.exercise_session_id;
-      const logs = latest?.result && latest.result.session.exercise_session_id === sessionId ? latest.result.logs : [];
+      // Only an in-progress session is picked up (Hyunho, 11/20).
+      const logs = latest?.result && latest.result.session.exercise_session_id === sessionId && latest.result.session.status === 'in_progress' ? latest.result.logs : [];
       const run = savedRoutineRun(routine.name, answer, logs);
       if (!run) throw new Error('운동 정보를 확인할 수 없어요.');
       if (run.routine.exercises.length === 0 && typeof sessionId === 'string') {

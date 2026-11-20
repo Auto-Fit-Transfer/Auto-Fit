@@ -22,10 +22,11 @@ export default function ASessionSample() {
   const at = state === 'hold' ? 2 : state === 'second' ? 1 : 0;
   if (state === 'demo') Object.assign(exercises[0], { thumbnailUrl: DEMO });
   const session = {
-    adjustmentPending: false, countSpeed: 'normal', currentExerciseIndex: at, currentRep: 5, currentSet: 1, elapsedExerciseMs: 134000,
+    adjustmentPending: false, countSpeed: 'normal', currentExerciseIndex: at, currentRep: 5, currentSet: state === 'minute' ? 3 : 1, elapsedExerciseMs: state === 'minute' ? 18000 : 134000,
     exercises, exitConfirmationVisible: false, guideEnabled: false, lastTickAt: null, paused: false,
     phase: state === 'rest' || state === 'last' ? 'rest' : 'exercise', repAccumulatorMs: 0, restRemainingMs: state === 'last' ? 2400 : 7000, restTotalMs: 10000, setRemainingMs: 42000,
     results: at ? [{ caloriesBurned: 23, sessionItemId: 'a', skipped: false }] : [], startedAt: 0, totalElapsedMs: 134000,
+    savedRoutine: state === 'minute' ? '아침 코어' : null, // ?state=minute: a saved routine's last set before 1 minute
   };
   return (
     <R6ExerciseSession

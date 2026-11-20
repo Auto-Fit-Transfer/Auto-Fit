@@ -10,8 +10,6 @@ export function recordedItemIds(logs: readonly unknown[]) {
   );
 }
 
-// The minutes sent for a move. A saved routine refuses a finished move under 1 minute, so a short one counts as 1.
-export function itemMinutes(elapsedSeconds: number, completed: boolean, savedRoutine: boolean) {
-  const minutes = Math.max(0, Math.round(elapsedSeconds / 60));
-  return completed && savedRoutine ? Math.max(1, minutes) : minutes;
-}
+// A saved routine records a finished move only from 1 recorded minute, and minutes are rounded: 30 s.
+// How long the move has to go on before it can finish; 0 for the recommended workout.
+export const msToFirstMinute = (savedRoutine: boolean, elapsedMs: number) => (savedRoutine ? Math.max(0, 30_000 - elapsedMs) : 0);

@@ -12,8 +12,8 @@ import {
 
 import { completeExerciseSession, recordExerciseDiscomfort, recordExerciseItemResult, type ExerciseDiscomfortInput } from '@/src/api/exercise';
 import { awardTierActivity } from '@/src/api/tier';
-import { earnsWorkoutPoints, pointsOutcome, refusalOutcome, type WorkoutPoints } from '@/src/features/exercise/workoutPoints';
-import { itemMinutes } from '@/src/features/exercise/savedRoutine';
+import { earnsWorkoutPoints, pointsOutcome, recordedMinutes, refusalOutcome, type WorkoutPoints } from '@/src/features/exercise/workoutPoints';
+import { msToFirstMinute } from '@/src/features/exercise/savedRoutine';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { logError } from '@/src/lib/logError';
 import { mergeAdjustedExercises } from './exerciseAdjustment';
@@ -384,6 +384,9 @@ function reducer(state: ExerciseSessionState, action: ExerciseSessionAction): Ex
         };
       }
 
+      // A saved routine records a finished move only from 1 recorded minute (back-end fc0bd14): until then it
+      // goes on (a timed move keeps counting up) and the screen says so; skipping is always there.
+      if (msToFirstMinute(Boolean(state.savedRoutine), state.elapsedExerciseMs) > 0) return { ...state, lastTickAt: action.now };
       return {
         ...state,
         lastTickAt: null,
@@ -518,7 +521,7 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     task = recordExerciseItemResult(sessionId, result.sessionItemId, {
       completed: result.completed,
       completedSets: result.completedSets,
-      durationMinutes: itemMinutes(result.elapsedSeconds, result.completed, Boolean(sessionRef.current?.savedRoutine)),
+      durationMinutes: recordedMinutes(result.elapsedSeconds),
       performedRepetitions: result.performedRepetitions,
       performedWeightKg: result.performedWeightKg,
       skipReason: result.skipped ? result.skipReason ?? '사용자가 운동을 건너뜀' : null,
