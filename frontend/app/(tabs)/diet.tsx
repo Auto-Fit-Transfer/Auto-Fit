@@ -94,6 +94,8 @@ function localClock(value: string | undefined) {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 }
 
+type LogMeta = { photoUrl?: string; time?: string; foods?: MealRecordDraft['foods'] };
+
 function mapLogDraft(log: ApiRecord, mealId: MealType): MealRecordDraft | undefined {
   const actualItems = readArray(log.actual_items ?? log.items);
   if (actualItems.length === 0) return undefined;
@@ -170,7 +172,7 @@ export default function DietScreen() {
     Record<string, Partial<Record<MealType, MealRecordDraft>>>
   >({});
   const [mealLogMetaByDate, setMealLogMetaByDate] = useState<
-    Record<string, Partial<Record<MealType, { photoUrl?: string; time?: string }>>>
+    Record<string, Partial<Record<MealType, LogMeta>>>
   >({});
   // 일반식 / 건강식: undefined until the server answers (an older server hides the button)
   const [menuStyle, setMenuStyle] = useState<MenuStylePreference | undefined>(undefined);
@@ -229,7 +231,7 @@ export default function DietScreen() {
       if (!isMountedRef.current || requestId !== mealLogsRequestRef.current) return;
       const statuses: Partial<MealStatuses> = {};
       const records: Partial<Record<MealType, MealRecordDraft>> = {};
-      const meta: Partial<Record<MealType, { photoUrl?: string; time?: string }>> = {};
+      const meta: Partial<Record<MealType, LogMeta>> = {};
       readArray(response.logs).forEach((entry) => {
         if (!isApiRecord(entry)) return;
         const mealId = readMealType(readString(entry, ['meal_type', 'meal_category', 'type', 'time_of_day']));
@@ -237,6 +239,7 @@ export default function DietScreen() {
         meta[mealId] = {
           photoUrl: readString(entry, ['image_url']),
           time: localClock(readString(entry, ['eaten_at', 'created_at'])),
+          foods: mapLogDraft(entry, mealId)?.foods,
         };
         const type = readString(entry, ['feedback_type', 'type']);
         if (type === 'different_food') {
@@ -617,15 +620,18 @@ export default function DietScreen() {
           // A different food the user recorded is not the recommended menu, so it stays as saved.
           const notice = status === 'modified' ? null : mealAllergyNotice(meal, allergyNames);
           const photoUrl = record?.photoUri ?? log?.photoUrl;
-          const macros = status === 'modified' && recordedFoods ? macroLabel(recordedFoods) : meal.macros;
-          const recordedKcal = recordedFoods?.every((food) => food.kcal !== undefined)
-            ? recordedFoods.reduce((sum, food) => sum + (food.kcal ?? 0), 0)
+          // What was eaten, when it is not the plan: a different food, or a meal recorded earlier in the daily app
+          // (its log has the foods and numbers actually saved there, Hyunho 11/20).
+          const eatenFoods = status === 'modified' ? recordedFoods : weekly.locked.has(meal.id) ? log?.foods : undefined;
+          const macros = eatenFoods ? macroLabel(eatenFoods) : meal.macros;
+          const recordedKcal = eatenFoods?.every((food) => food.kcal !== undefined)
+            ? eatenFoods.reduce((sum, food) => sum + (food.kcal ?? 0), 0)
             : null;
           return {
             id: meal.id,
             title: meal.title,
-            kcal: status === 'modified' && recordedFoods ? recordedKcal : meal.kcal,
-            foods: recordedFoods?.map((food) => food.name).join(' · ') || meal.foods,
+            kcal: eatenFoods ? recordedKcal : meal.kcal,
+            foods: (eatenFoods ?? recordedFoods)?.map((food) => food.name).join(' · ') || meal.foods,
             note: meal.note || meal.description || '',
             detail: status === 'eaten' || status === 'modified'
               ? [[log?.time, photoUrl ? '사진으로 기록' : '기록'].filter(Boolean).join(' '), macros].filter(Boolean).join(' · ')
