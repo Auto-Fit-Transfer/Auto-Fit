@@ -1,7 +1,7 @@
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { Text } from '@/src/components/common';
-import { useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { aForm } from './form';
 
@@ -32,9 +32,9 @@ export function PaperReads({ style }: { style?: StyleProp<ViewStyle> }) {
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
-    q: a.q,
+    q: { ...a.q, fontFamily: fontFamilies.pretendardMedium },
     list: { gap: 12 },
-    title: { ...a.p15, color: colors.ink },
-    detail: { ...a.p12, color: colors.ink, marginTop: 3 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 20 },
+    detail: { color: colors.textSecondary, fontSize: 12.5, lineHeight: 18, marginTop: 2 },
   } as const;
 }

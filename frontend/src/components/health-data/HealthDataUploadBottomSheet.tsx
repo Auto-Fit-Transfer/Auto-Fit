@@ -8,7 +8,7 @@ import {
   type SelectedHealthFile,
   useHealthFilePicker,
 } from '@/src/features/health-data/useHealthFilePicker';
-import { useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type Props = {
   children?: ReactNode;
@@ -101,20 +101,18 @@ function Option({ title, detail, disabled, onPress }: { title: string; detail: s
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
-    content: { gap: 8, paddingBottom: 20, paddingHorizontal: 16, paddingTop: 0 },
-    description: { ...a.p15, color: colors.textBody, marginBottom: 4, marginHorizontal: 4 },
+    content: { gap: 8, paddingBottom: 20, paddingHorizontal: 20, paddingTop: 0 },
+    description: { color: colors.textSecondary, fontSize: 14, lineHeight: 21, marginBottom: 4, marginHorizontal: 4 },
     option: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 14,
-      borderWidth: 1,
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 20,
       gap: 3,
       justifyContent: 'center',
-      minHeight: 62,
-      paddingHorizontal: 12,
+      minHeight: 66,
+      paddingHorizontal: 20,
     },
-    pressed: { backgroundColor: colors.primaryLight },
-    title: { ...a.p15, color: colors.ink },
+    pressed: { opacity: 0.8 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },
     detail: a.note,
     reads: { marginHorizontal: 4, marginTop: 12 },
     safe: { ...a.note, marginHorizontal: 4, marginTop: 6 },

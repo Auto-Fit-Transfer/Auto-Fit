@@ -9,6 +9,7 @@ import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { ALoading } from './ALoading';
 import { aForm } from './form';
 import { PaperReads } from './PaperReads';
+import { Headline } from '@/src/components/b/Headline';
 
 export type PaperFilter = 'all' | 'health_checkup' | 'body_composition';
 export interface PaperRow {
@@ -17,9 +18,10 @@ export interface PaperRow {
   given: string;
 }
 
-// Renewal A's 건강 서류: the numbers of the papers I gave last, the way to give a new one, then
-// everything I gave. With nothing given yet it is one block in the middle that asks for the first.
-// A view that only shows what it is given; app/health-data-management.tsx fills it from the server.
+// 건강 서류 in renewal B's way (b-docs.html): the headline says what my papers do for me (how many numbers
+// the recommendations use), the line under it which papers they came from, the numbers in one white card,
+// a new paper, then everything I gave. With nothing given yet it is one block a little above the middle.
+// No points here: in renewal B the tier is not the main thing. app/health-data-management.tsx fills it.
 export function PapersView({
   loading,
   total,
@@ -46,15 +48,10 @@ export function PapersView({
 }) {
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
-  const add = (bonus: boolean) => (
-    <Pressable
-      accessibilityLabel={bonus ? '자료 올리기, 15점' : '자료 올리기'}
-      accessibilityRole="button"
-      onPress={onAdd}
-      style={({ pressed }) => [styles.go, pressed && styles.goPressed]}
-    >
+  const used = numbers.reduce((sum, paper) => sum + paper.items.filter((item) => item.value).length, 0);
+  const add = (
+    <Pressable accessibilityRole="button" onPress={onAdd} style={({ pressed }) => [styles.go, pressed && styles.goPressed]}>
       <Text style={styles.goText}>자료 올리기</Text>
-      {bonus ? <Text style={styles.reward}>+15</Text> : null}
     </Pressable>
   );
 
@@ -64,42 +61,40 @@ export function PapersView({
       {loading && total === 0 ? (
         <ALoading />
       ) : total === 0 ? (
-        <ScrollView contentContainerStyle={[styles.first, { paddingBottom: insets.bottom + 72 }]} showsVerticalScrollIndicator={false}>
-          <Text style={styles.intro}>
-            건강검진 결과나 인바디 결과지가 있나요? 올려 주시면 수치를 읽어서 운동 · 식단 추천을 내 몸에 맞게 바꿔 드려요.
-          </Text>
-          <View style={styles.addRow}>{add(true)}</View>
-          <Text style={styles.tip}>올린 자료는 암호화해서 보관해요</Text>
+        <ScrollView contentContainerStyle={[styles.first, { paddingBottom: insets.bottom + 48 }]} showsVerticalScrollIndicator={false}>
+          <Headline lines={[[{ text: '건강 서류를' }], [{ text: '올려 볼까요?' }]]} />
+          <Text style={styles.lead}>건강검진 결과나 인바디 결과지를 올리면 운동 · 식단 추천이 내 몸에 맞게 바뀌어요</Text>
           <PaperReads style={styles.reads} />
+          {add}
+          <Text style={styles.tip}>올린 자료는 암호화해서 보관해요</Text>
         </ScrollView>
       ) : (
         <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 28 }]} showsVerticalScrollIndicator={false}>
+          <Headline lines={used ? [[{ text: '수치 ' }, { text: `${used}가지`, mark: true }, { text: '를' }], [{ text: '추천에 쓰고 있어요' }]] : [[{ text: '올린 자료가' }], [{ text: `${total}건`, mark: true }, { text: ' 있어요' }]]} />
+          <Text style={styles.lead}>{used ? `${numbers.map((paper) => `${paper.day} ${paper.kind}`).join(' · ')}에서 읽었어요` : '확인한 수치부터 추천에 써요'}</Text>
           {numbers.length > 0 ? (
-            <>
-              <Text style={styles.q}>최근에 올린 수치</Text>
-              <View style={styles.now}>
-                {numbers.map((paper, index) => (
-                  <View key={paper.kind} style={index > 0 && styles.nowNext}>
-                    <View style={styles.cells}>
-                      {paper.items.map((item, at) => (
-                        <View key={item.label} style={[styles.cell, at > 0 && styles.cellNext]}>
-                          <Text style={styles.cellLabel}>{item.label}</Text>
-                          <Text numberOfLines={1} style={styles.value}>
-                            {item.value || '–'}
-                            {item.value && item.unit ? <Text style={styles.unit}> {item.unit}</Text> : null}
-                          </Text>
-                        </View>
-                      ))}
-                    </View>
-                    <Text style={styles.source}>
-                      {paper.day} {paper.kind}
-                    </Text>
+            <View style={styles.now}>
+              {numbers.map((paper, index) => (
+                <View key={paper.kind} style={[styles.paper, index > 0 && styles.paperNext]}>
+                  <View style={styles.cells}>
+                    {paper.items.map((item, at) => (
+                      <View key={item.label} style={[styles.cell, at > 0 && styles.cellNext]}>
+                        <Text style={styles.cellLabel}>{item.label}</Text>
+                        <Text numberOfLines={1} style={styles.value}>
+                          {item.value || '–'}
+                          {item.value && item.unit ? <Text style={styles.unit}> {item.unit}</Text> : null}
+                        </Text>
+                      </View>
+                    ))}
                   </View>
-                ))}
-              </View>
-            </>
+                  <Text style={styles.source}>
+                    {paper.day} {paper.kind}
+                  </Text>
+                </View>
+              ))}
+            </View>
           ) : null}
-          <View style={numbers.length > 0 && styles.addRow}>{add(false)}</View>
+          {add}
           <Text style={styles.tip}>인바디는 한 달에 한 번이면 충분해요</Text>
           <View style={styles.head}>
             <Text style={styles.count}>올린 자료 {total}건</Text>
@@ -154,44 +149,42 @@ export function PapersView({
 
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
+  const note = { ...a.note, fontFamily: fontFamilies.pretendardRegular } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
-    content: { paddingHorizontal: 16, paddingTop: 8 },
-    // Nothing given yet: one block in the middle of the height, a little above it.
-    first: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 16 },
-    intro: { ...a.p15, color: colors.textBody, marginHorizontal: 2 },
-    reads: { ...a.card, marginTop: 22, paddingHorizontal: 16, paddingVertical: 14 },
-    q: a.q,
-    now: { ...a.card, paddingBottom: 12, paddingHorizontal: 8, paddingTop: 16 },
-    nowNext: { borderTopColor: colors.track, borderTopWidth: 2, marginTop: 12, paddingTop: 16 },
+    content: { gap: 14, paddingHorizontal: 20, paddingTop: 8 },
+    // Nothing given yet: one block a little above the middle, the button right under the words.
+    first: { flexGrow: 1, gap: 14, justifyContent: 'center', paddingHorizontal: 20 },
+    lead: { color: colors.textSecondary, fontSize: 14.5, lineHeight: 22, marginTop: -4 },
+    reads: { ...a.card, paddingHorizontal: 20, paddingVertical: 18 },
+    now: { ...a.card, paddingHorizontal: 20, paddingVertical: 6 },
+    paper: { paddingBottom: 14, paddingTop: 16 },
+    paperNext: { borderTopColor: colors.border, borderTopWidth: 1 },
     cells: { flexDirection: 'row' },
-    cell: { alignItems: 'center', flex: 1, minWidth: 0 },
-    cellNext: { borderLeftColor: colors.track, borderLeftWidth: 2 },
-    cellLabel: a.note,
-    value: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 30 },
-    unit: { ...a.p12, color: colors.ink },
-    source: { ...a.p12, color: colors.ink, marginTop: 10, textAlign: 'center' },
-    addRow: { marginTop: 14 },
+    cell: { alignItems: 'center', flex: 1, gap: 2, minWidth: 0 },
+    cellNext: { borderLeftColor: colors.border, borderLeftWidth: 1 },
+    cellLabel: note,
+    value: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, letterSpacing: -0.4, lineHeight: 28 },
+    unit: { ...a.p12, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    source: { ...note, marginTop: 10, textAlign: 'center' },
     go: a.go,
     goPressed: a.goPressed,
     goText: a.goText,
-    reward: a.reward,
-    // 4 of the space above the tip is the button's ledge.
-    tip: { ...a.note, marginTop: 14, textAlign: 'center' },
-    head: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 2, marginTop: 26 },
-    count: a.note,
+    tip: { ...note, marginTop: -6, textAlign: 'center' },
+    head: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 4, marginTop: 10 },
+    count: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 15, lineHeight: 21 },
     link: a.link,
-    tabs: { flexDirection: 'row', gap: 6, marginTop: 8, paddingBottom: 3 },
-    tab: a.mini,
-    tabText: a.miniText,
+    tabs: { flexDirection: 'row', gap: 6, marginTop: -6 },
+    tab: { ...a.chip, backgroundColor: colors.surface, height: 38, paddingHorizontal: 16 },
+    tabText: a.chipText,
     on: a.on,
     onText: a.onText,
-    list: { ...a.card, marginTop: 10, paddingHorizontal: 16 },
+    list: { ...a.card, paddingHorizontal: 20 },
     row: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 64 },
-    rowNext: { borderTopColor: colors.track, borderTopWidth: 2 },
+    rowNext: { borderTopColor: colors.border, borderTopWidth: 1 },
     rowCopy: { flex: 1, gap: 2, minWidth: 0 },
-    rowTitle: { ...a.p15, color: colors.ink },
-    rowDetail: a.note,
-    none: { ...a.note, marginTop: 18, textAlign: 'center' },
+    rowTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 20 },
+    rowDetail: note,
+    none: { ...note, marginTop: 8, textAlign: 'center' },
   } as const;
 }

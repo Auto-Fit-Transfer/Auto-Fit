@@ -168,36 +168,34 @@ function UploadOption({
   );
 }
 
-// Renewal A: the question in pixel letters, the two ways to give a paper as outlined rows, and the
-// one button that sends what was picked (the gold +15 is the tier rule for a paper, once a month).
+// Renewal B: the question as a big bold title, the two ways to give a paper as roomy white rows, and the
+// one black pill that sends what was picked (the +15 is the tier rule for a paper, once a month).
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     // One block in the middle of the height, a little above it: the question, the two ways, and the way out.
-    content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 16, paddingTop: 8 },
-    heading: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 30 },
-    description: { ...a.p15, color: colors.textBody, marginTop: 8 },
+    content: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20, paddingTop: 8 },
+    heading: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 30, letterSpacing: -0.6, lineHeight: 38 },
+    description: { color: colors.textSecondary, fontSize: 14.5, lineHeight: 22, marginTop: 8 },
     options: { gap: 8, marginTop: 18 },
     option: {
       backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 14,
-      borderWidth: 1,
+      borderRadius: 20,
       gap: 3,
       justifyContent: 'center',
-      minHeight: 62,
-      paddingHorizontal: 12,
+      minHeight: 66,
+      paddingHorizontal: 20,
     },
-    optionTitle: { ...a.p15, color: colors.ink },
+    optionTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },
     optionDetail: a.note,
     selected: { gap: 8, marginTop: 18 },
     q: { ...a.q, marginBottom: 0 },
     fileRow: { ...a.field, gap: 8, paddingRight: 6 },
-    fileName: { ...a.p15, color: colors.ink, flex: 1 },
+    fileName: { ...a.p15, color: colors.textPrimary, flex: 1 },
     mini: a.mini,
     miniText: a.miniText,
-    reads: { ...a.card, marginTop: 22, paddingHorizontal: 16, paddingVertical: 14 },
+    reads: { ...a.card, marginTop: 22, paddingHorizontal: 20, paddingVertical: 18 },
     privacy: { ...a.note, marginTop: 14, textAlign: 'center' },
     footer: { marginTop: 18 },
     go: a.go,
@@ -207,6 +205,6 @@ function createStyles({ colors }: AppTheme) {
     reward: a.reward,
     skipButton: { alignItems: 'center', height: 44, justifyContent: 'center' },
     skipLabel: a.link,
-    pressed: { backgroundColor: colors.primaryLight },
+    pressed: { backgroundColor: colors.surfaceMuted },
   } as const;
 }
