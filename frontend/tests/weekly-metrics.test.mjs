@@ -4,6 +4,7 @@ import {
   mapWeeklyMetrics,
   formatSessionDuration,
   sessionCalories,
+  sessionFinished,
   sessionMinutes,
   sessionLocalDate,
 } from '../src/features/exercise/weeklyMetrics.ts';
@@ -68,4 +69,15 @@ test('history duration uses seconds and dates use device timezone', () => {
     `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
   );
   assert.equal(sessionLocalDate('bad'), '날짜 미기록');
+});
+
+test('a stopped or skipped session is not finished, though the server stamps completed_at on it', () => {
+  assert.equal(sessionFinished('completed', undefined, '2026-11-23T11:44:57+09:00'), true);
+  assert.equal(sessionFinished('stopped', undefined, '2026-11-23T11:44:57+09:00'), false);
+  assert.equal(sessionFinished('skipped', undefined, '2026-11-23T11:44:57+09:00'), false);
+  assert.equal(sessionFinished('in_progress', undefined, null), false);
+  // an older answer without a status still counts by its flag or its end time
+  assert.equal(sessionFinished(null, true, null), true);
+  assert.equal(sessionFinished(null, undefined, '2026-11-20T09:00:00+09:00'), true);
+  assert.equal(sessionFinished(null, undefined, null), false);
 });

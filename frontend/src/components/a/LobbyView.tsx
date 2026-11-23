@@ -247,7 +247,8 @@ export function LobbyView({ name, who, tier, quests, bell, steps, onMe, onAsk, o
                 <Text style={styles.listName}>{quest.name}</Text>
                 <Text style={styles.small}>{quest.done ? '완료' : quest.state ?? ''}</Text>
               </View>
-              {quest.points ? <Text style={styles.reward}>+{quest.points}</Text> : null}
+              {/* +N is what a quest can still earn; beside 완료 it read as points already given (Hyunho, 11/23) */}
+              {quest.points && !quest.done ? <Text style={styles.reward}>+{quest.points}</Text> : null}
               {quest.done ? <CheckIcon color={colors.primaryText} height={22} width={22} /> : go(quest, true)}
             </View>
           ))}

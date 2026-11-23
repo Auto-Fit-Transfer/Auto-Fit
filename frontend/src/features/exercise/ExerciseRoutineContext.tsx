@@ -1,5 +1,5 @@
 import { logError } from '@/src/lib/logError';
-import { mapWeeklyMetrics, sessionCalories, sessionMinutes, sessionLocalDate } from './weeklyMetrics';
+import { mapWeeklyMetrics, sessionCalories, sessionFinished, sessionMinutes, sessionLocalDate } from './weeklyMetrics';
 import {
   createContext,
   useCallback,
@@ -292,7 +292,7 @@ function mapExerciseSession(response: unknown): ExerciseSessionSummary | null {
       ]),
       session.completed_item_count,
     ),
-    completed: session.completed === true || status === 'completed' || completedAt !== null,
+    completed: sessionFinished(status, session.completed, completedAt),
     date:
       completedAt ??
       readString(session, ['session_date', 'exercise_date', 'started_at', 'created_at']),
