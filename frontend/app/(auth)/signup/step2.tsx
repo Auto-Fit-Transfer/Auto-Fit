@@ -1,6 +1,6 @@
 import { logError } from '@/src/lib/logError';
 import { useRef, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Alert,
   Pressable,
@@ -19,6 +19,7 @@ const verificationCodeLength = 6;
 export default function SignUpStep2Screen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const { flow } = useLocalSearchParams<{ flow?: string }>();
   const { draft } = useSignup();
   const { email } = draft;
   const inputRefs = useRef<(TextInput | null)[]>([]);
@@ -59,7 +60,7 @@ export default function SignUpStep2Screen() {
         type: 'signup',
       });
       if (error) throw error;
-      router.push('/signup/step3');
+      router.push(flow === 'b' ? '/signup/b-save' : '/signup/step3');
     } catch (error) {
       logError('이메일 인증 실패', error);
       Alert.alert(
@@ -101,6 +102,7 @@ export default function SignUpStep2Screen() {
 
   return (
     <SignUpScreenLayout
+      b={flow === 'b'}
       ctaLabel="다음"
       ctaDisabled={digits.some((digit) => !digit)}
       ctaLoading={isVerifying}

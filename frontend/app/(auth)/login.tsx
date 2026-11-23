@@ -1,215 +1,194 @@
-import { logError } from '@/src/lib/logError';
-import { useRef, useState, type ComponentType } from 'react';
+import { useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Keyboard, Pressable, View } from 'react-native';
-import type { SvgProps } from 'react-native-svg';
+import { Pressable, View } from 'react-native';
 
-import GoogleIcon from '@/assets/icons/auth-redesign/google-logo.svg';
-import KakaoIcon from '@/assets/icons/auth-redesign/kakao-symbol.svg';
-import { aForm } from '@/src/components/a/form';
-import { AuthButton, AuthCard, AuthPage, AuthTextField } from '@/src/components/auth/AuthRedesign';
-import {
-  signInWithSocialProvider,
-  type SocialLoginProvider,
-} from '@/src/features/auth/socialOAuth';
-import { getPostLoginDestination } from '@/src/features/auth/postLoginDestination';
-import { getSupabaseClient } from '@/src/lib/supabase';
-import { useThemedStyles, type AppTheme } from '@/src/theme';
-import { Text, TextInput } from '@/src/components/common';
+import { LoginPanel } from '@/src/components/auth/LoginPanel';
+import { HelloView, type HelloLine, type HelloLineKey } from '@/src/components/b/HelloView';
+import { AppBottomSheet, Text, TextInput } from '@/src/components/common';
+import { bodyBasicsError } from '@/src/features/a/bodyBasics';
+import { hear, tooYoung, type Heard } from '@/src/features/b/hear';
+import { useSignup } from '@/src/features/signup/SignupContext';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 
-type SocialLoginButtonProps = {
-  disabled: boolean;
-  label: string;
-  icon: ComponentType<SvgProps>;
-  onPress: () => void;
-  kakao?: boolean;
-};
+// Renewal B's first screen: the one-sentence sign-up (src/components/b/HelloView.tsx). '로그인' opens the
+// e-mail and social login on the same screen; a link back from a failed social login or a reset opens it at once.
+// What is heard goes into the sign-up draft; the account is made after it (signup/step1, flow b) and the rest
+// is saved once the account exists (signup/b-save).
+const EXAMPLE = '서른 살 여자예요. 땅콩이랑 새우는 못 먹고, 살을 빼고 싶은데 운동은 처음이에요. 키 162에 몸무게 60kg이에요.';
+const FOODS: [string, string][] = [
+  ['milk', '우유'], ['egg', '계란'], ['peanut', '땅콩'], ['nuts', '견과류'], ['wheat', '밀(글루텐)'], ['soybean', '콩(대두)'],
+  ['buckwheat', '메밀'], ['crab', '갑각류'], ['shellfish', '조개'], ['fish', '생선'], ['peach', '복숭아'], ['sesame', '참깨'],
+];
+const GOALS: [NonNullable<Heard['goal']>, string][] = [['fat-loss', '체지방 감량'], ['muscle-gain', '근육량 증가'], ['stamina', '체력 향상'], ['conditioning', '컨디셔닝 · 기능 회복']];
+const LEVELS: [NonNullable<Heard['level']>, string][] = [['beginner', '초보'], ['intermediate', '중급'], ['advanced', '고급']];
+const label = <T extends string>(list: [T, string][], key: T | null) => list.find(([id]) => id === key)?.[1] ?? '';
+const empty = (): Heard => hear('').got;
 
-function SocialLoginButton({
-  disabled,
-  label,
-  icon: Icon,
-  onPress,
-  kakao = false,
-}: SocialLoginButtonProps) {
+export default function LoginRoute() {
+  const router = useRouter();
   const styles = useThemedStyles(createStyles);
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [styles.socialButton, kakao && styles.kakaoButton, pressed && styles.pressed]}
-    >
-      <Icon height={kakao ? 20 : 18} width={kakao ? 20 : 18} />
-      <Text style={[styles.socialLabel, kakao && styles.kakaoLabel]}>{label}</Text>
+  const { oauthError, login } = useLocalSearchParams<{ oauthError?: string; login?: string }>();
+  const { draft, updateDraft } = useSignup();
+  const [showLogin, setShowLogin] = useState(Boolean(oauthError || login));
+  const [phase, setPhase] = useState<'open' | 'heard' | 'keep'>('open');
+  const [input, setInput] = useState('');
+  const [said, setSaid] = useState<{ text: string; marks: [number, number][] } | null>(null);
+  const [got, setGot] = useState<Heard>(empty);
+  const [other, setOther] = useState('');
+  const [asking, setAsking] = useState<HelloLineKey | null>(null);
+  const [error, setError] = useState('');
+  // the sheet's own copy, kept until 확인
+  const [form, setForm] = useState({ age: '', sex: null as Heard['sex'], foods: [] as string[], none: false, other: '', goal: null as Heard['goal'], level: null as Heard['level'], height: '', weight: '' });
+
+  if (showLogin) return <LoginPanel onJoin={() => setShowLogin(false)} />;
+
+  const say = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const heard = hear(trimmed);
+    setSaid({ text: trimmed, marks: heard.marks });
+    setGot(heard.got);
+    setOther('');
+    setPhase('heard');
+  };
+  const foodsDone = got.allergens.length > 0 || got.noAllergy || other.trim().length > 0;
+  const lines: HelloLine[] = [
+    { key: 'who', done: got.age !== null && got.sex && !tooYoung(got.age) ? `${got.age}세 ${got.sex === 'female' ? '여성' : '남성'}으로 기억했어요` : null, missing: tooYoung(got.age) ? '만 19세 이상부터 가입할 수 있어요' : '나이와 성별을 못 들었어요' },
+    { key: 'food', done: foodsDone ? (got.noAllergy && !other ? '가리는 음식 없이 식단을 짤게요' : `${[...got.allergens.map((id) => label(FOODS, id)), ...(other ? [other] : [])].join(' · ')} 빼고 식단을 짤게요`) : null, missing: '못 먹는 음식을 못 들었어요' },
+    { key: 'plan', done: got.goal && got.level ? `${label(GOALS, got.goal)} · ${label(LEVELS, got.level)} 루틴을 짜 둘게요` : null, missing: got.goal ? '운동 경험을 못 들었어요' : '목표를 못 들었어요' },
+    { key: 'body', done: got.height && got.weight ? `키 ${got.height}cm · ${got.weight}kg으로 하루 목표를 맞출게요` : null, missing: '키와 몸무게를 못 들었어요' },
+  ];
+
+  const ask = (key: HelloLineKey) => {
+    setForm({ age: got.age ? String(got.age) : '', sex: got.sex, foods: got.allergens, none: got.noAllergy, other, goal: got.goal, level: got.level, height: got.height ? String(got.height) : '', weight: got.weight ? String(got.weight) : '' });
+    setError('');
+    setAsking(key);
+  };
+  const confirm = () => {
+    if (asking === 'who') {
+      const age = Number(form.age);
+      if (!form.sex) return setError('성별을 골라 주세요.');
+      if (!Number.isInteger(age) || age < 1 || age > 120) return setError('나이를 숫자로 적어 주세요.');
+      if (tooYoung(age)) return setError('만 19세 이상부터 가입할 수 있어요.');
+      setGot((current) => ({ ...current, age, sex: form.sex }));
+    }
+    if (asking === 'food') {
+      if (!form.none && !form.foods.length && !form.other.trim()) return setError('못 먹는 음식을 고르거나 "없어요"를 골라 주세요.');
+      setGot((current) => ({ ...current, allergens: form.none ? [] : form.foods, noAllergy: form.none }));
+      setOther(form.none ? '' : form.other.trim());
+    }
+    if (asking === 'plan') {
+      if (!form.goal) return setError('운동 목표를 골라 주세요.');
+      if (!form.level) return setError('운동 경험을 골라 주세요.');
+      setGot((current) => ({ ...current, goal: form.goal, level: form.level }));
+    }
+    if (asking === 'body') {
+      const problem = bodyBasicsError(form.height, form.weight);
+      if (problem) return setError(problem);
+      setGot((current) => ({ ...current, height: Number(form.height), weight: Number(form.weight) }));
+    }
+    setAsking(null);
+  };
+  const keep = () => {
+    updateDraft({
+      gender: got.sex ?? undefined,
+      selectedAllergens: got.allergens,
+      otherAllergy: other,
+      exerciseGoal: got.goal ?? draft.exerciseGoal,
+      exerciseExperience: got.level ?? draft.exerciseExperience,
+      height: got.height ? String(got.height) : '',
+      weight: got.weight ? String(got.weight) : '',
+    });
+    setPhase('keep');
+  };
+
+  const chip = (on: boolean, text: string, onPress: () => void) => (
+    <Pressable key={text} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={onPress} style={[styles.chip, on && styles.chipOn]}>
+      <Text style={[styles.chipText, on && styles.chipOnText]}>{text}</Text>
     </Pressable>
   );
-}
-
-export default function LoginScreen() {
-  const styles = useThemedStyles(createStyles);
-  const router = useRouter();
-  const { oauthError } = useLocalSearchParams<{ oauthError?: string | string[] }>();
-  const passwordRef = useRef<TextInput>(null);
-  const activeLoginProviderRef = useRef<'email' | SocialLoginProvider | null>(null);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  // Links can set this value, so it only ever selects our own sentence.
-  const [loginError, setLoginError] = useState<string | undefined>(() =>
-    oauthError ? '소셜 로그인에 실패했어요. 다시 시도해 주세요.' : undefined,
-  );
-  const [activeLoginProvider, setActiveLoginProvider] = useState<
-    'email' | SocialLoginProvider | null
-  >(null);
-
-  const handleLogin = async () => {
-    Keyboard.dismiss();
-    if (activeLoginProviderRef.current) return;
-    activeLoginProviderRef.current = 'email';
-    setActiveLoginProvider('email');
-    setLoginError(undefined);
-    try {
-      const { error } = await getSupabaseClient().auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-      if (error) throw error;
-      router.replace(await getPostLoginDestination());
-    } catch (error) {
-      logError('로그인 실패', error);
-      setLoginError(error instanceof Error ? error.message : '로그인 정보를 확인해 주세요.');
-    } finally {
-      activeLoginProviderRef.current = null;
-      setActiveLoginProvider(null);
-    }
-  };
-
-  const handleSocialLogin = async (provider: SocialLoginProvider) => {
-    Keyboard.dismiss();
-    if (activeLoginProviderRef.current) return;
-    activeLoginProviderRef.current = provider;
-    setActiveLoginProvider(provider);
-    setLoginError(undefined);
-    try {
-      const result = await signInWithSocialProvider(provider);
-      if (result.status === 'success') router.replace(await getPostLoginDestination());
-    } catch (error) {
-      logError(`${provider} 로그인 실패`, error);
-      setLoginError(error instanceof Error ? error.message : '소셜 로그인에 실패했습니다.');
-    } finally {
-      activeLoginProviderRef.current = null;
-      setActiveLoginProvider(null);
-    }
-  };
 
   return (
-    <AuthPage mode="login">
-      <AuthCard style={styles.loginCard}>
-        <AuthTextField
-          accessibilityLabel="이메일"
-          autoCapitalize="none"
-          autoComplete="email"
-          autoCorrect={false}
-          keyboardType="email-address"
-          onChangeText={setEmail}
-          onSubmitEditing={() => passwordRef.current?.focus()}
-          placeholder="이메일"
-          returnKeyType="next"
-          textContentType="emailAddress"
-          value={email}
-        />
-        <AuthTextField
-          ref={passwordRef}
-          accessibilityLabel="비밀번호"
-          autoCapitalize="none"
-          autoComplete="password"
-          error={loginError}
-          fieldStyle={styles.withMini}
-          onChangeText={setPassword}
-          onSubmitEditing={handleLogin}
-          placeholder="비밀번호"
-          returnKeyType="done"
-          rightElement={
-            <Pressable
-              accessibilityLabel={passwordVisible ? '비밀번호 숨기기' : '비밀번호 보기'}
-              accessibilityRole="button"
-              hitSlop={10}
-              onPress={() => setPasswordVisible(!passwordVisible)}
-              style={styles.mini}
-            >
-              <Text style={styles.miniText}>{passwordVisible ? '숨기기' : '보기'}</Text>
-            </Pressable>
-          }
-          secureTextEntry={!passwordVisible}
-          textContentType="password"
-          value={password}
-        />
-        <View style={styles.loginButton}>
-          <AuthButton
-            loading={activeLoginProvider === 'email'}
-            onPress={handleLogin}
-            title="로그인"
-          />
+    <>
+      <HelloView
+        example={EXAMPLE}
+        input={input}
+        lines={lines}
+        onAccount={() => router.push({ pathname: '/signup/step1', params: { flow: 'b' } })}
+        onAgain={() => { setInput(''); setPhase('open'); }}
+        onAsk={ask}
+        onBack={() => setPhase('heard')}
+        onExample={() => { setInput(EXAMPLE); say(EXAMPLE); }}
+        onGo={keep}
+        onInput={setInput}
+        onLogin={() => setShowLogin(true)}
+        onPick={() => { setSaid(null); setGot(empty()); setOther(''); setPhase('heard'); }}
+        onSay={() => say(input)}
+        phase={phase}
+        said={said}
+      />
+      <AppBottomSheet
+        onClose={() => setAsking(null)}
+        title={asking === 'who' ? '나이와 성별' : asking === 'food' ? '못 먹는 음식' : asking === 'plan' ? '목표와 운동 경험' : '키와 몸무게'}
+        visible={asking !== null}
+      >
+        <View style={styles.sheet}>
+          {asking === 'who' ? (
+            <>
+              <View style={styles.row}>
+                {chip(form.sex === 'female', '여성', () => setForm({ ...form, sex: 'female' }))}
+                {chip(form.sex === 'male', '남성', () => setForm({ ...form, sex: 'male' }))}
+              </View>
+              <TextInput accessibilityLabel="나이" keyboardType="number-pad" maxLength={3} onChangeText={(age) => setForm({ ...form, age })} placeholder="나이 (만 나이)" style={styles.field} value={form.age} />
+            </>
+          ) : null}
+          {asking === 'food' ? (
+            <>
+              <View style={styles.wrap}>
+                {chip(form.none, '없어요', () => setForm({ ...form, none: !form.none, foods: [], other: '' }))}
+                {FOODS.map(([id, name]) => chip(form.foods.includes(id), name, () => setForm({ ...form, none: false, foods: form.foods.includes(id) ? form.foods.filter((food) => food !== id) : [...form.foods, id] })))}
+              </View>
+              <TextInput accessibilityLabel="그 밖의 알레르기, 선택" maxLength={50} onChangeText={(text) => setForm({ ...form, none: false, other: text })} placeholder="그 밖의 알레르기 (예: 키위, 토마토)" style={styles.field} value={form.other} />
+              <Text style={styles.small}>참고용 정보예요. 음식을 먹기 전에는 성분표를 꼭 확인해 주세요.</Text>
+            </>
+          ) : null}
+          {asking === 'plan' ? (
+            <>
+              <View style={styles.wrap}>{GOALS.map(([id, name]) => chip(form.goal === id, name, () => setForm({ ...form, goal: id })))}</View>
+              <Text style={styles.small}>운동 경험 · 초보 6개월 미만 · 중급 2년까지 · 고급 그 이상</Text>
+              <View style={styles.row}>{LEVELS.map(([id, name]) => chip(form.level === id, name, () => setForm({ ...form, level: id })))}</View>
+            </>
+          ) : null}
+          {asking === 'body' ? (
+            <View style={styles.row}>
+              <TextInput accessibilityLabel="키" keyboardType="decimal-pad" maxLength={5} onChangeText={(height) => setForm({ ...form, height })} placeholder="키 (cm)" style={[styles.field, styles.grow]} value={form.height} />
+              <TextInput accessibilityLabel="몸무게" keyboardType="decimal-pad" maxLength={5} onChangeText={(weight) => setForm({ ...form, weight })} placeholder="몸무게 (kg)" style={[styles.field, styles.grow]} value={form.weight} />
+            </View>
+          ) : null}
+          {error ? <Text accessibilityRole="alert" style={styles.error}>{error}</Text> : null}
+          <Pressable accessibilityRole="button" onPress={confirm} style={styles.go}>
+            <Text style={styles.goText}>확인</Text>
+          </Pressable>
         </View>
-      </AuthCard>
-      <View style={styles.socialGroup}>
-        <SocialLoginButton
-          disabled={activeLoginProvider !== null}
-          icon={KakaoIcon}
-          kakao
-          label="카카오로 계속하기"
-          onPress={() => void handleSocialLogin('kakao')}
-        />
-        <SocialLoginButton
-          disabled={activeLoginProvider !== null}
-          icon={GoogleIcon}
-          label="Google로 계속하기"
-          onPress={() => void handleSocialLogin('google')}
-        />
-      </View>
-      <View style={styles.accountLinks}>
-        <Pressable accessibilityRole="button" onPress={() => router.push('/password/forgot')} style={styles.linkButton}>
-          <Text style={styles.link}>비밀번호 찾기</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => router.push('/signup/step1')} style={styles.linkButton}>
-          <Text style={styles.link}>회원가입</Text>
-        </Pressable>
-      </View>
-    </AuthPage>
+      </AppBottomSheet>
+    </>
   );
 }
 
 function createStyles({ colors }: AppTheme) {
-  const a = aForm(colors);
   return {
-    loginCard: { gap: 8 },
-    loginButton: { marginTop: 6 },
-    withMini: { paddingRight: 6 },
-    mini: a.mini,
-    miniText: a.miniText,
-    // Kakao and Google side by side, each on a small ledge.
-    socialGroup: { flexDirection: 'row', gap: 8, marginTop: 14, paddingBottom: 3 },
-    socialButton: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.ink,
-      borderRadius: 14,
-      borderWidth: 2,
-      boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)',
-      flex: 1,
-      flexDirection: 'row',
-      gap: 6,
-      height: 46,
-      justifyContent: 'center',
-    },
-    kakaoButton: { backgroundColor: '#FEE500' },
-    socialLabel: { ...a.p12, color: colors.ink },
-    kakaoLabel: { color: '#191919' },
-    accountLinks: { alignItems: 'center', flexDirection: 'row', gap: 18, justifyContent: 'center', marginTop: 4 },
-    linkButton: { alignItems: 'center', height: 44, justifyContent: 'center' },
-    link: a.link,
-    pressed: { opacity: 0.75 },
+    sheet: { gap: 14, paddingBottom: 8 },
+    row: { flexDirection: 'row', gap: 8 },
+    wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    grow: { flex: 1 },
+    chip: { backgroundColor: colors.surfaceMuted, borderRadius: 999, justifyContent: 'center', minHeight: 40, paddingHorizontal: 16 },
+    chipOn: { backgroundColor: colors.primary },
+    chipText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14, lineHeight: 20 },
+    chipOnText: { color: colors.onPrimary },
+    field: { backgroundColor: colors.surfaceMuted, borderRadius: 16, color: colors.textPrimary, fontSize: 15, minHeight: 50, paddingHorizontal: 16 },
+    small: { color: colors.textSecondary, fontSize: 12.5, lineHeight: 18 },
+    error: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 13.5, lineHeight: 20 },
+    go: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 999, justifyContent: 'center', minHeight: 52 },
+    goText: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 16, lineHeight: 22 },
   } as const;
 }

@@ -71,7 +71,7 @@ export default function ForgotPasswordScreen() {
   };
 
   const backToLogin = (
-    <Pressable accessibilityRole="button" onPress={() => router.replace('/login')} style={styles.backToLogin}>
+    <Pressable accessibilityRole="button" onPress={() => router.replace({ pathname: '/login', params: { login: '1' } })} style={styles.backToLogin}>
       <Text style={styles.backToLoginText}>로그인으로 돌아가기</Text>
     </Pressable>
   );

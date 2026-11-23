@@ -1,11 +1,6 @@
 import { Stack } from 'expo-router';
 
-import { SignupProvider } from '@/src/features/signup/SignupContext';
-
+// The sign-up draft (SignupProvider) is one level up, in app/(auth)/_layout.tsx.
 export default function SignupLayout() {
-  return (
-    <SignupProvider>
-      <Stack screenOptions={{ headerShown: false }} />
-    </SignupProvider>
-  );
+  return <Stack screenOptions={{ headerShown: false }} />;
 }

@@ -39,7 +39,7 @@ export default function ResetPasswordScreen() {
       if (error) throw error;
       // The reset link signed this phone in; leave that session so the next sign-in uses the new password.
       await getSupabaseClient().auth.signOut({ scope: 'local' }).catch(() => undefined);
-      router.replace('/login');
+      router.replace({ pathname: '/login', params: { login: '1' } });
     } catch (error) {
       logError('비밀번호 변경 실패', error);
       Alert.alert('비밀번호를 바꾸지 못했습니다', '메일의 링크를 다시 눌러 시도해 주세요.');

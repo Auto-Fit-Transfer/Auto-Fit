@@ -35,6 +35,8 @@ export interface SignUpScreenLayoutProps {
   // The character while it is being chosen; left out, the one kept on this phone is shown.
   who?: Who;
   pair?: boolean;
+  // renewal B's one-sentence sign-up: no character street, and the account is the last thing asked
+  b?: boolean;
 }
 
 export interface SignUpSectionProps {
@@ -65,6 +67,7 @@ export function SignUpScreenLayout({
   secondPart = false,
   who,
   pair = false,
+  b = false,
 }: SignUpScreenLayoutProps) {
   // With a mail address the first screen counts as two steps, so the dots are six.
   const withMail = totalSteps === 5;
@@ -74,7 +77,7 @@ export function SignUpScreenLayout({
   const key = withMail && currentStep === 1 && secondPart ? 'character' : keys[currentStep - 1];
   return (
     <AuthPage
-      barTitle="캐릭터 만들기"
+      barTitle={b ? '거의 다 됐어요' : '캐릭터 만들기'}
       contentOffsetY={contentOffsetY}
       footer={
         <>
@@ -87,10 +90,10 @@ export function SignUpScreenLayout({
           {footerExtra}
         </>
       }
-      heading={headingOverride ?? copy[key]}
+      heading={headingOverride ?? (b && key === 'account' ? '계정을 만들어요' : b && key === 'character' ? '생년월일과 성별만 확인해요' : copy[key])}
       mode="signup"
       onBack={onBack}
-      scene={<JoinScene pair={pair} who={who} />}
+      scene={b ? undefined : <JoinScene pair={pair} who={who} />}
       step={withMail ? currentStep + (currentStep > 1 || secondPart ? 1 : 0) : currentStep}
       totalSteps={withMail ? 6 : totalSteps}
     >

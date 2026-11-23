@@ -8,23 +8,16 @@ import {
   saveExercisePreferences,
   saveProfile,
   saveTargetWeight,
-  type ExerciseGoalType,
 } from '@/src/api/onboarding';
 import { AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import { useSignup, type SignupExerciseGoal } from '@/src/features/signup/SignupContext';
+import { goalType } from '@/src/features/signup/goalType';
 import { bodyBasicsError, saveBodyBasics } from '@/src/features/a/bodyBasics';
 import { aForm } from '@/src/components/a/form';
 import { useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
-const goalType: Record<SignupExerciseGoal, ExerciseGoalType> = {
-  'fat-loss': 'weight_loss',
-  'muscle-gain': 'muscle_gain',
-  stamina: 'endurance',
-  conditioning: 'rehabilitation',
-  custom: 'other',
-};
 const activeGoalType: Partial<Record<SignupExerciseGoal, ExerciseGoalInput['goal_type']>> = {
   'fat-loss': 'weight_loss',
   'muscle-gain': 'muscle_gain',

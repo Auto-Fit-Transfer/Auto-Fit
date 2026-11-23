@@ -14,6 +14,9 @@ export interface SignupDraft {
   exerciseGoal: SignupExerciseGoal;
   exerciseExperience: SignupExerciseExperience;
   customGoal: string;
+  // renewal B's one-sentence sign-up hears these too; they are saved after the account is made
+  height: string;
+  weight: string;
 }
 
 const initialSignupDraft: SignupDraft = {
@@ -26,6 +29,8 @@ const initialSignupDraft: SignupDraft = {
   exerciseGoal: 'fat-loss',
   exerciseExperience: 'beginner',
   customGoal: '',
+  height: '',
+  weight: '',
 };
 
 interface SignupContextValue {

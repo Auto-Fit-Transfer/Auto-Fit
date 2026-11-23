@@ -44,6 +44,8 @@ export default function SignUpStep1Screen() {
   const router = useRouter();
   const { flow } = useLocalSearchParams<{ flow?: string }>();
   const isPostLogin = flow === 'post-login';
+  // renewal B: the one sentence already gave sex, foods and goal; this screen makes the account and asks the birthday
+  const isB = flow === 'b';
   const { draft, updateDraft } = useSignup();
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -121,8 +123,8 @@ export default function SignUpStep1Screen() {
       (showAccount ? accountMessage() : undefined) ?? (showCharacter ? characterMessage() : undefined);
     if (message) return Alert.alert('입력 정보를 확인해 주세요', message);
     if (!showCharacter) return setPart(1);
-    // The character made here is the one that walks on the home screen.
-    void AsyncStorage.setItem(WHO_KEY, who).catch(() => undefined);
+    // The character made here is the one that walks on the home screen (renewal A only).
+    if (!isB) void AsyncStorage.setItem(WHO_KEY, who).catch(() => undefined);
     if (!isPostLogin) return setConsentVisible(true);
     if (inFlight.current || !birthday || !gender) return;
     inFlight.current = true;
@@ -161,7 +163,8 @@ export default function SignUpStep1Screen() {
       });
       setConsentVisible(false);
       leftToVerify.current = !data.session;
-      router.push(data.session ? '/signup/step3' : '/signup/step2');
+      if (isB) router.push(data.session ? '/signup/b-save' : { pathname: '/signup/step2', params: { flow: 'b' } });
+      else router.push(data.session ? '/signup/step3' : '/signup/step2');
     } catch (error) {
       Alert.alert(
         '회원가입을 시작하지 못했습니다',
@@ -188,7 +191,8 @@ export default function SignUpStep1Screen() {
       onContinue={() => void continueFromForm()}
       pair={showCharacter}
       secondPart={part === 1}
-      who={who}
+      who={isB ? undefined : who}
+      b={isB}
     >
       <View style={styles.form}>
         {showAccount ? (
@@ -244,7 +248,7 @@ export default function SignUpStep1Screen() {
         ) : null}
         {showCharacter ? (
           <>
-            <View style={isPostLogin && styles.ask}>
+            {isB ? null : <View style={isPostLogin && styles.ask}>
               <Text style={styles.q}>직업</Text>
               <View style={styles.segRow}>
                 {(
@@ -264,7 +268,7 @@ export default function SignUpStep1Screen() {
                   </Pressable>
                 ))}
               </View>
-            </View>
+            </View>}
             <View style={styles.ask}>
               <Text style={styles.q}>성별</Text>
               <View style={styles.segRow}>
