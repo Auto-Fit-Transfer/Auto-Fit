@@ -4,8 +4,8 @@ import { Alert } from 'react-native';
 
 import { getExerciseApiErrorMessage, saveExerciseSessionFeedback } from '@/src/api/exercise';
 import { getHabitTierProgress } from '@/src/api/tier';
-import { useKeptWho } from '@/src/components/a/useKeptWho';
-import { WorkoutDoneView, type PostCondition } from '@/src/components/a/WorkoutDoneView';
+import type { PostCondition } from '@/src/components/a/WorkoutDoneView';
+import { DoneView } from '@/src/components/b/DoneView';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
 import { tierLook, type TierLook } from '@/src/features/tier/tierLook';
@@ -14,7 +14,6 @@ import { tierLook, type TierLook } from '@/src/features/tier/tierLook';
 // How hard it felt is no longer filled in for me: leaving without an answer saves nothing.
 export default function ExerciseCompletionScreen() {
   const router = useRouter();
-  const who = useKeptWho();
   const { latestSession: recommended, markResultRecordCompleted, refreshHome, resultRecordCompleted: recordedBefore, routine } = useExerciseRoutine();
   const { clearSession, session, summary, workoutPoints } = useExerciseSession();
   // A saved routine is its own session: no AI analysis after it, and the recommended workout's totals are not its own.
@@ -70,10 +69,10 @@ export default function ExerciseCompletionScreen() {
       text: done === 0 ? (result?.skipped ? '건너뜀' : '하지 않음') : `${done < exercise.totalSets ? `${exercise.totalSets}세트 중 ${done}세트` : `${done}세트`} · ${amount}`,
     };
   });
-  const throughout = session ? session.results.length >= session.exercises.length : false;
+  const sets = session ? session.results.reduce((sum, result) => sum + (result.completedSets ?? 0), 0) : null;
 
   return (
-    <WorkoutDoneView
+    <DoneView
       areas={selectedAreas}
       button={{ disabled: saving || !sessionId, label: saving ? '저장 중…' : resultRecordCompleted ? '분석 보기' : '완료' }}
       change={change}
@@ -93,11 +92,9 @@ export default function ExerciseCompletionScreen() {
       onShare={sessionId ? () => router.push({ pathname: '/community/compose', params: { share: sessionId } }) : undefined}
       onToggleArea={(area) => setSelectedAreas((current) => (current.includes(area) ? current.filter((item) => item !== area) : [...current, area]))}
       rows={rows}
-      stars={session && throughout ? [true, !session.results.some((result) => result.skipped)] : null}
+      sets={sets}
       tier={tier}
-      tierIndex={tier?.index ?? 0}
       title={saved ?? routine?.title ?? '오늘의 운동'}
-      who={who}
     />
   );
 }

@@ -4,7 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { R6ExerciseSession } from '@/src/components/exercise/R6ExerciseSession';
 
 // Development only (isPublicRoute lets /dev open without signing in while __DEV__): the workout-in-progress
-// screen with sample data, to look at its A look. ?state=rest | last (a rest's last seconds) | hold (a timed move)
+// screen with sample data, to look at its B look. ?state=rest | last (a rest's last seconds) | hold (a timed move)
 // | demo (with a picture where the demo goes) | second (the second move, one finished and counted)
 // shortcut: only the values the screen shows are filled in, so this page is cast to the screen's props.
 type Props = ComponentProps<typeof R6ExerciseSession>;
@@ -43,8 +43,6 @@ export default function ASessionSample() {
       onStopWorkout={nothing}
       onTogglePause={nothing}
       session={session as unknown as Props['session']}
-      tierIndex={1}
-      who="worker-f"
     />
   );
 }
