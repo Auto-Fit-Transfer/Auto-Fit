@@ -33,7 +33,7 @@ function AppShell() {
       <ExerciseSessionProvider>
         {/* Nested stacks and tabs paint this behind their screens, so a light default would flash in dark mode. */}
         <ThemeProvider value={{ ...base, colors: { ...base.colors, background } }}>
-          <View style={[frame.outer, { backgroundColor: '#12101F' }]}>
+          <View style={[frame.outer, { backgroundColor: '#D8DAE2' }]}>
             <View style={frame.inner}>
               <Stack screenOptions={{ contentStyle: { backgroundColor: background }, headerShown: false }} />
               <AuthGate background={background} />

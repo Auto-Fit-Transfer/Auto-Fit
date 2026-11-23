@@ -1,6 +1,6 @@
 import { useCallback, useRef, type ComponentProps } from 'react';
 import { Tabs } from 'expo-router';
-import { Platform, Pressable, useWindowDimensions, View } from 'react-native';
+import { Pressable, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import BarbellIcon from '@/assets/icons/ui/barbell.svg';
@@ -16,13 +16,14 @@ import UserActiveIcon from '@/assets/icons/ui/user-fill.svg';
 import { Text } from '@/src/components/common';
 import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
-// The Figma tab bar: a floating dark pill; the open tab is a purple pill inside it.
+// Renewal B's tab bar: a light bar with a hairline on top; icons are black, and only the open tab
+// is a black pill that also says its name.
 export const BOTTOM_NAVIGATION_VISUAL_HEIGHT = 66;
 export const BOTTOM_NAVIGATION_MIN_BOTTOM_GAP = 8;
 const minimumBottomNavigationVisualHeight = 60;
 const referenceScreenHeight = 917;
 const visualHeightReductionRatio = 0.04;
-const barPadding = 6;
+const barPadding = 10;
 const easyExtraHeight = 8;
 
 export function getBottomNavigationVisualHeight(windowHeight: number) {
@@ -38,7 +39,7 @@ const tabMeta = {
   diet: { label: '식단', Icon: ForkKnifeIcon, ActiveIcon: ForkKnifeActiveIcon },
   exercise: { label: '운동', Icon: BarbellIcon, ActiveIcon: BarbellActiveIcon },
   community: { label: '커뮤니티', Icon: ChatsIcon, ActiveIcon: ChatsActiveIcon },
-  my: { label: '마이', Icon: UserIcon, ActiveIcon: UserActiveIcon },
+  my: { label: '내 정보', Icon: UserIcon, ActiveIcon: UserActiveIcon },
 } as const;
 
 type TabsProps = ComponentProps<typeof Tabs>;
@@ -71,7 +72,6 @@ export function BottomNavigation({
     getBottomNavigationVisualHeight(windowHeight) + (easyMode ? easyExtraHeight : 0);
   const itemHeight = visualHeight - barPadding * 2;
   const iconSize = easyMode ? 26 : 24;
-  const isDiet = state.routes[state.index]?.name === 'diet';
   const measureNavigation = useCallback(() => {
     navigationRef.current?.measureInWindow((x, y, width, height) => {
       onNavigationLayout?.({ height, width, x, y });
@@ -89,21 +89,11 @@ export function BottomNavigation({
         styles.safeArea,
         {
           paddingBottom: Math.max(insets.bottom, BOTTOM_NAVIGATION_MIN_BOTTOM_GAP),
-          paddingLeft: 16 + insets.left,
-          paddingRight: 16 + insets.right,
+          paddingLeft: 12 + insets.left,
+          paddingRight: 12 + insets.right,
         },
       ]}
     >
-      {isDiet ? (
-        <View
-          pointerEvents="none"
-          style={[
-            styles.dietLowerMask,
-            Platform.OS === 'web' && styles.webDietLowerMask,
-            { top: visualHeight / 2 },
-          ]}
-        />
-      ) : null}
       <View style={[styles.bar, { height: visualHeight }]}>
         {state.routes.map((route, index) => {
           const meta = tabMeta[route.name as keyof typeof tabMeta];
@@ -131,21 +121,21 @@ export function BottomNavigation({
               onLongPress={() => emitter.emit({ type: 'tabLongPress', target: route.key })}
               onPress={onPress}
               style={({ pressed }) => [
-                styles.item,
+                isFocused ? styles.itemActive : styles.item,
                 { height: itemHeight },
-                isFocused && styles.itemActive,
                 pressed && styles.pressed,
               ]}
             >
-              <Icon color={colors.onPrimary} height={iconSize} width={iconSize} />
-              <Text
-                style={[
-                  isFocused ? styles.labelActive : styles.label,
-                  easyMode && styles.labelEasy,
-                ]}
-              >
-                {meta.label}
-              </Text>
+              <Icon
+                color={isFocused ? colors.onPrimary : colors.textPrimary}
+                height={iconSize}
+                width={iconSize}
+              />
+              {isFocused ? (
+                <Text numberOfLines={1} style={[styles.label, easyMode && styles.labelEasy]}>
+                  {meta.label}
+                </Text>
+              ) : null}
             </Pressable>
           );
         })}
@@ -157,50 +147,30 @@ export function BottomNavigation({
 function createStyles({ colors, text }: AppTheme) {
   return {
     safeArea: {
-      backgroundColor: colors.transparent,
+      backgroundColor: colors.navBar,
+      borderTopColor: colors.navBarBorder,
+      borderTopWidth: 1,
       bottom: 0,
       left: 0,
-      pointerEvents: 'box-none',
       position: 'absolute',
       right: 0,
       zIndex: 10,
     },
-    bar: {
-      backgroundColor: colors.tabBar,
-      borderColor: colors.tabBarBorder,
-      borderRadius: 32,
-      borderWidth: 1,
-      elevation: 6,
-      flexDirection: 'row',
-      padding: barPadding - 1,
-      shadowColor: '#000000',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.14,
-      shadowRadius: 18,
-      zIndex: 1,
-    },
-    dietLowerMask: {
-      backgroundColor: colors.background,
-      bottom: 0,
-      left: -16,
-      position: 'absolute',
-      right: -16,
-      zIndex: 0,
-    },
-    webDietLowerMask: { left: 0, right: 0 },
-    item: {
+    bar: { alignItems: 'center', flexDirection: 'row' },
+    // The four closed tabs share the room the open one leaves.
+    item: { alignItems: 'center', flex: 1, justifyContent: 'center', minWidth: 0 },
+    itemActive: {
       alignItems: 'center',
-      borderRadius: 26,
-      flex: 1,
-      gap: 3,
+      backgroundColor: colors.primary,
+      borderRadius: 999,
+      flexDirection: 'row',
+      flexShrink: 0,
+      gap: 6,
       justifyContent: 'center',
-      minWidth: 0,
+      paddingHorizontal: 18,
     },
-    itemActive: { backgroundColor: colors.primary },
-    label: { ...text.tab, color: colors.onPrimary, includeFontPadding: false },
-    labelActive: { ...text.tabActive, color: colors.onPrimary, includeFontPadding: false },
-    // Figma's easy tab bar uses 14px labels; Text enlarges 11px to exactly that.
-    labelEasy: { fontSize: 11, lineHeight: 14 },
+    label: { ...text.tabActive, color: colors.onPrimary, fontSize: 13, includeFontPadding: false, lineHeight: 18 },
+    labelEasy: { fontSize: 13, lineHeight: 18 },
     pressed: { opacity: 0.75 },
   } as const;
 }

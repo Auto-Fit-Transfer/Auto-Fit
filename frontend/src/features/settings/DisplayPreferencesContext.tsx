@@ -114,7 +114,8 @@ export function DisplayPreferencesProvider({ children }: { children: ReactNode }
     return () => Appearance.setColorScheme('auto');
   }, []);
 
-  // Renewal A has only the light look, so neither the saved mode nor the device's setting turns the screens dark.
+  // Renewal B has only the light look for now: the dark one was put off until its design is settled,
+  // so neither the saved mode nor the device's setting turns the screens dark.
   const isDark = false;
   const value = useMemo(() => ({ preferences, isDark, ready, serverSynced, save }),
     [preferences, isDark, ready, serverSynced, save]);

@@ -1,4 +1,4 @@
-// The one app link this app registers in Supabase: autofit-a://auth/callback in a build (scheme in app.json).
+// The one app link this app registers in Supabase: autofit-b://auth/callback in a build (scheme in app.json).
 // Social login and the password reset mail both come back through it, so no second link has to be allowed.
 export const AUTH_CALLBACK_PATH = 'auth/callback';
 

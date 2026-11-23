@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "Auto-Fit A",
-    "slug": "auto-fit-a",
+    "name": "Auto-Fit B",
+    "slug": "auto-fit-b",
     "owner": "gogosi",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "autofit-a",
+    "scheme": "autofit-b",
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.gogosi.autofit.a",
+      "bundleIdentifier": "com.gogosi.autofit.b",
       "config": {
         "usesNonExemptEncryption": false
       }
@@ -18,7 +18,7 @@
       "allowBackup": false,
       "predictiveBackGestureEnabled": false,
       "softwareKeyboardLayoutMode": "resize",
-      "package": "com.gogosi.autofit.a"
+      "package": "com.gogosi.autofit.b"
     },
     "web": {
       "bundler": "metro",
@@ -66,10 +66,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "f65ef9cd-deea-4887-850b-0e12928b9e95"
-      }
+      "router": {}
     }
   }
 }

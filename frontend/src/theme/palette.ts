@@ -32,39 +32,55 @@ export interface Palette {
   overlay: string;
   transparent: string;
   tier: Record<'CORE' | 'BALANCE' | 'ACTIVE' | 'FIT' | 'PEAK', TierColors>;
-  // Renewal A (the pixel game). ink: the one dark outline every piece has. gold: points you got.
-  // track: the empty part of a bar, and quiet dividers.
+  // Renewal B. lilac: only where the AI is at work. now: today, or what is new.
+  // ai*: the black card, the app's own voice (what it did for me). navBar: the light tab bar.
+  lilac: string;
+  lilacInk: string;
+  now: string;
+  aiCard: string;
+  aiRaised: string;
+  aiLine: string;
+  aiBar: string;
+  aiBorder: string;
+  aiHello: string;
+  aiRing: string;
+  onAi: string;
+  onAiMuted: string;
+  navBar: string;
+  navBarBorder: string;
+  // Renewal A pieces still on some screens until each gets its B look: ink outline, gold points, track.
   ink: string;
   gold: string;
   track: string;
 }
 
 export const lightPalette: Palette = {
-  // Renewal A: violet is what you press and how far you are; the letters on it are dark, not white.
-  primary: '#9D8BFF',
-  primaryPressed: '#8A77F0',
-  primaryLight: '#ECE8FF',
-  primaryText: '#4A36B8',
-  onPrimary: '#1B1247',
-  background: '#F4F6FB',
+  // Renewal B: black is the main action (it was purple), the page is light grey and the cards white.
+  primary: '#010101',
+  primaryPressed: '#2B2A33',
+  primaryLight: '#ECE6FD',
+  primaryText: '#010101',
+  onPrimary: '#FFFFFF',
+  background: '#F4F5F9',
   surface: '#FFFFFF',
-  surfaceMuted: '#EEF1F7',
+  surfaceMuted: '#EEEFF5',
   elevated: '#FFFFFF',
-  border: '#D5D9E6',
-  textPrimary: '#20233F',
-  textBody: '#2C3050',
-  textSecondary: '#6E7389',
-  textDisabled: '#9AA0B4',
-  tabBar: '#20233F',
-  tabBarBorder: '#20233F',
+  border: '#E3E4EA',
+  textPrimary: '#010101',
+  textBody: '#26262C',
+  textSecondary: '#6A6B76',
+  textDisabled: '#8E8D95',
+  // Still the dark fill older screens use (progress, toast, my chat bubble); the tab bar itself reads navBar.
+  tabBar: '#010101',
+  tabBarBorder: '#010101',
   success: '#0E7C48',
   successLight: '#E8F6EF',
   warning: '#9A5B00',
   warningLight: '#FFF3E0',
-  danger: '#E0503A',
-  dangerLight: '#FDECE8',
-  gaugeFill: '#9D8BFF',
-  gaugeTrack: '#E4E7F0',
+  danger: '#C62828',
+  dangerLight: '#FDECEC',
+  gaugeFill: '#010101',
+  gaugeTrack: '#EEEFF5',
   overlay: 'rgba(13, 13, 20, 0.45)',
   transparent: 'transparent',
   tier: {
@@ -74,36 +90,53 @@ export const lightPalette: Palette = {
     FIT: { bg: '#ECE9FF', fg: '#43389F' },
     PEAK: { bg: '#FAF2DD', fg: '#6E5210' },
   },
-  ink: '#20233F',
+  lilac: '#C8B6F5',
+  lilacInk: '#33268A',
+  now: '#7B5CF0',
+  aiCard: '#010101',
+  aiRaised: '#24232B',
+  aiLine: 'rgba(255, 255, 255, 0.14)',
+  aiBar: '#1E1D24',
+  aiBorder: 'transparent',
+  aiHello: '#C8B6F5',
+  aiRing: 'rgba(255, 255, 255, 0.3)',
+  onAi: '#FFFFFF',
+  onAiMuted: '#C9C8D3',
+  navBar: '#FFFFFF',
+  navBarBorder: '#E3E4EA',
+  ink: '#010101',
   gold: '#FFD23F',
-  track: '#E4E7F0',
+  track: '#EEEFF5',
 };
 
 export const darkPalette: Palette = {
-  primary: '#6A5CF0',
-  primaryPressed: '#5546D9',
-  primaryLight: '#2A2652',
-  primaryText: '#A99FFF',
-  onPrimary: '#FFFFFF',
-  background: '#111214',
-  surface: '#1A1C1F',
-  surfaceMuted: '#25282C',
-  elevated: '#2A2D33',
-  border: '#363A41',
-  textPrimary: '#F3F4F6',
-  textBody: '#D5D7DC',
-  textSecondary: '#A3A7AF',
-  textDisabled: '#70747C',
-  tabBar: '#23262B',
-  tabBarBorder: '#3A3E46',
+  // Renewal B, dark: the page is the darkest, cards are one step lighter so they read as boxes,
+  // white is the main action (black was), and the AI card turns white (the user's choice, shown
+  // against a tinted and a beige one): a black card would vanish on a dark page.
+  primary: '#FFFFFF',
+  primaryPressed: '#DADBE2',
+  primaryLight: '#2A2640',
+  primaryText: '#FFFFFF',
+  onPrimary: '#010101',
+  background: '#0E0E12',
+  surface: '#1C1C23',
+  surfaceMuted: '#292932',
+  elevated: '#23232B',
+  border: '#31313C',
+  textPrimary: '#F4F5F9',
+  textBody: '#DCDDE4',
+  textSecondary: '#A0A1AD',
+  textDisabled: '#70717D',
+  tabBar: '#2E2E38',
+  tabBarBorder: '#3A3A46',
   success: '#45C086',
   successLight: '#13291E',
   warning: '#F2A54A',
   warningLight: '#2E2210',
   danger: '#FF6B61',
   dangerLight: '#331816',
-  gaugeFill: '#6A5CF0',
-  gaugeTrack: '#3A3F47',
+  gaugeFill: '#F4F5F9',
+  gaugeTrack: '#31313C',
   overlay: 'rgba(0, 0, 0, 0.6)',
   transparent: 'transparent',
   tier: {
@@ -113,6 +146,20 @@ export const darkPalette: Palette = {
     FIT: { bg: '#23204A', fg: '#B4ABFF' },
     PEAK: { bg: '#2F2710', fg: '#E8C766' },
   },
+  lilac: '#C8B6F5',
+  lilacInk: '#C8B6F5',
+  now: '#9D8BFF',
+  aiCard: '#F4F5F9',
+  aiRaised: '#E3E4EA',
+  aiLine: 'rgba(1, 1, 1, 0.1)',
+  aiBar: '#FFFFFF',
+  aiBorder: 'transparent',
+  aiHello: '#5B43C9',
+  aiRing: 'rgba(1, 1, 1, 0.12)',
+  onAi: '#010101',
+  onAiMuted: '#6A6B76',
+  navBar: '#15151A',
+  navBarBorder: '#2A2A33',
   // Renewal A has no dark look (decided); these only keep the type whole.
   ink: '#F3F4F6',
   gold: '#FFD23F',

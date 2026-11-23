@@ -14,7 +14,7 @@ import { useDisplayPreferences } from '@/src/features/settings/DisplayPreference
 import { aForm } from '@/src/components/a/form';
 import { darkColors, fontFamilies, lightPalette as colors } from '@/src/theme';
 
-// Renewal A has only the light look, so the choice of mode is not offered.
+// Renewal B has only the light look for now, so the choice of mode is not offered.
 const SHOW_THEME_MODES = false;
 const modes = [
   { label: '기기 설정대로', tone: '#DFDFE5', value: 'system' },
