@@ -98,7 +98,7 @@ export default function SavedRoutines() {
                   <Text style={styles.body}>{routine.name}</Text>
                   <Text style={styles.note}>{routine.source_type === 'custom' ? '내 루틴' : '추천 운동'} · {routine.items.length}가지 운동</Text>
                 </View>
-                <Fold color={colors.ink} height={20} width={20} />
+                <Fold color={colors.textPrimary} height={20} width={20} />
               </Pressable>
               {open ? <View style={styles.items}>{routine.items.map((item) =>
                 <View key={item.user_workout_routine_item_id} style={styles.item}>
@@ -124,7 +124,7 @@ function createStyles({ colors }: AppTheme) {
     content: { gap: 12, paddingHorizontal: 16, paddingTop: 12 },
     grow: { flex: 1, minWidth: 0 },
     note: a.note,
-    body: { ...a.p15, color: colors.ink },
+    body: { ...a.p15, color: colors.textPrimary },
     none: { paddingVertical: 24, textAlign: 'center' },
     filters: { flexDirection: 'row', gap: 6 },
     chip: { ...a.chip, flex: 1 },
@@ -134,7 +134,7 @@ function createStyles({ colors }: AppTheme) {
     card: { ...a.card, padding: 14 },
     list: { paddingVertical: 2 },
     row: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 60, paddingVertical: 8 },
-    rowLine: { borderTopColor: colors.track, borderTopWidth: 2 },
+    rowLine: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2 },
     items: { gap: 10, paddingBottom: 12 },
     item: { alignItems: 'center', flexDirection: 'row', gap: 10 },
     num: { ...a.p12, color: colors.textSecondary, width: 16 },

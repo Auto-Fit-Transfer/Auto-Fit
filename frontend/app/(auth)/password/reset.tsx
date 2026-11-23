@@ -133,7 +133,7 @@ function createStyles({ colors }: AppTheme) {
     },
     conditionBoxMet: { backgroundColor: colors.primary },
     conditionText: a.note,
-    conditionMet: { color: colors.ink },
+    conditionMet: { color: colors.textPrimary },
     withMini: { paddingRight: 6 },
     mini: a.mini,
     miniText: a.miniText,

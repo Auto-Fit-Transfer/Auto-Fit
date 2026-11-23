@@ -354,19 +354,16 @@ function createStyles({ colors, text }: AppTheme) {
     },
     separateOverlay: { backgroundColor: colors.transparent },
     dimLayer: { backgroundColor: colors.overlay },
-    // Renewal A: the dark outline on the three sides that show.
+    // Renewal B: a white sheet with round top corners, no outline.
     sheet: {
       backgroundColor: colors.elevated,
-      borderBottomWidth: 0,
-      borderColor: colors.border,
-      borderTopLeftRadius: radius.sheet,
-      borderTopRightRadius: radius.sheet,
-      borderWidth: 1,
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
       maxHeight: '88%',
     },
     handle: {
       alignSelf: 'center',
-      backgroundColor: colors.border,
+      backgroundColor: colors.surfaceMuted,
       borderRadius: radius.round,
       height: 4,
       marginTop: 12,
@@ -380,7 +377,7 @@ function createStyles({ colors, text }: AppTheme) {
       paddingRight: 8,
       paddingTop: 6,
     },
-    title: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    title: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 20, lineHeight: 28 },
     content: { paddingHorizontal: 20, paddingVertical: 16 },
     overflowScroll: { flexGrow: 0, flexShrink: 1 },
     footer: {

@@ -110,14 +110,14 @@ function createStyles({ colors }: AppTheme) {
     borderColor: colors.border,
     borderRadius: 12,
     borderWidth: 1,
-    color: colors.ink,
-    fontFamily: fontFamilies.galmuri11Bold,
+    color: colors.textPrimary,
+    fontFamily: fontFamilies.pretendardExtraBold,
     fontSize: 24,
     height: 52,
     padding: 0,
     textAlign: 'center',
   } as const;
-  const word = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
+  const word = { fontFamily: fontFamilies.pretendardRegular, fontSize: 15, lineHeight: 21 } as const;
   return {
     overlay: {
       alignItems: 'center',
@@ -135,7 +135,7 @@ function createStyles({ colors }: AppTheme) {
       padding: 20,
       width: 300,
     },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
     dateFields: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
     yearField: { ...box, width: 96 },
     dateField: { ...box, width: 60 },
@@ -143,7 +143,7 @@ function createStyles({ colors }: AppTheme) {
     actions: { flexDirection: 'row', justifyContent: 'flex-end' },
     action: { justifyContent: 'center', minHeight: 40, paddingHorizontal: 12 },
     cancel: { ...word, color: colors.textSecondary },
-    confirm: { ...word, color: colors.ink },
+    confirm: { ...word, color: colors.textPrimary },
     disabled: { color: colors.textDisabled },
   } as const;
 }

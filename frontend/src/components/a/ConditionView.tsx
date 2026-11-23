@@ -68,7 +68,7 @@ export function ConditionView({ value, busy, error, onChange, onGo, onBack, onHo
         onBack={onBack}
         right={
           <Pressable accessibilityLabel="홈으로 가기" accessibilityRole="button" hitSlop={12} onPress={onHome}>
-            <HouseIcon color={colors.ink} height={24} width={24} />
+            <HouseIcon color={colors.textPrimary} height={24} width={24} />
           </Pressable>
         }
         title="오늘의 운동 설정"
@@ -97,7 +97,7 @@ export function ConditionView({ value, busy, error, onChange, onGo, onBack, onHo
           value={value.discomfortArea}
         />
         <View style={styles.care}>
-          <WarningIcon color={colors.ink} height={18} width={18} />
+          <WarningIcon color={colors.textPrimary} height={18} width={18} />
           <Text style={styles.careText}>통증이 심하면 운동을 멈추고 전문가와 상담해 주세요.</Text>
         </View>
         {error ? (
@@ -125,7 +125,7 @@ function createStyles({ colors }: AppTheme) {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     content: { gap: 18, paddingHorizontal: 16, paddingTop: 12 },
     ask: { gap: 10 },
-    q: { ...a.p15, color: colors.ink },
+    q: { ...a.p15, color: colors.textPrimary },
     note: a.note,
     // one row a question, every answer the same width: no answer falls alone to a second row
     chips: { flexDirection: 'row', gap: 6 },
@@ -133,8 +133,8 @@ function createStyles({ colors }: AppTheme) {
     chipText: a.segText,
     on: a.on,
     onText: a.onText,
-    care: { alignItems: 'center', backgroundColor: colors.warningLight, borderColor: colors.border, borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
-    careText: { ...a.p12, color: colors.ink, flex: 1 },
+    care: { alignItems: 'center', backgroundColor: colors.warningLight, borderRadius: 14, flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
+    careText: { ...a.p12, color: colors.textPrimary, flex: 1 },
     error: { ...a.p12, color: colors.danger },
     go: { ...a.go, height: 52 },
     goOff: a.goOff,

@@ -95,7 +95,7 @@ export function WorkoutDoneView(props: WorkoutDoneProps) {
           <View accessibilityLabel={`별 ${rated.filter(([, on]) => on).length}개: ${rated.filter(([, on]) => on).map(([name]) => name).join(', ')}`} accessible style={styles.rate}>
             {rated.map(([name, on]) => (
               <View key={name} style={styles.rateItem}>
-                <Text style={[styles.star, { color: on ? colors.gold : colors.track }]}>★</Text>
+                <Text style={[styles.star, { color: on ? colors.textPrimary : colors.surfaceMuted }]}>★</Text>
                 <Text style={styles.note}>{name}</Text>
               </View>
             ))}
@@ -189,31 +189,31 @@ function createStyles({ colors }: AppTheme) {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     content: { gap: 12, paddingHorizontal: 16 },
     note: a.note,
-    body: { ...a.p15, color: colors.ink },
-    line: { borderTopColor: colors.track, borderTopWidth: 2 },
+    body: { ...a.p15, color: colors.textPrimary },
+    line: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2 },
 
     winRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 8, justifyContent: 'center' },
-    win: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 40, marginBottom: 12 },
+    win: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 36, lineHeight: 40, marginBottom: 12 },
     rate: { flexDirection: 'row', gap: 10, justifyContent: 'center' },
     rateItem: { alignItems: 'center', gap: 2, width: 104 },
     star: { fontSize: 26, lineHeight: 30 },
 
     // what I did: a line a move, then the two numbers
     did: { ...a.card, paddingBottom: 18, paddingHorizontal: 16, paddingTop: 16 },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28, marginBottom: 6 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28, marginBottom: 6 },
     rec: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between', paddingVertical: 10 },
-    recName: { ...a.p15, color: colors.ink, flexShrink: 1 },
+    recName: { ...a.p15, color: colors.textPrimary, flexShrink: 1 },
     recText: { ...a.p12, color: colors.textBody },
     res: { flexDirection: 'row', marginTop: 6, paddingTop: 18 },
     resItem: { alignItems: 'center', flex: 1, gap: 2 },
-    resLine: { borderLeftColor: colors.track, borderLeftWidth: 2 },
-    resValue: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 42 },
+    resLine: { borderLeftColor: colors.surfaceMuted, borderLeftWidth: 2 },
+    resValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 36, lineHeight: 42 },
 
     // the road to the next tier
     sum: { ...a.card, gap: 10, paddingBottom: 16, paddingHorizontal: 14, paddingTop: 12 },
-    bar: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 99, borderWidth: 1, height: 16, overflow: 'hidden' },
+    bar: { backgroundColor: colors.surfaceMuted, borderRadius: 99, height: 16, overflow: 'hidden' },
     barFill: { backgroundColor: colors.primary, bottom: 0, left: 0, position: 'absolute', top: 0 },
-    barTick: { backgroundColor: colors.ink, bottom: 0, marginLeft: -1, position: 'absolute', top: 0, width: 2 },
+    barTick: { backgroundColor: colors.textPrimary, bottom: 0, marginLeft: -1, position: 'absolute', top: 0, width: 2 },
 
     // how it felt
     box: { ...a.card, gap: 10, paddingHorizontal: 14, paddingVertical: 16 },

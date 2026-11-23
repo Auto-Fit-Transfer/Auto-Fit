@@ -41,11 +41,11 @@ function createStyles({ colors }: AppTheme) {
   return {
     root: { alignItems: 'center', flex: 1, justifyContent: 'center', paddingHorizontal: 26 },
     lost: { alignItems: 'center', gap: 8 },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
-    body: { ...a.p15, color: colors.ink },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
+    body: { ...a.p15, color: colors.textPrimary },
     description: { ...a.p15, color: colors.textBody, textAlign: 'center' },
     retry: { ...a.go, ...a.goGhost, height: 46, marginTop: 6, paddingHorizontal: 18 },
     pressed: a.goPressed,
-    retryText: { ...a.p15, color: colors.ink },
+    retryText: { ...a.p15, color: colors.textPrimary },
   } as const;
 }

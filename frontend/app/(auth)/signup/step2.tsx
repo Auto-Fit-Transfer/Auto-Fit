@@ -164,7 +164,7 @@ function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     emailCard: { ...a.field, gap: 8, paddingRight: 6 },
-    emailText: { ...a.p15, color: colors.ink, flex: 1 },
+    emailText: { ...a.p15, color: colors.textPrimary, flex: 1 },
     smallButton: a.mini,
     smallButtonText: a.miniText,
     codeRow: { flexDirection: 'row', gap: 6 },
@@ -173,9 +173,9 @@ function createStyles({ colors }: AppTheme) {
       borderColor: colors.border,
       borderRadius: 12,
       borderWidth: 1,
-      color: colors.ink,
+      color: colors.textPrimary,
       flex: 1,
-      fontFamily: fontFamilies.galmuri11Bold,
+      fontFamily: fontFamilies.pretendardExtraBold,
       fontSize: 24,
       height: 56,
       minWidth: 0,
@@ -183,7 +183,7 @@ function createStyles({ colors }: AppTheme) {
       textAlign: 'center',
     },
     // Which of the six boxes is being typed in.
-    codeInputFocused: { backgroundColor: colors.primaryLight },
+    codeInputFocused: { backgroundColor: colors.surfaceMuted },
     resendRow: { alignItems: 'flex-end', marginTop: -4, paddingBottom: 3 },
     resendDisabled: { opacity: 0.55 },
     notice: {},

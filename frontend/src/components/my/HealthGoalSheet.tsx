@@ -230,9 +230,9 @@ function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     content: { gap: 14 },
-    current: { backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 12, borderWidth: 1, gap: 2, padding: 12 },
+    current: { backgroundColor: colors.surfaceMuted, borderRadius: 12, gap: 2, padding: 12 },
     currentLabel: a.note,
-    currentText: { ...a.p15, color: colors.ink },
+    currentText: { ...a.p15, color: colors.textPrimary },
     sectionTitle: { ...a.q, marginBottom: -4 },
     choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     third: { flexBasis: '30%', flexGrow: 1 },
@@ -245,8 +245,8 @@ function createStyles({ colors }: AppTheme) {
     selectedText: a.onText,
     note: a.note,
     retry: a.link,
-    error: { ...a.p12, color: colors.ink },
-    success: { ...a.p12, color: colors.ink },
+    error: { ...a.p12, color: colors.textPrimary },
+    success: { ...a.p12, color: colors.textPrimary },
     save: a.go,
     disabled: { ...a.goOff, },
     disabledText: { color: colors.textDisabled },

@@ -44,7 +44,7 @@ function Accordion(props: { title: string; subtitle: string; expanded: boolean; 
   const s = useThemedStyles(createSStyles);
   return <View style={s.card}>
     <Pressable accessibilityRole="button" accessibilityState={{ expanded: props.expanded }} accessibilityLabel={props.title + (props.expanded ? ' 접기' : ' 펼치기')} onPress={props.onPress} style={s.row}>
-      <View style={s.flex}><Text style={s.cardTitle}>{props.title}</Text><Text style={s.secondary}>{props.subtitle}</Text></View>{props.expanded ? <MinusIcon color={colors.ink} height={22} width={22} /> : <PlusIcon color={colors.ink} height={22} width={22} />}
+      <View style={s.flex}><Text style={s.cardTitle}>{props.title}</Text><Text style={s.secondary}>{props.subtitle}</Text></View>{props.expanded ? <MinusIcon color={colors.textPrimary} height={22} width={22} /> : <PlusIcon color={colors.textPrimary} height={22} width={22} />}
     </Pressable>
     {props.expanded && <View style={s.accordionBody}>{props.children}</View>}
   </View>;
@@ -118,7 +118,7 @@ export default function ProteinGuide() {
           <View style={[s.tipRow, s.divider]}><Text style={s.tipLabel}>고깃집</Text><Text style={s.tipText}>살코기와 채소를 함께 고르고 드신 양을 기록해 보세요.</Text></View>
         </Accordion>
 
-        <View style={s.notice}><WarningIcon color={colors.ink} height={18} width={18} /><Text style={s.noticeText}>알레르기가 있는 식품은 피하고, 가공식품은 성분표를 확인해 주세요.</Text></View>
+        <View style={s.notice}><WarningIcon color={colors.textPrimary} height={18} width={18} /><Text style={s.noticeText}>알레르기가 있는 식품은 피하고, 가공식품은 성분표를 확인해 주세요.</Text></View>
         <Text style={s.source}>목표는 식단 데이터, 먹은 양은 식사 기록 기준이에요. 음식별 영양 성분은 등록된 값과 실제 제품이 다를 수 있어요.</Text>
         <Pressable accessibilityRole="button" onPress={back} style={({ pressed }) => [s.button, pressed && s.pressed]}><Text style={s.buttonText}>저녁 식단 확인하기</Text></Pressable>
       </>}
@@ -134,32 +134,32 @@ function createSStyles({ colors }: AppTheme) {
     loading: { height: 460 },
     card: { ...a.card, gap: 12, paddingHorizontal: 14, paddingVertical: 14 },
     caption: a.note,
-    body: { ...a.p15, color: colors.ink },
+    body: { ...a.p15, color: colors.textPrimary },
     secondary: { ...a.p12, color: colors.textBody },
     targetRow: { alignItems: 'baseline', flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-    target: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 40 },
+    target: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 36, lineHeight: 40 },
     targetHint: { ...a.p12, color: colors.textBody },
     row: { alignItems: 'center', flexDirection: 'row', gap: 10, justifyContent: 'space-between' },
     flex: { flex: 1 },
-    sectionTitle: { ...a.p15, color: colors.ink },
-    current: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    sectionTitle: { ...a.p15, color: colors.textPrimary },
+    current: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 26 },
     currentTarget: { ...a.p12, color: colors.textSecondary },
     // the bar of A's tier road: dark outline, violet fill
-    track: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 99, borderWidth: 1, height: 16, overflow: 'hidden' },
+    track: { backgroundColor: colors.surfaceMuted, borderRadius: 99, height: 16, overflow: 'hidden' },
     fill: { backgroundColor: colors.primary, height: '100%' },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-    chip: { ...a.p12, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.ink, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 },
-    cardTitle: { ...a.p15, color: colors.ink },
+    chip: { ...a.p12, borderRadius: 8, color: colors.textPrimary, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 },
+    cardTitle: { ...a.p15, color: colors.textPrimary },
     accordionBody: { gap: 5, paddingTop: 12 },
     foodRow: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingVertical: 10 },
-    foodName: { ...a.p15, color: colors.ink },
-    foodProtein: { ...a.p15, color: colors.ink },
-    divider: { borderTopColor: colors.track, borderTopWidth: 2 },
+    foodName: { ...a.p15, color: colors.textPrimary },
+    foodProtein: { ...a.p15, color: colors.textPrimary },
+    divider: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2 },
     tipRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10, paddingVertical: 10 },
-    tipLabel: { ...a.p12, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6, paddingVertical: 1 },
-    tipText: { ...a.p15, color: colors.ink, flex: 1 },
-    notice: { alignItems: 'center', backgroundColor: colors.warningLight, borderColor: colors.border, borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
-    noticeText: { ...a.p12, color: colors.ink, flex: 1 },
+    tipLabel: { ...a.p12, borderRadius: 8, color: colors.textPrimary, overflow: 'hidden', paddingHorizontal: 6, paddingVertical: 1 },
+    tipText: { ...a.p15, color: colors.textPrimary, flex: 1 },
+    notice: { alignItems: 'center', backgroundColor: colors.warningLight, borderRadius: 14, flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
+    noticeText: { ...a.p12, color: colors.textPrimary, flex: 1 },
     source: a.note,
     link: a.link,
     button: { ...a.go, height: 52, marginTop: 4 },

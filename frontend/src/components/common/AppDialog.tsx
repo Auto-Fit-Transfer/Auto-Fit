@@ -83,21 +83,19 @@ export function AppDialog({
 }
 
 function createStyles({ colors }: AppTheme) {
-  // Renewal A: a card with the dark outline, the question in pixel letters, two buttons on ledges.
-  const words = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
+  // Renewal B: a white card without an outline, the question bold, pill buttons.
+  const words = { fontFamily: fontFamilies.pretendardRegular, fontSize: 15, lineHeight: 21 } as const;
   return {
     overlay: {
       alignItems: 'center',
-      backgroundColor: 'rgba(22, 24, 46, 0.45)',
+      backgroundColor: 'rgba(1, 1, 1, 0.45)',
       flex: 1,
       justifyContent: 'center',
       padding: 20,
     },
     dialog: {
       backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 22,
-      borderWidth: 1,
+      borderRadius: 28,
       maxWidth: 340,
       paddingBottom: 22,
       paddingHorizontal: 20,
@@ -105,22 +103,20 @@ function createStyles({ colors }: AppTheme) {
       width: '100%',
     },
     content: { gap: 8 },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
-    description: { ...words, color: colors.textBody },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 20, lineHeight: 28 },
+    description: { ...words, color: colors.textSecondary, fontSize: 14.5, lineHeight: 22 },
     actions: { flexDirection: 'row', gap: 8, paddingBottom: 4, paddingTop: 16 },
     action: { flex: 1 },
     // What cannot be undone: the same button, its words in the warning colour.
     destructiveAction: {
       alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 14,
-      borderWidth: 1,
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 999,
       justifyContent: 'center',
-      minHeight: 44,
+      minHeight: 48,
       paddingHorizontal: 16,
     },
-    destructiveLabel: { ...words, color: colors.danger },
+    destructiveLabel: { ...words, color: colors.danger, fontFamily: fontFamilies.pretendardBold },
     pressed: { opacity: 0.85 },
   } as const;
 }

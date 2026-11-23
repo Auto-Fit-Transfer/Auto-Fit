@@ -264,7 +264,7 @@ function createStyles({ colors }: AppTheme) {
   return {
     root: { backgroundColor: colors.background, flex: 1 },
     saving: { alignItems: 'center', backgroundColor: colors.background, flex: 1, gap: 12, justifyContent: 'center', padding: 20 },
-    savingText: { color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21, textAlign: 'center' },
+    savingText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardRegular, fontSize: 15, lineHeight: 21, textAlign: 'center' },
     retry: { ...aForm(colors).mini, height: 40, paddingHorizontal: 16 },
     retryText: aForm(colors).miniText,
   } as const;

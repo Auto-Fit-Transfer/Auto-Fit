@@ -57,7 +57,7 @@ export function AnalysisView(props: AnalysisViewProps) {
   const ratio = score != null && total != null && total > 0 ? Math.max(0, Math.min(100, (score / total) * 100)) : 0;
   const say = data?.headline || message;
   const signed = (value: number) => `${value > 0 ? '+' : ''}${value}`;
-  const fold = (open: boolean) => (open ? <MinusIcon color={colors.ink} height={22} width={22} /> : <PlusIcon color={colors.ink} height={22} width={22} />);
+  const fold = (open: boolean) => (open ? <MinusIcon color={colors.textPrimary} height={22} width={22} /> : <PlusIcon color={colors.textPrimary} height={22} width={22} />);
 
   return (
     <View style={styles.root}>
@@ -111,7 +111,7 @@ export function AnalysisView(props: AnalysisViewProps) {
                   <Text style={styles.stars}>
                     {'  '}
                     {[1, 2, 3].map((star) => (
-                      <Text key={star} style={{ color: star <= tier.stars ? colors.gold : colors.track }}>
+                      <Text key={star} style={{ color: star <= tier.stars ? colors.textPrimary : colors.surfaceMuted }}>
                         ★
                       </Text>
                     ))}
@@ -239,7 +239,7 @@ export function AnalysisView(props: AnalysisViewProps) {
 
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
-  const outline = { borderColor: colors.border, borderWidth: 1 } as const;
+  const outline = { borderWidth: 1 } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     content: { gap: 12, paddingHorizontal: 16, paddingTop: 4 },
@@ -247,27 +247,27 @@ function createStyles({ colors }: AppTheme) {
     grow: { flex: 1, minWidth: 0 },
     note: a.note,
     body: { ...a.p15, color: colors.textBody },
-    strong: { ...a.p15, color: colors.ink },
-    ink: { color: colors.ink },
+    strong: { ...a.p15, color: colors.textPrimary },
+    ink: { color: colors.textPrimary },
     center: { textAlign: 'center' },
     eyebrow: { ...a.p12, color: colors.primaryText },
     sunk: { transform: [{ translateY: 3 }] },
 
     ask: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-    face: { ...outline, alignItems: 'center', backgroundColor: colors.primaryLight, borderRadius: 11, height: 40, justifyContent: 'center', width: 40 },
+    face: { ...outline, alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 11, height: 40, justifyContent: 'center', width: 40 },
     say: { ...outline, backgroundColor: colors.surface, borderRadius: 14, flex: 1, paddingHorizontal: 14, paddingVertical: 10 },
 
     scoreCard: { gap: 10, padding: 16 },
     scoreRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
-    score: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 42 },
+    score: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 36, lineHeight: 42 },
     scoreTotal: { ...a.p15, color: colors.textSecondary },
     pill: { ...outline, alignItems: 'center', backgroundColor: colors.surface, borderRadius: 99, flexDirection: 'row', gap: 4, height: 26, paddingHorizontal: 8 },
-    pillText: { ...a.p12, color: colors.ink },
+    pillText: { ...a.p12, color: colors.textPrimary },
     pillGood: { backgroundColor: colors.successLight },
     pillWarn: { backgroundColor: colors.warningLight },
-    bar: { ...outline, backgroundColor: colors.track, borderRadius: 99, height: 16, overflow: 'hidden' },
+    bar: { ...outline, backgroundColor: colors.surfaceMuted, borderRadius: 99, height: 16, overflow: 'hidden' },
     barFill: { backgroundColor: colors.primary, bottom: 0, left: 0, position: 'absolute', top: 0 },
-    tierRow: { alignItems: 'center', borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', gap: 10, marginTop: 2, paddingTop: 12 },
+    tierRow: { alignItems: 'center', borderTopColor: colors.surfaceMuted, borderTopWidth: 2, flexDirection: 'row', gap: 10, marginTop: 2, paddingTop: 12 },
     stars: { fontSize: 11, lineHeight: 14 },
     mini: { ...a.mini, marginBottom: 3 },
     miniText: a.miniText,
@@ -276,15 +276,15 @@ function createStyles({ colors }: AppTheme) {
 
     // my goal, and what is suggested for it
     plan: { gap: 6, padding: 16 },
-    rule: { backgroundColor: colors.track, height: 2, marginVertical: 8 },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    rule: { backgroundColor: colors.surfaceMuted, height: 2, marginVertical: 8 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 26 },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-    tag: { ...a.p12, backgroundColor: colors.primaryLight, borderRadius: 6, color: colors.ink, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 2 },
+    tag: { ...a.p12, backgroundColor: colors.surfaceMuted, borderRadius: 99, color: colors.textPrimary, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 2 },
 
     expand: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 64, padding: 14 },
     inside: { paddingBottom: 12, paddingHorizontal: 14 },
-    metric: { alignItems: 'center', borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', gap: 8, minHeight: 64, paddingHorizontal: 14, paddingVertical: 8 },
-    reason: { borderTopColor: colors.track, borderTopWidth: 2, gap: 4, paddingHorizontal: 14, paddingVertical: 12 },
+    metric: { alignItems: 'center', borderTopColor: colors.surfaceMuted, borderTopWidth: 2, flexDirection: 'row', gap: 8, minHeight: 64, paddingHorizontal: 14, paddingVertical: 8 },
+    reason: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2, gap: 4, paddingHorizontal: 14, paddingVertical: 12 },
 
     two: { flexDirection: 'row', gap: 8, marginBottom: 4 },
     go: { ...a.go, flex: 1, height: 52 },

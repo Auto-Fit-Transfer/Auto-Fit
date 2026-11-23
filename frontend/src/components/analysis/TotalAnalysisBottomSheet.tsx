@@ -43,9 +43,9 @@ function createToneStyles(colors: Palette) {
   // Renewal A: the words of a judgement are dark on a soft ground, never red letters; only the small
   // square beside a range keeps the tone's own colour.
   return {
-    normal: { color: colors.ink, background: colors.primaryLight, mark: colors.primary },
-    warning: { color: colors.ink, background: colors.warningLight, mark: colors.warning },
-    danger: { color: colors.ink, background: colors.dangerLight, mark: colors.danger },
+    normal: { color: colors.textPrimary, background: colors.surfaceMuted, mark: colors.primary },
+    warning: { color: colors.textPrimary, background: colors.warningLight, mark: colors.warning },
+    danger: { color: colors.textPrimary, background: colors.dangerLight, mark: colors.danger },
   } satisfies Record<AnalysisTone, { color: string; background: string; mark: string }>;
 }
 
@@ -420,9 +420,9 @@ export function TotalAnalysisBottomSheet({ sheet, onClose, onOpenReference }: Pr
 
 function createStyles({ colors }: AppTheme) {
   // Renewal A: one dark outline on every piece, pixel letters, violet for what is mine.
-  const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
-  const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
-  const outline = { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 } as const;
+  const p12 = { fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 17 } as const;
+  const p15 = { fontFamily: fontFamilies.pretendardRegular, fontSize: 15, lineHeight: 21 } as const;
+  const outline = { backgroundColor: colors.surface, borderWidth: 1 } as const;
   return {
     bottomSheet: { borderColor: colors.border, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 2, overflow: 'hidden' },
     bottomSheetContent: { paddingBottom: 8, paddingHorizontal: 16, paddingTop: 16 },
@@ -430,7 +430,7 @@ function createStyles({ colors }: AppTheme) {
     sheetContentWideGap: { gap: 20 },
     heading: { gap: 4 },
     headingTitleRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 6 },
-    headingTitle: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    headingTitle: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
     headingDescription: { ...p15, color: colors.textBody },
     close: { ...outline, alignItems: 'center', borderRadius: 10, height: 32, justifyContent: 'center', width: 32 },
     metricList: { gap: 10 },
@@ -438,54 +438,54 @@ function createStyles({ colors }: AppTheme) {
     metricTop: { alignItems: 'center', flexDirection: 'row', gap: 12 },
     metricIcon: { alignItems: 'center', borderRadius: 12, height: 40, justifyContent: 'center', width: 40 },
     metricCopy: { flex: 1 },
-    metricName: { ...p15, color: colors.ink },
-    metricValue: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    metricName: { ...p15, color: colors.textPrimary },
+    metricValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 26 },
     metricDescription: { ...p12, alignSelf: 'stretch', color: colors.textBody },
-    statusBadge: { borderColor: colors.border, borderRadius: 99, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 1 },
+    statusBadge: { borderRadius: 99, paddingHorizontal: 8, paddingVertical: 1 },
     statusText: p12,
     statusBadgeLarge: { paddingHorizontal: 12, paddingVertical: 4 },
     statusTextLarge: p15,
-    summaryBox: { backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 14, borderWidth: 1, gap: 6, padding: 12 },
+    summaryBox: { backgroundColor: colors.surfaceMuted, borderRadius: 14, gap: 6, padding: 12 },
     summaryTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-    summaryBoxTitle: { ...p15, color: colors.ink },
+    summaryBoxTitle: { ...p15, color: colors.textPrimary },
     summaryBoxText: { ...p12, color: colors.textBody },
     sheetFootnote: { ...p12, color: colors.textSecondary, textAlign: 'center' },
     currentCard: { ...outline, alignItems: 'center', borderRadius: 14, gap: 10, paddingBottom: 10, paddingHorizontal: 14, paddingTop: 16 },
     currentInner: { alignItems: 'center', flexDirection: 'row', gap: 16, width: '100%' },
     currentColumn: { alignItems: 'center', flex: 1, gap: 4 },
     currentLabel: { ...p12, color: colors.textSecondary },
-    currentValue: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 42 },
+    currentValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 36, lineHeight: 42 },
     currentValueRow: { alignItems: 'baseline', flexDirection: 'row', flexWrap: 'nowrap', gap: 4, justifyContent: 'center', maxWidth: '100%' },
     currentUnit: { ...p12, color: colors.textSecondary, flexShrink: 0 },
-    currentDivider: { backgroundColor: colors.track, height: 56, width: 2 },
-    currentInfo: { alignItems: 'center', alignSelf: 'stretch', backgroundColor: colors.primaryLight, borderRadius: 8, flexDirection: 'row', gap: 4, paddingHorizontal: 8, paddingVertical: 8 },
-    currentInfoText: { ...p12, color: colors.ink, flexShrink: 1 },
+    currentDivider: { backgroundColor: colors.surfaceMuted, height: 56, width: 2 },
+    currentInfo: { alignItems: 'center', alignSelf: 'stretch', backgroundColor: colors.surfaceMuted, borderRadius: 8, flexDirection: 'row', gap: 4, paddingHorizontal: 8, paddingVertical: 8 },
+    currentInfoText: { ...p12, color: colors.textPrimary, flexShrink: 1 },
     criteriaSection: { gap: 10 },
-    sectionTitle: { ...p15, color: colors.ink },
+    sectionTitle: { ...p15, color: colors.textPrimary },
     ruleRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-    smallIconCircle: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 10, borderWidth: 1, height: 32, justifyContent: 'center', width: 32 },
+    smallIconCircle: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 10, height: 32, justifyContent: 'center', width: 32 },
     ruleText: { ...p12, color: colors.textBody, flex: 1 },
     rangeHelp: { ...p12, color: colors.textSecondary },
     rangeList: { gap: 8 },
     rangeRow: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, borderWidth: 2, flexDirection: 'row', flexWrap: 'nowrap', height: 44, overflow: 'hidden' },
     rangeLabel: { alignItems: 'center', flexBasis: '38%', flexDirection: 'row', gap: 8, height: '100%', maxWidth: 150, paddingLeft: 12 },
     rangeDot: { height: 10, width: 10 },
-    rangeLabelText: { ...p15, color: colors.ink },
+    rangeLabelText: { ...p15, color: colors.textPrimary },
     rangeValue: { ...p12, color: colors.textBody, flex: 1, flexShrink: 1, paddingLeft: 10 },
     currentPill: { backgroundColor: colors.primary, borderRadius: 99, marginRight: 10, paddingHorizontal: 6, paddingVertical: 2 },
     currentPillText: { ...p12, color: colors.onPrimary },
     referenceButton: { ...outline, alignItems: 'center', borderRadius: 12, flexDirection: 'row', height: 48, justifyContent: 'space-between', paddingHorizontal: 14 },
     referenceButtonLeft: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-    referenceButtonText: { ...p15, color: colors.ink },
+    referenceButtonText: { ...p15, color: colors.textPrimary },
     referenceDetailCard: { ...outline, borderRadius: 14, overflow: 'hidden' },
     detailRow: { alignItems: 'center', flexDirection: 'row', gap: 12, padding: 12 },
     detailCopy: { flex: 1, gap: 2 },
     detailLabel: { ...p12, color: colors.textSecondary },
-    detailValue: { ...p15, color: colors.ink },
-    detailDivider: { backgroundColor: colors.track, height: 2 },
+    detailValue: { ...p15, color: colors.textPrimary },
+    detailDivider: { backgroundColor: colors.surfaceMuted, height: 2 },
     appliedChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 5, width: '100%' },
-    appliedChip: { backgroundColor: colors.primaryLight, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, width: '49%' },
-    appliedChipText: { ...p12, color: colors.ink },
+    appliedChip: { backgroundColor: colors.surfaceMuted, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, width: '49%' },
+    appliedChipText: { ...p12, color: colors.textPrimary },
     pressed: { opacity: 0.72 },
   } as const;
 }

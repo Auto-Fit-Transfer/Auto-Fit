@@ -97,7 +97,7 @@ export default function WeeklyRecipeScreen() {
       {Boolean(meal.menu_description) && <Text style={s.body}>{meal.menu_description}</Text>}
       <View style={s.tags}>{meal.tags.map((tag, index) => <Text key={`${tag}:${index}`} style={s.tag}>{tag}</Text>)}</View>
       <View style={s.meta}><Text style={s.body}>{Math.round(meal.estimated_calories_kcal)} kcal</Text><Text style={s.body}>{meal.estimated_duration_minutes == null ? '조리시간 정보 없음' : `약 ${formatNumber(meal.estimated_duration_minutes)}분`}</Text></View>
-      <View style={s.servings}><Text style={s.sectionTitle}>인분</Text><Pressable accessibilityRole="button" accessibilityLabel="인분 줄이기" disabled={servings <= 1} onPress={() => setServings((value) => value - 1)} style={[s.servingButton, servings <= 1 && s.off]}><MinusIcon color={colors.ink} height={16} width={16} /></Pressable><Text style={s.body}>{servings}인분</Text><Pressable accessibilityRole="button" accessibilityLabel="인분 늘리기" disabled={servings >= 20} onPress={() => setServings((value) => value + 1)} style={[s.servingButton, servings >= 20 && s.off]}><PlusIcon color={colors.ink} height={16} width={16} /></Pressable></View>
+      <View style={s.servings}><Text style={s.sectionTitle}>인분</Text><Pressable accessibilityRole="button" accessibilityLabel="인분 줄이기" disabled={servings <= 1} onPress={() => setServings((value) => value - 1)} style={[s.servingButton, servings <= 1 && s.off]}><MinusIcon color={colors.textPrimary} height={16} width={16} /></Pressable><Text style={s.body}>{servings}인분</Text><Pressable accessibilityRole="button" accessibilityLabel="인분 늘리기" disabled={servings >= 20} onPress={() => setServings((value) => value + 1)} style={[s.servingButton, servings >= 20 && s.off]}><PlusIcon color={colors.textPrimary} height={16} width={16} /></Pressable></View>
       <View style={s.card}><Text style={s.sectionTitle}>영양 정보</Text><Text style={s.body}>탄수화물 {formatNumber(meal.nutrition.carbohydrate_g)}g · 단백질 {formatNumber(meal.nutrition.protein_g)}g · 지방 {formatNumber(meal.nutrition.fat_g)}g</Text>{meal.daily_target_percentages && <Text style={s.muted}>일일 목표 대비 열량 {formatNumber(meal.daily_target_percentages.calories_percent)}% · 탄수화물 {formatNumber(meal.daily_target_percentages.carbohydrate_percent)}% · 단백질 {formatNumber(meal.daily_target_percentages.protein_percent)}% · 지방 {formatNumber(meal.daily_target_percentages.fat_percent)}%</Text>}</View>
       {meal.personalization_reasons.length > 0 && <View style={s.card}><Text style={s.sectionTitle}>추천 이유</Text>{meal.personalization_reasons.map((reason, index) => <Text key={index} style={s.body}>· {reason}</Text>)}</View>}
       {meal.allergen_notice.length > 0 && <View style={s.notice}><Text style={s.sectionTitle}>알레르기 안내</Text>{meal.allergen_notice.map((notice, index) => <Text key={index} style={s.body}>· {notice}</Text>)}</View>}
@@ -113,18 +113,18 @@ export default function WeeklyRecipeScreen() {
 
 function createSStyles({ colors }: AppTheme) {
   const a = aForm(colors);
-  const tag = { ...a.p12, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.ink, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 } as const;
+  const tag = { ...a.p12, borderRadius: 8, color: colors.textPrimary, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     content: { gap: 12, paddingHorizontal: 16 },
     loading: { height: 460 },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 30 },
-    body: { ...a.p15, color: colors.ink },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 30 },
+    body: { ...a.p15, color: colors.textPrimary },
     muted: { ...a.p12, color: colors.textBody },
     source: a.note,
-    sectionTitle: { ...a.p15, color: colors.ink, marginTop: 4 },
-    itemTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
-    recipeName: { ...a.p15, color: colors.ink },
+    sectionTitle: { ...a.p15, color: colors.textPrimary, marginTop: 4 },
+    itemTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 26 },
+    recipeName: { ...a.p15, color: colors.textPrimary },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     tag,
     meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
@@ -132,16 +132,16 @@ function createSStyles({ colors }: AppTheme) {
     servingButton: { ...a.mini, paddingHorizontal: 0, width: 32 },
     off: { opacity: 0.35 },
     card: { ...a.card, gap: 10, paddingHorizontal: 14, paddingVertical: 14 },
-    notice: { backgroundColor: colors.warningLight, borderColor: colors.border, borderRadius: 14, borderWidth: 1, gap: 6, paddingHorizontal: 12, paddingVertical: 10 },
+    notice: { backgroundColor: colors.warningLight, borderRadius: 14, gap: 6, paddingHorizontal: 12, paddingVertical: 10 },
     // a clash with what I cannot eat: dark letters on the soft ground, not red
-    warning: { ...a.p12, alignSelf: 'flex-start', backgroundColor: colors.warningLight, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.ink, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 },
+    warning: { ...a.p12, alignSelf: 'flex-start', backgroundColor: colors.warningLight, borderRadius: 8, color: colors.textPrimary, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 },
     ingredient: { flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
     step: { flexDirection: 'row', gap: 12 },
-    stepIndex: { ...a.p12, backgroundColor: colors.primary, borderColor: colors.border, borderRadius: 9, borderWidth: 1, color: colors.onPrimary, height: 28, lineHeight: 24, overflow: 'hidden', textAlign: 'center', width: 28 },
+    stepIndex: { ...a.p12, backgroundColor: colors.primary, borderRadius: 9, color: colors.onPrimary, height: 28, lineHeight: 24, overflow: 'hidden', textAlign: 'center', width: 28 },
     stepCopy: { flex: 1, gap: 4 },
-    tip: { ...a.p12, backgroundColor: colors.surfaceMuted, borderRadius: 10, color: colors.ink, overflow: 'hidden', padding: 10 },
+    tip: { ...a.p12, backgroundColor: colors.surfaceMuted, borderRadius: 10, color: colors.textPrimary, overflow: 'hidden', padding: 10 },
     related: { ...a.card, gap: 3, paddingHorizontal: 14, paddingVertical: 12 },
     error: { ...a.card, gap: 10, padding: 14 },
-    errorText: { ...a.p15, color: colors.ink },
+    errorText: { ...a.p15, color: colors.textPrimary },
   } as const;
 }

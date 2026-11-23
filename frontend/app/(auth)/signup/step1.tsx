@@ -433,8 +433,8 @@ function createStyles({ colors }: AppTheme) {
       width: '100%',
     },
     sheetTitle: {
-      color: colors.ink,
-      fontFamily: fontFamilies.galmuri11Bold,
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardExtraBold,
       fontSize: 24,
       lineHeight: 28,
       marginBottom: 6,
@@ -443,7 +443,7 @@ function createStyles({ colors }: AppTheme) {
     allRow: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 54 },
     consentRow: {
       alignItems: 'center',
-      borderTopColor: colors.track,
+      borderTopColor: colors.surfaceMuted,
       borderTopWidth: 2,
       flexDirection: 'row',
       gap: 10,
@@ -451,7 +451,7 @@ function createStyles({ colors }: AppTheme) {
       paddingVertical: 6,
     },
     consentCopy: { flex: 1, gap: 2 },
-    consentText: { ...a.p15, color: colors.ink },
+    consentText: { ...a.p15, color: colors.textPrimary },
     tick: a.tick,
     sheetGo: { marginTop: 16 },
   } as const;

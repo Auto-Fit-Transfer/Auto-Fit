@@ -918,7 +918,7 @@ function createStyles({ colors }: AppTheme) {
       width: '100%',
     },
     userBubble: {
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.surfaceMuted,
       borderBottomLeftRadius: 16,
       borderBottomRightRadius: 16,
       borderTopLeftRadius: 16,
@@ -941,7 +941,7 @@ function createStyles({ colors }: AppTheme) {
     },
     cardActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
     cardButton: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
-    cardCancel: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+    cardCancel: { backgroundColor: colors.surface, borderColor: colors.border },
     cardCancelText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardMedium, fontSize: 14 },
     cardConfirm: { backgroundColor: colors.primary },
     cardConfirmText: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardBold, fontSize: 14 },

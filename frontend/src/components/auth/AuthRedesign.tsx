@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { aForm } from '@/src/components/a/form';
-import { JoinScene } from '@/src/components/a/JoinScene';
+import { ChatCharacterAvatar } from '@/src/components/chat/ChatCharacterAvatar';
 import BackIcon from '@/assets/icons/common/chevrons/Left.svg';
 
 import { AppTextField, type AppTextFieldProps, Text } from '@/src/components/common';
@@ -58,11 +58,17 @@ export function AuthPage({
       style={styles.root}
     >
       {isLogin ? (
-        // Renewal A: signing in is the game's title screen - the street, my character on it, and the name.
-        // The street takes the height the form below leaves, so the screen has no empty half.
-        <JoinScene bigFrom={440} style={[styles.title, { minHeight: 300 + insets.top }]} tier={1}>
-          <Text accessibilityRole="header" style={[styles.titleName, { top: insets.top + 44 }]}>Auto-Fit</Text>
-        </JoinScene>
+        // Renewal B (b-start.html #vLogin): the way back to the first screen, then the app's black card asks
+        // me to sign in, the form under it, all one block a little above the middle.
+        <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
+          <View style={styles.navigation}>
+            {onBack ? (
+              <Pressable accessibilityLabel="처음으로" accessibilityRole="button" hitSlop={10} onPress={onBack} style={({ pressed }) => [styles.backButton, pressed && styles.backPressed]}>
+                <BackIcon color={colors.textPrimary} height={24} width={24} />
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
       ) : (
         <View style={[styles.header, { paddingTop: insets.top + 6 }]}>
           <View style={styles.navigation}>
@@ -73,7 +79,7 @@ export function AuthPage({
               onPress={onBack}
               style={({ pressed }) => [styles.backButton, pressed && styles.backPressed]}
             >
-              <BackIcon color={colors.ink} height={24} width={24} />
+              <BackIcon color={colors.textPrimary} height={24} width={24} />
             </Pressable>
             <Text accessibilityRole="header" numberOfLines={1} style={styles.barTitle}>
               {barTitle ?? heading}
@@ -106,6 +112,15 @@ export function AuthPage({
         showsVerticalScrollIndicator={false}
         style={isLogin ? styles.loginScroll : styles.scroll}
       >
+        {isLogin ? (
+          <View style={styles.ai}>
+            <ChatCharacterAvatar characterId="quni" size={44} />
+            <View style={styles.aiCopy}>
+              <Text style={styles.aiName}>다시 오셨네요</Text>
+              <Text accessibilityRole="header" style={styles.aiTitle}>로그인해 주세요</Text>
+            </View>
+          </View>
+        ) : null}
         {scene}
         {children}
       </ScrollView>
@@ -183,57 +198,40 @@ function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 412, width: '100%' },
-    title: { borderRadius: 0, borderWidth: 0 },
-    titleName: {
-      color: '#FFFFFF',
-      fontFamily: fontFamilies.galmuri11Bold,
-      fontSize: 44,
-      left: 0,
-      lineHeight: 50,
-      position: 'absolute',
-      right: 0,
-      textAlign: 'center',
-      textShadowColor: colors.ink,
-      textShadowOffset: { height: 3, width: 3 },
-      textShadowRadius: 2,
-    },
-    // Renewal A: the bar is the way back on its ledge, the name in pixel letters and one dot per step.
-    header: { paddingHorizontal: 16 },
+    ai: { alignItems: 'center', backgroundColor: colors.aiCard, borderRadius: 28, flexDirection: 'row', gap: 12, marginBottom: 14, padding: 20 },
+    aiCopy: { flex: 1, minWidth: 0 },
+    aiName: { color: colors.aiHello, fontFamily: fontFamilies.pretendardBold, fontSize: 13, lineHeight: 18 },
+    aiTitle: { color: colors.onAi, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 18, lineHeight: 25 },
+    // Renewal B: the way back as a round white button, the name bold, one round dot per step.
+    header: { paddingHorizontal: 20 },
     navigation: { alignItems: 'center', flexDirection: 'row', gap: 10, height: 52 },
     backButton: {
       alignItems: 'center',
       backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 14,
-      borderWidth: 1,
+      borderRadius: 22,
       height: 44,
       justifyContent: 'center',
       width: 44,
     },
-    backPressed: { transform: [{ translateY: 4 }] },
-    barTitle: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
-    progress: { flexDirection: 'row', gap: 3 },
-    progressSegment: {
-      backgroundColor: colors.track,
-      borderColor: 'rgba(32, 35, 63, 0.25)',
-      borderWidth: 1,
-      height: 8,
-      width: 8,
-    },
-    progressActive: { backgroundColor: colors.primary, borderColor: colors.border },
+    backPressed: { opacity: 0.85 },
+    barTitle: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 22 },
+    progress: { flexDirection: 'row', gap: 5 },
+    progressSegment: { backgroundColor: colors.surfaceMuted, borderRadius: 4, height: 8, width: 8 },
+    progressActive: { backgroundColor: colors.primary },
     heading: {
-      color: colors.ink,
-      fontFamily: fontFamilies.galmuri11Bold,
-      fontSize: 24,
-      lineHeight: 28,
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardExtraBold,
+      fontSize: 30,
+      letterSpacing: -0.6,
+      lineHeight: 38,
       marginTop: 10,
     },
-    description: { ...a.p15, color: colors.textBody, marginTop: 8 },
+    description: { color: colors.textSecondary, fontSize: 14.5, lineHeight: 22, marginTop: 8 },
     scroll: { flex: 1 },
-    loginScroll: { flexGrow: 0 },
-    content: { flexGrow: 1, gap: 14, paddingHorizontal: 16, paddingTop: 12 },
-    loginContent: { gap: 0, paddingHorizontal: 16, paddingTop: 20 },
-    footer: { backgroundColor: colors.background, paddingHorizontal: 16, paddingTop: 10 },
+    loginScroll: { flex: 1 },
+    content: { flexGrow: 1, gap: 14, paddingHorizontal: 20, paddingTop: 12 },
+    loginContent: { gap: 0, justifyContent: 'center', paddingBottom: '18%', paddingHorizontal: 20, paddingTop: 0 },
+    footer: { backgroundColor: colors.background, paddingHorizontal: 20, paddingTop: 10 },
     card: { gap: 12 },
     field: a.field,
     fieldLabel: a.q,
@@ -241,17 +239,15 @@ function createStyles({ colors }: AppTheme) {
     primaryButton: {
       alignItems: 'center',
       backgroundColor: colors.primary,
-      // Renewal A: the dark outline and the ledge that goes down when pressed, as on every button.
-      borderColor: colors.border,
-      borderRadius: 14,
-      borderWidth: 1,
+      // Renewal B: the black pill.
+      borderRadius: 999,
       height: 56,
       justifyContent: 'center',
       width: '100%',
     },
     buttonDisabled: { backgroundColor: colors.surfaceMuted },
     buttonLabelDisabled: { color: colors.textDisabled },
-    buttonPressed: { transform: [{ translateY: 4 }] },
-    buttonLabel: { color: colors.onPrimary, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    buttonPressed: { opacity: 0.85 },
+    buttonLabel: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 16, lineHeight: 22 },
   } as const;
 }

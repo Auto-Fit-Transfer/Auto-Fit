@@ -92,7 +92,7 @@ export function RoutinePlanView({ header, routine, loading, button, onBack, onCh
         <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setOpen((now) => !now)} style={styles.why}>
           <View style={styles.whyHead}>
             <Text style={[styles.body, styles.grow]}>이렇게 골랐어요</Text>
-            <Fold color={colors.ink} height={20} width={20} />
+            <Fold color={colors.textPrimary} height={20} width={20} />
           </View>
           {(open ? routine.reasons : routine.reasons.slice(0, 1)).map((reason, index) => (
             <Text key={index} numberOfLines={open ? undefined : 1} style={styles.sub}>
@@ -147,7 +147,7 @@ export function RoutinePlanView({ header, routine, loading, button, onBack, onCh
                     </View>
                     {canOpen ? (
                       <View style={shown ? styles.flip : undefined}>
-                        <CaretDownIcon color={colors.ink} height={18} width={18} />
+                        <CaretDownIcon color={colors.textPrimary} height={18} width={18} />
                       </View>
                     ) : null}
                   </Pressable>
@@ -187,14 +187,14 @@ function createStyles({ colors }: AppTheme) {
     flip: { transform: [{ rotate: '180deg' }] },
     center: { textAlign: 'center' },
     note: a.note,
-    body: { ...a.p15, color: colors.ink },
+    body: { ...a.p15, color: colors.textPrimary },
     sub: { ...a.p12, color: colors.textBody },
 
     top: { gap: 4 },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 30 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 30 },
 
-    made: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 10, minHeight: 52, paddingHorizontal: 12, paddingVertical: 8 },
-    madeText: { ...a.p12, color: colors.ink, flex: 1 },
+    made: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 14, flexDirection: 'row', gap: 10, minHeight: 52, paddingHorizontal: 12, paddingVertical: 8 },
+    madeText: { ...a.p12, color: colors.textPrimary, flex: 1 },
     mini: a.mini,
     miniPressed: { transform: [{ translateY: 3 }] },
     miniText: a.miniText,
@@ -205,18 +205,18 @@ function createStyles({ colors }: AppTheme) {
     block: { gap: 8, marginTop: 4 },
     day: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
     // the day I am looking at is violet, like every chosen thing
-    dayOn: { backgroundColor: colors.primaryLight, },
+    dayOn: { backgroundColor: colors.surfaceMuted, },
     dayNote: { ...a.p12, color: colors.textBody },
-    dayStatus: { ...a.p12, color: colors.ink },
+    dayStatus: { ...a.p12, color: colors.textPrimary },
 
     list: { ...a.card, paddingBottom: 4, paddingHorizontal: 14, paddingTop: 12 },
     listTitle: { paddingBottom: 10 },
-    moveWrap: { borderTopColor: colors.track, borderTopWidth: 2 },
+    moveWrap: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2 },
     move: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 56, paddingVertical: 10 },
     moveHead: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 8 },
     more: { gap: 8, paddingBottom: 12 },
     // the clips are 16:9 on white; shown whole
-    demo: { aspectRatio: 16 / 9, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, width: '100%' },
+    demo: { aspectRatio: 16 / 9, backgroundColor: colors.surface, borderRadius: 12, width: '100%' },
 
     // little to say: one bundle, a little above the middle
     empty: { alignItems: 'stretch', flex: 1, gap: 14, justifyContent: 'center', paddingBottom: 120, paddingHorizontal: 16 },

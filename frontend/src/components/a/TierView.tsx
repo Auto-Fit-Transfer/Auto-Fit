@@ -88,7 +88,7 @@ export function TierView({ who, tier, message, onRetry, ways, onBack }: TierView
                 {tier.name}{' '}
                 <Text style={styles.stars}>
                   {[1, 2, 3].map((star) => (
-                    <Text key={star} style={{ color: star <= tier.stars ? colors.gold : colors.track }}>
+                    <Text key={star} style={{ color: star <= tier.stars ? colors.textPrimary : colors.surfaceMuted }}>
                       ★
                     </Text>
                   ))}
@@ -122,7 +122,7 @@ export function TierView({ who, tier, message, onRetry, ways, onBack }: TierView
                 <Text style={styles.note}>{way.detail}</Text>
               </View>
               <Text style={styles.reward}>+{way.points}</Text>
-              <CaretRightIcon color={colors.ink} height={18} width={18} />
+              <CaretRightIcon color={colors.textPrimary} height={18} width={18} />
             </Pressable>
           ))}
         </View>
@@ -137,17 +137,17 @@ function createStyles({ colors }: AppTheme) {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     content: { gap: 12, paddingHorizontal: 16 },
     note: a.note,
-    body: { ...a.p15, color: colors.ink },
+    body: { ...a.p15, color: colors.textPrimary },
     dim: { opacity: 0.7 },
-    line: { borderTopColor: colors.track, borderTopWidth: 2 },
+    line: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2 },
     card: { ...a.card, gap: 12, paddingHorizontal: 12, paddingVertical: 12 },
 
     // the five tiers, my character in each
     row: { flexDirection: 'row', gap: 2 },
     cell: { alignItems: 'center', borderColor: 'transparent', borderRadius: 14, borderWidth: 1, flex: 1, gap: 3, paddingBottom: 8, paddingTop: 6 },
-    cellOn: { backgroundColor: colors.primaryLight, borderColor: colors.border },
+    cellOn: { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
     tag: { ...a.p12, color: colors.primaryText },
-    cellName: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 12, lineHeight: 17 },
+    cellName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 12, lineHeight: 17 },
     say: { ...a.p15, color: colors.textBody, textAlign: 'center' },
     go: { ...a.go, height: 52 },
     goPressed: a.goPressed,
@@ -156,17 +156,17 @@ function createStyles({ colors }: AppTheme) {
     // where my points stand
     points: { gap: 10, paddingHorizontal: 16, paddingVertical: 16 },
     spread: { alignItems: 'baseline', flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'space-between' },
-    big: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 42 },
+    big: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 36, lineHeight: 42 },
     level: { ...a.p12, color: colors.primaryText },
     stars: { fontSize: 11, lineHeight: 14 },
-    bar: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 99, borderWidth: 1, height: 16, overflow: 'hidden' },
+    bar: { backgroundColor: colors.surfaceMuted, borderRadius: 99, height: 16, overflow: 'hidden' },
     barFill: { backgroundColor: colors.primary, bottom: 0, left: 0, position: 'absolute', top: 0 },
 
     // what gives points
     group: { ...a.q, marginBottom: 0, marginTop: 10, paddingHorizontal: 2 },
     ways: { gap: 0, paddingHorizontal: 14, paddingVertical: 0 },
     way: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 72, paddingVertical: 10 },
-    icon: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+    icon: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 44, justifyContent: 'center', width: 44 },
     wayCopy: { flex: 1, gap: 2, minWidth: 0 },
     reward: a.reward,
   } as const;

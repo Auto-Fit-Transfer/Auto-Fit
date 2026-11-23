@@ -43,43 +43,39 @@ export function ConfirmDialog({
 }
 
 function createStyles({ colors }: AppTheme) {
-  // Renewal A: a card with the dark outline, and two buttons on their ledges.
+  // Renewal B: a white card without an outline, two pill buttons (the light one, the black one).
   const button = {
     alignItems: 'center',
-    borderColor: colors.border,
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: 999,
     flex: 1,
-    height: 46,
+    height: 50,
     justifyContent: 'center',
   } as const;
-  const label = { color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
+  const label = { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 } as const;
   return {
     overlay: {
       alignItems: 'center',
-      backgroundColor: 'rgba(22, 24, 46, 0.45)',
+      backgroundColor: 'rgba(1, 1, 1, 0.45)',
       flex: 1,
       justifyContent: 'center',
       paddingHorizontal: 40,
     },
     dialog: {
       backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 22,
-      borderWidth: 1,
+      borderRadius: 28,
       maxWidth: 360,
       paddingBottom: 26,
       paddingHorizontal: 20,
       paddingTop: 24,
       width: '100%',
     },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28, textAlign: 'center' },
-    description: { ...label, color: colors.textBody, marginTop: 8, textAlign: 'center' },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 20, lineHeight: 28, textAlign: 'center' },
+    description: { ...label, color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 14.5, lineHeight: 22, marginTop: 8, textAlign: 'center' },
     actions: { flexDirection: 'row', gap: 8, marginTop: 18 },
-    secondary: { ...button, backgroundColor: colors.surface, },
+    secondary: { ...button, backgroundColor: colors.surfaceMuted },
     busy: { opacity: 0.4 },
     secondaryLabel: label,
-    primary: { ...button, backgroundColor: colors.primary, },
+    primary: { ...button, backgroundColor: colors.primary },
     primaryLabel: { ...label, color: colors.onPrimary },
   } as const;
 }

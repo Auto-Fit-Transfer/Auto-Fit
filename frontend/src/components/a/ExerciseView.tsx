@@ -47,7 +47,7 @@ export function ExerciseView({ who, tierIndex, kinds, say, plan, main, links, mo
             onPress={onBack}
             style={({ pressed }) => [styles.back, pressed && styles.pressed]}
           >
-            <BackIcon color={colors.ink} height={22} width={22} />
+            <BackIcon color={colors.textPrimary} height={22} width={22} />
           </Pressable>
           <Text accessibilityRole="header" style={styles.heading}>
             오늘의 운동
@@ -157,11 +157,11 @@ export function ExerciseView({ who, tierIndex, kinds, say, plan, main, links, mo
 }
 
 function createStyles({ colors }: AppTheme) {
-  const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
-  const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
+  const p12 = { fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 17 } as const;
+  const p15 = { fontFamily: fontFamilies.pretendardRegular, fontSize: 15, lineHeight: 21 } as const;
   const ledge = '0 0 0 transparent'; // renewal B: no ledges
   const soft = '0 0 0 transparent'; // renewal B: no ledges
-  const outline = { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 } as const;
+  const outline = { backgroundColor: colors.surface, borderWidth: 1 } as const;
   return {
     root: { backgroundColor: colors.background, flex: 1 },
     content: { gap: 14, paddingHorizontal: 16 },
@@ -170,18 +170,18 @@ function createStyles({ colors }: AppTheme) {
 
     bar: { alignItems: 'center', flexDirection: 'row', gap: 10, height: 48 },
     back: { ...outline, alignItems: 'center', borderRadius: 14, boxShadow: ledge, height: 44, justifyContent: 'center', width: 44 },
-    heading: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    heading: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
 
     seg: { flexDirection: 'row', gap: 6 },
     segButton: { ...outline, alignItems: 'center', borderRadius: 14, boxShadow: soft, flex: 1, height: 46, justifyContent: 'center' },
     // The kind I am on is violet, with the full dark ledge.
     segOn: { backgroundColor: colors.primary, boxShadow: ledge },
-    segText: { ...p15, color: colors.ink },
+    segText: { ...p15, color: colors.textPrimary },
 
     ask: { alignItems: 'center', flexDirection: 'row', gap: 12 },
     face: {
       alignItems: 'center',
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.surfaceMuted,
       borderColor: colors.border,
       borderRadius: 11,
       borderWidth: 1,
@@ -190,18 +190,18 @@ function createStyles({ colors }: AppTheme) {
       width: 40,
     },
     say: { ...outline, borderRadius: 14, flex: 1, paddingHorizontal: 13, paddingVertical: 8 },
-    sayText: { ...p15, color: colors.ink },
+    sayText: { ...p15, color: colors.textPrimary },
 
     card: { ...outline, borderRadius: 18, boxShadow: soft, paddingBottom: 4, paddingHorizontal: 14, paddingTop: 14 },
     planHead: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between', paddingBottom: 10 },
     planCopy: { flex: 1, gap: 2, minWidth: 0 },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
     small: { ...p12, color: colors.textSecondary },
     mini: { ...outline, borderRadius: 10, height: 32, justifyContent: 'center', paddingHorizontal: 10 },
-    miniText: { ...p12, color: colors.ink },
+    miniText: { ...p12, color: colors.textPrimary },
     move: {
       alignItems: 'center',
-      borderTopColor: colors.track,
+      borderTopColor: colors.surfaceMuted,
       borderTopWidth: 2,
       flexDirection: 'row',
       gap: 12,
@@ -209,7 +209,7 @@ function createStyles({ colors }: AppTheme) {
       minHeight: 48,
       paddingVertical: 10,
     },
-    moveName: { ...p15, color: colors.ink, flex: 1 },
+    moveName: { ...p15, color: colors.textPrimary, flex: 1 },
 
     go: {
       alignItems: 'center',
@@ -222,13 +222,13 @@ function createStyles({ colors }: AppTheme) {
       justifyContent: 'center',
     },
     goOff: { backgroundColor: colors.surfaceMuted },
-    goText: { color: colors.onPrimary, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    goText: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
     under: { flexDirection: 'row', gap: 18, justifyContent: 'center' },
     link: { ...p12, color: colors.textSecondary, textDecorationLine: 'underline' },
 
     rows: { paddingTop: 4 },
     row: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 52, paddingVertical: 8 },
-    rowLine: { borderTopColor: colors.track, borderTopWidth: 2 },
-    rowTitle: { ...p15, color: colors.ink, flex: 1 },
+    rowLine: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2 },
+    rowTitle: { ...p15, color: colors.textPrimary, flex: 1 },
   } as const;
 }

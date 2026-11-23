@@ -14,7 +14,7 @@ import {
 } from '@/src/features/auth/socialOAuth';
 import { getPostLoginDestination } from '@/src/features/auth/postLoginDestination';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
 
 type SocialLoginButtonProps = {
@@ -107,7 +107,7 @@ export function LoginPanel({ onJoin }: { onJoin?: () => void }) {
   };
 
   return (
-    <AuthPage mode="login">
+    <AuthPage mode="login" onBack={onJoin}>
       <AuthCard style={styles.loginCard}>
         <AuthTextField
           accessibilityLabel="이메일"
@@ -191,22 +191,20 @@ function createStyles({ colors }: AppTheme) {
     withMini: { paddingRight: 6 },
     mini: a.mini,
     miniText: a.miniText,
-    // Kakao and Google side by side, each on a small ledge.
-    socialGroup: { flexDirection: 'row', gap: 8, marginTop: 14, paddingBottom: 3 },
+    // Kakao and Google side by side, as white pills (Kakao keeps its own yellow).
+    socialGroup: { flexDirection: 'row', gap: 8, marginTop: 14 },
     socialButton: {
       alignItems: 'center',
       backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 14,
-      borderWidth: 1,
+      borderRadius: 999,
       flex: 1,
       flexDirection: 'row',
       gap: 6,
-      height: 46,
+      height: 50,
       justifyContent: 'center',
     },
     kakaoButton: { backgroundColor: '#FEE500' },
-    socialLabel: { ...a.p12, color: colors.ink },
+    socialLabel: { ...a.p12, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     kakaoLabel: { color: '#191919' },
     accountLinks: { alignItems: 'center', flexDirection: 'row', gap: 18, justifyContent: 'center', marginTop: 4 },
     linkButton: { alignItems: 'center', height: 44, justifyContent: 'center' },

@@ -93,7 +93,7 @@ export function AskView({
           onPress={onBack}
           style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
         >
-          <BackIcon color={colors.ink} height={24} width={24} />
+          <BackIcon color={colors.textPrimary} height={24} width={24} />
         </Pressable>
         <Text accessibilityRole="header" style={styles.title}>
           물어보기
@@ -294,7 +294,7 @@ export function ToneSheet<Id extends string>({
 
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
-  const bubble = { borderColor: colors.border, borderRadius: 14, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 8 } as const;
+  const bubble = { borderRadius: 14, paddingHorizontal: 13, paddingVertical: 8 } as const;
   // The small corner that makes a box something said: a square turned on its point, two of its sides drawn.
   const tail = { backgroundColor: colors.surface, borderColor: colors.border, height: 10, position: 'absolute', transform: [{ rotate: '45deg' }], width: 10 } as const;
   return {
@@ -311,29 +311,29 @@ function createStyles({ colors }: AppTheme) {
       width: 44,
     },
     backPressed: { transform: [{ translateY: 4 }] },
-    title: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    title: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
     mini: a.mini,
     miniText: a.miniText,
     note: { ...a.note, marginTop: 6, textAlign: 'center' },
     // ---- before the first question ----
     hello: { alignItems: 'center', flex: 1, gap: 16, justifyContent: 'center', minHeight: 0 },
     greet: { ...bubble, backgroundColor: colors.surface, maxWidth: 250 },
-    greetText: { ...a.p15, color: colors.ink, textAlign: 'center' },
+    greetText: { ...a.p15, color: colors.textPrimary, textAlign: 'center' },
     greetTail: { ...tail, alignSelf: 'center', borderBottomWidth: 2, borderRightWidth: 2, bottom: -7 },
     stand: { alignItems: 'center' },
     shadow: { backgroundColor: 'rgba(32, 35, 63, 0.16)', borderRadius: 99, height: 10, marginTop: -6, width: 100, zIndex: -1 },
     asks: { gap: 6 },
-    ask: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12 },
-    askPressed: { backgroundColor: colors.primaryLight },
+    ask: { backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 },
+    askPressed: { backgroundColor: colors.surfaceMuted },
     // ---- the talk: the newest line sits just above the field, older ones go up and out under the line ----
-    talkBox: { borderTopColor: colors.track, borderTopWidth: 2, flex: 1, marginTop: 10 },
+    talkBox: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2, flex: 1, marginTop: 10 },
     talk: { flexGrow: 1, gap: 16, justifyContent: 'flex-end', paddingBottom: 12, paddingTop: 14 },
-    mine: { ...bubble, alignSelf: 'flex-end', backgroundColor: colors.primaryLight, maxWidth: '80%', paddingVertical: 9 },
-    words: { ...a.p15, color: colors.ink },
+    mine: { ...bubble, alignSelf: 'flex-end', backgroundColor: colors.surfaceMuted, maxWidth: '80%', paddingVertical: 9 },
+    words: { ...a.p15, color: colors.textPrimary },
     answer: { alignItems: 'flex-start', flexDirection: 'row', gap: 12, maxWidth: '96%' },
     face: {
       alignItems: 'center',
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.surfaceMuted,
       borderColor: colors.border,
       borderRadius: 11,
       borderWidth: 1,
@@ -348,7 +348,7 @@ function createStyles({ colors }: AppTheme) {
     choice: { ...a.go, flex: 1, height: 42 },
     choiceNo: a.goGhost,
     choicePressed: a.goPressed,
-    choiceText: { ...a.p15, color: colors.ink },
+    choiceText: { ...a.p15, color: colors.textPrimary },
     onText: a.onText,
     off: { opacity: 0.4 },
     after: { ...a.note, marginHorizontal: 2, marginTop: 8 },
@@ -373,7 +373,7 @@ function createStyles({ colors }: AppTheme) {
       paddingHorizontal: 12,
       paddingVertical: 10,
     },
-    toneOn: { backgroundColor: colors.primaryLight },
+    toneOn: { backgroundColor: colors.surfaceMuted },
     toneFirst: a.note,
     toneNote: { ...a.note, marginHorizontal: 4, marginTop: 4 },
   } as const;

@@ -70,8 +70,8 @@ function createStyles({ colors }: AppTheme) {
       width: 17,
     },
     completed: {
-      backgroundColor: colors.primaryLight,
-      borderColor: colors.primaryLight,
+      backgroundColor: colors.surfaceMuted,
+      borderColor: colors.surfaceMuted,
     },
     active: {
       backgroundColor: colors.primary,

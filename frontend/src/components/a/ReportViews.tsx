@@ -82,13 +82,13 @@ function Spark({ values, label }: { values: number[]; label: string }) {
   return (
     <View accessibilityLabel={label} accessible>
       <Svg height={70} width={156}>
-        <Polyline fill="none" points={points.map((point) => `${point.x},${point.y}`).join(' ')} stroke={colors.ink} strokeWidth={2} />
+        <Polyline fill="none" points={points.map((point) => `${point.x},${point.y}`).join(' ')} stroke={colors.textPrimary} strokeWidth={2} />
         {points.map((point, index) => (
           <Rect
             fill={index === points.length - 1 ? colors.primary : colors.surface}
             height={8}
             key={index}
-            stroke={colors.ink}
+            stroke={colors.textPrimary}
             strokeWidth={2}
             width={8}
             x={point.x - 4}
@@ -96,7 +96,7 @@ function Spark({ values, label }: { values: number[]; label: string }) {
           />
         ))}
         {points.slice(1).map((point, index) => (
-          <SvgText fill={colors.textSecondary} fontFamily={fontFamilies.galmuri11} fontSize={12} key={index} opacity={0.7} textAnchor="middle" x={point.x} y={67}>
+          <SvgText fill={colors.textSecondary} fontFamily={fontFamilies.pretendardMedium} fontSize={12} key={index} opacity={0.7} textAnchor="middle" x={point.x} y={67}>
             {signed(values[index + 1] - values[index], 1)}
           </SvgText>
         ))}
@@ -186,7 +186,7 @@ export function ReportSummaryView({ who, tierIndex, count, trend, tier, still = 
           {newest || trend.score ? (
             <Pressable accessibilityRole="button" onPress={onRecords} style={({ pressed }) => [styles.all, pressed && styles.dim]}>
               <Text style={styles.allText}>측정 기록 전체 보기</Text>
-              <CaretRightIcon color={colors.ink} height={18} width={18} />
+              <CaretRightIcon color={colors.textPrimary} height={18} width={18} />
             </Pressable>
           ) : (
             <View style={styles.nopaper}>
@@ -371,7 +371,7 @@ export function ReportDetailView({ who, tierIndex, name, count, tier, sheet, onB
                   <Text style={styles.levelText}>{tier.name}</Text>
                   <Text style={styles.stars}>
                     {[1, 2, 3].map((star) => (
-                      <Text key={star} style={{ color: star <= tier.stars ? colors.gold : colors.track }}>
+                      <Text key={star} style={{ color: star <= tier.stars ? colors.textPrimary : colors.surfaceMuted }}>
                         ★
                       </Text>
                     ))}
@@ -411,7 +411,7 @@ export function ReportDetailView({ who, tierIndex, name, count, tier, sheet, onB
             {count.story.map((row, index) => (
               <View key={row.kind} style={[styles.storyRow, index > 0 && styles.plistLine]}>
                 <View style={styles.tile}>
-                  {row.kind === 'next' ? <TargetIcon color={colors.ink} height={22} width={22} /> : <PixelIcon index={row.kind === 'bonus' ? 0 : 1} />}
+                  {row.kind === 'next' ? <TargetIcon color={colors.textPrimary} height={22} width={22} /> : <PixelIcon index={row.kind === 'bonus' ? 0 : 1} />}
                 </View>
                 <View style={styles.storyCopy}>
                   <Text style={styles.eyebrow}>{STORY[row.kind]}</Text>
@@ -529,18 +529,18 @@ export function ReportDetailView({ who, tierIndex, name, count, tier, sheet, onB
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   const flat = '0 0 0 rgba(32, 35, 63, 0.3)';
-  const outline = { borderColor: colors.border, borderWidth: 1 } as const;
+  const outline = { borderWidth: 1 } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     content: { flexGrow: 1, gap: 12, paddingHorizontal: 16, paddingTop: 4 },
     note: a.note,
     body: { ...a.p15, color: colors.textBody },
-    strong: { ...a.p15, color: colors.ink },
-    ink: { color: colors.ink },
+    strong: { ...a.p15, color: colors.textPrimary },
+    ink: { color: colors.textPrimary },
     mute: { color: colors.textSecondary },
     onText: { color: colors.onPrimary },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
-    huge: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 42 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 26 },
+    huge: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 36, lineHeight: 42 },
     eyebrow: { ...a.p12, color: colors.primaryText },
     dim: { opacity: 0.7 },
     sunk: { boxShadow: flat, transform: [{ translateY: 4 }] },
@@ -549,44 +549,44 @@ function createStyles({ colors }: AppTheme) {
 
     // 결산: the one line my character says
     ask: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-    face: { ...outline, alignItems: 'center', backgroundColor: colors.primaryLight, borderRadius: 11, height: 40, justifyContent: 'center', width: 40 },
+    face: { ...outline, alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 11, height: 40, justifyContent: 'center', width: 40 },
     say: { ...outline, backgroundColor: colors.surface, borderRadius: 14, flex: 1, paddingHorizontal: 14, paddingVertical: 10 },
-    sayText: { ...a.p15, color: colors.ink },
+    sayText: { ...a.p15, color: colors.textPrimary },
 
     // the slow changes: a number, what it did, the line of the last measurements
     trend: { ...a.card, paddingHorizontal: 14, paddingVertical: 4 },
     chg: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between', paddingHorizontal: 4, paddingVertical: 18 },
-    chgLine: { borderTopColor: colors.track, borderTopWidth: 2 },
+    chgLine: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2 },
     chgCopy: { flexShrink: 1, gap: 2 },
-    all: { alignItems: 'center', borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: 4 },
-    allText: { ...a.p15, color: colors.ink },
+    all: { alignItems: 'center', borderTopColor: colors.surfaceMuted, borderTopWidth: 2, flexDirection: 'row', justifyContent: 'space-between', minHeight: 48, paddingHorizontal: 4 },
+    allText: { ...a.p15, color: colors.textPrimary },
     nopaper: { alignItems: 'center', gap: 8, paddingBottom: 30, paddingHorizontal: 4, paddingTop: 30 },
 
     // the week as a road: a round stop for each day, violet for a day I worked out, my head over today
     week: { ...a.card, paddingHorizontal: 14, paddingVertical: 16 },
     weekHead: { alignItems: 'baseline', flexDirection: 'row', justifyContent: 'space-between' },
     days: { flexDirection: 'row', marginTop: 34 },
-    road: { backgroundColor: colors.track, height: 4, left: '7%', position: 'absolute', right: '7%', top: 15 },
+    road: { backgroundColor: colors.surfaceMuted, height: 4, left: '7%', position: 'absolute', right: '7%', top: 15 },
     roadDone: { backgroundColor: colors.primary },
     day: { alignItems: 'center', flex: 1, gap: 4 },
-    dot: { ...outline, alignItems: 'center', backgroundColor: colors.track, borderRadius: 17, height: 34, justifyContent: 'center', width: 34 },
+    dot: { ...outline, alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 17, height: 34, justifyContent: 'center', width: 34 },
     dotNow: { backgroundColor: colors.surface, boxShadow: `0 0 0 3px ${colors.primary}` },
     dotDone: { backgroundColor: colors.primary },
-    dotText: { color: colors.textSecondary, fontFamily: fontFamilies.galmuri11Bold, fontSize: 12, lineHeight: 14 },
-    dotTextNow: { color: colors.ink },
+    dotText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 12, lineHeight: 14 },
+    dotTextNow: { color: colors.textPrimary },
     dotTextDone: { color: colors.onPrimary },
     mark: { position: 'absolute', top: -28 },
-    loot: { borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', marginTop: 16, paddingTop: 16 },
+    loot: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2, flexDirection: 'row', marginTop: 16, paddingTop: 16 },
     lootItem: { alignItems: 'center', flex: 1 },
-    tile: { ...outline, alignItems: 'center', backgroundColor: colors.primaryLight, borderRadius: 12, height: 44, justifyContent: 'center', marginBottom: 4, width: 44 },
-    tileZero: { backgroundColor: colors.track },
-    times: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 12, lineHeight: 17 },
+    tile: { ...outline, alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 44, justifyContent: 'center', marginBottom: 4, width: 44 },
+    tileZero: { backgroundColor: colors.surfaceMuted },
+    times: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 12, lineHeight: 17 },
 
     // the road to the next tier
     sum: { ...a.card, gap: 10, paddingBottom: 16, paddingHorizontal: 14, paddingTop: 12 },
-    line: { ...outline, backgroundColor: colors.track, borderRadius: 99, height: 16, overflow: 'hidden' },
+    line: { ...outline, backgroundColor: colors.surfaceMuted, borderRadius: 99, height: 16, overflow: 'hidden' },
     lineFill: { backgroundColor: colors.primary, bottom: 0, left: 0, position: 'absolute', top: 0 },
-    lineTick: { backgroundColor: colors.ink, bottom: 0, marginLeft: -1, position: 'absolute', top: 0, width: 2 },
+    lineTick: { backgroundColor: colors.textPrimary, bottom: 0, marginLeft: -1, position: 'absolute', top: 0, width: 2 },
     flat: { height: 14 },
 
     // Right under the week, not pushed to the bottom: on a first day there is little above them.
@@ -605,11 +605,11 @@ function createStyles({ colors }: AppTheme) {
 
     // 자세히: who I am and how far to the next tier
     who: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 14, paddingBottom: 10, paddingLeft: 10, paddingRight: 16, paddingTop: 10 },
-    port: { ...outline, backgroundColor: colors.primaryLight, borderRadius: 14, height: 140, overflow: 'hidden', width: 104 },
+    port: { ...outline, backgroundColor: colors.surfaceMuted, borderRadius: 14, height: 140, overflow: 'hidden', width: 104 },
     // The feet stand clear of the frame; the drawing has that much empty room above the head.
     portHero: { bottom: 10, left: '50%', position: 'absolute' },
     whoCopy: { flex: 1, gap: 6, minWidth: 0 },
-    name: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
     level: { alignItems: 'center', flexDirection: 'row', gap: 6 },
     levelText: { ...a.p12, color: colors.primaryText },
     stars: { fontSize: 11, lineHeight: 14 },
@@ -617,13 +617,13 @@ function createStyles({ colors }: AppTheme) {
     // the bars: whole things as cells, an amount as a line
     stats: { ...a.card, paddingBottom: 8, paddingHorizontal: 14, paddingTop: 12 },
     st: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 40 },
-    stName: { ...a.p15, color: colors.ink, width: 98 },
+    stName: { ...a.p15, color: colors.textPrimary, width: 98 },
     stBar: { flex: 1 },
-    stValue: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 12, lineHeight: 17, minWidth: 70, textAlign: 'right' },
+    stValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 12, lineHeight: 17, minWidth: 70, textAlign: 'right' },
     cells: { flexDirection: 'row', gap: 4 },
-    cell: { ...outline, backgroundColor: colors.track, borderRadius: 5, flex: 1, height: 16 },
+    cell: { ...outline, backgroundColor: colors.surfaceMuted, borderRadius: 5, flex: 1, height: 16 },
     cellOn: { backgroundColor: colors.primary },
-    rule: { backgroundColor: colors.track, height: 2, marginBottom: 10, marginTop: 6 },
+    rule: { backgroundColor: colors.surfaceMuted, height: 2, marginBottom: 10, marginTop: 6 },
     none: { paddingBottom: 8, paddingTop: 6 },
 
     story: { ...a.card, paddingHorizontal: 14, paddingVertical: 2 },
@@ -632,19 +632,19 @@ function createStyles({ colors }: AppTheme) {
 
     // the boxes
     plistRow: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between', paddingHorizontal: 4, paddingVertical: 10 },
-    plistLine: { borderTopColor: colors.track, borderTopWidth: 2 },
+    plistLine: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2 },
     plistName: { ...a.p15, color: colors.textBody },
-    plistValue: { ...a.p15, color: colors.ink, flexShrink: 1, textAlign: 'right' },
+    plistValue: { ...a.p15, color: colors.textPrimary, flexShrink: 1, textAlign: 'right' },
     sheetNote: { marginTop: 6, paddingHorizontal: 4 },
     food: { gap: 8, marginBottom: 18 },
     pn: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4 },
     dots: { flexDirection: 'row', gap: 6, marginTop: 10 },
     dotsDay: { alignItems: 'center', flex: 1, gap: 3 },
-    box: { ...outline, alignItems: 'center', alignSelf: 'stretch', backgroundColor: colors.track, borderColor: colors.textDisabled, borderRadius: 10, height: 38, justifyContent: 'center' },
-    boxIn: { backgroundColor: colors.ink, borderColor: colors.border },
+    box: { ...outline, alignItems: 'center', alignSelf: 'stretch', backgroundColor: colors.surfaceMuted, borderColor: colors.textDisabled, borderRadius: 10, height: 38, justifyContent: 'center' },
+    boxIn: { backgroundColor: colors.textPrimary, borderColor: colors.border },
     boxInText: { color: '#FFFFFF' },
     boxOver: { backgroundColor: colors.surface, borderColor: colors.border, borderStyle: 'dashed' },
-    boxNow: { backgroundColor: colors.primaryLight, borderColor: colors.border },
+    boxNow: { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
     opts: { gap: 8 },
     opt: { ...outline, backgroundColor: colors.surface, borderRadius: 12, justifyContent: 'center', minHeight: 48, paddingHorizontal: 14 },
     send: { alignItems: 'center', flexDirection: 'row', gap: 8, marginTop: 12 },

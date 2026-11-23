@@ -74,7 +74,7 @@ function Accordion(props: { title: string; subtitle: string; expanded: boolean; 
   return <View style={s.card}>
     <Pressable accessibilityRole="button" accessibilityState={{ expanded: props.expanded }} accessibilityLabel={props.title + (props.expanded ? ' 접기' : ' 펼치기')} onPress={props.onPress} style={s.accordionHead}>
       <View style={s.accordionCopy}><Text style={s.cardTitle}>{props.title}</Text><Text style={s.secondary}>{props.subtitle}</Text></View>
-      {props.expanded ? <MinusIcon color={colors.ink} height={22} width={22} /> : <PlusIcon color={colors.ink} height={22} width={22} />}
+      {props.expanded ? <MinusIcon color={colors.textPrimary} height={22} width={22} /> : <PlusIcon color={colors.textPrimary} height={22} width={22} />}
     </Pressable>
     {props.expanded && <View style={s.accordionBody}>{props.children}</View>}
   </View>;
@@ -183,7 +183,7 @@ export default function RecipeScreen() {
       {invalid ? <Text style={s.secondary}>식단에서 레시피를 다시 열어 주세요.</Text> : loading ? <View style={s.loading}><ALoading label="레시피를 준비하는 중"><Text style={s.secondary}>처음 열 때는 시간이 걸릴 수 있어요.</Text></ALoading></View> : error ? <View style={s.card}><Text style={s.secondary}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setRetry((value) => value + 1)}><Text style={s.link}>다시 시도</Text></Pressable></View> : <>
         <View style={s.tags}><Text style={s.tag}>{string(meal?.meal_type) === 'dinner' ? '저녁' : string(meal?.meal_type) === 'breakfast' ? '아침' : string(meal?.meal_type) === 'lunch' ? '점심' : '간식'}</Text>{protein != null && <Text style={s.tag}>단백질 {Math.round(protein)}g</Text>}</View>
         <Text style={s.title}>{title}</Text>
-        <View style={s.meta}><View style={s.metaItem}><ClockIcon color={colors.ink} height={18} width={18} /><Text style={s.metaText}>{prep == null ? '시간 정보 없음' : '약 ' + prep + '분'}</Text></View><View style={s.metaItem}><FireIcon color={colors.ink} height={18} width={18} /><Text style={s.metaText}>{kcal == null ? '열량 정보 없음' : Math.round(kcal) + 'kcal'}</Text></View><View style={s.metaItem}><UserIcon color={colors.ink} height={18} width={18} /><Text style={s.metaText}>{servings == null ? '1인분 기준' : servings + '인분'}</Text></View></View>
+        <View style={s.meta}><View style={s.metaItem}><ClockIcon color={colors.textPrimary} height={18} width={18} /><Text style={s.metaText}>{prep == null ? '시간 정보 없음' : '약 ' + prep + '분'}</Text></View><View style={s.metaItem}><FireIcon color={colors.textPrimary} height={18} width={18} /><Text style={s.metaText}>{kcal == null ? '열량 정보 없음' : Math.round(kcal) + 'kcal'}</Text></View><View style={s.metaItem}><UserIcon color={colors.textPrimary} height={18} width={18} /><Text style={s.metaText}>{servings == null ? '1인분 기준' : servings + '인분'}</Text></View></View>
         <Text style={s.description}>{description}</Text>
 
         <Accordion title="1인분 영양" subtitle={([carbs == null ? null : '탄수화물 ' + Math.round(carbs) + 'g', protein == null ? null : '단백질 ' + Math.round(protein) + 'g', fat == null ? null : '지방 ' + Math.round(fat) + 'g'].filter(Boolean).join(' · ')) || '등록된 영양 정보가 없어요'} expanded={nutritionOpen} onPress={() => setNutritionOpen(!nutritionOpen)}>
@@ -198,7 +198,7 @@ export default function RecipeScreen() {
         <View style={s.sectionHead}><Text style={s.sectionTitle}>재료 <Text style={s.count}>{ingredients.length}가지</Text></Text><Pressable accessibilityRole="button" onPress={() => void saveShopping()} style={s.outlineButton}><Text style={s.outlineText}>{shoppingSaved ? '장보기 목록 보기' : '장보기 목록에 담기'}</Text></Pressable></View>
         <View style={s.card}>{ingredients.length ? ingredients.map((ingredient, index) => <View key={ingredient.name + index} style={[s.ingredientRow, index > 0 && s.divider]}><Text style={s.ingredientName}>{ingredient.name}</Text><Text style={s.ingredientAmount}>{ingredient.amount}</Text></View>) : <Text style={s.secondary}>재료 정보가 등록되지 않았어요.</Text>}</View>
         {shoppingOpen && <View style={s.shoppingPanel}><View style={s.sectionHead}><Text style={s.cardTitle}>장보기 목록</Text><Pressable accessibilityRole="button" onPress={() => setShoppingOpenKey('')}><Text style={s.link}>닫기</Text></Pressable></View><Text style={s.secondary}>{ingredients.map((item) => item.name + (item.amount ? ' ' + item.amount : '')).join(' · ')}</Text></View>}
-        <View style={s.notice}><WarningIcon color={colors.ink} height={18} width={18} /><Text style={s.noticeText}>알레르기 성분은 재료와 제품에 따라 달라요. 먹기 전에 성분표를 꼭 확인해 주세요.</Text></View>
+        <View style={s.notice}><WarningIcon color={colors.textPrimary} height={18} width={18} /><Text style={s.noticeText}>알레르기 성분은 재료와 제품에 따라 달라요. 먹기 전에 성분표를 꼭 확인해 주세요.</Text></View>
 
         <View style={s.sectionHead}><Text style={s.sectionTitle}>만드는 순서 <Text style={s.count}>{steps.length}단계{prep == null ? '' : ' · ' + prep + '분'}</Text></Text></View>
         <View style={s.card}>{steps.length ? steps.map((step, index) => <View key={index} style={[s.stepRow, index > 0 && s.divider]}><View style={s.stepCircle}><Text style={s.stepNumber}>{index + 1}</Text></View><View style={s.stepCopy}><Text style={s.stepTitle}>{step.title}</Text>{step.detail ? <Text style={s.secondary}>{step.detail}</Text> : null}{step.minutes != null && <View style={s.metaItem}><ClockIcon color={colors.textSecondary} height={16} width={16} /><Text style={s.secondary}>{step.minutes}분</Text></View>}</View></View>) : <Text style={s.secondary}>이 메뉴의 조리 순서는 아직 등록되지 않았어요. 재료와 분량을 참고해 주세요.</Text>}</View>
@@ -217,40 +217,40 @@ function createSStyles({ colors }: AppTheme) {
     content: { gap: 14, paddingHorizontal: 16 },
     loading: { height: 460 },
     tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-    tag: { ...a.p12, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.ink, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 30 },
+    tag: { ...a.p12, borderRadius: 8, color: colors.textPrimary, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 30 },
     meta: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
     metaItem: { alignItems: 'center', flexDirection: 'row', gap: 4 },
-    metaText: { ...a.p12, color: colors.ink },
-    description: { ...a.p15, color: colors.ink },
+    metaText: { ...a.p12, color: colors.textPrimary },
+    description: { ...a.p15, color: colors.textPrimary },
     card: { ...a.card, paddingHorizontal: 14, paddingVertical: 12 },
-    cardTitle: { ...a.p15, color: colors.ink },
+    cardTitle: { ...a.p15, color: colors.textPrimary },
     // words to read stay dark; grey is only for names and counts
     secondary: { ...a.p12, color: colors.textBody },
     accordionHead: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 36 },
     accordionCopy: { flex: 1, gap: 3 },
     accordionBody: { gap: 12, paddingTop: 14 },
-    macroRow: { borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', paddingTop: 12 },
+    macroRow: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2, flexDirection: 'row', paddingTop: 12 },
     macro: { alignItems: 'center', flex: 1, gap: 2 },
-    macroValue: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    macroValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 26 },
     sectionHead: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between', marginTop: 8 },
-    sectionTitle: { ...a.p15, color: colors.ink },
+    sectionTitle: { ...a.p15, color: colors.textPrimary },
     count: a.note,
     outlineButton: a.mini,
     outlineText: a.miniText,
     ingredientRow: { flexDirection: 'row', gap: 10, justifyContent: 'space-between', paddingVertical: 10 },
-    divider: { borderTopColor: colors.track, borderTopWidth: 2 },
-    ingredientName: { ...a.p15, color: colors.ink, flex: 1 },
+    divider: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2 },
+    ingredientName: { ...a.p15, color: colors.textPrimary, flex: 1 },
     ingredientAmount: { ...a.p12, color: colors.textBody },
     shoppingPanel: { ...a.card, gap: 8, padding: 14 },
     link: a.link,
-    notice: { alignItems: 'center', backgroundColor: colors.warningLight, borderColor: colors.border, borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
-    noticeText: { ...a.p12, color: colors.ink, flex: 1 },
+    notice: { alignItems: 'center', backgroundColor: colors.warningLight, borderRadius: 14, flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
+    noticeText: { ...a.p12, color: colors.textPrimary, flex: 1 },
     stepRow: { flexDirection: 'row', gap: 12, paddingVertical: 12 },
-    stepCircle: { alignItems: 'center', backgroundColor: colors.primary, borderColor: colors.border, borderRadius: 9, borderWidth: 1, height: 28, justifyContent: 'center', width: 28 },
+    stepCircle: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 9, height: 28, justifyContent: 'center', width: 28 },
     stepNumber: { ...a.p12, color: colors.onPrimary },
     stepCopy: { flex: 1, gap: 5 },
-    stepTitle: { ...a.p15, color: colors.ink },
+    stepTitle: { ...a.p15, color: colors.textPrimary },
     otherMeals: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     otherChip: { ...a.chip, maxWidth: '100%', paddingHorizontal: 14 },
     otherText: a.chipText,

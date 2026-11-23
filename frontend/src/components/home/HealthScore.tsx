@@ -68,7 +68,7 @@ export function HealthScore({
           cy={graphCenter}
           fill="none"
           r={graphRadius}
-          stroke={colors.primaryLight}
+          stroke={colors.surfaceMuted}
           strokeWidth={23}
         />
         {score !== null ? (
@@ -180,7 +180,7 @@ function createStyles({ colors }: AppTheme) {
     },
     healthIconCircle: {
       alignItems: 'center',
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.surfaceMuted,
       borderRadius: radius.round,
       height: 60,
       justifyContent: 'center',
@@ -221,7 +221,7 @@ function createStyles({ colors }: AppTheme) {
     },
     statusBadge: {
       alignItems: 'center',
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.surfaceMuted,
       borderRadius: radius.round,
       height: 40,
       justifyContent: 'center',

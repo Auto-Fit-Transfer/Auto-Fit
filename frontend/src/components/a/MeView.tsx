@@ -54,7 +54,7 @@ export function MeView({ who, tierIndex, name, photo, tier, days, notice, health
           <Text numberOfLines={1} style={styles.rowValue}>
             {row.value}
           </Text>
-          <CaretRightIcon color={colors.ink} height={18} width={18} />
+          <CaretRightIcon color={colors.textPrimary} height={18} width={18} />
         </View>
       </Pressable>
     ));
@@ -67,7 +67,7 @@ export function MeView({ who, tierIndex, name, photo, tier, days, notice, health
       >
         <View style={styles.bar}>
           <Pressable accessibilityLabel="홈으로" accessibilityRole="button" onPress={onBack} style={({ pressed }) => [styles.back, pressed && styles.sunk]}>
-            <BackIcon color={colors.ink} height={22} width={22} />
+            <BackIcon color={colors.textPrimary} height={22} width={22} />
           </Pressable>
           <Text accessibilityRole="header" style={styles.heading}>
             내 정보
@@ -87,7 +87,7 @@ export function MeView({ who, tierIndex, name, photo, tier, days, notice, health
                 <Text style={styles.levelText}>{tier.name}</Text>
                 <Text style={styles.stars}>
                   {[1, 2, 3].map((star) => (
-                    <Text key={star} style={{ color: star <= tier.stars ? colors.gold : colors.track }}>
+                    <Text key={star} style={{ color: star <= tier.stars ? colors.textPrimary : colors.surfaceMuted }}>
                       ★
                     </Text>
                   ))}
@@ -141,14 +141,14 @@ function createStyles({ colors }: AppTheme) {
     // the bar every A tab screen starts with: the way back home, then the screen's name
     bar: { alignItems: 'center', flexDirection: 'row', gap: 10, height: 48, marginBottom: 14 },
     back: { ...a.card, alignItems: 'center', borderRadius: 14, height: 44, justifyContent: 'center', width: 44 },
-    heading: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    heading: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
 
     // who I am, in one low row
     id: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 14, paddingBottom: 12, paddingLeft: 12, paddingRight: 14, paddingTop: 12 },
-    avatar: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 16, borderWidth: 1, height: 64, justifyContent: 'center', overflow: 'hidden', width: 64 },
+    avatar: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 16, height: 64, justifyContent: 'center', overflow: 'hidden', width: 64 },
     photo: { height: '100%', width: '100%' },
     idCopy: { flex: 1, gap: 3, minWidth: 0 },
-    name: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 26 },
     level: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 6 },
     levelText: { ...a.p12, color: colors.primaryText },
     stars: { fontSize: 11, lineHeight: 14 },
@@ -160,12 +160,12 @@ function createStyles({ colors }: AppTheme) {
     group: { ...a.q, marginTop: 26, paddingHorizontal: 2 },
     rows: { ...a.card, paddingHorizontal: 14 },
     row: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between', minHeight: 54 },
-    rowLine: { borderTopColor: colors.track, borderTopWidth: 2 },
-    rowLabel: { ...a.p15, color: colors.ink, flexShrink: 0 },
+    rowLine: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2 },
+    rowLabel: { ...a.p15, color: colors.textPrimary, flexShrink: 0 },
     // A long value is cut short; the line's name never gives way to it.
     rowEnd: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 4, justifyContent: 'flex-end', minWidth: 0 },
     // What a line is set to now is read as much as its name, so it is as dark, only smaller.
-    rowValue: { ...a.p12, color: colors.ink, flexShrink: 1, textAlign: 'right' },
+    rowValue: { ...a.p12, color: colors.textPrimary, flexShrink: 1, textAlign: 'right' },
     switchCopy: { flex: 1, gap: 2, paddingVertical: 8 },
   } as const;
 }

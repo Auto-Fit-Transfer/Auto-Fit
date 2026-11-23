@@ -95,7 +95,7 @@ function Chart({ entries, width, target, unit }: { entries: { date: string; valu
       {points.length > 1 ? <Path d={area} fill={colors.gaugeTrack} opacity={0.6} /> : null}
       {targetY !== null ? <>
         <Line x1={left} x2={right} y1={targetY} y2={targetY} stroke={colors.primary} strokeDasharray="5 5" />
-        <Rect x={left} y={targetY - 22} width={86} height={20} rx={6} fill={colors.primaryLight} />
+        <Rect x={left} y={targetY - 22} width={86} height={20} rx={6} fill={colors.surfaceMuted} />
         <SvgText x={left + 8} y={targetY - 8} fill="#3A2DB5" fontSize={12}>목표 {target?.toFixed(1)}{unit}</SvgText>
       </> : null}
       {points.length > 1 ? <Polyline points={line} fill="none" stroke={colors.textPrimary} strokeWidth={2} /> : null}
@@ -234,9 +234,9 @@ export default function HealthRecordsScreen() {
 
 function createStyles({ colors }: AppTheme) {
   // Renewal A: one dark outline on every piece, a ledge under what can be pressed, pixel letters.
-  const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
-  const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
-  const outline = { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 } as const;
+  const p12 = { fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 17 } as const;
+  const p15 = { fontFamily: fontFamilies.pretendardRegular, fontSize: 15, lineHeight: 21 } as const;
+  const outline = { backgroundColor: colors.surface, borderWidth: 1 } as const;
   const soft = '0 0 0 transparent'; // renewal B: no ledges
   return {
     screen: { flex: 1, backgroundColor: colors.background },
@@ -245,37 +245,37 @@ function createStyles({ colors }: AppTheme) {
     tab: { ...outline, alignItems: 'center', borderRadius: 14, boxShadow: soft, flex: 1, height: 46, justifyContent: 'center' },
     // The kind I am on is violet, with the full dark ledge.
     activeTab: { backgroundColor: colors.primary, },
-    tabText: { ...p15, color: colors.ink },
+    tabText: { ...p15, color: colors.textPrimary },
     activeTabText: { color: colors.onPrimary },
     metricScroll: { flexGrow: 0, marginHorizontal: -16 },
     metricRow: { gap: 8, paddingBottom: 4, paddingHorizontal: 16 },
     metricChip: { ...outline, alignItems: 'center', borderRadius: 12, height: 40, justifyContent: 'center', paddingHorizontal: 14 },
     selectedChip: { backgroundColor: colors.primary, borderColor: colors.border },
-    metricText: { ...p15, color: colors.ink },
+    metricText: { ...p15, color: colors.textPrimary },
     selectedMetricText: { color: colors.onPrimary },
     spinner: { marginVertical: 40 },
     errorBox: { ...outline, borderRadius: 14, padding: 14 },
     error: { ...p15, color: colors.danger },
     empty: { alignItems: 'center', gap: 10, paddingVertical: 48 },
-    emptyTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28, textAlign: 'center' },
+    emptyTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28, textAlign: 'center' },
     note: { ...p12, color: colors.textSecondary },
     upload: { ...outline, borderRadius: 10, marginTop: 8, minHeight: 40, justifyContent: 'center', paddingHorizontal: 14 },
-    uploadText: { ...p15, color: colors.ink },
+    uploadText: { ...p15, color: colors.textPrimary },
     chartCard: { ...outline, alignItems: 'center', borderRadius: 18, boxShadow: soft, padding: 16 },
     chartHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
     chartLabel: { ...p12, color: colors.textSecondary },
-    period: { ...outline, ...p12, borderRadius: 10, color: colors.ink, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 5 },
+    period: { ...outline, ...p12, borderRadius: 10, color: colors.textPrimary, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 5 },
     valueRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8, marginTop: 10, width: '100%' },
-    value: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 40 },
+    value: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 36, lineHeight: 40 },
     unit: { ...p12, color: colors.textSecondary },
     // What changed since the last record is points gained, so it wears gold.
-    delta: { ...p12, backgroundColor: colors.gold, borderColor: colors.border, borderRadius: 99, borderWidth: 1, color: '#2B2000', overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 3 },
-    sectionTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28, marginTop: 4 },
+    delta: { ...p12, backgroundColor: colors.textPrimary, borderRadius: 99, color: '#2B2000', overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 3 },
+    sectionTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28, marginTop: 4 },
     records: { ...outline, borderRadius: 18, boxShadow: soft, paddingHorizontal: 14 },
     record: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 52 },
-    recordDivider: { borderTopColor: colors.track, borderTopWidth: 2 },
-    recordDate: { ...p15, color: colors.ink, flex: 1 },
-    recordValue: { ...p15, color: colors.ink },
+    recordDivider: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2 },
+    recordDate: { ...p15, color: colors.textPrimary, flex: 1 },
+    recordValue: { ...p15, color: colors.textPrimary },
     recordDelta: { ...p12, color: colors.textSecondary, minWidth: 38, textAlign: 'right' },
   } as const;
 }

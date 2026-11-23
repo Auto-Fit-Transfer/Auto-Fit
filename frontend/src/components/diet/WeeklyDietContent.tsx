@@ -160,9 +160,9 @@ export function WeeklyDietContent() {
 
   return <View style={s.content}>
     <View style={s.weekRow}>
-      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="이전 주" onPress={() => setWeek(moveWeek(week, -1))} style={s.weekButton}><CaretLeftIcon color={colors.ink} height={14} width={14} /></Pressable>
+      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="이전 주" onPress={() => setWeek(moveWeek(week, -1))} style={s.weekButton}><CaretLeftIcon color={colors.textPrimary} height={14} width={14} /></Pressable>
       <View style={s.weekText}><Text style={s.weekTitle}>{koreanDate(start)}부터 7일</Text></View>
-      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="다음 주" onPress={() => setWeek(moveWeek(week, 1))} style={s.weekButton}><CaretRightIcon color={colors.ink} height={14} width={14} /></Pressable>
+      <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="다음 주" onPress={() => setWeek(moveWeek(week, 1))} style={s.weekButton}><CaretRightIcon color={colors.textPrimary} height={14} width={14} /></Pressable>
     </View>
     {Boolean(error) && <View style={s.error}><Text style={s.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setReload((value) => value + 1)}><Text style={s.outlineText}>다시 불러오기</Text></Pressable></View>}
     {loading && !shownDaily ? <View style={s.loading}><ALoading /></View> : shownDaily ? <>
@@ -208,19 +208,19 @@ function createSStyles({ colors }: AppTheme) {
     weekRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
     weekButton: { ...a.mini, paddingHorizontal: 0, width: 32 },
     weekText: { alignItems: 'center', flex: 1 },
-    weekTitle: { ...a.p15, color: colors.ink },
+    weekTitle: { ...a.p15, color: colors.textPrimary },
     muted: { ...a.p12, color: colors.textBody },
     loading: { height: 460 },
-    summary: { ...a.p15, color: colors.ink },
+    summary: { ...a.p15, color: colors.textPrimary },
     outlineText: a.miniText,
     daySection: { gap: 10, marginTop: 10 },
-    dayTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    dayTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 26 },
     date: { ...a.p12, color: colors.textSecondary },
     mealCard: { ...a.card, gap: 7, paddingHorizontal: 14, paddingVertical: 12 },
     mealHead: { flexDirection: 'row', justifyContent: 'space-between' },
     mealLabel: a.note,
     kcal: { ...a.p12, color: colors.textSecondary },
-    mealTitle: { ...a.p15, color: colors.ink },
+    mealTitle: { ...a.p15, color: colors.textPrimary },
     foods: { ...a.p12, color: colors.textBody },
     guidance: { ...a.p12, color: colors.textBody },
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
@@ -229,9 +229,9 @@ function createSStyles({ colors }: AppTheme) {
     smallOutline: mini,
     detailButton: { alignSelf: 'flex-start' },
     empty: { ...a.card, gap: 12, padding: 16 },
-    emptyTitle: { ...a.p15, color: colors.ink },
+    emptyTitle: { ...a.p15, color: colors.textPrimary },
     error: { ...a.card, gap: 10, padding: 14 },
     // no red letters in A: what went wrong is said in dark letters
-    errorText: { ...a.p12, color: colors.ink },
+    errorText: { ...a.p12, color: colors.textPrimary },
   } as const;
 }

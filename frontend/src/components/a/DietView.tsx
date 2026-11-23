@@ -102,7 +102,7 @@ export function DietView(props: R6DietHomeProps & {
             onPress={() => router.navigate('/home')}
             style={({ pressed }) => [styles.back, pressed && styles.pressed]}
           >
-            <BackIcon color={colors.ink} height={22} width={22} />
+            <BackIcon color={colors.textPrimary} height={22} width={22} />
           </Pressable>
           <Text accessibilityRole="header" style={styles.heading}>
             {isToday ? '오늘의 식단' : `${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 식단`}
@@ -139,7 +139,7 @@ export function DietView(props: R6DietHomeProps & {
             onPress={() => props.onSelectDateOffset(props.selectedDateOffset - 7)}
             style={[styles.weekArrow, week[0].offset <= -6 && styles.off]}
           >
-            <BackIcon color={colors.ink} height={16} width={16} />
+            <BackIcon color={colors.textPrimary} height={16} width={16} />
           </Pressable>
           {week.map(({ date, offset }) => {
             const selected = offset === props.selectedDateOffset;
@@ -168,7 +168,7 @@ export function DietView(props: R6DietHomeProps & {
             onPress={() => props.onSelectDateOffset(props.selectedDateOffset + 7)}
             style={[styles.weekArrow, week[6].offset >= 6 && styles.off]}
           >
-            <CaretRightIcon color={colors.ink} height={16} width={16} />
+            <CaretRightIcon color={colors.textPrimary} height={16} width={16} />
           </Pressable>
         </View>
 
@@ -415,11 +415,11 @@ export function DietView(props: R6DietHomeProps & {
 }
 
 function createStyles({ colors }: AppTheme) {
-  const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
-  const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
+  const p12 = { fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 17 } as const;
+  const p15 = { fontFamily: fontFamilies.pretendardRegular, fontSize: 15, lineHeight: 21 } as const;
   const ledge = '0 0 0 transparent'; // renewal B: no ledges
   const soft = '0 0 0 transparent'; // renewal B: no ledges
-  const outline = { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 } as const;
+  const outline = { backgroundColor: colors.surface, borderWidth: 1 } as const;
   return {
     root: { backgroundColor: colors.background, flex: 1 },
     content: { gap: 14, paddingHorizontal: 16 },
@@ -427,35 +427,35 @@ function createStyles({ colors }: AppTheme) {
     pressedSoft: { transform: [{ translateY: 3 }] },
     off: { opacity: 0.4 },
     small: { ...p12, color: colors.textSecondary },
-    body: { ...p15, color: colors.ink },
+    body: { ...p15, color: colors.textPrimary },
     center: { textAlign: 'center' },
     spread: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
     link: { ...p12, color: colors.textSecondary, textDecorationLine: 'underline' },
 
     bar: { alignItems: 'center', flexDirection: 'row', gap: 10, height: 48 },
     back: { ...outline, alignItems: 'center', borderRadius: 14, boxShadow: ledge, height: 44, justifyContent: 'center', width: 44 },
-    heading: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    heading: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
     mains: { alignItems: 'center', flexDirection: 'row', gap: 4 },
-    mainsLabel: { color: colors.textSecondary, fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17, marginRight: 2 },
-    pip: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 4, borderWidth: 1, height: 14, width: 14 },
+    mainsLabel: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 17, marginRight: 2 },
+    pip: { backgroundColor: colors.surface, borderRadius: 4, height: 14, width: 14 },
     pipOn: { backgroundColor: colors.primary },
-    over: { borderTopColor: colors.track, borderTopWidth: 2, paddingTop: 10 },
+    over: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2, paddingTop: 10 },
     grow: { flex: 1, minWidth: 0 },
-    plot: { borderBottomColor: colors.ink, borderBottomWidth: 2, flexDirection: 'row', height: PLOT + 20 },
+    plot: { borderBottomColor: colors.textPrimary, borderBottomWidth: 2, flexDirection: 'row', height: PLOT + 20 },
     col: { alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
     // the number sits over the goal line on a white ground, as in the prototype
-    n: { ...p12, backgroundColor: colors.surface, color: colors.ink, fontSize: 11, marginBottom: 2, paddingHorizontal: 2, zIndex: 1 },
-    weekBar: { backgroundColor: colors.primaryLight, borderColor: colors.border, borderBottomWidth: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, borderWidth: 1, width: 20 },
+    n: { ...p12, backgroundColor: colors.surface, color: colors.textPrimary, fontSize: 11, marginBottom: 2, paddingHorizontal: 2, zIndex: 1 },
+    weekBar: { backgroundColor: colors.surfaceMuted, borderBottomWidth: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, width: 20 },
     // the day on show is violet, like the chosen date above
     weekBarOn: { backgroundColor: colors.primary },
     gline: { height: 2, left: 0, position: 'absolute', right: 0 },
     labels: { flexDirection: 'row', marginTop: -4 },
     wd: { flex: 1, textAlign: 'center' },
-    wdNow: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold },
+    wdNow: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold },
     ask: { alignItems: 'center', flexDirection: 'row', gap: 12 },
     face: {
       alignItems: 'center',
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.surfaceMuted,
       borderColor: colors.border,
       borderRadius: 11,
       borderWidth: 1,
@@ -475,24 +475,24 @@ function createStyles({ colors }: AppTheme) {
     todayText: { color: colors.primaryText },
 
     card: { ...outline, borderRadius: 18, boxShadow: soft, gap: 10, padding: 14 },
-    big: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 40 },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
-    line: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 99, borderWidth: 1, height: 16, overflow: 'hidden' },
+    big: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 36, lineHeight: 40 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
+    line: { backgroundColor: colors.surfaceMuted, borderRadius: 99, height: 16, overflow: 'hidden' },
     // What the app has planned sits behind what I ate, in the pale violet.
-    linePlan: { backgroundColor: colors.primaryLight, bottom: 0, left: 0, position: 'absolute', top: 0 },
+    linePlan: { backgroundColor: colors.surfaceMuted, bottom: 0, left: 0, position: 'absolute', top: 0 },
     lineAte: { backgroundColor: colors.primary, bottom: 0, left: 0, position: 'absolute', top: 0 },
     macros: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2, flexDirection: 'row', gap: 14, paddingTop: 10 },
     macro: { flex: 1, gap: 2, minWidth: 0 },
 
     mini: { ...outline, borderRadius: 10, height: 32, justifyContent: 'center', paddingHorizontal: 10 },
     miniMain: { backgroundColor: colors.primary, },
-    miniText: { color: colors.ink },
-    mealLine: { borderTopColor: colors.track, borderTopWidth: 2 },
+    miniText: { color: colors.textPrimary },
+    mealLine: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2 },
     meal: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 48, paddingVertical: 10 },
     slot: { width: 28 },
     mealName: { flex: 1 },
     mealOpen: { gap: 8, paddingBottom: 12, paddingLeft: 38 },
-    photo: { borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 120, width: '100%' },
+    photo: { borderRadius: 12, height: 120, width: '100%' },
     blocked: { ...p12, color: colors.danger },
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 3 },
 
@@ -507,11 +507,11 @@ function createStyles({ colors }: AppTheme) {
       justifyContent: 'center',
     },
     goOff: { backgroundColor: colors.surfaceMuted },
-    goText: { color: colors.onPrimary, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    goText: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
     picker: { paddingBottom: 8 },
     pickerRow: {
       alignItems: 'center',
-      borderTopColor: colors.track,
+      borderTopColor: colors.surfaceMuted,
       borderTopWidth: 2,
       flexDirection: 'row',
       justifyContent: 'space-between',

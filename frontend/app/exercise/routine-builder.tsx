@@ -64,7 +64,7 @@ export default function RoutineBuilder() {
   const arrow = (index: number, direction: -1 | 1) => {
     const off = direction < 0 ? index === 0 : index === items.length - 1;
     return <Pressable accessibilityRole="button" accessibilityLabel={`${index + 1}번째 운동 ${direction < 0 ? '위로' : '아래로'} 이동`} accessibilityState={{ disabled: off }} disabled={off} onPress={() => move(index, direction)} style={[styles.mini, off && styles.miniOff]}>
-      <View style={direction < 0 ? styles.flip : undefined}><CaretDownIcon color={colors.ink} height={16} width={16} /></View>
+      <View style={direction < 0 ? styles.flip : undefined}><CaretDownIcon color={colors.textPrimary} height={16} width={16} /></View>
     </Pressable>;
   };
 
@@ -101,7 +101,7 @@ function createStyles({ colors }: AppTheme) {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     content: { gap: 12, paddingHorizontal: 16, paddingTop: 12 },
     grow: { flex: 1 },
-    q: { ...a.p15, color: colors.ink },
+    q: { ...a.p15, color: colors.textPrimary },
     note: a.note,
     link: a.link,
     head: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
@@ -116,7 +116,7 @@ function createStyles({ colors }: AppTheme) {
     goOff: a.goOff,
     goPressed: a.goPressed,
     goText: a.goText,
-    ghostText: { ...a.goText, color: colors.ink, fontSize: 18 },
+    ghostText: { ...a.goText, color: colors.textPrimary, fontSize: 18 },
     offText: { color: colors.textDisabled },
   } as const;
 }

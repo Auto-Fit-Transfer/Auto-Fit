@@ -102,7 +102,7 @@ export const AppTextField = forwardRef<TextInput, AppTextFieldProps>(function Ap
 
 // Renewal A: a small name above, a white box with the dark outline, pixel letters in it.
 function createStyles({ colors }: AppTheme) {
-  const small = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
+  const small = { fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 17 } as const;
   return {
     label: { ...small, color: colors.textSecondary, marginBottom: 8 },
     field: {
@@ -121,9 +121,9 @@ function createStyles({ colors }: AppTheme) {
     error: { borderColor: colors.danger },
     disabled: { backgroundColor: colors.surfaceMuted },
     input: {
-      color: colors.ink,
+      color: colors.textPrimary,
       flex: 1,
-      fontFamily: fontFamilies.galmuri14,
+      fontFamily: fontFamilies.pretendardRegular,
       fontSize: 15,
       height: '100%',
       includeFontPadding: false,

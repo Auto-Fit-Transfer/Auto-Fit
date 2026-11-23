@@ -42,7 +42,7 @@ function createStyles({ colors, text }: AppTheme) {
       paddingHorizontal: 16,
       paddingVertical: 14,
     },
-    info: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 },
+    info: { backgroundColor: colors.surface, borderWidth: 1 },
     warning: { backgroundColor: colors.warningLight },
     texts: { flex: 1, gap: 2 },
     title: { ...text.body2Strong, color: colors.textPrimary },

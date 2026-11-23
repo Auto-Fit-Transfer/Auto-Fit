@@ -123,7 +123,7 @@ export function LobbyView({ name, who, tier, quests, bell, steps, onMe, onAsk, o
               <Text style={styles.levelText}>{tier.name}</Text>
               <Text style={styles.stars}>
                 {[1, 2, 3].map((star) => (
-                  <Text key={star} style={{ color: star <= tier.stars ? colors.gold : colors.track }}>
+                  <Text key={star} style={{ color: star <= tier.stars ? colors.textPrimary : colors.surfaceMuted }}>
                     ★
                   </Text>
                 ))}
@@ -212,7 +212,7 @@ export function LobbyView({ name, who, tier, quests, bell, steps, onMe, onAsk, o
       <View style={[styles.card, styles.dock, { bottom: insets.bottom + 24 }]}>
         <View style={styles.next}>
           <View style={styles.questIcon}>
-            {next ? <PixelIcon index={next.icon} /> : <CheckIcon color={colors.ink} height={26} width={26} />}
+            {next ? <PixelIcon index={next.icon} /> : <CheckIcon color={colors.textPrimary} height={26} width={26} />}
           </View>
           <View style={styles.nextCopy}>
             <Text style={styles.eyebrow}>{next ? '다음 퀘스트' : '오늘의 퀘스트'}</Text>
@@ -309,8 +309,8 @@ export function LobbyView({ name, who, tier, quests, bell, steps, onMe, onAsk, o
 }
 
 function createStyles({ colors }: AppTheme) {
-  const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
-  const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
+  const p12 = { fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 17 } as const;
+  const p15 = { fontFamily: fontFamilies.pretendardRegular, fontSize: 15, lineHeight: 21 } as const;
   const ledge = '0 0 0 transparent'; // renewal B: no ledges
   return {
     // The asphalt carries on under the cards.
@@ -340,7 +340,7 @@ function createStyles({ colors }: AppTheme) {
     },
     face: {
       alignItems: 'center',
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.surfaceMuted,
       borderColor: colors.border,
       borderRadius: 11,
       borderWidth: 1,
@@ -348,7 +348,7 @@ function createStyles({ colors }: AppTheme) {
       justifyContent: 'center',
       width: 40,
     },
-    name: { ...p15, color: colors.ink, lineHeight: 18 },
+    name: { ...p15, color: colors.textPrimary, lineHeight: 18 },
     level: { alignItems: 'center', flexDirection: 'row', gap: 6 },
     levelText: { ...p12, color: colors.primaryText },
     stars: { fontSize: 11, lineHeight: 14 },
@@ -357,10 +357,10 @@ function createStyles({ colors }: AppTheme) {
 
     road: { boxShadow: ledge, left: 16, paddingBottom: 16, paddingHorizontal: 16, paddingTop: 10, position: 'absolute', right: 16 },
     roadRow: { alignItems: 'baseline', flexDirection: 'row', gap: 8 },
-    big: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 40 },
+    big: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 36, lineHeight: 40 },
     small: { ...p12, color: colors.textSecondary },
     line: {
-      backgroundColor: colors.track,
+      backgroundColor: colors.surfaceMuted,
       borderColor: colors.border,
       borderRadius: 99,
       borderWidth: 1,
@@ -370,7 +370,7 @@ function createStyles({ colors }: AppTheme) {
       marginTop: 32,
     },
     fill: { backgroundColor: colors.primary, borderRadius: 99, bottom: -1, left: -1, position: 'absolute', top: -1 },
-    tick: { backgroundColor: colors.ink, bottom: 0, marginLeft: -1, position: 'absolute', top: 0, width: 2 },
+    tick: { backgroundColor: colors.textPrimary, bottom: 0, marginLeft: -1, position: 'absolute', top: 0, width: 2 },
     mark: { marginLeft: -13, position: 'absolute', top: -30 },
     goal: {
       alignItems: 'center',
@@ -396,7 +396,7 @@ function createStyles({ colors }: AppTheme) {
       paddingHorizontal: 13,
       paddingVertical: 8,
     },
-    sayText: { ...p15, color: colors.ink, textAlign: 'center' },
+    sayText: { ...p15, color: colors.textPrimary, textAlign: 'center' },
     sayTag: {
       ...p12,
       backgroundColor: colors.primary,
@@ -442,7 +442,7 @@ function createStyles({ colors }: AppTheme) {
       ...p12,
       color: '#FFFFFF',
       lineHeight: 14,
-      textShadowColor: colors.ink,
+      textShadowColor: colors.textPrimary,
       textShadowOffset: { height: 1, width: 1 },
       textShadowRadius: 1,
     },
@@ -451,7 +451,7 @@ function createStyles({ colors }: AppTheme) {
     next: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 88, paddingLeft: 12, paddingRight: 14, paddingVertical: 12 },
     questIcon: {
       alignItems: 'center',
-      backgroundColor: colors.primaryLight,
+      backgroundColor: colors.surfaceMuted,
       borderColor: colors.border,
       borderRadius: 14,
       borderWidth: 1,
@@ -461,7 +461,7 @@ function createStyles({ colors }: AppTheme) {
     },
     nextCopy: { flex: 1, gap: 3, minWidth: 0 },
     eyebrow: { ...p12, color: colors.primaryText, lineHeight: 14 },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
     go: {
       alignItems: 'center',
       backgroundColor: colors.primary,
@@ -473,7 +473,7 @@ function createStyles({ colors }: AppTheme) {
       justifyContent: 'center',
       paddingHorizontal: 16,
     },
-    goText: { color: colors.onPrimary, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    goText: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 24, lineHeight: 28 },
     goSmall: {
       alignItems: 'center',
       backgroundColor: colors.primary,
@@ -496,12 +496,12 @@ function createStyles({ colors }: AppTheme) {
       paddingVertical: 12,
     },
     allPressed: { backgroundColor: colors.surfaceMuted },
-    allText: { ...p15, color: colors.ink },
+    allText: { ...p15, color: colors.textPrimary },
 
     stateRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
     reward: {
       ...p12,
-      backgroundColor: colors.gold,
+      backgroundColor: colors.textPrimary,
       borderColor: colors.border,
       borderRadius: 99,
       borderWidth: 1,
@@ -528,6 +528,6 @@ function createStyles({ colors }: AppTheme) {
     },
     segOn: { backgroundColor: colors.primary, boxShadow: ledge },
     listRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-    listName: { ...p15, color: colors.ink },
+    listName: { ...p15, color: colors.textPrimary },
   } as const;
 }
