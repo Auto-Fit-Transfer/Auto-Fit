@@ -41,9 +41,17 @@ export interface ExercisePlanSession {
   name: string;
   focus: string | null;
   durationMinutes: number;
-  status: 'planned' | 'in_progress' | 'completed' | 'skipped';
+  status: 'planned' | 'in_progress' | 'completed' | 'skipped' | 'stopped';
   exercises: ExerciseItem[];
 }
+
+// A day the server will not start again (start_ai_exercise_session refuses completed, stopped and skipped).
+export const closedPlan = (status: ExercisePlanSession['status']) =>
+  status === 'completed' || status === 'skipped' || status === 'stopped';
+
+// The server starts a day only while its recommendation is 'active' (else 409, "An active exercise
+// recommendation is required"). No status sent: leave it to the server.
+export const activeRecommendation = (status: string | null) => status === null || status === 'active';
 
 export interface ExerciseRoutine {
   id: string | null;

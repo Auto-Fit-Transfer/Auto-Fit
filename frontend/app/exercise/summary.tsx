@@ -7,7 +7,7 @@ import { getPostureCapabilities, type PostureCapability } from '@/src/api/postur
 import { RoutinePlanView } from '@/src/components/a/RoutinePlanView';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
-import { exerciseEquipmentLabels, exerciseIntensityLabels, exerciseLocationLabels } from '@/src/features/exercise/exerciseData';
+import { closedPlan, exerciseEquipmentLabels, exerciseIntensityLabels, exerciseLocationLabels } from '@/src/features/exercise/exerciseData';
 import { postureFor } from '@/src/features/exercise/postureMatch';
 
 // Today's routine, all of it. What it reads and starts is unchanged.
@@ -53,7 +53,7 @@ export default function ExerciseSummaryScreen() {
     Boolean(routine) &&
     (!selectedPlan ||
       (selectedPlan.scheduledDate <= today &&
-        !['completed', 'skipped'].includes(selectedPlan.status)));
+        !closedPlan(selectedPlan.status)));
 
   const handleStart = async () => {
     if (!routine || !canStart || isStarting) return;
@@ -95,7 +95,11 @@ export default function ExerciseSummaryScreen() {
           ? '시작하는 중…'
           : selectedPlan?.status === 'completed'
             ? '완료한 운동'
-            : selectedPlan && selectedPlan.scheduledDate > today
+            : selectedPlan?.status === 'stopped'
+              ? '중단한 운동'
+              : selectedPlan?.status === 'skipped'
+                ? '건너뛴 운동'
+                : selectedPlan && selectedPlan.scheduledDate > today
               ? '예정된 운동'
               : '운동 시작하기',
       }}
@@ -118,7 +122,7 @@ export default function ExerciseSummaryScreen() {
           meta: `${plan.durationMinutes}분 · ${plan.exercises.length}개 운동`,
           name: plan.name,
           selected: plan.id === routine.selectedPlanSessionId,
-          status: plan.status === 'completed' ? '완료' : plan.status === 'in_progress' ? '진행 중' : plan.scheduledDate > today ? '예정' : '시작 가능',
+          status: plan.status === 'completed' ? '완료' : plan.status === 'stopped' ? '중단됨' : plan.status === 'skipped' ? '건너뜀' : plan.status === 'in_progress' ? '진행 중' : plan.scheduledDate > today ? '예정' : '시작 가능',
         })),
         listTitle: `${selectedPlan ? `${selectedPlan.name} · ` : ''}운동 ${routine.exercises.length}개`,
         made: join(made),
