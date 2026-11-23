@@ -32,6 +32,8 @@ import {
   type ExerciseCondition,
   type ExerciseDayStatus,
   type ExerciseItem,
+  activeRecommendation,
+  closedPlan,
   type ExercisePlanSession,
   type ExerciseRoutine,
 } from './exerciseData';
@@ -236,7 +238,7 @@ function mapExerciseRoutine(response: unknown): ExerciseRoutine | null {
         focus: readString(value, ['focus']),
         durationMinutes,
         status:
-          status === 'completed' || status === 'in_progress' || status === 'skipped'
+          status === 'completed' || status === 'in_progress' || status === 'skipped' || status === 'stopped'
             ? status
             : 'planned',
         exercises: items.filter((item) => item.planSessionId === id),
@@ -561,11 +563,11 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Nothing left to start (every day done, stopped or skipped, or the recommendation no longer active):
+    // the screens ask for a new one instead of offering a start the server would refuse.
     if (
-      nextRoutine.planSessions.length > 0 &&
-      nextRoutine.planSessions.every(
-        (plan) => plan.status === 'completed' || plan.status === 'skipped',
-      )
+      !activeRecommendation(recommendationMetadata ? readString(recommendationMetadata, ['status']) : null) ||
+      (nextRoutine.planSessions.length > 0 && nextRoutine.planSessions.every((plan) => closedPlan(plan.status)))
     ) {
       setRoutine(null);
       setStatus('not-created');
@@ -639,8 +641,7 @@ export function ExerciseRoutineProvider({ children }: { children: ReactNode }) {
     if (
       selectedPlan &&
       (selectedPlan.scheduledDate > getTodayDateKey() ||
-        selectedPlan.status === 'completed' ||
-        selectedPlan.status === 'skipped')
+        closedPlan(selectedPlan.status))
     ) {
       throw new Error('선택한 날짜의 운동은 아직 시작할 수 없어요.');
     }
