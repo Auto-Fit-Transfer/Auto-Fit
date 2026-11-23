@@ -6,10 +6,11 @@ export const fontFamilies = {
   pretendardSemiBold: 'Pretendard-SemiBold',
   pretendardBold: 'Pretendard-Bold',
   pretendardExtraBold: 'Pretendard-ExtraBold',
-  // Renewal A: the pixel letters (Galmuri 2.40.3, SIL Open Font License 1.1). 11 is for small text and big numbers, 14 for body text.
-  galmuri11: 'Galmuri11',
-  galmuri11Bold: 'Galmuri11-Bold',
-  galmuri14: 'Galmuri14',
+  // Renewal B has no pixel letters: the names renewal A's screens use stand for Pretendard here, so a screen
+  // not given its B look yet still reads in B's letters (11: small text, 11Bold: big numbers and buttons, 14: body).
+  galmuri11: 'Pretendard-Medium',
+  galmuri11Bold: 'Pretendard-ExtraBold',
+  galmuri14: 'Pretendard-Regular',
 } as const;
 
 export const fontAssets = {
@@ -20,7 +21,4 @@ export const fontAssets = {
   [fontFamilies.pretendardSemiBold]: require('../../assets/fonts/Pretendard-SemiBold.otf'),
   [fontFamilies.pretendardBold]: require('../../assets/fonts/Pretendard-Bold.otf'),
   [fontFamilies.pretendardExtraBold]: require('../../assets/fonts/Pretendard-ExtraBold.otf'),
-  [fontFamilies.galmuri11]: require('../../assets/fonts/Galmuri11.ttf'),
-  [fontFamilies.galmuri11Bold]: require('../../assets/fonts/Galmuri11-Bold.ttf'),
-  [fontFamilies.galmuri14]: require('../../assets/fonts/Galmuri14.ttf'),
 } as const;
