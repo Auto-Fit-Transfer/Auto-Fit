@@ -50,3 +50,10 @@ export function sessionLocalDate(value: unknown) {
   if (Number.isNaN(d.getTime())) return '날짜 미기록';
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
+
+// Whether a session ended by finishing it. The server stamps completed_at on a stopped session too (Hyunho, 11/23),
+// so its status decides whenever it gives one; completed_at only speaks for an older answer without a status.
+export function sessionFinished(status: string | null, completedFlag: unknown, completedAt: string | null) {
+  if (status) return status === 'completed';
+  return completedFlag === true || completedAt !== null;
+}

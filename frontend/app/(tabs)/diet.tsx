@@ -623,15 +623,18 @@ export default function DietScreen() {
           // What was eaten, when it is not the plan: a different food, or a meal recorded earlier in the daily app
           // (its log has the foods and numbers actually saved there, Hyunho 11/20).
           const eatenFoods = status === 'modified' ? recordedFoods : weekly.locked.has(meal.id) ? log?.foods : undefined;
-          const macros = eatenFoods ? macroLabel(eatenFoods) : meal.macros;
+          // Until that day's logs arrive, such a meal shows neither the plan's numbers nor any (Hyunho, 11/23: the
+          // plan's 433kcal flashed before the 400kcal actually eaten).
+          const waiting = (status === 'modified' || weekly.locked.has(meal.id)) && mealLogMetaByDate[selectedDateKey] === undefined;
+          const macros = waiting ? null : eatenFoods ? macroLabel(eatenFoods) : meal.macros;
           const recordedKcal = eatenFoods?.every((food) => food.kcal !== undefined)
             ? eatenFoods.reduce((sum, food) => sum + (food.kcal ?? 0), 0)
             : null;
           return {
             id: meal.id,
             title: meal.title,
-            kcal: eatenFoods ? recordedKcal : meal.kcal,
-            foods: (eatenFoods ?? recordedFoods)?.map((food) => food.name).join(' · ') || meal.foods,
+            kcal: waiting ? null : eatenFoods ? recordedKcal : meal.kcal,
+            foods: waiting ? '기록을 불러오는 중' : (eatenFoods ?? recordedFoods)?.map((food) => food.name).join(' · ') || meal.foods,
             note: meal.note || meal.description || '',
             detail: status === 'eaten' || status === 'modified'
               ? [[log?.time, photoUrl ? '사진으로 기록' : '기록'].filter(Boolean).join(' '), macros].filter(Boolean).join(' · ')
