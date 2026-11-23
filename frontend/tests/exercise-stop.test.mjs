@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { finishedProgress, runStopSequence } from '../src/features/exercise/stopRecording.ts';
+import { finishedProgress, retryStop, runStopSequence } from '../src/features/exercise/stopRecording.ts';
 
 const squat = { mode: 'reps', targetRepetitions: 12, totalSets: 3 };
 
@@ -74,8 +74,26 @@ test('④ ending the workout right after the stop does not cut the sequence shor
   assert.deepEqual(sent, ['item for session-1', 'stop for session-1']);
 });
 
-test('a failed stop is logged and does not throw', async () => {
-  const logs = [];
-  await runStopSequence({ settleQueued: () => [], queueCurrentItem: null, sendStop: () => Promise.reject(new Error('offline')), log: (m) => logs.push(m) });
-  assert.deepEqual(logs, ['Exercise stop record failed']);
+test('⑤ a failed symptom stop reaches the screen, after the item writes, so the session is kept for a retry', async () => {
+  const r = recorder();
+  await assert.rejects(runStopSequence({
+    settleQueued: () => [r.step('earlier item')()],
+    queueCurrentItem: null,
+    sendStop: () => Promise.reject(new Error('network')),
+    log: (message) => r.logs.push(message),
+  }), /network/);
+  assert.deepEqual(r.logs, ['Exercise stop record failed']);
+  assert.ok(r.order.includes('earlier item end'));
+});
+
+test('⑥ a retry reads the server first: already stopped (the answer was lost) sends nothing twice', async () => {
+  let sent = 0;
+  const resend = async () => { sent += 1; };
+  await retryStop(async () => 'stopped', resend);
+  await retryStop(async () => 'completed', resend);
+  assert.equal(sent, 0);
+  await retryStop(async () => 'in_progress', resend);
+  await retryStop(async () => null, resend); // not readable: send again, the server decides
+  assert.equal(sent, 2);
+  await assert.rejects(retryStop(async () => 'in_progress', () => Promise.reject(new Error('502'))), /502/);
 });

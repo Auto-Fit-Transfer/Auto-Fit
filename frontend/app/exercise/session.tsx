@@ -30,6 +30,7 @@ export default function ExerciseSessionScreen() {
     currentExercise,
     flushPendingResults,
     recordSymptomStop,
+    retrySymptomStop,
     cycleCountSpeed,
     goToNextExercise,
     openExitConfirmation,
@@ -155,6 +156,7 @@ export default function ExerciseSessionScreen() {
   useEffect(() => {
     if (Platform.OS !== 'android' || !hasSession) return undefined;
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (stopping.current) return true; // a stop is being sent: the workout must not resume under it
       if (skipConfirmationVisible) closeSkipConfirmation();
       else if (exitConfirmationVisible) closeExitConfirmation();
       else openExitConfirmation();
@@ -229,7 +231,8 @@ export default function ExerciseSessionScreen() {
         onCompleteSet={completeCurrentSet}
         onCycleSpeed={cycleCountSpeed}
         onReportDiscomfort={session.savedRoutine ? undefined : reportDiscomfort}
-        onReportStop={(report) => void recordSymptomStop(report)}
+        onReportStop={(report) => recordSymptomStop(report).then(() => true, () => false)}
+        onRetryStop={(report) => retrySymptomStop(report).then(() => true, () => false)}
         onSkip={openSkipConfirmation}
         onSkipRest={skipRest}
         onStopWorkout={leaveSession}
@@ -249,6 +252,7 @@ export default function ExerciseSessionScreen() {
       />
       <ConfirmDialog
         description="지금 나가면 진행 중인 운동이 기록되지 않을 수 있어요."
+        busy={stopBusy}
         onPrimary={() => void stopWorkout()}
         onSecondary={closeExitConfirmation}
         primaryLabel={stopBusy ? '멈추는 중…' : '운동 중단'}

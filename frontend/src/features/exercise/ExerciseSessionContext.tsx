@@ -10,14 +10,14 @@ import {
   type ReactNode,
 } from 'react';
 
-import { completeExerciseSession, recordExerciseDiscomfort, recordExerciseItemResult, type ExerciseDiscomfortInput } from '@/src/api/exercise';
+import { completeExerciseSession, getLatestExerciseSession, getLatestSavedRoutineSession, recordExerciseDiscomfort, recordExerciseItemResult, type ExerciseDiscomfortInput } from '@/src/api/exercise';
 import { awardTierActivity } from '@/src/api/tier';
 import { earnsWorkoutPoints, pointsOutcome, recordedMinutes, refusalOutcome, type WorkoutPoints } from '@/src/features/exercise/workoutPoints';
 import { msToFirstMinute } from '@/src/features/exercise/savedRoutine';
 import { getSupabaseClient } from '@/src/lib/supabase';
 import { logError } from '@/src/lib/logError';
 import { mergeAdjustedExercises } from './exerciseAdjustment';
-import { finishedProgress, runStopSequence, SYMPTOM_STOP_REASON } from './stopRecording';
+import { finishedProgress, retryStop, runStopSequence, SYMPTOM_STOP_REASON } from './stopRecording';
 
 import type { StartedExerciseSession } from './ExerciseRoutineContext';
 import type { ExerciseItem, ExerciseRoutine } from './exerciseData';
@@ -102,7 +102,8 @@ type ExerciseSessionContextValue = {
   currentExercise: ExerciseSessionExercise | null;
   flushPendingResults: () => Promise<void>;
   goToNextExercise: () => void;
-  recordSymptomStop: (report: SymptomStopReport) => Promise<void>;
+  recordSymptomStop: (report: SymptomStopReport) => Promise<void>; // rejects when the server did not take the stop
+  retrySymptomStop: (report: SymptomStopReport) => Promise<void>;
   openExitConfirmation: () => void;
   openSkipConfirmation: () => void;
   session: ExerciseSessionState | null;
@@ -576,6 +577,21 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
     });
   }, [queueResult]);
 
+  const retrySymptomStop = useCallback(async (report: SymptomStopReport) => {
+    const current = sessionRef.current;
+    if (!current) return;
+    const { sessionId, savedRoutine } = current;
+    const exercise = current.exercises[current.currentExerciseIndex];
+    await retryStop(
+      async () => {
+        const latest = savedRoutine ? await getLatestSavedRoutineSession() : await getLatestExerciseSession();
+        const row = (latest as { result?: { session?: { exercise_session_id?: unknown; status?: unknown } } | null }).result?.session;
+        return row?.exercise_session_id === sessionId && typeof row.status === 'string' ? row.status : null;
+      },
+      () => recordExerciseDiscomfort(sessionId, { ...report, actionTaken: 'stop', exerciseItemId: exercise?.id ?? null }),
+    );
+  }, []);
+
   const timerRunning = Boolean(
     session &&
     !session.adjustmentPending &&
@@ -691,6 +707,7 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
       openExitConfirmation: () => dispatch({ type: 'open-exit' }),
       openSkipConfirmation: () => dispatch({ type: 'open-skip' }),
       recordSymptomStop,
+      retrySymptomStop,
       session,
       setAdjustmentPending: (sessionId, pending) =>
         dispatch({ now: Date.now(), pending, sessionId, type: 'set-adjustment-pending' }),
@@ -709,6 +726,7 @@ export function ExerciseSessionProvider({ children }: { children: ReactNode }) {
       dispatch,
       flushPendingResults,
       recordSymptomStop,
+      retrySymptomStop,
       session,
       summary,
       workoutPoints,

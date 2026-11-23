@@ -10,6 +10,7 @@ export function ConfirmDialog({
   primaryLabel,
   onSecondary,
   onPrimary,
+  busy = false,
 }: {
   visible: boolean;
   title: string;
@@ -18,19 +19,20 @@ export function ConfirmDialog({
   primaryLabel: string;
   onSecondary: () => void;
   onPrimary: () => void;
+  busy?: boolean; // the primary action is running: neither button nor closing the dialog does anything
 }) {
   const styles = useThemedStyles(createStyles);
   return (
-    <Modal animationType="fade" onRequestClose={onSecondary} transparent visible={visible}>
+    <Modal animationType="fade" onRequestClose={busy ? () => undefined : onSecondary} transparent visible={visible}>
       <View style={styles.overlay}>
         <View accessibilityViewIsModal style={styles.dialog}>
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.description}>{description}</Text>
           <View style={styles.actions}>
-            <Pressable accessibilityRole="button" onPress={onSecondary} style={styles.secondary}>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={onSecondary} style={[styles.secondary, busy && styles.busy]}>
               <Text style={styles.secondaryLabel}>{secondaryLabel}</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" onPress={onPrimary} style={styles.primary}>
+            <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy }} disabled={busy} onPress={onPrimary} style={styles.primary}>
               <Text style={styles.primaryLabel}>{primaryLabel}</Text>
             </Pressable>
           </View>
@@ -76,6 +78,7 @@ function createStyles({ colors }: AppTheme) {
     description: { ...label, color: colors.textBody, marginTop: 8, textAlign: 'center' },
     actions: { flexDirection: 'row', gap: 8, marginTop: 18 },
     secondary: { ...button, backgroundColor: colors.surface, boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)' },
+    busy: { opacity: 0.4 },
     secondaryLabel: label,
     primary: { ...button, backgroundColor: colors.primary, boxShadow: `0 4px 0 ${colors.ink}` },
     primaryLabel: { ...label, color: colors.onPrimary },

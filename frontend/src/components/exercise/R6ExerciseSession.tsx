@@ -47,8 +47,9 @@ type Props = {
   onCompleteSet: () => void;
   // Resolves to how many remaining items changed, or null when the report failed.
   onReportDiscomfort?: (report: DiscomfortReport) => Promise<number | null>; // absent: the workout cannot be lightened (a saved routine)
-  // Records a high-risk stop in the background; the stop screen does not wait for it.
-  onReportStop: (report: DiscomfortReport) => void;
+  // Records a high-risk stop; the safety notice shows at once, but '운동 종료' waits for the server (true = stopped).
+  onReportStop: (report: DiscomfortReport) => Promise<boolean>;
+  onRetryStop: (report: DiscomfortReport) => Promise<boolean>;
   onSkip: () => void;
   onSkipRest: () => void;
   onStopWorkout: () => void;
@@ -60,7 +61,7 @@ function time(seconds: number) {
 }
 
 export function R6ExerciseSession({
-  exercise, session, who, tierIndex, onAddRest, onBack, onCycleSpeed, onCompleteSet, onReportDiscomfort, onReportStop, onSkip, onSkipRest, onStopWorkout, onTogglePause,
+  exercise, session, who, tierIndex, onAddRest, onBack, onCycleSpeed, onCompleteSet, onReportDiscomfort, onReportStop, onRetryStop, onSkip, onSkipRest, onStopWorkout, onTogglePause,
 }: Props) {
   const { colors } = useAppTheme();
   const s = useThemedStyles(createSStyles);
@@ -73,6 +74,8 @@ export function R6ExerciseSession({
   const [submitting, setSubmitting] = useState(false);
   const [changedCount, setChangedCount] = useState<number | null>(null);
   const [stopped, setStopped] = useState(false);
+  // The server's answer to the stop: '운동 종료' only clears the workout once it is 'done'.
+  const [stopSend, setStopSend] = useState<{ state: 'sending' | 'done' | 'failed'; report: DiscomfortReport } | null>(null);
   const chosenFeeling = feelings.find((item) => item.key === feeling) ?? feelings[0];
   const needsPart = !chosenFeeling.stops && selectedParts.length === 0;
   const [voiceOpen, setVoiceOpen] = useState(false);
@@ -121,6 +124,7 @@ export function R6ExerciseSession({
     }
     setChangedCount(null);
     setStopped(false);
+    setStopSend(null);
     setSheetOpen(true);
   };
   const continueWorkout = () => {
@@ -139,7 +143,9 @@ export function R6ExerciseSession({
     };
     if (chosenFeeling.stops) {
       setStopped(true);
-      onReportStop(report);
+      setStopSend({ state: 'sending', report });
+      const ok = await onReportStop(report);
+      setStopSend({ state: ok ? 'done' : 'failed', report });
       return;
     }
     if (!onReportDiscomfort) return;
@@ -289,7 +295,12 @@ export function R6ExerciseSession({
                     <Text style={s.cardText}>즉시 운동을 멈추고 넘어지지 않도록 앉거나 편한 자세를 취해 주세요. 증상이 심하거나 계속되면 의료진과 상담해 주세요. 가슴 통증·압박, 실신할 것 같은 느낌, 의식 변화 또는 말하기 힘들 정도의 호흡곤란이 있으면 주변에 도움을 요청하고 119에 연락해 주세요.</Text>
                   </View>
                 </View>
-                <Pressable accessibilityRole="button" onPress={onStopWorkout} style={s.sheetPrimary}><Text style={s.primaryText}>운동 종료</Text></Pressable>
+                {stopSend?.state === 'failed' ? <Text accessibilityLiveRegion="polite" style={s.cardText}>운동 중단을 서버에 저장하지 못했어요. 다시 시도해 주세요.</Text> : null}
+                {stopSend?.state === 'failed' ? (
+                  <Pressable accessibilityRole="button" onPress={() => { const { report } = stopSend; setStopSend({ state: 'sending', report }); void onRetryStop(report).then((ok) => setStopSend({ state: ok ? 'done' : 'failed', report })); }} style={s.sheetPrimary}><Text style={s.primaryText}>다시 시도</Text></Pressable>
+                ) : (
+                  <Pressable accessibilityRole="button" accessibilityState={{ disabled: stopSend?.state !== 'done' }} disabled={stopSend?.state !== 'done'} onPress={onStopWorkout} style={[s.sheetPrimary, stopSend?.state !== 'done' && s.disabled]}><Text style={[s.primaryText, stopSend?.state !== 'done' && s.disabledText]}>{stopSend?.state === 'done' ? '운동 종료' : '저장하는 중…'}</Text></Pressable>
+                )}
               </>
             ) : changedCount !== null ? (
               <>

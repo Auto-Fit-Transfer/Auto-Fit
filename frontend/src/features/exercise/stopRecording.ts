@@ -28,7 +28,8 @@ type StopSteps = {
 };
 
 // Waits for every item write before the next step, so the server's stop does not race them,
-// and sends the stop once even when an item write failed.
+// and sends the stop once even when an item write failed. A failed stop is thrown, so the screen keeps the
+// session and offers to try again (Hyunho, 11/23).
 export async function runStopSequence({ settleQueued, queueCurrentItem, sendStop, log }: StopSteps) {
   const settle = async (tasks: Promise<unknown>[], message: string) => {
     for (const outcome of await Promise.allSettled(tasks)) {
@@ -41,5 +42,14 @@ export async function runStopSequence({ settleQueued, queueCurrentItem, sendStop
     await sendStop();
   } catch (error) {
     log('Exercise stop record failed', error);
+    throw error;
   }
+}
+
+// Trying a failed stop again. The server may have stopped the session and only the answer was lost, so its
+// state is read first: anything but in_progress means it is already over and nothing is sent twice.
+export async function retryStop(readStatus: () => Promise<string | null>, resend: () => Promise<unknown>) {
+  const status = await readStatus();
+  if (status !== null && status !== 'in_progress') return;
+  await resend();
 }

@@ -36,7 +36,8 @@ export default function ASessionSample() {
       onCompleteSet={nothing}
       onCycleSpeed={nothing}
       onReportDiscomfort={async () => 0}
-      onReportStop={nothing}
+      onReportStop={async () => state !== 'stopfail'} // ?state=stopfail: the server did not take the stop
+      onRetryStop={async () => true}
       onSkip={nothing}
       onSkipRest={nothing}
       onStopWorkout={nothing}
