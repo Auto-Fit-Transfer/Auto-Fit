@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, BackHandler, Platform, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { getExerciseApiErrorMessage, recordExerciseDiscomfort } from '@/src/api/exercise';
+import { ApiError } from '@/src/api/client';
+import { getExerciseApiErrorMessage, recordExerciseDiscomfort, stopExerciseSession } from '@/src/api/exercise';
 import { Text } from '@/src/components/common';
 import { aForm } from '@/src/components/a/form';
 import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
@@ -17,7 +18,7 @@ import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 export default function ExerciseSessionScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const { markRoutineCompleted, resultRecordCompleted } = useExerciseRoutine();
+  const { markRoutineCompleted, refreshHome, resultRecordCompleted } = useExerciseRoutine();
   const {
     addRestSeconds,
     applyAdjustedItems,
@@ -42,6 +43,8 @@ export default function ExerciseSessionScreen() {
   const { who, tierIndex } = useHero();
   const [finishFailed, setFinishFailed] = useState(false);
   const finishing = useRef(false);
+  const stopping = useRef(false);
+  const [stopBusy, setStopBusy] = useState(false);
   const phase = session?.phase;
   const hasSession = session !== null;
   const exitConfirmationVisible = session?.exitConfirmationVisible ?? false;
@@ -169,9 +172,39 @@ export default function ExerciseSessionScreen() {
 
   if (!session || !currentExercise) return <View style={styles.root} />;
 
+  // Leaves without telling the server: after a symptom stop, which has already stopped the session.
   const leaveSession = () => {
     clearSession();
-    requestAnimationFrame(() => router.dismissTo('/exercise/summary'));
+    requestAnimationFrame(() => router.dismissTo(session.savedRoutine ? '/exercise/saved-routines' : '/exercise/summary'));
+  };
+
+  // The user's '운동 중단' (back-end 8d2b2d9). The screen and the local session stay until the server says
+  // stopped, so a failed request can be tried again with the same session. Closing the app never calls this.
+  const stopWorkout = async () => {
+    if (stopping.current) return;
+    stopping.current = true;
+    setStopBusy(true);
+    try {
+      await flushPendingResults(); // finished moves are recorded before the rest is marked skipped
+      const answer = await stopExerciseSession(session.sessionId);
+      if (answer.result?.session?.status !== 'stopped') throw new Error('운동 중단을 확인하지 못했어요.');
+      void refreshHome();
+      leaveSession();
+    } catch (error) {
+      const code = error instanceof ApiError ? (error.detail as { code?: unknown } | null | undefined)?.code : undefined;
+      if (code === 'EXERCISE_SESSION_NOT_FOUND' || code === 'EXERCISE_SESSION_NOT_STOPPABLE') {
+        // Already finished or gone on the server: follow the server.
+        void refreshHome();
+        Alert.alert('이미 끝난 운동이에요', '운동 기록에서 결과를 확인해 주세요.');
+        leaveSession();
+        return;
+      }
+      logError('Exercise stop failed', error);
+      Alert.alert('운동을 멈추지 못했어요', `${getExerciseApiErrorMessage(error)} 다시 눌러 주세요.`);
+    } finally {
+      stopping.current = false;
+      setStopBusy(false);
+    }
   };
 
   if (phase !== 'exercise' && phase !== 'rest') {
@@ -216,9 +249,9 @@ export default function ExerciseSessionScreen() {
       />
       <ConfirmDialog
         description="지금 나가면 진행 중인 운동이 기록되지 않을 수 있어요."
-        onPrimary={leaveSession}
+        onPrimary={() => void stopWorkout()}
         onSecondary={closeExitConfirmation}
-        primaryLabel="운동 중단"
+        primaryLabel={stopBusy ? '멈추는 중…' : '운동 중단'}
         secondaryLabel="계속 하기"
         title="운동을 중단할까요?"
         visible={exitConfirmationVisible}

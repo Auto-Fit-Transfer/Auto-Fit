@@ -164,6 +164,15 @@ export function recordExerciseDiscomfort(sessionId: string, input: ExerciseDisco
   );
 }
 
+// The user's own stop, for the recommended workout and a saved routine alike (back-end 8d2b2d9). Moves already
+// recorded stay; the ones not recorded become skipped. Calling it again for a stopped session returns the same result.
+export function stopExerciseSession(sessionId: string) {
+  return apiRequest<{ result?: { session?: { status?: unknown } } }>(
+    `/api/exercise/sessions/${encodeURIComponent(sessionId)}/stop`,
+    { method: 'POST' },
+  );
+}
+
 export function completeExerciseSession(sessionId: string) {
   return apiRequest<ExerciseApiResponse>(
     `/api/exercise/sessions/${encodeURIComponent(sessionId)}/complete`,
