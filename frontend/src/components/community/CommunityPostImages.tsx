@@ -176,15 +176,15 @@ function createStyles({ colors }: AppTheme) {
   // Renewal A: square dots, pixel letters. On the dark viewer the letters stay white (the theme's
   // colour for letters on violet is dark).
   return {
-    carousel: { aspectRatio: 1.45, backgroundColor: colors.track, borderRadius: 12, overflow: 'hidden' },
+    carousel: { aspectRatio: 1.45, backgroundColor: colors.surfaceMuted, borderRadius: 16, overflow: 'hidden' },
     carouselScroll: { flex: 1 },
     carouselImage: { backgroundColor: colors.track, height: '100%' },
     imageCount: { backgroundColor: colors.ink, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, position: 'absolute', right: 10, top: 10 },
     imageCountText: { color: '#FFFFFF', fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 },
     dots: { alignSelf: 'center', flexDirection: 'row', gap: 5 },
-    dot: { backgroundColor: colors.track, height: 6, width: 6 },
+    dot: { backgroundColor: colors.surfaceMuted, borderRadius: 3, height: 6, width: 6 },
     activeDot: { backgroundColor: colors.ink },
-    grid: { borderRadius: 12, gap: GAP, overflow: 'hidden', width: '100%' },
+    grid: { borderRadius: 16, gap: GAP, overflow: 'hidden', width: '100%' },
     moreOverlay: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', bottom: 0, justifyContent: 'center', left: 0, position: 'absolute', right: 0, top: 0 },
     moreText: { color: '#FFFFFF', fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
     group: { flex: 1, gap: GAP },

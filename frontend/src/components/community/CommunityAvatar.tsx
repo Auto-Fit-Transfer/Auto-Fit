@@ -6,7 +6,8 @@ import { Text } from '@/src/components/common';
 
 export function CommunityAvatar({ author, size = 44 }: { author: CommunityAuthor; size?: number }) {
   const styles = useThemedStyles(createStyles);
-  const frame = { borderRadius: Math.round(size * 0.28), height: size, width: size };
+  // renewal B: a round face, the first letter of the name on light grey
+  const frame = { borderRadius: size / 2, height: size, width: size };
   if (author.profile_image_url) {
     return (
       <Image
@@ -29,12 +30,10 @@ function createStyles({ colors }: AppTheme) {
   return {
     fallback: {
       alignItems: 'center',
-      backgroundColor: colors.primaryLight,
-      borderColor: colors.border,
-      borderWidth: 1,
+      backgroundColor: colors.surfaceMuted,
       justifyContent: 'center',
     },
-    image: { backgroundColor: colors.track, borderColor: colors.border, borderWidth: 1 },
-    initial: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold },
+    image: { backgroundColor: colors.surfaceMuted },
+    initial: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold },
   } as const;
 }

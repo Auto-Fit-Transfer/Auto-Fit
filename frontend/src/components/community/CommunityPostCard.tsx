@@ -6,13 +6,11 @@ import HeartFillIcon from '@/assets/icons/deco/Heart_Fill.svg';
 import ChatIcon from '@/assets/icons/feature/ChatCircle.svg';
 import RepeatIcon from '@/assets/icons/feature/Repeat.svg';
 import MoreIcon from '@/assets/icons/system/DotsThree.svg';
-import BarbellIcon from '@/assets/icons/ui/barbell.svg';
-import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import type { CommunityAuthor, CommunityPost, CommunityProfile } from '@/src/api/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { aForm } from '@/src/components/a/form';
-import { darkColors, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { darkColors, fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { CommunityAvatar } from './CommunityAvatar';
 import { CommunityFollowButton } from './CommunityFollowButton';
@@ -57,86 +55,86 @@ export function CommunityPostCard({
   const postBody = (
     <>
       {post.content ? (
-        <Text numberOfLines={expanded || simple ? undefined : 10} style={[styles.content, expanded && styles.detailContent, simple && simpleStyles.content, isDark && dark.text]}>
+        <Text numberOfLines={expanded || simple ? undefined : 4} style={[styles.content, expanded && styles.detailContent, simple && simpleStyles.content, isDark && dark.text]}>
           {post.content}
         </Text>
       ) : null}
       {post.activity_snapshot ? <CommunityActivityCard snapshot={post.activity_snapshot} /> : null}
       <CommunityPostImages expanded={expanded} images={post.images} />
       {post.tags?.length ? <Text style={styles.tags}>{post.tags.map((tag) => `#${tag}`).join('  ')}</Text> : null}
-      <View style={[styles.actions, expanded && styles.detailActions]}>
-        <ActionButton active={post.liked_by_me} color={colors.danger} count={post.like_count}
-          icon={post.liked_by_me ? <HeartFillIcon color={colors.danger} height={20} width={20} /> : <HeartIcon color={colors.ink} height={20} width={20} />}
-          label={post.liked_by_me ? '좋아요 취소' : '좋아요'} onPress={onLike} />
-        <ActionButton count={post.comment_count} icon={<ChatIcon color={colors.ink} height={20} width={20} />} label="댓글" onPress={onComment ?? onPress} />
-        <View style={styles.actionsEnd}>
-          <ActionButton active={post.reposted_by_me} color={colors.primaryPressed} end count={post.repost_count}
-            icon={<RepeatIcon color={post.reposted_by_me ? colors.primaryPressed : colors.ink} height={20} width={20} />}
-            label={post.reposted_by_me ? '공유 취소' : '공유'} onPress={onRepost} />
-        </View>
-      </View>
     </>
   );
+  // Renewal B: the box holds what is read; the like, comment and share stand under it, outside the box.
   return (
-    // No button role on the card: it contains action buttons, and web forbids nested
-    // <button>s. Screen-reader users open the post through the comment button instead.
-    <Pressable
-      disabled={!onPress}
-      onPress={onPress}
-      style={({ pressed }) => [styles.card, simple && simpleStyles.card, expanded && styles.detailCard, pressed && styles.pressed, isDark && dark.card]}
-    >
-      {post.reposted_by ? (
-        <Pressable
-          disabled={!onAuthorPress}
-          hitSlop={4}
-          onPress={() => post.reposted_by && onAuthorPress?.(post.reposted_by)}
-          style={styles.repostHeader}
-        >
-          <RepeatIcon color={colors.textSecondary} height={14} width={14} />
-          <Text numberOfLines={1} style={styles.repostText}>
-            {post.reposted_by.nickname}님이 공유함
-          </Text>
-        </Pressable>
-      ) : null}
-      <View style={styles.row}>
-        <Pressable
-          accessibilityLabel={`${post.author.nickname}님 프로필`}
-          accessibilityRole={openAuthor ? 'link' : undefined}
-          disabled={!openAuthor}
-          onPress={openAuthor}
-        >
-          <CommunityAvatar author={post.author} size={40} />
-        </Pressable>
-        <View style={styles.body}>
-          <Pressable disabled={!openAuthor} onPress={openAuthor} style={styles.nicknameButton}>
-            <Text numberOfLines={1} style={[styles.nickname, simple && simpleStyles.nickname, isDark && dark.text]}>
-              {post.author.nickname}
+    <View style={[styles.wrap, expanded && styles.detailCard]}>
+      {/* No button role on the card: it contains action buttons, and web forbids nested
+      <button>s. Screen-reader users open the post through the comment button instead. */}
+      <Pressable
+        disabled={!onPress}
+        onPress={onPress}
+        style={({ pressed }) => [styles.card, simple && simpleStyles.card, pressed && styles.pressed, isDark && dark.card]}
+      >
+        {post.reposted_by ? (
+          <Pressable
+            disabled={!onAuthorPress}
+            hitSlop={4}
+            onPress={() => post.reposted_by && onAuthorPress?.(post.reposted_by)}
+            style={styles.repostHeader}
+          >
+            <RepeatIcon color={colors.textSecondary} height={14} width={14} />
+            <Text numberOfLines={1} style={styles.repostText}>
+              {post.reposted_by.nickname}님이 공유함
             </Text>
           </Pressable>
-          <View style={styles.meta}>
-            <Text style={styles.time}>{formatCommunityTime(post.created_at)}</Text>
-            {post.category ? <Text style={styles.category}>{COMMUNITY_POST_CATEGORY_LABELS[post.category]}</Text> : null}
-          </View>
-        </View>
-        {expanded && followProfile && !followProfile.is_me && onFollow ? (
-          <CommunityFollowButton following={followProfile.followed_by_me} followsMe={followProfile.follows_me} nickname={followProfile.nickname} onPress={onFollow} />
         ) : null}
-        <Pressable
-          accessibilityLabel="더보기"
-          accessibilityRole="button"
-          hitSlop={10}
-          onPress={onMore}
-        >
-          <MoreIcon color={colors.textBody} height={20} width={20} />
-        </Pressable>
+        <View style={styles.row}>
+          <Pressable
+            accessibilityLabel={`${post.author.nickname}님 프로필`}
+            accessibilityRole={openAuthor ? 'link' : undefined}
+            disabled={!openAuthor}
+            onPress={openAuthor}
+          >
+            <CommunityAvatar author={post.author} size={40} />
+          </Pressable>
+          <View style={styles.body}>
+            <Pressable disabled={!openAuthor} onPress={openAuthor} style={styles.nicknameButton}>
+              <Text numberOfLines={1} style={[styles.nickname, simple && simpleStyles.nickname, isDark && dark.text]}>
+                {post.author.nickname}
+              </Text>
+            </Pressable>
+            <View style={styles.meta}>
+              <Text style={styles.time}>{formatCommunityTime(post.created_at)}</Text>
+              {post.category ? <Text style={styles.category}>{COMMUNITY_POST_CATEGORY_LABELS[post.category]}</Text> : null}
+            </View>
+          </View>
+          {expanded && followProfile && !followProfile.is_me && onFollow ? (
+            <CommunityFollowButton following={followProfile.followed_by_me} followsMe={followProfile.follows_me} nickname={followProfile.nickname} onPress={onFollow} />
+          ) : null}
+          <Pressable
+            accessibilityLabel="더보기"
+            accessibilityRole="button"
+            hitSlop={10}
+            onPress={onMore}
+          >
+            <MoreIcon color={colors.textSecondary} height={20} width={20} />
+          </Pressable>
+        </View>
+        <View style={styles.detailBody}>{postBody}</View>
+      </Pressable>
+      <View style={styles.actions}>
+        <ActionButton active={post.liked_by_me} count={post.like_count}
+          icon={post.liked_by_me ? <HeartFillIcon color={colors.textPrimary} height={20} width={20} /> : <HeartIcon color={colors.textSecondary} height={20} width={20} />}
+          label={post.liked_by_me ? '좋아요 취소' : '좋아요'} onPress={onLike} />
+        <ActionButton count={post.comment_count} icon={<ChatIcon color={colors.textSecondary} height={20} width={20} />} label="댓글" onPress={onComment ?? onPress} />
+        <ActionButton active={post.reposted_by_me} count={post.repost_count}
+          icon={<RepeatIcon color={post.reposted_by_me ? colors.textPrimary : colors.textSecondary} height={20} width={20} />}
+          label={post.reposted_by_me ? '공유 취소' : '공유'} onPress={onRepost} />
       </View>
-      <View style={styles.detailBody}>{postBody}</View>
-    </Pressable>
+    </View>
   );
 }
 
 function CommunityActivityCard({ snapshot }: { snapshot: Record<string, unknown> }) {
-  const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const name = typeof snapshot.name === 'string' ? snapshot.name : '공유한 운동';
   const minutes = typeof snapshot.duration_minutes === 'number' && Number.isFinite(snapshot.duration_minutes)
@@ -147,29 +145,23 @@ function CommunityActivityCard({ snapshot }: { snapshot: Record<string, unknown>
   const meta = [minutes, count, calories].filter(Boolean).join(' · ');
   return (
     <View style={styles.activityCard}>
-      <View style={styles.activityIcon}><BarbellIcon color={colors.textPrimary} height={20} width={20} /></View>
-      <View style={styles.activityCopy}>
+            <View style={styles.activityCopy}>
         <Text style={styles.activityType}>운동 기록</Text>
         <Text numberOfLines={1} style={styles.activityName}>{name}</Text>
-        {meta ? <Text style={styles.activityMeta}>{meta}</Text> : null}
       </View>
-      <CaretRightIcon color={colors.textSecondary} height={20} width={20} />
+      {meta ? <Text style={styles.activityMeta}>{meta}</Text> : null}
     </View>
   );
 }
 
 function ActionButton({
   active = false,
-  end = false,
-  color,
   count,
   icon,
   label,
   onPress,
 }: {
   active?: boolean;
-  end?: boolean;
-  color?: string;
   count: number;
   icon: ReactNode;
   label: string;
@@ -183,10 +175,10 @@ function ActionButton({
       accessibilityState={{ selected: active }}
       hitSlop={6}
       onPress={onPress}
-      style={[styles.action, end && styles.actionEnd]}
+      style={styles.action}
     >
       {icon}
-      <Text style={[styles.count, active && color ? { color } : null]}>
+      <Text style={[styles.count, active && styles.countOn]}>
         {count > 0 ? count.toLocaleString() : ''}
       </Text>
     </Pressable>
@@ -196,54 +188,35 @@ function ActionButton({
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
-    card: { ...a.card, paddingHorizontal: 14, paddingVertical: 14 },
-    // Alone on its own screen it is still a card, with the screen's margin round it.
-    detailCard: { marginHorizontal: 16, marginTop: 8 },
-    detailBody: { gap: 12, paddingTop: 12 },
+    wrap: { gap: 4 },
+    card: { ...a.card, padding: 20 },
+    // Alone on its own screen it keeps the screen's margin round it.
+    detailCard: { marginHorizontal: 20, marginTop: 8 },
+    detailBody: { gap: 14, paddingTop: 14 },
     detailContent: {},
-    detailActions: {},
     pressed: { opacity: 0.9 },
-    repostHeader: { alignItems: 'center', flexDirection: 'row', gap: 4, marginBottom: 6 },
+    repostHeader: { alignItems: 'center', flexDirection: 'row', gap: 6, marginBottom: 10 },
     repostText: a.note,
     row: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-    body: { flex: 1, gap: 2, minWidth: 0 },
-    meta: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+    body: { flex: 1, gap: 1, minWidth: 0 },
+    meta: { alignItems: 'center', flexDirection: 'row', gap: 6 },
     nicknameButton: { flexShrink: 1 },
-    nickname: { ...a.p15, color: colors.ink, flexShrink: 1 },
-    time: a.note,
-    // What is read: a little more room between the lines than a label gets.
-    content: { ...a.p15, color: colors.ink, lineHeight: 23 },
-    category: a.note,
-    tags: a.note,
-    activityCard: {
-      alignItems: 'center',
-      backgroundColor: colors.background,
-      borderColor: colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: 12,
-      padding: 12,
-    },
-    activityIcon: {
-      alignItems: 'center',
-      backgroundColor: colors.primaryLight,
-      borderColor: colors.border,
-      borderRadius: 10,
-      borderWidth: 1,
-      height: 36,
-      justifyContent: 'center',
-      width: 36,
-    },
+    nickname: { color: colors.textPrimary, flexShrink: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },
+    time: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
+    // What is read: roomy lines (1.6).
+    content: { color: colors.textPrimary, fontSize: 15, lineHeight: 24 },
+    category: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
+    tags: { color: colors.textSecondary, fontSize: 13, lineHeight: 19 },
+    activityCard: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 18, flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingVertical: 14 },
     activityCopy: { flex: 1, minWidth: 0 },
-    activityType: a.note,
-    activityName: { ...a.p15, color: colors.ink },
-    activityMeta: a.note,
-    actions: { alignItems: 'center', borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', gap: 16, paddingTop: 10 },
-    actionsEnd: { marginLeft: 'auto' },
-    actionEnd: { justifyContent: 'flex-end' },
-    action: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 28, minWidth: 44 },
-    count: { ...a.p12, color: colors.ink },
+    activityType: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
+    activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 20 },
+    activityMeta: { ...a.p12, color: colors.textSecondary, flexShrink: 0 },
+    // the heart stands under the first letter of the words in the box
+    actions: { alignItems: 'center', flexDirection: 'row', gap: 2, paddingHorizontal: 12 },
+    action: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 40, minWidth: 44, paddingHorizontal: 8 },
+    count: { ...a.p12, color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium },
+    countOn: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
   } as const;
 }
 

@@ -6,15 +6,14 @@ import {
   Pressable,
   RefreshControl,
   ScrollView,
-  StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ApiError } from '@/src/api/client';
 
-import TrophyIcon from '@/assets/icons/deco/Trophy.svg';
 import SearchIcon from '@/assets/icons/ui/magnifying-glass.svg';
+import PlusIcon from '@/assets/icons/ui/plus.svg';
 import {
   getCommunityChallenges,
   getCommunityErrorMessage,
@@ -26,7 +25,9 @@ import {
   type CommunityPostCategory,
 } from '@/src/api/community';
 import { aForm } from '@/src/components/a/form';
-import { BackButton, IconButton, Text } from '@/src/components/common';
+import { IconButton, Text } from '@/src/components/common';
+import { Headline } from '@/src/components/b/Headline';
+import { feedHeadline } from '@/src/features/b/feedHeadline';
 import { NotificationBell } from '@/src/components/community/NotificationBell';
 import { R6ConnectionError } from '@/src/components/common/R6ConnectionError';
 import { CommunityPostCard } from '@/src/components/community';
@@ -43,7 +44,7 @@ import {
 import { CommunityChallengesPane } from '@/src/features/community/CommunityChallengesPane';
 import { CommunityClubsPane } from '@/src/features/community/CommunityClubsPane';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { darkColors, fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -65,9 +66,8 @@ function challengeSummary(challenge: CommunityChallenge) {
   const end = new Date(`${challenge.ends_on}T23:59:59`).getTime();
   const left = Math.ceil((end - Date.now()) / 86400000) - 1;
   return [
-    challenge.joined ? `나 ${challenge.progress}/${challenge.goal}${unit}` : `목표 ${challenge.goal}${unit}`,
+    challenge.joined ? `${challenge.progress}/${challenge.goal}${unit}` : `목표 ${challenge.goal}${unit}`,
     left <= 0 ? '오늘 마감' : `${left}일 남음`,
-    `${challenge.participant_count.toLocaleString()}명 참여`,
   ].join(' · ');
 }
 
@@ -77,7 +77,7 @@ export default function CommunityScreen() {
   const simpleStyles = useThemedStyles(createSimpleStylesStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { preferences, isDark } = useDisplayPreferences();
+  const { preferences } = useDisplayPreferences();
   const simple = preferences.simple_mode_enabled;
   const { height: windowHeight } = useWindowDimensions();
   const actions = useCommunityActions();
@@ -91,6 +91,8 @@ export default function CommunityScreen() {
   const [items, setItems] = useState<CommunityPost[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [state, setState] = useState<LoadState>('loading');
+  // What the headline says, from the first page of 추천 (all kinds) or 팔로잉; kept while a kind is picked.
+  const [headline, setHeadline] = useState(() => feedHeadline([], false, false));
   const [errorMessage, setErrorMessage] = useState('');
   const [errorOffline, setErrorOffline] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -111,6 +113,7 @@ export default function CommunityScreen() {
         if (id !== request.current) return;
         setItems(page.items);
         setCursor(page.next_cursor);
+        if (scope !== 'all' || !activeCategory) setHeadline(feedHeadline(page.items, page.next_cursor !== null, scope === 'following'));
         setState('ready');
       } catch (error) {
         if (id !== request.current) return;
@@ -212,38 +215,40 @@ export default function CommunityScreen() {
     router.push({ params: { userId: author.user_id }, pathname: '/community/user/[userId]' });
 
   return (
-    <View style={[styles.root, isDark && dark.root]}>
-      <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <BackButton accessibilityLabel="홈으로" onPress={() => router.navigate('/home')} />
-        <Text accessibilityRole="header" style={styles.title}>
-          커뮤니티
-        </Text>
-        <View style={styles.headerActions}>
-          <IconButton
-            accessibilityLabel="커뮤니티 검색"
-            icon={<SearchIcon color={colors.ink} height={22} width={22} />}
-            onPress={() => router.push('/community/search')}
-            size={44}
-            style={styles.headerCard}
-          />
-          <NotificationBell />
+    <View style={styles.root}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.top}>
+          <Text accessibilityRole="header" style={styles.title}>
+            커뮤니티
+          </Text>
+          <View style={styles.headerActions}>
+            <IconButton
+              accessibilityLabel="커뮤니티 검색"
+              icon={<SearchIcon color={colors.textPrimary} height={20} width={20} />}
+              onPress={() => router.push('/community/search')}
+              size={40}
+              style={styles.headerCard}
+            />
+            <NotificationBell />
+          </View>
         </View>
-      </View>
-      {simple ? <View style={[simpleStyles.readRow, isDark && dark.card]}><Text style={[simpleStyles.readHint, isDark && dark.secondary]}>추천 글과 클럽을 둘러보세요</Text><SimpleReadButton text={`커뮤니티입니다. ${activeTab === 'clubs' ? '클럽' : activeTab === 'following' ? '팔로잉' : '추천'} 탭을 보고 있어요. ${items.length}개의 글이 있습니다.`} /></View> : null}
-      <View accessibilityRole="tablist" style={[styles.tabs, isDark && dark.card]}>
-        {TABS.map((item) => (
-          <Pressable
-            accessibilityRole="tab"
-            aria-selected={item.value === activeTab}
-            key={item.value}
-            onPress={() => switchTab(item.value)}
-            style={[styles.tab, item.value === activeTab && styles.tabActive]}
-          >
-            <Text style={[styles.tabText, item.value === activeTab && styles.tabTextActive]}>
-              {item.label}
-            </Text>
-          </Pressable>
-        ))}
+        {pane ? null : <Headline lines={headline} />}
+        {simple ? <View style={simpleStyles.readRow}><Text style={simpleStyles.readHint}>추천 글과 클럽을 둘러보세요</Text><SimpleReadButton text={`커뮤니티입니다. ${activeTab === 'clubs' ? '클럽' : activeTab === 'following' ? '팔로잉' : '추천'} 탭을 보고 있어요. ${items.length}개의 글이 있습니다.`} /></View> : null}
+        <View accessibilityRole="tablist" style={styles.tabs}>
+          {TABS.map((item) => (
+            <Pressable
+              accessibilityRole="tab"
+              aria-selected={item.value === activeTab}
+              key={item.value}
+              onPress={() => switchTab(item.value)}
+              style={[styles.tab, item.value === activeTab && styles.tabActive]}
+            >
+              <Text style={[styles.tabText, item.value === activeTab && styles.tabTextActive]}>
+                {item.label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
       </View>
 
       {pane === 'clubs' ? (
@@ -261,7 +266,7 @@ export default function CommunityScreen() {
           keyExtractor={(item) => item.feed_item_id}
           ListHeaderComponent={
             scope === 'all' ? (
-              <View style={[styles.feedHeader, isDark && dark.card]}>
+              <View style={styles.feedHeader}>
                 <ScrollView contentContainerStyle={styles.categories} horizontal showsHorizontalScrollIndicator={false}>
                   {CATEGORIES.map((category) => (
                     <Pressable
@@ -275,21 +280,26 @@ export default function CommunityScreen() {
                     </Pressable>
                   ))}
                 </ScrollView>
-                <Pressable accessibilityRole="button" onPress={() => setPane('challenges')} style={[styles.challengeCard, simple && simpleStyles.challengeCard, isDark && dark.card]}>
-                  <View style={styles.challengeIcon}><TrophyIcon color={colors.ink} height={22} width={22} /></View>
+                {/* The challenge I am in: a day a circle (up to 7), and how far I am. */}
+                <Pressable accessibilityRole="button" onPress={() => setPane('challenges')} style={[styles.challengeCard, simple && simpleStyles.challengeCard]}>
                   <View style={styles.challengeCopy}>
-                    <Text style={[styles.challengeTitle, simple && simpleStyles.challengeTitle, isDark && dark.text]}>{challenge?.title ?? '커뮤니티 챌린지'}</Text>
-                    {challenge && challenge.goal <= 7 ? (
-                      <View style={styles.challengeBars}>
-                        {Array.from({ length: challenge.goal }, (_, index) => (
-                          <View key={index} style={[styles.challengeBar, index < challenge.progress && challenge.joined && styles.challengeBarDone]} />
-                        ))}
+                    <Text style={styles.challengeSmall}>{challenge ? `챌린지 · ${challenge.participant_count.toLocaleString()}명 참여` : '챌린지'}</Text>
+                    <Text style={[styles.challengeTitle, simple && simpleStyles.challengeTitle]}>{challenge?.title ?? '함께 목표에 도전해 보세요'}</Text>
+                    {challenge ? (
+                      <View style={styles.challengeLine}>
+                        {challenge.goal <= 7 ? (
+                          <View accessibilityLabel={`${challenge.goal} 가운데 ${challenge.joined ? challenge.progress : 0}`} accessible style={styles.challengeDays}>
+                            {Array.from({ length: challenge.goal }, (_, index) => (
+                              <View key={index} style={[styles.challengeDay, index < challenge.progress && challenge.joined && styles.challengeDayDone]} />
+                            ))}
+                          </View>
+                        ) : null}
+                        <Text style={styles.challengeSmall}>{challengeSummary(challenge)}</Text>
                       </View>
                     ) : null}
-                    <Text style={[styles.challengeDescription, isDark && dark.secondary]}>{challenge ? challengeSummary(challenge) : '함께 운동하며 목표에 도전해 보세요'}</Text>
                   </View>
-                  <View style={[styles.challengeAction, isDark && dark.card]}>
-                    <Text style={[styles.challengeActionText, isDark && dark.text]}>{challenge?.joined ? '참여 중' : challenge ? '참여하기' : '보기'}</Text>
+                  <View style={styles.challengeAction}>
+                    <Text style={styles.challengeActionText}>{challenge?.joined ? '참여 중' : challenge ? '참여하기' : '보기'}</Text>
                   </View>
                 </Pressable>
               </View>
@@ -321,7 +331,7 @@ export default function CommunityScreen() {
             />
           }
           renderItem={({ item }) => (
-            <View style={[styles.postWrap, isDark && dark.card]}><CommunityPostCard
+            <View style={styles.postWrap}><CommunityPostCard
               onAuthorPress={openProfile}
               onLike={() => void actions.toggleLike(item)}
               onMore={() => actions.openPostMenu(item)}
@@ -340,7 +350,8 @@ export default function CommunityScreen() {
           onPress={() => router.push('/community/compose')}
           style={({ pressed }) => [styles.compose, { bottom: bottomSpace + 16 }, pressed && styles.composePressed]}
         >
-          <Text style={styles.composeText}>+ 글쓰기</Text>
+          <PlusIcon color={colors.onPrimary} height={18} width={18} />
+          <Text style={styles.composeText}>글쓰기</Text>
         </Pressable>
       )}
       {actions.elements}
@@ -349,47 +360,46 @@ export default function CommunityScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
-  // Renewal A: the bar (back, name, search, bell), the three tabs on their ledges, small chips for the
-  // kinds of post, and each post an outlined card with room round it.
+  // Renewal B (b-community.html): the name and two round buttons, the headline, 추천 · 팔로잉 · 클럽 as one
+  // light segment, the kinds as chips, the challenge as a white card with a circle a day, then the posts.
   const a = aForm(colors);
-  const tile = { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderWidth: 1, justifyContent: 'center' } as const;
   return {
     root: { backgroundColor: colors.background, flex: 1 },
-    header: { alignItems: 'center', backgroundColor: colors.background, flexDirection: 'row', gap: 10, paddingBottom: 4, paddingHorizontal: 16 },
-    title: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
-    headerActions: { flexDirection: 'row', gap: 8 },
-    headerCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 14, borderWidth: 1, },
-    // 4 taller than its buttons: the ledge they stand on.
-    tabs: { backgroundColor: colors.background, flexDirection: 'row', gap: 6, paddingBottom: 4, paddingHorizontal: 16, paddingTop: 14 },
-    tab: a.seg,
-    tabActive: a.segOn,
-    tabText: a.segText,
-    tabTextActive: a.onText,
+    header: { backgroundColor: colors.background, gap: 16, paddingBottom: 4, paddingHorizontal: 20 },
+    top: { alignItems: 'center', flexDirection: 'row', minHeight: 40 },
+    title: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 16, lineHeight: 22 },
+    headerActions: { flexDirection: 'row', gap: 6 },
+    headerCard: { backgroundColor: colors.surface, borderRadius: 20 },
+    tabs: { backgroundColor: colors.surface, borderRadius: 999, flexDirection: 'row', padding: 4 },
+    tab: { alignItems: 'center', borderRadius: 999, flex: 1, height: 40, justifyContent: 'center' },
+    tabActive: { backgroundColor: colors.primary },
+    tabText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold, fontSize: 14, lineHeight: 20 },
+    tabTextActive: { color: colors.onPrimary },
     list: { flexGrow: 1 },
-    feedHeader: { backgroundColor: colors.background, gap: 12, paddingTop: 12 },
-    categories: { gap: 6, paddingBottom: 3, paddingHorizontal: 16 },
-    categoryChip: a.mini,
+    feedHeader: { gap: 14, paddingTop: 12 },
+    categories: { gap: 6, paddingHorizontal: 20 },
+    categoryChip: { ...a.chip, backgroundColor: colors.surface, height: 38, paddingHorizontal: 14 },
     categoryActive: a.on,
-    categoryText: a.miniText,
+    categoryText: a.chipText,
     categoryTextActive: a.onText,
-    challengeCard: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 12, marginHorizontal: 16, padding: 12 },
-    challengeIcon: { ...tile, borderRadius: 12, height: 44, width: 44 },
-    challengeCopy: { flex: 1, gap: 4 },
-    challengeTitle: { ...a.p15, color: colors.ink },
-    challengeBars: { flexDirection: 'row', gap: 3 },
-    challengeBar: { backgroundColor: colors.track, borderColor: 'rgba(32, 35, 63, 0.25)', borderWidth: 1, height: 8, width: 8 },
-    challengeBarDone: { backgroundColor: colors.primary, borderColor: colors.border },
-    challengeDescription: a.note,
+    challengeCard: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 12, marginHorizontal: 20, paddingHorizontal: 20, paddingVertical: 18 },
+    challengeCopy: { flex: 1, gap: 2, minWidth: 0 },
+    challengeSmall: { ...a.p12, color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular },
+    challengeTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 16, lineHeight: 22, marginBottom: 6 },
+    challengeLine: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+    challengeDays: { flexDirection: 'row', gap: 5 },
+    challengeDay: { backgroundColor: colors.surfaceMuted, borderRadius: 5, height: 10, width: 10 },
+    challengeDayDone: { backgroundColor: colors.textPrimary },
     challengeAction: a.mini,
     challengeActionText: a.miniText,
-    postWrap: { marginHorizontal: 16, marginTop: 12 },
+    postWrap: { marginHorizontal: 20, marginTop: 14 },
     center: { flex: 1, justifyContent: 'center' },
-    message: { alignItems: 'center', gap: 8, padding: 32 },
-    emptyTitle: { ...a.p15, color: colors.ink, textAlign: 'center' },
-    messageText: { ...a.note, textAlign: 'center' },
+    message: { alignItems: 'center', gap: 6, padding: 32 },
+    emptyTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 22, textAlign: 'center' },
+    messageText: { color: colors.textSecondary, fontSize: 13.5, lineHeight: 21, textAlign: 'center' },
     footer: { paddingVertical: 16 },
-    compose: { ...a.go, height: 50, paddingHorizontal: 16, position: 'absolute', right: 16 },
-    composeText: a.goText,
+    compose: { ...a.go, boxShadow: '0 6px 18px rgba(1,1,1,0.22)', gap: 6, height: 50, paddingLeft: 16, paddingRight: 20, position: 'absolute', right: 20 },
+    composeText: { ...a.goText, fontSize: 14.5 },
     composePressed: a.goPressed,
   } as const;
 }
@@ -397,7 +407,7 @@ function createStyles({ colors }: AppTheme) {
 function createSimpleStylesStyles({ colors }: AppTheme) {
   return {
     title: {},
-    readRow: { alignItems: 'center', backgroundColor: colors.background, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 8 },
+    readRow: { alignItems: 'center', backgroundColor: colors.background, flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
     readHint: { color: colors.textSecondary, flex: 1 },
     tab: { minHeight: 52 },
     tabText: {},
@@ -407,10 +417,3 @@ function createSimpleStylesStyles({ colors }: AppTheme) {
     challengeTitle: {},
   } as const;
 }
-
-const dark = StyleSheet.create({
-  root: { backgroundColor: darkColors.background },
-  card: { backgroundColor: darkColors.surface, borderColor: darkColors.border },
-  text: { color: darkColors.textPrimary },
-  secondary: { color: darkColors.textSecondary },
-});
