@@ -64,7 +64,7 @@ function createStyles({ colors }: AppTheme) {
     body: { gap: 12, paddingHorizontal: 16, paddingTop: 12 },
     note: a.note,
     card: { ...a.card, alignItems: 'center', flexDirection: 'row', padding: 14 },
-    pressed: { boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)', transform: [{ translateY: 4 }] },
+    pressed: { transform: [{ translateY: 4 }] },
     cardBody: { flex: 1, gap: 2 },
     title: { ...a.p15, color: colors.ink },
     description: a.note,

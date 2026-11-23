@@ -529,7 +529,7 @@ export function ReportDetailView({ who, tierIndex, name, count, tier, sheet, onB
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   const flat = '0 0 0 rgba(32, 35, 63, 0.3)';
-  const outline = { borderColor: colors.ink, borderWidth: 2 } as const;
+  const outline = { borderColor: colors.border, borderWidth: 1 } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     content: { flexGrow: 1, gap: 12, paddingHorizontal: 16, paddingTop: 4 },
@@ -641,10 +641,10 @@ function createStyles({ colors }: AppTheme) {
     dots: { flexDirection: 'row', gap: 6, marginTop: 10 },
     dotsDay: { alignItems: 'center', flex: 1, gap: 3 },
     box: { ...outline, alignItems: 'center', alignSelf: 'stretch', backgroundColor: colors.track, borderColor: colors.textDisabled, borderRadius: 10, height: 38, justifyContent: 'center' },
-    boxIn: { backgroundColor: colors.ink, borderColor: colors.ink },
+    boxIn: { backgroundColor: colors.ink, borderColor: colors.border },
     boxInText: { color: '#FFFFFF' },
-    boxOver: { backgroundColor: colors.surface, borderColor: colors.ink, borderStyle: 'dashed' },
-    boxNow: { backgroundColor: colors.primaryLight, borderColor: colors.ink },
+    boxOver: { backgroundColor: colors.surface, borderColor: colors.border, borderStyle: 'dashed' },
+    boxNow: { backgroundColor: colors.primaryLight, borderColor: colors.border },
     opts: { gap: 8 },
     opt: { ...outline, backgroundColor: colors.surface, borderRadius: 12, justifyContent: 'center', minHeight: 48, paddingHorizontal: 14 },
     send: { alignItems: 'center', flexDirection: 'row', gap: 8, marginTop: 12 },

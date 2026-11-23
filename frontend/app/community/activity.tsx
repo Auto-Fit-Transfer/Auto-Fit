@@ -204,7 +204,7 @@ function createStyles({ colors }: AppTheme) {
     listTitle: { ...a.p15, color: colors.ink },
     sort: a.note,
     spinner: { marginVertical: 30 },
-    errorBox: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, marginVertical: 16, padding: 14 },
+    errorBox: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, marginVertical: 16, padding: 14 },
     error: { ...a.p12, color: colors.danger },
     empty: { alignItems: 'center', gap: 12, paddingVertical: 48 },
     emptyTitle: { ...a.p15, color: colors.textBody },
@@ -217,6 +217,6 @@ function createStyles({ colors }: AppTheme) {
     reactions: { alignItems: 'center', flexDirection: 'row', gap: 4 },
     postPreview: a.note,
     meta: a.note,
-    thumbnail: { backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, height: 72, width: 72 },
+    thumbnail: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 72, width: 72 },
   } as const;
 }

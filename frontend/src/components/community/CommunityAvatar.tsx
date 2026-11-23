@@ -30,11 +30,11 @@ function createStyles({ colors }: AppTheme) {
     fallback: {
       alignItems: 'center',
       backgroundColor: colors.primaryLight,
-      borderColor: colors.ink,
-      borderWidth: 2,
+      borderColor: colors.border,
+      borderWidth: 1,
       justifyContent: 'center',
     },
-    image: { backgroundColor: colors.track, borderColor: colors.ink, borderWidth: 2 },
+    image: { backgroundColor: colors.track, borderColor: colors.border, borderWidth: 1 },
     initial: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold },
   } as const;
 }

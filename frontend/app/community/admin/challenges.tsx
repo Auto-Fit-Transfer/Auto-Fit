@@ -110,7 +110,7 @@ function createStyles({ colors }: AppTheme) {
     header: { padding: 16, paddingBottom: 8 },
     empty: { ...a.p15, color: colors.textBody, padding: 20, textAlign: 'center' },
     card: { ...a.card, gap: 4, marginHorizontal: 16, marginTop: 12, padding: 14 },
-    pressed: { boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)', transform: [{ translateY: 4 }] },
+    pressed: { transform: [{ translateY: 4 }] },
     titleRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
     title: { ...a.p15, color: colors.ink, flex: 1 },
     badge: { ...a.p12, backgroundColor: colors.primaryLight, borderRadius: 6, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6 },

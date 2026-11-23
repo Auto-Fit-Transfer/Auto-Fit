@@ -133,7 +133,7 @@ function createStyles({ colors }: AppTheme) {
     chipText: a.segText,
     on: a.on,
     onText: a.onText,
-    care: { alignItems: 'center', backgroundColor: colors.warningLight, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
+    care: { alignItems: 'center', backgroundColor: colors.warningLight, borderColor: colors.border, borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10 },
     careText: { ...a.p12, color: colors.ink, flex: 1 },
     error: { ...a.p12, color: colors.danger },
     go: { ...a.go, height: 52 },

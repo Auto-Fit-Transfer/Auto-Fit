@@ -293,24 +293,23 @@ export function ToneSheet<Id extends string>({
 
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
-  const bubble = { borderColor: colors.ink, borderRadius: 14, borderWidth: 2, paddingHorizontal: 13, paddingVertical: 8 } as const;
+  const bubble = { borderColor: colors.border, borderRadius: 14, borderWidth: 1, paddingHorizontal: 13, paddingVertical: 8 } as const;
   // The small corner that makes a box something said: a square turned on its point, two of its sides drawn.
-  const tail = { backgroundColor: colors.surface, borderColor: colors.ink, height: 10, position: 'absolute', transform: [{ rotate: '45deg' }], width: 10 } as const;
+  const tail = { backgroundColor: colors.surface, borderColor: colors.border, height: 10, position: 'absolute', transform: [{ rotate: '45deg' }], width: 10 } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, paddingHorizontal: 16, width: '100%' },
     bar: { alignItems: 'center', flexDirection: 'row', gap: 10, height: 52 },
     back: {
       alignItems: 'center',
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
-      boxShadow: `0 4px 0 ${colors.ink}`,
+      borderWidth: 1,
       height: 44,
       justifyContent: 'center',
       width: 44,
     },
-    backPressed: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 4 }] },
+    backPressed: { transform: [{ translateY: 4 }] },
     title: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
     mini: a.mini,
     miniText: a.miniText,
@@ -323,7 +322,7 @@ function createStyles({ colors }: AppTheme) {
     stand: { alignItems: 'center' },
     shadow: { backgroundColor: 'rgba(32, 35, 63, 0.16)', borderRadius: 99, height: 10, marginTop: -6, width: 100, zIndex: -1 },
     asks: { gap: 6 },
-    ask: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, paddingHorizontal: 14, paddingVertical: 12 },
+    ask: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12 },
     askPressed: { backgroundColor: colors.primaryLight },
     // ---- the talk: the newest line sits just above the field, older ones go up and out under the line ----
     talkBox: { borderTopColor: colors.track, borderTopWidth: 2, flex: 1, marginTop: 10 },
@@ -334,9 +333,9 @@ function createStyles({ colors }: AppTheme) {
     face: {
       alignItems: 'center',
       backgroundColor: colors.primaryLight,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 11,
-      borderWidth: 2,
+      borderWidth: 1,
       height: 40,
       justifyContent: 'center',
       width: 40,
@@ -366,9 +365,9 @@ function createStyles({ colors }: AppTheme) {
     tones: { gap: 8, paddingBottom: 24, paddingHorizontal: 16, paddingTop: 0 },
     tone: {
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 12,
-      borderWidth: 2,
+      borderWidth: 1,
       gap: 2,
       paddingHorizontal: 12,
       paddingVertical: 10,

@@ -113,7 +113,7 @@ export default function WeeklyRecipeScreen() {
 
 function createSStyles({ colors }: AppTheme) {
   const a = aForm(colors);
-  const tag = { ...a.p12, borderColor: colors.ink, borderRadius: 8, borderWidth: 2, color: colors.ink, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 } as const;
+  const tag = { ...a.p12, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.ink, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     content: { gap: 12, paddingHorizontal: 16 },
@@ -132,12 +132,12 @@ function createSStyles({ colors }: AppTheme) {
     servingButton: { ...a.mini, paddingHorizontal: 0, width: 32 },
     off: { opacity: 0.35 },
     card: { ...a.card, gap: 10, paddingHorizontal: 14, paddingVertical: 14 },
-    notice: { backgroundColor: colors.warningLight, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, gap: 6, paddingHorizontal: 12, paddingVertical: 10 },
+    notice: { backgroundColor: colors.warningLight, borderColor: colors.border, borderRadius: 14, borderWidth: 1, gap: 6, paddingHorizontal: 12, paddingVertical: 10 },
     // a clash with what I cannot eat: dark letters on the soft ground, not red
-    warning: { ...a.p12, alignSelf: 'flex-start', backgroundColor: colors.warningLight, borderColor: colors.ink, borderRadius: 8, borderWidth: 2, color: colors.ink, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 },
+    warning: { ...a.p12, alignSelf: 'flex-start', backgroundColor: colors.warningLight, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.ink, overflow: 'hidden', paddingHorizontal: 7, paddingVertical: 2 },
     ingredient: { flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
     step: { flexDirection: 'row', gap: 12 },
-    stepIndex: { ...a.p12, backgroundColor: colors.primary, borderColor: colors.ink, borderRadius: 9, borderWidth: 2, color: colors.onPrimary, height: 28, lineHeight: 24, overflow: 'hidden', textAlign: 'center', width: 28 },
+    stepIndex: { ...a.p12, backgroundColor: colors.primary, borderColor: colors.border, borderRadius: 9, borderWidth: 1, color: colors.onPrimary, height: 28, lineHeight: 24, overflow: 'hidden', textAlign: 'center', width: 28 },
     stepCopy: { flex: 1, gap: 4 },
     tip: { ...a.p12, backgroundColor: colors.surfaceMuted, borderRadius: 10, color: colors.ink, overflow: 'hidden', padding: 10 },
     related: { ...a.card, gap: 3, paddingHorizontal: 14, paddingVertical: 12 },

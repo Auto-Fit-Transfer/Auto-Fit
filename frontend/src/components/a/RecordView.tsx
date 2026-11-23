@@ -247,7 +247,7 @@ function createStyles({ colors }: AppTheme) {
     seg: { flexDirection: 'row', gap: 6 },
     segWide: { marginTop: 12 },
     // not a.seg: its flex would squeeze the two short ones (flex 0 collapses a button on the web)
-    segItem: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)', height: 38, justifyContent: 'center', paddingHorizontal: 14 },
+    segItem: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 38, justifyContent: 'center', paddingHorizontal: 14 },
     segItemWide: { flex: 1, paddingHorizontal: 4 },
     segText: { ...a.p12, color: colors.ink },
     on: a.segOn,
@@ -268,7 +268,7 @@ function createStyles({ colors }: AppTheme) {
     plot: { borderBottomColor: colors.ink, borderBottomWidth: 2, flexDirection: 'row', height: PLOT + 22 },
     col: { alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
     n: { ...a.p12, color: colors.ink, marginBottom: 2 },
-    bar: { backgroundColor: colors.primary, borderColor: colors.ink, borderBottomWidth: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, borderWidth: 2, width: 22 },
+    bar: { backgroundColor: colors.primary, borderColor: colors.border, borderBottomWidth: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, borderWidth: 1, width: 22 },
     barOff: { backgroundColor: colors.primaryLight },
     gline: { height: 2, left: 0, position: 'absolute', right: 0 },
     gtag: { ...a.p12, backgroundColor: colors.surface, bottom: 3, color: colors.textSecondary, paddingHorizontal: 3, position: 'absolute', right: 0 },
@@ -285,7 +285,7 @@ function createStyles({ colors }: AppTheme) {
     list: { paddingVertical: 2 },
     row: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 60, paddingVertical: 8 },
     rowLine: { borderTopColor: colors.track, borderTopWidth: 2 },
-    stop: { ...a.p12, borderColor: colors.ink, borderRadius: 8, borderWidth: 2, color: colors.ink, paddingHorizontal: 6 },
+    stop: { ...a.p12, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.ink, paddingHorizontal: 6 },
     none: { paddingVertical: 24, textAlign: 'center' },
 
     sheet: { gap: 14, paddingBottom: 8 },

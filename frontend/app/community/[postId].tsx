@@ -312,9 +312,9 @@ function createStyles({ colors }: AppTheme) {
     input: {
       ...a.input,
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 12,
-      borderWidth: 2,
+      borderWidth: 1,
       flex: 1,
       maxHeight: 110,
       minHeight: 46,

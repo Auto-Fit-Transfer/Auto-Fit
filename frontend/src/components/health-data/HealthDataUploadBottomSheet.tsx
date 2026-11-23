@@ -105,9 +105,9 @@ function createStyles({ colors }: AppTheme) {
     description: { ...a.p15, color: colors.textBody, marginBottom: 4, marginHorizontal: 4 },
     option: {
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
+      borderWidth: 1,
       gap: 3,
       justifyContent: 'center',
       minHeight: 62,

@@ -124,7 +124,7 @@ function createSStyles({ colors }: AppTheme) {
     cardTitle: { ...a.p15, color: colors.ink },
     body: { ...a.p15, color: colors.ink },
     mini: a.mini,
-    miniPressed: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 3 }] },
+    miniPressed: { transform: [{ translateY: 3 }] },
     miniText: a.miniText,
     primary: { ...a.go, height: 52, marginTop: 4 },
     primaryPressed: a.goPressed,

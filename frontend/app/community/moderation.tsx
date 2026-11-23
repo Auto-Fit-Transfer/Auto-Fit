@@ -277,7 +277,7 @@ function createStyles({ colors }: AppTheme) {
     link: { ...a.link, marginRight: 'auto' },
     button: a.mini,
     buttonDanger: {},
-    pressed: { boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)', transform: [{ translateY: 3 }] },
+    pressed: { transform: [{ translateY: 3 }] },
     buttonText: a.miniText,
     buttonTextDanger: { color: colors.danger },
     message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },

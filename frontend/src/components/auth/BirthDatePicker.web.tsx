@@ -107,9 +107,9 @@ function BirthDateDialog({
 function createStyles({ colors }: AppTheme) {
   const box = {
     backgroundColor: colors.surface,
-    borderColor: colors.ink,
+    borderColor: colors.border,
     borderRadius: 12,
-    borderWidth: 2,
+    borderWidth: 1,
     color: colors.ink,
     fontFamily: fontFamilies.galmuri11Bold,
     fontSize: 24,
@@ -128,10 +128,9 @@ function createStyles({ colors }: AppTheme) {
     },
     dialog: {
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 22,
-      borderWidth: 2,
-      boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)',
+      borderWidth: 1,
       gap: 16,
       padding: 20,
       width: 300,

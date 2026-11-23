@@ -417,14 +417,14 @@ export function DietView(props: R6DietHomeProps & {
 function createStyles({ colors }: AppTheme) {
   const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
   const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
-  const ledge = `0 4px 0 ${colors.ink}`;
-  const soft = '0 4px 0 rgba(32, 35, 63, 0.3)';
-  const outline = { backgroundColor: colors.surface, borderColor: colors.ink, borderWidth: 2 } as const;
+  const ledge = '0 0 0 transparent'; // renewal B: no ledges
+  const soft = '0 0 0 transparent'; // renewal B: no ledges
+  const outline = { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 } as const;
   return {
     root: { backgroundColor: colors.background, flex: 1 },
     content: { gap: 14, paddingHorizontal: 16 },
-    pressed: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 4 }] },
-    pressedSoft: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 3 }] },
+    pressed: { transform: [{ translateY: 4 }] },
+    pressedSoft: { transform: [{ translateY: 3 }] },
     off: { opacity: 0.4 },
     small: { ...p12, color: colors.textSecondary },
     body: { ...p15, color: colors.ink },
@@ -437,7 +437,7 @@ function createStyles({ colors }: AppTheme) {
     heading: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
     mains: { alignItems: 'center', flexDirection: 'row', gap: 4 },
     mainsLabel: { color: colors.textSecondary, fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17, marginRight: 2 },
-    pip: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 4, borderWidth: 2, height: 14, width: 14 },
+    pip: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 4, borderWidth: 1, height: 14, width: 14 },
     pipOn: { backgroundColor: colors.primary },
     over: { borderTopColor: colors.track, borderTopWidth: 2, paddingTop: 10 },
     grow: { flex: 1, minWidth: 0 },
@@ -445,7 +445,7 @@ function createStyles({ colors }: AppTheme) {
     col: { alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
     // the number sits over the goal line on a white ground, as in the prototype
     n: { ...p12, backgroundColor: colors.surface, color: colors.ink, fontSize: 11, marginBottom: 2, paddingHorizontal: 2, zIndex: 1 },
-    weekBar: { backgroundColor: colors.primaryLight, borderColor: colors.ink, borderBottomWidth: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, borderWidth: 2, width: 20 },
+    weekBar: { backgroundColor: colors.primaryLight, borderColor: colors.border, borderBottomWidth: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, borderWidth: 1, width: 20 },
     // the day on show is violet, like the chosen date above
     weekBarOn: { backgroundColor: colors.primary },
     gline: { height: 2, left: 0, position: 'absolute', right: 0 },
@@ -456,9 +456,9 @@ function createStyles({ colors }: AppTheme) {
     face: {
       alignItems: 'center',
       backgroundColor: colors.primaryLight,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 11,
-      borderWidth: 2,
+      borderWidth: 1,
       height: 40,
       justifyContent: 'center',
       width: 40,
@@ -467,9 +467,9 @@ function createStyles({ colors }: AppTheme) {
 
     week: { alignItems: 'center', flexDirection: 'row', gap: 6 },
     weekArrow: { alignItems: 'center', alignSelf: 'stretch', justifyContent: 'center', width: 22 },
-    day: { ...outline, alignItems: 'center', borderRadius: 12, boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)', flex: 1, paddingVertical: 5 },
+    day: { ...outline, alignItems: 'center', borderRadius: 12, flex: 1, paddingVertical: 5 },
     // The day I am looking at is violet; today's number is in the accent colour until it is chosen.
-    dayOn: { backgroundColor: colors.primary, boxShadow: `0 3px 0 ${colors.ink}` },
+    dayOn: { backgroundColor: colors.primary, },
     // On violet the grey weekday would be hard to read.
     dayOnText: { color: colors.onPrimary },
     todayText: { color: colors.primaryText },
@@ -477,31 +477,31 @@ function createStyles({ colors }: AppTheme) {
     card: { ...outline, borderRadius: 18, boxShadow: soft, gap: 10, padding: 14 },
     big: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 40 },
     title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
-    line: { backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 99, borderWidth: 2, height: 16, overflow: 'hidden' },
+    line: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 99, borderWidth: 1, height: 16, overflow: 'hidden' },
     // What the app has planned sits behind what I ate, in the pale violet.
     linePlan: { backgroundColor: colors.primaryLight, bottom: 0, left: 0, position: 'absolute', top: 0 },
     lineAte: { backgroundColor: colors.primary, bottom: 0, left: 0, position: 'absolute', top: 0 },
     macros: { borderTopColor: colors.surfaceMuted, borderTopWidth: 2, flexDirection: 'row', gap: 14, paddingTop: 10 },
     macro: { flex: 1, gap: 2, minWidth: 0 },
 
-    mini: { ...outline, borderRadius: 10, boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)', height: 32, justifyContent: 'center', paddingHorizontal: 10 },
-    miniMain: { backgroundColor: colors.primary, boxShadow: `0 3px 0 ${colors.ink}` },
+    mini: { ...outline, borderRadius: 10, height: 32, justifyContent: 'center', paddingHorizontal: 10 },
+    miniMain: { backgroundColor: colors.primary, },
     miniText: { color: colors.ink },
     mealLine: { borderTopColor: colors.track, borderTopWidth: 2 },
     meal: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 48, paddingVertical: 10 },
     slot: { width: 28 },
     mealName: { flex: 1 },
     mealOpen: { gap: 8, paddingBottom: 12, paddingLeft: 38 },
-    photo: { borderColor: colors.ink, borderRadius: 12, borderWidth: 2, height: 120, width: '100%' },
+    photo: { borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 120, width: '100%' },
     blocked: { ...p12, color: colors.danger },
     actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 3 },
 
     go: {
       alignItems: 'center',
       backgroundColor: colors.primary,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
+      borderWidth: 1,
       boxShadow: ledge,
       height: 52,
       justifyContent: 'center',

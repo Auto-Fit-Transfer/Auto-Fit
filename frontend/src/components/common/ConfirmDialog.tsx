@@ -46,9 +46,9 @@ function createStyles({ colors }: AppTheme) {
   // Renewal A: a card with the dark outline, and two buttons on their ledges.
   const button = {
     alignItems: 'center',
-    borderColor: colors.ink,
+    borderColor: colors.border,
     borderRadius: 14,
-    borderWidth: 2,
+    borderWidth: 1,
     flex: 1,
     height: 46,
     justifyContent: 'center',
@@ -64,10 +64,9 @@ function createStyles({ colors }: AppTheme) {
     },
     dialog: {
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 22,
-      borderWidth: 2,
-      boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)',
+      borderWidth: 1,
       maxWidth: 360,
       paddingBottom: 26,
       paddingHorizontal: 20,
@@ -77,10 +76,10 @@ function createStyles({ colors }: AppTheme) {
     title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28, textAlign: 'center' },
     description: { ...label, color: colors.textBody, marginTop: 8, textAlign: 'center' },
     actions: { flexDirection: 'row', gap: 8, marginTop: 18 },
-    secondary: { ...button, backgroundColor: colors.surface, boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)' },
+    secondary: { ...button, backgroundColor: colors.surface, },
     busy: { opacity: 0.4 },
     secondaryLabel: label,
-    primary: { ...button, backgroundColor: colors.primary, boxShadow: `0 4px 0 ${colors.ink}` },
+    primary: { ...button, backgroundColor: colors.primary, },
     primaryLabel: { ...label, color: colors.onPrimary },
   } as const;
 }

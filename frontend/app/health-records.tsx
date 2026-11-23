@@ -236,21 +236,21 @@ function createStyles({ colors }: AppTheme) {
   // Renewal A: one dark outline on every piece, a ledge under what can be pressed, pixel letters.
   const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
   const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
-  const outline = { backgroundColor: colors.surface, borderColor: colors.ink, borderWidth: 2 } as const;
-  const soft = '0 4px 0 rgba(32, 35, 63, 0.3)';
+  const outline = { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 } as const;
+  const soft = '0 0 0 transparent'; // renewal B: no ledges
   return {
     screen: { flex: 1, backgroundColor: colors.background },
     content: { paddingHorizontal: 16, paddingTop: 8, gap: 14 },
     tabs: { flexDirection: 'row', gap: 6 },
     tab: { ...outline, alignItems: 'center', borderRadius: 14, boxShadow: soft, flex: 1, height: 46, justifyContent: 'center' },
     // The kind I am on is violet, with the full dark ledge.
-    activeTab: { backgroundColor: colors.primary, boxShadow: `0 4px 0 ${colors.ink}` },
+    activeTab: { backgroundColor: colors.primary, },
     tabText: { ...p15, color: colors.ink },
     activeTabText: { color: colors.onPrimary },
     metricScroll: { flexGrow: 0, marginHorizontal: -16 },
     metricRow: { gap: 8, paddingBottom: 4, paddingHorizontal: 16 },
     metricChip: { ...outline, alignItems: 'center', borderRadius: 12, height: 40, justifyContent: 'center', paddingHorizontal: 14 },
-    selectedChip: { backgroundColor: colors.primary, borderColor: colors.ink },
+    selectedChip: { backgroundColor: colors.primary, borderColor: colors.border },
     metricText: { ...p15, color: colors.ink },
     selectedMetricText: { color: colors.onPrimary },
     spinner: { marginVertical: 40 },
@@ -259,7 +259,7 @@ function createStyles({ colors }: AppTheme) {
     empty: { alignItems: 'center', gap: 10, paddingVertical: 48 },
     emptyTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28, textAlign: 'center' },
     note: { ...p12, color: colors.textSecondary },
-    upload: { ...outline, borderRadius: 10, boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)', marginTop: 8, minHeight: 40, justifyContent: 'center', paddingHorizontal: 14 },
+    upload: { ...outline, borderRadius: 10, marginTop: 8, minHeight: 40, justifyContent: 'center', paddingHorizontal: 14 },
     uploadText: { ...p15, color: colors.ink },
     chartCard: { ...outline, alignItems: 'center', borderRadius: 18, boxShadow: soft, padding: 16 },
     chartHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
@@ -269,7 +269,7 @@ function createStyles({ colors }: AppTheme) {
     value: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 40 },
     unit: { ...p12, color: colors.textSecondary },
     // What changed since the last record is points gained, so it wears gold.
-    delta: { ...p12, backgroundColor: colors.gold, borderColor: colors.ink, borderRadius: 99, borderWidth: 2, color: '#2B2000', overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 3 },
+    delta: { ...p12, backgroundColor: colors.gold, borderColor: colors.border, borderRadius: 99, borderWidth: 1, color: '#2B2000', overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 3 },
     sectionTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28, marginTop: 4 },
     records: { ...outline, borderRadius: 18, boxShadow: soft, paddingHorizontal: 14 },
     record: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 52 },

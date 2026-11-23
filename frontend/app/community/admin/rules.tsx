@@ -242,7 +242,7 @@ function createStyles({ colors }: AppTheme) {
     provisional: { ...a.p12, backgroundColor: colors.warningLight, borderRadius: 6, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6 },
     ruleNote: a.note,
     label: { ...a.q, marginBottom: 0, marginTop: 6 },
-    input: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, minHeight: 48, paddingHorizontal: 12, paddingVertical: 10 },
+    input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, minHeight: 48, paddingHorizontal: 12, paddingVertical: 10 },
     switchRow: { alignItems: 'center', flexDirection: 'row', gap: 12, marginTop: 4 },
     switchLabel: { ...a.p12, color: colors.textBody, flex: 1 },
   } as const;

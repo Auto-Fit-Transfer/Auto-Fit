@@ -113,9 +113,9 @@ function createStyles({ colors }: AppTheme) {
     mapFailed: {
       alignItems: 'center',
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 12,
-      borderWidth: 2,
+      borderWidth: 1,
       bottom: 10,
       flexDirection: 'row',
       gap: 8,

@@ -108,9 +108,9 @@ function createStyles({ colors }: AppTheme) {
     field: {
       alignItems: 'center',
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 12,
-      borderWidth: 2,
+      borderWidth: 1,
       flexDirection: 'row',
       gap: 8,
       height: 48,

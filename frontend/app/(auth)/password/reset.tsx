@@ -125,9 +125,9 @@ function createStyles({ colors }: AppTheme) {
     conditionRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
     conditionBox: {
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 4,
-      borderWidth: 2,
+      borderWidth: 1,
       height: 12,
       width: 12,
     },

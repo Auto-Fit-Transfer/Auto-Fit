@@ -179,7 +179,7 @@ function createStyles({ colors }: AppTheme) {
     preview: { ...a.p12, color: colors.textBody },
     previewUnread: { color: colors.ink },
     // unread count: violet with the dark outline, not red
-    badge: { alignItems: 'center', backgroundColor: colors.primary, borderColor: colors.ink, borderRadius: radius.round, borderWidth: 2, minWidth: 22, paddingHorizontal: 6 },
+    badge: { alignItems: 'center', backgroundColor: colors.primary, borderColor: colors.border, borderRadius: radius.round, borderWidth: 1, minWidth: 22, paddingHorizontal: 6 },
     badgeText: { ...a.p12, color: colors.onPrimary },
   } as const;
 }

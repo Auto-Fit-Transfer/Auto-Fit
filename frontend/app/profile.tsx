@@ -272,7 +272,7 @@ function createStyles({ colors }: AppTheme) {
     field: { gap: 8 },
     label: { ...a.q, marginBottom: 0 },
     optional: { color: colors.textSecondary },
-    input: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, justifyContent: 'center', minHeight: 48, paddingHorizontal: 12 },
+    input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, justifyContent: 'center', minHeight: 48, paddingHorizontal: 12 },
     dateInput: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
     inputText: { ...a.p15, color: colors.ink },
     helper: a.note,
@@ -291,7 +291,7 @@ function createStyles({ colors }: AppTheme) {
     retryText: a.link,
     footer: { backgroundColor: colors.background, paddingHorizontal: 16, paddingTop: 12 },
     save: a.go,
-    saveDisabled: { ...a.goOff, boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)' },
+    saveDisabled: { ...a.goOff, },
     disabledText: { color: colors.textDisabled },
     saveText: a.goText,
   } as const;

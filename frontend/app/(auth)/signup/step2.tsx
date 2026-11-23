@@ -170,9 +170,9 @@ function createStyles({ colors }: AppTheme) {
     codeRow: { flexDirection: 'row', gap: 6 },
     codeInput: {
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 12,
-      borderWidth: 2,
+      borderWidth: 1,
       color: colors.ink,
       flex: 1,
       fontFamily: fontFamilies.galmuri11Bold,

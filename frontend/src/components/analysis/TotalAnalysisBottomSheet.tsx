@@ -422,9 +422,9 @@ function createStyles({ colors }: AppTheme) {
   // Renewal A: one dark outline on every piece, pixel letters, violet for what is mine.
   const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
   const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
-  const outline = { backgroundColor: colors.surface, borderColor: colors.ink, borderWidth: 2 } as const;
+  const outline = { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 } as const;
   return {
-    bottomSheet: { borderColor: colors.ink, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 2, overflow: 'hidden' },
+    bottomSheet: { borderColor: colors.border, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 2, overflow: 'hidden' },
     bottomSheetContent: { paddingBottom: 8, paddingHorizontal: 16, paddingTop: 16 },
     sheetContent: { gap: 14 },
     sheetContentWideGap: { gap: 20 },
@@ -441,11 +441,11 @@ function createStyles({ colors }: AppTheme) {
     metricName: { ...p15, color: colors.ink },
     metricValue: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
     metricDescription: { ...p12, alignSelf: 'stretch', color: colors.textBody },
-    statusBadge: { borderColor: colors.ink, borderRadius: 99, borderWidth: 2, paddingHorizontal: 8, paddingVertical: 1 },
+    statusBadge: { borderColor: colors.border, borderRadius: 99, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 1 },
     statusText: p12,
     statusBadgeLarge: { paddingHorizontal: 12, paddingVertical: 4 },
     statusTextLarge: p15,
-    summaryBox: { backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, gap: 6, padding: 12 },
+    summaryBox: { backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 14, borderWidth: 1, gap: 6, padding: 12 },
     summaryTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
     summaryBoxTitle: { ...p15, color: colors.ink },
     summaryBoxText: { ...p12, color: colors.textBody },
@@ -463,7 +463,7 @@ function createStyles({ colors }: AppTheme) {
     criteriaSection: { gap: 10 },
     sectionTitle: { ...p15, color: colors.ink },
     ruleRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-    smallIconCircle: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 10, borderWidth: 2, height: 32, justifyContent: 'center', width: 32 },
+    smallIconCircle: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 10, borderWidth: 1, height: 32, justifyContent: 'center', width: 32 },
     ruleText: { ...p12, color: colors.textBody, flex: 1 },
     rangeHelp: { ...p12, color: colors.textSecondary },
     rangeList: { gap: 8 },
@@ -474,7 +474,7 @@ function createStyles({ colors }: AppTheme) {
     rangeValue: { ...p12, color: colors.textBody, flex: 1, flexShrink: 1, paddingLeft: 10 },
     currentPill: { backgroundColor: colors.primary, borderRadius: 99, marginRight: 10, paddingHorizontal: 6, paddingVertical: 2 },
     currentPillText: { ...p12, color: colors.onPrimary },
-    referenceButton: { ...outline, alignItems: 'center', borderRadius: 12, boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)', flexDirection: 'row', height: 48, justifyContent: 'space-between', paddingHorizontal: 14 },
+    referenceButton: { ...outline, alignItems: 'center', borderRadius: 12, flexDirection: 'row', height: 48, justifyContent: 'space-between', paddingHorizontal: 14 },
     referenceButtonLeft: { alignItems: 'center', flexDirection: 'row', gap: 8 },
     referenceButtonText: { ...p15, color: colors.ink },
     referenceDetailCard: { ...outline, borderRadius: 14, overflow: 'hidden' },

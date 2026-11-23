@@ -161,10 +161,9 @@ function createStyles({ colors }: AppTheme) {
     backToLoginText: a.link,
     sentCard: {
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 18,
-      borderWidth: 2,
-      boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)',
+      borderWidth: 1,
       gap: 14,
       padding: 14,
     },

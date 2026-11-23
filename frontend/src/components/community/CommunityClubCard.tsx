@@ -54,8 +54,8 @@ function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     card: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 12, marginBottom: 12, marginHorizontal: 16, padding: 12 },
-    pressed: { boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)', transform: [{ translateY: 4 }] },
-    badge: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, height: 44, justifyContent: 'center', width: 44 },
+    pressed: { transform: [{ translateY: 4 }] },
+    badge: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
     badgeText: { ...a.p12, color: colors.ink, textAlign: 'center' },
     body: { flex: 1, gap: 2, minWidth: 0 },
     titleRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },

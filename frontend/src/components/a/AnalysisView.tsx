@@ -239,7 +239,7 @@ export function AnalysisView(props: AnalysisViewProps) {
 
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
-  const outline = { borderColor: colors.ink, borderWidth: 2 } as const;
+  const outline = { borderColor: colors.border, borderWidth: 1 } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     content: { gap: 12, paddingHorizontal: 16, paddingTop: 4 },
@@ -251,7 +251,7 @@ function createStyles({ colors }: AppTheme) {
     ink: { color: colors.ink },
     center: { textAlign: 'center' },
     eyebrow: { ...a.p12, color: colors.primaryText },
-    sunk: { boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)', transform: [{ translateY: 3 }] },
+    sunk: { transform: [{ translateY: 3 }] },
 
     ask: { alignItems: 'center', flexDirection: 'row', gap: 10 },
     face: { ...outline, alignItems: 'center', backgroundColor: colors.primaryLight, borderRadius: 11, height: 40, justifyContent: 'center', width: 40 },

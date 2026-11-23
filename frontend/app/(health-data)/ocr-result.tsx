@@ -918,7 +918,7 @@ function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     editRow: { alignItems: 'center', flexDirection: 'row', gap: 8, marginTop: 8 },
-    input: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri14, fontSize: 15, height: 48, paddingHorizontal: 12 },
+    input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri14, fontSize: 15, height: 48, paddingHorizontal: 12 },
     unit: { ...a.p12, color: colors.textSecondary },
   } as const;
 }

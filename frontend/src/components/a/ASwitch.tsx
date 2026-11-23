@@ -22,10 +22,10 @@ export function ASwitch({ label, value, disabled = false, onChange }: { label: s
 
 function createStyles({ colors }: AppTheme) {
   return {
-    track: { backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 99, borderWidth: 2, height: 28, width: 48 },
+    track: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 99, borderWidth: 1, height: 28, width: 48 },
     on: { backgroundColor: colors.primary },
     unavailable: { opacity: 0.5 },
-    knob: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 10, borderWidth: 2, height: 20, left: 2, position: 'absolute', top: 2, width: 20 },
+    knob: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, height: 20, left: 2, position: 'absolute', top: 2, width: 20 },
     knobOn: { left: 22 },
   } as const;
 }

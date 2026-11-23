@@ -193,10 +193,10 @@ function createStyles({ colors }: AppTheme) {
     top: { gap: 4 },
     title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 30 },
 
-    made: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, flexDirection: 'row', gap: 10, minHeight: 52, paddingHorizontal: 12, paddingVertical: 8 },
+    made: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 10, minHeight: 52, paddingHorizontal: 12, paddingVertical: 8 },
     madeText: { ...a.p12, color: colors.ink, flex: 1 },
     mini: a.mini,
-    miniPressed: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 3 }] },
+    miniPressed: { transform: [{ translateY: 3 }] },
     miniText: a.miniText,
 
     why: { ...a.card, gap: 6, paddingHorizontal: 14, paddingVertical: 12 },
@@ -205,7 +205,7 @@ function createStyles({ colors }: AppTheme) {
     block: { gap: 8, marginTop: 4 },
     day: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 10, paddingHorizontal: 14, paddingVertical: 10 },
     // the day I am looking at is violet, like every chosen thing
-    dayOn: { backgroundColor: colors.primaryLight, boxShadow: `0 4px 0 ${colors.ink}` },
+    dayOn: { backgroundColor: colors.primaryLight, },
     dayNote: { ...a.p12, color: colors.textBody },
     dayStatus: { ...a.p12, color: colors.ink },
 
@@ -216,7 +216,7 @@ function createStyles({ colors }: AppTheme) {
     moveHead: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 8 },
     more: { gap: 8, paddingBottom: 12 },
     // the clips are 16:9 on white; shown whole
-    demo: { aspectRatio: 16 / 9, backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, width: '100%' },
+    demo: { aspectRatio: 16 / 9, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, width: '100%' },
 
     // little to say: one bundle, a little above the middle
     empty: { alignItems: 'stretch', flex: 1, gap: 14, justifyContent: 'center', paddingBottom: 120, paddingHorizontal: 16 },

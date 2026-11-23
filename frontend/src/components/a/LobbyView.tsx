@@ -311,7 +311,7 @@ export function LobbyView({ name, who, tier, quests, bell, steps, onMe, onAsk, o
 function createStyles({ colors }: AppTheme) {
   const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
   const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
-  const ledge = `0 4px 0 ${colors.ink}`;
+  const ledge = '0 0 0 transparent'; // renewal B: no ledges
   return {
     // The asphalt carries on under the cards.
     root: { backgroundColor: '#6A6E7E', flex: 1, overflow: 'hidden' },
@@ -319,12 +319,11 @@ function createStyles({ colors }: AppTheme) {
     shadow: { backgroundColor: 'rgba(15, 14, 30, 0.28)', height: 10, position: 'absolute', width: 100 },
     card: {
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 18,
-      borderWidth: 2,
-      boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)',
+      borderWidth: 1,
     },
-    pressed: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 4 }] },
+    pressed: { transform: [{ translateY: 4 }] },
 
     me: {
       alignItems: 'center',
@@ -342,9 +341,9 @@ function createStyles({ colors }: AppTheme) {
     face: {
       alignItems: 'center',
       backgroundColor: colors.primaryLight,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 11,
-      borderWidth: 2,
+      borderWidth: 1,
       height: 40,
       justifyContent: 'center',
       width: 40,
@@ -362,9 +361,9 @@ function createStyles({ colors }: AppTheme) {
     small: { ...p12, color: colors.textSecondary },
     line: {
       backgroundColor: colors.track,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 99,
-      borderWidth: 2,
+      borderWidth: 1,
       height: 16,
       marginLeft: 2,
       marginRight: 40,
@@ -376,9 +375,9 @@ function createStyles({ colors }: AppTheme) {
     goal: {
       alignItems: 'center',
       backgroundColor: colors.primary,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 15,
-      borderWidth: 2,
+      borderWidth: 1,
       height: 30,
       justifyContent: 'center',
       position: 'absolute',
@@ -390,9 +389,9 @@ function createStyles({ colors }: AppTheme) {
     sayWrap: { alignItems: 'center', left: 0, position: 'absolute', right: 0 },
     say: {
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
+      borderWidth: 1,
       maxWidth: '78%',
       paddingHorizontal: 13,
       paddingVertical: 8,
@@ -401,9 +400,9 @@ function createStyles({ colors }: AppTheme) {
     sayTag: {
       ...p12,
       backgroundColor: colors.primary,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 99,
-      borderWidth: 2,
+      borderWidth: 1,
       color: colors.onPrimary,
       overflow: 'hidden',
       paddingHorizontal: 8,
@@ -415,7 +414,7 @@ function createStyles({ colors }: AppTheme) {
     sayTail: {
       backgroundColor: colors.surface,
       borderBottomWidth: 2,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRightWidth: 2,
       height: 10,
       marginTop: -6,
@@ -430,9 +429,9 @@ function createStyles({ colors }: AppTheme) {
     menuIcon: {
       alignItems: 'center',
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 28,
-      borderWidth: 2,
+      borderWidth: 1,
       boxShadow: ledge,
       height: 56,
       justifyContent: 'center',
@@ -453,9 +452,9 @@ function createStyles({ colors }: AppTheme) {
     questIcon: {
       alignItems: 'center',
       backgroundColor: colors.primaryLight,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
+      borderWidth: 1,
       height: 56,
       justifyContent: 'center',
       width: 56,
@@ -466,9 +465,9 @@ function createStyles({ colors }: AppTheme) {
     go: {
       alignItems: 'center',
       backgroundColor: colors.primary,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
+      borderWidth: 1,
       boxShadow: ledge,
       height: 50,
       justifyContent: 'center',
@@ -478,9 +477,9 @@ function createStyles({ colors }: AppTheme) {
     goSmall: {
       alignItems: 'center',
       backgroundColor: colors.primary,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 12,
-      borderWidth: 2,
+      borderWidth: 1,
       boxShadow: ledge,
       height: 38,
       justifyContent: 'center',
@@ -503,9 +502,9 @@ function createStyles({ colors }: AppTheme) {
     reward: {
       ...p12,
       backgroundColor: colors.gold,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 99,
-      borderWidth: 2,
+      borderWidth: 1,
       color: '#2B2000',
       lineHeight: 14,
       overflow: 'hidden',
@@ -520,10 +519,9 @@ function createStyles({ colors }: AppTheme) {
     segButton: {
       alignItems: 'center',
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
-      boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)',
+      borderWidth: 1,
       flex: 1,
       height: 46,
       justifyContent: 'center',

@@ -28,10 +28,9 @@ function createStyles({ colors }: AppTheme) {
   return {
     card: {
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
-      boxShadow: `0 4px 0 ${colors.ink}`,
+      borderWidth: 1,
     },
   } as const;
 }

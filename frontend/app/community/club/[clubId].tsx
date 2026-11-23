@@ -315,12 +315,12 @@ export default function CommunityClubScreen() {
 function createStyles({ colors }: AppTheme) {
   // Renewal A: the club's name in big pixel letters, its buttons on ledges, its posts as cards.
   const a = aForm(colors);
-  const button = { alignItems: 'center', borderColor: colors.ink, borderRadius: 14, borderWidth: 2, height: 46, justifyContent: 'center' } as const;
+  const button = { alignItems: 'center', borderColor: colors.border, borderRadius: 14, borderWidth: 1, height: 46, justifyContent: 'center' } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     info: { borderBottomColor: colors.track, borderBottomWidth: 2, gap: 14, paddingBottom: 14, paddingHorizontal: 16, paddingTop: 8 },
     identity: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-    categoryIcon: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, height: 52, justifyContent: 'center', width: 52 },
+    categoryIcon: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 14, borderWidth: 1, height: 52, justifyContent: 'center', width: 52 },
     categoryIconText: { ...a.p12, color: colors.ink },
     identityText: { flex: 1, gap: 2 },
     category: a.note,
@@ -340,11 +340,11 @@ function createStyles({ colors }: AppTheme) {
     feedTitle: { ...a.p15, color: colors.ink },
     sortLabel: a.note,
     rankingLink: { ...a.p12, color: colors.ink, textDecorationLine: 'underline' },
-    joinButton: { ...button, backgroundColor: colors.surface, boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)' },
-    join: { backgroundColor: colors.primary, boxShadow: `0 4px 0 ${colors.ink}` },
+    joinButton: { ...button, backgroundColor: colors.surface, },
+    join: { backgroundColor: colors.primary, },
     // Already in: flat and grey, it is no longer the thing to press first.
-    joined: { backgroundColor: colors.surfaceMuted, boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)' },
-    pressed: { boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)', transform: [{ translateY: 4 }] },
+    joined: { backgroundColor: colors.surfaceMuted, },
+    pressed: { transform: [{ translateY: 4 }] },
     joinTextOn: { ...a.p15, color: colors.onPrimary },
     joinedText: { ...a.p15, color: colors.ink },
     message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },

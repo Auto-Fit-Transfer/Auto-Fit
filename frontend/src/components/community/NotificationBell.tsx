@@ -42,15 +42,14 @@ function createStyles({ colors }: AppTheme) {
   return {
     card: {
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
-      boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)',
+      borderWidth: 1,
     },
     dot: {
       backgroundColor: colors.primary,
-      borderColor: colors.ink,
-      borderWidth: 2,
+      borderColor: colors.border,
+      borderWidth: 1,
       height: 12,
       position: 'absolute',
       right: 6,

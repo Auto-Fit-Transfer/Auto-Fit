@@ -145,7 +145,7 @@ function createStyles({ colors }: AppTheme) {
     miniText: a.miniText,
 
     file: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 12, padding: 10 },
-    filePreview: { backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 10, borderWidth: 2, gap: 5, height: 44, justifyContent: 'center', overflow: 'hidden', paddingHorizontal: 8, width: 44 },
+    filePreview: { backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 10, borderWidth: 1, gap: 5, height: 44, justifyContent: 'center', overflow: 'hidden', paddingHorizontal: 8, width: 44 },
     filePreviewImage: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
     paperLine: { backgroundColor: colors.ink, height: 2 },
     fileTexts: { flex: 1, gap: 2, minWidth: 0 },
@@ -154,12 +154,12 @@ function createStyles({ colors }: AppTheme) {
     tabs: { flexDirection: 'row', gap: 8 },
     tab: a.seg,
     tabOn: a.segOn,
-    tabOff: { backgroundColor: colors.surfaceMuted, boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)' },
+    tabOff: { backgroundColor: colors.surfaceMuted, },
     tabText: a.segText,
     tabTextOn: a.onText,
 
     grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8 },
-    cell: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, gap: 2, paddingHorizontal: 12, paddingVertical: 8, width: '48.8%' },
+    cell: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, gap: 2, paddingHorizontal: 12, paddingVertical: 8, width: '48.8%' },
     cellMissing: { backgroundColor: colors.primaryLight },
     cellValue: { ...a.p15, color: colors.ink },
     cellValueMissing: { color: colors.primaryText },

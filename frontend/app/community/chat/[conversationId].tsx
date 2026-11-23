@@ -249,15 +249,15 @@ function createStyles({ colors }: AppTheme) {
     bubbleRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 6 },
     bubbleRowMine: { flexDirection: 'row-reverse' },
     // bubbles as the ask screen draws them: outlined, mine violet
-    bubble: { borderColor: colors.ink, borderRadius: 14, borderWidth: 2, maxWidth: '75%', paddingHorizontal: 13, paddingVertical: 8 },
+    bubble: { borderColor: colors.border, borderRadius: 14, borderWidth: 1, maxWidth: '75%', paddingHorizontal: 13, paddingVertical: 8 },
     bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
     bubbleOther: { backgroundColor: colors.surface, borderBottomLeftRadius: 4 },
     bubbleText: { ...a.p15, color: colors.ink },
     bubbleTextMine: { color: colors.onPrimary },
     time: a.note,
     composer: { alignItems: 'flex-end', borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-    input: { ...a.p15, backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, color: colors.ink, flex: 1, maxHeight: 120, paddingHorizontal: spacing.md, paddingVertical: 10 },
-    send: { alignItems: 'center', backgroundColor: colors.primary, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, boxShadow: `0 3px 0 ${colors.ink}`, height: 44, justifyContent: 'center', width: 44 },
+    input: { ...a.p15, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 14, borderWidth: 1, color: colors.ink, flex: 1, maxHeight: 120, paddingHorizontal: spacing.md, paddingVertical: 10 },
+    send: { alignItems: 'center', backgroundColor: colors.primary, borderColor: colors.border, borderRadius: 14, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
     sendDisabled: { opacity: 0.4 },
   } as const;
 }

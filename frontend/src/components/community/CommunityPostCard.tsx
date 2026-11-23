@@ -218,9 +218,9 @@ function createStyles({ colors }: AppTheme) {
     activityCard: {
       alignItems: 'center',
       backgroundColor: colors.background,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 12,
-      borderWidth: 2,
+      borderWidth: 1,
       flexDirection: 'row',
       gap: 12,
       padding: 12,
@@ -228,9 +228,9 @@ function createStyles({ colors }: AppTheme) {
     activityIcon: {
       alignItems: 'center',
       backgroundColor: colors.primaryLight,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 10,
-      borderWidth: 2,
+      borderWidth: 1,
       height: 36,
       justifyContent: 'center',
       width: 36,

@@ -53,8 +53,8 @@ function createStyles({ colors }: AppTheme) {
     spin: { height: 76, width: 76 },
     dot: {
       backgroundColor: colors.primary,
-      borderColor: colors.ink,
-      borderWidth: 2,
+      borderColor: colors.border,
+      borderWidth: 1,
       height: 14,
       position: 'absolute',
       width: 14,

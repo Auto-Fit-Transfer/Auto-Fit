@@ -189,7 +189,7 @@ function createStyles({ colors }: AppTheme) {
     customChip: { alignItems: 'center', flexDirection: 'row', gap: 4 },
     selectedText: { ...a.p12, color: colors.onPrimary },
     addRow: { flexDirection: 'row', gap: 8 },
-    input: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, flex: 1, height: 48, paddingHorizontal: 12 },
+    input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, flex: 1, height: 48, paddingHorizontal: 12 },
     addButton: { ...a.mini, height: 48, paddingHorizontal: 14 },
     addText: a.miniText,
     reference: { backgroundColor: colors.surface, borderColor: colors.track, borderRadius: 12, borderWidth: 2, gap: 2, padding: 12 },
@@ -199,7 +199,7 @@ function createStyles({ colors }: AppTheme) {
     error: { ...a.p12, color: colors.danger },
     success: { ...a.p12, color: colors.success },
     save: a.go,
-    disabled: { ...a.goOff, boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)' },
+    disabled: { ...a.goOff, },
     disabledText: { color: colors.textDisabled },
     saveText: a.goText,
   } as const;

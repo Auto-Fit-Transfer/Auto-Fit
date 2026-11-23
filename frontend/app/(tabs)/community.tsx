@@ -352,13 +352,13 @@ function createStyles({ colors }: AppTheme) {
   // Renewal A: the bar (back, name, search, bell), the three tabs on their ledges, small chips for the
   // kinds of post, and each post an outlined card with room round it.
   const a = aForm(colors);
-  const tile = { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderWidth: 2, justifyContent: 'center' } as const;
+  const tile = { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderWidth: 1, justifyContent: 'center' } as const;
   return {
     root: { backgroundColor: colors.background, flex: 1 },
     header: { alignItems: 'center', backgroundColor: colors.background, flexDirection: 'row', gap: 10, paddingBottom: 4, paddingHorizontal: 16 },
     title: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
     headerActions: { flexDirection: 'row', gap: 8 },
-    headerCard: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, boxShadow: '0 4px 0 rgba(32, 35, 63, 0.3)' },
+    headerCard: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 14, borderWidth: 1, },
     // 4 taller than its buttons: the ledge they stand on.
     tabs: { backgroundColor: colors.background, flexDirection: 'row', gap: 6, paddingBottom: 4, paddingHorizontal: 16, paddingTop: 14 },
     tab: a.seg,
@@ -378,7 +378,7 @@ function createStyles({ colors }: AppTheme) {
     challengeTitle: { ...a.p15, color: colors.ink },
     challengeBars: { flexDirection: 'row', gap: 3 },
     challengeBar: { backgroundColor: colors.track, borderColor: 'rgba(32, 35, 63, 0.25)', borderWidth: 1, height: 8, width: 8 },
-    challengeBarDone: { backgroundColor: colors.primary, borderColor: colors.ink },
+    challengeBarDone: { backgroundColor: colors.primary, borderColor: colors.border },
     challengeDescription: a.note,
     challengeAction: a.mini,
     challengeActionText: a.miniText,

@@ -203,7 +203,7 @@ function createStyles({ colors }: AppTheme) {
     row: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 48, paddingVertical: 8 },
     line: { borderTopColor: colors.track, borderTopWidth: 2 },
     slot: { ...a.p12, color: colors.textSecondary, width: 30 },
-    tag: { ...a.p12, backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 8, borderWidth: 2, color: colors.ink, overflow: 'hidden', paddingHorizontal: 5 },
+    tag: { ...a.p12, backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.ink, overflow: 'hidden', paddingHorizontal: 5 },
     kcal: { ...a.p12, color: colors.ink, minWidth: 44, textAlign: 'right' },
     total: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
     duo: { flexDirection: 'row', gap: 10 },

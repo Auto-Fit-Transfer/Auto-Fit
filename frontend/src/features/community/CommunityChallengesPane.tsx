@@ -256,7 +256,7 @@ function createStyles({ colors }: AppTheme) {
     phaseOn: { backgroundColor: colors.primaryLight, color: colors.ink },
     description: { ...a.p15, color: colors.textBody },
     meta: a.note,
-    progressTrack: { backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 7, borderWidth: 2, height: 14, overflow: 'hidden', marginTop: 4 },
+    progressTrack: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 7, borderWidth: 1, height: 14, overflow: 'hidden', marginTop: 4 },
     progressFill: { backgroundColor: colors.primary, height: 10 },
     progressText: { ...a.p12, color: colors.ink, marginBottom: 4 },
     joinedRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },

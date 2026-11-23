@@ -69,7 +69,7 @@ function createStyles({ colors }: AppTheme) {
   return {
     content: { gap: 10, paddingBottom: 8 },
     opt: { ...f.card, borderRadius: 14, gap: 2, paddingHorizontal: 14, paddingVertical: 12 },
-    on: { ...f.on, boxShadow: `0 4px 0 ${colors.ink}` },
+    on: { ...f.on, },
     onText: f.onText,
     title: { ...f.p15, color: colors.ink },
     sub: f.note,

@@ -369,11 +369,11 @@ function createSStyles({ colors }: AppTheme) {
   // Renewal A: one dark outline on every piece, a ledge under what can be pressed, pixel letters.
   const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
   const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
-  const outline = { backgroundColor: colors.surface, borderColor: colors.ink, borderWidth: 2 } as const;
-  const ledge = `0 4px 0 ${colors.ink}`;
-  const soft = '0 4px 0 rgba(32, 35, 63, 0.3)';
-  const bar = { backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 99, borderWidth: 2, overflow: 'hidden' } as const;
-  const big = { alignItems: 'center', borderColor: colors.ink, borderRadius: 14, borderWidth: 2, boxShadow: ledge, height: 52, justifyContent: 'center' } as const;
+  const outline = { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 } as const;
+  const ledge = '0 0 0 transparent'; // renewal B: no ledges
+  const soft = '0 0 0 transparent'; // renewal B: no ledges
+  const bar = { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 99, borderWidth: 1, overflow: 'hidden' } as const;
+  const big = { alignItems: 'center', borderColor: colors.border, borderRadius: 14, borderWidth: 1, boxShadow: ledge, height: 52, justifyContent: 'center' } as const;
   return {
     root: { flex: 1, backgroundColor: colors.background }, content: { flexGrow: 1, paddingHorizontal: 16, paddingBottom: 16, gap: 12 },
     body: { flexGrow: 1, gap: 12, justifyContent: 'center', paddingBottom: 48 },
@@ -386,7 +386,7 @@ function createSStyles({ colors }: AppTheme) {
     meta: { flexDirection: 'row', gap: 12, justifyContent: 'space-between', marginTop: -4, paddingHorizontal: 2 },
     metaNext: { flexShrink: 1, textAlign: 'right' },
     stage: { flexDirection: 'row', gap: 4 },
-    stageCell: { backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 4, borderWidth: 2, flex: 1, height: 10, minWidth: 0 },
+    stageCell: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 4, borderWidth: 1, flex: 1, height: 10, minWidth: 0 },
     stageGap: { marginLeft: 6 },
     stageDone: { backgroundColor: colors.primary },
     stageSkip: { backgroundColor: colors.surface },
@@ -400,7 +400,7 @@ function createSStyles({ colors }: AppTheme) {
     clearInline: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
     cap: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 60, paddingHorizontal: 12, paddingVertical: 8 },
     capLine: { borderTopColor: colors.ink, borderTopWidth: 2 },
-    face: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 11, borderWidth: 2, height: 40, justifyContent: 'center', width: 40 },
+    face: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 11, borderWidth: 1, height: 40, justifyContent: 'center', width: 40 },
     capText: { ...p15, color: colors.ink, flex: 1 },
     now: { alignItems: 'baseline', flexDirection: 'row', gap: 12, justifyContent: 'space-between', paddingHorizontal: 2, paddingTop: 4 },
     move: { color: colors.ink, flexShrink: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
@@ -424,7 +424,7 @@ function createSStyles({ colors }: AppTheme) {
     media: { ...outline, height: 180, borderRadius: 18, boxShadow: soft, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
     mediaImage: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
     // The demo GIFs have a white background baked in, so the card is white.
-    mediaGif: { backgroundColor: lightPalette.surface, borderColor: colors.ink },
+    mediaGif: { backgroundColor: lightPalette.surface, borderColor: colors.border },
     mediaTextOnGif: { color: lightPalette.textSecondary },
     videoAction: { alignItems: 'center', gap: 6 },
     playCircle: { ...outline, alignItems: 'center', borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
@@ -442,9 +442,9 @@ function createSStyles({ colors }: AppTheme) {
     tipCard: { ...outline, borderRadius: 18, boxShadow: soft, flexDirection: 'row', gap: 8, padding: 14 },
     cardTitle: { ...p15, color: colors.ink }, cardText: { ...p12, color: colors.textSecondary },
     nextCard: { ...outline, alignItems: 'center', borderRadius: 18, boxShadow: soft, flexDirection: 'row', gap: 10, padding: 14 },
-    nextIcon: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, height: 36, justifyContent: 'center', width: 36 },
+    nextIcon: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 36, justifyContent: 'center', width: 36 },
     nextTitle: { ...p15, color: colors.ink },
-    smallButton: { ...outline, alignItems: 'center', borderRadius: 10, boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)', height: 34, justifyContent: 'center', paddingHorizontal: 12 },
+    smallButton: { ...outline, alignItems: 'center', borderRadius: 10, height: 34, justifyContent: 'center', paddingHorizontal: 12 },
     smallButtonText: { ...p12, color: colors.ink },
     actions: { flexDirection: 'row', gap: 8 }, footer: { gap: 10, paddingHorizontal: 16, paddingTop: 8 },
     secondaryButton: { ...big, flex: 1, backgroundColor: colors.surface },
@@ -453,21 +453,21 @@ function createSStyles({ colors }: AppTheme) {
     primaryText: { color: colors.onPrimary, fontSize: 22, lineHeight: 26, fontFamily: fontFamilies.galmuri11Bold }, disabled: { backgroundColor: colors.surfaceMuted }, disabledText: { color: colors.textDisabled },
     sheetPrimary: { ...big, backgroundColor: colors.primary },
     sheetOverlay: { flex: 1, justifyContent: 'flex-end' }, sheetDim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.45)' },
-    sheet: { backgroundColor: colors.surface, borderColor: colors.ink, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 2, borderLeftWidth: 2, borderRightWidth: 2, padding: 20, gap: 12 },
+    sheet: { backgroundColor: colors.surface, borderColor: colors.border, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 2, borderLeftWidth: 2, borderRightWidth: 2, padding: 20, gap: 12 },
     sheetHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     sheetTitle: { color: colors.ink, fontSize: 24, lineHeight: 28, fontFamily: fontFamilies.galmuri11Bold },
     sheetDescription: { ...p15, color: colors.textBody },
-    notice: { alignItems: 'flex-start', backgroundColor: colors.warningLight, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, flexDirection: 'row', gap: 8, padding: 14 },
+    notice: { alignItems: 'flex-start', backgroundColor: colors.warningLight, borderColor: colors.border, borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 8, padding: 14 },
     noticeTitle: { ...p15, color: colors.warning },
     fieldTitle: { ...p15, color: colors.ink },
     optional: { ...p12, color: colors.textSecondary },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: { ...outline, alignItems: 'center', borderRadius: 12, height: 40, justifyContent: 'center', paddingHorizontal: 14 },
-    selectedChip: { backgroundColor: colors.primary, borderColor: colors.ink }, chipText: { ...p15, color: colors.ink }, selectedChipText: { color: colors.onPrimary },
+    selectedChip: { backgroundColor: colors.primary, borderColor: colors.border }, chipText: { ...p15, color: colors.ink }, selectedChipText: { color: colors.onPrimary },
     feelings: { flexDirection: 'row', gap: 8 }, feeling: { flex: 1, paddingHorizontal: 4 },
     input: { ...outline, borderRadius: 12, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, height: 46, paddingHorizontal: 12 },
     voiceRow: { flexDirection: 'row', alignItems: 'center', minHeight: 52, gap: 12 },
     voiceTitle: { ...p15, color: colors.ink }, smallText: { ...p12, color: colors.textSecondary },
-    switch: { width: 46, height: 28, backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, padding: 1 }, switchOn: { backgroundColor: colors.primary }, switchThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.surface, borderColor: colors.ink, borderWidth: 2 }, switchThumbOn: { alignSelf: 'flex-end' },
+    switch: { width: 46, height: 28, backgroundColor: colors.track, borderColor: colors.border, borderRadius: 14, borderWidth: 1, padding: 1 }, switchOn: { backgroundColor: colors.primary }, switchThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }, switchThumbOn: { alignSelf: 'flex-end' },
   } as const;
 }

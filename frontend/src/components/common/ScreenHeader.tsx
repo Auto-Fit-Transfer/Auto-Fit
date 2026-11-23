@@ -32,7 +32,7 @@ function createStyles({ colors }: AppTheme) {
   return {
     // Renewal A: the way back is a small outlined card with a ledge, and the title is in pixel letters.
     header: { alignItems: 'center', backgroundColor: colors.background, flexDirection: 'row', justifyContent: 'space-between', minHeight: 56, paddingHorizontal: 16 },
-    side: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, boxShadow: `0 4px 0 ${colors.ink}`, height: 44, justifyContent: 'center', width: 44 },
+    side: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 14, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
     right: { alignItems: 'flex-end', justifyContent: 'center', minHeight: 44, minWidth: 44 },
     titleLayer: { alignItems: 'center', bottom: 0, justifyContent: 'center', left: 72, position: 'absolute', right: 72 },
     title: { color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21, textAlign: 'center' },

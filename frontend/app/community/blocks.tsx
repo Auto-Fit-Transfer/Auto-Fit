@@ -117,7 +117,7 @@ function createStyles({ colors }: AppTheme) {
     row: { alignItems: 'center', borderBottomColor: colors.track, borderBottomWidth: 2, flexDirection: 'row', gap: 12, marginHorizontal: 16, paddingVertical: 12 },
     nickname: { ...a.p15, color: colors.ink, flex: 1 },
     unblock: a.mini,
-    pressed: { boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)', transform: [{ translateY: 3 }] },
+    pressed: { transform: [{ translateY: 3 }] },
     unblockText: a.miniText,
   } as const;
 }

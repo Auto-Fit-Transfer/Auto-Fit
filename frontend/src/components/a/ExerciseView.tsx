@@ -159,14 +159,14 @@ export function ExerciseView({ who, tierIndex, kinds, say, plan, main, links, mo
 function createStyles({ colors }: AppTheme) {
   const p12 = { fontFamily: fontFamilies.galmuri11, fontSize: 12, lineHeight: 17 } as const;
   const p15 = { fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 } as const;
-  const ledge = `0 4px 0 ${colors.ink}`;
-  const soft = '0 4px 0 rgba(32, 35, 63, 0.3)';
-  const outline = { backgroundColor: colors.surface, borderColor: colors.ink, borderWidth: 2 } as const;
+  const ledge = '0 0 0 transparent'; // renewal B: no ledges
+  const soft = '0 0 0 transparent'; // renewal B: no ledges
+  const outline = { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 } as const;
   return {
     root: { backgroundColor: colors.background, flex: 1 },
     content: { gap: 14, paddingHorizontal: 16 },
-    pressed: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 4 }] },
-    pressedSoft: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 3 }] },
+    pressed: { transform: [{ translateY: 4 }] },
+    pressedSoft: { transform: [{ translateY: 3 }] },
 
     bar: { alignItems: 'center', flexDirection: 'row', gap: 10, height: 48 },
     back: { ...outline, alignItems: 'center', borderRadius: 14, boxShadow: ledge, height: 44, justifyContent: 'center', width: 44 },
@@ -182,9 +182,9 @@ function createStyles({ colors }: AppTheme) {
     face: {
       alignItems: 'center',
       backgroundColor: colors.primaryLight,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 11,
-      borderWidth: 2,
+      borderWidth: 1,
       height: 40,
       justifyContent: 'center',
       width: 40,
@@ -197,7 +197,7 @@ function createStyles({ colors }: AppTheme) {
     planCopy: { flex: 1, gap: 2, minWidth: 0 },
     title: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
     small: { ...p12, color: colors.textSecondary },
-    mini: { ...outline, borderRadius: 10, boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)', height: 32, justifyContent: 'center', paddingHorizontal: 10 },
+    mini: { ...outline, borderRadius: 10, height: 32, justifyContent: 'center', paddingHorizontal: 10 },
     miniText: { ...p12, color: colors.ink },
     move: {
       alignItems: 'center',
@@ -214,9 +214,9 @@ function createStyles({ colors }: AppTheme) {
     go: {
       alignItems: 'center',
       backgroundColor: colors.primary,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
+      borderWidth: 1,
       boxShadow: ledge,
       height: 52,
       justifyContent: 'center',

@@ -201,7 +201,7 @@ function createStyles({ colors }: AppTheme) {
     label: { ...a.p15, color: colors.ink },
     detail: a.note,
     timeRow: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingBottom: 14 },
-    timeInput: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 10, borderWidth: 2, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, flex: 1, minWidth: 63, padding: 8, textAlign: 'center' },
+    timeInput: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 10, borderWidth: 1, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, flex: 1, minWidth: 63, padding: 8, textAlign: 'center' },
     timeSave: a.mini,
     timeSaveText: a.miniText,
     note: a.note,

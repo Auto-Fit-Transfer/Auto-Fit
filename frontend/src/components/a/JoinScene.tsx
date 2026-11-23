@@ -84,9 +84,9 @@ function createStyles({ colors }: AppTheme) {
   return {
     scene: {
       backgroundColor: '#6A6E7E',
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 22,
-      borderWidth: 2,
+      borderWidth: 1,
       flex: 1,
       minHeight: 190,
       overflow: 'hidden',
@@ -96,9 +96,9 @@ function createStyles({ colors }: AppTheme) {
     cell: { alignItems: 'center', justifyContent: 'space-between' },
     label: {
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 99,
-      borderWidth: 2,
+      borderWidth: 1,
       color: colors.ink,
       fontFamily: fontFamilies.galmuri11,
       fontSize: 12,
@@ -118,6 +118,6 @@ function createStyles({ colors }: AppTheme) {
       transform: [{ rotate: '45deg' }],
       width: 12,
     },
-    arrowShade: { borderColor: colors.ink, position: 'absolute', top: 2 },
+    arrowShade: { borderColor: colors.border, position: 'absolute', top: 2 },
   } as const;
 }

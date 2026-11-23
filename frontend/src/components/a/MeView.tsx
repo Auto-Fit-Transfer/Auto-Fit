@@ -145,7 +145,7 @@ function createStyles({ colors }: AppTheme) {
 
     // who I am, in one low row
     id: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 14, paddingBottom: 12, paddingLeft: 12, paddingRight: 14, paddingTop: 12 },
-    avatar: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 16, borderWidth: 2, height: 64, justifyContent: 'center', overflow: 'hidden', width: 64 },
+    avatar: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 16, borderWidth: 1, height: 64, justifyContent: 'center', overflow: 'hidden', width: 64 },
     photo: { height: '100%', width: '100%' },
     idCopy: { flex: 1, gap: 3, minWidth: 0 },
     name: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },

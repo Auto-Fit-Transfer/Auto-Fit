@@ -196,10 +196,9 @@ function createStyles({ colors }: AppTheme) {
     socialButton: {
       alignItems: 'center',
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
-      boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)',
+      borderWidth: 1,
       flex: 1,
       flexDirection: 'row',
       gap: 6,

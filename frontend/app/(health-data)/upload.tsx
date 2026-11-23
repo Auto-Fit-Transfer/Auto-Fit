@@ -181,9 +181,9 @@ function createStyles({ colors }: AppTheme) {
     options: { gap: 8, marginTop: 18 },
     option: {
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
+      borderWidth: 1,
       gap: 3,
       justifyContent: 'center',
       minHeight: 62,

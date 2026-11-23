@@ -144,8 +144,8 @@ function createStyles({ colors }: AppTheme) {
 
     // the five tiers, my character in each
     row: { flexDirection: 'row', gap: 2 },
-    cell: { alignItems: 'center', borderColor: 'transparent', borderRadius: 14, borderWidth: 2, flex: 1, gap: 3, paddingBottom: 8, paddingTop: 6 },
-    cellOn: { backgroundColor: colors.primaryLight, borderColor: colors.ink },
+    cell: { alignItems: 'center', borderColor: 'transparent', borderRadius: 14, borderWidth: 1, flex: 1, gap: 3, paddingBottom: 8, paddingTop: 6 },
+    cellOn: { backgroundColor: colors.primaryLight, borderColor: colors.border },
     tag: { ...a.p12, color: colors.primaryText },
     cellName: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 12, lineHeight: 17 },
     say: { ...a.p15, color: colors.textBody, textAlign: 'center' },
@@ -159,14 +159,14 @@ function createStyles({ colors }: AppTheme) {
     big: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 42 },
     level: { ...a.p12, color: colors.primaryText },
     stars: { fontSize: 11, lineHeight: 14 },
-    bar: { backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 99, borderWidth: 2, height: 16, overflow: 'hidden' },
+    bar: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 99, borderWidth: 1, height: 16, overflow: 'hidden' },
     barFill: { backgroundColor: colors.primary, bottom: 0, left: 0, position: 'absolute', top: 0 },
 
     // what gives points
     group: { ...a.q, marginBottom: 0, marginTop: 10, paddingHorizontal: 2 },
     ways: { gap: 0, paddingHorizontal: 14, paddingVertical: 0 },
     way: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 72, paddingVertical: 10 },
-    icon: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, height: 44, justifyContent: 'center', width: 44 },
+    icon: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
     wayCopy: { flex: 1, gap: 2, minWidth: 0 },
     reward: a.reward,
   } as const;

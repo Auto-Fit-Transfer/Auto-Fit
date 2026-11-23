@@ -203,15 +203,14 @@ function createStyles({ colors }: AppTheme) {
     backButton: {
       alignItems: 'center',
       backgroundColor: colors.surface,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
-      boxShadow: `0 4px 0 ${colors.ink}`,
+      borderWidth: 1,
       height: 44,
       justifyContent: 'center',
       width: 44,
     },
-    backPressed: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 4 }] },
+    backPressed: { transform: [{ translateY: 4 }] },
     barTitle: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
     progress: { flexDirection: 'row', gap: 3 },
     progressSegment: {
@@ -221,7 +220,7 @@ function createStyles({ colors }: AppTheme) {
       height: 8,
       width: 8,
     },
-    progressActive: { backgroundColor: colors.primary, borderColor: colors.ink },
+    progressActive: { backgroundColor: colors.primary, borderColor: colors.border },
     heading: {
       color: colors.ink,
       fontFamily: fontFamilies.galmuri11Bold,
@@ -243,17 +242,16 @@ function createStyles({ colors }: AppTheme) {
       alignItems: 'center',
       backgroundColor: colors.primary,
       // Renewal A: the dark outline and the ledge that goes down when pressed, as on every button.
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderRadius: 14,
-      borderWidth: 2,
-      boxShadow: `0 4px 0 ${colors.ink}`,
+      borderWidth: 1,
       height: 56,
       justifyContent: 'center',
       width: '100%',
     },
     buttonDisabled: { backgroundColor: colors.surfaceMuted },
     buttonLabelDisabled: { color: colors.textDisabled },
-    buttonPressed: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 4 }] },
+    buttonPressed: { transform: [{ translateY: 4 }] },
     buttonLabel: { color: colors.onPrimary, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
   } as const;
 }

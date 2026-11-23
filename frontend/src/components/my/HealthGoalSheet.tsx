@@ -230,7 +230,7 @@ function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     content: { gap: 14 },
-    current: { backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, gap: 2, padding: 12 },
+    current: { backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 12, borderWidth: 1, gap: 2, padding: 12 },
     currentLabel: a.note,
     currentText: { ...a.p15, color: colors.ink },
     sectionTitle: { ...a.q, marginBottom: -4 },
@@ -248,7 +248,7 @@ function createStyles({ colors }: AppTheme) {
     error: { ...a.p12, color: colors.ink },
     success: { ...a.p12, color: colors.ink },
     save: a.go,
-    disabled: { ...a.goOff, boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)' },
+    disabled: { ...a.goOff, },
     disabledText: { color: colors.textDisabled },
     saveText: a.goText,
   } as const;

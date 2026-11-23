@@ -358,10 +358,10 @@ function createStyles({ colors, text }: AppTheme) {
     sheet: {
       backgroundColor: colors.elevated,
       borderBottomWidth: 0,
-      borderColor: colors.ink,
+      borderColor: colors.border,
       borderTopLeftRadius: radius.sheet,
       borderTopRightRadius: radius.sheet,
-      borderWidth: 2,
+      borderWidth: 1,
       maxHeight: '88%',
     },
     handle: {

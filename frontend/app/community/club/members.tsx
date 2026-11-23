@@ -149,7 +149,7 @@ function createStyles({ colors }: AppTheme) {
     owner: { ...a.p12, backgroundColor: colors.primaryLight, borderRadius: 6, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6 },
     // Sending someone out: the same small button, its words in the warning colour.
     remove: a.mini,
-    pressed: { boxShadow: '0 0 0 rgba(32, 35, 63, 0.3)', transform: [{ translateY: 3 }] },
+    pressed: { transform: [{ translateY: 3 }] },
     removeText: { ...a.miniText, color: colors.danger },
   } as const;
 }

@@ -211,7 +211,7 @@ function createStyles({ colors }: AppTheme) {
 
     // the road to the next tier
     sum: { ...a.card, gap: 10, paddingBottom: 16, paddingHorizontal: 14, paddingTop: 12 },
-    bar: { backgroundColor: colors.track, borderColor: colors.ink, borderRadius: 99, borderWidth: 2, height: 16, overflow: 'hidden' },
+    bar: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 99, borderWidth: 1, height: 16, overflow: 'hidden' },
     barFill: { backgroundColor: colors.primary, bottom: 0, left: 0, position: 'absolute', top: 0 },
     barTick: { backgroundColor: colors.ink, bottom: 0, marginLeft: -1, position: 'absolute', top: 0, width: 2 },
 

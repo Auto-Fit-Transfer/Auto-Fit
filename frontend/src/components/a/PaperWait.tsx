@@ -94,7 +94,7 @@ function createStyles({ colors }: AppTheme) {
     q: { ...a.q, marginBottom: 0, marginTop: 26 },
     tips: { gap: 12, marginTop: 10 },
     tipRow: { flexDirection: 'row', gap: 10 },
-    bullet: { backgroundColor: colors.primary, borderColor: colors.ink, borderWidth: 2, height: 12, marginTop: 5, width: 12 },
+    bullet: { backgroundColor: colors.primary, borderColor: colors.border, borderWidth: 1, height: 12, marginTop: 5, width: 12 },
     tip: { ...a.p15, color: colors.ink, flex: 1 },
     duo: { flexDirection: 'row', gap: 8, marginTop: 28 },
     go: { ...a.go, flex: 1, height: 50 },

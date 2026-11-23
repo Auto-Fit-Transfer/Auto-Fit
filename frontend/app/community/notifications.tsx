@@ -242,7 +242,7 @@ function createStyles({ colors }: AppTheme) {
     message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
     messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
     row: { borderBottomColor: colors.track, borderBottomWidth: 2, flexDirection: 'row', gap: 10, marginHorizontal: 16, paddingVertical: 14 },
-    dot: { alignSelf: 'center', backgroundColor: colors.primary, borderColor: colors.ink, borderWidth: 2, height: 10, width: 10 },
+    dot: { alignSelf: 'center', backgroundColor: colors.primary, borderColor: colors.border, borderWidth: 1, height: 10, width: 10 },
     dotRead: { backgroundColor: 'transparent', borderColor: 'transparent' },
     pressed: { opacity: 0.8 },
     body: { flex: 1, gap: 2, minWidth: 0 },
