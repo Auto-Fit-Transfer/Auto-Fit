@@ -62,9 +62,7 @@ export default function APostureSample() {
         }
         score={state === 'one' ? 74 : 78}
         summary="깊이만 조금 더 내려가면 돼요"
-        tier={1}
         title="스쿼트 자세 결과"
-        who="worker-f"
       />
     );
   }

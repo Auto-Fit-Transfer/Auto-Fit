@@ -3,7 +3,6 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 
 import { getPostureResult, type PostureResult } from '@/src/api/posture';
 import { PostureResultView } from '@/src/components/a/PostureViews';
-import { useHero } from '@/src/components/a/useHero';
 import { angleRow, secondsLabel } from '@/src/features/exercise/postureFlow';
 
 // Renewal A's 자세 분석, the result (src/components/a/PostureViews.tsx shows it). This file reads the
@@ -12,7 +11,6 @@ import { angleRow, secondsLabel } from '@/src/features/exercise/postureFlow';
 export default function PostureResultScreen() {
   const { jobId, name } = useLocalSearchParams<{ jobId?: string; name?: string }>();
   const router = useRouter();
-  const hero = useHero();
   const [result, setResult] = useState<PostureResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,9 +57,7 @@ export default function PostureResultScreen() {
       }))}
       score={result?.assessment.overall_score ?? 0}
       summary={result?.assessment.summary ?? ''}
-      tier={hero.tierIndex}
       title={name ? `${name} 자세 결과` : '자세 결과'}
-      who={hero.who}
     />
   );
 }

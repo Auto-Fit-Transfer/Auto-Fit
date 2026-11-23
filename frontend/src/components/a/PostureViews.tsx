@@ -10,10 +10,11 @@ import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src
 import { ALoading } from './ALoading';
 import { aForm } from './form';
 import { KindsBar } from './RunParts';
-import { HeroHead, type Who } from './sprites';
+import { Headline } from '@/src/components/b/Headline';
 
-// Renewal A's 자세 분석, the three screens as views that only show what they are given (the screens
-// under app/exercise fill them): filming, waiting for the analysis, and the result.
+// 자세 분석 in renewal B's way (b-posture.html), the three screens as views that only show what they are given
+// (the screens under app/exercise fill them): filming, waiting for the analysis, and the result. No red anywhere:
+// recording is the violet of "now", a score under the mark is plain black, an angle outside its range is bold.
 
 // ---------- 1. filming: put my body in the frame and film ten seconds ----------
 // The camera is the screen. Which exercise is on top of it, what to check before filming is a box.
@@ -116,7 +117,7 @@ export function PostureShootView({
         )}
         {phase === 'recording' ? (
           <>
-            {/* Red only here: the sign of recording, seen from three steps away. */}
+            {/* the lilac line fills as the ten seconds go; the violet dot of "now" says it is recording */}
             <View style={[styles.took, { width: `${Math.min(100, (seconds / total) * 100)}%` }]} />
             <View style={styles.state}>
               <View style={styles.stateDot} />
@@ -227,9 +228,7 @@ export function PostureWaitView({
     <View style={styles.root}>
       <ScreenHeader onBack={onBack} title="자세 분석" />
       <ScrollView contentContainerStyle={[styles.wait, { paddingBottom: insets.bottom + 72 }]} showsVerticalScrollIndicator={false}>
-        <Text accessibilityRole="header" style={styles.title}>
-          {failed ? '분석을 마치지 못했어요' : '자세를 분석하고 있어요'}
-        </Text>
+        <Headline lines={failed ? [[{ text: '분석을' }], [{ text: '마치지 못했어요' }]] : [[{ text: '자세를' }], [{ text: '살펴보고 있어요' }]]} />
         <Text style={[styles.note, styles.waitMeta]}>
           {meta}
           {failed ? '' : ' · 보통 10초 안에 끝나요'}
@@ -241,7 +240,7 @@ export function PostureWaitView({
                 {step.state === 'done' ? (
                   <CheckIcon color={colors.onPrimary} height={18} width={18} />
                 ) : step.state === 'active' && !failed ? (
-                  <ActivityIndicator color={colors.ink} size="small" />
+                  <ActivityIndicator color={colors.textPrimary} size="small" />
                 ) : (
                   <Text style={styles.stepNo}>{index + 1}</Text>
                 )}
@@ -305,8 +304,6 @@ export interface PostureFix {
 // No red for a low score: the numbers stand next to the standard, and what is outside it is said in
 // dark words. Real numbers, no drawn figure.
 export function PostureResultView({
-  who,
-  tier,
   title,
   loading,
   problem,
@@ -320,8 +317,6 @@ export function PostureResultView({
   onAgain,
   onHome,
 }: {
-  who: Who;
-  tier: number;
   title: string;
   loading: boolean;
   problem: string | null;
@@ -375,23 +370,12 @@ export function PostureResultView({
         </View>
       ) : (
         <ScrollView contentContainerStyle={[styles.result, { paddingBottom: Math.max(12, insets.bottom) + 8 }]} showsVerticalScrollIndicator={false}>
-          {summary ? (
-            <View style={styles.ask}>
-              <View style={styles.face}>
-                <HeroHead tier={tier} who={who} />
-              </View>
-              <View style={styles.say}>
-                <View style={styles.sayTail} />
-                <Text style={styles.words}>{summary}</Text>
-              </View>
-            </View>
-          ) : null}
+          {/* the score in the headline, what the app saw in one line under it, as the report tells a week */}
+          <Headline lines={[[{ text: '오늘 자세는' }], [{ text: `${score}점`, mark: true }, { text: passing != null ? (score >= passing ? '으로 기준을 넘었어요' : '이에요') : '이에요' }]]} />
+          {summary ? <Text style={styles.summary}>{summary}</Text> : null}
           <View style={styles.scoreCard}>
             <View style={styles.scoreTop}>
-              <Text style={styles.score}>
-                {score}
-                <Text style={styles.scoreUnit}> 점</Text>
-              </Text>
+              <Text style={styles.cardLab}>{reps.length > 1 ? `${reps.length}회 각각의 점수` : '이번 동작'}</Text>
               {passing != null ? <Text style={styles.note}>기준 {passing}점</Text> : null}
             </View>
             {only ? (
@@ -413,6 +397,20 @@ export function PostureResultView({
               </View>
             ) : null}
           </View>
+
+          {goods.length > 0 ? (
+            <>
+              <Text style={[styles.q, styles.section]}>잘한 점</Text>
+              <View style={styles.good}>
+                {goods.map((line) => (
+                  <View key={line} style={styles.goodRow}>
+                    <View style={styles.goodCheck}><CheckIcon color={colors.onPrimary} height={12} width={12} /></View>
+                    <Text style={[styles.words, styles.grow]}>{line}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          ) : null}
 
           {fixes.length > 0 ? <Text style={[styles.q, styles.section]}>고칠 점 {fixes.length}</Text> : null}
           {fixes.map((fix) => {
@@ -442,20 +440,6 @@ export function PostureResultView({
             );
           })}
 
-          {goods.length > 0 ? (
-            <>
-              <Text style={[styles.q, styles.section]}>잘한 점</Text>
-              <View style={styles.good}>
-                {goods.map((line) => (
-                  <View key={line} style={styles.goodRow}>
-                    <CheckIcon color={colors.success} height={20} width={20} />
-                    <Text style={[styles.words, styles.grow]}>{line}</Text>
-                  </View>
-                ))}
-              </View>
-            </>
-          ) : null}
-
           <Text style={[styles.note, styles.center, styles.resultNote]}>카메라 한 대로 본 결과라 참고용이에요</Text>
           <View style={styles.ctl}>
             <Pressable accessibilityRole="button" onPress={onAgain} style={({ pressed }) => [styles.go, styles.ghost, styles.half, pressed && styles.goPressed]}>
@@ -481,175 +465,97 @@ export function PostureResultView({
 
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
-  const big = { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold } as const;
+  const big = { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontVariant: ['tabular-nums'] as ['tabular-nums'] } as const;
+  const note = { ...a.note, fontFamily: fontFamilies.pretendardRegular } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
-    words: { ...a.p15, color: colors.ink },
-    note: a.note,
-    q: a.q,
+    words: { color: colors.textPrimary, fontSize: 14.5, lineHeight: 22 },
+    note,
+    q: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },
     center: { textAlign: 'center' },
     grow: { flex: 1, minWidth: 0 },
     faint: { color: colors.textSecondary },
     on: a.on,
     onText: a.onText,
     off: { opacity: 0.4 },
-    title: { ...big, fontSize: 24, lineHeight: 28, textAlign: 'center' },
-    value: { ...big, fontSize: 24, lineHeight: 28 },
-    go: a.go,
-    ghost: a.goGhost,
+    title: { ...big, fontSize: 22, lineHeight: 30, textAlign: 'center' },
+    value: { ...big, fontSize: 17, lineHeight: 23 },
+    go: { ...a.go, height: 54 },
+    ghost: { backgroundColor: colors.surface },
     goPressed: a.goPressed,
     goText: a.goText,
-    goSmall: { ...a.p15, color: colors.ink },
+    goSmall: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },
     half: { flex: 1 },
-    // 4 taller than its buttons: the ledge they stand on.
-    ctl: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
-    sheet: { gap: 12, paddingBottom: 24, paddingHorizontal: 16, paddingTop: 0 },
-    sheetQ: { marginBottom: 0, marginTop: 10 },
+    ctl: { flexDirection: 'row', gap: 10 },
+    sheet: { gap: 12, paddingBottom: 24, paddingHorizontal: 20, paddingTop: 0 },
+    sheetQ: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12.5, marginBottom: 0, marginTop: 10 },
     bulletRow: { flexDirection: 'row', gap: 10 },
-    bullet: { backgroundColor: colors.primary, borderColor: colors.border, borderWidth: 1, height: 12, marginTop: 5, width: 12 },
+    bullet: { backgroundColor: colors.textPrimary, borderRadius: 3, height: 6, marginTop: 8, width: 6 },
 
-    // ---- filming ----
-    shoot: { paddingHorizontal: 16 },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
-    chip: { ...a.chip, flexBasis: '18%', flexGrow: 1, paddingHorizontal: 6 },
-    chipText: a.chipText,
-    cam: {
-      backgroundColor: '#262A45',
-      borderColor: colors.border,
-      borderRadius: 18,
-      borderWidth: 1,
-      flex: 1,
-      marginTop: 14,
-      minHeight: 220,
-      overflow: 'hidden',
-    },
-    guide: { borderColor: 'rgba(255, 255, 255, 0.85)', borderRadius: 20, borderStyle: 'dashed', borderWidth: 3, position: 'absolute' },
-    guideStand: { bottom: 64, left: 78, right: 78, top: 44 },
+    // ---- filming: the camera is the big thing ----
+    shoot: { paddingHorizontal: 20 },
+    chips: { backgroundColor: colors.surface, borderRadius: 999, flexDirection: 'row', marginTop: 12, padding: 4 },
+    chip: { alignItems: 'center', borderRadius: 999, flex: 1, height: 38, justifyContent: 'center', paddingHorizontal: 4 },
+    chipText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold, fontSize: 12.5, lineHeight: 18 },
+    cam: { backgroundColor: '#17161C', borderRadius: 28, flex: 1, marginTop: 14, minHeight: 220, overflow: 'hidden' },
+    guide: { borderColor: 'rgba(255, 255, 255, 0.78)', borderRadius: 22, borderStyle: 'dashed', borderWidth: 2, position: 'absolute' },
+    guideStand: { bottom: 64, left: 78, right: 78, top: 48 },
     guideLie: { bottom: '36%', left: 20, right: 20, top: '34%' },
     // Under the frame, where it cannot run over the dashes.
-    frameLabel: { ...a.p12, color: '#FFFFFF', left: 8, position: 'absolute', right: 8, textAlign: 'center' },
-    frameLabelStand: { bottom: 30 },
+    frameLabel: { color: '#FFFFFF', fontSize: 12.5, left: 8, lineHeight: 18, position: 'absolute', right: 8, textAlign: 'center' },
+    frameLabelStand: { bottom: 32 },
     frameLabelLie: { marginTop: 14, top: '64%' },
-    took: { backgroundColor: colors.danger, height: 6, left: 0, position: 'absolute', top: 0 },
-    state: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 99,
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: 7,
-      height: 30,
-      left: 12,
-      paddingLeft: 10,
-      paddingRight: 12,
-      position: 'absolute',
-      top: 14,
-    },
-    stateDot: { backgroundColor: colors.danger, borderRadius: 4, height: 8, width: 8 },
-    stateText: { ...a.p12, color: colors.ink },
-    cover: {
-      alignItems: 'center',
-      backgroundColor: 'rgba(22, 24, 46, 0.72)',
-      bottom: 0,
-      gap: 10,
-      justifyContent: 'center',
-      left: 0,
-      paddingHorizontal: 32,
-      position: 'absolute',
-      right: 0,
-      top: 0,
-    },
-    coverTitle: { color: '#FFFFFF', fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 31, textAlign: 'center' },
-    coverText: { ...a.p15, color: '#FFFFFF', textAlign: 'center' },
-    coverGo: { backgroundColor: colors.surface, height: 46, marginTop: 10, paddingHorizontal: 18 },
-    hint: { marginBottom: 14, marginTop: 14, textAlign: 'center' },
-    album: { paddingHorizontal: 18 },
+    took: { backgroundColor: colors.lilac, height: 3, left: 0, position: 'absolute', top: 0 },
+    state: { alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 99, flexDirection: 'row', gap: 7, height: 30, left: 12, paddingLeft: 11, paddingRight: 12, position: 'absolute', top: 14 },
+    stateDot: { backgroundColor: colors.now, borderRadius: 4, height: 8, width: 8 },
+    stateText: { color: '#010101', fontFamily: fontFamilies.pretendardBold, fontSize: 12, lineHeight: 17 },
+    cover: { alignItems: 'center', backgroundColor: 'rgba(23, 22, 28, 0.82)', bottom: 0, gap: 8, justifyContent: 'center', left: 0, paddingHorizontal: 28, position: 'absolute', right: 0, top: 0 },
+    coverTitle: { color: '#FFFFFF', fontFamily: fontFamilies.pretendardExtraBold, fontSize: 20, lineHeight: 28, textAlign: 'center' },
+    coverText: { color: '#C9C8D3', fontSize: 13, lineHeight: 20, textAlign: 'center' },
+    coverGo: { backgroundColor: '#FFFFFF', height: 44, marginTop: 10, paddingHorizontal: 20 },
+    hint: { marginBottom: 12, marginTop: 14, textAlign: 'center' },
+    album: { paddingHorizontal: 22 },
     under: { alignItems: 'center', height: 40, justifyContent: 'center', marginTop: 2 },
     link: a.link,
 
-    // ---- waiting ----
-    wait: { flexGrow: 1, gap: 14, justifyContent: 'center', paddingHorizontal: 16 },
-    waitMeta: { marginTop: -6, textAlign: 'center' },
-    steps: { ...a.card, paddingHorizontal: 14, paddingVertical: 4 },
-    step: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 64 },
-    stepNext: { borderTopColor: colors.track, borderTopWidth: 2 },
-    stepBox: { ...a.tick },
-    stepNo: { ...a.p12, color: colors.textSecondary },
+    // ---- waiting: one block a little above the middle, the three steps plainly on the page ----
+    wait: { flexGrow: 1, gap: 14, justifyContent: 'center', paddingHorizontal: 20 },
+    waitMeta: { marginTop: -6 },
+    steps: { paddingHorizontal: 2 },
+    step: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 60 },
+    stepNext: { borderTopColor: colors.border, borderTopWidth: 1 },
+    stepBox: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 14, height: 28, justifyContent: 'center', width: 28 },
+    stepNo: { ...a.p12, color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold },
 
     // ---- the result ----
     problem: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center', padding: 24 },
-    problemGo: { height: 46, marginTop: 8, paddingHorizontal: 18 },
-    result: { paddingHorizontal: 16, paddingTop: 8 },
-    ask: { alignItems: 'center', flexDirection: 'row', gap: 12, marginBottom: 16 },
-    face: {
-      alignItems: 'center',
-      backgroundColor: colors.primaryLight,
-      borderColor: colors.border,
-      borderRadius: 11,
-      borderWidth: 1,
-      height: 40,
-      justifyContent: 'center',
-      width: 40,
-    },
-    say: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 14, borderWidth: 1, flexShrink: 1, paddingHorizontal: 13, paddingVertical: 8 },
-    sayTail: {
-      backgroundColor: colors.surface,
-      borderBottomWidth: 2,
-      borderColor: colors.border,
-      borderLeftWidth: 2,
-      height: 10,
-      left: -7,
-      position: 'absolute',
-      top: 13,
-      transform: [{ rotate: '45deg' }],
-      width: 10,
-    },
-    scoreCard: { ...a.card, paddingBottom: 18, paddingHorizontal: 18, paddingTop: 20 },
+    problemGo: { height: 46, marginTop: 8, paddingHorizontal: 20 },
+    result: { gap: 0, paddingHorizontal: 20, paddingTop: 8 },
+    summary: { color: colors.textSecondary, fontSize: 14.5, lineHeight: 22, marginBottom: 16, marginTop: 8 },
+    scoreCard: { ...a.card, marginTop: 8, paddingBottom: 18, paddingHorizontal: 20, paddingTop: 18 },
     scoreTop: { alignItems: 'baseline', flexDirection: 'row', justifyContent: 'space-between' },
-    score: { ...big, fontSize: 72, lineHeight: 76 },
-    scoreUnit: { ...a.p15, color: colors.ink },
-    reps: { borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 18, paddingBottom: 3, paddingTop: 18 },
-    rep: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
-      gap: 3,
-      paddingBottom: 10,
-      paddingTop: 9,
-    },
+    cardLab: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12.5, lineHeight: 18 },
+    reps: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
+    rep: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 18, gap: 1, paddingBottom: 10, paddingTop: 9 },
     // Up to five share one row; more go five to a row (ten squats were too narrow to read in one row).
     repRow: { flex: 1 },
     repGrid: { width: '18%' },
-    repPressed: { backgroundColor: colors.primaryLight },
-    inline: { borderTopColor: colors.track, borderTopWidth: 2, marginBottom: -12, marginTop: 14 },
-    angle: { alignItems: 'center', flexDirection: 'row', gap: 12, paddingHorizontal: 4, paddingVertical: 14 },
-    angleNext: { borderTopColor: colors.track, borderTopWidth: 2 },
+    repPressed: { opacity: 0.7 },
+    inline: { marginBottom: -12, marginTop: 8 },
+    angle: { alignItems: 'center', flexDirection: 'row', gap: 12, paddingHorizontal: 2, paddingVertical: 13 },
+    angleNext: { borderTopColor: colors.border, borderTopWidth: 1 },
     angleValue: { alignItems: 'flex-end' },
-    // Outside the range: said in dark words, not in red (red letters feel like a failed test).
-    offText: { ...a.p12, color: colors.ink, fontFamily: fontFamilies.galmuri11Bold },
-    section: { marginBottom: 8, marginHorizontal: 2, marginTop: 24 },
-    fold: { ...a.card, marginBottom: 10, paddingHorizontal: 16 },
-    foldHead: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 66, paddingVertical: 12 },
-    pm: {
-      ...a.p15,
-      backgroundColor: colors.primaryLight,
-      borderColor: colors.border,
-      borderRadius: 9,
-      borderWidth: 1,
-      color: colors.ink,
-      height: 30,
-      lineHeight: 26,
-      overflow: 'hidden',
-      textAlign: 'center',
-      width: 30,
-    },
+    // Outside the range: said in bold dark words, never in red (red letters feel like a failed test).
+    offText: { ...a.p12, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
+    section: { marginBottom: 10, marginHorizontal: 4, marginTop: 24 },
+    fold: { backgroundColor: colors.surface, borderRadius: 24, marginBottom: 10, paddingHorizontal: 20 },
+    foldHead: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 64, paddingVertical: 12 },
+    pm: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 20, lineHeight: 24, textAlign: 'center', width: 24 },
     foldBody: { gap: 8, paddingBottom: 18 },
     foldQ: { marginTop: 6 },
-    good: { ...a.card, gap: 12, padding: 16 },
-    goodRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+    good: { ...a.card, gap: 12, paddingHorizontal: 20, paddingVertical: 18 },
+    goodRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
+    goodCheck: { alignItems: 'center', backgroundColor: colors.textPrimary, borderRadius: 10, height: 20, justifyContent: 'center', marginTop: 1, width: 20 },
     resultNote: { marginBottom: 12, marginTop: 24 },
   } as const;
 }
