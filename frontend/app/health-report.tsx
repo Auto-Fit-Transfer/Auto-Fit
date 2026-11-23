@@ -1,15 +1,14 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { BackHandler } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { getDietNutritionSummary } from '@/src/api/diet';
 import { getExerciseHistory } from '@/src/api/exercise';
 import { getHealthReport } from '@/src/api/healthReport';
 import { getHome } from '@/src/api/home';
 import { getHabitTierProgress } from '@/src/api/tier';
-import { ALoading } from '@/src/components/a/ALoading';
-import { ReportDetailView, ReportSummaryView, type ReportTrend } from '@/src/components/a/ReportViews';
-import { useKeptWho } from '@/src/components/a/useKeptWho';
+import type { ReportTrend } from '@/src/components/a/ReportViews';
+import { ReportView } from '@/src/components/b/ReportView';
 import { R6ConnectionError } from '@/src/components/common/R6ConnectionError';
 import { readQuestLog, WATER_GOAL } from '@/src/features/a/dailyQuests';
 import { readSteps, STEP_GOAL } from '@/src/features/a/useSteps';
@@ -17,6 +16,7 @@ import { countWeek, regionParts, weekFrame, weightLine, type WeekCount } from '@
 import { sessionLocalDate, sessionMinutes } from '@/src/features/exercise/weeklyMetrics';
 import { nutritionNumber } from '@/src/features/nutritionSummary';
 import { tierLook, type TierLook } from '@/src/features/tier/tierLook';
+import { useAppTheme } from '@/src/theme';
 
 type Loaded = { count: WeekCount; trend: ReportTrend; tier: TierLook | null; name: string };
 
@@ -81,16 +81,14 @@ async function loadReport(): Promise<Loaded | null> {
   };
 }
 
-// Renewal A's report: the week counted up (결산), then the character's status sheet (자세히).
-// The measurements themselves, kind by kind, are one tap further (app/health-records.tsx).
+// Renewal B's report: one page of story cards (src/components/b/ReportView.tsx) over the same week the
+// renewal A report counted. The measurements themselves, kind by kind, are one tap further (app/health-records.tsx).
 export default function ReportScreen() {
   const router = useRouter();
-  const who = useKeptWho();
-  const [view, setView] = useState<'sum' | 'detail'>('sum');
+  const { colors } = useAppTheme();
   const [data, setData] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [counted, setCounted] = useState(false); // the week is counted up once, not again on coming back from 자세히
 
   useFocusEffect(
     useCallback(() => {
@@ -108,18 +106,6 @@ export default function ReportScreen() {
     }, [attempt]),
   );
 
-  // The phone's back button on 자세히 goes to 결산, not out of the report.
-  useFocusEffect(
-    useCallback(() => {
-      if (view !== 'detail') return undefined;
-      const back = BackHandler.addEventListener('hardwareBackPress', () => {
-        setView('sum');
-        return true;
-      });
-      return () => back.remove();
-    }, [view]),
-  );
-
   if (!data) {
     return failed ? (
       <R6ConnectionError
@@ -130,39 +116,23 @@ export default function ReportScreen() {
         }}
       />
     ) : (
-      <ALoading />
+      <View style={{ alignItems: 'center', backgroundColor: colors.background, flex: 1, justifyContent: 'center' }}>
+        <ActivityIndicator color={colors.textPrimary} />
+      </View>
     );
   }
-  const tierIndex = data.tier?.index ?? 0;
-  return view === 'sum' ? (
-    <ReportSummaryView
+  return (
+    <ReportView
       count={data.count}
+      onAsk={(question) => router.push(question ? { pathname: '/chat', params: { ask: question } } : '/chat')}
       onBack={() => router.back()}
+      onGo={(tab) => router.push(`/${tab}`)}
       onHistory={() => router.push('/exercise/history')}
-      onMore={() => {
-        setCounted(true);
-        setView('detail');
-      }}
       onRecords={() => router.push('/health-records')}
       onTier={() => router.push('/tier')}
       onUpload={() => router.push('/upload')}
-      still={counted}
       tier={data.tier}
-      tierIndex={tierIndex}
       trend={data.trend}
-      who={who}
-    />
-  ) : (
-    <ReportDetailView
-      count={data.count}
-      name={data.name}
-      onAsk={(question) => router.push({ pathname: '/chat', params: { ask: question } })}
-      onBack={() => setView('sum')}
-      onGo={(tab) => router.push(`/${tab}`)}
-      onTier={() => router.push('/tier')}
-      tier={data.tier}
-      tierIndex={tierIndex}
-      who={who}
     />
   );
 }
