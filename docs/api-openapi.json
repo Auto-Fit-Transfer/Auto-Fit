@@ -19626,6 +19626,67 @@
         ]
       }
     },
+    "/api/exercise/sessions/{session_id}/stop": {
+      "post": {
+        "operationId": "stop_exercise_session_api_exercise_sessions__session_id__stop_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Stop Exercise Session Api Exercise Sessions  Session Id  Stop Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stop Exercise Session",
+        "tags": [
+          "Exercise"
+        ]
+      }
+    },
     "/api/exercise/summary": {
       "get": {
         "operationId": "get_exercise_summary_api_exercise_summary_get",

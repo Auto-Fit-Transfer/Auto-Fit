@@ -1226,6 +1226,76 @@ def test_complete_exercise_session_uses_authenticated_user(monkeypatch) -> None:
         main.app.dependency_overrides.clear()
 
 
+def test_stop_exercise_session_uses_authenticated_user(monkeypatch) -> None:
+    session_id = "00000000-0000-4000-8000-000000000001"
+
+    async def fake_user() -> main.AuthenticatedUser:
+        return main.AuthenticatedUser(id="authenticated-user")
+
+    async def fake_rpc(user_id: str, requested_id: str, settings: main.Settings):
+        assert user_id == "authenticated-user"
+        assert requested_id == session_id
+        assert settings == TEST_SETTINGS
+        return {"session": {"exercise_session_id": session_id, "status": "stopped"},
+                "logs": []}
+
+    main.app.dependency_overrides[main.get_current_user] = fake_user
+    main.app.dependency_overrides[main.get_settings] = lambda: TEST_SETTINGS
+    monkeypatch.setattr(main, "call_stop_exercise_session_rpc", fake_rpc)
+    try:
+        response = TestClient(main.app).post(f"/api/exercise/sessions/{session_id}/stop")
+        assert response.status_code == 200
+        assert response.json()["result"]["session"]["status"] == "stopped"
+    finally:
+        main.app.dependency_overrides.clear()
+
+
+@pytest.mark.parametrize("message,status_code", [
+    ("EXERCISE_SESSION_NOT_FOUND", 404),
+    ("EXERCISE_SESSION_NOT_STOPPABLE", 409),
+    ("Unexpected database error", 502),
+])
+def test_stop_exercise_session_maps_rpc_errors(message: str, status_code: int) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path.endswith("/rpc/stop_exercise_session")
+        assert json.loads(request.content) == {
+            "p_user_id": "owner", "p_session_id": "session-id",
+        }
+        return httpx.Response(400, json={"message": message})
+
+    async def check() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            async with bind_request_client(client):
+                with pytest.raises(main.HTTPException) as failure:
+                    await main.call_stop_exercise_session_rpc(
+                        "owner", "session-id", TEST_SETTINGS
+                    )
+        assert failure.value.status_code == status_code
+        expected = (message if status_code != 502 else "EXERCISE_SESSION_STOP_UNAVAILABLE")
+        assert failure.value.detail == {"code": expected}
+
+    asyncio.run(check())
+
+
+def test_stop_exercise_session_accepts_idempotent_stopped_result() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "session": {"status": "stopped", "completed_item_count": 1},
+            "logs": [{"completed": True}],
+        })
+
+    async def check() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            async with bind_request_client(client):
+                result = await main.call_stop_exercise_session_rpc(
+                    "owner", "session-id", TEST_SETTINGS
+                )
+        assert result["session"]["completed_item_count"] == 1
+        assert result["logs"] == [{"completed": True}]
+
+    asyncio.run(check())
+
+
 def test_latest_exercise_session_uses_authenticated_user(monkeypatch) -> None:
     async def fake_user() -> main.AuthenticatedUser:
         return main.AuthenticatedUser(id="authenticated-user")

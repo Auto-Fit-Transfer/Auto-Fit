@@ -1353,6 +1353,36 @@ async def call_exercise_session_rpc(
     return response.json()
 
 
+async def call_stop_exercise_session_rpc(
+    user_id: str, session_id: str, settings: Settings,
+) -> dict[str, Any]:
+    try:
+        async with client_scope() as client:
+            response = await client.post(
+                f"{settings.supabase_url}/rest/v1/rpc/stop_exercise_session",
+                headers=service_headers(settings),
+                json={"p_user_id": user_id, "p_session_id": session_id},
+            )
+    except httpx.HTTPError:
+        raise HTTPException(502, detail={"code": "EXERCISE_SESSION_STOP_UNAVAILABLE"}) from None
+
+    try:
+        result = response.json()
+    except ValueError:
+        result = None
+    if not response.is_success:
+        message = result.get("message") if isinstance(result, dict) else None
+        if message == "EXERCISE_SESSION_NOT_FOUND":
+            raise HTTPException(404, detail={"code": message})
+        if message == "EXERCISE_SESSION_NOT_STOPPABLE":
+            raise HTTPException(409, detail={"code": message})
+        raise HTTPException(502, detail={"code": "EXERCISE_SESSION_STOP_UNAVAILABLE"})
+    session = result.get("session") if isinstance(result, dict) else None
+    if not isinstance(session, dict) or session.get("status") != "stopped":
+        raise HTTPException(502, detail={"code": "EXERCISE_SESSION_STOP_UNAVAILABLE"})
+    return result
+
+
 async def fetch_owned_exercise_session_source(
     user_id: str, session_id: str, settings: Settings,
 ) -> dict[str, Any]:
@@ -4269,6 +4299,16 @@ async def complete_exercise_session(
         {"p_user_id": user.id, "p_session_id": str(session_id)},
         settings,
     )
+    return {"ok": True, "result": result}
+
+
+@app.post("/api/exercise/sessions/{session_id}/stop", tags=["Exercise"])
+async def stop_exercise_session(
+    session_id: UUID,
+    user: AuthenticatedUser = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    result = await call_stop_exercise_session_rpc(user.id, str(session_id), settings)
     return {"ok": True, "result": result}
 
 
