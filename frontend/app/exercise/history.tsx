@@ -199,7 +199,10 @@ export default function ExerciseHistory() {
       canForward={offset < 0}
       error={error ? { onRetry: () => { setLoading(true); setRetry((now) => now + 1); }, text: error } : null}
       goal={goal ? `${GOALS[goal.goal_type] ?? '운동 목표'} · 주 ${goal.weekly_duration_minutes}분 · 주 ${goal.weekly_frequency}회` : null}
-      left={target ? `목표 ${Math.round(target)}${unit}${value >= target ? ' · 목표 달성' : offset < 0 ? '' : ` · ${Math.ceil(target - value)}${unit} 남음`}` : ''}
+      left={!goal ? '아직 정한 목표가 없어요' : !target ? ''
+        : value >= target ? `목표 ${Math.round(target)}${unit}${unit === '회' ? '를' : '을'} 채웠어요`
+          : offset < 0 ? `목표는 ${Math.round(target)}${unit}${unit === '회' ? '였어요' : '이었어요'}`
+            : `목표 ${Math.round(target)}${unit}까지 ${Math.ceil(target - value)}${unit} 남았어요`}
       line={lineValue ? { label: `${week ? '하루' : '한 주'} ${Math.round(lineValue)}${unit}`, value: lineValue } : null}
       listTitle={picked ? (picked[0] === picked[1] ? `${dayName(picked[0])}요일` : `${koreanDate(picked[0])} – ${koreanDate(picked[1])}`) : `${week ? (offset ? '그 주' : '이번 주') : (offset ? '그 달' : '이번 달')} 운동 ${shown.length}번`}
       loading={loading}
@@ -214,6 +217,7 @@ export default function ExerciseHistory() {
       onPeriod={(next) => { if (next !== period || offset !== 0) reset(); setPeriod(next); setOffset(0); }}
       onRow={openRow}
       period={period}
+      when={week ? (offset === 0 ? '이번 주는' : offset === -1 ? '지난주는' : `${koreanDate(start)} 주는`) : offset === 0 ? '이번 달은' : `${start.getMonth() + 1}월은`}
       range={week ? `${koreanDate(start)} – ${lastLabel}` : `${start.getFullYear()}년 ${start.getMonth() + 1}월`}
       rows={shown.map(({ row, run }) => run ? {
         key: run.running_session_id, stopped: false,

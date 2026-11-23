@@ -7,13 +7,16 @@ import { AppBottomSheet, Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
+import { Headline } from '@/src/components/b/Headline';
+
 import { ALoading } from './ALoading';
 import { aForm } from './form';
 
-// Renewal A's workout record (a-record.html): the app's 내 운동 and 진행 현황 as one screen. One period rules it
-// all: my goal, how much I moved against it (a bar a day, or a week), three sums, then the list. A bar picks that
-// day's list; a workout opens a sheet with its moves and what goes into the next one. A view that only shows what
-// it is given; app/exercise/history.tsx fills it.
+// The workout record, in renewal B's way (b-record.html): the app's 내 운동 and 진행 현황 as one screen. One period
+// rules it all: chosen at the top, the headline says its number, the line under it how far the goal is, the card
+// draws it a black bar a day (or a week) with the goal as a dashed line, then the list. A bar picks that day's list;
+// a workout opens a sheet with its moves and what goes into the next one. app/exercise/history.tsx fills it.
+const VERBS: Record<RecordMetric, string> = { minutes: '움직였어요', workouts: '운동했어요', runningMinutes: '달렸어요' };
 export type RecordMetric = 'minutes' | 'workouts' | 'runningMinutes';
 const METRICS: [RecordMetric, string][] = [['minutes', '운동 시간'], ['workouts', '운동 횟수'], ['runningMinutes', '러닝 시간']];
 const PLOT = 110;
@@ -21,11 +24,12 @@ const PLOT = 110;
 export interface RecordViewProps {
   period: 'week' | 'month';
   range: string;
+  when: string; // "이번 주는", "지난주는", "10월은"
   canForward: boolean;
   goal: string | null; // "체력 기르기 · 주 90분 · 주 3번"
   metric: RecordMetric;
   value: string; // "120분"
-  left: string; // "목표 90분 · 목표 달성" or ''
+  left: string; // "목표 90분까지 30분 남았어요", "아직 정한 목표가 없어요" or ''
   bars: { key: string; label: string; value: number; text: string; now: boolean; picked: boolean; name: string }[];
   top: number;
   line: { value: number; label: string } | null;
@@ -56,7 +60,7 @@ export interface RecordViewProps {
 }
 
 export function RecordView(props: RecordViewProps) {
-  const { period, range, canForward, goal, metric, value, left, bars, top, line, sums, listTitle, showAll, rows, loading, error, sheet } = props;
+  const { period, range, when, canForward, goal, metric, value, left, bars, top, line, sums, listTitle, showAll, rows, loading, error, sheet } = props;
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -79,12 +83,12 @@ export function RecordView(props: RecordViewProps) {
           {seg([['week', '주간'], ['month', '월간']], period, props.onPeriod)}
           <View style={styles.nav}>
             <Pressable accessibilityLabel="이전 기간" accessibilityRole="button" hitSlop={6} onPress={() => props.onMove(-1)} style={styles.navButton}>
-              <BackIcon color={colors.ink} height={14} width={14} />
+              <BackIcon color={colors.textPrimary} height={18} width={18} />
             </Pressable>
             <Text style={styles.range}>{range}</Text>
             <Pressable accessibilityLabel="다음 기간" accessibilityRole="button" accessibilityState={{ disabled: !canForward }} disabled={!canForward} hitSlop={6} onPress={() => props.onMove(1)} style={[styles.navButton, !canForward && styles.navOff]}>
               <View style={styles.flip}>
-                <BackIcon color={colors.ink} height={14} width={14} />
+                <BackIcon color={colors.textPrimary} height={18} width={18} />
               </View>
             </Pressable>
           </View>
@@ -100,20 +104,15 @@ export function RecordView(props: RecordViewProps) {
           </Pressable>
         ) : (
           <>
+            <Headline lines={[[{ text: when }], [{ text: value, mark: true }, { text: ` ${VERBS[metric]}` }]]} />
+            <View style={styles.aim}>
+              <Text numberOfLines={2} style={styles.lead}>{left}</Text>
+              <Pressable accessibilityRole="link" hitSlop={8} onPress={props.onGoal}>
+                <Text style={styles.link}>{goal ? '목표 고치기' : '목표 정하기'}</Text>
+              </Pressable>
+            </View>
             <View style={styles.card}>
-              <View style={styles.aim}>
-                <Text numberOfLines={2} style={styles.note}>
-                  {goal ?? '아직 정한 운동 목표가 없어요'}
-                </Text>
-                <Pressable accessibilityRole="link" hitSlop={8} onPress={props.onGoal}>
-                  <Text style={styles.link}>{goal ? '목표 고치기' : '목표 정하기'}</Text>
-                </Pressable>
-              </View>
               {seg(METRICS, metric, props.onMetric, true)}
-              <View style={styles.hl}>
-                <Text style={styles.big}>{value}</Text>
-                {left ? <Text style={styles.note}>{left}</Text> : null}
-              </View>
 
               <View style={styles.chart}>
                 <View style={styles.plot}>
@@ -155,7 +154,7 @@ export function RecordView(props: RecordViewProps) {
             </View>
 
             <View style={styles.head}>
-              <Text style={styles.note}>{listTitle}</Text>
+              <Text style={styles.q}>{listTitle}</Text>
               {showAll ? (
                 <Pressable accessibilityRole="button" hitSlop={8} onPress={props.onAll}>
                   <Text style={styles.link}>전체 보기</Text>
@@ -203,9 +202,9 @@ export function RecordView(props: RecordViewProps) {
             {sheet.tell ? <Text style={styles.body}>{sheet.tell}</Text> : null}
             {sheet.next.length ? (
               <View style={styles.next}>
-                <Text style={styles.q}>다음 운동에 반영해요</Text>
+                <Text style={styles.nextTitle}>다음 운동에 반영해요</Text>
                 {sheet.next.map((line) => (
-                  <Text key={line} style={styles.body}>
+                  <Text key={line} style={styles.nextLine}>
                     · {line}
                   </Text>
                 ))}
@@ -232,68 +231,71 @@ export function RecordView(props: RecordViewProps) {
 
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
+  const num = { fontFamily: fontFamilies.pretendardBold, fontSize: 12, lineHeight: 16 } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
-    content: { gap: 12, paddingHorizontal: 16, paddingTop: 8 },
+    content: { gap: 16, paddingHorizontal: 20, paddingTop: 8 },
     grow: { flex: 1, minWidth: 0 },
-    note: a.note,
-    q: { ...a.p15, color: colors.ink },
-    body: { ...a.p15, color: colors.ink },
-    dim: { color: colors.textSecondary },
+    note: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
+    q: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },
+    body: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 21 },
+    lead: { color: colors.textSecondary, flex: 1, fontSize: 14.5, lineHeight: 21 },
+    dim: { color: colors.textDisabled },
     link: a.link,
     flip: { transform: [{ rotate: '180deg' }] },
 
-    top: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
-    seg: { flexDirection: 'row', gap: 6 },
-    segWide: { marginTop: 12 },
+    top: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
+    seg: { backgroundColor: colors.surface, borderRadius: 999, flexDirection: 'row', padding: 4 },
+    segWide: { backgroundColor: 'transparent', gap: 6, padding: 0 },
     // not a.seg: its flex would squeeze the two short ones (flex 0 collapses a button on the web)
-    segItem: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 38, justifyContent: 'center', paddingHorizontal: 14 },
-    segItemWide: { flex: 1, paddingHorizontal: 4 },
-    segText: { ...a.p12, color: colors.ink },
-    on: a.segOn,
+    segItem: { alignItems: 'center', borderRadius: 999, height: 34, justifyContent: 'center', paddingHorizontal: 16 },
+    segItemWide: { ...a.chip, height: 38, paddingHorizontal: 14 },
+    segText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold, fontSize: 13, lineHeight: 18 },
+    on: a.on,
     onText: a.onText,
-    nav: { alignItems: 'center', flexDirection: 'row', gap: 6 },
-    navButton: { ...a.mini, paddingHorizontal: 0, width: 32 },
-    navOff: { opacity: 0.35 },
-    range: { ...a.p12, color: colors.ink, minWidth: 104, textAlign: 'center' },
+    nav: { alignItems: 'center', flexDirection: 'row', marginRight: -10 },
+    navButton: { alignItems: 'center', height: 40, justifyContent: 'center', width: 40 },
+    navOff: { opacity: 0.25 },
+    range: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 13.5, fontVariant: ['tabular-nums'] as ['tabular-nums'], lineHeight: 19, minWidth: 100, textAlign: 'center' },
 
     wait: { height: 420 },
-    card: { ...a.card, paddingHorizontal: 14, paddingVertical: 14 },
-    aim: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
-    hl: { alignItems: 'baseline', flexDirection: 'row', gap: 8, justifyContent: 'space-between', marginTop: 16 },
-    big: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 40 },
+    card: { ...a.card, padding: 20 },
+    aim: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between', marginTop: -6, minHeight: 34 },
 
-    // the chart: a column a day (or a week), every bar from the same zero line; letters stay ink, never the bar's colour
-    chart: { marginTop: 10 },
-    plot: { borderBottomColor: colors.ink, borderBottomWidth: 2, flexDirection: 'row', height: PLOT + 22 },
+    // the chart: one measure, one axis from zero, the value on each bar, the goal a dashed line with its name;
+    // the bars are black (my record), no judging colours
+    chart: { marginTop: 18 },
+    plot: { borderBottomColor: colors.border, borderBottomWidth: 1.5, flexDirection: 'row', height: PLOT + 22 },
     col: { alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
-    n: { ...a.p12, color: colors.ink, marginBottom: 2 },
-    bar: { backgroundColor: colors.primary, borderColor: colors.border, borderBottomWidth: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, borderWidth: 1, width: 22 },
-    barOff: { backgroundColor: colors.primaryLight },
+    n: { ...num, color: colors.textPrimary, marginBottom: 5 },
+    bar: { backgroundColor: colors.textPrimary, borderTopLeftRadius: 7, borderTopRightRadius: 7, width: 24 },
+    barOff: { backgroundColor: colors.textDisabled },
     gline: { height: 2, left: 0, position: 'absolute', right: 0 },
-    gtag: { ...a.p12, backgroundColor: colors.surface, bottom: 3, color: colors.textSecondary, paddingHorizontal: 3, position: 'absolute', right: 0 },
-    labels: { flexDirection: 'row', marginTop: 4 },
-    wd: { ...a.p12, color: colors.textSecondary, flex: 1, textAlign: 'center' },
-    wdNow: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold },
+    gtag: { ...num, backgroundColor: colors.surface, bottom: 4, color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 11.5, paddingLeft: 4, position: 'absolute', right: 0 },
+    labels: { flexDirection: 'row', marginTop: 6 },
+    wd: { ...num, color: colors.textSecondary, flex: 1, fontFamily: fontFamilies.pretendardMedium, textAlign: 'center' },
+    wdNow: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold },
 
-    sums: { borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', marginTop: 14, paddingTop: 12 },
-    sum: { alignItems: 'center', flex: 1, gap: 2 },
-    sumLine: { borderLeftColor: colors.track, borderLeftWidth: 2 },
-    sumValue: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    sums: { borderTopColor: colors.border, borderTopWidth: 1, flexDirection: 'row', marginTop: 18, paddingTop: 16 },
+    sum: { flex: 1, gap: 2 },
+    sumLine: {},
+    sumValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 16, lineHeight: 22 },
 
-    head: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 4, paddingHorizontal: 2 },
-    list: { paddingVertical: 2 },
-    row: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 60, paddingVertical: 8 },
-    rowLine: { borderTopColor: colors.track, borderTopWidth: 2 },
-    stop: { ...a.p12, borderColor: colors.border, borderRadius: 8, borderWidth: 1, color: colors.ink, paddingHorizontal: 6 },
+    head: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: -6, marginTop: 4, minHeight: 34, paddingHorizontal: 4 },
+    list: { paddingHorizontal: 20, paddingVertical: 4 },
+    row: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 64, paddingVertical: 10 },
+    rowLine: { borderTopColor: colors.border, borderTopWidth: 1 },
+    stop: { ...a.p12, backgroundColor: colors.surfaceMuted, borderRadius: 99, color: colors.textPrimary, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 2 },
     none: { paddingVertical: 24, textAlign: 'center' },
 
     sheet: { gap: 14, paddingBottom: 8 },
-    move: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 44, paddingVertical: 8 },
-    next: { gap: 4 },
+    move: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 48, paddingVertical: 10 },
+    next: { backgroundColor: colors.aiCard, borderRadius: 22, gap: 6, padding: 18 },
+    nextTitle: { color: colors.aiHello, fontFamily: fontFamilies.pretendardBold, fontSize: 13, lineHeight: 18 },
+    nextLine: { color: colors.onAi, fontFamily: fontFamilies.pretendardBold, fontSize: 14, lineHeight: 21 },
     go: { ...a.go, height: 52 },
     ghost: a.goGhost,
     goPressed: a.goPressed,
-    ghostText: { ...a.goText, color: colors.ink },
+    ghostText: { ...a.goText, color: colors.textPrimary },
   } as const;
 }

@@ -30,7 +30,7 @@ export default function ARecordSample() {
       canForward={false}
       error={null}
       goal={state === 'nogoal' ? null : '체력 기르기 · 주 90분 · 주 3회'}
-      left={state === 'nogoal' ? '' : month ? '목표 450분 · 362분 남음' : empty ? '목표 90분 · 90분 남음' : '목표 90분 · 33분 남음'}
+      left={state === 'nogoal' ? '아직 정한 목표가 없어요' : month ? '목표 450분까지 362분 남았어요' : empty ? '목표 90분까지 90분 남았어요' : '목표 90분까지 33분 남았어요'}
       line={state === 'nogoal' ? null : month ? { label: '한 주 90분', value: 90 } : { label: '하루 13분', value: 12.9 }}
       listTitle={day ? '11월 17일 화요일' : empty ? '이번 주 운동 0번' : '이번 주 운동 4번'}
       loading={state === 'loading'}
@@ -46,6 +46,7 @@ export default function ARecordSample() {
       onRow={(key) => setOpen(key !== 'r')}
       period={month ? 'month' : 'week'}
       range={month ? '2026년 11월' : '11월 16일 – 22일'}
+      when={month ? '이번 달은' : '이번 주는'}
       rows={empty ? [] : day ? ROWS.slice(1, 2) : ROWS}
       sheet={open ? {
         lead: '11월 17일 화요일 · 20분 · 70kcal',
