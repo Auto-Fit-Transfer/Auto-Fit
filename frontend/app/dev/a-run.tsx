@@ -70,9 +70,7 @@ export default function ARunSample() {
         pace={`6'40"`}
         path={path}
         problem={null}
-        tier={1}
-        title={state === 'done' ? '완주!' : '러닝 완료!'}
-        who="worker-f"
+        whole={state === 'done'}
       />
     );
   }

@@ -12,7 +12,7 @@ import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src
 
 import { aForm } from './form';
 
-// Renewal A, the pieces the running screens share.
+// The pieces the running screens share, in renewal B's way.
 
 // The top of the three kinds of exercise (오늘의 운동 · 러닝 · 자세 분석): the way back, the name of the
 // one I am on, and the three side by side, as on the exercise tab.
@@ -37,7 +37,7 @@ export function KindsBar({
           onPress={onBack}
           style={({ pressed }) => [styles.back, pressed && styles.backPressed]}
         >
-          <BackIcon color={colors.ink} height={22} width={22} />
+          <BackIcon color={colors.textPrimary} height={22} width={22} />
         </Pressable>
         <Text accessibilityRole="header" style={styles.heading}>
           {title}
@@ -184,18 +184,18 @@ export function RoutePicture({
     <View style={[styles.picture, style]}>
       <Svg accessibilityLabel={label} height="100%" preserveAspectRatio="xMidYMid meet" viewBox="0 0 320 220" width="100%">
         {Array.from({ length: 9 }, (_, index) => (
-          <Line key={`h${index}`} stroke={colors.track} strokeWidth="1" x1="0" x2="320" y1={index * 26} y2={index * 26} />
+          <Line key={`h${index}`} stroke={colors.surfaceMuted} strokeWidth="1" x1="0" x2="320" y1={index * 26} y2={index * 26} />
         ))}
         {Array.from({ length: 13 }, (_, index) => (
-          <Line key={`v${index}`} stroke={colors.track} strokeWidth="1" x1={index * 27} x2={index * 27} y1="0" y2="220" />
+          <Line key={`v${index}`} stroke={colors.surfaceMuted} strokeWidth="1" x1={index * 27} x2={index * 27} y1="0" y2="220" />
         ))}
         {line ? (
           <>
             {/* The dark line under the violet one is its outline. */}
-            <Polyline fill="none" points={line} stroke={colors.ink} strokeLinecap="round" strokeLinejoin="round" strokeWidth="9" />
+            <Polyline fill="none" points={line} stroke={colors.textPrimary} strokeLinecap="round" strokeLinejoin="round" strokeWidth="9" />
             <Polyline fill="none" points={line} stroke={colors.primary} strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
-            <Circle cx={end(ends[0], 0)} cy={end(ends[0], 1)} fill="#FFFFFF" r="6" stroke={colors.ink} strokeWidth="3" />
-            <Circle cx={end(ends.at(-1), 0)} cy={end(ends.at(-1), 1)} fill={colors.primary} r="6" stroke={colors.ink} strokeWidth="3" />
+            <Circle cx={end(ends[0], 0)} cy={end(ends[0], 1)} fill="#FFFFFF" r="6" stroke={colors.textPrimary} strokeWidth="3" />
+            <Circle cx={end(ends.at(-1), 0)} cy={end(ends.at(-1), 1)} fill={colors.primary} r="6" stroke={colors.textPrimary} strokeWidth="3" />
           </>
         ) : null}
       </Svg>
@@ -217,21 +217,19 @@ function createStyles({ colors }: AppTheme) {
     back: {
       alignItems: 'center',
       backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 14,
-      borderWidth: 1,
+      borderRadius: 22,
       height: 44,
       justifyContent: 'center',
       width: 44,
     },
-    backPressed: { transform: [{ translateY: 4 }] },
-    heading: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
-    // 4 taller than its buttons: the ledge they stand on.
-    kinds: { flexDirection: 'row', gap: 6, marginTop: 14, paddingBottom: 4 },
+    backPressed: { opacity: 0.85 },
+    heading: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 30, letterSpacing: -0.6, lineHeight: 38 },
+    // the three kinds as one light segment
+    kinds: { backgroundColor: colors.surface, borderRadius: 999, flexDirection: 'row', marginTop: 14, padding: 4 },
     segRow: { flexDirection: 'row', gap: 6, paddingBottom: 4 },
-    seg: a.seg,
-    segOn: a.segOn,
-    segText: a.segText,
+    seg: { alignItems: 'center', borderRadius: 999, flex: 1, height: 40, justifyContent: 'center' },
+    segOn: a.on,
+    segText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold, fontSize: 13.5, lineHeight: 19 },
     onText: a.onText,
     setup: { gap: 14 },
     q: a.q,
@@ -239,28 +237,24 @@ function createStyles({ colors }: AppTheme) {
     numRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
     num: {
       backgroundColor: colors.surface,
-      borderColor: colors.border,
       borderRadius: 12,
-      borderWidth: 1,
-      color: colors.ink,
-      fontFamily: fontFamilies.galmuri11Bold,
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardExtraBold,
       fontSize: 24,
       height: 46,
       padding: 0,
       textAlign: 'center',
       width: 96,
     },
-    unit: { ...a.p15, color: colors.ink },
+    unit: { ...a.p15, color: colors.textPrimary },
     note: a.note,
-    picture: { backgroundColor: colors.primaryLight, overflow: 'hidden' },
+    picture: { backgroundColor: colors.surfaceMuted, overflow: 'hidden' },
     pictureEmpty: { alignItems: 'center', bottom: 0, justifyContent: 'center', left: 0, position: 'absolute', right: 0, top: 0 },
     pictureTag: {
       ...a.p12,
       backgroundColor: colors.surface,
-      borderColor: colors.border,
       borderRadius: 99,
-      borderWidth: 1,
-      color: colors.ink,
+      color: colors.textPrimary,
       overflow: 'hidden',
       paddingHorizontal: 8,
       paddingVertical: 1,

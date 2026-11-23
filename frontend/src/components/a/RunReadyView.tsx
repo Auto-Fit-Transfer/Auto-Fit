@@ -2,7 +2,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text, TextInput } from '@/src/components/common';
-import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { aForm } from './form';
 import { KindsBar } from './RunParts';
@@ -15,7 +15,8 @@ export interface RunCourseRow {
   onPress: () => void;
 }
 
-// Renewal A's 러닝, before a run: a run I left is on top, then the place and the length to look for,
+// 러닝 before a run, in renewal B's way (b-running.html; the app has no course picked for me, so it keeps its
+// search): a run I left is on top, then the place and the length to look for,
 // and the list of courses for them (the ones found, or the ones I kept). Running without a course
 // is the line at the foot. A view that only shows what it is given; app/exercise/running.tsx fills it.
 export function RunReadyView({
@@ -122,7 +123,7 @@ export function RunReadyView({
               onPress={() => onTab(value)}
               style={[styles.mini, tab === value && styles.on]}
             >
-              <Text style={[styles.miniText, tab === value && styles.onText]}>{label}</Text>
+              <Text style={[styles.miniText, tab === value && styles.tabOn]}>{label}</Text>
             </Pressable>
           ))}
         </View>
@@ -134,7 +135,7 @@ export function RunReadyView({
                 accessibilityRole="button"
                 key={row.key}
                 onPress={row.onPress}
-                style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                style={({ pressed }) => [styles.row, index === 0 && styles.rowFirst, pressed && styles.rowPressed]}
               >
                 <Text style={styles.no}>{index + 1}</Text>
                 <View style={styles.rowCopy}>
@@ -167,52 +168,53 @@ export function RunReadyView({
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
-    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, paddingHorizontal: 16, width: '100%' },
-    words: { ...a.p15, color: colors.ink },
-    note: a.note,
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, paddingHorizontal: 20, width: '100%' },
+    words: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 20 },
+    note: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
     center: { textAlign: 'center' },
     onText: a.onText,
-    keep: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 10, marginTop: 14, paddingLeft: 14, paddingRight: 12, paddingVertical: 10 },
-    keepPressed: { backgroundColor: colors.primaryLight },
+    keep: { ...a.card, alignItems: 'center', borderRadius: 999, flexDirection: 'row', gap: 10, marginTop: 14, paddingLeft: 20, paddingRight: 12, paddingVertical: 12 },
+    keepPressed: { opacity: 0.85 },
     keepCopy: { flex: 1, gap: 2, minWidth: 0 },
     keepTag: {
       ...a.p12,
       backgroundColor: colors.primary,
-      borderColor: colors.border,
-      borderRadius: 10,
-      borderWidth: 1,
+      borderRadius: 999,
       color: colors.onPrimary,
+      fontFamily: fontFamilies.pretendardBold,
       overflow: 'hidden',
       paddingHorizontal: 10,
       paddingVertical: 6,
     },
-    find: { flexDirection: 'row', gap: 8, marginTop: 14, paddingBottom: 4 },
-    field: { ...a.field, ...a.input, flex: 1, height: 46, minWidth: 0 },
-    go: { ...a.go, height: 46, paddingHorizontal: 16 },
+    find: { flexDirection: 'row', gap: 8, marginTop: 16 },
+    field: { ...a.field, ...a.input, backgroundColor: colors.surface, borderRadius: 999, flex: 1, height: 46, minWidth: 0, paddingHorizontal: 18 },
+    go: { ...a.go, height: 46, paddingHorizontal: 18 },
     goPressed: a.goPressed,
     off: { opacity: 0.4 },
-    segRow: { flexDirection: 'row', gap: 6, marginTop: 8, paddingBottom: 4 },
-    seg: a.seg,
-    segOn: a.segOn,
-    segText: a.segText,
+    segRow: { backgroundColor: colors.surface, borderRadius: 999, flexDirection: 'row', marginTop: 10, padding: 4 },
+    seg: { alignItems: 'center', borderRadius: 999, flex: 1, height: 38, justifyContent: 'center' },
+    segOn: a.on,
+    segText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold, fontSize: 13.5, lineHeight: 19 },
     // The list takes the height that is left, and scrolls inside itself.
-    list: { ...a.card, flex: 1, marginBottom: 6, marginTop: 12, minHeight: 150, overflow: 'hidden' },
-    tabs: { flexDirection: 'row', gap: 6, paddingBottom: 3, paddingHorizontal: 12, paddingTop: 10 },
-    mini: a.mini,
-    miniText: a.miniText,
-    on: a.on,
-    rows: { paddingBottom: 6, paddingHorizontal: 6, paddingTop: 4 },
-    row: { alignItems: 'center', borderColor: 'transparent', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 12, minHeight: 64, paddingHorizontal: 6 },
-    rowPressed: { backgroundColor: colors.primaryLight, borderColor: colors.border },
+    list: { ...a.card, flex: 1, marginBottom: 6, marginTop: 14, minHeight: 150, overflow: 'hidden' },
+    // the two lists as words, the open one bold
+    tabs: { flexDirection: 'row', gap: 16, paddingHorizontal: 20, paddingTop: 12 },
+    mini: { justifyContent: 'center', minHeight: 36 },
+    miniText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 13.5, lineHeight: 19 },
+    on: {},
+    tabOn: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold },
+    rows: { paddingBottom: 6, paddingHorizontal: 20 },
+    row: { alignItems: 'center', borderTopColor: colors.border, borderTopWidth: 1, flexDirection: 'row', gap: 12, minHeight: 64 },
+    rowFirst: { borderTopWidth: 0 },
+    rowPressed: { opacity: 0.7 },
     no: {
       ...a.p12,
-      backgroundColor: colors.primaryLight,
-      borderColor: colors.border,
-      borderRadius: 11,
-      borderWidth: 1,
-      color: colors.ink,
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 18,
+      color: colors.textPrimary,
+      fontFamily: fontFamilies.pretendardExtraBold,
       height: 36,
-      lineHeight: 32,
+      lineHeight: 36,
       overflow: 'hidden',
       textAlign: 'center',
       width: 36,

@@ -40,13 +40,13 @@ const RouteMap = memo(function RouteMap({ points, plannedCourse, currentLocation
     const actualEnds = actualLine.split(' ');
     return <Svg width={width} height={height} accessibilityLabel={plannedLine ? '예정 경로와 실제 GPS 이동 경로 도식' : '실제 GPS 이동 경로 도식'}>
       {/* Ahead of me: dots. Behind me: the dark line with violet on it, the colour of how far I am. */}
-      {plannedLine ? <Polyline points={plannedLine} fill="none" stroke={colors.ink} strokeDasharray="2 10" strokeWidth={5} strokeLinejoin="round" strokeLinecap="round" /> : null}
-      {actualLine ? <><Polyline points={actualLine} fill="none" stroke={colors.ink} strokeWidth={9} strokeLinejoin="round" strokeLinecap="round" />
+      {plannedLine ? <Polyline points={plannedLine} fill="none" stroke={colors.textPrimary} strokeDasharray="2 10" strokeWidth={5} strokeLinejoin="round" strokeLinecap="round" /> : null}
+      {actualLine ? <><Polyline points={actualLine} fill="none" stroke={colors.textPrimary} strokeWidth={9} strokeLinejoin="round" strokeLinecap="round" />
         <Polyline points={actualLine} fill="none" stroke={colors.primary} strokeWidth={4} strokeLinejoin="round" strokeLinecap="round" />
-        <Circle cx={Number(actualEnds[0].split(',')[0])} cy={Number(actualEnds[0].split(',')[1])} r={6} fill="#FFF" stroke={colors.ink} strokeWidth={3} />
-        <Circle cx={Number(actualEnds.at(-1)?.split(',')[0])} cy={Number(actualEnds.at(-1)?.split(',')[1])} r={7} fill={colors.primary} stroke={colors.ink} strokeWidth={3} /></>
+        <Circle cx={Number(actualEnds[0].split(',')[0])} cy={Number(actualEnds[0].split(',')[1])} r={6} fill="#FFF" stroke={colors.textPrimary} strokeWidth={3} />
+        <Circle cx={Number(actualEnds.at(-1)?.split(',')[0])} cy={Number(actualEnds.at(-1)?.split(',')[1])} r={7} fill={colors.primary} stroke={colors.textPrimary} strokeWidth={3} /></>
         // One position has no line to draw, so the marker alone sits in the middle.
-        : here && !plannedLine ? <Circle cx={width / 2} cy={height / 2} r={7} fill={colors.primary} stroke={colors.ink} strokeWidth={3} /> : null}
+        : here && !plannedLine ? <Circle cx={width / 2} cy={height / 2} r={7} fill={colors.primary} stroke={colors.textPrimary} strokeWidth={3} /> : null}
     </Svg>;
   };
 
@@ -54,7 +54,7 @@ const RouteMap = memo(function RouteMap({ points, plannedCourse, currentLocation
   return <View onLayout={(event) => setBox({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height })} style={styles.map}>
     {mapFailed ? diagram()
       : <KakaoLiveMap key={attempt} currentLocation={currentLocation} accuracyMeters={currentLocation?.accuracy} acceptedPath={actual} plannedPath={planned} onFailure={failMap} onReady={readyMap} />}
-    {!mapFailed && !mapReady ? <View style={styles.mapLoading}><ActivityIndicator color={colors.ink} /><Text style={styles.note}>지도를 불러오고 있어요.</Text></View> : null}
+    {!mapFailed && !mapReady ? <View style={styles.mapLoading}><ActivityIndicator color={colors.textPrimary} /><Text style={styles.note}>지도를 불러오고 있어요.</Text></View> : null}
     {mapFailed ? <View style={styles.mapFailed}>
       <Text style={[styles.note, styles.grow]}>지도를 불러오지 못했어요 · 경로 도식</Text>
       {KAKAO_MAP_JS_KEY ? <Pressable accessibilityRole="button" hitSlop={8} onPress={retryMap} style={styles.mini}><Text style={styles.miniText}>다시 시도</Text></Pressable> : null}

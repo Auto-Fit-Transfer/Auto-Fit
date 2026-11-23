@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { RunDoneView } from '@/src/components/a/RunViews';
-import { useHero } from '@/src/components/a/useHero';
 import { getRunningApiErrorMessage, getRunningSession, type RunningPlannedCourse, type RunningSession, type RunningTrackPoint } from '@/src/api/running';
 import { runClock, runKm, runPace, runProgress } from '@/src/features/a/runFormat';
 
@@ -12,7 +11,6 @@ export default function RunResult() {
   const params = useLocalSearchParams<{ sessionId?: string; from?: string }>();
   const sessionId = typeof params.sessionId === 'string' ? params.sessionId : '';
   const fromHistory = params.from === 'history';
-  const hero = useHero();
   const [session, setSession] = useState<RunningSession | null>(null);
   const [points, setPoints] = useState<RunningTrackPoint[]>([]);
   const [course, setCourse] = useState<RunningPlannedCourse | null>(null);
@@ -43,8 +41,6 @@ export default function RunResult() {
     problem={!sessionId ? { text: '러닝 기록을 찾지 못했어요.' }
       : error ? { text: error, onRetry: () => { setLoading(true); setRetry((value) => value + 1); } }
         : !done ? { text: '아직 완료된 러닝이 아니에요.' } : null}
-    tier={hero.tierIndex}
-    title={whole ? '완주!' : '러닝 완료!'}
-    who={hero.who}
+    whole={Boolean(whole)}
   />;
 }

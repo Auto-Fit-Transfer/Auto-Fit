@@ -10,10 +10,10 @@ import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { ALoading } from './ALoading';
 import { aForm } from './form';
 import { RoutePicture } from './RunParts';
-import { Hero, type Who } from './sprites';
+import { Headline } from '@/src/components/b/Headline';
 
-// Renewal A's two running screens that only show numbers they are given (the screens under
-// app/exercise fill them): while I run, and the run I just did.
+// The two running screens that only show numbers they are given (the screens under app/exercise fill them),
+// in renewal B's way (b-running.html): while I run, and the run I just did.
 
 // While I run: the map is the big thing, then how far in the biggest number, how long and how fast
 // under it, and the two buttons. On a course the bar under the distance is how much of it I have run.
@@ -64,7 +64,12 @@ export function RunLiveView({
     <View style={styles.root}>
       <ScreenHeader
         onBack={onBack}
-        right={loading || missing ? null : <Text style={[styles.live, held && styles.liveHeld]}>{held ? '일시정지' : '기록 중'}</Text>}
+        right={loading || missing ? null : (
+          <View style={styles.live}>
+            <View style={[styles.liveDot, held && styles.liveDotHeld]} />
+            <Text style={styles.liveText}>{held ? '일시정지' : '기록 중'}</Text>
+          </View>
+        )}
         title={title}
       />
       {loading ? (
@@ -76,28 +81,28 @@ export function RunLiveView({
       ) : (
         <ScrollView contentContainerStyle={[styles.live1, { paddingBottom: Math.max(12, insets.bottom) + 4 }]} showsVerticalScrollIndicator={false}>
           {/* No alignItems on the box: the map's own wrapper is flex: 1, and centring it collapses its width to 0. */}
+          {course ? (
+            <View style={styles.courseLine}>
+              <Text style={styles.courseLeft}>{course.left}</Text>
+              <View style={styles.line}>
+                <View style={[styles.lineFill, { width: `${course.ratio * 100}%` }]} />
+              </View>
+            </View>
+          ) : null}
           <View style={styles.liveMap}>{map}</View>
           <View style={styles.count}>
             <Text style={[styles.km, held && styles.kmHeld]}>
               {km}
               <Text style={styles.unit}> km</Text>
             </Text>
-            {course ? (
-              <>
-                <View style={styles.line}>
-                  <View style={[styles.lineFill, { width: `${course.ratio * 100}%` }]} />
-                </View>
-                <Text style={styles.note}>{course.left}</Text>
-              </>
-            ) : null}
             <View style={styles.pair}>
               <View style={styles.cell}>
-                <Text style={styles.value}>{clock}</Text>
                 <Text style={styles.note}>시간</Text>
+                <Text style={styles.value}>{clock}</Text>
               </View>
               <View style={[styles.cell, styles.cellNext]}>
-                <Text style={styles.value}>{pace}</Text>
                 <Text style={styles.note}>평균 페이스</Text>
+                <Text style={styles.value}>{pace}</Text>
               </View>
             </View>
           </View>
@@ -121,7 +126,7 @@ export function RunLiveView({
                 onPress={onToggle}
                 style={({ pressed }) => [styles.go, styles.ghost, styles.half, busy && styles.off, pressed && styles.goPressed]}
               >
-                <Text style={styles.goText}>{busy ? '처리 중…' : held ? '계속 달리기' : '일시정지'}</Text>
+                <Text style={styles.ghostText}>{busy ? '처리 중…' : held ? '계속 달리기' : '일시정지'}</Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -140,15 +145,12 @@ export function RunLiveView({
   );
 }
 
-// After a run. One job: the run I just did at a glance - where (the map), how far in the biggest
-// number, how long and how fast. My character is small, by the title. No calories: the app has no
-// checked way to work them out.
+// After a run. One job: the run I just did at a glance - how far in the headline, where (the map), how long
+// and how fast, as one block a little above the middle. No calories: the app has no checked way to work them out.
 export function RunDoneView({
-  who,
-  tier,
   loading,
   problem,
-  title,
+  whole,
   path,
   km,
   clock,
@@ -157,12 +159,10 @@ export function RunDoneView({
   leaveLabel,
   onLeave,
 }: {
-  who: Who;
-  tier: number;
   loading: boolean;
   // Said in place of the record when it cannot be shown; with onRetry it can be tried again.
   problem: { text: string; onRetry?: () => void } | null;
-  title: string;
+  whole: boolean; // the whole course was run
   path: RunningCoordinate[];
   km: string;
   clock: string;
@@ -188,27 +188,24 @@ export function RunDoneView({
             </Pressable>
           ) : (
             <>
-              <View style={styles.titleRow}>
-                <Hero frame={1} proud tier={tier} who={who} zoom={0.5} />
-                <Text accessibilityRole="header" style={styles.title}>
-                  {title}
-                </Text>
+              <View style={styles.okhead}>
+                <Headline lines={[[{ text: '오늘은' }], [{ text: `${km}km`, mark: true }, { text: whole ? ' 완주했어요' : ' 달렸어요' }]]} />
+                <View style={styles.saved}>
+                  <View style={styles.savedDot} />
+                  <Text style={styles.savedText}>기록이 저장됐어요</Text>
+                </View>
               </View>
               <View style={styles.record}>
                 {path.length >= 2 ? <RoutePicture label="달린 길" points={path} style={styles.doneMap} /> : null}
                 <View style={styles.numbers}>
-                  <Text style={styles.bigKm}>
-                    {km}
-                    <Text style={styles.unit}> km</Text>
-                  </Text>
                   <View style={[styles.pair, styles.donePair]}>
                     <View style={styles.cell}>
-                      <Text style={styles.bigValue}>{clock}</Text>
                       <Text style={styles.note}>시간</Text>
+                      <Text style={styles.bigValue}>{clock}</Text>
                     </View>
                     <View style={[styles.cell, styles.cellNext]}>
-                      <Text style={styles.bigValue}>{pace}</Text>
                       <Text style={styles.note}>평균 페이스</Text>
+                      <Text style={styles.bigValue}>{pace}</Text>
                     </View>
                   </View>
                 </View>
@@ -228,62 +225,56 @@ export function RunDoneView({
 
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
-  const big = { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontVariant: ['tabular-nums'] as ['tabular-nums'] } as const;
+  const big = { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontVariant: ['tabular-nums'] as ['tabular-nums'] } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
-    note: a.note,
+    note: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
     center: { textAlign: 'center' },
-    body: { ...a.p15, color: colors.textBody, textAlign: 'center' },
+    body: { color: colors.textPrimary, fontSize: 14.5, lineHeight: 22, textAlign: 'center' },
     error: { ...a.p12, color: colors.danger, textAlign: 'center' },
-    unit: { ...a.p15, color: colors.textSecondary },
-    pair: { borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', paddingTop: 12, width: '100%' },
-    cell: { alignItems: 'center', flex: 1, gap: 2 },
-    cellNext: { borderLeftColor: colors.track, borderLeftWidth: 2 },
+    unit: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold, fontSize: 16 },
+    pair: { flexDirection: 'row', width: '100%' },
+    cell: { flex: 1, gap: 1, paddingHorizontal: 8 },
+    cellNext: {},
     go: a.go,
     goLast: { marginBottom: 4 },
-    ghost: a.goGhost,
+    ghost: { backgroundColor: colors.surface },
+    ghostText: { ...a.goText, color: colors.textPrimary },
     goPressed: a.goPressed,
     goText: a.goText,
     off: { opacity: 0.4 },
-    // ---- while I run ----
-    live1: { flexGrow: 1, gap: 12, paddingHorizontal: 16, paddingTop: 4 },
+    // ---- while I run: the map is the big thing and follows me ----
+    live1: { flexGrow: 1, gap: 12, paddingHorizontal: 20, paddingTop: 4 },
     missing: { flex: 1, justifyContent: 'center', padding: 24 },
-    live: {
-      ...a.p12,
-      backgroundColor: colors.primaryLight,
-      borderColor: colors.border,
-      borderRadius: 99,
-      borderWidth: 1,
-      color: colors.ink,
-      overflow: 'hidden',
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-    },
-    liveHeld: { backgroundColor: colors.surface, color: colors.textSecondary },
-    liveMap: { ...a.card, backgroundColor: colors.primaryLight, flex: 1, minHeight: 200, overflow: 'hidden' },
-    count: { ...a.card, alignItems: 'center', gap: 10, paddingBottom: 14, paddingHorizontal: 16, paddingTop: 8 },
-    km: { ...big, fontSize: 72, lineHeight: 84 },
+    live: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 999, flexDirection: 'row', gap: 7, paddingHorizontal: 13, paddingVertical: 8 },
+    liveDot: { backgroundColor: colors.now, borderRadius: 4, height: 8, width: 8 },
+    liveDotHeld: { backgroundColor: colors.textDisabled },
+    liveText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 12.5, lineHeight: 18 },
+    courseLine: { gap: 8 },
+    courseLeft: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 12.5, lineHeight: 18 },
+    line: { backgroundColor: colors.surfaceMuted, borderRadius: 3, height: 5, overflow: 'hidden', width: '100%' },
+    lineFill: { backgroundColor: colors.textPrimary, height: '100%' },
+    liveMap: { backgroundColor: colors.surfaceMuted, borderRadius: 28, flex: 1, minHeight: 200, overflow: 'hidden' },
+    count: { alignItems: 'center', gap: 12 },
+    km: { ...big, fontSize: 68, letterSpacing: -2, lineHeight: 76 },
     kmHeld: { opacity: 0.35 },
-    line: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 99, borderWidth: 1, height: 14, overflow: 'hidden', width: '100%' },
-    lineFill: { backgroundColor: colors.primary, height: '100%' },
-    value: { ...big, fontSize: 24, lineHeight: 30 },
-    notice: { ...a.p12, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.ink, padding: 10 },
-    // 4 taller than its buttons: the ledge they stand on.
-    acts: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
+    value: { ...big, fontSize: 22, lineHeight: 28 },
+    notice: { ...a.p12, backgroundColor: colors.surface, borderRadius: 18, color: colors.textPrimary, paddingHorizontal: 16, paddingVertical: 12 },
+    acts: { flexDirection: 'row', gap: 10, paddingBottom: 4 },
     half: { flex: 1 },
-    // ---- the run I just did: one block in the middle of the height, a little above it ----
-    done: { paddingHorizontal: 16 },
-    doneBlock: { flexGrow: 1, gap: 12, justifyContent: 'center', paddingBottom: 48 },
-    leave: { marginTop: 8 },
-    problem: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, padding: 12 },
-    titleRow: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center' },
-    title: { ...big, fontSize: 36, lineHeight: 42 },
+    // ---- the run I just did: one block a little above the middle ----
+    done: { paddingHorizontal: 20 },
+    doneBlock: { flexGrow: 1, gap: 14, justifyContent: 'center', paddingBottom: 48 },
+    leave: { marginTop: 4 },
+    problem: { backgroundColor: colors.surface, borderRadius: 18, padding: 16 },
+    okhead: { gap: 6 },
+    saved: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 20 },
+    savedDot: { backgroundColor: colors.lilac, borderRadius: 5, height: 9, width: 9 },
+    savedText: { color: colors.lilacInk, fontSize: 13, lineHeight: 19 },
     record: { ...a.card, overflow: 'hidden' },
-    doneMap: { borderBottomColor: colors.ink, borderBottomWidth: 2, height: 240 },
-    numbers: { alignItems: 'center', paddingBottom: 22, paddingHorizontal: 14, paddingTop: 18 },
-    // How far: the one number this screen is about.
-    bigKm: { ...big, fontSize: 88, lineHeight: 98 },
-    donePair: { marginTop: 16, paddingTop: 18 },
-    bigValue: { ...big, fontSize: 36, lineHeight: 42 },
+    doneMap: { height: 220 },
+    numbers: { paddingBottom: 18, paddingHorizontal: 12, paddingTop: 16 },
+    donePair: {},
+    bigValue: { ...big, fontSize: 22, lineHeight: 28 },
   } as const;
 }
