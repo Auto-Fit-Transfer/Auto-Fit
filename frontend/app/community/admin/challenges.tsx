@@ -112,9 +112,9 @@ function createStyles({ colors }: AppTheme) {
     card: { ...a.card, gap: 4, marginHorizontal: 16, marginTop: 12, padding: 14 },
     pressed: { transform: [{ translateY: 4 }] },
     titleRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-    title: { ...a.p15, color: colors.ink, flex: 1 },
-    badge: { ...a.p12, backgroundColor: colors.primaryLight, borderRadius: 6, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6 },
-    badgeOff: { backgroundColor: colors.track, color: colors.textSecondary },
+    title: { ...a.p15, color: colors.textPrimary, flex: 1 },
+    badge: { ...a.p12, backgroundColor: colors.surfaceMuted, borderRadius: 99, color: colors.textPrimary, overflow: 'hidden', paddingHorizontal: 8 },
+    badgeOff: { backgroundColor: colors.surfaceMuted, color: colors.textSecondary },
     meta: { ...a.p12, color: colors.textBody },
     note: a.note,
   } as const;

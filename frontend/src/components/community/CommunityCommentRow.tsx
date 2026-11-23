@@ -4,7 +4,7 @@ import MoreIcon from '@/assets/icons/system/DotsThree.svg';
 import type { CommunityAuthor, CommunityComment } from '@/src/api/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { aForm } from '@/src/components/a/form';
-import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { CommunityAvatar } from './CommunityAvatar';
 import { Text } from '@/src/components/common';
@@ -30,7 +30,7 @@ export function CommunityCommentRow({
         disabled={!openAuthor}
         onPress={openAuthor}
       >
-        <CommunityAvatar author={comment.author} size={34} />
+        <CommunityAvatar author={comment.author} size={36} />
       </Pressable>
       <View style={styles.body}>
         <View style={styles.meta}>
@@ -62,19 +62,17 @@ function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     row: {
-      borderBottomColor: colors.track,
-      borderBottomWidth: 2,
       flexDirection: 'row',
       gap: 10,
-      marginHorizontal: 16,
-      paddingVertical: 14,
+      marginHorizontal: 24,
+      paddingVertical: 12,
     },
     body: { flex: 1, minWidth: 0 },
     meta: { alignItems: 'center', flexDirection: 'row', gap: 6 },
     nicknameButton: { flexShrink: 1 },
-    nickname: { ...a.p15, color: colors.ink, flexShrink: 1 },
-    time: a.note,
+    nickname: { color: colors.textPrimary, flexShrink: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 14, lineHeight: 20 },
+    time: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
     more: { marginLeft: 'auto' },
-    content: { ...a.p15, color: colors.ink, marginTop: 2 },
+    content: { color: colors.textPrimary, fontSize: 14.5, lineHeight: 22, marginTop: 3 },
   } as const;
 }

@@ -196,8 +196,8 @@ function createStyles({ colors }: AppTheme) {
     tabTextActive: a.onText,
     message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
     messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
-    row: { alignItems: 'center', borderBottomColor: colors.track, borderBottomWidth: 2, flexDirection: 'row', gap: 12, marginHorizontal: 16, paddingVertical: 12 },
+    row: { alignItems: 'center', borderBottomColor: colors.surfaceMuted, borderBottomWidth: 2, flexDirection: 'row', gap: 12, marginHorizontal: 16, paddingVertical: 12 },
     person: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 12, minWidth: 0 },
-    nickname: { ...a.p15, color: colors.ink, flexShrink: 1 },
+    nickname: { ...a.p15, color: colors.textPrimary, flexShrink: 1 },
   } as const;
 }

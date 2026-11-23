@@ -159,10 +159,10 @@ export function CommunityClubsPane({ bottomSpace }: { bottomSpace: number }) {
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
-    header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 14, paddingHorizontal: 16, paddingTop: 16 },
-    heading: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
+    header: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 10, paddingHorizontal: 24, paddingTop: 16 },
+    heading: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },
     headerActions: { flexDirection: 'row', gap: 8 },
-    switchButton: a.mini,
+    switchButton: { ...a.mini, backgroundColor: colors.surface },
     switchText: a.miniText,
     createButton: { ...a.mini, backgroundColor: colors.primary },
     createText: { ...a.miniText, color: colors.onPrimary },

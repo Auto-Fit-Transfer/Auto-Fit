@@ -13,7 +13,7 @@ import {
 } from '@/src/api/community';
 import { CommunityAvatar } from '@/src/components/community';
 import { aForm } from '@/src/components/a/form';
-import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { BackButton, Text, TextInput } from '@/src/components/common';
 
 type SearchTab = 'all' | 'posts' | 'routines' | 'users' | 'clubs';
@@ -80,7 +80,7 @@ export default function CommunitySearchScreen() {
         {showRoutines && results.routines.length > 0 ? <><Text style={s.sectionTitle}>루틴 {results.routines.length}</Text>{results.routines.map((post) => <PostRow key={`routine-${post.post_id}`} post={post} onPress={() => openPost(post)} routine />)}</> : null}
         {showPosts && regularPosts.length > 0 ? <><Text style={s.sectionTitle}>게시글 {regularPosts.length}</Text>{regularPosts.map((post) => <PostRow key={`post-${post.post_id}`} post={post} onPress={() => openPost(post)} />)}</> : null}
         {showUsers && results.users.length > 0 ? <><Text style={s.sectionTitle}>사람 {results.users.length}</Text>{results.users.map((user) => <Pressable hitSlop={16} key={user.user_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/community/user/[userId]', params: { userId: user.user_id } })} style={s.personRow}><CommunityAvatar author={user} size={38} /><View style={s.personCopy}><Text style={s.rowTitle}>{user.nickname}</Text><Text style={s.meta}>게시글 {user.post_count} · 팔로워 {user.follower_count}</Text></View><CaretRightIcon color={colors.textSecondary} height={18} width={18} /></Pressable>)}</> : null}
-        {showClubs && results.clubs.length > 0 ? <><Text style={s.sectionTitle}>클럽 {results.clubs.length}</Text>{results.clubs.map((club) => <Pressable hitSlop={16} key={club.club_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/community/club/[clubId]', params: { clubId: club.club_id } })} style={s.personRow}><View style={s.clubIcon}><ChatsIcon color={colors.ink} height={22} width={22} /></View><View style={s.personCopy}><Text style={s.rowTitle}>{club.name}</Text><Text style={s.meta}>회원 {club.member_count}명 · 글 {club.post_count}개</Text></View><CaretRightIcon color={colors.textSecondary} height={18} width={18} /></Pressable>)}</> : null}
+        {showClubs && results.clubs.length > 0 ? <><Text style={s.sectionTitle}>클럽 {results.clubs.length}</Text>{results.clubs.map((club) => <Pressable hitSlop={16} key={club.club_id} accessibilityRole="button" onPress={() => router.push({ pathname: '/community/club/[clubId]', params: { clubId: club.club_id } })} style={s.personRow}><View style={s.clubIcon}><ChatsIcon color={colors.textPrimary} height={22} width={22} /></View><View style={s.personCopy}><Text style={s.rowTitle}>{club.name}</Text><Text style={s.meta}>회원 {club.member_count}명 · 글 {club.post_count}개</Text></View><CaretRightIcon color={colors.textSecondary} height={18} width={18} /></Pressable>)}</> : null}
       </>}
     </ScrollView>
   </View>;
@@ -99,38 +99,37 @@ function PostRow({ post, onPress, routine = false }: { post: CommunityPost; onPr
 }
 
 function createSStyles({ colors }: AppTheme) {
-  // Renewal A: the back card and the field in one row, small chips for what kind, each result a card.
+  // Renewal B (b-community.html #vFind): the way back and a white pill field in one row, chips for what
+  // kind, each result a roomy white card.
   const a = aForm(colors);
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
-    searchRow: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingBottom: 12, paddingHorizontal: 16 },
+    searchRow: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingBottom: 12, paddingHorizontal: 20 },
     backButton: {},
-    inputWrap: { ...a.field, flex: 1, gap: 8, height: 46 },
+    inputWrap: { ...a.field, backgroundColor: colors.surface, borderRadius: 999, flex: 1, gap: 8, height: 46, paddingHorizontal: 18 },
     input: { ...a.input, flex: 1, minWidth: 0 },
     tabsScroll: { flexGrow: 0 },
-    tabs: { alignItems: 'center', gap: 6, paddingBottom: 3, paddingHorizontal: 16 },
-    tab: a.mini,
+    tabs: { alignItems: 'center', gap: 6, paddingHorizontal: 20 },
+    tab: { ...a.chip, backgroundColor: colors.surface, height: 38, paddingHorizontal: 14 },
     tabActive: a.on,
-    tabText: a.miniText,
+    tabText: a.chipText,
     tabTextActive: a.onText,
-    content: { gap: 10, paddingHorizontal: 16, paddingTop: 14 },
+    content: { gap: 10, paddingHorizontal: 20, paddingTop: 14 },
     hint: { ...a.note, marginTop: 18, textAlign: 'center' },
     loading: { marginTop: 35 },
-    sectionTitle: { ...a.note, marginHorizontal: 2, marginTop: 8 },
-    postRow: { ...a.card, flexDirection: 'row', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+    sectionTitle: { ...a.note, fontFamily: fontFamilies.pretendardMedium, marginHorizontal: 4, marginTop: 8 },
+    postRow: { ...a.card, borderRadius: 24, flexDirection: 'row', gap: 12, paddingHorizontal: 20, paddingVertical: 18 },
     postCopy: { flex: 1, gap: 4 },
-    thumbnail: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 10, borderWidth: 1, height: 64, width: 64 },
+    thumbnail: { backgroundColor: colors.surfaceMuted, borderRadius: 14, height: 64, width: 64 },
     category: a.note,
-    rowTitle: { ...a.p15, color: colors.ink },
+    rowTitle: { color: colors.textPrimary, fontSize: 14.5, lineHeight: 23 },
     meta: a.note,
-    personRow: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 10, padding: 12 },
+    personRow: { ...a.card, alignItems: 'center', borderRadius: 24, flexDirection: 'row', gap: 12, paddingHorizontal: 20, paddingVertical: 14 },
     personCopy: { flex: 1, gap: 2 },
     clubIcon: {
       alignItems: 'center',
-      backgroundColor: colors.primaryLight,
-      borderColor: colors.border,
-      borderRadius: 11,
-      borderWidth: 1,
+      backgroundColor: colors.surfaceMuted,
+      borderRadius: 14,
       height: 40,
       justifyContent: 'center',
       width: 40,

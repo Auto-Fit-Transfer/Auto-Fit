@@ -50,9 +50,9 @@ export function CommunityOptionsSheet({
 function createStyles({ colors }: AppTheme) {
   return {
     list: { paddingBottom: 8 },
-    row: { borderBottomColor: colors.track, borderBottomWidth: 2, justifyContent: 'center', minHeight: 52, paddingHorizontal: 4 },
-    pressed: { backgroundColor: colors.primaryLight },
-    label: { color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 },
+    row: { borderBottomColor: colors.surfaceMuted, borderBottomWidth: 2, justifyContent: 'center', minHeight: 52, paddingHorizontal: 4 },
+    pressed: { backgroundColor: colors.surfaceMuted },
+    label: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardRegular, fontSize: 15, lineHeight: 21 },
     destructive: { color: colors.danger },
   } as const;
 }

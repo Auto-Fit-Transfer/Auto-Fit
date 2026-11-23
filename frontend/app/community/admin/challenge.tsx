@@ -187,7 +187,7 @@ export default function CommunityAdminChallengeScreen() {
             accessibilityLabel="사용자에게 보이기"
             onValueChange={setEnabled}
             thumbColor={colors.surface}
-            trackColor={{ false: colors.track, true: colors.primary }}
+            trackColor={{ false: colors.surfaceMuted, true: colors.primary }}
             value={enabled}
           />
         </View>
@@ -208,9 +208,9 @@ function createStyles({ colors }: AppTheme) {
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     form: { gap: 8, paddingHorizontal: 16, paddingTop: 12 },
-    lockedNote: { ...a.p12, backgroundColor: colors.primaryLight, borderRadius: 12, color: colors.ink, overflow: 'hidden', padding: 12 },
+    lockedNote: { ...a.p12, backgroundColor: colors.surfaceMuted, borderRadius: 12, color: colors.textPrimary, overflow: 'hidden', padding: 12 },
     label: { ...a.q, marginBottom: 0, marginTop: 10 },
-    input: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, minHeight: 48, paddingHorizontal: 12, paddingVertical: 10 },
+    input: { backgroundColor: colors.surface, borderRadius: 12, color: colors.textPrimary, fontFamily: fontFamilies.pretendardRegular, fontSize: 15, minHeight: 48, paddingHorizontal: 12, paddingVertical: 10 },
     readOnly: { backgroundColor: colors.surfaceMuted, color: colors.textSecondary },
     chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     chip: { ...a.chip, height: 36, paddingHorizontal: 12 },

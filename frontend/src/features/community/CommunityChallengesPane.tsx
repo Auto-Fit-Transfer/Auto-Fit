@@ -214,14 +214,23 @@ export function CommunityChallengesPane({ bottomSpace, onBack }: { bottomSpace: 
               {item.reward_mileage.toLocaleString()} · {item.participant_count.toLocaleString()}명
               참여
             </Text>
-            <View
-              accessibilityLabel={`${METRIC_UNIT[item.metric]} ${item.progress}/${item.goal}일`}
-              style={styles.progressTrack}
-            >
+            {/* a circle a day while the goal is short enough to count by eye; a bar past that */}
+            {item.goal <= 14 ? (
+              <View accessibilityLabel={`${METRIC_UNIT[item.metric]} ${item.progress}/${item.goal}일`} accessible style={styles.days}>
+                {Array.from({ length: item.goal }, (_, index) => (
+                  <View key={index} style={[styles.day, index < item.progress && styles.dayDone]} />
+                ))}
+              </View>
+            ) : (
               <View
-                style={[styles.progressFill, { width: `${(item.progress / item.goal) * 100}%` }]}
-              />
-            </View>
+                accessibilityLabel={`${METRIC_UNIT[item.metric]} ${item.progress}/${item.goal}일`}
+                style={styles.progressTrack}
+              >
+                <View
+                  style={[styles.progressFill, { width: `${Math.min(1, item.progress / item.goal) * 100}%` }]}
+                />
+              </View>
+            )}
             <Text style={styles.progressText}>
               {METRIC_UNIT[item.metric]} {item.progress}/{item.goal}일
               {item.completed ? ' · 목표 달성!' : ''}
@@ -236,31 +245,34 @@ export function CommunityChallengesPane({ bottomSpace, onBack }: { bottomSpace: 
 }
 
 function createStyles({ colors }: AppTheme) {
-  // Renewal A: each challenge a card on its ledge, the days done as an outlined bar.
+  // Renewal B (b-community.html #vChals): each challenge a roomy white card, a black circle a day done.
   const a = aForm(colors);
   return {
     root: { flex: 1 },
-    header: { gap: 10, paddingBottom: 4, paddingHorizontal: 16, paddingTop: 12 },
+    header: { gap: 10, paddingBottom: 4, paddingHorizontal: 20, paddingTop: 12 },
     backRow: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 44 },
-    paneTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
-    rankingCard: { ...a.card, alignItems: 'center', backgroundColor: colors.primaryLight, flexDirection: 'row', padding: 14 },
+    paneTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 26 },
+    rankingCard: { ...a.card, alignItems: 'center', flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 16 },
     pressed: { opacity: 0.8 },
     rankingBody: { flex: 1, gap: 2 },
-    rankingTitle: { ...a.p15, color: colors.ink },
+    rankingTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },
     rankingText: a.note,
     note: a.note,
-    card: { ...a.card, gap: 8, marginHorizontal: 16, marginTop: 14, padding: 16 },
+    card: { ...a.card, gap: 10, marginHorizontal: 20, marginTop: 14, paddingHorizontal: 20, paddingVertical: 20 },
     titleRow: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-    title: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 22, lineHeight: 26 },
-    phase: { ...a.p12, backgroundColor: colors.track, borderRadius: 6, color: colors.textSecondary, overflow: 'hidden', paddingHorizontal: 6 },
-    phaseOn: { backgroundColor: colors.primaryLight, color: colors.ink },
-    description: { ...a.p15, color: colors.textBody },
-    meta: a.note,
-    progressTrack: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 7, borderWidth: 1, height: 14, overflow: 'hidden', marginTop: 4 },
-    progressFill: { backgroundColor: colors.primary, height: 10 },
-    progressText: { ...a.p12, color: colors.ink, marginBottom: 4 },
+    title: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 20, lineHeight: 27 },
+    phase: { ...a.p12, backgroundColor: colors.surfaceMuted, borderRadius: 99, color: colors.textSecondary, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 3 },
+    phaseOn: { backgroundColor: colors.primary, color: colors.onPrimary },
+    description: { color: colors.textSecondary, fontSize: 14, lineHeight: 22 },
+    meta: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
+    days: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+    day: { backgroundColor: colors.surfaceMuted, borderRadius: 6, height: 12, width: 12 },
+    dayDone: { backgroundColor: colors.textPrimary },
+    progressTrack: { backgroundColor: colors.surfaceMuted, borderRadius: 3, height: 6, overflow: 'hidden', marginTop: 4 },
+    progressFill: { backgroundColor: colors.textPrimary, height: '100%' },
+    progressText: { ...a.p12, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, marginBottom: 4 },
     joinedRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-    joinedText: { ...a.p15, color: colors.ink },
+    joinedText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 20 },
     leave: a.link,
     done: { ...a.note, textAlign: 'center' },
     message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },

@@ -48,7 +48,7 @@ function createStyles({ colors }: AppTheme) {
     button: a.mini,
     follow: {},
     // Already following: flat and tinted, so it reads as a state and not as something to press next.
-    following: { backgroundColor: colors.primaryLight, },
+    following: { backgroundColor: colors.surfaceMuted, },
     wide: { alignSelf: 'stretch', borderRadius: 12, height: 44 },
     pressed: { opacity: 0.75 },
     text: a.miniText,

@@ -15,7 +15,7 @@ export function BackButton({ accessibilityLabel = '뒤로 가기', color, ...pro
   return (
     <IconButton
       accessibilityLabel={accessibilityLabel}
-      icon={<BackIcon color={color ?? colors.ink} height={iconSize} width={iconSize} />}
+      icon={<BackIcon color={color ?? colors.textPrimary} height={iconSize} width={iconSize} />}
       size={44}
       {...props}
       style={[styles.card, props.style]}
@@ -26,11 +26,7 @@ export function BackButton({ accessibilityLabel = '뒤로 가기', color, ...pro
 // Renewal A: the way back is a small outlined card on a ledge.
 function createStyles({ colors }: AppTheme) {
   return {
-    card: {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 14,
-      borderWidth: 1,
-    },
+    // renewal B: a round white button, no outline
+    card: { backgroundColor: colors.surface, borderRadius: 22 },
   } as const;
 }

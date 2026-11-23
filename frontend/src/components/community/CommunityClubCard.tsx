@@ -4,7 +4,7 @@ import BarbellIcon from '@/assets/icons/deco/Barbell.svg';
 import RunningIcon from '@/assets/icons/deco/SneakerMove.svg';
 import DietIcon from '@/assets/icons/feature/navigator/Diet.svg';
 import { COMMUNITY_CLUB_CATEGORIES, type CommunityClub } from '@/src/api/community';
-import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { aForm } from '@/src/components/a/form';
 import { Text } from '@/src/components/common';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
@@ -50,17 +50,17 @@ export function CommunityClubCard({ club, onPress }: { club: CommunityClub; onPr
 }
 
 function createStyles({ colors }: AppTheme) {
-  // Renewal A: a card on its ledge, the club's kind in a violet square.
+  // Renewal B: a white row card, the club's kind in a light grey tile.
   const a = aForm(colors);
   return {
-    card: { ...a.card, alignItems: 'center', flexDirection: 'row', gap: 12, marginBottom: 12, marginHorizontal: 16, padding: 12 },
-    pressed: { transform: [{ translateY: 4 }] },
-    badge: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
-    badgeText: { ...a.p12, color: colors.ink, textAlign: 'center' },
+    card: { ...a.card, alignItems: 'center', borderRadius: 24, flexDirection: 'row', gap: 12, marginBottom: 10, marginHorizontal: 20, paddingHorizontal: 18, paddingVertical: 14 },
+    pressed: { opacity: 0.85 },
+    badge: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 14, height: 40, justifyContent: 'center', width: 40 },
+    badgeText: { ...a.p12, color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, textAlign: 'center' },
     body: { flex: 1, gap: 2, minWidth: 0 },
     titleRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
-    name: { ...a.p15, color: colors.ink, flexShrink: 1 },
-    joined: { ...a.p12, backgroundColor: colors.primaryLight, borderRadius: 6, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6 },
-    meta: a.note,
+    name: { color: colors.textPrimary, flexShrink: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 20 },
+    joined: { ...a.p12, backgroundColor: colors.surfaceMuted, borderRadius: 99, color: colors.textPrimary, overflow: 'hidden', paddingHorizontal: 8 },
+    meta: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
   } as const;
 }

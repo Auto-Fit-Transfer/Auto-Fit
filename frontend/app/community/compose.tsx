@@ -205,7 +205,7 @@ export default function CommunityComposeScreen() {
     >
       <View style={styles.header}>
         <Pressable accessibilityLabel="글쓰기 닫기" accessibilityRole="button" hitSlop={8} onPress={close} style={styles.cancel}>
-          <CloseIcon color={colors.ink} height={22} width={22} />
+          <CloseIcon color={colors.textPrimary} height={22} width={22} />
         </Pressable>
         <Text accessibilityRole="header" numberOfLines={1} style={styles.title}>
           {clubName ? `${clubName}에 글쓰기` : '새 글'}
@@ -257,7 +257,7 @@ export default function CommunityComposeScreen() {
                 }
                 style={styles.remove}
               >
-                <CloseIcon color={colors.ink} height={12} width={12} />
+                <CloseIcon color={colors.onPrimary} height={12} width={12} />
               </Pressable>
             </View>
           ))}
@@ -269,7 +269,7 @@ export default function CommunityComposeScreen() {
               onPress={() => void pickPhotos()}
               style={[styles.thumbnail, styles.addPhoto]}
             >
-              <ImageIcon color={colors.ink} height={24} width={24} />
+              <ImageIcon color={colors.textPrimary} height={24} width={24} />
               <Text style={styles.addPhotoText}>
                 {photos.length}/{COMMUNITY_MAX_IMAGES}
               </Text>
@@ -338,60 +338,49 @@ export default function CommunityComposeScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
-  // Renewal A: the way out as a card, the kinds as small chips, one big white box to write in, and
-  // the button that posts on its ledge at the foot.
+  // Renewal B (b-community.html #vWrite): a round way out, the title bold in the middle, 임시저장 at the
+  // right; the kinds as chips, one roomy white box to write in, and the black pill that posts at the foot.
   const a = aForm(colors);
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
-    header: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 56, paddingHorizontal: 16 },
-    cancel: {
-      alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 14,
-      borderWidth: 1,
-      height: 44,
-      justifyContent: 'center',
-      width: 44,
-    },
-    draftButton: a.mini,
+    header: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 56, paddingHorizontal: 20 },
+    cancel: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 22, height: 44, justifyContent: 'center', width: 44 },
+    draftButton: { ...a.mini, backgroundColor: colors.surface },
     draftText: a.miniText,
-    title: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
+    title: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 22, textAlign: 'center' },
     post: a.go,
     postDisabled: a.goOff,
     disabledText: { color: colors.textDisabled },
     postPressed: a.goPressed,
     postText: a.goText,
-    body: { gap: 12, padding: 16 },
+    body: { gap: 10, paddingHorizontal: 20, paddingVertical: 16 },
     categoryRow: { flexDirection: 'row', gap: 6, paddingBottom: 3 },
-    categoryChip: a.mini,
+    categoryChip: { ...a.chip, backgroundColor: colors.surface, height: 38, paddingHorizontal: 14 },
     categorySelected: a.on,
-    categoryText: a.miniText,
+    categoryText: a.chipText,
     categoryTextSelected: a.onText,
     activityHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-    activityButton: a.mini,
+    activityButton: { ...a.mini, backgroundColor: colors.surface },
     activityLink: a.miniText,
-    visibilityRow: { alignItems: 'center', borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, paddingTop: 12 },
+    visibilityRow: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 18, flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, minHeight: 52, paddingHorizontal: 16 },
     visibilityValue: a.note,
-    activityOption: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 12, borderWidth: 1, gap: 4, padding: 12 },
-    activitySelected: { backgroundColor: colors.primaryLight },
-    activityName: { ...a.p15, color: colors.ink },
+    activityOption: { backgroundColor: colors.surface, borderRadius: 18, gap: 4, paddingHorizontal: 16, paddingVertical: 14 },
+    activitySelected: { backgroundColor: colors.surfaceMuted },
+    activityName: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 20 },
     activityDisclosure: a.note,
     tagInput: { ...a.field, ...a.input },
-    fieldLabel: a.note,
-    fieldHint: a.note,
-    inputWrap: { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 14, borderWidth: 1, padding: 12 },
-    input: { ...a.input, lineHeight: 23, minHeight: 160 },
+    fieldLabel: { ...a.note, fontFamily: fontFamilies.pretendardBold, marginTop: 10 },
+    fieldHint: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
+    inputWrap: { backgroundColor: colors.surface, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 14 },
+    input: { ...a.input, lineHeight: 24, minHeight: 150 },
     counter: { ...a.note, alignSelf: 'flex-end' },
     photoHeading: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     photos: { gap: 8 },
-    thumbnail: { backgroundColor: colors.track, borderColor: colors.border, borderRadius: 12, borderWidth: 1, height: 84, overflow: 'hidden', width: 84 },
+    thumbnail: { backgroundColor: colors.surfaceMuted, borderRadius: 16, height: 72, overflow: 'hidden', width: 72 },
     remove: {
       alignItems: 'center',
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 8,
-      borderWidth: 1,
+      backgroundColor: colors.primary,
+      borderRadius: 12,
       height: 24,
       justifyContent: 'center',
       position: 'absolute',
@@ -399,11 +388,11 @@ function createStyles({ colors }: AppTheme) {
       top: 4,
       width: 24,
     },
-    addPhoto: { alignItems: 'center', backgroundColor: colors.surface, borderStyle: 'dashed', gap: 2, justifyContent: 'center' },
+    addPhoto: { alignItems: 'center', backgroundColor: colors.surface, gap: 2, justifyContent: 'center' },
     addPhotoText: a.note,
     notice: a.note,
-    bottom: { paddingHorizontal: 16, paddingTop: 10 },
-    progress: { alignItems: 'center', backgroundColor: colors.primaryLight, paddingVertical: 8 },
-    progressText: { ...a.p15, color: colors.ink },
+    bottom: { paddingHorizontal: 20, paddingTop: 10 },
+    progress: { alignItems: 'center', backgroundColor: colors.surfaceMuted, paddingVertical: 8 },
+    progressText: { ...a.p15, color: colors.textPrimary },
   } as const;
 }

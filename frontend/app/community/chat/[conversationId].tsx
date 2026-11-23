@@ -166,7 +166,7 @@ function CommunityChatScreen() {
           other ? (
             <IconButton
               accessibilityLabel="신고·차단"
-              icon={<MoreIcon color={colors.ink} height={22} width={22} />}
+              icon={<MoreIcon color={colors.textPrimary} height={22} width={22} />}
               onPress={() => actions.openUserMenu(other)}
               size={44}
             />
@@ -243,21 +243,21 @@ function createStyles({ colors }: AppTheme) {
   return {
     root: { backgroundColor: colors.background, flex: 1 },
     message: { alignItems: 'center', flex: 1, gap: spacing.md, justifyContent: 'center', padding: spacing.xxl },
-    messageText: { ...a.p15, color: colors.ink, textAlign: 'center' },
+    messageText: { ...a.p15, color: colors.textPrimary, textAlign: 'center' },
     list: { flexGrow: 1, gap: spacing.sm, padding: spacing.lg },
     empty: { ...a.p15, color: colors.textSecondary, padding: spacing.xl, textAlign: 'center', transform: [{ scaleY: -1 }] },
     bubbleRow: { alignItems: 'flex-end', flexDirection: 'row', gap: 6 },
     bubbleRowMine: { flexDirection: 'row-reverse' },
     // bubbles as the ask screen draws them: outlined, mine violet
-    bubble: { borderColor: colors.border, borderRadius: 14, borderWidth: 1, maxWidth: '75%', paddingHorizontal: 13, paddingVertical: 8 },
+    bubble: { borderRadius: 14, maxWidth: '75%', paddingHorizontal: 13, paddingVertical: 8 },
     bubbleMine: { backgroundColor: colors.primary, borderBottomRightRadius: 4 },
     bubbleOther: { backgroundColor: colors.surface, borderBottomLeftRadius: 4 },
-    bubbleText: { ...a.p15, color: colors.ink },
+    bubbleText: { ...a.p15, color: colors.textPrimary },
     bubbleTextMine: { color: colors.onPrimary },
     time: a.note,
-    composer: { alignItems: 'flex-end', borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
-    input: { ...a.p15, backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 14, borderWidth: 1, color: colors.ink, flex: 1, maxHeight: 120, paddingHorizontal: spacing.md, paddingVertical: 10 },
-    send: { alignItems: 'center', backgroundColor: colors.primary, borderColor: colors.border, borderRadius: 14, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+    composer: { alignItems: 'flex-end', borderTopColor: colors.surfaceMuted, borderTopWidth: 2, flexDirection: 'row', gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.sm },
+    input: { ...a.p15, backgroundColor: colors.surface, borderRadius: 14, color: colors.textPrimary, flex: 1, maxHeight: 120, paddingHorizontal: spacing.md, paddingVertical: 10 },
+    send: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 14, height: 44, justifyContent: 'center', width: 44 },
     sendDisabled: { opacity: 0.4 },
   } as const;
 }

@@ -1,3 +1,6 @@
+import BookmarkIcon from '@/assets/icons/deco/BookmarkSimple.svg';
+import BookmarkFillIcon from '@/assets/icons/deco/BookmarkSimple_Fill.svg';
+import ArrowUpIcon from '@/assets/icons/common/chevrons/Up.svg';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -36,7 +39,7 @@ import {
   subscribeCommunityEvents,
 } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 type LoadState = 'loading' | 'ready' | 'missing' | 'error';
 
@@ -237,6 +240,7 @@ export default function CommunityPostScreen() {
                   post={post}
                 />
                 {bookmarkAvailable ? <Pressable accessibilityRole="button" accessibilityState={{ selected: bookmarked, disabled: bookmarkBusy }} disabled={bookmarkBusy} onPress={() => void toggleBookmark()} style={styles.bookmarkButton}>
+                  {bookmarked ? <BookmarkFillIcon color={colors.textPrimary} height={16} width={16} /> : <BookmarkIcon color={colors.textPrimary} height={16} width={16} />}
                   <Text style={styles.bookmarkText}>{bookmarked ? '스크랩됨' : '스크랩'}</Text>
                 </Pressable> : null}
                 <View style={styles.commentsHeading}>
@@ -284,7 +288,7 @@ export default function CommunityPostScreen() {
               onPress={() => void send()}
               style={[styles.send, (!draft.trim() || sending) && styles.sendOff]}
             >
-              <Text style={styles.sendText}>보내기</Text>
+              <ArrowUpIcon color={colors.onPrimary} height={20} width={20} />
             </Pressable>
           </View>
         </>
@@ -302,28 +306,27 @@ function createStyles({ colors }: AppTheme) {
     center: { flex: 1, justifyContent: 'center' },
     message: { alignItems: 'center', gap: 12, padding: 32 },
     messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
-    sectionTitle: a.note,
-    commentsHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 4, paddingHorizontal: 18, paddingTop: 18 },
-    sortLabel: a.note,
-    bookmarkButton: { ...a.mini, alignSelf: 'flex-end', marginRight: 16, marginTop: 12 },
+    // Renewal B: 스크랩 a small pill at the right under the post, the comments as plain rows, and the
+    // comment bar a white pill field with a round black send button.
+    sectionTitle: { ...a.note, fontFamily: fontFamilies.pretendardMedium },
+    commentsHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 4, paddingHorizontal: 24, paddingTop: 18 },
+    sortLabel: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
+    bookmarkButton: { ...a.mini, alignSelf: 'flex-end', backgroundColor: colors.surface, flexDirection: 'row', gap: 6, height: 36, marginRight: 20, marginTop: 4 },
     bookmarkText: a.miniText,
-    empty: { ...a.note, paddingVertical: 32, textAlign: 'center' },
-    inputBar: { alignItems: 'flex-end', flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 10 },
+    empty: { ...a.note, fontFamily: fontFamilies.pretendardRegular, paddingVertical: 32, textAlign: 'center' },
+    inputBar: { alignItems: 'flex-end', flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingTop: 10 },
     input: {
       ...a.input,
       backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderRadius: 12,
-      borderWidth: 1,
+      borderRadius: 24,
       flex: 1,
       maxHeight: 110,
       minHeight: 46,
-      paddingHorizontal: 12,
-      paddingVertical: 11,
+      paddingHorizontal: 18,
+      paddingVertical: 12,
     },
-    send: { ...a.go, height: 46, marginBottom: 4, paddingHorizontal: 14 },
-    sendOff: { opacity: 0.4 },
-    sendText: { ...a.p15, color: colors.onPrimary },
+    send: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 23, height: 46, justifyContent: 'center', width: 46 },
+    sendOff: { backgroundColor: colors.textDisabled },
   } as const;
 }
 

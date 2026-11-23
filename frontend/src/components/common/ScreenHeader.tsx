@@ -30,12 +30,12 @@ export function ScreenHeader({ title, onBack, right }: { title?: string; onBack:
 
 function createStyles({ colors }: AppTheme) {
   return {
-    // Renewal A: the way back is a small outlined card with a ledge, and the title is in pixel letters.
-    header: { alignItems: 'center', backgroundColor: colors.background, flexDirection: 'row', justifyContent: 'space-between', minHeight: 56, paddingHorizontal: 16 },
-    side: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.border, borderRadius: 14, borderWidth: 1, height: 44, justifyContent: 'center', width: 44 },
+    // Renewal B: the way back is a round white button, the title bold in the middle.
+    header: { alignItems: 'center', backgroundColor: colors.background, flexDirection: 'row', justifyContent: 'space-between', minHeight: 56, paddingHorizontal: 20 },
+    side: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 22, height: 44, justifyContent: 'center', width: 44 },
     right: { alignItems: 'flex-end', justifyContent: 'center', minHeight: 44, minWidth: 44 },
     titleLayer: { alignItems: 'center', bottom: 0, justifyContent: 'center', left: 72, position: 'absolute', right: 72 },
-    title: { color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21, textAlign: 'center' },
-    titleEasy: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21 },
+    title: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 22, textAlign: 'center' },
+    titleEasy: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 22 },
   } as const;
 }

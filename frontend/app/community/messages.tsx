@@ -169,17 +169,17 @@ function createStyles({ colors }: AppTheme) {
   return {
     root: { backgroundColor: colors.background, flex: 1 },
     message: { alignItems: 'center', flex: 1, gap: spacing.md, justifyContent: 'center', padding: spacing.xxl },
-    messageText: { ...a.p15, color: colors.ink, textAlign: 'center' },
-    row: { alignItems: 'center', borderBottomColor: colors.track, borderBottomWidth: 2, flexDirection: 'row', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
-    pressed: { backgroundColor: colors.primaryLight },
+    messageText: { ...a.p15, color: colors.textPrimary, textAlign: 'center' },
+    row: { alignItems: 'center', borderBottomColor: colors.surfaceMuted, borderBottomWidth: 2, flexDirection: 'row', gap: spacing.md, paddingHorizontal: spacing.lg, paddingVertical: spacing.md },
+    pressed: { backgroundColor: colors.surfaceMuted },
     body: { flex: 1, gap: 2, minWidth: 0 },
     top: { alignItems: 'center', flexDirection: 'row', gap: spacing.sm },
-    nickname: { ...a.p15, color: colors.ink, flex: 1 },
+    nickname: { ...a.p15, color: colors.textPrimary, flex: 1 },
     time: a.note,
     preview: { ...a.p12, color: colors.textBody },
-    previewUnread: { color: colors.ink },
+    previewUnread: { color: colors.textPrimary },
     // unread count: violet with the dark outline, not red
-    badge: { alignItems: 'center', backgroundColor: colors.primary, borderColor: colors.border, borderRadius: radius.round, borderWidth: 1, minWidth: 22, paddingHorizontal: 6 },
+    badge: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: radius.round, minWidth: 22, paddingHorizontal: 6 },
     badgeText: { ...a.p12, color: colors.onPrimary },
   } as const;
 }

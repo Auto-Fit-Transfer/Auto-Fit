@@ -313,43 +313,44 @@ export default function CommunityClubScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
-  // Renewal A: the club's name in big pixel letters, its buttons on ledges, its posts as cards.
+  // Renewal B (b-community.html #vClub): the club's name as a big bold title, its words roomy, the join
+  // pill black (grey once in), the members as one white pill row, then its posts.
   const a = aForm(colors);
-  const button = { alignItems: 'center', borderColor: colors.border, borderRadius: 14, borderWidth: 1, height: 46, justifyContent: 'center' } as const;
+  const button = { alignItems: 'center', borderRadius: 999, height: 50, justifyContent: 'center' } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
-    info: { borderBottomColor: colors.track, borderBottomWidth: 2, gap: 14, paddingBottom: 14, paddingHorizontal: 16, paddingTop: 8 },
+    info: { gap: 14, paddingBottom: 8, paddingHorizontal: 20, paddingTop: 8 },
     identity: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-    categoryIcon: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.border, borderRadius: 14, borderWidth: 1, height: 52, justifyContent: 'center', width: 52 },
-    categoryIconText: { ...a.p12, color: colors.ink },
+    categoryIcon: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 14, height: 52, justifyContent: 'center', width: 52 },
+    categoryIconText: { ...a.p12, color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold },
     identityText: { flex: 1, gap: 2 },
-    category: a.note,
-    name: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
-    description: { ...a.p15, color: colors.textBody },
-    meta: a.note,
+    category: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
+    name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 26, letterSpacing: -0.5, lineHeight: 34 },
+    description: { color: colors.textPrimary, fontSize: 14.5, lineHeight: 23 },
+    meta: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
     ownerRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
     ownerLabel: a.note,
-    ownerName: { ...a.p12, color: colors.ink },
+    ownerName: { ...a.p12, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     actionRow: { flexDirection: 'row', gap: 8 },
     action: { flex: 1 },
-    membersCard: { ...a.card, alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 52, paddingHorizontal: 14 },
+    membersCard: { ...a.card, alignItems: 'center', borderRadius: 999, flexDirection: 'row', justifyContent: 'space-between', minHeight: 60, paddingLeft: 22, paddingRight: 16 },
     membersMore: { alignItems: 'center', flexDirection: 'row', gap: 2 },
-    membersCount: { ...a.p15, color: colors.ink },
+    membersCount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 20 },
     membersLink: a.note,
     feedHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingTop: 6 },
-    feedTitle: { ...a.p15, color: colors.ink },
+    feedTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },
     sortLabel: a.note,
-    rankingLink: { ...a.p12, color: colors.ink, textDecorationLine: 'underline' },
+    rankingLink: { ...a.p12, color: colors.textPrimary, textDecorationLine: 'underline' },
     joinButton: { ...button, backgroundColor: colors.surface, },
     join: { backgroundColor: colors.primary, },
     // Already in: flat and grey, it is no longer the thing to press first.
     joined: { backgroundColor: colors.surfaceMuted, },
-    pressed: { transform: [{ translateY: 4 }] },
-    joinTextOn: { ...a.p15, color: colors.onPrimary },
-    joinedText: { ...a.p15, color: colors.ink },
+    pressed: { opacity: 0.85 },
+    joinTextOn: { ...a.goText, fontSize: 15 },
+    joinedText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },
     message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
     messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
     empty: { alignItems: 'center', padding: 32 },
-    postWrap: { marginHorizontal: 16, marginTop: 12 },
+    postWrap: { marginHorizontal: 20, marginTop: 14 },
   } as const;
 }

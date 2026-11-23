@@ -20,7 +20,7 @@ import { AppButton, Text } from '@/src/components/common';
 import { CommunityAvatar } from '@/src/components/community';
 import { formatCommunityTime } from '@/src/features/community/communityEvents';
 import { aForm } from '@/src/components/a/form';
-import { spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 function describe(item: CommunityNotification) {
   switch (item.type) {
@@ -184,7 +184,7 @@ export default function CommunityNotificationsScreen() {
               tintColor={colors.primary}
             />
           }
-          renderItem={({ item }) => {
+          renderItem={({ item, index, section }) => {
             const preview = item.type === 'comment' ? item.comment_preview : item.post_preview;
             return (
               // No button role on the row: it contains the avatar button (no nested buttons on web).
@@ -192,6 +192,8 @@ export default function CommunityNotificationsScreen() {
                 onPress={() => open(item)}
                 style={({ pressed }) => [
                   styles.row,
+                  index === 0 ? styles.rowFirst : styles.rowLine,
+                  index === section.data.length - 1 && styles.rowLast,
                   pressed && styles.pressed,
                 ]}
               >
@@ -224,31 +226,34 @@ export default function CommunityNotificationsScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
-  // Renewal A: small chips for which notifications, each one a line with a face; what is not read
-  // yet has a violet square in front of it.
+  // Renewal B (b-community.html #vNoti): chips for which notifications; a day's notifications as rows in
+  // one white card, each with a face; what is not read yet has the violet dot of "new" in front of it.
   const a = aForm(colors);
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
-    filters: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingBottom: 12, paddingHorizontal: 16, paddingTop: 10 },
-    filter: a.mini,
+    filters: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingBottom: 12, paddingHorizontal: 20, paddingTop: 10 },
+    filter: { ...a.chip, backgroundColor: colors.surface, height: 38, paddingHorizontal: 14 },
     filterSelected: a.on,
-    filterText: a.miniText,
+    filterText: a.chipText,
     filterTextSelected: a.onText,
     markReadButton: { marginLeft: 'auto' },
     markRead: a.link,
-    sectionTitle: { ...a.note, paddingBottom: 4, paddingHorizontal: 18, paddingTop: 16 },
-    readError: { ...a.p12, color: colors.danger, paddingHorizontal: 16 },
-    availability: { ...a.note, paddingBottom: 4, paddingHorizontal: 18 },
+    sectionTitle: { ...a.note, fontFamily: fontFamilies.pretendardMedium, paddingBottom: 8, paddingHorizontal: 24, paddingTop: 16 },
+    readError: { ...a.p12, color: colors.danger, paddingHorizontal: 20 },
+    availability: { ...a.note, fontFamily: fontFamilies.pretendardRegular, paddingBottom: 4, paddingHorizontal: 24 },
     message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
     messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
-    row: { borderBottomColor: colors.track, borderBottomWidth: 2, flexDirection: 'row', gap: 10, marginHorizontal: 16, paddingVertical: 14 },
-    dot: { alignSelf: 'center', backgroundColor: colors.primary, borderColor: colors.border, borderWidth: 1, height: 10, width: 10 },
+    row: { backgroundColor: colors.surface, flexDirection: 'row', gap: 10, marginHorizontal: 20, paddingHorizontal: 16, paddingVertical: 14 },
+    rowFirst: { borderTopLeftRadius: 24, borderTopRightRadius: 24 },
+    rowLine: { borderTopColor: colors.border, borderTopWidth: 1 },
+    rowLast: { borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
+    dot: { alignSelf: 'flex-start', backgroundColor: colors.now, borderRadius: 4, height: 8, marginTop: 16, width: 8 },
     dotRead: { backgroundColor: 'transparent', borderColor: 'transparent' },
     pressed: { opacity: 0.8 },
     body: { flex: 1, gap: 2, minWidth: 0 },
-    text: { ...a.p15, color: colors.ink },
-    actor: {},
-    preview: a.note,
-    time: a.note,
+    text: { color: colors.textPrimary, fontSize: 14.5, lineHeight: 22 },
+    actor: { fontFamily: fontFamilies.pretendardBold },
+    preview: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
+    time: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
   } as const;
 }

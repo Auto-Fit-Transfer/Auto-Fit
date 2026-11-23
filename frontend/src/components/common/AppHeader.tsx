@@ -46,13 +46,13 @@ function createStyles({ colors }: AppTheme) {
       backgroundColor: colors.background,
       flexDirection: 'row',
       minHeight: 56,
-      paddingHorizontal: 16,
+      paddingHorizontal: 20,
     },
     side: { alignItems: 'flex-start', justifyContent: 'center', minWidth: 44, width: 44 },
     collapsed: { minWidth: 12, width: 12 },
     sideAuto: { width: 'auto' },
     right: { alignItems: 'flex-end' },
-    title: { color: colors.ink, flex: 1, fontFamily: fontFamilies.galmuri14, fontSize: 15, lineHeight: 21, textAlign: 'center' },
+    title: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 16, lineHeight: 22, textAlign: 'center' },
     titleStart: { textAlign: 'left' },
   } as const;
 }

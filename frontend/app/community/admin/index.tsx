@@ -66,7 +66,7 @@ function createStyles({ colors }: AppTheme) {
     card: { ...a.card, alignItems: 'center', flexDirection: 'row', padding: 14 },
     pressed: { transform: [{ translateY: 4 }] },
     cardBody: { flex: 1, gap: 2 },
-    title: { ...a.p15, color: colors.ink },
+    title: { ...a.p15, color: colors.textPrimary },
     description: a.note,
   } as const;
 }

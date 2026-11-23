@@ -242,43 +242,43 @@ export default function CommunityMileageScreen() {
 }
 
 function createStyles({ colors }: AppTheme) {
-  // Renewal A: my points in big pixel letters on one card, how to earn them with gold amounts, then
-  // each change on its own line.
+  // Renewal B (b-community.html #vMile): my points as a big bold number on one white card, how they come
+  // as rows, then each change on its own line.
   const a = aForm(colors);
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
     messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
-    top: { gap: 16, paddingHorizontal: 16, paddingTop: 8 },
-    balanceCard: { ...a.card, padding: 16 },
-    balanceLabel: a.note,
-    balance: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 36, lineHeight: 40, marginTop: 4 },
-    balanceHelp: { ...a.note, marginTop: 4 },
+    top: { gap: 16, paddingHorizontal: 20, paddingTop: 8 },
+    balanceCard: { ...a.card, paddingHorizontal: 22, paddingVertical: 20 },
+    balanceLabel: { ...a.note, fontFamily: fontFamilies.pretendardMedium },
+    balance: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 40, letterSpacing: -0.8, lineHeight: 48, marginTop: 2 },
+    balanceHelp: { ...a.note, fontFamily: fontFamilies.pretendardRegular, marginTop: 4 },
     statRow: { flexDirection: 'row', gap: 6, marginTop: 14 },
-    stat: { backgroundColor: colors.background, borderRadius: 10, flex: 1, minWidth: 0, padding: 8 },
-    statLabel: a.note,
-    statValue: { ...a.p15, color: colors.ink, marginTop: 2 },
-    rules: { ...a.card, marginTop: -6, paddingHorizontal: 14 },
-    rulesTitle: { ...a.p15, color: colors.ink },
+    stat: { backgroundColor: colors.surfaceMuted, borderRadius: 16, flex: 1, minWidth: 0, paddingHorizontal: 12, paddingVertical: 10 },
+    statLabel: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
+    statValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21, marginTop: 2 },
+    rules: { ...a.card, marginTop: -6, paddingHorizontal: 20 },
+    rulesTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },
     ruleRow: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'space-between', minHeight: 48 },
-    rule: { ...a.p15, color: colors.textBody, flex: 1 },
+    rule: { color: colors.textPrimary, flex: 1, fontSize: 14.5, lineHeight: 21 },
     ruleAmount: a.reward,
-    divider: { backgroundColor: colors.track, height: 2 },
+    divider: { backgroundColor: colors.border, height: 1 },
     emptyRules: { ...a.note, paddingVertical: 14 },
     rulesNote: { ...a.note, marginTop: -4 },
-    historyTitle: { ...a.p15, color: colors.ink },
+    historyTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },
     historyHeading: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
     filters: { flexDirection: 'row', gap: 6 },
-    filter: a.mini,
+    filter: { ...a.mini, backgroundColor: colors.surface },
     filterActive: a.on,
     filterText: a.miniText,
     filterTextActive: a.onText,
     empty: { ...a.p15, color: colors.textBody, padding: 24, textAlign: 'center' },
-    row: { alignItems: 'center', borderBottomColor: colors.track, borderBottomWidth: 2, flexDirection: 'row', marginHorizontal: 16, minHeight: 60, paddingVertical: 8 },
+    row: { alignItems: 'center', borderBottomColor: colors.border, borderBottomWidth: 1, flexDirection: 'row', marginHorizontal: 24, minHeight: 60, paddingVertical: 8 },
     rowBody: { flex: 1, gap: 2 },
-    reason: { ...a.p15, color: colors.ink },
-    time: a.note,
-    amount: { ...a.p15, color: colors.ink },
+    reason: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 20 },
+    time: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
+    amount: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 15, lineHeight: 21 },
     spent: { color: colors.textSecondary },
   } as const;
 }

@@ -143,10 +143,10 @@ function createStyles({ colors }: AppTheme) {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     message: { alignItems: 'center', flex: 1, gap: 12, justifyContent: 'center', padding: 32 },
     messageText: { ...a.p15, color: colors.textBody, textAlign: 'center' },
-    row: { alignItems: 'center', borderBottomColor: colors.track, borderBottomWidth: 2, flexDirection: 'row', gap: 12, marginHorizontal: 16, paddingVertical: 12 },
+    row: { alignItems: 'center', borderBottomColor: colors.surfaceMuted, borderBottomWidth: 2, flexDirection: 'row', gap: 12, marginHorizontal: 16, paddingVertical: 12 },
     person: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 12, minWidth: 0 },
-    nickname: { ...a.p15, color: colors.ink, flexShrink: 1 },
-    owner: { ...a.p12, backgroundColor: colors.primaryLight, borderRadius: 6, color: colors.ink, overflow: 'hidden', paddingHorizontal: 6 },
+    nickname: { ...a.p15, color: colors.textPrimary, flexShrink: 1 },
+    owner: { ...a.p12, backgroundColor: colors.surfaceMuted, borderRadius: 99, color: colors.textPrimary, overflow: 'hidden', paddingHorizontal: 8 },
     // Sending someone out: the same small button, its words in the warning colour.
     remove: a.mini,
     pressed: { transform: [{ translateY: 3 }] },
