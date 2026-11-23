@@ -129,6 +129,18 @@ export function DietView(props: R6DietHomeProps & {
         </View>
 
         <View style={styles.week}>
+          {/* Last week / this week: the days open stay today ±6, as before (Hyunho asked for 11/20 on 11/23). */}
+          <Pressable
+            accessibilityLabel="지난주"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: week[0].offset <= -6 }}
+            disabled={week[0].offset <= -6}
+            hitSlop={8}
+            onPress={() => props.onSelectDateOffset(props.selectedDateOffset - 7)}
+            style={[styles.weekArrow, week[0].offset <= -6 && styles.off]}
+          >
+            <BackIcon color={colors.ink} height={16} width={16} />
+          </Pressable>
           {week.map(({ date, offset }) => {
             const selected = offset === props.selectedDateOffset;
             const disabled = offset < -6 || offset > 6;
@@ -147,6 +159,17 @@ export function DietView(props: R6DietHomeProps & {
               </Pressable>
             );
           })}
+          <Pressable
+            accessibilityLabel="다음 주"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: week[6].offset >= 6 }}
+            disabled={week[6].offset >= 6}
+            hitSlop={8}
+            onPress={() => props.onSelectDateOffset(props.selectedDateOffset + 7)}
+            style={[styles.weekArrow, week[6].offset >= 6 && styles.off]}
+          >
+            <CaretRightIcon color={colors.ink} height={16} width={16} />
+          </Pressable>
         </View>
 
         <View style={styles.card}>
@@ -442,7 +465,8 @@ function createStyles({ colors }: AppTheme) {
     },
     say: { ...outline, borderRadius: 14, flex: 1, paddingHorizontal: 13, paddingVertical: 8 },
 
-    week: { flexDirection: 'row', gap: 6 },
+    week: { alignItems: 'center', flexDirection: 'row', gap: 6 },
+    weekArrow: { alignItems: 'center', alignSelf: 'stretch', justifyContent: 'center', width: 22 },
     day: { ...outline, alignItems: 'center', borderRadius: 12, boxShadow: '0 3px 0 rgba(32, 35, 63, 0.3)', flex: 1, paddingVertical: 5 },
     // The day I am looking at is violet; today's number is in the accent colour until it is chosen.
     dayOn: { backgroundColor: colors.primary, boxShadow: `0 3px 0 ${colors.ink}` },
