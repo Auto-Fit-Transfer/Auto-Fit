@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { MealRecordSheets, type MealRecordDraft } from '@/src/components/diet/MealRecordSheets';
-import { DietView } from '@/src/components/a/DietView';
+import { DietView } from '@/src/components/b/DietView';
 import { MenuStyleSheet } from '@/src/components/a/MenuStyleSheet';
 import { TomorrowSheet, type TomorrowPlan, type TomorrowSheetProps } from '@/src/components/a/TomorrowSheet';
 import {
