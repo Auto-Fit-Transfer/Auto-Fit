@@ -8,11 +8,10 @@ import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import { ApiError } from '@/src/api/client';
 import { mealAllergyNotice } from '@/src/features/diet/allergyConflict';
 import { plainFoodName } from '@/src/features/diet/foodName';
-import { macroLabel, mapRecommendationMeals, mapWeeklyMeals, type Meal } from '@/src/features/diet/dayMeals';
-import { mergeDayMeals, weekDates } from '@/src/features/diet/weeklyMeals';
+import { macroLabel, mapWeeklyMeals, type Meal } from '@/src/features/diet/dayMeals';
+import { weekDates } from '@/src/features/diet/weeklyMeals';
 import {
-  generateDietRecommendations, generateWeeklyDiet, getDietApiErrorMessage, getDietRecommendationsByDate, getWeeklyDiet,
-  regenerateDietMeal, regenerateWeeklyDietMeal, type WeeklyPlan,
+  generateWeeklyDiet, getDietApiErrorMessage, getWeeklyDiet, regenerateWeeklyDietMeal, type WeeklyPlan,
 } from '@/src/api/diet';
 import { aForm } from '@/src/components/a/form';
 import { ALoading } from '@/src/components/a/ALoading';
@@ -32,10 +31,6 @@ function mondayInKorea() {
   return today;
 }
 
-function todayInKorea() {
-  return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
-}
-
 function weekKey(week: Date) { return week.toISOString().slice(0, 10); }
 function moveWeek(week: Date, amount: number) {
   const next = new Date(week);
@@ -49,7 +44,8 @@ export function WeeklyDietContent() {
   const router = useRouter();
   const [week, setWeek] = useState(mondayInKorea);
   const [plan, setPlan] = useState<WeeklyPlan | null>(null);
-  const [daily, setDaily] = useState<{ week: string; meals: Record<string, Meal[]> } | null>(null);
+  // The week whose answer came (a plan or none): until then the screen waits.
+  const [loaded, setLoaded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState('');
   // State only updates after a render, so a double tap could otherwise send two paid requests.
@@ -62,12 +58,12 @@ export function WeeklyDietContent() {
   const start = weekKey(week);
   // Only this week's data may be shown.
   const shownPlan = plan?.week_start_date === start ? plan : null;
-  const shownDaily = daily?.week === start ? daily.meals : null;
-  const [today] = useState(todayInKorea);
+  const shownWeek = loaded === start;
   const requestKey = `${start}:${reload}`;
-  const days = shownDaily
+  // As on the diet tab (agreed 11/19): a date shows the week's plan only, never the older daily recommendation.
+  const days = shownWeek
     ? weekDates(start)
-      .map((date) => ({ date, meals: mergeDayMeals(shownDaily[date] ?? [], mapWeeklyMeals(shownPlan, date)) }))
+      .map((date) => ({ date, meals: mapWeeklyMeals(shownPlan, date) }))
       .filter((day) => day.meals.length > 0)
     : [];
 
@@ -80,19 +76,15 @@ export function WeeklyDietContent() {
       if (cause instanceof ApiError && cause.status === 404 && weeklyDietErrorCode(cause.detail) === 'WEEKLY_DIET_NOT_FOUND') return null;
       throw cause;
     });
-    const dailyMeals = Promise.all(weekDates(weekStart).map(async (date) => {
-      const response = await getDietRecommendationsByDate(date);
-      return [date, mapRecommendationMeals(response.result)] as const;
-    }));
-    void Promise.all([savedWeek, dailyMeals]).then(([nextPlan, nextDaily]) => {
+    void savedWeek.then((nextPlan) => {
       if (!active) return;
       setPlan(nextPlan);
-      setDaily({ week: weekStart, meals: Object.fromEntries(nextDaily) });
+      setLoaded(weekStart);
     }).catch((cause: unknown) => {
       if (!active) return;
       // Older meals must not stay on screen as current ones after an allergy change.
       setPlan(null);
-      setDaily(null);
+      setLoaded(null);
       setError(getDietApiErrorMessage(cause));
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -112,7 +104,7 @@ export function WeeklyDietContent() {
     } finally { requestBusy.current = false; setPending(''); }
   };
 
-  // A daily meal is replaced through its daily id, so the screen and the diet tab keep showing the same menu.
+  // A meal is replaced in the week's plan, so the screen and the diet tab keep showing the same menu.
   const regenerate = async (date: string, meal: Meal) => {
     if (requestBusy.current) return;
     requestBusy.current = true;
@@ -123,9 +115,6 @@ export function WeeklyDietContent() {
     try {
       if (meal.weekly && plan) {
         setPlan(await regenerateWeeklyDietMeal(meal.weekly.planId, meal.weekly.day, meal.id, plan.version));
-      } else if (meal.dietMealId) {
-        await regenerateDietMeal(meal.dietMealId);
-        setReload((value) => value + 1);
       }
     } catch (cause) {
       setMealError({ slot, message: `${getDietApiErrorMessage(cause)} 지금 메뉴는 그대로예요.` });
@@ -133,30 +122,11 @@ export function WeeklyDietContent() {
     } finally { requestBusy.current = false; setPending(''); }
   };
 
-  const regenerateToday = async () => {
-    if (requestBusy.current) return;
-    requestBusy.current = true;
-    setPending('day');
-    setError('');
-    setMealError(null);
-    try {
-      await generateDietRecommendations();
-      setReload((value) => value + 1);
-    } catch (cause) {
-      setError(getDietApiErrorMessage(cause));
-    } finally { requestBusy.current = false; setPending(''); }
-  };
-
-  const openRecipe = (date: string, meal: Meal) => {
+  const openRecipe = (meal: Meal) => {
     if (meal.weekly) {
       router.push({ pathname: '/diet/weekly-recipe', params: { planId: meal.weekly.planId, day: meal.weekly.day, mealType: meal.id } });
-    } else if (meal.dietMealId) {
-      router.push({ pathname: '/diet/recipe', params: { date, mealId: meal.dietMealId } });
     }
   };
-
-  const canRegenerate = (date: string, meal: Meal) =>
-    Boolean(meal.weekly) || (date === today && meal.recommendationStatus === 'recommended');
 
   return <View style={s.content}>
     <View style={s.weekRow}>
@@ -165,7 +135,7 @@ export function WeeklyDietContent() {
       <Pressable hitSlop={16} accessibilityRole="button" accessibilityLabel="다음 주" onPress={() => setWeek(moveWeek(week, 1))} style={s.weekButton}><CaretRightIcon color={colors.ink} height={14} width={14} /></Pressable>
     </View>
     {Boolean(error) && <View style={s.error}><Text style={s.errorText}>{error}</Text><Pressable accessibilityRole="button" onPress={() => setReload((value) => value + 1)}><Text style={s.outlineText}>다시 불러오기</Text></Pressable></View>}
-    {loading && !shownDaily ? <View style={s.loading}><ALoading /></View> : shownDaily ? <>
+    {loading && !shownWeek ? <View style={s.loading}><ALoading /></View> : shownWeek ? <>
       {Boolean(shownPlan?.result.summary) && <Text numberOfLines={shownPlan?.result.strategy && !detailOpen ? 3 : undefined} style={s.summary}>{shownPlan?.result.summary}</Text>}
       {Boolean(shownPlan?.result.strategy) && <>
         {detailOpen && <Text style={s.muted}>{shownPlan?.result.strategy}</Text>}
@@ -176,7 +146,7 @@ export function WeeklyDietContent() {
         {meals.map((meal) => {
           const slot = `${date}:${meal.id}`;
           const macros = macroLabel(meal.macroItems, MACRO_NAMES, ' · ');
-          const notice = meal.recommendationStatus === 'modified' ? null : mealAllergyNotice(meal, allergyNames);
+          const notice = mealAllergyNotice(meal, allergyNames);
           return <View key={meal.id} style={s.mealCard}>
             <View style={s.mealHead}><Text style={s.mealLabel}>{meal.title}</Text>{meal.kcal == null ? null : <Text style={s.kcal}>{meal.kcal} kcal</Text>}</View>
             <Text style={s.mealTitle}>{meal.foods}</Text>
@@ -187,9 +157,8 @@ export function WeeklyDietContent() {
             {Boolean(meal.note) && <Text style={s.guidance}>{meal.note}</Text>}
             {mealError?.slot === slot && <Text accessibilityRole="alert" style={s.errorText}>{mealError.message}</Text>}
             <View style={s.actions}>
-              {notice?.blocked ? null : <Pressable accessibilityRole="button" onPress={() => openRecipe(date, meal)} style={s.recipeButton}><Text style={s.recipeText}>레시피 보기</Text></Pressable>}
-              {notice?.regenerateDay && date === today ? <Pressable accessibilityRole="button" disabled={Boolean(pending)} onPress={() => Alert.alert('오늘 식단을 다시 추천받을까요?', '오늘 식단 전체가 새 추천으로 바뀌어요.', [{ text: '취소', style: 'cancel' }, { text: '다시 추천', onPress: () => void regenerateToday() }])} style={s.smallOutline}><Text style={s.outlineText}>{pending === 'day' ? '추천 중…' : '하루 식단 다시 추천'}</Text></Pressable> : null}
-              {canRegenerate(date, meal) && !notice?.regenerateDay ? <Pressable accessibilityRole="button" disabled={Boolean(pending)} onPress={() => Alert.alert('메뉴 다시 추천', `${weekdayOf(date)}요일 ${meal.title} 메뉴를 바꿀까요?`, [{ text: '취소', style: 'cancel' }, { text: '다시 추천', onPress: () => void regenerate(date, meal) }])} style={s.smallOutline}><Text style={s.outlineText}>{pending === slot ? '추천 중…' : '다시 추천'}</Text></Pressable> : null}
+              {notice?.blocked ? null : <Pressable accessibilityRole="button" onPress={() => openRecipe(meal)} style={s.recipeButton}><Text style={s.recipeText}>레시피 보기</Text></Pressable>}
+              {meal.weekly ? <Pressable accessibilityRole="button" disabled={Boolean(pending)} onPress={() => Alert.alert('메뉴 다시 추천', `${weekdayOf(date)}요일 ${meal.title} 메뉴를 바꿀까요?`, [{ text: '취소', style: 'cancel' }, { text: '다시 추천', onPress: () => void regenerate(date, meal) }])} style={s.smallOutline}><Text style={s.outlineText}>{pending === slot ? '추천 중…' : '다시 추천'}</Text></Pressable> : null}
             </View>
           </View>;
         })}

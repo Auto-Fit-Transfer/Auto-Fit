@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { allergyNamesFrom, conflictsAllergy, mealAllergyConflicts, mealAllergyNotice, readAllergySafety } from '../src/features/diet/allergyConflict.ts';
 import { weeklyDietErrorMessage } from '../src/features/diet/weeklyDietErrors.ts';
-import { mergeDayMeals } from '../src/features/diet/weeklyMeals.ts';
 
 test('a saved egg breakfast is caught for an egg allergy (11/3 retest)', () => {
   const meal = {
@@ -70,15 +69,6 @@ test('malformed allergy data counts as no server answer', () => {
   assert.equal(readAllergySafety(null), undefined);
   assert.equal(readAllergySafety({ matched_food_names: [] }), undefined);
   assert.deepEqual(readAllergySafety({ status: 'conflict', matched_food_names: ['a', 1] }), { status: 'conflict', matchedFoodNames: ['a'] });
-});
-
-test('a conflicting daily meal is not replaced by the weekly meal of the same slot', () => {
-  const daily = [{ id: 'breakfast', source: 'daily', allergySafety: { status: 'conflict', matchedFoodNames: [] } }];
-  const weekly = [{ id: 'breakfast', source: 'weekly' }, { id: 'lunch', source: 'weekly' }];
-  const merged = mergeDayMeals(daily, weekly);
-  assert.equal(merged[0].source, 'daily');
-  assert.equal(merged[0].allergySafety.status, 'conflict');
-  assert.equal(merged[1].source, 'weekly');
 });
 
 test('every allergy 409 code has its own message instead of the generic one', () => {
