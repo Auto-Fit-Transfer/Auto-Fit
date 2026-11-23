@@ -50,11 +50,12 @@ test('a server message awaiting confirmation gives the two buttons on the chat s
 test('the chat screen shows one line instead of buttons once the card is answered, refused or expired', () => {
   const ask = server({ action: 'confirm_exercise_adjustment', action_status: 'awaiting_confirmation', pending_action_id: 'p1' });
   const done = [ask, server({ message_id: 'm2', action: 'exercise_session_adjust', pending_action_id: 'p1' })].map(cardMessage);
-  assert.deepEqual(cardView(done[0], done, now), { kind: 'note', text: '운동을 조정했어요.' });
+  assert.deepEqual(cardView(done[0], done, now), { kind: 'note', done: true, text: '운동을 조정했어요.' });
   assert.equal(cardView(done[1], done, now), null, 'the answer itself carries no card');
   const open = [ask].map(cardMessage);
   assert.match(cardView(open[0], open, now, { p1: cardConflictText('PENDING_ACTION_EXPIRED') }).text, /10분/, 'a 409 note replaces the buttons');
   assert.match(cardView(open[0], open, now + CARD_LIFETIME_MS).text, /10분이 지나/);
+  assert.equal(cardView(open[0], open, now + CARD_LIFETIME_MS).done, false, 'only a made change gets the check');
   const stop = [server({ action: 'exercise_session_stop', action_data: { backend_apply_status: 'unable_to_apply' } })].map(cardMessage);
   assert.match(cardView(stop[0], stop, now).text, /직접 멈춰/);
 });

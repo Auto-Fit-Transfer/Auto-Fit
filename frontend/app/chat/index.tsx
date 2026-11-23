@@ -3,20 +3,20 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { Alert } from 'react-native';
 import { createChat, decideExerciseAdjustment, getChatMessages, getChats, sendChatMessage } from '@/src/api/chat';
 import { ApiError, getApiErrorMessage } from '@/src/api/client';
-import { AskView, ToneSheet, type AskLine } from '@/src/components/a/AskView';
-import { useHero } from '@/src/components/a/useHero';
+import type { AskLine } from '@/src/components/a/AskView';
+import { AskView, WhoSheet } from '@/src/components/b/AskView';
 import { R6ConnectionError } from '@/src/components/common/R6ConnectionError';
 import { getChatSessionSnapshot, mergeChatSessionMessages, prefetchActiveChat, updateChatSessionSnapshot } from '@/src/features/chat/chatSessionCache';
-import { chatCharacters, displayChatAnswer, loadChatCharacter, saveChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
+import { chatCharacters, chatSamples, loadChatCharacter, displayChatAnswer, saveChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
 import { cardConflictText, cardMessage, cardView } from '@/src/features/chat/exerciseCard';
 import type { ChatMessage } from '@/src/types/chat';
 
-// Renewal A: the app's three chat characters are three ways my own character talks. The server still
-// gets quni / nabi / coach and still answers the same; only the name on the screen and the greeting differ.
-const tones: Record<ChatCharacterId, { name: string; greeting: string }> = {
-  quni: { name: '다정하게', greeting: '건강 점수와 식단 · 운동 기록을 같이 살펴봐요' },
-  nabi: { name: '느긋하게', greeting: '편하게 이야기해 주세요. 천천히 함께 살펴볼게요' },
-  coach: { name: '단호하게', greeting: '건강 점수와 식단 · 운동 기록부터 확인해 보죠' },
+// Renewal B: one of the app's three chat characters answers, by its own name and face. The server gets
+// quni / nabi / coach and answers the same; only the greeting and the first sentence differ.
+const greetings: Record<ChatCharacterId, string> = {
+  quni: '건강 점수와 식단 · 운동 기록을 같이 살펴봐요',
+  nabi: '편하게 이야기해 주세요. 천천히 함께 살펴볼게요',
+  coach: '건강 점수와 식단 · 운동 기록부터 확인해 보죠',
 };
 
 // The first two stay at hand during the talk; all four are offered before the first question.
@@ -34,7 +34,6 @@ function newMessageId() {
 
 export default function R6ChatScreen() {
   const router = useRouter();
-  const hero = useHero();
   const [toneOpen, setToneOpen] = useState(false);
   // The clock the workout card's ten minutes are counted by: read outside rendering, moved on every 15 seconds.
   const [now, setNow] = useState(() => Date.now());
@@ -185,6 +184,7 @@ export default function R6ChatScreen() {
       // Every answer opens with the sentence of the way of talking chosen now, old answers too.
       answer: displayChatAnswer(message.content, character.id),
       note: view?.kind === 'note' ? view.text : undefined,
+      done: view?.kind === 'note' ? view.done : undefined,
       card:
         view?.kind === 'buttons'
           ? {
@@ -208,24 +208,23 @@ export default function R6ChatScreen() {
             <R6ConnectionError message={error} offline={offline} onRetry={() => void load()} preservesInput={Boolean(draft)} />
           ) : undefined
         }
-        greeting={tones[character.id].greeting}
+        characterId={character.id}
+        greeting={greetings[character.id]}
         lines={lines}
         loading={loading && messages.length === 0}
         onBack={() => router.back()}
         onDraft={setDraft}
         onSend={(text) => void send(text)}
-        onTone={() => setToneOpen(true)}
+        name={character.name}
+        onWho={() => setToneOpen(true)}
         prompts={prompts}
-        tier={hero.tierIndex}
-        tone={tones[character.id].name}
         waiting={sending}
-        who={hero.who}
       />
-      <ToneSheet
+      <WhoSheet
+        cast={chatCharacters.map((item) => ({ id: item.id, name: item.name, role: item.role, sample: chatSamples[item.id] }))}
         chosen={character.id}
         onClose={() => setToneOpen(false)}
         onPick={(id) => void pickTone(id)}
-        tones={chatCharacters.map((item) => ({ id: item.id, name: tones[item.id].name, first: displayChatAnswer('', item.id).trim() }))}
         visible={toneOpen}
       />
     </>

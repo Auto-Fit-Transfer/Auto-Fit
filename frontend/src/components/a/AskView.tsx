@@ -17,6 +17,7 @@ export interface AskLine {
   mine?: string;
   answer?: string;
   note?: string;
+  done?: boolean; // the note says the change was made (renewal B puts a check before it)
   card?: { busy: boolean; waiting: boolean; onNo: () => void; onYes: () => void };
 }
 

@@ -50,7 +50,7 @@ export const cardMessage = (message: ServerMessage): Card => ({
   createdAt: Date.parse(message.created_at),
 });
 
-export type CardView = { kind: 'buttons'; pendingActionId: string } | { kind: 'note'; text: string } | null;
+export type CardView = { kind: 'buttons'; pendingActionId: string } | { kind: 'note'; text: string; done?: boolean } | null;
 
 // What sits under one assistant answer: the two buttons while its card is open, one line once it is closed or can no
 // longer be used (notes: the 409 text by pending action id), and nothing for an ordinary answer.
@@ -62,5 +62,5 @@ export function cardView(card: Card, all: Card[], now: number, notes: Record<str
   if (!state || !id) return null;
   if (notes[id]) return { kind: 'note', text: notes[id] };
   if (state === 'open') return { kind: 'buttons', pendingActionId: id };
-  return { kind: 'note', text: state === 'confirmed' ? '운동을 조정했어요.' : state === 'cancelled' ? '조정하지 않고 그대로 두었어요.' : '10분이 지나 이 제안은 닫혔어요. 다시 말씀해 주세요.' };
+  return { kind: 'note', done: state === 'confirmed', text: state === 'confirmed' ? '운동을 조정했어요.' : state === 'cancelled' ? '조정하지 않고 그대로 두었어요.' : '10분이 지나 이 제안은 닫혔어요. 다시 말씀해 주세요.' };
 }

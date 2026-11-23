@@ -4,17 +4,11 @@ import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CheckIcon from '@/assets/icons/ui/check.svg';
 import { ChatCharacterAvatar } from '@/src/components/chat/ChatCharacterAvatar';
-import { chatCharacters, getChatCharacter, loadChatCharacter, saveChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
+import { chatCharacters, chatSamples as samples, getChatCharacter, loadChatCharacter, saveChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
 import { aForm } from '@/src/components/a/form';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 import { ScreenHeader } from '@/src/components/common/ScreenHeader';
-
-const samples: Record<ChatCharacterId, string> = {
-  quni: '3일 동안 쉬었네요. 괜찮아요, 천천히 같이 해요. 오늘은 10분 걷기부터 어때요?',
-  nabi: '흠, 3일째 조용하네. 뭐… 쉴 수도 있지. 오늘은 10분만 움직여.',
-  coach: '3일 쉬었습니다. 핑계 금지. 스쿼트 30개, 지금 바로. 끝나면 한 세트 더.',
-};
 
 export default function ChatCharactersScreen() {
   const { colors } = useAppTheme();
