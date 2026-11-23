@@ -1,24 +1,26 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 
 import { getAllergies } from '@/src/api/allergies';
 import { getCommunityProfile, type CommunityProfile } from '@/src/api/community';
 import { getProfile, getProfileName } from '@/src/api/home';
 import { getHabitTierProgress } from '@/src/api/tier';
 import { getActiveHealthGoal, getNotificationPreferences, type HealthGoal } from '@/src/api/userSettings';
-import { MeView } from '@/src/components/a/MeView';
-import { WHO_KEY, whoList, type Who } from '@/src/components/a/sprites';
+import { getAllHealthDocuments } from '@/src/api/healthDocuments';
+import { MeView } from '@/src/components/b/MeView';
 import { AllergySettingsSheet } from '@/src/components/my/AllergySettingsSheet';
 import { goals as healthGoals, HealthGoalSheet } from '@/src/components/my/HealthGoalSheet';
 import { useSteps } from '@/src/features/a/useSteps';
+import { loadChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
 import { tierLook, type TierLook } from '@/src/features/tier/tierLook';
 import { getSupabaseClient } from '@/src/lib/supabase';
 
 const FONT_NAMES = ['가장 작게', '작게', '기본', '크게', '가장 크게'];
 
-// Renewal A's 내 정보: me and my settings in one place, each line with its value now (a-me.html).
+// Renewal B's 내 정보 (src/components/b/MeView.tsx, b-me.html): what the app knows (goal, foods, papers) on the black
+// card, then the list with 프로필 first. Same data as renewal A's 내 정보 (a-me.html).
 // Left out on purpose, as decided with the design: short cuts to the report and the exercise settings (one
 // tap from home), signing out (it is in 계정), and the community's own numbers (글 · 팔로워, 마일리지, the
 // people I blocked: one line leads to my community profile, which opens them all).
@@ -26,7 +28,8 @@ export default function MyScreen() {
   const router = useRouter();
   const { preferences } = useDisplayPreferences();
   const walk = useSteps();
-  const [who, setWho] = useState<Who>('worker-f');
+  const [characterId, setCharacterId] = useState<ChatCharacterId>('quni');
+  const [docs, setDocs] = useState<number | null>(null);
   const [name, setName] = useState('회원');
   const [profile, setProfile] = useState<CommunityProfile | null>(null);
   const [tier, setTier] = useState<TierLook | null>(null);
@@ -58,9 +61,9 @@ export default function MyScreen() {
       setFailed(false);
       loadGoal();
       loadAllergies();
-      void AsyncStorage.getItem(WHO_KEY).then(keep((saved) => {
-        if (whoList.includes(saved as Who)) setWho(saved as Who);
-      }), () => undefined);
+      // the face on the black card is the character chosen in 물어보기
+      void loadChatCharacter().then(keep((character: { id: ChatCharacterId }) => setCharacterId(character.id)), () => undefined);
+      void getAllHealthDocuments({ status: 'confirmed' }).then(keep((items: unknown[]) => setDocs(items.length)), () => undefined);
       void getProfile().then(keep((response) => setName(getProfileName(response) ?? '회원')), keep(() => setFailed(true)));
       void getCommunityProfile('me').then(keep(setProfile), () => undefined);
       void getHabitTierProgress().then(keep(({ progress }) => setTier(tierLook(progress))), () => undefined);
@@ -91,22 +94,28 @@ export default function MyScreen() {
     ? ''
     : allergies.length > 2 ? `${allergies[0]} 외 ${allergies.length - 1}가지` : allergies.join(' · ') || '없어요';
 
+  const foodLine = allergies === null ? null : allergies.length ? `${allergyLabel} 빼고 식단을 짜요` : '가리는 음식 없이 식단을 짜요';
+
   return (
     <>
+      <StatusBar style="dark" />
       <MeView
+        characterId={characterId}
         days={days}
-        health={[
-          { key: 'docs', label: '건강 서류', value: '검진표 · 인바디', onPress: () => router.push('/health-data-management') },
-          { key: 'goal', label: '건강 목표', value: goalLabel, onPress: () => setSheet('goal') },
-          { key: 'allergy', label: '알레르기', value: allergyLabel, onPress: () => setSheet('allergy') },
+        know={[
+          { key: 'goal', done: goal ? `${goalLabel} 목표로 맞추고 있어요` : null, missing: goal === undefined ? '목표를 확인하고 있어요' : '목표를 아직 몰라요', action: goal ? '고치기' : '알려 주기', onPress: () => setSheet('goal') },
+          { key: 'food', done: foodLine, missing: '못 먹는 음식을 확인하고 있어요', action: '고치기', onPress: () => setSheet('allergy') },
+          docs === null
+            ? { key: 'docs', done: null, missing: '건강 서류를 확인하고 있어요', action: '보기', onPress: () => router.push('/health-data-management') }
+            : docs > 0
+              ? { key: 'docs', done: `건강 서류 ${docs}개를 보고 맞추고 있어요`, missing: '', action: '보기', onPress: () => router.push('/health-data-management') }
+              : { key: 'docs', done: null, missing: '인바디 · 검진표가 아직 없어요', action: '올리기', onPress: () => router.push('/upload') },
         ]}
         name={profile?.nickname || name}
         notice={failed ? '프로필을 불러오지 못했어요' : null}
-        onBack={() => router.navigate('/home')}
-        onEdit={() => router.push('/profile')}
         onTier={() => router.push('/tier')}
-        photo={profile?.profile_image_url}
-        settings={[
+        rows={[
+          { key: 'profile', label: '프로필', onPress: () => router.push('/profile') },
           {
             key: 'community',
             label: '커뮤니티 활동',
@@ -123,8 +132,6 @@ export default function MyScreen() {
             : { on: walk.state === 'on', onToggle: () => (walk.state === 'on' ? walk.turnOff() : void walk.turnOn()) }
         }
         tier={tier}
-        tierIndex={tier?.index ?? 0}
-        who={who}
       />
       {sheet === 'goal' ? (
         <HealthGoalSheet
