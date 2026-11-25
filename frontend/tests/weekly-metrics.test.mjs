@@ -7,6 +7,7 @@ import {
   sessionFinished,
   sessionMinutes,
   sessionLocalDate,
+  workoutDayKeys,
 } from '../src/features/exercise/weeklyMetrics.ts';
 test('weekly achievement preserves server frequency and duration weighting', () => {
   const v = mapWeeklyMetrics({
@@ -80,4 +81,12 @@ test('a stopped or skipped session is not finished, though the server stamps com
   assert.equal(sessionFinished(null, true, null), true);
   assert.equal(sessionFinished(null, undefined, '2026-11-20T09:00:00+09:00'), true);
   assert.equal(sessionFinished(null, undefined, null), false);
+});
+
+test('workout days count each day once, however many workouts it had', () => {
+  const at = (day, hour) => new Date(2026, 10, day, hour).toISOString();
+  assert.deepEqual(workoutDayKeys([at(25, 9), at(25, 20)]), ['2026-11-25'], 'two workouts on one day are one day');
+  assert.deepEqual(workoutDayKeys([at(25, 9), at(24, 9)]), ['2026-11-24', '2026-11-25'], 'two days are two days');
+  assert.deepEqual(workoutDayKeys([at(24, 9), null, 'not a date', at(24, 18)]), ['2026-11-24'], 'no date is no day');
+  assert.deepEqual(workoutDayKeys([]), []);
 });

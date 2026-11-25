@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 
 import { getExerciseHistory } from '@/src/api/exercise';
-import { sessionLocalDate, sessionMinutes } from '@/src/features/exercise/weeklyMetrics';
+import { sessionMinutes, workoutDayKeys } from '@/src/features/exercise/weeklyMetrics';
 
 export const localDayKey = (date: Date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
@@ -21,7 +21,7 @@ export function useWeekWorkouts() {
         .then((response) => {
           if (!active) return;
           const done = response.history.map((row) => row.session).filter((session) => session.status === 'completed');
-          setDays(done.map((session) => sessionLocalDate(session.started_at)).sort());
+          setDays(workoutDayKeys(done.map((session) => session.started_at)));
           setMinutes(Math.round(done.reduce((sum, session) => sum + (sessionMinutes(session.total_duration_seconds) ?? 0), 0)));
         })
         .catch(() => undefined);
