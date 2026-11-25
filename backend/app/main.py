@@ -1343,8 +1343,10 @@ async def call_exercise_session_rpc(
                 error = response.json()
             except ValueError:
                 error = None
-            if isinstance(error, dict) and error.get("message") == \
-                    "Another exercise session is in progress":
+            if isinstance(error, dict) and error.get("message") in {
+                "Another exercise session is in progress",
+                "Another exercise plan session is in progress",
+            }:
                 raise HTTPException(409, detail={"code": "EXERCISE_SESSION_IN_PROGRESS"})
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

@@ -1052,10 +1052,17 @@ def test_start_exercise_session_uses_authenticated_user(monkeypatch) -> None:
         main.app.dependency_overrides.clear()
 
 
-def test_ai_start_reports_another_active_workout_conflict() -> None:
+@pytest.mark.parametrize(
+    "message",
+    (
+        "Another exercise session is in progress",
+        "Another exercise plan session is in progress",
+    ),
+)
+def test_ai_start_reports_another_active_workout_conflict(message: str) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url.path.endswith("/rpc/start_exercise_plan_session")
-        return httpx.Response(400, json={"message": "Another exercise session is in progress"})
+        return httpx.Response(400, json={"message": message})
 
     async def check() -> None:
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
