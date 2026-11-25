@@ -26,10 +26,10 @@ test('only the reset mail link goes on to the new-password screen', () => {
   assert.equal(isPasswordRecoveryUrl('autofit-b://auth/callback?code=abc'), false);
 });
 
-test('plan B has no build project yet, so a build from here cannot land in plan A or the test app', () => {
-  assert.equal(app.extra.eas, undefined);
+test('plan B builds into its own EAS project and App Store Connect app', () => {
+  assert.equal(app.extra.eas.projectId, '6dd0f46b-b594-4934-b885-7bcb490a86ab');
   const eas = JSON.parse(readFileSync(new URL('../eas.json', import.meta.url), 'utf8'));
-  assert.equal(eas.submit?.production?.ios?.ascAppId, undefined);
+  assert.equal(eas.submit.production.ios.ascAppId, '6839008846');
 });
 
 test('a failed link is described by names and error code only, never by its values', () => {
