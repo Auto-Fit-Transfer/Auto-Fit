@@ -2,13 +2,16 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
-import { getDietNutritionSummary } from '@/src/api/diet';
+import { getDietNutritionSummary, getWeeklyDiet, getWeeklyDietFeedback } from '@/src/api/diet';
 import { getHome } from '@/src/api/home';
 import { getHabitTierProgress, type HabitTierProgress } from '@/src/api/tier';
-import { HomeView, type HomeDid } from '@/src/components/b/HomeView';
+import { HomeBoldView, type HomeProposal } from '@/src/components/b/HomeBoldView';
 import { NotificationBell } from '@/src/components/community/NotificationBell';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
-import { loadChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
+import { chatCharacters, loadChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
+import { homeHeadline, nextMeal } from '@/src/features/b/homePlan';
+import { mapWeeklyMeals, type Meal } from '@/src/features/diet/dayMeals';
+import { weekStartOf, weeklyDayFor } from '@/src/features/diet/weeklyMeals';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { localDayKey, useWeekWorkouts } from '@/src/features/exercise/useWeekWorkouts';
 import { nutritionNumber, type NutritionSummary } from '@/src/features/nutritionSummary';
@@ -31,8 +34,9 @@ async function getSessionName() {
   }
 }
 
-// Renewal B's home. Every line it shows comes from the server: nothing is said about a meal,
-// a routine or a tier the server did not give.
+// Renewal B's home (the bolder layout chosen 11/26): the app's proposal for today in the headline, each
+// proposal with 이대로 / 조정 / 내 방식으로. Every line comes from the server: nothing is said about a meal,
+// a routine or a tier the server did not give, and never "N kcal more is fine".
 export default function HomeScreen() {
   const router = useRouter();
   const { onboardingSkip } = useLocalSearchParams<{ onboardingSkip?: string }>();
@@ -43,6 +47,9 @@ export default function HomeScreen() {
   const [nutrition, setNutrition] = useState<NutritionSummary | null>(null);
   const [tier, setTier] = useState<HabitTierProgress | null>(null);
   const [characterId, setCharacterId] = useState<ChatCharacterId>('quni');
+  // today's meals from this week's plan, and the ones already recorded (as the diet tab reads them)
+  const [meals, setMeals] = useState<{ list: Meal[]; recorded: string[] } | null>(null);
+  const [checkedAt, setCheckedAt] = useState<string | null>(null);
   const { days: workoutDays } = useWeekWorkouts();
   const { latestSession, refreshHome, routine, status } = useExerciseRoutine();
   const today = new Date();
@@ -76,7 +83,17 @@ export default function HomeScreen() {
         })
         .catch(() => undefined);
       void refreshHome();
-      void getDietNutritionSummary(localDayKey(new Date()))
+      const dayKey = localDayKey(new Date());
+      void getWeeklyDiet(weekStartOf(dayKey))
+        .then(async (plan) => {
+          const list = mapWeeklyMeals(plan, dayKey);
+          const day = weeklyDayFor(plan, dayKey)?.day ?? null;
+          const feedback = await getWeeklyDietFeedback(plan.weekly_diet_plan_id).catch(() => null);
+          const recorded = [...(feedback?.feedback ?? []), ...(feedback?.legacy_feedback ?? [])].filter((item) => item.plan_day === day).map((item) => item.meal_type);
+          if (active) setMeals({ list, recorded });
+        })
+        .catch(() => { if (active) setMeals(null); }); // no plan this week: no meal is proposed
+      void getDietNutritionSummary(dayKey)
         .then((response) => {
           if (active) setNutrition(response.summary);
         })
@@ -89,6 +106,7 @@ export default function HomeScreen() {
           const resolvedName = response.user_name.trim() || (await getSessionName()) || '회원';
           if (!active) return;
           setName(resolvedName);
+          setCheckedAt(new Date().toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' }));
           setLoadState('ready');
         })
         .catch(async () => {
@@ -105,7 +123,6 @@ export default function HomeScreen() {
   useFocusEffect(load);
 
   const consumed = nutritionNumber(nutrition?.calories.consumed);
-  const calorieTarget = nutritionNumber(nutrition?.calories.target);
   const latestDate = latestSession?.date ? new Date(latestSession.date) : null;
   const exercisedToday = Boolean(
     latestSession?.completed &&
@@ -115,35 +132,36 @@ export default function HomeScreen() {
   );
   const hasRoutine = status !== null && status !== 'not-created' && routine !== null;
 
-  // What the app already did for me today, in the order of the day.
-  const did: HomeDid[] = [];
-  if (consumed !== null && consumed > 0) {
-    did.push({
-      key: 'eaten',
-      title: '오늘 먹은 것을 더해 뒀어요',
-      detail: calorieTarget ? `${kcal(consumed)} · 목표 ${kcal(calorieTarget)}` : kcal(consumed),
-      // Both diet lines open the same screen, so only one carries the button.
-      action: nutrition?.has_recommendation ? undefined : { label: '식단 보기', onPress: () => router.push('/diet') },
-    });
-  }
-  if (nutrition?.has_recommendation) {
-    did.push({
-      key: 'diet',
-      title: '오늘 식단을 골라 뒀어요',
-      detail: calorieTarget ? `하루 목표 ${kcal(calorieTarget)}에 맞췄어요` : undefined,
-      action: { label: '식단 보기', onPress: () => router.push('/diet') },
-    });
-  }
-  if (hasRoutine && !exercisedToday) {
-    did.push({
-      key: 'routine',
-      title: '오늘 운동을 짜 뒀어요',
-      detail: routine.reasons[0],
-    });
-  }
-
   const minutes = routine?.totalDurationMinutes ?? null;
   const routineTitle = hasRoutine ? `${routine.title}${minutes ? ` ${minutes}분` : ''}` : '';
+  const meal = meals ? nextMeal(meals.list, meals.recorded) : null;
+
+  // The app's proposals, each with the three answers (11/26): take it, meet halfway, or my own way.
+  const proposals: HomeProposal[] = [];
+  if (hasRoutine && !exercisedToday) {
+    proposals.push({
+      key: 'routine',
+      title: routine.reasons[0] ?? '오늘 운동을 짜 뒀어요',
+      detail: [routine.exercises.slice(0, 3).map((move) => move.name).join(' · '), minutes ? `${minutes}분` : null].filter(Boolean).join(' · '),
+      choices: [
+        { label: '이대로', kind: 'accept', onPress: () => router.push('/exercise/summary') },
+        { label: '가볍게 조정', kind: 'adjust', onPress: () => router.push({ pathname: '/exercise/condition', params: { source: 'summary' } }) },
+        { label: '내 루틴으로', kind: 'own', onPress: () => router.push('/exercise/saved-routines') },
+      ],
+    });
+  }
+  if (meal) {
+    proposals.push({
+      key: `meal-${meal.id}`,
+      title: `${meal.title} 메뉴를 골라 뒀어요`,
+      detail: [meal.foods, meal.kcal !== null ? kcal(meal.kcal) : null].filter(Boolean).join(' · '),
+      choices: [
+        { label: '이대로', kind: 'accept', onPress: () => undefined }, // nothing to save: the card says it is taken
+        { label: '다른 메뉴', kind: 'adjust', onPress: () => router.push('/diet') },
+        { label: '먹은 걸로 기록', kind: 'own', onPress: () => router.push('/diet') },
+      ],
+    });
+  }
   const now = exercisedToday
     ? {
         label: '오늘 할 일 끝',
@@ -189,13 +207,26 @@ export default function HomeScreen() {
         : 0;
   const nextName = tier ? nextTierName(tier) : null;
 
+  const character = chatCharacters.find((item) => item.id === characterId) ?? chatCharacters[0];
+  const headline =
+    loadState === 'loading'
+      ? [[{ text: `${name} 님,` }], [{ text: '오늘을 살펴보고 있어요' }]]
+      : loadState === 'error'
+        ? [[{ text: '오늘 정보를' }], [{ text: '불러오지 못했어요' }]]
+        : firstDay
+          ? [[{ text: `반가워요, ${name} 님` }], [{ text: '오늘을 같이 시작해요' }]]
+          : homeHeadline(name, hasRoutine ? routineTitle : null, exercisedToday, meal);
+  const picture = hasRoutine && !exercisedToday ? (routine.exercises[0]?.demoGifUrl ?? routine.exercises[0]?.thumbnailUrl ?? null) : null;
+
   return (
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
-      <HomeView
+      <HomeBoldView
+        by={checkedAt ? `${character.name} · ${checkedAt}에 살펴봤어요` : character.name}
         characterId={characterId}
-        did={did}
-        firstDay={firstDay}
+        plan={headline}
+        proposals={loadState === 'ready' ? proposals : []}
+        recorded={loadState === 'ready' && consumed !== null && consumed > 0 ? { text: `오늘 ${kcal(consumed)}를 기록해 뒀어요`, action: { label: '고치기', onPress: () => router.push('/diet') } } : null}
         headerRight={
           <>
             <SimpleReadButton
@@ -205,7 +236,7 @@ export default function HomeScreen() {
           </>
         }
         name={name}
-        now={now}
+        now={{ ...now, picture: picture && /^https:[/][/]/i.test(picture) ? picture : null }}
         onAsk={() => router.push('/chat')}
         onRetry={() => {
           load();
