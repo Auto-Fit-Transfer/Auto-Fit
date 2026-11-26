@@ -20,5 +20,22 @@ for (let i = 0; i < lines.length; i += 1) {
   if (lines[i].includes('[원본 동작 확인 필요]') || parts.some((part) => /GIF|원본/.test(part))) { skipped += 1; continue; }
   tips[key] = parts;
 }
+// Home-workout lines checked against each GIF (11/26): a corrected line set, or null to leave the move out.
+const fixes = JSON.parse(readFileSync(new URL('../src/features/exercise/exerciseTipFixes.json', import.meta.url), 'utf8'));
+let fixed = 0;
+for (const [key, set] of Object.entries(fixes)) {
+  if (!(key in tips)) continue;
+  if (set === null) delete tips[key];
+  else tips[key] = set;
+  fixed += 1;
+}
+// Wording that points at a label or a mark the app never shows.
+for (const key of Object.keys(tips)) {
+  tips[key] = tips[key].map((line) => line
+    .replace('표시된 멈춤 구간에서도', '멈춰 있는 동안에도')
+    .replace('지정 각도를 맞추려고 ', '')
+    .replace('이름에 표시된 방향으로', '앞뒤나 옆으로')
+    .replace('이름에 표시된 ', ''));
+}
 writeFileSync(new URL('../src/features/exercise/exerciseTips.json', import.meta.url), `${JSON.stringify(tips)}\n`);
-console.log(`kept ${Object.keys(tips).length}, left out ${skipped}`);
+console.log(`kept ${Object.keys(tips).length}, left out ${skipped}, checked against the GIF ${fixed}`);
