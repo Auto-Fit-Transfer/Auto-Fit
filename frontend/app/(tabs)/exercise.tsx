@@ -9,6 +9,7 @@ import { ExerciseView, type ExerciseViewProps } from '@/src/components/b/Exercis
 import { AppBottomSheet, Text } from '@/src/components/common';
 import { HealthGoalSheet } from '@/src/components/my/HealthGoalSheet';
 import { SimpleReadButton } from '@/src/components/simple/SimpleReadButton';
+import { chatCharacters, loadChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
 import { useExerciseRoutine } from '@/src/features/exercise/ExerciseRoutineContext';
 import { useExerciseSession } from '@/src/features/exercise/ExerciseSessionContext';
 import { useDisplayPreferences } from '@/src/features/settings/DisplayPreferencesContext';
@@ -37,10 +38,14 @@ export default function ExerciseScreen() {
   const [kindsOpen, setKindsOpen] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [goalOpen, setGoalOpen] = useState(false);
+  // the character chosen in 물어보기 signs the routine, as on the home
+  const [characterId, setCharacterId] = useState<ChatCharacterId>('quni');
 
   useFocusEffect(useCallback(() => {
+    let active = true;
     void refreshHome();
-    return () => setKindsOpen(false);
+    void loadChatCharacter().then((character) => { if (active) setCharacterId(character.id); });
+    return () => { active = false; setKindsOpen(false); };
   }, [refreshHome]));
 
   const selectedPlan = routine?.planSessions.find((plan) => plan.id === routine.selectedPlanSessionId);
@@ -116,13 +121,17 @@ export default function ExerciseScreen() {
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <ExerciseView
+        by={{ characterId, text: routine && status !== 'completed' ? `${(chatCharacters.find((item) => item.id === characterId) ?? chatCharacters[0]).name}가 짜 뒀어요` : (chatCharacters.find((item) => item.id === characterId) ?? chatCharacters[0]).name }}
         card={{
           facts,
           detail: routine && status === 'ready' && !hasPlan
             ? { label: '자세히', onPress: () => router.push('/exercise/summary') }
             : undefined,
           moves: routine && status !== 'completed'
-            ? routine.exercises.map((exercise) => ({ key: exercise.id, name: exercise.name, detail: exercise.prescription }))
+            ? routine.exercises.map((exercise) => {
+                const picture = exercise.demoGifUrl ?? exercise.thumbnailUrl;
+                return { key: exercise.id, name: exercise.name, detail: exercise.prescription, picture: picture && /^https:[/][/]/i.test(picture) ? picture : null };
+              })
             : [],
           main,
           links: [

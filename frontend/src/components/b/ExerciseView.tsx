@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import DownIcon from '@/assets/icons/common/chevrons/Down.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
+import { ChatCharacterAvatar } from '@/src/components/chat/ChatCharacterAvatar';
 import { Text } from '@/src/components/common';
+import type { ChatCharacterId } from '@/src/features/chat/chatCharacters';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { Headline, type HeadlinePart } from './Headline';
@@ -20,15 +22,18 @@ export interface ExerciseViewProps {
   card: {
     facts?: string;
     detail?: { label: string; onPress: () => void };
-    moves: { key: string; name: string; detail: string }[];
+    moves: { key: string; name: string; detail: string; picture?: string | null }[];
     main: { label: string; onPress: () => void; busy?: boolean; disabled?: boolean };
     links: { label: string; onPress: () => void }[];
   };
   more: { key: string; title: string; detail?: string; onPress: () => void }[];
   headerRight?: ReactNode;
+  // As the home (11/26): who set it and when, above the headline; the why and the three answers in the
+  // black card (the main button is 이대로, the links are the other two); the moves with their pictures.
+  by: { characterId: ChatCharacterId; text: string };
 }
 
-export function ExerciseView({ headline, kind, line, error, card, more, headerRight }: ExerciseViewProps) {
+export function ExerciseView({ headline, kind, line, error, card, more, headerRight, by }: ExerciseViewProps) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -39,6 +44,12 @@ export function ExerciseView({ headline, kind, line, error, card, more, headerRi
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 24 }]}
         showsVerticalScrollIndicator={false}
       >
+        <View style={styles.by}>
+          <View style={styles.face}>
+            <ChatCharacterAvatar characterId={by.characterId} size={26} />
+          </View>
+          <Text style={styles.byText}>{by.text}</Text>
+        </View>
         <View style={styles.hero}>
           <View style={styles.heroText}>
             <Headline lines={headline} />
@@ -56,7 +67,6 @@ export function ExerciseView({ headline, kind, line, error, card, more, headerRi
             {headerRight}
           </View>
         </View>
-        {line ? <Text style={styles.line}>{line}</Text> : null}
 
         {error ? (
           <Pressable accessibilityRole="button" onPress={error.onRetry} style={styles.error}>
@@ -65,50 +75,53 @@ export function ExerciseView({ headline, kind, line, error, card, more, headerRi
           </Pressable>
         ) : null}
 
-        <View style={styles.card}>
-          {card.facts || card.detail ? (
-            <View style={styles.factRow}>
-              <Text style={styles.facts}>{card.facts}</Text>
-              {card.detail ? (
-                <Pressable accessibilityRole="button" onPress={card.detail.onPress} style={styles.mini}>
-                  <Text style={styles.miniText}>{card.detail.label}</Text>
+        <View style={styles.ai}>
+              {line ? <Text style={styles.aiTitle}>{line}</Text> : null}
+              {card.facts ? <Text style={styles.aiFacts}>{card.facts}</Text> : null}
+              <View style={styles.choices}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ busy: card.main.busy, disabled: card.main.disabled }}
+                  disabled={card.main.disabled || card.main.busy}
+                  onPress={card.main.onPress}
+                  style={[styles.choice, styles.choiceMain, card.main.disabled && styles.choiceOff]}
+                >
+                  {card.main.busy ? (
+                    <ActivityIndicator color={colors.lilacInk} />
+                  ) : (
+                    <Text style={[styles.choiceText, styles.choiceMainText, card.main.disabled && styles.choiceOffText]}>{card.main.label}</Text>
+                  )}
                 </Pressable>
-              ) : null}
+                {card.links.map((link) => (
+                  <Pressable key={link.label} accessibilityRole="button" onPress={link.onPress} style={styles.choice}>
+                    <Text style={styles.choiceText}>{link.label}</Text>
+                  </Pressable>
+                ))}
+              </View>
             </View>
-          ) : null}
-          {card.moves.length > 0 ? (
-            <View>
-              {card.moves.map((move) => (
-                <View key={move.key} style={styles.move}>
-                  <Text style={styles.moveName}>{move.name}</Text>
-                  <Text style={styles.moveDetail}>{move.detail}</Text>
+            {card.moves.length > 0 ? (
+              <View style={styles.card}>
+                <View style={styles.factRow}>
+                  <Text style={styles.facts}>동작 {card.moves.length}가지</Text>
+                  {card.detail ? (
+                    <Pressable accessibilityRole="button" onPress={card.detail.onPress} style={styles.mini}>
+                      <Text style={styles.miniText}>{card.detail.label}</Text>
+                    </Pressable>
+                  ) : null}
                 </View>
-              ))}
-            </View>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ busy: card.main.busy, disabled: card.main.disabled }}
-            disabled={card.main.disabled || card.main.busy}
-            onPress={card.main.onPress}
-            style={[styles.go, card.main.disabled && styles.goOff]}
-          >
-            {card.main.busy ? (
-              <ActivityIndicator color={colors.onPrimary} />
-            ) : (
-              <Text style={[styles.goText, card.main.disabled && styles.goTextOff]}>{card.main.label}</Text>
-            )}
-          </Pressable>
-          {card.links.length > 0 ? (
-            <View style={styles.links}>
-              {card.links.map((link) => (
-                <Pressable key={link.label} accessibilityRole="button" hitSlop={8} onPress={link.onPress}>
-                  <Text style={styles.link}>{link.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-        </View>
+                <View>
+                  {card.moves.map((move) => (
+                    <View key={move.key} style={styles.move}>
+                      <View style={styles.thumb}>
+                        {move.picture ? <Image accessibilityLabel={`${move.name} 시범`} resizeMode="contain" source={{ uri: move.picture }} style={styles.thumbImage} /> : null}
+                      </View>
+                      <Text style={styles.moveName}>{move.name}</Text>
+                      <Text style={styles.moveDetail}>{move.detail}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
 
         {more.length > 0 ? (
           <View style={styles.rows}>
@@ -138,6 +151,22 @@ export function ExerciseView({ headline, kind, line, error, card, more, headerRi
 function createStyles({ colors }: AppTheme) {
   return {
     root: { backgroundColor: colors.background, flex: 1 },
+    by: { alignItems: 'center', flexDirection: 'row', gap: 8, marginBottom: -4 },
+    face: { borderColor: colors.border, borderRadius: 15, borderWidth: 1.5 },
+    byText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 13, lineHeight: 18 },
+    ai: { backgroundColor: colors.aiCard, borderRadius: 28, gap: 4, paddingHorizontal: 20, paddingVertical: 18 },
+    aiTitle: { color: colors.onAi, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 22 },
+    aiFacts: { color: colors.onAiMuted, fontSize: 12.5, lineHeight: 18 },
+    choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+    choice: { alignItems: 'center', backgroundColor: colors.aiRaised, borderRadius: 999, justifyContent: 'center', minHeight: 40, paddingHorizontal: 15 },
+    choiceMain: { backgroundColor: colors.lilac, minWidth: 96 },
+    choiceOff: { backgroundColor: colors.aiRaised },
+    choiceText: { color: colors.onAi, fontFamily: fontFamilies.pretendardBold, fontSize: 13, lineHeight: 18 },
+    choiceMainText: { color: colors.lilacInk, fontFamily: fontFamilies.pretendardExtraBold },
+    choiceOffText: { color: colors.onAiMuted },
+    // the demo GIFs have white baked in
+    thumb: { backgroundColor: '#FFFFFF', borderColor: colors.border, borderRadius: 14, borderWidth: 1, height: 44, overflow: 'hidden', width: 44 },
+    thumbImage: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
     content: { gap: 16, paddingBottom: 110, paddingHorizontal: 24, width: '100%' },
     hero: { alignItems: 'flex-start', flexDirection: 'row', gap: 12 },
     heroText: { flex: 1, minWidth: 0 },
@@ -155,13 +184,6 @@ function createStyles({ colors }: AppTheme) {
       paddingRight: 10,
     },
     kindText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 13, lineHeight: 18 },
-    line: {
-      color: colors.textPrimary,
-      fontFamily: fontFamilies.pretendardBold,
-      fontSize: 15,
-      lineHeight: 22,
-      marginTop: -4,
-    },
     error: {
       alignItems: 'center',
       backgroundColor: colors.surface,
@@ -198,19 +220,6 @@ function createStyles({ colors }: AppTheme) {
     },
     moveName: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 22 },
     moveDetail: { color: colors.textSecondary, fontSize: 13, lineHeight: 19 },
-    go: {
-      alignItems: 'center',
-      backgroundColor: colors.primary,
-      borderRadius: 999,
-      justifyContent: 'center',
-      minHeight: 54,
-      paddingHorizontal: 24,
-    },
-    goOff: { backgroundColor: colors.surfaceMuted },
-    goText: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 15, lineHeight: 21 },
-    goTextOff: { color: colors.textDisabled },
-    links: { flexDirection: 'row', gap: 24, justifyContent: 'center' },
-    link: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 13.5, lineHeight: 20 },
 
     // The same inner edge as the card above, so the two lists start on one line.
     rows: { backgroundColor: colors.surface, borderRadius: 28, paddingHorizontal: 22, paddingVertical: 4 },

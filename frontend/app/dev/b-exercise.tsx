@@ -15,6 +15,8 @@ const tabBar = {
   navigateToTab: () => undefined,
 } as unknown as ComponentProps<typeof BottomNavigation>;
 const nothing = () => undefined;
+// A grey stand-in where a move's demo goes (the purchased demos are not put in sample pages).
+const DEMO = `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="#FFFFFF"/><circle cx="100" cy="70" r="26" fill="#D9DCE6"/><rect x="62" y="108" width="76" height="62" rx="22" fill="#D9DCE6"/></svg>')}`;
 const links = [
   { label: '다시 추천받기', onPress: nothing },
   { label: '내 루틴 불러오기', onPress: nothing },
@@ -42,9 +44,9 @@ export default function BExerciseSample() {
               facts: '3가지 · 9세트 · 약 30kcal',
               detail: state === 'plan' ? undefined : { label: '자세히', onPress: nothing },
               moves: [
-                { key: 'a', name: '크런치', detail: '3세트 · 20회' },
-                { key: 'b', name: '러시안 트위스트', detail: '3세트 · 24회' },
-                { key: 'c', name: '플랭크', detail: '3세트 · 60초' },
+                { key: 'a', name: '크런치', detail: '3세트 · 20회', picture: DEMO },
+                { key: 'b', name: '러시안 트위스트', detail: '3세트 · 24회', picture: DEMO },
+                { key: 'c', name: '플랭크', detail: '3세트 · 60초', picture: DEMO },
               ],
               main: { label: state === 'plan' ? '오늘 운동 보기' : '운동 시작하기', onPress: nothing },
               links,
@@ -55,6 +57,7 @@ export default function BExerciseSample() {
     <View style={{ flex: 1 }}>
       <ExerciseView
         {...view}
+        by={{ characterId: 'quni', text: state === 'none' || state === 'done' ? '쿼니' : '쿼니가 짜 뒀어요' }}
         error={state === 'error' ? { text: '운동 정보를 불러오지 못했어요', onRetry: nothing } : null}
         kind={{ label: '오늘의 운동', onPress: nothing }}
         more={[
