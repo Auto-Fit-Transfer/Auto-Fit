@@ -67,7 +67,6 @@ export type MetricCriterion = {
   tone: AnalysisTone;
   icon: AnalysisIcon;
   summary: string;
-  appliedRule: string;
   ranges: CriterionRange[];
   referenceId: string;
 };
@@ -185,7 +184,6 @@ function toMetricCriterion(metric: Metric): MetricCriterion {
     tone: displayMetric.tone,
     icon: displayMetric.icon,
     summary: metric.criteria_type ?? '',
-    appliedRule: metric.criteria_version ?? '',
     ranges: (metric.ranges ?? []).map((range, index) => ({
       id: `${metric.key}-${index}-${range.status}`,
       label: getRangeLabel(range.status),

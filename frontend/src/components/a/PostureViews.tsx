@@ -133,7 +133,7 @@ export function PostureShootView({
       {phase === 'review' ? (
         <View style={styles.ctl}>
           <Pressable accessibilityRole="button" onPress={onRetake} style={({ pressed }) => [styles.go, styles.ghost, styles.half, pressed && styles.goPressed]}>
-            <Text style={styles.goText}>다시 찍기</Text>
+            <Text style={[styles.goText, styles.ghostText]}>다시 찍기</Text>
           </Pressable>
           <Pressable accessibilityRole="button" onPress={onAnalyze} style={({ pressed }) => [styles.go, styles.half, pressed && styles.goPressed]}>
             <Text style={styles.goText}>분석하기</Text>
@@ -148,7 +148,7 @@ export function PostureShootView({
             onPress={onAlbum}
             style={({ pressed }) => [styles.go, styles.ghost, styles.album, phase === 'recording' && styles.off, pressed && styles.goPressed]}
           >
-            <Text style={styles.goText}>앨범</Text>
+            <Text style={[styles.goText, styles.ghostText]}>앨범</Text>
           </Pressable>
           <Pressable
             accessibilityLabel={phase === 'recording' ? '녹화 멈추기' : '자세 촬영 시작'}
@@ -262,7 +262,7 @@ export function PostureWaitView({
           <View style={styles.ctl}>
             {onAgain ? (
               <Pressable accessibilityRole="button" onPress={onAgain} style={({ pressed }) => [styles.go, styles.half, onRetry ? styles.ghost : null, pressed && styles.goPressed]}>
-                <Text style={styles.goText}>다시 찍기</Text>
+                <Text style={[styles.goText, onRetry ? styles.ghostText : null]}>다시 찍기</Text>
               </Pressable>
             ) : null}
             {onRetry ? (
@@ -443,7 +443,7 @@ export function PostureResultView({
           <Text style={[styles.note, styles.center, styles.resultNote]}>카메라 한 대로 본 결과라 참고용이에요</Text>
           <View style={styles.ctl}>
             <Pressable accessibilityRole="button" onPress={onAgain} style={({ pressed }) => [styles.go, styles.ghost, styles.half, pressed && styles.goPressed]}>
-              <Text style={styles.goText}>다시 찍기</Text>
+              <Text style={[styles.goText, styles.ghostText]}>다시 찍기</Text>
             </Pressable>
             <Pressable accessibilityRole="button" onPress={onHome} style={({ pressed }) => [styles.go, styles.half, pressed && styles.goPressed]}>
               <Text style={styles.goText}>홈으로</Text>
@@ -481,7 +481,8 @@ function createStyles({ colors }: AppTheme) {
     title: { ...big, fontSize: 22, lineHeight: 30, textAlign: 'center' },
     value: { ...big, fontSize: 17, lineHeight: 23 },
     go: { ...a.go, height: 54 },
-    ghost: { backgroundColor: colors.surface },
+    ghost: a.goGhost,
+    ghostText: { color: colors.textPrimary },
     goPressed: a.goPressed,
     goText: a.goText,
     goSmall: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },

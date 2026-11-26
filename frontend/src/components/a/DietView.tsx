@@ -356,6 +356,13 @@ export function DietView(props: R6DietHomeProps & {
               {weekTarget ? <Text style={styles.small}>하루 목표 {number(weekTarget)}kcal</Text> : null}
             </View>
             <View style={styles.plot}>
+              {weekTarget ? (
+                <View pointerEvents="none" style={[styles.gline, { bottom: Math.round((weekTarget / weekTop) * PLOT) }]}>
+                  <Svg height={2} width="100%">
+                    <Line stroke={colors.textSecondary} strokeDasharray="5 4" strokeWidth={2} x1="0" x2="100%" y1="1" y2="1" />
+                  </Svg>
+                </View>
+              ) : null}
               {props.week.map((day) => {
                 const height = day.kcal ? Math.max(4, Math.round((day.kcal / weekTop) * PLOT)) : 0;
                 return (
@@ -365,13 +372,6 @@ export function DietView(props: R6DietHomeProps & {
                   </View>
                 );
               })}
-              {weekTarget ? (
-                <View pointerEvents="none" style={[styles.gline, { bottom: Math.round((weekTarget / weekTop) * PLOT) }]}>
-                  <Svg height={2} width="100%">
-                    <Line stroke={colors.textSecondary} strokeDasharray="5 4" strokeWidth={2} x1="0" x2="100%" y1="1" y2="1" />
-                  </Svg>
-                </View>
-              ) : null}
             </View>
             <View style={styles.labels}>
               {props.week.map((day, index) => (
