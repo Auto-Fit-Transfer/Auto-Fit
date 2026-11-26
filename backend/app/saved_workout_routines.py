@@ -12,6 +12,7 @@ from backend.app.http_client import client_scope
 
 class RoutineItemInput(BaseModel):
     exercise_name: str = Field(min_length=1, max_length=160)
+    exercise_key: str | None = Field(default=None, pattern=r"^ex_[0-9a-f]{8,64}$")
     sets: int | None = Field(default=None, ge=1, le=100)
     repetitions: int | None = Field(default=None, ge=1, le=10000)
     target_duration_seconds: int | None = Field(default=None, ge=1, le=86400)
@@ -40,6 +41,8 @@ class SaveRoutineInput(BaseModel):
             raise ValueError("루틴 이름을 입력해 주세요.")
         if self.source_type == "custom" and (self.source_recommendation_id or not self.items):
             raise ValueError("직접 만든 루틴에는 하나 이상의 운동이 필요합니다.")
+        if self.source_type == "custom" and any(item.exercise_key for item in self.items):
+            raise ValueError("운동 목록 선택 기능이 준비되기 전에는 운동 키를 지정할 수 없습니다.")
         if self.source_type == "recommendation" and (not self.source_recommendation_id or self.items):
             raise ValueError("추천 루틴 ID만 전달해 주세요.")
         return self
@@ -102,7 +105,7 @@ async def _delete(client: httpx.AsyncClient, settings: Any, table: str,
 ROUTINE_COLUMNS = ("user_workout_routine_id,source_recommendation_id,source_type,"
                    "name,description,status,created_at,updated_at")
 ITEM_COLUMNS = ("user_workout_routine_item_id,user_workout_routine_id,sequence_order,"
-                "exercise_type_id,exercise_name,target_duration_seconds,sets,"
+                "exercise_type_id,exercise_name,exercise_key,target_duration_seconds,sets,"
                 "repetitions,target_weight_kg,rest_seconds,instruction,demo_video_url")
 
 
@@ -143,7 +146,7 @@ async def save_routine(user_id: str, settings: Any,
             if existing:
                 raise HTTPException(409, detail="이미 저장한 추천 운동입니다.")
             source_items = await _read(client, settings, "exercise_items",
-                                       "exercise_type_id,exercise_name,sequence_order,"
+                                       "exercise_type_id,exercise_name,exercise_key,sequence_order,"
                                        "target_duration_seconds,sets,repetitions,"
                                        "target_weight_kg,rest_seconds,instruction,demo_video_url",
                                        {"exercise_recommendation_id": f"eq.{source_id}",
@@ -154,6 +157,7 @@ async def save_routine(user_id: str, settings: Any,
                 raise HTTPException(422, detail="추천 운동은 최대 30개 항목까지 저장할 수 있습니다.")
             items = [{"sequence_order": index, "exercise_type_id": row.get("exercise_type_id"),
                       "exercise_name": row["exercise_name"],
+                      "exercise_key": row.get("exercise_key"),
                       "target_duration_seconds": row.get("target_duration_seconds"),
                       "sets": row.get("sets"), "repetitions": row.get("repetitions"),
                       "target_weight_kg": row.get("target_weight_kg"),

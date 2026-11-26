@@ -16,6 +16,14 @@
 - 건너뛰기는 `completed=false`, `skipped=true`, `skip_reason`을 보냅니다. 모든 항목을 완료하거나 건너뛴 뒤 기존 `POST /api/exercise/sessions/{session_id}/complete`로 종료합니다.
 - 운동 중 불편 기록의 `stop`·`continue`는 기존 주소를 재사용합니다. 저장 루틴에서 `adjust`는 409 `SAVED_ROUTINE_ADJUSTMENT_UNAVAILABLE`입니다.
 
+## 운동 카탈로그 키 (2026-11-26 추가)
+
+- `GET /api/exercise/saved-routines`의 `items[].exercise_key`, 저장 응답의 `routine.items[].exercise_key`, 시작 응답과 복구 응답의 `result.items[].exercise_key`는 같은 카탈로그 키입니다. 값이 없는 옛 항목과 직접 입력한 항목은 `null`입니다.
+- AI 추천을 `source_type=recommendation`으로 저장할 때 백엔드가 추천 항목의 `exercise_key`를 복사합니다. 세션을 시작할 때 다시 복사해 고정하므로, 루틴 원본을 나중에 바꾸더라도 진행 중 세션의 키는 유지됩니다.
+- 현재 직접 만드는 루틴은 자유 텍스트 운동명을 받습니다. 이름과 키가 서로 다른 동작을 가리키면 잘못된 음성 안내가 나올 수 있으므로, `source_type=custom` 요청의 non-null `items[].exercise_key`는 422로 거절합니다. 프론트에서는 현재처럼 키 없이 저장할 수 있습니다.
+- 직접 만든 루틴에 키를 허용하려면 먼저 전체 카탈로그의 신뢰할 수 있는 한국어 표시명과 서버가 관리하는 운동 선택 API를 함께 정해야 합니다. 프론트는 그 목록에서 선택하게 하고, 백엔드는 선택한 키에 맞는 이름을 저장해야 합니다. 현재 카탈로그 CSV에는 영어명만 있어 이 연동 계약은 후속 협의 사항입니다.
+- DB `20261126081607_saved_routine_exercise_key.sql`을 먼저 적용한 뒤 새 백엔드를 배포합니다. 기존 루틴과 진행 중 세션의 키는 `null`로 유지되며 과거 항목을 추정해서 채우지 않습니다.
+
 ## 점수와 표시
 
 - 저장 루틴 세션의 `exercise_recommendation_id`는 `null`입니다. 추천 운동 전용 티어 +5점 요청을 보내지 않습니다. AI 운동 분석도 제공하지 않으며 요청 시 409 `SAVED_ROUTINE_ANALYSIS_UNAVAILABLE`입니다.

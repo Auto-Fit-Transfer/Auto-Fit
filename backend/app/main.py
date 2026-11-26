@@ -1483,7 +1483,7 @@ async def fetch_latest_exercise_session(
                     "select": (
                         "saved_routine_session_item_id,exercise_session_id,user_id,"
                         "source_routine_item_id,sequence_order,exercise_type_id,"
-                        "exercise_name,target_duration_seconds,sets,repetitions,"
+                        "exercise_name,exercise_key,target_duration_seconds,sets,repetitions,"
                         "target_weight_kg,rest_seconds,instruction,demo_video_url,created_at"
                     ),
                     "user_id": f"eq.{user_id}",

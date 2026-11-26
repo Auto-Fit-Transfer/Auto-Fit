@@ -1390,11 +1390,13 @@ def test_latest_saved_session_returns_immutable_items_for_resume() -> None:
         if table == "exercise_logs":
             return httpx.Response(200, json=[])
         if table == "saved_routine_session_items":
+            assert "exercise_key" in request.url.params["select"]
             return httpx.Response(200, json=[{
                 "saved_routine_session_item_id": snapshot_id,
                 "source_routine_item_id": source_id,
                 "exercise_session_id": session_id,
                 "exercise_name": "스쿼트",
+                "exercise_key": "ex_96dcb551b33a8e",
                 "target_duration_seconds": None,
             }])
         raise AssertionError(f"Unexpected request: {request.url}")
@@ -1410,6 +1412,7 @@ def test_latest_saved_session_returns_immutable_items_for_resume() -> None:
     assert result["session"]["status"] == "in_progress"
     assert result["items"][0]["exercise_item_id"] == snapshot_id
     assert result["items"][0]["user_workout_routine_item_id"] == source_id
+    assert result["items"][0]["exercise_key"] == "ex_96dcb551b33a8e"
     assert result["items"][0]["duration_minutes"] is None
 
 

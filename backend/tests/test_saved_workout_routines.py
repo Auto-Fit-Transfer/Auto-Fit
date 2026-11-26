@@ -15,6 +15,7 @@ RECOMMENDATION = "00000000-0000-4000-8000-000000000010"
 ROUTINE = "00000000-0000-4000-8000-000000000020"
 ITEM = "00000000-0000-4000-8000-000000000030"
 SESSION_ITEM = "00000000-0000-4000-8000-000000000031"
+EXERCISE_KEY = "ex_96dcb551b33a8e"
 
 
 def make_client(monkeypatch, *, fail_items=False,
@@ -35,6 +36,7 @@ def make_client(monkeypatch, *, fail_items=False,
                 "items": [{"exercise_item_id": SESSION_ITEM,
                            "saved_routine_session_item_id": SESSION_ITEM,
                            "user_workout_routine_item_id": ITEM,
+                           "exercise_key": EXERCISE_KEY,
                            "exercise_name": "스쿼트"}],
             })
         if request.method == "GET":
@@ -43,7 +45,9 @@ def make_client(monkeypatch, *, fail_items=False,
                                                   "generator": recommendation_generator}]
                                       if request.url.params.get("user_id") == f"eq.{OWNER}" else [])
             if table == "exercise_items":
-                return httpx.Response(200, json=[{"exercise_name": "스쿼트", "sequence_order": 1}])
+                return httpx.Response(200, json=[{"exercise_name": "스쿼트",
+                                                  "exercise_key": EXERCISE_KEY,
+                                                  "sequence_order": 1}])
             if table == "user_workout_routines":
                 return httpx.Response(200, json=parents if request.url.params.get("user_id") == f"eq.{OWNER}" else [])
             if table == "user_workout_routine_items":
@@ -90,26 +94,29 @@ def make_client(monkeypatch, *, fail_items=False,
 
 
 def test_custom_create_and_list_scope_owner(monkeypatch):
-    client, requests, parents, _ = make_client(monkeypatch)
+    client, requests, parents, children = make_client(monkeypatch)
     created = client.post("/api/exercise/saved-routines", json={
         "source_type": "custom", "name": "내 루틴",
         "items": [{"exercise_name": "스쿼트", "sets": 3, "repetitions": 10}],
     })
     assert created.status_code == 201, created.text
     assert parents[0]["user_id"] == OWNER
+    assert children[0]["exercise_key"] is None
     listed = client.get("/api/exercise/saved-routines")
     assert listed.status_code == 200
     assert listed.json()["routines"][0]["items"][0]["exercise_name"] == "스쿼트"
+    assert listed.json()["routines"][0]["items"][0]["exercise_key"] is None
     parent_read = next(request for request in requests if request.method == "GET"
                        and request.url.path.endswith("user_workout_routines"))
     assert parent_read.url.params["user_id"] == f"eq.{OWNER}"
 
 
 def test_recommendation_requires_ownership_and_existing_save_is_rejected(monkeypatch):
-    client, requests, _, _ = make_client(monkeypatch)
+    client, requests, _, children = make_client(monkeypatch)
     payload = {"source_type": "recommendation", "name": "추천 운동",
                "source_recommendation_id": RECOMMENDATION}
     assert client.post("/api/exercise/saved-routines", json=payload).status_code == 201
+    assert children[0]["exercise_key"] == EXERCISE_KEY
     assert client.post("/api/exercise/saved-routines", json=payload).status_code == 409
     source_read = next(request for request in requests if request.url.path.endswith("exercise_recommendations"))
     assert source_read.url.params["user_id"] == f"eq.{OWNER}"
@@ -147,6 +154,36 @@ def test_invalid_input_does_not_write_and_partial_failure_cleans_parent(monkeypa
     assert deletes[-1].url.params["user_id"] == f"eq.{OWNER}"
 
 
+def test_invalid_exercise_key_is_rejected_before_writing(monkeypatch):
+    client, requests, _, _ = make_client(monkeypatch)
+    response = client.post("/api/exercise/saved-routines", json={
+        "source_type": "custom", "name": "내 루틴",
+        "items": [{"exercise_name": "스쿼트", "exercise_key": "not-a-catalog-key"}],
+    })
+    assert response.status_code == 422
+    assert not requests
+
+
+def test_custom_key_cannot_be_paired_with_unverified_free_text_name(monkeypatch):
+    client, requests, _, _ = make_client(monkeypatch)
+    response = client.post("/api/exercise/saved-routines", json={
+        "source_type": "custom", "name": "내 루틴",
+        "items": [{"exercise_name": "런지", "exercise_key": EXERCISE_KEY}],
+    })
+    assert response.status_code == 422
+    assert not requests
+
+
+def test_legacy_custom_item_without_key_remains_valid(monkeypatch):
+    client, _, _, children = make_client(monkeypatch)
+    response = client.post("/api/exercise/saved-routines", json={
+        "source_type": "custom", "name": "예전 루틴",
+        "items": [{"exercise_name": "스쿼트", "sets": 3}],
+    })
+    assert response.status_code == 201
+    assert children[0]["exercise_key"] is None
+
+
 def test_requires_authentication(monkeypatch):
     client, requests, _, _ = make_client(monkeypatch)
     assert client.get("/api/exercise/saved-routines", headers={"Authorization": ""}).status_code == 401
@@ -158,6 +195,7 @@ def test_start_saved_routine_uses_owned_id_and_returns_session_items(monkeypatch
     response = client.post(f"/api/exercise/saved-routines/{ROUTINE}/start")
     assert response.status_code == 200, response.text
     assert response.json()["result"]["items"][0]["exercise_item_id"] == SESSION_ITEM
+    assert response.json()["result"]["items"][0]["exercise_key"] == EXERCISE_KEY
     rpc = requests[-1]
     assert rpc.url.path.endswith("/rpc/start_saved_workout_routine")
     assert __import__("json").loads(rpc.content) == {
