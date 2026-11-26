@@ -1238,7 +1238,7 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
       </View>
       <View style={styles.reviewCta}>
         <PrimaryButton disabled={isSaving || !draft?.foods.length || missingNutrition} onPress={() => void handleSaveFoodShotMeal()}>
-          {isSaving ? '기록 중…' : '이대로 기록하기'}
+          {isSaving ? '기록 중…' : '먹었어요'}
         </PrimaryButton>
       </View>
     </View>
