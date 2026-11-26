@@ -139,7 +139,7 @@ export function DoneView(props: DoneViewProps) {
                       <Text style={[styles.ask, styles.askNext]}>어디가 아팠나요?</Text>
                       <View style={styles.chips}>
                         {AREAS.map(({ label, value }) => (
-                          <Pressable accessibilityRole="button" accessibilityState={{ selected: areas.includes(value) }} key={value} onPress={() => props.onToggleArea(value)} style={[styles.chip, areas.includes(value) && styles.on]}>
+                          <Pressable hitSlop={{ bottom: 2, top: 2 }} accessibilityRole="button" accessibilityState={{ selected: areas.includes(value) }} key={value} onPress={() => props.onToggleArea(value)} style={[styles.chip, areas.includes(value) && styles.on]}>
                             <Text style={[styles.optionText, areas.includes(value) && styles.onText]}>{label}</Text>
                           </Pressable>
                         ))}

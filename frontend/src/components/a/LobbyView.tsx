@@ -140,7 +140,7 @@ export function LobbyView({ name, who, tier, quests, bell, steps, onMe, onAsk, o
             <Text style={styles.allText}>{steps.count.toLocaleString('ko-KR')}</Text>
           </View>
         ) : steps ? (
-          <Pressable accessibilityRole="button" onPress={steps.ask} style={({ pressed }) => [styles.card, styles.steps, pressed && styles.pressed]}>
+          <Pressable hitSlop={{ bottom: 2, top: 2 }} accessibilityRole="button" onPress={steps.ask} style={({ pressed }) => [styles.card, styles.steps, pressed && styles.pressed]}>
             <PixelIcon index={4} />
             <Text style={styles.small}>걸음 켜기</Text>
           </Pressable>

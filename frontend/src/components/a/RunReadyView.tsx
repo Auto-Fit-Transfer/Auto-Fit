@@ -96,7 +96,7 @@ export function RunReadyView({
       </View>
       <View style={styles.segRow}>
         {distances.map((option) => (
-          <Pressable
+          <Pressable hitSlop={{ bottom: 3, top: 3 }}
             key={option}
             accessibilityRole="radio"
             accessibilityState={{ checked: distance === option }}
@@ -116,7 +116,7 @@ export function RunReadyView({
               ['mine', `저장 ${counts.mine}`],
             ] as const
           ).map(([value, label]) => (
-            <Pressable
+            <Pressable hitSlop={{ bottom: 4, top: 4 }}
               key={value}
               accessibilityRole="button"
               accessibilityState={{ selected: tab === value }}

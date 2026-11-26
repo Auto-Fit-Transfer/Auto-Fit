@@ -83,7 +83,7 @@ export default function SavedRoutines() {
     {loading ? <ALoading /> : <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 16 }]}>
       <View style={styles.filters}>
         {FILTERS.map(([key, label]) =>
-          <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: filter === key }} onPress={() => setFilter(key)} style={[styles.chip, filter === key && styles.on]}>
+          <Pressable hitSlop={{ bottom: 1, top: 1 }} key={key} accessibilityRole="button" accessibilityState={{ selected: filter === key }} onPress={() => setFilter(key)} style={[styles.chip, filter === key && styles.on]}>
             <Text style={[styles.chipText, filter === key && styles.onText]}>{label}</Text>
           </Pressable>)}
       </View>

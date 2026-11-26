@@ -91,7 +91,7 @@ export function HomeBoldView({ characterId, by, plan, proposals, recorded, now, 
         </View>
 
         {state === 'error' ? (
-          <Pressable accessibilityRole="button" onPress={onRetry} style={styles.retry}>
+          <Pressable hitSlop={{ bottom: 2, top: 2 }} accessibilityRole="button" onPress={onRetry} style={styles.retry}>
             <Text style={styles.retryText}>다시 불러오기</Text>
           </Pressable>
         ) : null}
@@ -118,7 +118,7 @@ export function HomeBoldView({ characterId, by, plan, proposals, recorded, now, 
               ) : (
                 <View style={styles.choices}>
                   {item.choices.map((choice) => (
-                    <Pressable
+                    <Pressable hitSlop={{ bottom: 4, top: 4 }}
                       accessibilityLabel={`${item.title}, ${choice.label}`}
                       accessibilityRole="button"
                       key={choice.kind}

@@ -45,7 +45,7 @@ export function KindsBar({
       </View>
       <View style={styles.kinds}>
         {kinds.map((kind) => (
-          <Pressable
+          <Pressable hitSlop={{ bottom: 2, top: 2 }}
             key={kind.label}
             accessibilityRole="button"
             accessibilityState={{ selected: Boolean(kind.selected) }}
@@ -100,7 +100,7 @@ export function RunSetup({
               ['tired', '피곤해요'],
             ] as const
           ).map(([value, label]) => (
-            <Pressable
+            <Pressable hitSlop={{ bottom: 2, top: 2 }}
               key={value}
               accessibilityRole="radio"
               accessibilityState={{ checked: condition === value }}
@@ -122,7 +122,7 @@ export function RunSetup({
               ['hard', '강하게'],
             ] as const
           ).map(([value, label]) => (
-            <Pressable
+            <Pressable hitSlop={{ bottom: 2, top: 2 }}
               key={value}
               accessibilityRole="radio"
               accessibilityState={{ checked: intensity === value }}

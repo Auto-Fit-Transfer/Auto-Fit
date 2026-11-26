@@ -109,7 +109,7 @@ export function AskView({
                   <Text style={styles.bubbleText}>{line.answer}</Text>
                   {line.card ? (
                     <View style={styles.duo}>
-                      <Pressable
+                      <Pressable hitSlop={{ bottom: 3, top: 3 }}
                         accessibilityRole="button"
                         accessibilityState={{ busy: line.card.waiting, disabled: line.card.busy }}
                         disabled={line.card.busy}
@@ -118,7 +118,7 @@ export function AskView({
                       >
                         {line.card.waiting ? <ActivityIndicator color={colors.lilacInk} size="small" /> : <Text style={[styles.pillText, styles.pillYesText]}>이대로 조정</Text>}
                       </Pressable>
-                      <Pressable
+                      <Pressable hitSlop={{ bottom: 3, top: 3 }}
                         accessibilityRole="button"
                         accessibilityState={{ disabled: line.card.busy }}
                         disabled={line.card.busy}
@@ -178,7 +178,7 @@ export function AskView({
         {talking ? (
           <ScrollView contentContainerStyle={styles.quick} horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false}>
             {prompts.slice(0, 2).map((prompt) => (
-              <Pressable accessibilityRole="button" accessibilityState={{ disabled: !canType }} disabled={!canType} key={prompt} onPress={() => onSend(prompt)} style={styles.chip}>
+              <Pressable hitSlop={{ bottom: 3, top: 3 }} accessibilityRole="button" accessibilityState={{ disabled: !canType }} disabled={!canType} key={prompt} onPress={() => onSend(prompt)} style={styles.chip}>
                 <Text style={styles.chipText}>{prompt}</Text>
               </Pressable>
             ))}
@@ -197,7 +197,7 @@ export function AskView({
             style={styles.input}
             value={draft}
           />
-          <Pressable
+          <Pressable hitSlop={{ bottom: 2, left: 2, right: 2, top: 2 }}
             accessibilityLabel="보내기"
             accessibilityRole="button"
             accessibilityState={{ disabled: !canSend }}

@@ -128,17 +128,17 @@ export function DietView(props: R6DietHomeProps & {
             {next.allergyWarning ? <Text style={styles.aiWarn}>{next.allergyWarning}</Text> : null}
             <View style={styles.choices}>
               {props.showRecordControls && next.canSave && !next.allergyBlocked ? (
-                <Pressable accessibilityLabel={`${next.title} 먹었어요`} accessibilityRole="button" disabled={next.pending} onPress={() => props.onStatusChange(next.id, 'eaten')} style={[styles.choice, styles.choiceMain, next.pending && styles.off]}>
+                <Pressable hitSlop={{ bottom: 2, top: 2 }} accessibilityLabel={`${next.title} 먹었어요`} accessibilityRole="button" disabled={next.pending} onPress={() => props.onStatusChange(next.id, 'eaten')} style={[styles.choice, styles.choiceMain, next.pending && styles.off]}>
                   <Text style={[styles.choiceText, styles.choiceMainText]}>먹었어요</Text>
                 </Pressable>
               ) : null}
               {next.canSave && !next.allergyBlocked ? (
-                <Pressable accessibilityLabel={`${next.title} 다른 메뉴`} accessibilityRole="button" disabled={next.regenerating} onPress={() => props.onAlternative(next.id)} style={[styles.choice, next.regenerating && styles.off]}>
+                <Pressable hitSlop={{ bottom: 2, top: 2 }} accessibilityLabel={`${next.title} 다른 메뉴`} accessibilityRole="button" disabled={next.regenerating} onPress={() => props.onAlternative(next.id)} style={[styles.choice, next.regenerating && styles.off]}>
                   <Text style={styles.choiceText}>{next.regenerating ? '찾는 중…' : '다른 메뉴'}</Text>
                 </Pressable>
               ) : null}
               {props.showRecordControls && next.canSave ? (
-                <Pressable accessibilityLabel={`${next.title} 다른 음식 기록`} accessibilityRole="button" disabled={next.pending} onPress={() => props.onRecord(next.id)} style={[styles.choice, next.pending && styles.off]}>
+                <Pressable hitSlop={{ bottom: 2, top: 2 }} accessibilityLabel={`${next.title} 다른 음식 기록`} accessibilityRole="button" disabled={next.pending} onPress={() => props.onRecord(next.id)} style={[styles.choice, next.pending && styles.off]}>
                   <Text style={styles.choiceText}>다른 음식 기록</Text>
                 </Pressable>
               ) : null}

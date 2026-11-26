@@ -269,7 +269,7 @@ export default function CommunityScreen() {
               <View style={styles.feedHeader}>
                 <ScrollView contentContainerStyle={styles.categories} horizontal showsHorizontalScrollIndicator={false}>
                   {CATEGORIES.map((category) => (
-                    <Pressable
+                    <Pressable hitSlop={{ bottom: 1, top: 1 }}
                       accessibilityRole="button"
                       accessibilityState={{ selected: activeCategory === category.value }}
                       onPress={() => switchCategory(category.value)}

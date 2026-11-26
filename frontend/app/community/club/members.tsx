@@ -119,7 +119,7 @@ export default function CommunityClubMembersScreen() {
                 {item.role === 'owner' ? <Text style={styles.owner}>클럽장</Text> : null}
               </Pressable>
               {isOwner && item.role !== 'owner' ? (
-                <Pressable
+                <Pressable hitSlop={{ bottom: 5, top: 5 }}
                   accessibilityLabel={`${item.nickname}님 내보내기`}
                   accessibilityRole="button"
                   onPress={() => confirmRemove(item)}

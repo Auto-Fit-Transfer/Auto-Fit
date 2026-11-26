@@ -155,7 +155,7 @@ export default function CommunityNewClubScreen() {
         <Text style={styles.label}>관심사</Text>
         <View style={styles.chips}>
           {COMMUNITY_CLUB_CATEGORIES.map((item) => (
-            <Pressable
+            <Pressable hitSlop={{ bottom: 4, top: 4 }}
               accessibilityRole="button"
               aria-selected={item.value === category}
               key={item.value}

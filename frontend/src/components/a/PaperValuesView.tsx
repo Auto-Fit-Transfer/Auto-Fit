@@ -77,7 +77,7 @@ export function PaperValuesView<Key extends string, Kind extends string>(props: 
 
         <View style={styles.tabs}>
           {kinds.map(({ type, label, has, on }) => (
-            <Pressable
+            <Pressable hitSlop={{ bottom: 2, top: 2 }}
               accessibilityRole="tab"
               accessibilityState={{ disabled: !has, selected: on }}
               disabled={!has}

@@ -208,7 +208,7 @@ export function DietView(props: R6DietHomeProps & {
                 <Text style={[styles.body, styles.grow]}>
                   목표보다 {number(overBy)}kcal 더 먹었어요{props.burned ? ` (운동\u00A0${number(props.burned)}kcal\u00A0빼고)` : ''}
                 </Text>
-                <Pressable accessibilityRole="button" onPress={props.onAdjust} style={({ pressed }) => [styles.mini, pressed && styles.pressedSoft]}>
+                <Pressable hitSlop={{ bottom: 6, top: 6 }} accessibilityRole="button" onPress={props.onAdjust} style={({ pressed }) => [styles.mini, pressed && styles.pressedSoft]}>
                   <Text style={[styles.small, styles.miniText]}>내일 맞추기</Text>
                 </Pressable>
               </View>
@@ -229,7 +229,7 @@ export function DietView(props: R6DietHomeProps & {
             <Text style={[styles.title, styles.grow]}>{isToday ? '오늘 식단' : '선택한 날 식단'}</Text>
             {/* on today only, as in a-diet.html: beside '선택한 날 식단' it would push the title onto two lines */}
             {props.onMenuStyle && isToday ? (
-              <Pressable
+              <Pressable hitSlop={{ bottom: 6, top: 6 }}
                 accessibilityLabel="건강식 위주와 일반식 위주 중 고르기"
                 accessibilityRole="button"
                 onPress={props.onMenuStyle}
@@ -238,7 +238,7 @@ export function DietView(props: R6DietHomeProps & {
                 <Text style={[styles.small, styles.miniText]}>{menuStyleLabel(props.menuStyle)}</Text>
               </Pressable>
             ) : null}
-            <Pressable
+            <Pressable hitSlop={{ bottom: 6, top: 6 }}
               accessibilityRole="button"
               onPress={props.onOpenWeekly}
               style={({ pressed }) => [styles.mini, pressed && styles.pressedSoft]}
@@ -267,7 +267,7 @@ export function DietView(props: R6DietHomeProps & {
             const open = openId === meal.id;
             const canRecord = props.showRecordControls && meal.canSave && !meal.pending;
             const action = (label: string, onPress: () => void, disabled = false, main = false) => (
-              <Pressable
+              <Pressable hitSlop={{ bottom: 6, top: 6 }}
                 key={label}
                 accessibilityLabel={`${meal.title} ${label}`}
                 accessibilityRole="button"

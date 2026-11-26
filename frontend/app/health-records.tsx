@@ -179,7 +179,7 @@ export default function HealthRecordsScreen() {
         </View>
         <ScrollView contentContainerStyle={styles.metricRow} horizontal showsHorizontalScrollIndicator={false} style={styles.metricScroll}>
           {metrics.map((metric) => (
-            <Pressable key={metric.key} accessibilityRole="button" accessibilityState={{ selected: selectedMetric.key === metric.key }} onPress={() => setMetricKey(metric.key)} style={[styles.metricChip, selectedMetric.key === metric.key && styles.selectedChip]}>
+            <Pressable hitSlop={{ bottom: 2, top: 2 }} key={metric.key} accessibilityRole="button" accessibilityState={{ selected: selectedMetric.key === metric.key }} onPress={() => setMetricKey(metric.key)} style={[styles.metricChip, selectedMetric.key === metric.key && styles.selectedChip]}>
               <Text style={[styles.metricText, selectedMetric.key === metric.key && styles.selectedMetricText]}>{metric.label}</Text>
             </Pressable>
           ))}
@@ -194,7 +194,7 @@ export default function HealthRecordsScreen() {
           <View style={styles.empty}>
             <Text style={styles.emptyTitle}>최근 6개월의 {selectedMetric.label} 기록이 없어요.</Text>
             <Text style={styles.note}>확정한 건강검진 · 체성분 기록이 표시돼요.</Text>
-            <Pressable accessibilityRole="button" onPress={() => router.push('/health-data-management')} style={styles.upload}><Text style={styles.uploadText}>건강 데이터 관리하기</Text></Pressable>
+            <Pressable hitSlop={{ bottom: 2, top: 2 }} accessibilityRole="button" onPress={() => router.push('/health-data-management')} style={styles.upload}><Text style={styles.uploadText}>건강 데이터 관리하기</Text></Pressable>
           </View>
         ) : null}
         {!loading && !error && latest ? (

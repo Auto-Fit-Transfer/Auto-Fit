@@ -97,10 +97,10 @@ export default function ForgotPasswordScreen() {
             </View>
           </View>
           <View style={styles.sentActions}>
-            <Pressable accessibilityRole="button" onPress={() => setSentAt(null)} style={styles.smallButton}>
+            <Pressable hitSlop={{ bottom: 5, top: 5 }} accessibilityRole="button" onPress={() => setSentAt(null)} style={styles.smallButton}>
               <Text style={styles.smallButtonText}>주소 바꾸기</Text>
             </Pressable>
-            <Pressable
+            <Pressable hitSlop={{ bottom: 5, top: 5 }}
               accessibilityRole="button"
               accessibilityState={{ disabled: wait > 0 || isSending }}
               disabled={wait > 0 || isSending}

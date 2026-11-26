@@ -595,7 +595,7 @@ function NutritionEditor({
     <View style={styles.nutritionSection}>
       <View style={styles.sectionHeadingRow}>
         <Text style={styles.sectionHeading}>영양 정보</Text>
-        <Pressable
+        <Pressable hitSlop={{ bottom: 6, top: 6 }}
           onPress={editing ? confirmEditing : startEditing}
           style={[styles.editNutritionButton, editing && styles.confirmNutritionButton]}
         >
@@ -783,7 +783,7 @@ function RecognizedFoodList({
                       </Text>
                     </View>
                     <Text style={styles.foodKcal}>{food.kcal === undefined ? '-' : food.kcal} kcal</Text>
-                    <Pressable accessibilityLabel={`${food.name} 수정`} onPress={() => onEdit(food)} style={styles.editFoodButton}>
+                    <Pressable hitSlop={{ bottom: 7, left: 7, right: 7, top: 7 }} accessibilityLabel={`${food.name} 수정`} onPress={() => onEdit(food)} style={styles.editFoodButton}>
                       <PencilIcon color={colors.textSecondary} fill={colors.textSecondary} height={14} width={14} />
                     </Pressable>
                   </View>
@@ -796,7 +796,7 @@ function RecognizedFoodList({
       ) : (
         <Text style={styles.noFoodText}>인식된 음식이 없어요.</Text>
       )}
-      <Pressable onPress={onAdd} style={styles.addFoodButton}>
+      <Pressable hitSlop={{ bottom: 3, top: 3 }} onPress={onAdd} style={styles.addFoodButton}>
         <PlusIcon color={colors.textPrimary} height={18} width={18} />
         <Text style={styles.addFoodButtonText}>음식 추가하기</Text>
       </Pressable>

@@ -192,7 +192,7 @@ export function ReportSummaryView({ who, tierIndex, count, trend, tier, still = 
             <View style={styles.nopaper}>
               <Text style={styles.note}>체중 · 건강 점수</Text>
               <Text style={styles.body}>건강 서류를 올리면 여기에 보여요</Text>
-              <Pressable accessibilityRole="button" onPress={onUpload} style={({ pressed }) => [styles.small, pressed && styles.sunk]}>
+              <Pressable hitSlop={{ bottom: 5, top: 5 }} accessibilityRole="button" onPress={onUpload} style={({ pressed }) => [styles.small, pressed && styles.sunk]}>
                 <Text style={styles.smallText}>자료 올리기</Text>
               </Pressable>
             </View>
@@ -337,7 +337,7 @@ export function ReportDetailView({ who, tierIndex, name, count, tier, sheet, onB
     onAsk(text.trim());
   };
   const stat = (label: string, bar: ReactNode, value: string, onPress: () => void, hint: string) => (
-    <Pressable accessibilityLabel={`${label} ${value}, ${hint}`} accessibilityRole="button" key={label} onPress={onPress} style={({ pressed }) => [styles.st, pressed && styles.dim]}>
+    <Pressable hitSlop={{ bottom: 2, top: 2 }} accessibilityLabel={`${label} ${value}, ${hint}`} accessibilityRole="button" key={label} onPress={onPress} style={({ pressed }) => [styles.st, pressed && styles.dim]}>
       <Text style={styles.stName}>{label}</Text>
       <View style={styles.stBar}>{bar}</View>
       <Text style={styles.stValue}>{value}</Text>
@@ -511,7 +511,7 @@ export function ReportDetailView({ who, tierIndex, name, count, tier, sheet, onB
               value={question}
             />
           </View>
-          <Pressable
+          <Pressable hitSlop={{ bottom: 5, top: 5 }}
             accessibilityRole="button"
             accessibilityState={{ disabled: !question.trim() }}
             disabled={!question.trim()}

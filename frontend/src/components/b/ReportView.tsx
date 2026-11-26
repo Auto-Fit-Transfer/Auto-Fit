@@ -153,15 +153,15 @@ export function ReportView({ count, trend, tier, onBack, onHistory, onGo, onPlan
             <Text style={[styles.body, styles.onAiMuted]}>{next.note}</Text>
             {next.go ? (
               <View style={styles.choices}>
-                <Pressable accessibilityRole="button" onPress={() => onGo(next.go ?? 'exercise')} style={[styles.choice, styles.choiceMain]}>
+                <Pressable hitSlop={{ bottom: 2, top: 2 }} accessibilityRole="button" onPress={() => onGo(next.go ?? 'exercise')} style={[styles.choice, styles.choiceMain]}>
                   <Text style={[styles.choiceText, styles.choiceMainText]}>{next.go === 'diet' ? '식단으로' : '운동하러 가기'}</Text>
                 </Pressable>
                 {next.go === 'exercise' ? (
                   <>
-                    <Pressable accessibilityRole="button" onPress={() => onPlan('adjust')} style={styles.choice}>
+                    <Pressable hitSlop={{ bottom: 2, top: 2 }} accessibilityRole="button" onPress={() => onPlan('adjust')} style={styles.choice}>
                       <Text style={styles.choiceText}>가볍게 조정</Text>
                     </Pressable>
-                    <Pressable accessibilityRole="button" onPress={() => onPlan('own')} style={styles.choice}>
+                    <Pressable hitSlop={{ bottom: 2, top: 2 }} accessibilityRole="button" onPress={() => onPlan('own')} style={styles.choice}>
                       <Text style={styles.choiceText}>내 루틴으로</Text>
                     </Pressable>
                   </>
@@ -223,7 +223,7 @@ export function ReportView({ count, trend, tier, onBack, onHistory, onGo, onPlan
                 <Text style={styles.askText}>{question}</Text>
               </Pressable>
             ))}
-            <Pressable accessibilityRole="button" onPress={() => onAsk(null)} style={styles.askMore}>
+            <Pressable hitSlop={{ bottom: 4, top: 4 }} accessibilityRole="button" onPress={() => onAsk(null)} style={styles.askMore}>
               <Text style={styles.link}>직접 물어보기</Text>
               <CaretRightIcon color={colors.textPrimary} height={14} width={14} />
             </Pressable>

@@ -85,7 +85,7 @@ export function HelloView(props: HelloViewProps) {
                   style={styles.talkInput}
                   value={props.input}
                 />
-                <Pressable
+                <Pressable hitSlop={{ bottom: 2, left: 2, right: 2, top: 2 }}
                   accessibilityLabel="보내기"
                   accessibilityRole="button"
                   accessibilityState={{ disabled: !props.input.trim() }}
@@ -139,7 +139,7 @@ export function HelloView(props: HelloViewProps) {
                       {line.done ? <CheckIcon color={colors.aiCard} height={14} width={14} /> : null}
                     </View>
                     <Text style={[styles.lineText, !line.done && styles.lineMissing]}>{line.done ?? line.missing}</Text>
-                    <Pressable
+                    <Pressable hitSlop={{ bottom: 5, top: 5 }}
                       accessibilityLabel={`${line.done ?? line.missing} ${line.done ? '고치기' : '알려 주기'}`}
                       accessibilityRole="button"
                       onPress={() => props.onAsk(line.key)}

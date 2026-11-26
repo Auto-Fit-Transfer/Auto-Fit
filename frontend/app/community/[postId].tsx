@@ -239,7 +239,7 @@ export default function CommunityPostScreen() {
                   onRepost={() => void actions.toggleRepost(post)}
                   post={post}
                 />
-                {bookmarkAvailable ? <Pressable accessibilityRole="button" accessibilityState={{ selected: bookmarked, disabled: bookmarkBusy }} disabled={bookmarkBusy} onPress={() => void toggleBookmark()} style={styles.bookmarkButton}>
+                {bookmarkAvailable ? <Pressable hitSlop={{ bottom: 4, top: 4 }} accessibilityRole="button" accessibilityState={{ selected: bookmarked, disabled: bookmarkBusy }} disabled={bookmarkBusy} onPress={() => void toggleBookmark()} style={styles.bookmarkButton}>
                   {bookmarked ? <BookmarkFillIcon color={colors.textPrimary} height={16} width={16} /> : <BookmarkIcon color={colors.textPrimary} height={16} width={16} />}
                   <Text style={styles.bookmarkText}>{bookmarked ? '스크랩됨' : '스크랩'}</Text>
                 </Pressable> : null}

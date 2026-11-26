@@ -88,10 +88,10 @@ function BirthDateDialog({
           />
         </View>
         <View style={styles.actions}>
-          <Pressable onPress={onCancel} style={styles.action}>
+          <Pressable hitSlop={{ bottom: 2, top: 2 }} onPress={onCancel} style={styles.action}>
             <Text style={styles.cancel}>취소</Text>
           </Pressable>
-          <Pressable
+          <Pressable hitSlop={{ bottom: 2, top: 2 }}
             disabled={!isValidDate}
             onPress={() => onConfirm(selectedDate)}
             style={styles.action}

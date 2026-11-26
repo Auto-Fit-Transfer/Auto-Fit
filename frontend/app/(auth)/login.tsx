@@ -103,7 +103,7 @@ export default function LoginRoute() {
   };
 
   const chip = (on: boolean, text: string, onPress: () => void) => (
-    <Pressable key={text} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={onPress} style={[styles.chip, on && styles.chipOn]}>
+    <Pressable hitSlop={{ bottom: 2, top: 2 }} key={text} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={onPress} style={[styles.chip, on && styles.chipOn]}>
       <Text style={[styles.chipText, on && styles.chipOnText]}>{text}</Text>
     </Pressable>
   );

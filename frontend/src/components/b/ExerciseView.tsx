@@ -79,7 +79,7 @@ export function ExerciseView({ headline, kind, line, error, card, more, headerRi
               {line ? <Text style={styles.aiTitle}>{line}</Text> : null}
               {card.facts ? <Text style={styles.aiFacts}>{card.facts}</Text> : null}
               <View style={styles.choices}>
-                <Pressable
+                <Pressable hitSlop={{ bottom: 2, top: 2 }}
                   accessibilityRole="button"
                   accessibilityState={{ busy: card.main.busy, disabled: card.main.disabled }}
                   disabled={card.main.disabled || card.main.busy}
@@ -93,7 +93,7 @@ export function ExerciseView({ headline, kind, line, error, card, more, headerRi
                   )}
                 </Pressable>
                 {card.links.map((link) => (
-                  <Pressable key={link.label} accessibilityRole="button" onPress={link.onPress} style={styles.choice}>
+                  <Pressable hitSlop={{ bottom: 2, top: 2 }} key={link.label} accessibilityRole="button" onPress={link.onPress} style={styles.choice}>
                     <Text style={styles.choiceText}>{link.label}</Text>
                   </Pressable>
                 ))}

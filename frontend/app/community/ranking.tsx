@@ -111,7 +111,7 @@ function CommunityRankingScreen() {
   ) => (
     <View style={styles.chips}>
       {items.map((item) => (
-        <Pressable
+        <Pressable hitSlop={{ bottom: 1, top: 1 }}
           accessibilityRole="button"
           aria-selected={item.value === selected}
           key={item.value}

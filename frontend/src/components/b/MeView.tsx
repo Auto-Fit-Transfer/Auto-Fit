@@ -75,7 +75,7 @@ export function MeView({ characterId, name, days, tier, notice, know, rows, step
                   {line.done ? <CheckIcon color={colors.aiCard} height={14} width={14} /> : null}
                 </View>
                 <Text style={[styles.lineText, !line.done && styles.lineMissing]}>{line.done ?? line.missing}</Text>
-                <Pressable accessibilityLabel={`${line.done ?? line.missing} ${line.action}`} accessibilityRole="button" onPress={line.onPress} style={[styles.pill, !line.done && styles.pillAsk]}>
+                <Pressable hitSlop={{ bottom: 5, top: 5 }} accessibilityLabel={`${line.done ?? line.missing} ${line.action}`} accessibilityRole="button" onPress={line.onPress} style={[styles.pill, !line.done && styles.pillAsk]}>
                   <Text style={[styles.pillText, !line.done && styles.pillAskText]}>{line.action}</Text>
                 </Pressable>
               </View>

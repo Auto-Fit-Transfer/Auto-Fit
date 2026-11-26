@@ -232,7 +232,7 @@ export function R6DietHome(props: Props) {
           const showActions = recommended || expandedId === meal.id;
           const canRecord = props.showRecordControls && meal.canSave && !meal.pending;
           const action = (label: string, onPress: () => void, disabled = false) => (
-            <Pressable
+            <Pressable hitSlop={{ bottom: 5, top: 5 }}
               accessibilityLabel={`${meal.title} ${label}`}
               accessibilityRole="button"
               disabled={disabled}

@@ -75,7 +75,7 @@ export function PostureShootView({
       {exercises && exercises.length > 0 ? (
         <View style={styles.chips}>
           {exercises.map((name, index) => (
-            <Pressable
+            <Pressable hitSlop={{ bottom: 3, top: 3 }}
               key={name}
               accessibilityRole="radio"
               accessibilityState={{ checked: index === selected, disabled: chipsOff }}
