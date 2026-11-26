@@ -210,13 +210,13 @@ export default function CommunityComposeScreen() {
         <Text accessibilityRole="header" numberOfLines={1} style={styles.title}>
           {clubName ? `${clubName}에 글쓰기` : '새 글'}
         </Text>
-        <Pressable accessibilityRole="button" onPress={() => void saveDraft()} style={styles.draftButton}><Text style={styles.draftText}>임시저장</Text></Pressable>
+        <Pressable hitSlop={{ bottom: 6, top: 6 }} accessibilityRole="button" onPress={() => void saveDraft()} style={styles.draftButton}><Text style={styles.draftText}>임시저장</Text></Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <Text style={styles.fieldLabel}>분류</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
-          {CATEGORIES.map((item) => <Pressable key={item.key} accessibilityRole="button" accessibilityState={{ selected: category === item.key }} onPress={() => setCategory(item.key)} style={[styles.categoryChip, category === item.key && styles.categorySelected]}><Text style={[styles.categoryText, category === item.key && styles.categoryTextSelected]}>{item.label}</Text></Pressable>)}
+          {CATEGORIES.map((item) => <Pressable hitSlop={{ bottom: 6, top: 6 }} key={item.key} accessibilityRole="button" accessibilityState={{ selected: category === item.key }} onPress={() => setCategory(item.key)} style={[styles.categoryChip, category === item.key && styles.categorySelected]}><Text style={[styles.categoryText, category === item.key && styles.categoryTextSelected]}>{item.label}</Text></Pressable>)}
         </ScrollView>
         <View style={styles.inputWrap}>
           <TextInput
@@ -279,7 +279,7 @@ export default function CommunityComposeScreen() {
 
         <View style={styles.activityHeading}>
           <Text style={styles.fieldLabel}>기록 붙이기 <Text style={styles.fieldHint}>선택</Text></Text>
-          <Pressable accessibilityRole="button" onPress={() => void loadActivities()} style={styles.activityButton}><Text style={styles.activityLink}>{activities ? '접기' : '기록 불러오기'}</Text></Pressable>
+          <Pressable hitSlop={{ bottom: 6, top: 6 }} accessibilityRole="button" onPress={() => void loadActivities()} style={styles.activityButton}><Text style={styles.activityLink}>{activities ? '접기' : '기록 불러오기'}</Text></Pressable>
         </View>
         {activityLoading ? <Text style={styles.fieldHint}>운동 기록을 불러오는 중…</Text> : null}
         {activities?.length === 0 ? <Text style={styles.fieldHint}>완료한 운동 기록이 없어요.</Text> : null}

@@ -137,7 +137,7 @@ export default function CommunityNotificationsScreen() {
     <View style={styles.root}>
       <ScreenHeader onBack={() => router.back()} title="알림" />
       <View style={styles.filters}>
-        {([['all', '전체'], ['community', '커뮤니티']] as const).map(([key, label]) => <Pressable key={key} accessibilityRole="button" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={[styles.filter, tab === key && styles.filterSelected]}><Text style={[styles.filterText, tab === key && styles.filterTextSelected]}>{label}</Text></Pressable>)}
+        {([['all', '전체'], ['community', '커뮤니티']] as const).map(([key, label]) => <Pressable hitSlop={{ bottom: 6, top: 6 }} key={key} accessibilityRole="button" accessibilityState={{ selected: tab === key }} onPress={() => setTab(key)} style={[styles.filter, tab === key && styles.filterSelected]}><Text style={[styles.filterText, tab === key && styles.filterTextSelected]}>{label}</Text></Pressable>)}
         <View accessibilityLabel="챌린지·티어 알림은 준비 중" style={styles.filter}><Text style={styles.filterText}>챌린지 · 티어</Text></View>
         <Pressable hitSlop={16} accessibilityRole="button" disabled={markingRead || !items?.some((item) => !item.is_read)} onPress={() => void markAllRead()} style={styles.markReadButton}><Text style={styles.markRead}>모두 읽음</Text></Pressable>
       </View>

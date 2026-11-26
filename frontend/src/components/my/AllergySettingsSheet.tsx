@@ -123,7 +123,7 @@ export function AllergySettingsSheet({ visible, onClose }: Props) {
       {loaded ? (
         <>
           <View style={styles.chips}>
-            <Pressable
+            <Pressable hitSlop={{ bottom: 4, top: 4 }}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: none }}
               onPress={() => { setSelectedIds([]); setCustomNames([]); setCustomDraft(''); setSaved(false); }}
@@ -134,13 +134,13 @@ export function AllergySettingsSheet({ visible, onClose }: Props) {
             {visibleCatalog.map((item) => {
               const selected = selectedIds.includes(item.allergy_type_id);
               return (
-                <Pressable key={item.allergy_type_id} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} onPress={() => toggle(item.allergy_type_id)} style={[styles.chip, selected && styles.selected]}>
+                <Pressable hitSlop={{ bottom: 4, top: 4 }} key={item.allergy_type_id} accessibilityRole="checkbox" accessibilityState={{ checked: selected }} onPress={() => toggle(item.allergy_type_id)} style={[styles.chip, selected && styles.selected]}>
                   <Text style={[styles.chipText, selected && styles.selectedText]}>{item.name}</Text>
                 </Pressable>
               );
             })}
             {customNames.map((name) => (
-              <Pressable
+              <Pressable hitSlop={{ bottom: 4, top: 4 }}
                 key={name}
                 accessibilityRole="button"
                 accessibilityLabel={name + ' 삭제'}

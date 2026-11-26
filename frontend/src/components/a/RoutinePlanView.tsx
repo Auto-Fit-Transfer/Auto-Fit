@@ -45,7 +45,7 @@ export function RoutinePlanView({ header, routine, loading, button, onBack, onCh
   const [open, setOpen] = useState(false);
   const [openMove, setOpenMove] = useState<string | null>(null);
   const mini = (label: string, onPress: () => void, accessibilityLabel?: string) => (
-    <Pressable accessibilityLabel={accessibilityLabel} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.mini, pressed && styles.miniPressed]}>
+    <Pressable hitSlop={{ bottom: 6, top: 6 }} accessibilityLabel={accessibilityLabel} accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.mini, pressed && styles.miniPressed]}>
       <Text style={styles.miniText}>{label}</Text>
     </Pressable>
   );

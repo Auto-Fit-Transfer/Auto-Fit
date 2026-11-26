@@ -131,7 +131,7 @@ export function HealthGoalSheet({ visible, onClose }: Props) {
   };
 
   const chip = (label: string, selected: boolean, onPress: () => void, style?: object) => (
-    <Pressable
+    <Pressable hitSlop={{ bottom: 2, top: 2 }}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       key={label}

@@ -163,7 +163,7 @@ export default function CommunityAdminChallengeScreen() {
         <Text style={styles.label}>무엇을 셀까요</Text>
         <View style={styles.chips}>
           {METRICS.map((item) => (
-            <Pressable
+            <Pressable hitSlop={{ bottom: 4, top: 4 }}
               accessibilityRole="button"
               aria-selected={item.value === metric}
               disabled={locked}

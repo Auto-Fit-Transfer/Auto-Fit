@@ -132,7 +132,7 @@ export function AskView({
                   </View>
                   {line.card ? (
                     <View style={styles.duo}>
-                      <Pressable
+                      <Pressable hitSlop={{ bottom: 1, top: 1 }}
                         accessibilityRole="button"
                         accessibilityState={{ disabled: line.card.busy }}
                         disabled={line.card.busy}
@@ -141,7 +141,7 @@ export function AskView({
                       >
                         <Text style={styles.choiceText}>그대로 할게요</Text>
                       </Pressable>
-                      <Pressable
+                      <Pressable hitSlop={{ bottom: 1, top: 1 }}
                         accessibilityRole="button"
                         accessibilityState={{ busy: line.card.waiting, disabled: line.card.busy }}
                         disabled={line.card.busy}
@@ -216,7 +216,7 @@ export function AskView({
         {talking ? (
           <View style={styles.quick}>
             {prompts.slice(0, 2).map((prompt) => (
-              <Pressable
+              <Pressable hitSlop={{ bottom: 6, top: 6 }}
                 accessibilityRole="button"
                 accessibilityState={{ disabled: !canType }}
                 disabled={!canType}

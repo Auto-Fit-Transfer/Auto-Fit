@@ -120,7 +120,7 @@ export function PapersView({
                 ['body_composition', '인바디'],
               ] as const
             ).map(([value, label]) => (
-              <Pressable
+              <Pressable hitSlop={{ bottom: 6, top: 6 }}
                 key={value}
                 accessibilityRole="button"
                 accessibilityState={{ selected: filter === value }}

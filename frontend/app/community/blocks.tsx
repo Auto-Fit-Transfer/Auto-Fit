@@ -90,7 +90,7 @@ export default function CommunityBlocksScreen() {
               <Text numberOfLines={1} style={styles.nickname}>
                 {item.nickname}
               </Text>
-              <Pressable
+              <Pressable hitSlop={{ bottom: 6, top: 6 }}
                 accessibilityLabel={`${item.nickname}님 차단 풀기`}
                 accessibilityRole="button"
                 onPress={() => void unblock(item)}

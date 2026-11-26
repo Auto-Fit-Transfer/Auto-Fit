@@ -238,7 +238,7 @@ function ActionButton({
 }) {
   const styles = useThemedStyles(createStyles);
   return (
-    <Pressable
+    <Pressable hitSlop={{ bottom: 6, top: 6 }}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [

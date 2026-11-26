@@ -175,7 +175,7 @@ export default function Notifications() {
               <TextInput accessibilityLabel="방해 금지 시작 시간" keyboardType="numbers-and-punctuation" maxLength={5} onChangeText={setStart} placeholder="23:00" style={styles.timeInput} value={start} />
               <Text style={styles.detail}>~</Text>
               <TextInput accessibilityLabel="방해 금지 종료 시간" keyboardType="numbers-and-punctuation" maxLength={5} onChangeText={setEnd} placeholder="07:00" style={styles.timeInput} value={end} />
-              <Pressable accessibilityRole="button" disabled={saving} onPress={saveHours} style={styles.timeSave}><Text style={styles.timeSaveText}>시간 저장</Text></Pressable>
+              <Pressable hitSlop={{ bottom: 6, top: 6 }} accessibilityRole="button" disabled={saving} onPress={saveHours} style={styles.timeSave}><Text style={styles.timeSaveText}>시간 저장</Text></Pressable>
             </View>
           ) : null}
           {row({ key: 'push_enabled', label: '푸시 알림', detail: '기기 알림 허용 시 받기' }, 1)}

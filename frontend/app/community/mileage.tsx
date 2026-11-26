@@ -194,7 +194,7 @@ export default function CommunityMileageScreen() {
               <Text style={styles.historyTitle}>내역</Text>
               <View style={styles.filters}>
                 {FILTERS.map((option) => (
-                  <Pressable
+                  <Pressable hitSlop={{ bottom: 6, top: 6 }}
                     key={option}
                     accessibilityRole="button"
                     accessibilityState={{ selected: filter === option }}

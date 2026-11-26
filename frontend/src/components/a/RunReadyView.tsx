@@ -115,7 +115,7 @@ export function RunReadyView({
               ['mine', `저장 ${counts.mine}`],
             ] as const
           ).map(([value, label]) => (
-            <Pressable
+            <Pressable hitSlop={{ bottom: 6, top: 6 }}
               key={value}
               accessibilityRole="button"
               accessibilityState={{ selected: tab === value }}

@@ -133,7 +133,7 @@ export function AnalysisView(props: AnalysisViewProps) {
               {state === 'loading' ? '건강 분석을 불러오는 중이에요.' : state === 'empty' ? '아직 건강 분석 결과가 없어요.' : error}
             </Text>
             {state === 'empty' || state === 'error' ? (
-              <Pressable accessibilityRole="button" onPress={state === 'empty' ? props.onUpload : props.onRetry} style={({ pressed }) => [styles.mini, pressed && styles.sunk]}>
+              <Pressable hitSlop={{ bottom: 6, top: 6 }} accessibilityRole="button" onPress={state === 'empty' ? props.onUpload : props.onRetry} style={({ pressed }) => [styles.mini, pressed && styles.sunk]}>
                 <Text style={styles.miniText}>{state === 'empty' ? '건강 데이터 올리기' : '다시 시도'}</Text>
               </Pressable>
             ) : null}

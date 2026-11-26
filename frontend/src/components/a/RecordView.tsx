@@ -64,7 +64,7 @@ export function RecordView(props: RecordViewProps) {
   const seg = <T extends string>(list: [T, string][], chosen: T, onPick: (value: T) => void, wide = false) => (
     <View style={[styles.seg, wide && styles.segWide]}>
       {list.map(([key, label]) => (
-        <Pressable accessibilityRole="button" accessibilityState={{ selected: chosen === key }} key={key} onPress={() => onPick(key)} style={[styles.segItem, wide && styles.segItemWide, chosen === key && styles.on]}>
+        <Pressable hitSlop={{ bottom: 3, top: 3 }} accessibilityRole="button" accessibilityState={{ selected: chosen === key }} key={key} onPress={() => onPick(key)} style={[styles.segItem, wide && styles.segItemWide, chosen === key && styles.on]}>
           <Text style={[styles.segText, chosen === key && styles.onText]}>{label}</Text>
         </Pressable>
       ))}

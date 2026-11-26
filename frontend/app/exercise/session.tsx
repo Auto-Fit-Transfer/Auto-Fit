@@ -214,7 +214,7 @@ export default function ExerciseSessionScreen() {
       <View style={styles.saving}>
         <Text style={styles.savingText}>{finishFailed ? '운동 결과를 저장하지 못했어요.' : '운동 결과를 저장하고 있어요.'}</Text>
         {finishFailed ? (
-          <Pressable accessibilityRole="button" onPress={() => { setFinishFailed(false); void finish(); }} style={styles.retry}>
+          <Pressable hitSlop={{ bottom: 2, top: 2 }} accessibilityRole="button" onPress={() => { setFinishFailed(false); void finish(); }} style={styles.retry}>
             <Text style={styles.retryText}>다시 시도</Text>
           </Pressable>
         ) : null}

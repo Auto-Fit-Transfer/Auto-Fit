@@ -96,7 +96,7 @@ export function MeView({ who, tierIndex, name, photo, tier, days, notice, health
             ) : null}
             {days ? <Text style={styles.note}>함께한 지 {days.toLocaleString('ko-KR')}일</Text> : null}
           </View>
-          <Pressable accessibilityRole="button" onPress={onEdit} style={({ pressed }) => [styles.mini, pressed && styles.sunkMini]}>
+          <Pressable hitSlop={{ bottom: 6, top: 6 }} accessibilityRole="button" onPress={onEdit} style={({ pressed }) => [styles.mini, pressed && styles.sunkMini]}>
             <Text style={styles.miniText}>프로필 수정</Text>
           </Pressable>
         </View>

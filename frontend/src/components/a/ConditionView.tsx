@@ -41,7 +41,7 @@ export function ConditionView({ value, busy, error, onChange, onGo, onBack, onHo
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
   const chip = (label: string, selected: boolean, onPress: () => void, many = false) => (
-    <Pressable
+    <Pressable hitSlop={{ bottom: 1, top: 1 }}
       accessibilityLabel={label.replace('+', ' 이상')}
       accessibilityRole={many ? 'checkbox' : 'radio'}
       accessibilityState={many ? { checked: selected } : { selected }}

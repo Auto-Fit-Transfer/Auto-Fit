@@ -63,7 +63,7 @@ export default function RoutineBuilder() {
   };
   const arrow = (index: number, direction: -1 | 1) => {
     const off = direction < 0 ? index === 0 : index === items.length - 1;
-    return <Pressable accessibilityRole="button" accessibilityLabel={`${index + 1}번째 운동 ${direction < 0 ? '위로' : '아래로'} 이동`} accessibilityState={{ disabled: off }} disabled={off} onPress={() => move(index, direction)} style={[styles.mini, off && styles.miniOff]}>
+    return <Pressable hitSlop={{ bottom: 6, left: 6, right: 6, top: 6 }} accessibilityRole="button" accessibilityLabel={`${index + 1}번째 운동 ${direction < 0 ? '위로' : '아래로'} 이동`} accessibilityState={{ disabled: off }} disabled={off} onPress={() => move(index, direction)} style={[styles.mini, off && styles.miniOff]}>
       <View style={direction < 0 ? styles.flip : undefined}><CaretDownIcon color={colors.ink} height={16} width={16} /></View>
     </Pressable>;
   };

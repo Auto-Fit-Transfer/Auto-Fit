@@ -88,7 +88,7 @@ export function CommunityClubsPane({ bottomSpace }: { bottomSpace: number }) {
         {scope === 'mine' ? `내 클럽${clubs && !cursor ? ` ${clubs.length}` : ''}` : '클럽 찾기'}
       </Text>
       <View style={styles.headerActions}>
-        <Pressable accessibilityRole="button" onPress={() => switchScope(scope === 'mine' ? 'all' : 'mine')} style={styles.switchButton}>
+        <Pressable hitSlop={{ bottom: 6, top: 6 }} accessibilityRole="button" onPress={() => switchScope(scope === 'mine' ? 'all' : 'mine')} style={styles.switchButton}>
           <Text style={styles.switchText}>{scope === 'mine' ? '클럽 찾기' : '내 클럽'}</Text>
         </Pressable>
         {scope === 'all' ? <Pressable hitSlop={16} accessibilityRole="button" onPress={() => router.push('/community/club/new')} style={styles.createButton}><Text style={styles.createText}>만들기</Text></Pressable> : null}

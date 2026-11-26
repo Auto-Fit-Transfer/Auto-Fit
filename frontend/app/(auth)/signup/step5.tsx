@@ -226,7 +226,7 @@ export default function SignUpStep5Screen() {
 function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
   const styles = useThemedStyles(createStyles);
   return (
-    <Pressable
+    <Pressable hitSlop={{ bottom: 1, top: 1 }}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       onPress={onPress}

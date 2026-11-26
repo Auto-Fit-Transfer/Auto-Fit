@@ -93,7 +93,7 @@ export function ExerciseView({ who, tierIndex, kinds, say, plan, main, links, mo
                 {plan.meta ? <Text style={styles.small}>{plan.meta}</Text> : null}
               </View>
               {plan.detail ? (
-                <Pressable
+                <Pressable hitSlop={{ bottom: 6, top: 6 }}
                   accessibilityRole="button"
                   onPress={plan.detail.onPress}
                   style={({ pressed }) => [styles.mini, pressed && styles.pressedSoft]}

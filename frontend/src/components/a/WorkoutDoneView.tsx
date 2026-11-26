@@ -152,7 +152,7 @@ export function WorkoutDoneView(props: WorkoutDoneProps) {
                   <Text style={styles.note}>아팠던 곳이 있으면 부위와 정도를 골라 다음 운동에 반영해요.</Text>
                   <View style={styles.chips}>
                     {AREAS.map(({ label, value }) => (
-                      <Pressable accessibilityRole="button" accessibilityState={{ selected: areas.includes(value) }} key={value} onPress={() => props.onToggleArea(value)} style={[styles.chip, areas.includes(value) && styles.on]}>
+                      <Pressable hitSlop={{ bottom: 2, top: 2 }} accessibilityRole="button" accessibilityState={{ selected: areas.includes(value) }} key={value} onPress={() => props.onToggleArea(value)} style={[styles.chip, areas.includes(value) && styles.on]}>
                         <Text style={[styles.optionText, areas.includes(value) && styles.onText]}>{label}</Text>
                       </Pressable>
                     ))}
