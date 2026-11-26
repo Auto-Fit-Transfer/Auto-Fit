@@ -21,6 +21,8 @@ import WarningIcon from '@/assets/icons/ui/warning-circle.svg';
 import XIcon from '@/assets/icons/ui/x.svg';
 import { discomfortFeelings as feelings } from '@/src/features/exercise/discomfortFeelings';
 import type { ExerciseSessionExercise, ExerciseSessionState } from '@/src/features/exercise/ExerciseSessionContext';
+import tips from '@/src/features/exercise/exerciseTips.json';
+import { setTip, type TipLines } from '@/src/features/exercise/exerciseTips';
 import { defaultVoiceGuideSettings, loadVoiceGuideSettings, saveVoiceGuideSettings, speakGuide, stopGuide, type VoiceGuideSettings } from '@/src/features/exercise/voiceGuide';
 import { msToFirstMinute } from '@/src/features/exercise/savedRoutine';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
@@ -100,9 +102,11 @@ export function R6ExerciseSession({
     if (key === lastSpoken.current) return;
     const newExercise = !lastSpoken.current || !lastSpoken.current.startsWith(`${session.currentExerciseIndex}:`);
     lastSpoken.current = key;
-    if (newExercise) speakGuide(`${exercise.name}. ${exercise.instruction ?? ''}`, voice);
-    else if (voice.countReps && exercise.mode === 'reps' && session.currentRep > 0) speakGuide(`${session.currentRep}회`, voice);
-  }, [exercise.name, exercise.instruction, exercise.mode, resting, session.currentExerciseIndex, session.currentSet, session.currentRep, session.paused, voice, voiceOpen, sheetOpen]);
+    const tip = setTip(exercise.exerciseKey ? (tips as Record<string, TipLines>)[exercise.exerciseKey] : undefined, session.currentSet, exercise.sets);
+    if (newExercise) speakGuide(`${exercise.name}. ${tip ?? exercise.instruction ?? ''}`, voice);
+    else if (session.currentRep === 0) { if (tip) speakGuide(tip, voice); }
+    else if (voice.countReps && exercise.mode === 'reps') speakGuide(`${session.currentRep}회`, voice, true);
+  }, [exercise.name, exercise.instruction, exercise.exerciseKey, exercise.sets, exercise.mode, resting, session.currentExerciseIndex, session.currentSet, session.currentRep, session.paused, voice, voiceOpen, sheetOpen]);
   const updateVoice = (patch: Partial<VoiceGuideSettings>) => {
     const next = { ...voice, ...patch };
     setVoice(next);
