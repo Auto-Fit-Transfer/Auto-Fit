@@ -18,7 +18,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import PlusIcon from '@/assets/icons/ui/plus.svg';
-import ArrowRightIcon from '@/assets/icons/common/ArrowRight_Short.svg';
 import TrashIcon from '@/assets/icons/common/Trash.svg';
 import CaretLeftIcon from '@/assets/icons/ui/caret-left.svg';
 import XIcon from '@/assets/icons/ui/x.svg';
@@ -29,13 +28,13 @@ import PlantIcon from '@/assets/icons/deco/Plant.svg';
 import FishSimpleIcon from '@/assets/icons/food/FishSimple.svg';
 import CameraIcon from '@/assets/icons/system/Camera_Fill.svg';
 import CheckFatIcon from '@/assets/icons/system/Check_Fat.svg';
-import LightbulbIcon from '@/assets/icons/system/Lightbulb.svg';
 import PencilIcon from '@/assets/icons/feature/Pencil_Line.svg';
 import SearchIcon from '@/assets/icons/input/MagnifyingGlass.svg';
 import { AppBottomSheet, CustomScrollIndicator, noWebFocusRing, useCustomScrollIndicator, Text as SharedText, TextInput } from '@/src/components/common';
 import { amountFromInput, scaleFromSource, type AmountScale } from '@/src/features/diet/foodAmount';
 import { foodShotErrorText, foodShotFoods, hasMissingNutrition, missingNutritionNote, needsRecalculation, withRecalculated } from '@/src/features/diet/foodShot';
 import { analyzeFoodShot, recalculateFoodShot } from '@/src/api/diet';
+import { Headline } from '@/src/components/b/Headline';
 import { ApiError } from '@/src/api/client';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
@@ -280,24 +279,6 @@ function PrimaryButton({
       ]}
     >
       {typeof children === 'string' ? <Text style={[styles.primaryButtonText, disabled && styles.disabledText]}>{children}</Text> : children}
-    </Pressable>
-  );
-}
-
-function OutlineAction({
-  icon,
-  label,
-  onPress,
-}: {
-  icon: ReactNode;
-  label: string;
-  onPress: () => void;
-}) {
-  const styles = useThemedStyles(createStyles);
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.outlineAction, pressed && styles.pressed]}>
-      {icon}
-      <Text maxFontSizeMultiplier={1} style={styles.outlineActionText}>{label}</Text>
     </Pressable>
   );
 }
@@ -1145,44 +1126,62 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
   const sheetHeight = Math.min(desiredHeight, foodShotViewportHeight - minimumTopGap);
   const isCompactSheet = sheetHeight < desiredHeight;
 
+  const mealName = mealId === 'breakfast' ? '아침' : mealId === 'lunch' ? '점심' : mealId === 'dinner' ? '저녁' : '간식';
+  // Renewal B (11/26, the 지금 | 바꾼다면 picture): the headline says what the photo is for, the photo is the big
+  // white card, taking a photo leads (black) beside the album, and going without a photo is the plain line below.
+  const bButton = (label: string, onPress: () => void, primary: boolean, disabled = false) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.bButton, primary ? styles.bButtonPrimary : styles.bButtonPlain, disabled && styles.bButtonOff, pressed && styles.bPressed]}
+    >
+      <Text maxFontSizeMultiplier={1} style={[styles.bButtonText, primary && styles.bButtonTextPrimary]}>{label}</Text>
+    </Pressable>
+  );
   const renderPhoto = () => (
     <View style={styles.photoContent}>
-      <Text maxFontSizeMultiplier={1} style={[styles.screenTitle, styles.photoScreenTitle]}>음식 사진 등록하기</Text>
-      <View style={styles.photoFrame}>
-        <View style={styles.photoBox}>
-          {draft?.photoUri ? (
-                        <Image resizeMode="contain" source={{ uri: draft.photoUri }} style={StyleSheet.absoluteFill} />
-          ) : (
+      <Headline lines={[[{ text: '사진 한 장이면' }], [{ text: '음식과 kcal', mark: true }, { text: '을 읽어 드려요' }]]} />
+      <View style={styles.bPhotoCard}>
+        {draft?.photoUri ? (
+          <Image resizeMode="contain" source={{ uri: draft.photoUri }} style={StyleSheet.absoluteFill} />
+        ) : (
+          <>
             <View style={styles.emptyPhoto}>
               <View style={styles.cameraCircle}>
-                <CameraIcon color={colors.textPrimary} fill={colors.primary} height={36} width={36} />
+                <CameraIcon color={colors.textPrimary} fill={colors.primary} height={30} width={30} />
               </View>
               <Text maxFontSizeMultiplier={1} style={styles.emptyPhotoText}>등록된 사진이 없어요</Text>
             </View>
-          )}
-        </View>
-        <View style={styles.photoTip}>
-          <LightbulbIcon color={colors.textPrimary} fill={colors.primary} height={16} width={16} />
-          <Text maxFontSizeMultiplier={1} style={styles.photoTipText}><Text style={styles.photoTipLabel}>TIP </Text>밝은 곳에서 음식이 잘 보이도록 찍는게 좋아요!</Text>
-        </View>
-        <View style={styles.photoActions}>
-          <OutlineAction icon={<CameraIcon color={colors.textPrimary} fill={colors.primary} height={24} width={24} />} label="사진 촬영하기" onPress={() => void selectPhoto('camera')} />
-          <OutlineAction icon={<GalleryIcon color={colors.textPrimary} fill={colors.primary} height={24} width={24} />} label="갤러리에서 선택하기" onPress={() => void selectPhoto('gallery')} />
-          {draft?.photoUri ? (
-            <>
-              <PrimaryButton disabled={isAnalyzing} onPress={() => void analyzePhoto()}>
-                <View style={styles.analyzeButtonContent}>
-                  <Text maxFontSizeMultiplier={1} style={styles.primaryButtonText}>{isAnalyzing ? '사진을 분석하고 있어요…' : '사진 분석하기'}</Text>
-                  {isAnalyzing ? null : <View style={styles.ctaArrowCircle}><ArrowRightIcon color={colors.textPrimary} height={16} width={16} /></View>}
-                </View>
-              </PrimaryButton>
-              <Pressable accessibilityRole="button" disabled={isAnalyzing} onPress={() => { setFailReason(null); setView('recognition_failed'); }} style={styles.manualLink}>
-                <Text style={styles.manualLinkText}>음식 이름으로 직접 찾기</Text>
-              </Pressable>
-            </>
-          ) : <PrimaryButton onPress={() => { setFailReason(null); setView('recognition_failed'); }}>사진 없이 음식 입력하기</PrimaryButton>}
-        </View>
+            <Text maxFontSizeMultiplier={1} style={styles.bPhotoTip}>밝은 곳에서 음식이 잘 보이도록 찍으면 좋아요</Text>
+          </>
+        )}
       </View>
+      <View style={styles.bTwo}>
+        {bButton(draft?.photoUri ? '다시 찍기' : '사진 찍기', () => void selectPhoto('camera'), !draft?.photoUri)}
+        {bButton('앨범에서 고르기', () => void selectPhoto('gallery'), false)}
+      </View>
+      {draft?.photoUri ? (
+        <>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isAnalyzing }}
+            disabled={isAnalyzing}
+            onPress={() => void analyzePhoto()}
+            style={({ pressed }) => [styles.bButton, styles.bOne, styles.bButtonPrimary, isAnalyzing && styles.bButtonOff, pressed && styles.bPressed]}
+          >
+            <Text maxFontSizeMultiplier={1} style={[styles.bButtonText, styles.bButtonTextPrimary]}>{isAnalyzing ? '사진을 분석하고 있어요…' : '사진 분석하기'}</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" disabled={isAnalyzing} onPress={() => { setFailReason(null); setView('recognition_failed'); }} style={styles.manualLink}>
+            <Text style={styles.bTextButton}>음식 이름으로 직접 찾기</Text>
+          </Pressable>
+        </>
+      ) : (
+        <Pressable accessibilityRole="button" onPress={() => { setFailReason(null); setView('recognition_failed'); }} style={styles.manualLink}>
+          <Text style={styles.bTextButton}>사진 없이 음식 입력하기</Text>
+        </Pressable>
+      )}
     </View>
   );
 
@@ -1217,30 +1216,47 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
 
   const missingNutrition = hasMissingNutrition(draft?.foods ?? []);
 
+  // B: the total is the headline, the photo and foods one white card, the three nutrients the black card.
+  const reviewCount = draft?.foods.length ?? 0;
+  const macro = (value: number | undefined) => (value === undefined ? '—' : `${Math.round(value)}g`);
   const renderReview = () => (
     <View style={styles.reviewContent}>
-      <View style={styles.reviewFoodGroup}>
+      <Headline
+        lines={
+          reviewCount === 0
+            ? [[{ text: '음식을 추가해 주세요' }]]
+            : [
+                [{ text: `${mealName} 음식 ${reviewCount}개,` }],
+                aggregateFood.kcal !== undefined
+                  ? [{ text: `${Math.round(aggregateFood.kcal).toLocaleString('ko-KR')}kcal`, mark: true }, { text: '예요' }]
+                  : [{ text: '영양 정보를 채워 주세요' }],
+              ]
+        }
+      />
+      <View style={styles.bListCard}>
         <View style={styles.r6ReviewPhoto}>{draft?.photoUri ? <Image source={{ uri: draft.photoUri }} style={styles.r6ReviewPhotoImage} resizeMode="cover" /> : <View style={styles.r6ReviewPhotoPlaceholder}><GalleryIcon color="#93959C" height={25} width={25} /><Text style={styles.r6ReviewPhotoText}>사진 없이 기록 중</Text></View>}</View>
-        <Text style={styles.screenTitle}>음식 {draft?.foods.length ?? 0}개를 기록해요</Text>
         <RecognizedFoodList foods={draft?.foods ?? []} onAdd={openAdd} onEdit={openFoodEdit} />
       </View>
-      <View style={styles.totalNutritionSection}>
-        <Text style={styles.screenTitle}>영양 정보</Text>
-        <NutritionPanel food={aggregateFood} />
+      <View style={styles.bNutrition}>
+        <Text style={styles.bHello}>영양 정보</Text>
+        <View style={styles.bMacros}>
+          {([['탄수화물', aggregateFood.carbs], ['단백질', aggregateFood.protein], ['지방', aggregateFood.fat]] as const).map(([label, value], index) => (
+            <View key={label} style={[styles.bMacro, index > 0 && styles.bMacroLine]}>
+              <Text style={styles.bMacroLabel}>{label}</Text>
+              <Text style={styles.bMacroValue}>{macro(value)}</Text>
+            </View>
+          ))}
+        </View>
         {/* An incomplete total must not be saved as a finished meal (contract). */}
         {/* One line per food that blocks the save: what the catalog lookup answered, or what to enter first.
             A food from the photo was already looked up by the server, so with grams it counts as not found. */}
         {(draft?.foods ?? []).filter((food) => food.kcal === undefined).map((food) => (
-          <Text key={food.id} style={styles.missingNote}>
+          <Text key={food.id} style={styles.bMissing}>
             {nutritionNotes[food.id] ?? missingNutritionNote(food, food.unit === 'g' && food.amount > 0 && food.amount <= 5000 ? 'not_found' : false)}
           </Text>
         ))}
       </View>
-      <View style={styles.reviewCta}>
-        <PrimaryButton disabled={isSaving || !draft?.foods.length || missingNutrition} onPress={() => void handleSaveFoodShotMeal()}>
-          {isSaving ? '기록 중…' : '이대로 기록하기'}
-        </PrimaryButton>
-      </View>
+      <View style={styles.bTwo}>{bButton(isSaving ? '기록 중…' : '이대로 기록하기', () => void handleSaveFoodShotMeal(), true, isSaving || !draft?.foods.length || missingNutrition)}</View>
     </View>
   );
 
@@ -1381,13 +1397,13 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
       preserveViewportHeightWhileVisible
       scrollable={false}
       separateAnimations
-      sheetStyle={[styles.sheet, { height: sheetHeight }]}
+      sheetStyle={[styles.sheet, { height: sheetHeight }, (view === 'photo' || view === 'review') && styles.bSheet]}
       showHandle={false}
       visible={visible}
     >
       <View style={styles.r6Header}>
         <Pressable hitSlop={16} accessibilityLabel="이전" onPress={onBack ?? closeAll} style={styles.r6HeaderButton}><CaretLeftIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
-        <Text style={styles.r6HeaderTitle}>{isSubSheet ? subSheetTitle : view === 'review' ? `${mealId === 'breakfast' ? '아침' : mealId === 'lunch' ? '점심' : mealId === 'dinner' ? '저녁' : '간식'} 기록` : view === 'recognition_failed' ? '음식 기록' : '음식 사진 기록'}</Text>
+        <Text style={styles.r6HeaderTitle}>{isSubSheet ? subSheetTitle : view === 'review' ? `${mealName} 기록` : view === 'recognition_failed' ? '음식 기록' : '음식 사진 기록'}</Text>
         <Pressable accessibilityLabel="닫기" onPress={closeAll} style={styles.r6HeaderButton}><XIcon color={colors.textPrimary} height={24} width={24} /></Pressable>
       </View>
       <Animated.View
@@ -1432,7 +1448,30 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
 function createStyles({ colors }: AppTheme) {
   return {
     r6Header: { height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    r6HeaderButton: { width: 34, height: 42, alignItems: 'center', justifyContent: 'center' },
+    // B: the way back and the close are round, white on the B ground (as ScreenHeader)
+    r6HeaderButton: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 22, height: 44, justifyContent: 'center', width: 44 },
+    bSheet: { backgroundColor: colors.background },
+    bPhotoCard: { backgroundColor: colors.surface, borderRadius: 28, flex: 1, minHeight: 220, overflow: 'hidden' },
+    bPhotoTip: { bottom: 18, color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 12.5, left: 20, lineHeight: 18, position: 'absolute', right: 20, textAlign: 'center' },
+    bTwo: { flexDirection: 'row', gap: 10 },
+    bOne: { flex: 0 },
+    bButton: { alignItems: 'center', borderRadius: 999, flex: 1, height: 56, justifyContent: 'center', paddingHorizontal: 12 },
+    bButtonPrimary: { backgroundColor: colors.primary },
+    bButtonPlain: { backgroundColor: colors.surface },
+    bButtonOff: { backgroundColor: colors.surfaceMuted },
+    bPressed: { opacity: 0.8 },
+    bButtonText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 16, lineHeight: 22 },
+    bButtonTextPrimary: { color: colors.onPrimary },
+    bTextButton: { color: colors.textBody, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 20 },
+    bListCard: { backgroundColor: colors.surface, borderRadius: 28, paddingBottom: 14, paddingHorizontal: 18, paddingTop: 16 },
+    bNutrition: { backgroundColor: colors.aiCard, borderRadius: 28, gap: 12, paddingBottom: 20, paddingHorizontal: 20, paddingTop: 18 },
+    bHello: { color: colors.aiHello, fontFamily: fontFamilies.pretendardBold, fontSize: 13, lineHeight: 18 },
+    bMacros: { flexDirection: 'row' },
+    bMacro: { flex: 1, gap: 2 },
+    bMacroLine: { borderLeftColor: colors.aiLine, borderLeftWidth: 1, paddingLeft: 14 },
+    bMacroLabel: { color: colors.onAiMuted, fontFamily: fontFamilies.pretendardRegular, fontSize: 12.5, lineHeight: 18 },
+    bMacroValue: { color: colors.onAi, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 20, lineHeight: 26 },
+    bMissing: { color: colors.onAiMuted, fontFamily: fontFamilies.pretendardMedium, fontSize: 12.5, lineHeight: 18 },
     r6HeaderTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardRegular, fontSize: 15 },
     r6Fallback: { flex: 1, paddingTop: 18 },
     r6FallbackIcon: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 12, height: 40, justifyContent: 'center', marginBottom: 14, width: 40 },
@@ -1483,26 +1522,15 @@ function createStyles({ colors }: AppTheme) {
     subSheetScrollContent: { flexGrow: 1 },
     compactStepScrollContent: { flexGrow: 1, minHeight: STEP_SHEET_BODY_HEIGHT },
     screenTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 30, textAlign: 'center' },
-    photoScreenTitle: { lineHeight: 29 },
-    photoContent: { flex: 1, gap: 20 },
-    photoFrame: { flex: 1, minHeight: 0 },
+    photoContent: { flex: 1, gap: 16 },
     // fills the free height; a chosen photo is shown whole (contain), never cut (user, 11/14)
-    photoBox: { backgroundColor: colors.surface, borderRadius: 12, borderStyle: 'dashed', flex: 1, minHeight: 180, overflow: 'hidden' },
     emptyPhoto: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center' },
     cameraCircle: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 18, height: 64, justifyContent: 'center', width: 64 },
     emptyPhotoText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardRegular, fontSize: 15 },
-    photoTip: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, flexDirection: 'row', gap: 5, minHeight: 38, justifyContent: 'center', marginBottom: 14, marginTop: 14, paddingHorizontal: 12, paddingVertical: 6 },
-    photoTipText: { color: colors.textPrimary, flexShrink: 1, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 17 },
-    photoTipLabel: { color: colors.textPrimary },
-    photoActions: { gap: 10, marginTop: 'auto' },
-    outlineAction: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 14, flexDirection: 'row', gap: 10, height: 56, justifyContent: 'center' },
-    outlineActionText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardRegular, fontSize: 15 },
     primaryButton: { alignItems: 'center', backgroundColor: colors.primary, borderRadius: 14, height: 56, justifyContent: 'center', width: '100%' },
     primaryButtonDisabled: { backgroundColor: colors.surfaceMuted },
     disabledText: { color: colors.textDisabled },
     primaryButtonText: { color: colors.onPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 26 },
-    analyzeButtonContent: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', position: 'relative', width: '100%' },
-    ctaArrowCircle: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 8, height: 26, justifyContent: 'center', position: 'absolute', right: 12, width: 26 },
     pressed: { opacity: 0.85 },
     analysisContent: { alignItems: 'center', flex: 1 },
     analysisVisual: { height: 225, marginTop: 11, position: 'relative', width: 225 },
@@ -1521,7 +1549,7 @@ function createStyles({ colors }: AppTheme) {
     waitNotice: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, flexDirection: 'row', gap: 6, minHeight: 38, justifyContent: 'center', marginTop: 12, width: '100%' },
     waitNoticeText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardRegular, fontSize: 15 },
     // one group, the button right under the numbers (spread over the height it left big empty gaps)
-    reviewContent: { flex: 1, gap: 24 },
+    reviewContent: { flex: 1, gap: 16 },
     reviewFoodGroup: { gap: 10 },
     reviewCta: {  },
     recognizedCard: { backgroundColor: colors.surface, borderRadius: 12, height: 220, padding: 15 },
