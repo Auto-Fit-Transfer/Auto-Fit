@@ -34,14 +34,25 @@ export function saveVoiceGuideSettings(settings: VoiceGuideSettings) {
   return AsyncStorage.setItem(KEY, JSON.stringify(settings));
 }
 
-export function speakGuide(text: string, settings: VoiceGuideSettings) {
+// A rep count (count = true) never cuts a sentence still being said; it is simply left out.
+let said = 0;
+let talking = false;
+
+export function speakGuide(text: string, settings: VoiceGuideSettings, count = false) {
   if (!settings.enabled || !text.trim()) return;
+  if (count && talking) return;
+  const id = ++said;
+  const quiet = () => { if (id === said) talking = false; };
+  talking = !count;
   void Speech.stop().catch(() => undefined).then(() => {
     Speech.speak(text, {
       language: 'ko-KR',
+      onDone: quiet,
+      onError: quiet,
+      onStopped: quiet,
       rate: settings.speed === 'slow' ? 0.8 : settings.speed === 'fast' ? 1.2 : 1,
     });
-  }).catch(() => undefined);
+  }).catch(quiet);
 }
 
 export function stopGuide() {
