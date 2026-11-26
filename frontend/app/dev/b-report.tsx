@@ -2,10 +2,11 @@ import { useLocalSearchParams } from 'expo-router';
 
 import { ReportView } from '@/src/components/b/ReportView';
 import { countWeek, weekFrame } from '@/src/features/a/weekReport';
+import type { ChatCharacterId } from '@/src/features/chat/chatCharacters';
 import type { TierLook } from '@/src/features/tier/tierLook';
 
 // Development only: renewal B's report with a sample week, to look at it without signing in.
-// ?state=first (nothing recorded yet, no health paper)
+// ?state=first (nothing recorded yet, no health paper)  ?who=nabi|coach
 const nothing = () => undefined;
 const fill = [
   { minutes: 20, exercises: ['맨몸 스쿼트', '런지', '카프 레이즈'], kcal: 1630, kcalGoal: 1700, protein: 90, proteinGoal: 100 },
@@ -25,14 +26,17 @@ const trend = {
 };
 
 export default function BReportSample() {
-  const { state } = useLocalSearchParams<{ state?: string }>();
+  const { state, who } = useLocalSearchParams<{ state?: string; who?: string }>();
   const first = state === 'first';
+  const characterId: ChatCharacterId = who === 'nabi' || who === 'coach' ? who : 'quni';
   return (
     <ReportView
+      by={{ characterId, text: '쿼니가 이번 주를 살펴봤어요' }}
       count={first ? firstDay : week}
       onAsk={nothing}
       onBack={nothing}
       onGo={nothing}
+      onPlan={nothing}
       onHistory={nothing}
       onRecords={nothing}
       onTier={nothing}

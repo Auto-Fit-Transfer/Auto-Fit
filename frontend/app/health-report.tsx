@@ -16,6 +16,7 @@ import { countWeek, regionParts, weekFrame, weightLine, type WeekCount } from '@
 import { sessionLocalDate, sessionMinutes } from '@/src/features/exercise/weeklyMetrics';
 import { nutritionNumber } from '@/src/features/nutritionSummary';
 import { tierLook, type TierLook } from '@/src/features/tier/tierLook';
+import { chatCharacters, loadChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
 import { useAppTheme } from '@/src/theme';
 
 type Loaded = { count: WeekCount; trend: ReportTrend; tier: TierLook | null; name: string };
@@ -89,10 +90,12 @@ export default function ReportScreen() {
   const [data, setData] = useState<Loaded | null>(null);
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [characterId, setCharacterId] = useState<ChatCharacterId>('quni');
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      void loadChatCharacter().then((character) => { if (active) setCharacterId(character.id); });
       void loadReport().then((loaded) => {
         if (!active) return;
         if (loaded) setData(loaded);
@@ -123,10 +126,12 @@ export default function ReportScreen() {
   }
   return (
     <ReportView
+      by={{ characterId, text: `${(chatCharacters.find((item) => item.id === characterId) ?? chatCharacters[0]).name}가 이번 주를 살펴봤어요` }}
       count={data.count}
       onAsk={(question) => router.push(question ? { pathname: '/chat', params: { ask: question } } : '/chat')}
       onBack={() => router.back()}
       onGo={(tab) => router.push(`/${tab}`)}
+      onPlan={(how) => router.push(how === 'adjust' ? '/exercise/condition?source=summary' : '/exercise/saved-routines')}
       onHistory={() => router.push('/exercise/history')}
       onRecords={() => router.push('/health-records')}
       onTier={() => router.push('/tier')}

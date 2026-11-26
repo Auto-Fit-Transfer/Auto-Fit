@@ -5,7 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BackIcon from '@/assets/icons/ui/caret-left.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
 import type { ReportTrend } from '@/src/components/a/ReportViews';
+import { ChatCharacterAvatar } from '@/src/components/chat/ChatCharacterAvatar';
 import { Text } from '@/src/components/common';
+import type { ChatCharacterId } from '@/src/features/chat/chatCharacters';
 import { PART_NAMES, PARTS, type WeekCount } from '@/src/features/a/weekReport';
 import type { TierLook } from '@/src/features/tier/tierLook';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
@@ -24,10 +26,13 @@ export interface ReportViewProps {
   onBack: () => void;
   onHistory: () => void; // 운동 기록
   onGo: (tab: 'diet' | 'exercise') => void;
+  onPlan: (how: 'adjust' | 'own') => void; // the next workout, lighter or as my own routine
   onRecords: () => void; // every measurement, on its own screen
   onUpload: () => void;
   onTier: () => void;
   onAsk: (question: string | null) => void; // null: 물어보기 with nothing typed yet
+  // As the home (11/26): who looked at the week, above the headline; the next thing with the three answers.
+  by: { characterId: ChatCharacterId; text: string };
 }
 
 // Worded as the AI's supported score questions (ai contract 1.5), answered from the score itself.
@@ -35,7 +40,7 @@ const ASKS = ['지난주보다 좋아졌어?', '다음 주에는 무엇부터 �
 const won = (value: number) => Math.round(value).toLocaleString('ko-KR');
 const signed = (value: number, digits = 0) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toFixed(digits)}`;
 
-export function ReportView({ count, trend, tier, onBack, onHistory, onGo, onRecords, onUpload, onTier, onAsk }: ReportViewProps) {
+export function ReportView({ count, trend, tier, onBack, onHistory, onGo, onPlan, onRecords, onUpload, onTier, onAsk, by }: ReportViewProps) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const insets = useSafeAreaInsets();
@@ -66,6 +71,12 @@ export function ReportView({ count, trend, tier, onBack, onHistory, onGo, onReco
           <Text style={styles.small}>이번 주</Text>
         </View>
 
+        <View style={styles.by}>
+          <View style={styles.face}>
+            <ChatCharacterAvatar characterId={by.characterId} size={26} />
+          </View>
+          <Text style={styles.byText}>{by.text}</Text>
+        </View>
         <View style={styles.hero}>
           <Headline lines={headline} />
           <Text style={styles.line}>{count.say}</Text>
@@ -141,31 +152,44 @@ export function ReportView({ count, trend, tier, onBack, onHistory, onGo, onReco
             <Text style={[styles.big, styles.onAi]}>{next.title}</Text>
             <Text style={[styles.body, styles.onAiMuted]}>{next.note}</Text>
             {next.go ? (
-              <Pressable accessibilityRole="button" onPress={() => onGo(next.go ?? 'exercise')} style={styles.aiButton}>
-                <Text style={styles.aiButtonText}>{next.go === 'diet' ? '식단으로' : '운동하러 가기'}</Text>
-              </Pressable>
+              <View style={styles.choices}>
+                <Pressable accessibilityRole="button" onPress={() => onGo(next.go ?? 'exercise')} style={[styles.choice, styles.choiceMain]}>
+                  <Text style={[styles.choiceText, styles.choiceMainText]}>{next.go === 'diet' ? '식단으로' : '운동하러 가기'}</Text>
+                </Pressable>
+                {next.go === 'exercise' ? (
+                  <>
+                    <Pressable accessibilityRole="button" onPress={() => onPlan('adjust')} style={styles.choice}>
+                      <Text style={styles.choiceText}>가볍게 조정</Text>
+                    </Pressable>
+                    <Pressable accessibilityRole="button" onPress={() => onPlan('own')} style={styles.choice}>
+                      <Text style={styles.choiceText}>내 루틴으로</Text>
+                    </Pressable>
+                  </>
+                ) : null}
+              </View>
             ) : null}
           </View>
         ) : null}
 
-        {tier ? (
-          <Pressable accessibilityRole="button" onPress={onTier} style={styles.card}>
-            <View style={styles.pair}>
-              <Text style={styles.label}>티어</Text>
-              <CaretRightIcon color={colors.textSecondary} height={16} width={16} />
-            </View>
-            <Text style={styles.big}>{tier.name}</Text>
-            <View style={styles.track}>
-              <View style={[styles.fill, { width: `${tier.ratio}%` }]} />
-            </View>
-            <Text style={styles.small}>{tier.next} {tier.left}</Text>
-          </Pressable>
-        ) : null}
-
         <View style={styles.card}>
           <Text style={styles.label}>천천히 바뀌는 것 · 최근 기록</Text>
+          {tier ? (
+            <Pressable accessibilityRole="button" onPress={onTier} style={styles.slow}>
+              <View style={styles.slowText}>
+                <Text style={styles.small}>티어</Text>
+                <Text style={styles.slowValue}>{tier.name}</Text>
+                <Text style={styles.small}>{tier.next} {tier.left}</Text>
+              </View>
+              <View style={styles.tierSide}>
+                <View style={styles.track}>
+                  <View style={[styles.fill, { width: `${tier.ratio}%` }]} />
+                </View>
+              </View>
+              <CaretRightIcon color={colors.textSecondary} height={16} width={16} />
+            </Pressable>
+          ) : null}
           {newest ? (
-            <Pressable accessibilityRole="button" onPress={onRecords} style={styles.slow}>
+            <Pressable accessibilityRole="button" onPress={onRecords} style={[styles.slow, tier && styles.divided]}>
               <View style={styles.slowText}>
                 <Text style={styles.small}>체중</Text>
                 <Text style={styles.slowValue}>{newest.kg.toFixed(1)}kg</Text>
@@ -174,9 +198,11 @@ export function ReportView({ count, trend, tier, onBack, onHistory, onGo, onReco
               <Spark values={weights.map((row) => row.kg)} />
             </Pressable>
           ) : (
-            <Pressable accessibilityRole="button" onPress={onUpload} style={styles.soft}>
-              <Text style={styles.softText}>인바디 · 검진표 올리기</Text>
-            </Pressable>
+            <View style={tier && styles.divided}>
+              <Pressable accessibilityRole="button" onPress={onUpload} style={styles.soft}>
+                <Text style={styles.softText}>인바디 · 검진표 올리기</Text>
+              </Pressable>
+            </View>
           )}
           {trend.score ? (
             <View style={[styles.slow, styles.divided]}>
@@ -272,9 +298,9 @@ function createStyles({ colors }: AppTheme) {
     days: { flexDirection: 'row', justifyContent: 'space-between' },
     dayCol: { alignItems: 'center', gap: 4, minWidth: 30 },
     dayDot: { backgroundColor: colors.surfaceMuted, borderRadius: 7, height: 14, width: 14 },
-    // within the goal: black; over: lilac, said in words above, never red
+    // within the goal: filled black; over: an empty ring, said in words above (lilac is only the app's own doing, never red)
     dayKept: { backgroundColor: colors.textPrimary },
-    dayOver: { backgroundColor: colors.lilac },
+    dayOver: { backgroundColor: colors.surface, borderColor: colors.textPrimary, borderWidth: 2 },
     soft: {
       alignItems: 'center',
       alignSelf: 'flex-start',
@@ -285,17 +311,16 @@ function createStyles({ colors }: AppTheme) {
       paddingHorizontal: 16,
     },
     softText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 13.5, lineHeight: 19 },
-    aiButton: {
-      alignItems: 'center',
-      alignSelf: 'flex-start',
-      backgroundColor: colors.onAi,
-      borderRadius: 999,
-      justifyContent: 'center',
-      marginTop: 4,
-      minHeight: 44,
-      paddingHorizontal: 20,
-    },
-    aiButtonText: { color: colors.aiCard, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 14.5, lineHeight: 20 },
+    // the same answers as the home and the exercise tab
+    choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+    choice: { alignItems: 'center', backgroundColor: colors.aiRaised, borderRadius: 999, justifyContent: 'center', minHeight: 40, paddingHorizontal: 15 },
+    choiceMain: { backgroundColor: colors.lilac },
+    choiceText: { color: colors.onAi, fontFamily: fontFamilies.pretendardBold, fontSize: 13, lineHeight: 18 },
+    choiceMainText: { color: colors.lilacInk, fontFamily: fontFamilies.pretendardExtraBold },
+    by: { alignItems: 'center', flexDirection: 'row', gap: 8, marginBottom: -6, marginTop: 4 },
+    face: { borderColor: colors.border, borderRadius: 15, borderWidth: 1.5 },
+    byText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 13, lineHeight: 18 },
+    tierSide: { width: 96 },
     slow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
     slowText: { flex: 1, gap: 1 },
     slowValue: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 30 },
