@@ -239,7 +239,6 @@ export function AnalysisView(props: AnalysisViewProps) {
 
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
-  const outline = { borderWidth: 1 } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
     content: { gap: 12, paddingHorizontal: 16, paddingTop: 4 },
@@ -261,11 +260,12 @@ function createStyles({ colors }: AppTheme) {
     scoreRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
     score: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 36, lineHeight: 42 },
     scoreTotal: { ...a.p15, color: colors.textSecondary },
-    pill: { ...outline, alignItems: 'center', backgroundColor: colors.surface, borderRadius: 99, flexDirection: 'row', gap: 4, height: 26, paddingHorizontal: 8 },
+    // B: no outlines; a good change or a normal value on lilac, anything else on plain grey (no green, no amber)
+    pill: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 99, flexDirection: 'row', gap: 4, height: 26, paddingHorizontal: 8 },
     pillText: { ...a.p12, color: colors.textPrimary },
-    pillGood: { backgroundColor: colors.successLight },
-    pillWarn: { backgroundColor: colors.warningLight },
-    bar: { ...outline, backgroundColor: colors.surfaceMuted, borderRadius: 99, height: 16, overflow: 'hidden' },
+    pillGood: { backgroundColor: colors.lilac },
+    pillWarn: { backgroundColor: colors.surfaceMuted },
+    bar: { backgroundColor: colors.surfaceMuted, borderRadius: 99, height: 8, overflow: 'hidden' },
     barFill: { backgroundColor: colors.primary, bottom: 0, left: 0, position: 'absolute', top: 0 },
     tierRow: { alignItems: 'center', borderTopColor: colors.surfaceMuted, borderTopWidth: 2, flexDirection: 'row', gap: 10, marginTop: 2, paddingTop: 12 },
     stars: { fontSize: 12, lineHeight: 15 },

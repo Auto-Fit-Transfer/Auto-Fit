@@ -237,8 +237,8 @@ function CriterionContent({
           {criterion.ranges.map((range) => {
             const rangePalette = createToneStyles(colors)[range.tone];
             return (
-              <View key={range.id} style={[styles.rangeRow, { borderColor: rangePalette.color }]}>
-                <View style={[styles.rangeLabel, { backgroundColor: rangePalette.background }]}>
+              <View key={range.id} style={styles.rangeRow}>
+                <View style={styles.rangeLabel}>
                   <View style={[styles.rangeDot, { backgroundColor: rangePalette.mark }]} />
                   <Text style={styles.rangeLabelText}>{range.label}</Text>
                 </View>
@@ -413,9 +413,10 @@ function createStyles({ colors }: AppTheme) {
   // Renewal A: one dark outline on every piece, pixel letters, violet for what is mine.
   const p12 = { fontFamily: fontFamilies.pretendardMedium, fontSize: 12, lineHeight: 17 } as const;
   const p15 = { fontFamily: fontFamilies.pretendardRegular, fontSize: 15, lineHeight: 21 } as const;
-  const outline = { backgroundColor: colors.surface, borderWidth: 1 } as const;
+  // B: boxes are a grey ground on the white sheet, never an outline
+  const outline = { backgroundColor: colors.surfaceMuted } as const;
   return {
-    bottomSheet: { borderColor: colors.border, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 2, overflow: 'hidden' },
+    bottomSheet: { borderTopLeftRadius: 28, borderTopRightRadius: 28, overflow: 'hidden' },
     bottomSheetContent: { paddingBottom: 8, paddingHorizontal: 16, paddingTop: 16 },
     sheetContent: { gap: 14 },
     sheetContentWideGap: { gap: 20 },
@@ -449,14 +450,14 @@ function createStyles({ colors }: AppTheme) {
     currentValueRow: { alignItems: 'baseline', flexDirection: 'row', flexWrap: 'nowrap', gap: 4, justifyContent: 'center', maxWidth: '100%' },
     currentUnit: { ...p12, color: colors.textSecondary, flexShrink: 0 },
     currentDivider: { backgroundColor: colors.surfaceMuted, height: 56, width: 2 },
-    currentInfo: { alignItems: 'center', alignSelf: 'stretch', backgroundColor: colors.surfaceMuted, borderRadius: 8, flexDirection: 'row', gap: 4, paddingHorizontal: 8, paddingVertical: 8 },
+    currentInfo: { alignItems: 'center', alignSelf: 'stretch', backgroundColor: colors.surface, borderRadius: 8, flexDirection: 'row', gap: 4, paddingHorizontal: 8, paddingVertical: 8 },
     currentInfoText: { ...p12, color: colors.textPrimary, flexShrink: 1 },
     criteriaSection: { gap: 10 },
     sectionTitle: { ...p15, color: colors.textPrimary },
     smallIconCircle: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 10, height: 32, justifyContent: 'center', width: 32 },
     rangeHelp: { ...p12, color: colors.textSecondary },
     rangeList: { gap: 8 },
-    rangeRow: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, borderWidth: 2, flexDirection: 'row', flexWrap: 'nowrap', height: 44, overflow: 'hidden' },
+    rangeRow: { alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 14, flexDirection: 'row', flexWrap: 'nowrap', height: 44, overflow: 'hidden' },
     rangeLabel: { alignItems: 'center', flexBasis: '38%', flexDirection: 'row', gap: 8, height: '100%', maxWidth: 150, paddingLeft: 12 },
     rangeDot: { height: 10, width: 10 },
     rangeLabelText: { ...p15, color: colors.textPrimary },
