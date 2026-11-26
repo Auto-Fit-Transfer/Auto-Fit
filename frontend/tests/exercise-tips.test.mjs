@@ -17,6 +17,11 @@ test('each set start says one line, and a move the file left out says nothing', 
   assert.match(halfTip(squat, null), /^발바닥 전체의 지지/); // the feel line, halfway through a one-set move
   assert.equal(halfTip(squat, 3), null);
   assert.equal(halfTip(undefined, 1), null);
+  // A recommended move whose key the file marked [원본 동작 확인 필요] (11/26 build 28: ex_a19814aeecf8c0,
+  // 제자리 걷기 변형): the start falls back to the server's instruction, and no feel line is said halfway.
+  assert.equal(tips.ex_a19814aeecf8c0, undefined);
+  assert.equal(setTip(tips.ex_a19814aeecf8c0, 1, null), null);
+  assert.equal(halfTip(tips.ex_a19814aeecf8c0, null), null);
   assert.equal(setTip(tips.ex_f03eec744d3a8b, 1, 3), null); // marked [원본 동작 확인 필요]
   assert.equal(setTip(undefined, 1, 3), null);
 });
