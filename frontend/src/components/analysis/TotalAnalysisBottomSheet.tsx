@@ -229,15 +229,6 @@ function CriterionContent({
         </View>
       </View>
       <View style={styles.criteriaSection}>
-        <Text style={styles.sectionTitle}>적용 기준</Text>
-        <View style={styles.ruleRow}>
-          <View style={styles.smallIconCircle}>
-            <DocumentIcon color={colors.primaryPressed} height={18} width={18} />
-          </View>
-          <Text style={styles.ruleText}>{criterion.appliedRule}</Text>
-        </View>
-      </View>
-      <View style={styles.criteriaSection}>
         <Text style={styles.sectionTitle}>판정 범위 예시</Text>
         <Text style={styles.rangeHelp}>
           아래 범위는 예시이며, 실제 적용 기준은 사용자 조건에 따라 달라질 수 있어요.
@@ -462,9 +453,7 @@ function createStyles({ colors }: AppTheme) {
     currentInfoText: { ...p12, color: colors.ink, flexShrink: 1 },
     criteriaSection: { gap: 10 },
     sectionTitle: { ...p15, color: colors.ink },
-    ruleRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
     smallIconCircle: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 10, borderWidth: 2, height: 32, justifyContent: 'center', width: 32 },
-    ruleText: { ...p12, color: colors.textBody, flex: 1 },
     rangeHelp: { ...p12, color: colors.textSecondary },
     rangeList: { gap: 8 },
     rangeRow: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, borderWidth: 2, flexDirection: 'row', flexWrap: 'nowrap', height: 44, overflow: 'hidden' },
