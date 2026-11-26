@@ -13,6 +13,8 @@ import type { DayCalories } from '@/src/features/diet/weekCalories';
 import { menuStyleLabel, type MenuStyle } from '@/src/features/diet/menuStyle';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
+import { ChatCharacterAvatar } from '@/src/components/chat/ChatCharacterAvatar';
+import type { ChatCharacterId } from '@/src/features/chat/chatCharacters';
 import { Headline, type HeadlinePart } from './Headline';
 
 // Renewal B's diet tab. It takes exactly what the earlier diet home (R6DietHome) took, so the tab's
@@ -49,6 +51,9 @@ export function DietView(props: R6DietHomeProps & {
   onMenuStyle?: () => void;
   over?: number | null;
   onMakeWeek?: () => void;
+  // As the home (11/26): who picked it, above the headline; the next meal with its why in the black
+  // card, with the three answers - 먹었어요 (take it) · 다른 메뉴 (meet halfway) · 다른 음식 기록 (my own way).
+  by?: { characterId: ChatCharacterId; text: string };
 }) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
@@ -100,6 +105,14 @@ export function DietView(props: R6DietHomeProps & {
         contentContainerStyle={[styles.content, { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 110 }]}
         showsVerticalScrollIndicator={false}
       >
+        {props.by ? (
+          <View style={styles.by}>
+            <View style={styles.face}>
+              <ChatCharacterAvatar characterId={props.by.characterId} size={26} />
+            </View>
+            <Text style={styles.byText}>{props.by.text}</Text>
+          </View>
+        ) : null}
         <View style={styles.hero}>
           <View style={styles.heroText}>
             <Headline lines={headline} />
@@ -108,7 +121,32 @@ export function DietView(props: R6DietHomeProps & {
             text={`${selectedDate.getMonth() + 1}월 ${selectedDate.getDate()}일 식단입니다. 먹은 양은 ${number(eaten)}킬로칼로리입니다.`}
           />
         </View>
-        {line ? <Text style={styles.line}>{line}</Text> : null}
+        {props.by && next && isToday ? (
+          <View style={styles.ai}>
+            <Text style={styles.aiTitle}>{next.note || `${next.title} 메뉴를 골라 뒀어요`}</Text>
+            <Text style={styles.aiFacts}>{[next.title, next.foods, next.kcal == null ? null : `${number(next.kcal)}kcal`].filter(Boolean).join(' · ')}</Text>
+            {next.allergyWarning ? <Text style={styles.aiWarn}>{next.allergyWarning}</Text> : null}
+            <View style={styles.choices}>
+              {props.showRecordControls && next.canSave && !next.allergyBlocked ? (
+                <Pressable accessibilityLabel={`${next.title} 먹었어요`} accessibilityRole="button" disabled={next.pending} onPress={() => props.onStatusChange(next.id, 'eaten')} style={[styles.choice, styles.choiceMain, next.pending && styles.off]}>
+                  <Text style={[styles.choiceText, styles.choiceMainText]}>먹었어요</Text>
+                </Pressable>
+              ) : null}
+              {next.canSave && !next.allergyBlocked ? (
+                <Pressable accessibilityLabel={`${next.title} 다른 메뉴`} accessibilityRole="button" disabled={next.regenerating} onPress={() => props.onAlternative(next.id)} style={[styles.choice, next.regenerating && styles.off]}>
+                  <Text style={styles.choiceText}>{next.regenerating ? '찾는 중…' : '다른 메뉴'}</Text>
+                </Pressable>
+              ) : null}
+              {props.showRecordControls && next.canSave ? (
+                <Pressable accessibilityLabel={`${next.title} 다른 음식 기록`} accessibilityRole="button" disabled={next.pending} onPress={() => props.onRecord(next.id)} style={[styles.choice, next.pending && styles.off]}>
+                  <Text style={styles.choiceText}>다른 음식 기록</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+        ) : line ? (
+          <Text style={styles.line}>{line}</Text>
+        ) : null}
 
         <View style={styles.week}>
           {/* last week / this week; the days that open stay today ±6 */}
@@ -450,6 +488,18 @@ function createStyles({ colors }: AppTheme) {
     content: { gap: 16, paddingHorizontal: 24, width: '100%' },
     hero: { alignItems: 'flex-start', flexDirection: 'row', gap: 12 },
     heroText: { flex: 1, minWidth: 0 },
+    by: { alignItems: 'center', flexDirection: 'row', gap: 8, marginBottom: -4 },
+    face: { borderColor: colors.border, borderRadius: 15, borderWidth: 1.5 },
+    byText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 13, lineHeight: 18 },
+    ai: { backgroundColor: colors.aiCard, borderRadius: 28, gap: 4, paddingHorizontal: 20, paddingVertical: 18 },
+    aiTitle: { color: colors.onAi, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 22 },
+    aiFacts: { color: colors.onAiMuted, fontSize: 12.5, lineHeight: 18 },
+    aiWarn: { color: colors.aiHello, fontSize: 12.5, lineHeight: 18 },
+    choices: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 10 },
+    choice: { alignItems: 'center', backgroundColor: colors.aiRaised, borderRadius: 999, justifyContent: 'center', minHeight: 40, paddingHorizontal: 15 },
+    choiceMain: { backgroundColor: colors.lilac },
+    choiceText: { color: colors.onAi, fontFamily: fontFamilies.pretendardBold, fontSize: 13, lineHeight: 18 },
+    choiceMainText: { color: colors.lilacInk, fontFamily: fontFamilies.pretendardExtraBold },
     line: {
       color: colors.textPrimary,
       fontFamily: fontFamilies.pretendardBold,

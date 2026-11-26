@@ -58,6 +58,7 @@ export default function BDietSample() {
           { label: '지방', current: first ? 0 : after ? 36 : 14, target: 55, unit: 'g' },
         ]}
         hasUnknownItems={false}
+        by={{ characterId: 'quni', text: '쿼니가 골라 뒀어요' }}
         meals={meals}
         mealsError={state === 'error' ? '식단을 불러오지 못했어요.' : null}
         mealsLoading={state === 'loading'}

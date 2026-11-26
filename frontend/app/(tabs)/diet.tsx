@@ -48,6 +48,7 @@ import {
   type MealStatus,
   type MealType,
 } from '@/src/features/diet/dayMeals';
+import { chatCharacters, loadChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
 import { loadWeekCalories, type DayCalories } from '@/src/features/diet/weekCalories';
 import { weekStartOf, weeklyDayFor } from '@/src/features/diet/weeklyMeals';
 import { previewPlan, weeklyStatuses } from '@/src/features/diet/weeklyRecords';
@@ -314,6 +315,14 @@ export default function DietScreen() {
   useFocusEffect(useCallback(() => {
     void loadWeeklyPlan(selectedWeek);
   }, [loadWeeklyPlan, selectedWeek]));
+
+  // the character chosen in 물어보기 signs the day's menu, as on the home and the exercise tab
+  const [characterId, setCharacterId] = useState<ChatCharacterId>('quni');
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    void loadChatCharacter().then((character) => { if (active) setCharacterId(character.id); });
+    return () => { active = false; };
+  }, []));
 
   useFocusEffect(useCallback(() => {
     const frame = requestAnimationFrame(() => {
@@ -605,6 +614,7 @@ export default function DietScreen() {
   return (
     <View style={{ flex: 1 }}>
       <DietView
+        by={{ characterId, text: `${(chatCharacters.find((item) => item.id === characterId) ?? chatCharacters[0]).name}가 골라 뒀어요` }}
         week={weekCalories}
         today={today}
         selectedDateOffset={selectedDateOffset}
