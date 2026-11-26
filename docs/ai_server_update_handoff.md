@@ -12,9 +12,9 @@
 
 | 항목 | 값 |
 |---|---|
-| 문서 버전 | 1.6 |
+| 문서 버전 | 1.7 |
 | 최초 작성일 | 2026-11-02 |
-| 최종 갱신일 | 2026-11-04 |
+| 최종 갱신일 | 2026-11-26 |
 | 대상 | Frontend, Backend, AI Server, 배포·인프라 담당자 |
 | AI 저장소 | `Auto-Fit-Transfer/Auto-Fit` |
 | AI 브랜치 | `ai` |
@@ -1200,3 +1200,17 @@ Repository에는 다음 영역의 테스트가 존재한다.
 - 제외: `Plank On Hands`, `Static Lunge`는 다른 변형이라 자동 상속하지 않음. 힙 브리지는 정확한 남성 바닥 양발 자산이 없어 `Heel Glute Bridge`와 bench 변형을 연결하지 않음
 - Frontend/Backend 영향: Schema 변경 없음. capabilities 배열에 key가 추가되며, 향후 운동별 실영상 검증 후 상태를 `validated`로 바꾸면 기존 exact-key 매칭 흐름으로 남성 루틴에도 촬영 버튼이 활성화됨
 - 개인정보·비용: 실제 사용자 영상, OpenAI 또는 외부 API 호출 없음
+
+## 2026-11-26 · 운동 완료 분석 새 결과 해요체 통일
+
+- 상태: AI Server 수정·모의 회귀 검증 완료. 운영 배포 여부와 실제 새 결과 확인은 별도 수행
+- 대상: `POST /analyze/exercise-session`의 `summary`, `insights`, `next_session_adjustments`, `safety_notice`
+- 변경 내용: 기존 OpenAI 생성 지침에 네 필드의 모든 문장·목록 항목을 자연스러운 해요체로 쓰도록 명시. 하십시오체·반말·명사형 종결을 피하고, 문체 예시의 내용을 실제 기록으로 오인하지 않도록 제한
+- 안전 보존: 기록에 없는 수치·의료 진단 생성 금지, 필요한 운동 중단·상담 안내 유지. 안전 안내가 필요하지 않은 경우 `safety_notice=null` 유지
+- 호환성: 요청·응답 Schema, 추론 설정, 토큰 한도, 오류 상태 유지. 별도 문체 변환 호출이나 재시도 추가 없음
+- 기존 기록: 이미 저장된 분석 문장은 변환·재생성하지 않음. 배포 이후 새로 생성되는 결과부터 적용
+- Backend/Frontend 안내: API 필드 변경 없이 새 결과를 기존 방식으로 저장·표시. 별도 말투 변환이나 기존 데이터 마이그레이션 불필요
+- 검증: `test_exercise_session_analysis.py`와 `test_backend_ai_integration_contract.py`의 12개 테스트 통과. 네 필드 전체 응답 보존, 안전 안내 유무, OpenAI 지침 전달, 호출 1회, 오류·개인정보 보호 및 OpenAPI 계약 확인. Python 문법 검사 통과
+- 테스트 환경: Windows 샌드박스의 내부 `socketpair` 연결 대기로 최초 실행을 중단한 뒤 승인된 환경에서 재실행. 테스트용 응답만 사용했고 실제 OpenAI 호출은 수행하지 않음
+- 남은 작업: 운영 배포 확인 후 새 운동 분석 결과의 실제 문체와 앱 표시 확인. 모의 테스트는 실제 모델의 문체 준수를 보장하는 검증은 아님
+- 관련 문서: [Backend-AI 통합 명세](backend_ai_integration_spec.md)의 운동 완료 분석 절, 루트 `AGENTS.md`

@@ -38,10 +38,10 @@ REQUEST = {
     },
 }
 NARRATIVE = ExerciseAnalysisNarrative(
-    summary="오늘 운동을 마쳤습니다.",
-    insights=["무릎 불편이 기록됐습니다."],
-    next_session_adjustments=["다음 운동 전에 강도를 다시 확인하세요."],
-    safety_notice="불편이 계속되면 운동을 중단하고 전문가와 상담하세요.",
+    summary="계획한 운동 4개 중 3개를 마쳤어요.",
+    insights=["무릎 불편이 기록됐어요."],
+    next_session_adjustments=["다음 운동 전에는 무릎 상태를 먼저 확인해 주세요."],
+    safety_notice="통증이 있으면 운동을 중단하고 전문가와 상담하세요.",
 )
 app = FastAPI()
 app.include_router(router_module.router)
@@ -66,20 +66,42 @@ def test_analysis_api_requires_auth_and_returns_ai_narrative(monkeypatch):
         )
         assert response.status_code == 200
         assert response.json()["generator"] == "auto-fit-ai"
-        assert response.json()["result"]["insights"] == NARRATIVE.insights
+        assert response.json()["result"] == NARRATIVE.model_dump(mode="json")
         assert client.post(
             "/analyze/exercise-session", json={**REQUEST, "user_id": "someone-else"},
             headers={"Authorization": "Bearer test-key"},
         ).status_code == 422
 
 
-def test_analysis_service_sends_only_contract_fields(monkeypatch):
+@pytest.mark.parametrize("has_safety_notice", [True, False])
+def test_analysis_service_sends_contract_fields_and_haeyo_instructions(
+    monkeypatch, has_safety_notice,
+):
     captured = {}
+    call_count = 0
+    request_payload = {
+        **REQUEST,
+        "discomfort_events": REQUEST["discomfort_events"] if has_safety_notice else [],
+        "feedback": {
+            **REQUEST["feedback"],
+            "post_condition": "bad" if has_safety_notice else "normal",
+            "uncomfortable_areas": ["무릎"] if has_safety_notice else [],
+            "note": REQUEST["feedback"]["note"] if has_safety_notice else None,
+        },
+    }
+    expected = NARRATIVE if has_safety_notice else ExerciseAnalysisNarrative(
+        summary="계획한 운동 4개 중 3개를 마쳤어요.",
+        insights=["한 동작은 건너뛰었어요."],
+        next_session_adjustments=["다음 운동 전에도 컨디션을 확인해 주세요."],
+        safety_notice=None,
+    )
 
     class FakeResponses:
         async def parse(self, **kwargs):
+            nonlocal call_count
+            call_count += 1
             captured.update(kwargs)
-            return SimpleNamespace(output_parsed=NARRATIVE)
+            return SimpleNamespace(output_parsed=expected)
 
     class FakeClient:
         def __init__(self, **_kwargs):
@@ -91,12 +113,20 @@ def test_analysis_service_sends_only_contract_fields(monkeypatch):
     ))
     monkeypatch.setattr(service_module, "AsyncOpenAI", FakeClient)
     result = asyncio.run(service_module.analyze_exercise_session(
-        ExerciseSessionAnalysisRequest.model_validate(REQUEST)
+        ExerciseSessionAnalysisRequest.model_validate(request_payload)
     ))
-    assert result == NARRATIVE
+    assert result == expected
+    assert call_count == 1
     assert captured["text_format"] is ExerciseAnalysisNarrative
-    assert json.loads(captured["input"]) == REQUEST
-    assert "진단" in captured["instructions"]
+    assert json.loads(captured["input"]) == request_payload
+    instructions = captured["instructions"]
+    for field in ("summary", "insights", "next_session_adjustments", "safety_notice"):
+        assert field in instructions
+    assert "모든 문장을 자연스럽고 정중한 해요체" in instructions
+    assert "하십시오체나 반말, 명사형 종결은 사용하지 마세요" in instructions
+    assert "필요한 운동 중단 및 상담 안내는 분명하게" in instructions
+    assert "safety_notice는 null" in instructions
+    assert "의료 진단, 치료 처방, 확정적인 안전 판단을 하지 마세요" in instructions
     assert captured["reasoning"] == {"effort": "low"}
     assert captured["max_output_tokens"] == 2200
 
