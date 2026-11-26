@@ -38,6 +38,9 @@ export function saveVoiceGuideSettings(settings: VoiceGuideSettings) {
 let said = 0;
 let talking = false;
 
+// true while a guide sentence (not a count) is being said, so a later sentence can wait its turn
+export const guideTalking = () => talking;
+
 export function speakGuide(text: string, settings: VoiceGuideSettings, count = false) {
   if (!settings.enabled || !text.trim()) return;
   if (count && talking) return;
