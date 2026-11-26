@@ -103,13 +103,13 @@ function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
-    readWrap: { flex: 1, justifyContent: 'center', paddingBottom: '18%', paddingHorizontal: 20 },
+    readWrap: { flex: 1, justifyContent: 'center', paddingBottom: '18%', paddingHorizontal: 24 },
     ai: { backgroundColor: colors.aiCard, borderRadius: 28, gap: 4, padding: 22 },
     aiName: { color: colors.aiHello, fontFamily: fontFamilies.pretendardBold, fontSize: 13, lineHeight: 18 },
     aiTitle: { color: colors.onAi, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 18, lineHeight: 25 },
     dots: { flexDirection: 'row', gap: 6, marginTop: 10 },
     dot: { backgroundColor: colors.lilac, borderRadius: 4, height: 8, width: 8 },
-    failed: { flexGrow: 1, gap: 14, justifyContent: 'center', paddingHorizontal: 20 },
+    failed: { flexGrow: 1, gap: 14, justifyContent: 'center', paddingHorizontal: 24 },
     body: { color: colors.textSecondary, fontSize: 14.5, lineHeight: 22, marginTop: -4 },
     q: { color: colors.textSecondary, fontSize: 12.5, lineHeight: 18 },
     tips: { ...a.card, gap: 10, paddingHorizontal: 20, paddingVertical: 18 },

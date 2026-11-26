@@ -244,7 +244,7 @@ function createStyles({ colors }: AppTheme) {
     goText: a.goText,
     off: { opacity: 0.4 },
     // ---- while I run: the map is the big thing and follows me ----
-    live1: { flexGrow: 1, gap: 12, paddingHorizontal: 20, paddingTop: 4 },
+    live1: { flexGrow: 1, gap: 12, paddingHorizontal: 24, paddingTop: 4 },
     missing: { flex: 1, justifyContent: 'center', padding: 24 },
     live: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 999, flexDirection: 'row', gap: 7, paddingHorizontal: 13, paddingVertical: 8 },
     liveDot: { backgroundColor: colors.now, borderRadius: 4, height: 8, width: 8 },
@@ -263,7 +263,7 @@ function createStyles({ colors }: AppTheme) {
     acts: { flexDirection: 'row', gap: 10, paddingBottom: 4 },
     half: { flex: 1 },
     // ---- the run I just did: one block a little above the middle ----
-    done: { paddingHorizontal: 20 },
+    done: { paddingHorizontal: 24 },
     doneBlock: { flexGrow: 1, gap: 14, justifyContent: 'center', paddingBottom: 48 },
     leave: { marginTop: 4 },
     problem: { backgroundColor: colors.surface, borderRadius: 18, padding: 16 },

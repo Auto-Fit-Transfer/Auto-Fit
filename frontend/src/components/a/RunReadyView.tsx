@@ -168,7 +168,7 @@ export function RunReadyView({
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
-    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, paddingHorizontal: 20, width: '100%' },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, paddingHorizontal: 24, width: '100%' },
     words: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 20 },
     note: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
     center: { textAlign: 'center' },

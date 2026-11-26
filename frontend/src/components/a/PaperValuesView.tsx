@@ -132,7 +132,7 @@ function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
-    content: { gap: 14, paddingHorizontal: 20 },
+    content: { gap: 14, paddingHorizontal: 24 },
     grow: { flex: 1 },
     pressed: { opacity: 0.72 },
     note: { ...a.note, fontFamily: fontFamilies.pretendardRegular },

@@ -234,7 +234,7 @@ function createStyles({ colors }: AppTheme) {
   const num = { fontFamily: fontFamilies.pretendardBold, fontSize: 12, lineHeight: 16 } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
-    content: { gap: 16, paddingHorizontal: 20, paddingTop: 8 },
+    content: { gap: 16, paddingHorizontal: 24, paddingTop: 8 },
     grow: { flex: 1, minWidth: 0 },
     note: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
     q: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 15, lineHeight: 21 },

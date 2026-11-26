@@ -152,7 +152,7 @@ function createStyles({ colors }: AppTheme) {
   const note = { ...a.note, fontFamily: fontFamilies.pretendardRegular } as const;
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
-    content: { gap: 14, paddingHorizontal: 20, paddingTop: 8 },
+    content: { gap: 14, paddingHorizontal: 24, paddingTop: 8 },
     // Nothing given yet: one block a little above the middle, the button right under the words.
     first: { flexGrow: 1, gap: 14, justifyContent: 'center', paddingHorizontal: 20 },
     lead: { color: colors.textSecondary, fontSize: 14.5, lineHeight: 22, marginTop: -4 },

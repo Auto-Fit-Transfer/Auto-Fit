@@ -495,7 +495,7 @@ function createStyles({ colors }: AppTheme) {
     bullet: { backgroundColor: colors.textPrimary, borderRadius: 3, height: 6, marginTop: 8, width: 6 },
 
     // ---- filming: the camera is the big thing ----
-    shoot: { paddingHorizontal: 20 },
+    shoot: { paddingHorizontal: 24 },
     chips: { backgroundColor: colors.surface, borderRadius: 999, flexDirection: 'row', marginTop: 12, padding: 4 },
     chip: { alignItems: 'center', borderRadius: 999, flex: 1, height: 38, justifyContent: 'center', paddingHorizontal: 4 },
     chipText: { color: colors.textSecondary, fontFamily: fontFamilies.pretendardBold, fontSize: 12.5, lineHeight: 18 },
@@ -532,7 +532,7 @@ function createStyles({ colors }: AppTheme) {
     // ---- the result ----
     problem: { alignItems: 'center', flex: 1, gap: 10, justifyContent: 'center', padding: 24 },
     problemGo: { height: 46, marginTop: 8, paddingHorizontal: 20 },
-    result: { gap: 0, paddingHorizontal: 20, paddingTop: 8 },
+    result: { gap: 0, paddingHorizontal: 24, paddingTop: 8 },
     summary: { color: colors.textSecondary, fontSize: 14.5, lineHeight: 22, marginBottom: 16, marginTop: 8 },
     scoreCard: { ...a.card, marginTop: 8, paddingBottom: 18, paddingHorizontal: 20, paddingTop: 18 },
     scoreTop: { alignItems: 'baseline', flexDirection: 'row', justifyContent: 'space-between' },

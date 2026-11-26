@@ -241,7 +241,7 @@ function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, width: '100%' },
-    content: { gap: 12, paddingHorizontal: 16, paddingTop: 4 },
+    content: { gap: 12, paddingHorizontal: 24, paddingTop: 4 },
     card: { ...a.card, overflow: 'hidden' },
     grow: { flex: 1, minWidth: 0 },
     note: a.note,
