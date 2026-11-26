@@ -9,7 +9,7 @@ const id = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const [owner, routine, keyedItem, legacyItem] = [1, 2, 3, 4].map(id);
 const key = 'ex_96dcb551b33a8e';
 const migration = readFileSync(new URL(
-  '../../supabase/migrations/20261126081607_saved_routine_exercise_key.sql',
+  '../../supabase/migrations/20261126082517_saved_routine_exercise_key.sql',
   import.meta.url,
 ), 'utf8');
 
