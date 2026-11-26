@@ -1256,7 +1256,7 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
           </Text>
         ))}
       </View>
-      <View style={styles.bTwo}>{bButton(isSaving ? '기록 중…' : '이대로 기록하기', () => void handleSaveFoodShotMeal(), true, isSaving || !draft?.foods.length || missingNutrition)}</View>
+      <View style={styles.bTwo}>{bButton(isSaving ? '기록 중…' : '먹었어요', () => void handleSaveFoodShotMeal(), true, isSaving || !draft?.foods.length || missingNutrition)}</View>
     </View>
   );
 
