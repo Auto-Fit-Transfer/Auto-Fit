@@ -268,7 +268,7 @@ function createStyles({ colors }: AppTheme) {
     bar: { ...outline, backgroundColor: colors.track, borderRadius: 99, height: 16, overflow: 'hidden' },
     barFill: { backgroundColor: colors.primary, bottom: 0, left: 0, position: 'absolute', top: 0 },
     tierRow: { alignItems: 'center', borderTopColor: colors.track, borderTopWidth: 2, flexDirection: 'row', gap: 10, marginTop: 2, paddingTop: 12 },
-    stars: { fontSize: 11, lineHeight: 14 },
+    stars: { fontSize: 12, lineHeight: 15 },
     mini: { ...a.mini, marginBottom: 3 },
     miniText: a.miniText,
 

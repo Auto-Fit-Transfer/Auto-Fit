@@ -612,7 +612,7 @@ function createStyles({ colors }: AppTheme) {
     name: { color: colors.ink, fontFamily: fontFamilies.galmuri11Bold, fontSize: 24, lineHeight: 28 },
     level: { alignItems: 'center', flexDirection: 'row', gap: 6 },
     levelText: { ...a.p12, color: colors.primaryText },
-    stars: { fontSize: 11, lineHeight: 14 },
+    stars: { fontSize: 12, lineHeight: 15 },
 
     // the bars: whole things as cells, an amount as a line
     stats: { ...a.card, paddingBottom: 8, paddingHorizontal: 14, paddingTop: 12 },

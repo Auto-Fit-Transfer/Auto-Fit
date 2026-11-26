@@ -157,7 +157,7 @@ export function RunReadyView({
       {/* With rows shown, what a search said (nothing found, or why it failed) still has to be read. */}
       {message && rows.length > 0 && tab === 'rec' ? <Text style={[styles.note, styles.center]}>{message}</Text> : null}
 
-      <Pressable accessibilityRole="button" hitSlop={8} onPress={onFree} style={styles.free}>
+      <Pressable accessibilityRole="button" hitSlop={14} onPress={onFree} style={styles.free}>
         <Text style={styles.link}>코스 없이 달리기</Text>
       </Pressable>
     </View>
@@ -196,7 +196,8 @@ function createStyles({ colors }: AppTheme) {
     segOn: a.segOn,
     segText: a.segText,
     // The list takes the height that is left, and scrolls inside itself.
-    list: { ...a.card, flex: 1, marginBottom: 6, marginTop: 12, minHeight: 150, overflow: 'hidden' },
+    // as tall as its rows (a short list no longer leaves an empty box down to the foot), scrolling once they fill the screen
+    list: { ...a.card, flexGrow: 0, flexShrink: 1, marginBottom: 6, marginTop: 12, minHeight: 150, overflow: 'hidden' },
     tabs: { flexDirection: 'row', gap: 6, paddingBottom: 3, paddingHorizontal: 12, paddingTop: 10 },
     mini: a.mini,
     miniText: a.miniText,

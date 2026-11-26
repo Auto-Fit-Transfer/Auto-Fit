@@ -352,7 +352,7 @@ function createStyles({ colors }: AppTheme) {
     name: { ...p15, color: colors.ink, lineHeight: 18 },
     level: { alignItems: 'center', flexDirection: 'row', gap: 6 },
     levelText: { ...p12, color: colors.primaryText },
-    stars: { fontSize: 11, lineHeight: 14 },
+    stars: { fontSize: 12, lineHeight: 15 },
     bell: { alignItems: 'center', flexDirection: 'row', gap: 8, position: 'absolute', right: 16 },
     steps: { alignItems: 'center', borderRadius: 99, flexDirection: 'row', gap: 4, height: 40, paddingLeft: 4, paddingRight: 12 },
 
@@ -438,14 +438,15 @@ function createStyles({ colors }: AppTheme) {
       justifyContent: 'center',
       width: 56,
     },
-    // White letters with a dark edge, so they read on the street.
+    // White letters on a small dark plate: a thin shadow alone was lost on the busy street (11/26 check).
     menuLabel: {
       ...p12,
+      backgroundColor: 'rgba(32, 35, 63, 0.78)',
+      borderRadius: 6,
       color: '#FFFFFF',
-      lineHeight: 14,
-      textShadowColor: colors.ink,
-      textShadowOffset: { height: 1, width: 1 },
-      textShadowRadius: 1,
+      lineHeight: 16,
+      overflow: 'hidden',
+      paddingHorizontal: 5,
     },
 
     dock: { borderRadius: 22, left: 16, overflow: 'hidden', position: 'absolute', right: 16 },

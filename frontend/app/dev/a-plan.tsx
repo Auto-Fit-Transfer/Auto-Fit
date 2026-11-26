@@ -42,7 +42,7 @@ export default function APlanSample() {
         meta: '45분 · 약 210kcal · 강도 보통',
         moves: state === 'short' ? MOVES.slice(0, 3) : MOVES,
         reasons: ['무릎이 불편하다고 해서 뛰는 동작은 뺐어요.', '집에서 맨몸과 밴드로 할 수 있는 동작만 골랐어요.', '컨디션이 보통이라 강도는 보통으로 맞췄어요.'],
-        source: 'AI 모델 추천',
+        source: 'AI 맞춤 추천',
         subtitle: '집에서 맨몸으로 하는 하체 · 코어 운동이에요.',
         title: '하체와 코어 루틴',
       }}

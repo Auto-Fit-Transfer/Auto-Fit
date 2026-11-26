@@ -105,7 +105,7 @@ export function RecordView(props: RecordViewProps) {
                 <Text numberOfLines={2} style={styles.note}>
                   {goal ?? '아직 정한 운동 목표가 없어요'}
                 </Text>
-                <Pressable accessibilityRole="link" hitSlop={8} onPress={props.onGoal}>
+                <Pressable accessibilityRole="link" hitSlop={14} onPress={props.onGoal}>
                   <Text style={styles.link}>{goal ? '목표 고치기' : '목표 정하기'}</Text>
                 </Pressable>
               </View>
@@ -157,7 +157,7 @@ export function RecordView(props: RecordViewProps) {
             <View style={styles.head}>
               <Text style={styles.note}>{listTitle}</Text>
               {showAll ? (
-                <Pressable accessibilityRole="button" hitSlop={8} onPress={props.onAll}>
+                <Pressable accessibilityRole="button" hitSlop={14} onPress={props.onAll}>
                   <Text style={styles.link}>전체 보기</Text>
                 </Pressable>
               ) : null}

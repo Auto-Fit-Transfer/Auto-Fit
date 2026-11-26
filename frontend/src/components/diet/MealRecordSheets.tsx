@@ -1432,7 +1432,8 @@ export function MealRecordSheets({ visible, mealId, initialDraft, onClose, onCom
 function createStyles({ colors }: AppTheme) {
   return {
     r6Header: { height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    r6HeaderButton: { width: 34, height: 42, alignItems: 'center', justifyContent: 'center' },
+    // the same outlined card with a ledge as every other A screen's way back (ScreenHeader)
+    r6HeaderButton: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 14, borderWidth: 2, boxShadow: `0 4px 0 ${colors.ink}`, height: 44, justifyContent: 'center', width: 44 },
     r6HeaderTitle: { color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15 },
     r6Fallback: { flex: 1, paddingTop: 18 },
     r6FallbackIcon: { alignItems: 'center', backgroundColor: colors.primaryLight, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, height: 40, justifyContent: 'center', marginBottom: 14, width: 40 },
@@ -1520,7 +1521,8 @@ function createStyles({ colors }: AppTheme) {
     processingDot: { backgroundColor: colors.primary, borderRadius: 2, height: 3, position: 'absolute', width: 3 },
     waitNotice: { alignItems: 'center', backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, flexDirection: 'row', gap: 6, minHeight: 38, justifyContent: 'center', marginTop: 12, width: '100%' },
     waitNoticeText: { color: colors.ink, fontFamily: fontFamilies.galmuri14, fontSize: 15 },
-    reviewContent: { flex: 1, justifyContent: 'space-between' },
+    // one group, the button right under the numbers (spread over the height it left big empty gaps)
+    reviewContent: { flex: 1, gap: 24 },
     reviewFoodGroup: { gap: 10 },
     reviewCta: {  },
     recognizedCard: { backgroundColor: colors.surface, borderColor: colors.ink, borderRadius: 12, borderWidth: 2, height: 220, padding: 15 },

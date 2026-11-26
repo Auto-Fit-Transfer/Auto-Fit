@@ -5,7 +5,7 @@ export const CHAT_CHARACTER_KEY = 'auto-fit.chat.character.v1';
 export const chatCharacters = [
   { id: 'quni', name: '쿼니', role: '다정한 기본', description: '밝고 다정하게 함께 살펴봐요.' },
   { id: 'nabi', name: '나비', role: '느긋한 동행', description: '차분하고 편안하게 이야기해요.' },
-  { id: 'coach', name: '매운맛 코치', role: '추가 버전 · 단호한 코치', description: '핵심을 짚는 단호한 말투로 도와줘요.' },
+  { id: 'coach', name: '매운맛 코치', role: '단호한 코치', description: '핵심을 짚는 단호한 말투로 도와줘요.' },
 ] as const;
 
 export type ChatCharacterId = (typeof chatCharacters)[number]['id'];

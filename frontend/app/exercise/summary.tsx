@@ -136,7 +136,7 @@ export default function ExerciseSummaryScreen() {
           text: exercise.prescription || '자세한 운동 방법은 시작 후 확인해 주세요.',
         })),
         reasons: routine.reasons.length ? routine.reasons : ['오늘 입력한 운동 시간과 장소, 컨디션을 바탕으로 추천했어요.'],
-        source: routine.generator === 'auto-fit-ai' ? 'AI 모델 추천' : '기본 운동 추천',
+        source: routine.generator === 'auto-fit-ai' ? 'AI 맞춤 추천' : '기본 추천',
         subtitle: routine.subtitle,
         title: routine.title,
       } : null}
