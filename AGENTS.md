@@ -1108,6 +1108,35 @@ LLM은 검증된 메뉴의 설명과 guidance를 보조하며 영양값을 덮�
   이상, `min(선택 시간 + 5분, 200분)` 이하여야 한다.
 - 장소, 장비, 컨디션, 불편 부위를 함께 반영한다.
 
+운동 음성 안내 자료:
+
+- 카탈로그의 `auto_mapped`와 추천 가능 상태는 원본 GIF를 대조한 안내 문구의
+  검토 완료를 의미하지 않는다. 안내 TXT는 현재 추천 서비스가 읽는 입력이 아니다.
+- 안내의 `[원본 동작 확인 필요]` 표시는 해당 `exercise_key`의 primary 자산을
+  직접 확인한 뒤 그 항목에 한해서 해제한다. 이름만 보고 일괄 해제하지 않는다.
+- 운동 방법·주의사항·집중 포인트를 세 문장으로 제공하고, 원본 영문명과
+  식별키를 보존한다. 같은 키를 수록한 전체·헬스·홈트 자료를 일관되게 갱신한다.
+- 원본 대조 기록은 검토한 자산과 checksum, 확인 범위를 남긴다. 구매 GIF 자체는
+  별도 허가 없이 Git에 추가하지 않으며 자세 분석 `validated` 상태와 혼동하지 않는다.
+- 문구 전달 후 실제 음성 안내 데이터 갱신과 앱 재생 확인은 담당 파트에서 수행한다.
+  안내 파일의 Git 업로드만으로 운영 앱 반영 완료로 보고하지 않는다.
+- 대조 결과는 `data/exercise_assets/exercise_guide_overrides.json`에서 관리하고,
+  읽기용 자료는 `docs/exercise_guides/`에 둔다. 이 JSON은 전달용 자료이며 현재
+  추천 API의 LLM `instructions`를 자동 교체하는 runtime 입력이 아니다.
+- 같은 키의 primary GIF가 서로 다른 동작이면 `asset_specific_guides`로 분리하고,
+  선택된 `asset_id`의 안내만 적용한다. 사용자 성별이나 파일명 유사도로 대신 고르지 않는다.
+- `blocked_audio`는 확인할 수 없는 힘의 방향·접촉·동작이 남은 항목이다.
+  안내 완료로 위장하거나 placeholder를 음성으로 재생하지 않는다. 기존 CSV 안내
+  제외 항목도 유지하며, 새 원본/전문가 근거가 확보되면 그 항목만 다시 검토한다.
+- 검토 근거의 `reviewed_frame_indices`는 실제 확인한 0-based 프레임만 기록한다.
+  샘플 대조를 전체 프레임 검증 또는 개인별 운동 안전 인증으로 표현하지 않는다.
+- Backend 안내 반영 시 기존 제외 목록을 먼저 적용한다. `blocked_audio` 또는
+  자산 매칭 실패를 LLM `instructions`나 이전 음성 캐시로 우회하지 않도록
+  인계서에 명시한다. JSON에 없는 키는 기존 검토 상태를 보존한다.
+- 교정 자료의 `source_catalog_version`은 기존 runtime과 같은 LF 정규화 해시다.
+  검토 당시 원본 바이트의 `source_catalog_sha256`과 구분해 Windows/Linux
+  줄바꿈 차이를 내용 변경으로 오판하지 않도록 한다. GIF 해시는 원본 바이너리 기준이다.
+
 운동 완료 분석:
 
 - `/analyze/exercise-session`의 새 결과는 `summary`, `insights`,

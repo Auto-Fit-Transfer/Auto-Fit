@@ -1,0 +1,53 @@
+{
+  "catalog_sha256": "1aedff888fddbf6a520da032352fd9ea89604fd7d20626e6475dcf85c497ad9c",
+  "catalog_sha256_encoding": "raw_file_bytes_at_review",
+  "catalog_version": "sha256:5e231250283742da2deee4e36da0308fb635409999ee8f6a29ff49274c5d97a1",
+  "original_pending": 3080,
+  "previously_resolved": 1,
+  "newly_inspected": 3079,
+  "final_status_counts": {
+    "visual_reviewed": 3071,
+    "blocked_audio": 6,
+    "asset_specific_guides": 3
+  },
+  "document_counts": {
+    "전체": {
+      "keys": 5297,
+      "reviewed": 3071,
+      "asset_specific": 3,
+      "blocked": 6
+    },
+    "헬스": {
+      "keys": 2189,
+      "reviewed": 892,
+      "asset_specific": 0,
+      "blocked": 3
+    },
+    "홈트": {
+      "keys": 3139,
+      "reviewed": 2195,
+      "asset_specific": 3,
+      "blocked": 3
+    }
+  },
+  "checks": [
+    "3079 추가 대상 키 완전 일치",
+    "중복 exercise_key 없음",
+    "각 primary asset 근거 포함",
+    "frame index 범위 검증",
+    "원본 catalog asset_id/key/path 일치",
+    "안내 확정 항목 3문장 존재",
+    "기존 대상 외 본문 유지",
+    "전체/헬스/홈트 동일 키 문구 일치",
+    "기존 제외 목록 26개 보존"
+  ],
+  "note": "모든 GIF 프레임을 전수 확인한 뜻은 아님; 각 evidence의 실제 확인 프레임을 참고; 앱 실기기 음성 재생 미검증",
+  "evidence_assets": 3579,
+  "independent_file_validation_issues": [],
+  "actual_gif_sha256_rechecked_samples": 12,
+  "regression_tests": {
+    "command": "python -m pytest -q test_exercise_catalog_enforcement.py test_exercise_frontend_preferences.py",
+    "passed": 63,
+    "live_provider_calls": 0
+  }
+}

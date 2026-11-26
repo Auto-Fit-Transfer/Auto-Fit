@@ -1,0 +1,109 @@
+﻿Auto-Fit 안내 제외 목록 — 제공 CSV 반영
+CSV에서 뺌(GIF 장면만으로 판단 어려움)으로 표시한 26개 운동입니다.
+이번 텍스트 안내에서만 제외했습니다. 추천 카탈로그·GIF 자산·서버 코드는 그대로입니다.
+근거: 홈트_안내_GIF대조_1126.csv
+교정 CSV SHA-256: 7a4f50d9d44d18b7669c078a312bb6634d45c15224470a956d1a566daa82a11c
+
+[01] Lying Upper Trapezius Press
+식별키: ex_7ebac67d54c7b7
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[02] Sitting Palm Pulldown On A Chair
+식별키: ex_3fc7a2bf2b6fda
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[03] Standing Forward Bend Back Squeeze
+식별키: ex_47f31e5ac2fe35
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[04] Feet And Ankles Side To Side Stretch
+식별키: ex_a507d8f0e6afc5
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[05] Finger Flexor Stretch
+식별키: ex_f9bbd61f9333d1
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[06] Wrist Flexor Stretch
+식별키: ex_07d825e84f2669
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[07] Front Plank Toe Tap
+식별키: ex_d8040091fc61b4
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[08] Hip Lunge
+식별키: ex_6ba708cb171e74
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[09] Kneeling External Rotation
+식별키: ex_80bd6509d5446d
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[10] Kneeling Leg External Rotation
+식별키: ex_80d68607cd2bb4
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[11] Leg Extension Glute Bridge
+식별키: ex_5936326877f37e
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[12] Lying Hip Circle
+식별키: ex_327b33898adfe5
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[13] Side Clamp
+식별키: ex_ccde2031ed97e9
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[14] Side Lunge With Hip Rotation
+식별키: ex_88890063094795
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[15] Side Lying 90 Degrees Hip Clam
+식별키: ex_fe1a745a864e29
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[16] Single Leg Glute Bridge With External Rotation
+식별키: ex_313cd6bc68755a
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[17] Sitting Hip Rotation On A Chair
+식별키: ex_ff44eadc16c511
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[18] Sitting Lotus Pose Hip Horizontal Rotation
+식별키: ex_aef8f51e6aa407
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[19] Standing Balance Hip Rotation
+식별키: ex_46f91fe0f4f6b2
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[20] Standing Hip Horizontal Rotation
+식별키: ex_627bc25f873481
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[21] Bodyweight Rear Delt Raise
+식별키: ex_97fefeb9a88b05
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[22] Bodyweight Single Arm Lateral Raise
+식별키: ex_3453b562093dc1
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[23] Shin Box Switch
+식별키: ex_019e613ffebd46
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[24] Dynamic One Leg Stand
+식별키: ex_871969dd72f218
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[25] Split Squat On A Chair
+식별키: ex_8faf917142232d
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
+
+[26] Hollow Rock
+식별키: ex_893fec7ec0bbac
+제외 사유: 뺌(GIF 장면만으로 판단 어려움)
