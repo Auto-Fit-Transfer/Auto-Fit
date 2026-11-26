@@ -1,14 +1,25 @@
+import type { ComponentProps } from 'react';
 import { useLocalSearchParams } from 'expo-router';
+import { View } from 'react-native';
 
 import { MeView } from '@/src/components/b/MeView';
+import { BottomNavigation } from '@/src/components/navigation';
 
 // Development only: renewal B's 내 정보 with samples. ?state=first (nothing known yet)
 const nothing = () => undefined;
+const tabs = ['home', 'diet', 'exercise', 'community', 'my'];
+const tabBar = {
+  state: { index: 4, routes: tabs.map((name) => ({ key: name, name })) },
+  descriptors: Object.fromEntries(tabs.map((name) => [name, { options: {} }])),
+  emitter: { emit: () => ({ defaultPrevented: false }) },
+  navigateToTab: () => undefined,
+} as unknown as ComponentProps<typeof BottomNavigation>;
 
 export default function BMeSample() {
   const { state } = useLocalSearchParams<{ state?: string }>();
   const first = state === 'first';
   return (
+    <View style={{ flex: 1 }}>
     <MeView
       characterId="nabi"
       days={first ? 1 : 12}
@@ -29,5 +40,7 @@ export default function BMeSample() {
       steps={{ on: true, onToggle: nothing }}
       tier={{ name: 'BALANCE' }}
     />
+    <BottomNavigation {...tabBar} />
+    </View>
   );
 }

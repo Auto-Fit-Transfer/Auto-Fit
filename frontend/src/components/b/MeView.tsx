@@ -1,8 +1,9 @@
-import { Pressable, ScrollView, Switch, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import CheckIcon from '@/assets/icons/system/Check.svg';
 import CaretRightIcon from '@/assets/icons/ui/caret-right.svg';
+import { ASwitch } from '@/src/components/a/ASwitch';
 import { ChatCharacterAvatar } from '@/src/components/chat/ChatCharacterAvatar';
 import { Text } from '@/src/components/common';
 import type { ChatCharacterId } from '@/src/features/chat/chatCharacters';
@@ -93,7 +94,7 @@ export function MeView({ characterId, name, days, tier, notice, know, rows, step
           {steps ? (
             <View style={[styles.row, styles.rowLine]}>
               <Text style={styles.rowLabel}>걸음 자동 기록</Text>
-              <Switch accessibilityLabel="걸음 자동 기록" onValueChange={steps.onToggle} value={steps.on} />
+              <ASwitch label="걸음 자동 기록" onChange={steps.onToggle} value={steps.on} />
             </View>
           ) : null}
         </View>
