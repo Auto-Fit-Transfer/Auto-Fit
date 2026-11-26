@@ -279,7 +279,8 @@ function createStyles({ colors }: AppTheme) {
     titleRow: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center' },
     title: { ...big, fontSize: 36, lineHeight: 42 },
     record: { ...a.card, overflow: 'hidden' },
-    doneMap: { borderBottomColor: colors.ink, borderBottomWidth: 2, height: 240 },
+    // the route is what a finished run shows first: the map takes the room the screen has (it was 240 over an empty foot)
+    doneMap: { borderBottomColor: colors.ink, borderBottomWidth: 2, height: 330 },
     numbers: { alignItems: 'center', paddingBottom: 22, paddingHorizontal: 14, paddingTop: 18 },
     // How far: the one number this screen is about.
     bigKm: { ...big, fontSize: 88, lineHeight: 98 },

@@ -68,6 +68,9 @@ export function ExerciseView({ who, tierIndex, kinds, say, plan, main, links, mo
           ))}
         </View>
 
+        {/* with no plan yet the ask and its button sit in the middle of the free height, the menu at the foot,
+            instead of everything at the top over an empty half screen (11/26 check) */}
+        <View style={[styles.main, !plan && styles.mainAlone]}>
         {say ? (
           <View style={styles.ask}>
             <View style={styles.face}>
@@ -130,6 +133,7 @@ export function ExerciseView({ who, tierIndex, kinds, say, plan, main, links, mo
             ))}
           </View>
         ) : null}
+        </View>
 
         {more.length > 0 ? (
           <View style={[styles.card, styles.rows]}>
@@ -164,7 +168,9 @@ function createStyles({ colors }: AppTheme) {
   const outline = { backgroundColor: colors.surface, borderColor: colors.ink, borderWidth: 2 } as const;
   return {
     root: { backgroundColor: colors.background, flex: 1 },
-    content: { gap: 14, paddingHorizontal: 16 },
+    content: { flexGrow: 1, gap: 14, paddingHorizontal: 16 },
+    main: { gap: 14 },
+    mainAlone: { flexGrow: 1, justifyContent: 'center' },
     pressed: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 4 }] },
     pressedSoft: { boxShadow: `0 0 0 ${colors.ink}`, transform: [{ translateY: 3 }] },
 
