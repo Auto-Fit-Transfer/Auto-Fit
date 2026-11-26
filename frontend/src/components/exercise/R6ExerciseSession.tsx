@@ -22,8 +22,8 @@ import XIcon from '@/assets/icons/ui/x.svg';
 import { discomfortFeelings as feelings } from '@/src/features/exercise/discomfortFeelings';
 import type { ExerciseSessionExercise, ExerciseSessionState } from '@/src/features/exercise/ExerciseSessionContext';
 import tips from '@/src/features/exercise/exerciseTips.json';
-import { setTip, type TipLines } from '@/src/features/exercise/exerciseTips';
-import { defaultVoiceGuideSettings, loadVoiceGuideSettings, saveVoiceGuideSettings, speakGuide, stopGuide, type VoiceGuideSettings } from '@/src/features/exercise/voiceGuide';
+import { halfTip, setTip, type TipLines } from '@/src/features/exercise/exerciseTips';
+import { defaultVoiceGuideSettings, loadVoiceGuideSettings, saveVoiceGuideSettings, guideTalking, speakGuide, stopGuide, type VoiceGuideSettings } from '@/src/features/exercise/voiceGuide';
 import { msToFirstMinute } from '@/src/features/exercise/savedRoutine';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text, TextInput } from '@/src/components/common';
@@ -107,6 +107,19 @@ export function R6ExerciseSession({
     else if (session.currentRep === 0) { if (tip) speakGuide(tip, voice); }
     else if (voice.countReps && exercise.mode === 'reps') speakGuide(`${session.currentRep}회`, voice, true);
   }, [exercise.name, exercise.instruction, exercise.exerciseKey, exercise.sets, exercise.mode, resting, session.currentExerciseIndex, session.currentSet, session.currentRep, session.paused, voice, voiceOpen, sheetOpen]);
+  // A one-set move's feel line, once, halfway through the set (a timed set of 20 s or more, or 6 reps or more);
+  // it waits while the opening sentence is still being said, and is not said once the set is over.
+  const half = session.currentSet === 1 ? halfTip(exercise.exerciseKey ? (tips as Record<string, TipLines>)[exercise.exerciseKey] : undefined, exercise.sets) : null;
+  const halfway = half !== null && (exercise.mode === 'reps'
+    ? (exercise.targetRepetitions ?? 0) >= 6 && session.currentRep >= Math.ceil((exercise.targetRepetitions ?? 0) / 2)
+    : (exercise.targetSeconds ?? 0) >= 20 && session.setRemainingMs > 0 && session.setRemainingMs <= (exercise.targetSeconds ?? 0) * 500);
+  const halfSaid = useRef(-1);
+  useEffect(() => {
+    if (!halfway || !half || resting || !voice.enabled || session.paused || voiceOpen || sheetOpen) return;
+    if (halfSaid.current === session.currentExerciseIndex || guideTalking()) return;
+    halfSaid.current = session.currentExerciseIndex;
+    speakGuide(half, voice);
+  }, [halfway, half, resting, voice, session.paused, voiceOpen, sheetOpen, session.currentExerciseIndex, session.setRemainingMs, session.currentRep]);
   const updateVoice = (patch: Partial<VoiceGuideSettings>) => {
     const next = { ...voice, ...patch };
     setVoice(next);
