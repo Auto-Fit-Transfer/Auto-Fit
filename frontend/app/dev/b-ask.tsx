@@ -10,7 +10,7 @@ import { chatCharacters, chatSamples, type ChatCharacterId } from '@/src/feature
 // ?state=talk | adjust | adjusted | kept | wait | fail | long | loading | lost | who   ?as=quni | nabi | coach
 const nothing = () => undefined;
 const score: AskLine[] = [
-  { key: 'q1', mine: '내 건강 점수를 알려줘' },
+  { key: 'q1', mine: '내 건강 점수를 알려 줘' },
   { key: 'a1', answer: '좋아요, 같이 살펴볼게요.\n지금 건강 점수는 78점이에요. 지난주보다 2점 올랐어요.' },
 ];
 const light = (card: AskLine['card'], note?: string, done?: boolean): AskLine[] => [
@@ -21,7 +21,7 @@ const light = (card: AskLine['card'], note?: string, done?: boolean): AskLine[] 
 export default function BAskSample() {
   const params = useLocalSearchParams<{ state?: string; as?: string }>();
   const [id, setId] = useState<ChatCharacterId>(chatCharacters.find((item) => item.id === params.as)?.id ?? 'quni');
-  const [draft, setDraft] = useState(params.state === 'fail' ? '운동 기록 알려줘' : '');
+  const [draft, setDraft] = useState(params.state === 'fail' ? '운동 기록 알려 줘' : '');
   const [whoOpen, setWhoOpen] = useState(params.state === 'who');
   const character = chatCharacters.find((item) => item.id === id) ?? chatCharacters[0];
   const open = { busy: false, waiting: false, onNo: nothing, onYes: nothing };
@@ -32,7 +32,7 @@ export default function BAskSample() {
         : state === 'adjusted' ? light(undefined, '운동을 조정했어요.', true)
           : state === 'kept' ? light(undefined, '조정하지 않고 그대로 두었어요.', false)
             : state === 'wait' ? [score[0]]
-              : state === 'fail' ? [{ key: 'q0', mine: '운동 기록 알려줘' }]
+              : state === 'fail' ? [{ key: 'q0', mine: '운동 기록 알려 줘' }]
                 : state === 'long' ? [...score, ...light(open)]
                   : [];
   return (
@@ -51,7 +51,7 @@ export default function BAskSample() {
         onDraft={setDraft}
         onSend={nothing}
         onWho={() => setWhoOpen(true)}
-        prompts={['운동 기록 알려줘', '내 건강 점수를 알려줘', '무엇부터 개선해야 해?', '오늘 운동 가볍게 해 줘']}
+        prompts={['운동 기록 알려 줘', '내 건강 점수를 알려 줘', '무엇부터 개선해야 해?', '오늘 운동 가볍게 해 줘']}
         waiting={state === 'wait'}
       />
       <WhoSheet

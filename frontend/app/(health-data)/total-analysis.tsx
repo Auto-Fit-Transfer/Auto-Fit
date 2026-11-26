@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 
 import {
@@ -12,15 +12,20 @@ import { getHome, type HomeResponse } from '@/src/api/home';
 import { scoreCard } from '@/src/features/healthScore';
 import { getHabitTierProgress } from '@/src/api/tier';
 import { AnalysisView } from '@/src/components/a/AnalysisView';
-import { useKeptWho } from '@/src/components/a/useKeptWho';
 import { TotalAnalysisBottomSheet, type AnalysisSheetState } from '@/src/components/analysis/TotalAnalysisBottomSheet';
 import { createAnalysisDisplayData, type AnalysisDisplayData } from '@/src/components/analysis/totalAnalysisData';
 import { tierLook, type TierLook } from '@/src/features/tier/tierLook';
+import { loadChatCharacter, type ChatCharacterId } from '@/src/features/chat/chatCharacters';
 
 // 종합 건강 분석: the latest analysis, my health score and my tier, read when the screen comes into view.
 export default function TotalAnalysisScreen() {
   const router = useRouter();
-  const who = useKeptWho();
+  const [characterId, setCharacterId] = useState<ChatCharacterId>('quni');
+  useEffect(() => {
+    let active = true;
+    void loadChatCharacter().then((character) => { if (active) setCharacterId(character.id); });
+    return () => { active = false; };
+  }, []);
   const [data, setData] = useState<AnalysisDisplayData | null>(null);
   const [home, setHome] = useState<HomeResponse | null>(null);
   const [latest, setLatest] = useState<HealthScoreLatest | 'missing' | 'failed' | null>(null);
@@ -81,6 +86,7 @@ export default function TotalAnalysisScreen() {
   return (
     <>
       <AnalysisView
+        characterId={characterId}
         card={latest === null ? null : scoreCard(latest, home ? { score: home.health_score.score ?? null, total: home.health_score.total_score ?? null } : null)}
         data={data}
         delta={home?.score_change.change ?? null}
@@ -98,8 +104,6 @@ export default function TotalAnalysisScreen() {
         onDocs={() => router.push('/health-data-management')}
         state={state}
         tier={tier ? { left: `${tier.next} ${tier.left}`, name: tier.name, stars: tier.stars } : null}
-        tierIndex={tier?.index ?? 0}
-        who={who}
       />
       <TotalAnalysisBottomSheet sheet={sheet} onClose={() => setSheet(null)} onOpenReference={openReference} />
     </>

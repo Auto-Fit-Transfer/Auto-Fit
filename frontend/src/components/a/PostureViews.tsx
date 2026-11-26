@@ -162,7 +162,7 @@ export function PostureShootView({
           </Pressable>
         </View>
       )}
-      <Pressable accessibilityRole="button" hitSlop={8} onPress={onTips} style={styles.under}>
+      <Pressable accessibilityRole="button" hitSlop={14} onPress={onTips} style={styles.under}>
         <Text style={styles.link}>촬영 전에 확인할 것</Text>
       </Pressable>
     </View>
@@ -376,7 +376,8 @@ export function PostureResultView({
           <View style={styles.scoreCard}>
             <View style={styles.scoreTop}>
               <Text style={styles.cardLab}>{reps.length > 1 ? `${reps.length}회 각각의 점수` : '이번 동작'}</Text>
-              {passing != null ? <Text style={styles.note}>기준 {passing}점</Text> : null}
+              {/* how far from the line, so 78 next to 80 reads as "2 short", with what to fix listed below */}
+              {passing != null ? <Text style={styles.note}>기준 {passing}점 · {score >= passing ? '넘었어요' : `${passing - score}점 모자라요`}</Text> : null}
             </View>
             {only ? (
               only.angles.length > 0 ? <View style={styles.inline}>{angles(only.angles)}</View> : null

@@ -42,8 +42,7 @@ export default function AAnalysisSample() {
         onDocs={nothing}
         state={shown}
         tier={{ left: 'ACTIVE까지 120점', name: 'BALANCE', stars: 2 }}
-        tierIndex={1}
-        who="worker-f"
+        characterId="quni"
       />
       <TotalAnalysisBottomSheet sheet={sheet} onClose={() => setSheet(null)} onOpenReference={openReference} />
     </>

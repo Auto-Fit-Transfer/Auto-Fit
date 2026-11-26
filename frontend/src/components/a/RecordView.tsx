@@ -107,7 +107,7 @@ export function RecordView(props: RecordViewProps) {
             <Headline lines={[[{ text: when }], [{ text: value, mark: true }, { text: ` ${VERBS[metric]}` }]]} />
             <View style={styles.aim}>
               <Text numberOfLines={2} style={styles.lead}>{left}</Text>
-              <Pressable accessibilityRole="link" hitSlop={8} onPress={props.onGoal}>
+              <Pressable accessibilityRole="link" hitSlop={14} onPress={props.onGoal}>
                 <Text style={styles.link}>{goal ? '목표 고치기' : '목표 정하기'}</Text>
               </Pressable>
             </View>
@@ -156,7 +156,7 @@ export function RecordView(props: RecordViewProps) {
             <View style={styles.head}>
               <Text style={styles.q}>{listTitle}</Text>
               {showAll ? (
-                <Pressable accessibilityRole="button" hitSlop={8} onPress={props.onAll}>
+                <Pressable accessibilityRole="button" hitSlop={14} onPress={props.onAll}>
                   <Text style={styles.link}>전체 보기</Text>
                 </Pressable>
               ) : null}
@@ -271,7 +271,7 @@ function createStyles({ colors }: AppTheme) {
     bar: { backgroundColor: colors.textPrimary, borderTopLeftRadius: 7, borderTopRightRadius: 7, width: 24 },
     barOff: { backgroundColor: colors.textDisabled },
     gline: { height: 2, left: 0, position: 'absolute', right: 0 },
-    gtag: { ...num, backgroundColor: colors.surface, bottom: 4, color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 11.5, paddingLeft: 4, position: 'absolute', right: 0 },
+    gtag: { ...num, backgroundColor: colors.surface, bottom: 4, color: colors.textSecondary, fontFamily: fontFamilies.pretendardMedium, fontSize: 12, paddingLeft: 4, position: 'absolute', right: 0 },
     labels: { flexDirection: 'row', marginTop: 6 },
     wd: { ...num, color: colors.textSecondary, flex: 1, fontFamily: fontFamilies.pretendardMedium, textAlign: 'center' },
     wdNow: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold },

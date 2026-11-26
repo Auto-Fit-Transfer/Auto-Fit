@@ -101,7 +101,7 @@ export function PapersView({
             <Pressable
               accessibilityLabel={`정렬 바꾸기, 지금은 ${newestFirst ? '최신순' : '오래된순'}`}
               accessibilityRole="button"
-              hitSlop={10}
+              hitSlop={14}
               onPress={onSort}
             >
               <Text style={styles.link}>{newestFirst ? '최신순' : '오래된순'}</Text>

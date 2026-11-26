@@ -177,7 +177,7 @@ function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     root: { backgroundColor: colors.background, flex: 1 },
-    content: { gap: 14, paddingHorizontal: 20 },
+    content: { gap: 16, paddingHorizontal: 24 },
     round: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 22, height: 44, justifyContent: 'center', width: 44 },
     head: { gap: 6, paddingTop: 4 },
     saved: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 20 },

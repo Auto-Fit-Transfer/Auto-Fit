@@ -158,7 +158,7 @@ function createStyles({ colors }: AppTheme) {
     spread: { alignItems: 'baseline', flexDirection: 'row', flexWrap: 'wrap', gap: 4, justifyContent: 'space-between' },
     big: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 36, lineHeight: 42 },
     level: { ...a.p12, color: colors.primaryText },
-    stars: { fontSize: 11, lineHeight: 14 },
+    stars: { fontSize: 12, lineHeight: 15 },
     bar: { backgroundColor: colors.surfaceMuted, borderRadius: 99, height: 16, overflow: 'hidden' },
     barFill: { backgroundColor: colors.primary, bottom: 0, left: 0, position: 'absolute', top: 0 },
 

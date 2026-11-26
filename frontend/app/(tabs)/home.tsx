@@ -171,18 +171,7 @@ export default function HomeScreen() {
         onPress: () => router.push('/exercise/history'),
       }
     : hasRoutine
-      ? {
-          label: '지금 할 일 하나',
-          title: routineTitle,
-          facts: [
-            routine.estimatedCalories ? `약 ${kcal(routine.estimatedCalories)}` : null,
-            routine.exercises.length ? `${routine.exercises.length}가지` : null,
-          ]
-            .filter(Boolean)
-            .join(' · '),
-          button: '시작',
-          onPress: () => router.push('/exercise'),
-        }
+      ? null // the routine card's 이대로 already leads there
       : {
           label: '지금 할 일 하나',
           title: '오늘 운동 정하기',
@@ -216,7 +205,6 @@ export default function HomeScreen() {
         : firstDay
           ? [[{ text: `반가워요, ${name} 님` }], [{ text: '오늘을 같이 시작해요' }]]
           : homeHeadline(name, hasRoutine ? routineTitle : null, exercisedToday, meal);
-  const picture = hasRoutine && !exercisedToday ? (routine.exercises[0]?.demoGifUrl ?? routine.exercises[0]?.thumbnailUrl ?? null) : null;
 
   return (
     <>
@@ -236,7 +224,7 @@ export default function HomeScreen() {
           </>
         }
         name={name}
-        now={{ ...now, picture: picture && /^https:[/][/]/i.test(picture) ? picture : null }}
+        now={now}
         onAsk={() => router.push('/chat')}
         onRetry={() => {
           load();

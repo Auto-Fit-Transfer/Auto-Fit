@@ -58,7 +58,7 @@ export function HelloView(props: HelloViewProps) {
         <View style={styles.top}>
           <AutofitWordmark accessibilityLabel="autofit" height={24} width={88} />
           {props.phase === 'open' ? (
-            <Pressable accessibilityRole="button" hitSlop={10} onPress={props.onLogin}>
+            <Pressable accessibilityRole="button" hitSlop={14} onPress={props.onLogin}>
               <Text style={styles.link}>로그인</Text>
             </Pressable>
           ) : null}
@@ -103,7 +103,7 @@ export function HelloView(props: HelloViewProps) {
                 <Text style={styles.exampleText}>{props.example}</Text>
               </Pressable>
             </View>
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={props.onPick} style={styles.center}>
+            <Pressable accessibilityRole="button" hitSlop={14} onPress={props.onPick} style={styles.center}>
               <Text style={styles.link}>직접 고를게요</Text>
             </Pressable>
           </View>
@@ -160,7 +160,7 @@ export function HelloView(props: HelloViewProps) {
             >
               <Text style={[styles.goText, !whole && styles.goOffText]}>맞아요</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={props.onAgain} style={styles.center}>
+            <Pressable accessibilityRole="button" hitSlop={14} onPress={props.onAgain} style={styles.center}>
               <Text style={styles.link}>{props.said ? '다시 말할게요' : '말로 할게요'}</Text>
             </Pressable>
           </View>
@@ -173,7 +173,7 @@ export function HelloView(props: HelloViewProps) {
             <Pressable accessibilityRole="button" onPress={props.onAccount} style={styles.go}>
               <Text style={styles.goText}>이메일로 계정 만들기</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={props.onBack} style={styles.center}>
+            <Pressable accessibilityRole="button" hitSlop={14} onPress={props.onBack} style={styles.center}>
               <Text style={styles.link}>준비한 것 다시 보기</Text>
             </Pressable>
           </View>

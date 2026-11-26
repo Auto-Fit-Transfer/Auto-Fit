@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { AccessibilityInfo, Animated, Easing, Image, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
+import { AccessibilityInfo, Animated, Easing, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import AutofitWordmark from '@/assets/icons/autofit-wordmark.svg';
@@ -18,7 +18,7 @@ import { Headline, type HeadlinePart } from './Headline';
 // A bolder candidate for renewal B's home (a test, not the home yet): the app speaks first, in the
 // headline, with what it set for today (a proposal, never an allowance like "N kcal more is fine");
 // each proposal in the black card takes one of three answers - take it as it is, meet halfway, or my
-// own way (the service's three, 11/26); the one thing to do now shows its first move; and the talk bar
+// own way (the service's three, 11/26); the one-thing card only when no proposal leads there; and the talk bar
 // stays at the foot of the screen, above the tab bar. Same parts as the other B screens.
 export interface HomeProposal {
   key: string;
@@ -36,8 +36,8 @@ export interface HomeBoldProps {
   proposals: HomeProposal[];
   // what it only recorded (no choice to make), one quiet line with a way to mend it
   recorded?: { text: string; action?: { label: string; onPress: () => void } } | null;
-  // picture: the first move's demo, so the one thing to do now is seen, not only read
-  now: { label: string; title: string; facts?: string; button: string; onPress: () => void; picture?: string | null };
+  // null while the routine card above already holds the way in (one door to one place)
+  now: { label: string; title: string; facts?: string; button: string; onPress: () => void } | null;
   week: { days: { key: string; label: string; done: boolean; today: boolean }[]; summary: string; onPress: () => void };
   tier?: { name: string; ratio: number; next?: string; onPress: () => void } | null;
   onAsk: () => void;
@@ -153,13 +153,9 @@ export function HomeBoldView({ characterId, by, plan, proposals, recorded, now, 
         </View>
         ) : null}
 
+        {now ? (
         <View style={styles.nowCard}>
           <View style={styles.nowRow}>
-            {now.picture ? (
-              <View style={styles.picture}>
-                <Image accessibilityLabel={`${now.title} 첫 동작 시범`} resizeMode="contain" source={{ uri: now.picture }} style={styles.pictureImage} />
-              </View>
-            ) : null}
             <View style={styles.grow}>
               <Text style={styles.small}>{now.label}</Text>
               <Text style={styles.nowTitle}>{now.title}</Text>
@@ -170,6 +166,7 @@ export function HomeBoldView({ characterId, by, plan, proposals, recorded, now, 
             </Pressable>
           </View>
         </View>
+        ) : null}
 
         <Pressable accessibilityRole="button" onPress={week.onPress} style={styles.weekCard}>
           <View style={styles.spread}>
@@ -242,8 +239,6 @@ function createStyles({ colors }: AppTheme) {
     didGoText: { color: colors.onAiMuted, fontFamily: fontFamilies.pretendardMedium, fontSize: 12.5, lineHeight: 18 },
     nowCard: { backgroundColor: colors.surface, borderRadius: 28, paddingHorizontal: 18, paddingVertical: 16 },
     // the first move's demo as a square at the left; the demo GIFs have white baked in
-    picture: { backgroundColor: '#FFFFFF', borderColor: colors.border, borderRadius: 18, borderWidth: 1, height: 64, overflow: 'hidden', width: 64 },
-    pictureImage: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
     nowRow: { alignItems: 'center', flexDirection: 'row', gap: 12 },
     small: { color: colors.textSecondary, fontSize: 12.5, lineHeight: 18 },
     nowTitle: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 29 },

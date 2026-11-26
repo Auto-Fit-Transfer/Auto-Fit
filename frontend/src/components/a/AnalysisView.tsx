@@ -14,15 +14,15 @@ import { ScreenHeader } from '@/src/components/common/ScreenHeader';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 import { aForm } from './form';
-import { HeroHead, type Who } from './sprites';
+import { ChatCharacterAvatar } from '@/src/components/chat/ChatCharacterAvatar';
+import type { ChatCharacterId } from '@/src/features/chat/chatCharacters';
 
 // Renewal A's 종합 건강 분석: what the analysis says in one line by my character, my health score, my
 // goal and what is suggested for it in one card, then the numbers behind it and their sources folded
 // away, and the two ways on (식단, 운동) as one row of buttons. There is no design file for this screen;
 // it follows the report's layout. A view that only shows what it is given.
 export interface AnalysisViewProps {
-  who: Who;
-  tierIndex: number;
+  characterId: ChatCharacterId; // B: the chosen 물어보기 character says the lead line, as on the home and report
   card: ScoreCard | null; // null while it is read
   delta: number | null;
   message: string | null; // what the server says about the change in score
@@ -43,7 +43,7 @@ export interface AnalysisViewProps {
 }
 
 export function AnalysisView(props: AnalysisViewProps) {
-  const { who, tierIndex, card, message, tier, state, error, data } = props;
+  const { characterId, card, message, tier, state, error, data } = props;
   // only a finished overall score has a change, a bar and a tier beside it (back-end d5b96a9a)
   const overall = card?.kind === 'overall';
   const score = card?.kind === 'overall' || card?.kind === 'partial' ? card.score : null;
@@ -66,7 +66,7 @@ export function AnalysisView(props: AnalysisViewProps) {
         {say ? (
           <View style={styles.ask}>
             <View style={styles.face}>
-              <HeroHead tier={tierIndex} who={who} />
+              <ChatCharacterAvatar characterId={characterId} size={26} />
             </View>
             <View style={styles.say}>
               <Text style={styles.strong}>{say}</Text>
@@ -254,8 +254,8 @@ function createStyles({ colors }: AppTheme) {
     sunk: { transform: [{ translateY: 3 }] },
 
     ask: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-    face: { ...outline, alignItems: 'center', backgroundColor: colors.surfaceMuted, borderRadius: 11, height: 40, justifyContent: 'center', width: 40 },
-    say: { ...outline, backgroundColor: colors.surface, borderRadius: 14, flex: 1, paddingHorizontal: 14, paddingVertical: 10 },
+    face: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 20, height: 40, justifyContent: 'center', overflow: 'hidden', width: 40 },
+    say: { backgroundColor: colors.surface, borderRadius: 18, flex: 1, paddingHorizontal: 16, paddingVertical: 12 },
 
     scoreCard: { gap: 10, padding: 16 },
     scoreRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
@@ -268,7 +268,7 @@ function createStyles({ colors }: AppTheme) {
     bar: { ...outline, backgroundColor: colors.surfaceMuted, borderRadius: 99, height: 16, overflow: 'hidden' },
     barFill: { backgroundColor: colors.primary, bottom: 0, left: 0, position: 'absolute', top: 0 },
     tierRow: { alignItems: 'center', borderTopColor: colors.surfaceMuted, borderTopWidth: 2, flexDirection: 'row', gap: 10, marginTop: 2, paddingTop: 12 },
-    stars: { fontSize: 11, lineHeight: 14 },
+    stars: { fontSize: 12, lineHeight: 15 },
     mini: { ...a.mini, marginBottom: 3 },
     miniText: a.miniText,
 

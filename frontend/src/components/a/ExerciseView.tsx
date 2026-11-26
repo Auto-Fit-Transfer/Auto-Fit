@@ -124,7 +124,7 @@ export function ExerciseView({ who, tierIndex, kinds, say, plan, main, links, mo
         {links.length > 0 ? (
           <View style={styles.under}>
             {links.map((link) => (
-              <Pressable key={link.label} accessibilityRole="button" hitSlop={8} onPress={link.onPress}>
+              <Pressable key={link.label} accessibilityRole="button" hitSlop={14} onPress={link.onPress}>
                 <Text style={styles.link}>{link.label}</Text>
               </Pressable>
             ))}

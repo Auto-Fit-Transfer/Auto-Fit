@@ -259,7 +259,7 @@ function Spark({ values }: { values: number[] }) {
 function createStyles({ colors }: AppTheme) {
   return {
     root: { backgroundColor: colors.background, flex: 1 },
-    content: { gap: 14, paddingHorizontal: 24, width: '100%' },
+    content: { gap: 16, paddingHorizontal: 24, width: '100%' },
     top: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 44 },
     back: { alignItems: 'center', height: 44, justifyContent: 'center', marginLeft: -10, width: 44 },
     topTitle: { color: colors.textPrimary, flex: 1, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 17, lineHeight: 24 },

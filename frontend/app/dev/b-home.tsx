@@ -18,7 +18,6 @@ const tabBar = {
 } as unknown as ComponentProps<typeof BottomNavigation>;
 const nothing = () => undefined;
 // A grey stand-in where the first move's demo goes (the purchased demos are not put in sample pages).
-const DEMO = `data:image/svg+xml;base64,${btoa('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450"><rect width="800" height="450" fill="#FFFFFF"/><circle cx="400" cy="150" r="52" fill="#D9DCE6"/><rect x="300" y="225" width="200" height="150" rx="44" fill="#D9DCE6"/></svg>')}`;
 
 export default function BHomeSample() {
   const { who, state } = useLocalSearchParams<{ who?: string; state?: string }>();
@@ -55,7 +54,7 @@ export default function BHomeSample() {
             ? { label: '오늘 할 일 끝', title: '오늘 운동 8분', facts: '약 30kcal', button: '기록 보기', onPress: nothing }
             : first
               ? { label: '지금 할 일 하나', title: '오늘 운동 정하기', facts: '시간과 장소만 고르면 짜 드려요', button: '시작', onPress: nothing }
-              : { label: '지금 할 일 하나', title: '코어 루틴 8분', facts: '약 30kcal · 3가지', button: '시작', onPress: nothing, picture: DEMO }
+              : null
         }
         onAsk={nothing}
         onRetry={nothing}

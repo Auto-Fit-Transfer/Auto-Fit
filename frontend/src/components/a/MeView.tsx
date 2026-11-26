@@ -151,7 +151,7 @@ function createStyles({ colors }: AppTheme) {
     name: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardExtraBold, fontSize: 22, lineHeight: 26 },
     level: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 6 },
     levelText: { ...a.p12, color: colors.primaryText },
-    stars: { fontSize: 11, lineHeight: 14 },
+    stars: { fontSize: 12, lineHeight: 15 },
     mini: a.mini,
     miniText: a.miniText,
     notice: { ...a.p12, color: colors.danger, marginTop: 10, paddingHorizontal: 2 },

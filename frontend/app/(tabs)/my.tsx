@@ -115,6 +115,13 @@ export default function MyScreen() {
         notice={failed ? '프로필을 불러오지 못했어요' : null}
         onTier={() => router.push('/tier')}
         rows={[
+          // the tier as its own row, where it reads and is easy to press (the name line above is small)
+          {
+            key: 'tier',
+            label: '티어',
+            value: tier ? `${tier.name} ${tier.stars}${tier.left === tier.name ? '' : ` · ${tier.left} 남음`}` : '',
+            onPress: () => router.push('/tier'),
+          },
           { key: 'profile', label: '프로필', onPress: () => router.push('/profile') },
           {
             key: 'community',

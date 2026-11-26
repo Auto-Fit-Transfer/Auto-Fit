@@ -169,11 +169,11 @@ export function WorkoutDoneView(props: WorkoutDoneProps) {
           <Text style={[styles.goText, button.disabled && styles.offText]}>{button.label}</Text>
         </Pressable>
         <View style={styles.under}>
-          <Pressable accessibilityRole="link" hitSlop={10} onPress={props.onHistory}>
+          <Pressable accessibilityRole="link" hitSlop={14} onPress={props.onHistory}>
             <Text style={styles.link}>운동 기록</Text>
           </Pressable>
           {props.onShare ? (
-            <Pressable accessibilityRole="link" hitSlop={10} onPress={props.onShare}>
+            <Pressable accessibilityRole="link" hitSlop={14} onPress={props.onShare}>
               <Text style={styles.link}>커뮤니티에 공유</Text>
             </Pressable>
           ) : null}

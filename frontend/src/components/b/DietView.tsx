@@ -252,7 +252,7 @@ export function DietView(props: R6DietHomeProps & {
             (overBy ?? 0) > 0 ? (
               <View style={styles.overRow}>
                 <Text style={styles.overText}>
-                  목표보다 {number(overBy)}kcal 더 먹었어요{props.burned ? ` (운동 ${number(props.burned)}kcal 빼고)` : ''}
+                  목표보다 {number(overBy)}kcal 더 먹었어요{props.burned ? ` (운동\u00A0${number(props.burned)}kcal\u00A0빼고)` : ''}
                 </Text>
                 <Pressable accessibilityRole="button" onPress={props.onAdjust} style={styles.actionMain}>
                   <Text style={styles.actionMainText}>내일 맞추기</Text>
@@ -267,7 +267,7 @@ export function DietView(props: R6DietHomeProps & {
               <Text style={styles.retry}>{props.nutritionError} · 다시 시도</Text>
             </Pressable>
           ) : null}
-          <Pressable accessibilityRole="button" hitSlop={8} onPress={props.onOpenProteinGuide} style={styles.linkRight}>
+          <Pressable accessibilityRole="button" hitSlop={14} onPress={props.onOpenProteinGuide} style={styles.linkRight}>
             <Text style={styles.link}>단백질 가이드</Text>
             <CaretRightIcon color={colors.textPrimary} height={14} width={14} />
           </Pressable>
@@ -302,7 +302,7 @@ export function DietView(props: R6DietHomeProps & {
                 <Text style={styles.actionText}>{menuStyleLabel(props.menuStyle)}</Text>
               </Pressable>
             ) : null}
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={props.onOpenWeekly} style={styles.linkInline}>
+            <Pressable accessibilityRole="button" hitSlop={14} onPress={props.onOpenWeekly} style={styles.linkInline}>
               <Text style={styles.link}>7일 식단</Text>
               <CaretRightIcon color={colors.textPrimary} height={14} width={14} />
             </Pressable>
@@ -517,13 +517,13 @@ function createStyles({ colors }: AppTheme) {
     col: { alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
     bar: { backgroundColor: colors.surfaceMuted, borderTopLeftRadius: 6, borderTopRightRadius: 6, width: 18 },
     barOn: { backgroundColor: colors.textPrimary },
-    barNumber: { backgroundColor: colors.surface, color: colors.textSecondary, fontSize: 10, lineHeight: 14, paddingHorizontal: 2 },
+    barNumber: { backgroundColor: colors.surface, color: colors.textSecondary, fontSize: 12, lineHeight: 16, paddingHorizontal: 2 },
     goalLine: { left: 0, position: 'absolute', right: 0 },
     barLabels: { flexDirection: 'row' },
     barLabel: { flex: 1, textAlign: 'center' },
     barLabelNow: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     day: { alignItems: 'center', gap: 4, minWidth: 36 },
-    dayName: { color: colors.textSecondary, fontSize: 11.5, lineHeight: 16 },
+    dayName: { color: colors.textSecondary, fontSize: 12, lineHeight: 16 },
     dayDot: {
       alignItems: 'center',
       backgroundColor: colors.surface,

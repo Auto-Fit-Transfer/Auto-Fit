@@ -9,7 +9,7 @@ import { R6ConnectionError } from '@/src/components/common/R6ConnectionError';
 // ?state=talk | adjust | adjusted | wait | fail | long | loading | lost | broken | tone   ?who=…  ?tier=0…4
 const nothing = () => undefined;
 const score: AskLine[] = [
-  { key: 'q1', mine: '내 건강 점수를 알려줘' },
+  { key: 'q1', mine: '내 건강 점수를 알려 줘' },
   { key: 'a1', answer: '좋아요, 같이 살펴볼게요.\n지금 건강 점수는 78점이에요. 지난주보다 2점 올랐어요. 체중이 4주 동안 1.6kg 줄어든 것이 가장 크게 들어갔어요.' },
 ];
 const light = (card: AskLine['card'], note?: string): AskLine[] => [
@@ -21,7 +21,7 @@ export default function AAskSample() {
   const params = useLocalSearchParams<{ state?: string; who?: string; tier?: string }>();
   const who = whoList.includes(params.who as Who) ? (params.who as Who) : 'worker-f';
   const tier = Math.min(4, Math.max(0, Number(params.tier ?? 1) || 0));
-  const [draft, setDraft] = useState(params.state === 'fail' ? '운동 기록 알려줘' : '');
+  const [draft, setDraft] = useState(params.state === 'fail' ? '운동 기록 알려 줘' : '');
   const [tone, setTone] = useState('quni');
   const [toneOpen, setToneOpen] = useState(params.state === 'tone');
   const tones = [
@@ -40,7 +40,7 @@ export default function AAskSample() {
           : params.state === 'wait'
             ? [score[0]]
             : params.state === 'fail'
-              ? [{ key: 'q0', mine: '운동 기록 알려줘' }]
+              ? [{ key: 'q0', mine: '운동 기록 알려 줘' }]
               : params.state === 'long'
                 ? [...score, ...light(open)]
                 : [];
@@ -62,7 +62,7 @@ export default function AAskSample() {
       onDraft={setDraft}
       onSend={nothing}
       onTone={() => setToneOpen(true)}
-      prompts={['운동 기록 알려줘', '내 건강 점수를 알려줘', '무엇부터 개선해야 해?', '오늘 운동 가볍게 해 줘']}
+      prompts={['운동 기록 알려 줘', '내 건강 점수를 알려 줘', '무엇부터 개선해야 해?', '오늘 운동 가볍게 해 줘']}
       tier={tier}
       tone={tones.find((item) => item.id === tone)?.name ?? ''}
       waiting={params.state === 'wait'}

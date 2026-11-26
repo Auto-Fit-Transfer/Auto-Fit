@@ -417,7 +417,7 @@ function createSStyles({ colors }: AppTheme) {
     setItem: { flex: 1, gap: 5, minWidth: 0 },
     setTrack: { backgroundColor: colors.surfaceMuted, borderRadius: 3, height: 5, overflow: 'hidden' },
     setFill: { backgroundColor: colors.textPrimary, height: '100%' },
-    setLabel: { color: colors.textSecondary, fontSize: 11.5, fontVariant: TABULAR, lineHeight: 16 },
+    setLabel: { color: colors.textSecondary, fontSize: 12, fontVariant: TABULAR, lineHeight: 16 },
     setLabelNow: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold },
     skip: { alignItems: 'center', alignSelf: 'center', justifyContent: 'center', minHeight: 36 },
     skipText: { ...a.link, color: colors.textSecondary },

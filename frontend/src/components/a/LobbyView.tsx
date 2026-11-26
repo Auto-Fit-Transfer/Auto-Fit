@@ -351,7 +351,7 @@ function createStyles({ colors }: AppTheme) {
     name: { ...p15, color: colors.textPrimary, lineHeight: 18 },
     level: { alignItems: 'center', flexDirection: 'row', gap: 6 },
     levelText: { ...p12, color: colors.primaryText },
-    stars: { fontSize: 11, lineHeight: 14 },
+    stars: { fontSize: 12, lineHeight: 15 },
     bell: { alignItems: 'center', flexDirection: 'row', gap: 8, position: 'absolute', right: 16 },
     steps: { alignItems: 'center', borderRadius: 99, flexDirection: 'row', gap: 4, height: 40, paddingLeft: 4, paddingRight: 12 },
 

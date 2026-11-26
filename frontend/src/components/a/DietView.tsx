@@ -109,7 +109,7 @@ export function DietView(props: R6DietHomeProps & {
           </Text>
           {/* the quest "세 끼 기록" (a-diet.html): a mark for each of the three meals recorded that day */}
           <View accessibilityLabel={`세 끼 기록 ${mains} / 3`} accessible style={styles.mains}>
-            <Text style={styles.mainsLabel}>세 끼 기록</Text>
+            <Text style={styles.mainsLabel}>세 끼 중 {mains}끼 기록</Text>
             {[0, 1, 2].map((index) => (
               <View key={index} style={[styles.pip, index < mains && styles.pipOn]} />
             ))}
@@ -185,7 +185,7 @@ export function DietView(props: R6DietHomeProps & {
             <Text style={styles.small}>
               {planned > 0 ? `예정 ${number(planned)}kcal` : eaten != null && target ? `목표의 ${Math.round((eaten / target) * 100)}%` : ''}
             </Text>
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={props.onOpenProteinGuide}>
+            <Pressable accessibilityRole="button" hitSlop={14} onPress={props.onOpenProteinGuide}>
               <Text style={styles.link}>단백질 가이드</Text>
             </Pressable>
           </View>
@@ -206,7 +206,7 @@ export function DietView(props: R6DietHomeProps & {
             (overBy ?? 0) > 0 ? (
               <View style={[styles.spread, styles.over]}>
                 <Text style={[styles.body, styles.grow]}>
-                  목표보다 {number(overBy)}kcal 더 먹었어요{props.burned ? ` (운동 ${number(props.burned)}kcal 빼고)` : ''}
+                  목표보다 {number(overBy)}kcal 더 먹었어요{props.burned ? ` (운동\u00A0${number(props.burned)}kcal\u00A0빼고)` : ''}
                 </Text>
                 <Pressable accessibilityRole="button" onPress={props.onAdjust} style={({ pressed }) => [styles.mini, pressed && styles.pressedSoft]}>
                   <Text style={[styles.small, styles.miniText]}>내일 맞추기</Text>
@@ -444,7 +444,7 @@ function createStyles({ colors }: AppTheme) {
     plot: { borderBottomColor: colors.textPrimary, borderBottomWidth: 2, flexDirection: 'row', height: PLOT + 20 },
     col: { alignItems: 'center', flex: 1, justifyContent: 'flex-end' },
     // the number sits over the goal line on a white ground, as in the prototype
-    n: { ...p12, backgroundColor: colors.surface, color: colors.textPrimary, fontSize: 11, marginBottom: 2, paddingHorizontal: 2, zIndex: 1 },
+    n: { ...p12, backgroundColor: colors.surface, color: colors.textPrimary, fontSize: 12, marginBottom: 2, paddingHorizontal: 2, zIndex: 1 },
     weekBar: { backgroundColor: colors.surfaceMuted, borderBottomWidth: 0, borderTopLeftRadius: 4, borderTopRightRadius: 4, width: 20 },
     // the day on show is violet, like the chosen date above
     weekBarOn: { backgroundColor: colors.primary },

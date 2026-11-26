@@ -49,6 +49,9 @@ export interface TomorrowSheetProps {
 const number = (value: number | null) => (value == null ? '—' : Math.round(value).toLocaleString('ko-KR'));
 
 
+// a dish's own words stay on one line ("잡곡밥 반 공기"); the line may break only between dishes
+const whole = (menu: string) => menu.split(' · ').map((dish) => dish.replace(/ /g, '\u00A0')).join(' · ');
+
 export function TomorrowSheet({ visible, over, eaten, target, burned, state, tomorrow, plan, error, onClose, onRetry, onSave, onCheat, onAdjust, onPick }: TomorrowSheetProps) {
   const styles = useThemedStyles(createStyles);
   const { colors } = useAppTheme();
@@ -116,7 +119,7 @@ export function TomorrowSheet({ visible, over, eaten, target, burned, state, tom
                     >
                       <View style={[styles.tick, on && styles.tickOn]}>{on ? <CheckIcon color={colors.onPrimary} height={16} width={16} /> : null}</View>
                       <Text style={styles.slot}>{meal.slot}</Text>
-                      <Text numberOfLines={2} style={[styles.body, styles.grow]}>{meal.menu}</Text>
+                      <Text numberOfLines={2} style={[styles.body, styles.grow]}>{whole(meal.menu)}</Text>
                       <Text style={styles.kcal}>{on ? `−${number(cutOf(meal.slot))}` : number(meal.kcal)}</Text>
                     </Pressable>
                   );
@@ -152,7 +155,7 @@ export function TomorrowSheet({ visible, over, eaten, target, burned, state, tom
               {plan.meals.map((meal, index) => (
                 <View key={`${meal.slot}-${index}`} style={[styles.row, index > 0 && styles.line]}>
                   <Text style={styles.slot}>{meal.slot}</Text>
-                  <Text numberOfLines={2} style={[styles.body, styles.grow]}>{meal.menu}</Text>
+                  <Text numberOfLines={2} style={[styles.body, styles.grow]}>{whole(meal.menu)}</Text>
                   {meal.changed ? <Text style={styles.tag}>바뀜</Text> : null}
                   <Text style={styles.kcal}>{number(meal.kcal)}</Text>
                 </View>
@@ -167,7 +170,7 @@ export function TomorrowSheet({ visible, over, eaten, target, burned, state, tom
             </View>
             {plan.cut != null ? (
               <Text style={styles.body}>
-                {number(plan.cut)}kcal 줄였어요.{plan.left ? ` ${number(plan.left)}kcal는 줄이지 않았어요(한 끼는 15%까지만 줄여요).` : ''}
+                {number(plan.cut)}kcal 줄였어요{plan.left ? ` · ${number(plan.left)}kcal는 그대로예요` : ''}
               </Text>
             ) : null}
             {plan.failed ? <Text style={styles.body}>{plan.failed}끼는 맞는 메뉴를 못 찾아 그대로 둬요.</Text> : null}

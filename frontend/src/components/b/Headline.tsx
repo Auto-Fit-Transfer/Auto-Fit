@@ -18,7 +18,7 @@ export function Headline({ lines }: { lines: HeadlinePart[][] }) {
         <View key={index} style={styles.line}>
           {line.map((part, at) =>
             part.mark ? (
-              <View key={at} style={styles.mark}>
+              <View key={at} style={[styles.mark, at === 0 && styles.markFirst]}>
                 <Text style={[styles.text, styles.markText]}>{part.text}</Text>
               </View>
             ) : (
@@ -43,7 +43,10 @@ function createStyles({ colors }: AppTheme) {
       letterSpacing: -0.6,
       lineHeight: 40,
     },
-    mark: { backgroundColor: colors.lilac, borderRadius: 8, paddingHorizontal: 6 },
+    // the lilac sticks out past the letters, so the letters line up with the line above (markFirst) and the
+    // particle after it ("과", "로") sits as close as the next letter would
+    mark: { backgroundColor: colors.lilac, borderRadius: 8, paddingLeft: 6, paddingRight: 2 },
+    markFirst: { marginLeft: -6 },
     markText: { color: '#010101' },
   } as const;
 }

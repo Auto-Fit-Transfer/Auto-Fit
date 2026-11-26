@@ -268,7 +268,7 @@ export function WhoSheet({
 function createStyles({ colors }: AppTheme) {
   const b14 = { fontFamily: fontFamilies.pretendardBold, fontSize: 14, lineHeight: 20 } as const;
   return {
-    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, paddingHorizontal: 20, width: '100%' },
+    root: { alignSelf: 'center', backgroundColor: colors.background, flex: 1, maxWidth: 480, paddingHorizontal: 24, width: '100%' },
     grow: { flex: 1, minWidth: 0 },
     center: { flex: 1, justifyContent: 'center' },
     bar: { alignItems: 'center', flexDirection: 'row', height: 52 },

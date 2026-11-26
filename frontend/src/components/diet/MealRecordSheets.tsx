@@ -1520,7 +1520,8 @@ function createStyles({ colors }: AppTheme) {
     processingDot: { backgroundColor: colors.primary, borderRadius: 2, height: 3, position: 'absolute', width: 3 },
     waitNotice: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, flexDirection: 'row', gap: 6, minHeight: 38, justifyContent: 'center', marginTop: 12, width: '100%' },
     waitNoticeText: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardRegular, fontSize: 15 },
-    reviewContent: { flex: 1, justifyContent: 'space-between' },
+    // one group, the button right under the numbers (spread over the height it left big empty gaps)
+    reviewContent: { flex: 1, gap: 24 },
     reviewFoodGroup: { gap: 10 },
     reviewCta: {  },
     recognizedCard: { backgroundColor: colors.surface, borderRadius: 12, height: 220, padding: 15 },

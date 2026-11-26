@@ -31,6 +31,7 @@ export default function BMeSample() {
       name="지원"
       onTier={nothing}
       rows={[
+        { key: 'tier', label: '티어', value: 'BALANCE 2 · 120점 남음', onPress: nothing },
         { key: 'profile', label: '프로필', onPress: nothing },
         { key: 'community', label: '커뮤니티 활동', value: '글 2 · 팔로워 34', onPress: nothing },
         { key: 'notice', label: '알림', value: '모두 꺼짐', onPress: nothing },
