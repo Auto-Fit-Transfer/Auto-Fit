@@ -33,7 +33,7 @@ import {
 import { AppDialog, Text, TextInput } from '@/src/components/common';
 import { emitCommunityEvent } from '@/src/features/community/communityEvents';
 import { useCommunityActions } from '@/src/features/community/useCommunityActions';
-import { fontFamilies, spacing, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
 
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 const CATEGORIES: { key: CommunityPostCategory; label: string }[] = [
@@ -213,7 +213,7 @@ export default function CommunityComposeScreen() {
         <Pressable hitSlop={{ bottom: 5, top: 5 }} accessibilityRole="button" onPress={() => void saveDraft()} style={styles.draftButton}><Text style={styles.draftText}>임시저장</Text></Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.body, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]} keyboardShouldPersistTaps="handled">
         <Text style={styles.fieldLabel}>분류</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryRow}>
           {CATEGORIES.map((item) => <Pressable hitSlop={{ bottom: 3, top: 3 }} key={item.key} accessibilityRole="button" accessibilityState={{ selected: category === item.key }} onPress={() => setCategory(item.key)} style={[styles.categoryChip, category === item.key && styles.categorySelected]}><Text style={[styles.categoryText, category === item.key && styles.categoryTextSelected]}>{item.label}</Text></Pressable>)}
@@ -299,6 +299,18 @@ export default function CommunityComposeScreen() {
           사진의 촬영 위치 정보는 자동으로 지워져요. 검진 결과지처럼 이름이나 개인정보가 보이는
           사진은 올리지 않도록 주의해 주세요. 커뮤니티 글은 의학적 조언이 아니에요.
         </Text>
+        {/* the button right under the last line, not pinned to the foot with an empty gap above it (11/26 check) */}
+        <View style={styles.bottom}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSubmit || progress !== null }}
+            disabled={!canSubmit || progress !== null}
+            onPress={() => void submit()}
+            style={({ pressed }) => [styles.post, (!canSubmit || progress !== null) && styles.postDisabled, pressed && styles.postPressed]}
+          >
+            <Text style={[styles.postText, (!canSubmit || progress !== null) && styles.disabledText]}>올리기</Text>
+          </Pressable>
+        </View>
       </ScrollView>
 
       {progress ? (
@@ -306,18 +318,6 @@ export default function CommunityComposeScreen() {
           <Text style={styles.progressText}>{progress}…</Text>
         </View>
       ) : null}
-
-      <View style={[styles.bottom, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canSubmit || progress !== null }}
-          disabled={!canSubmit || progress !== null}
-          onPress={() => void submit()}
-          style={({ pressed }) => [styles.post, (!canSubmit || progress !== null) && styles.postDisabled, pressed && styles.postPressed]}
-        >
-          <Text style={[styles.postText, (!canSubmit || progress !== null) && styles.disabledText]}>올리기</Text>
-        </Pressable>
-      </View>
 
       <AppDialog
         cancelText="계속 쓰기"
@@ -391,7 +391,7 @@ function createStyles({ colors }: AppTheme) {
     addPhoto: { alignItems: 'center', backgroundColor: colors.surface, gap: 2, justifyContent: 'center' },
     addPhotoText: a.note,
     notice: a.note,
-    bottom: { paddingHorizontal: 20, paddingTop: 10 },
+    bottom: { paddingTop: 6 },
     progress: { alignItems: 'center', backgroundColor: colors.surfaceMuted, paddingVertical: 8 },
     progressText: { ...a.p15, color: colors.textPrimary },
   } as const;
