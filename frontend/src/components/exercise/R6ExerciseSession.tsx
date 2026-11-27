@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   type FontVariant,
@@ -22,7 +22,7 @@ import XIcon from '@/assets/icons/ui/x.svg';
 import { discomfortFeelings as feelings } from '@/src/features/exercise/discomfortFeelings';
 import type { ExerciseSessionExercise, ExerciseSessionState } from '@/src/features/exercise/ExerciseSessionContext';
 import tips from '@/src/features/exercise/exerciseTips.json';
-import { halfTip, setTip, type TipLines } from '@/src/features/exercise/exerciseTips';
+import { guideLines, halfTip, setTip, type TipLines } from '@/src/features/exercise/exerciseTips';
 import { defaultVoiceGuideSettings, loadVoiceGuideSettings, saveVoiceGuideSettings, guideTalking, speakGuide, stopGuide, type VoiceGuideSettings } from '@/src/features/exercise/voiceGuide';
 import { msToFirstMinute } from '@/src/features/exercise/savedRoutine';
 import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
@@ -95,6 +95,18 @@ export function R6ExerciseSession({
     void loadVoiceGuideSettings().then((value) => { if (active) setVoice(value); });
     return () => { active = false; stopGuide(); };
   }, []);
+  // what may be said for this move (the server's v4 verdict); when the key, the GIF or a line changes, the
+  // queued speech is dropped and the move starts again from its name
+  const { exerciseKey, voiceGuide, voiceGuideStatus } = exercise;
+  const lines = useMemo(() => guideLines({ exerciseKey, voiceGuide, voiceGuideStatus }, tips as Record<string, TipLines>), [exerciseKey, voiceGuide, voiceGuideStatus]);
+  const guideId = [exercise.exerciseKey, exercise.demoAssetId, ...(lines ?? [])].join('|');
+  const lastGuide = useRef(guideId);
+  useEffect(() => {
+    if (lastGuide.current === guideId) return;
+    lastGuide.current = guideId;
+    stopGuide();
+    lastSpoken.current = '';
+  }, [guideId]);
   useEffect(() => {
     if (resting) return;
     if (!voice.enabled || session.paused || voiceOpen || sheetOpen) { stopGuide(); return; }
@@ -102,14 +114,15 @@ export function R6ExerciseSession({
     if (key === lastSpoken.current) return;
     const newExercise = !lastSpoken.current || !lastSpoken.current.startsWith(`${session.currentExerciseIndex}:`);
     lastSpoken.current = key;
-    const tip = setTip(exercise.exerciseKey ? (tips as Record<string, TipLines>)[exercise.exerciseKey] : undefined, session.currentSet, exercise.sets);
-    if (newExercise) speakGuide(`${exercise.name}. ${tip ?? exercise.instruction ?? ''}`, voice);
+    const tip = setTip(lines, session.currentSet, exercise.sets);
+    // only the name when nothing may be said: never the recommendation's instruction in place of a guide
+    if (newExercise) speakGuide(tip ? `${exercise.name}. ${tip}` : `${exercise.name}.`, voice);
     else if (session.currentRep === 0) { if (tip) speakGuide(tip, voice); }
     else if (voice.countReps && exercise.mode === 'reps') speakGuide(`${session.currentRep}회`, voice, true);
-  }, [exercise.name, exercise.instruction, exercise.exerciseKey, exercise.sets, exercise.mode, resting, session.currentExerciseIndex, session.currentSet, session.currentRep, session.paused, voice, voiceOpen, sheetOpen]);
+  }, [exercise.name, lines, exercise.sets, exercise.mode, resting, session.currentExerciseIndex, session.currentSet, session.currentRep, session.paused, voice, voiceOpen, sheetOpen]);
   // A one-set move's feel line, once, halfway through the set (a timed set of 20 s or more, or 6 reps or more);
   // it waits while the opening sentence is still being said, and is not said once the set is over.
-  const half = session.currentSet === 1 ? halfTip(exercise.exerciseKey ? (tips as Record<string, TipLines>)[exercise.exerciseKey] : undefined, exercise.sets) : null;
+  const half = session.currentSet === 1 ? halfTip(lines, exercise.sets) : null;
   const halfway = half !== null && (exercise.mode === 'reps'
     ? (exercise.targetRepetitions ?? 0) >= 6 && session.currentRep >= Math.ceil((exercise.targetRepetitions ?? 0) / 2)
     : (exercise.targetSeconds ?? 0) >= 20 && session.setRemainingMs > 0 && session.setRemainingMs <= (exercise.targetSeconds ?? 0) * 500);

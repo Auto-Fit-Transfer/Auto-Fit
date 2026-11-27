@@ -38,6 +38,7 @@ import {
   type ExerciseRoutine,
 } from './exerciseData';
 import { mapPersistedExerciseCondition } from './exerciseCondition';
+import { readVoiceGuide, readVoiceGuideStatus } from './exerciseTips';
 import { recordedItemIds } from './savedRoutine';
 
 type ApiRecord = Record<string, unknown>;
@@ -197,6 +198,9 @@ function mapExerciseItems(result: ApiRecord): ExerciseItem[] {
         targetDurationSeconds: readNumber(item, ['target_duration_seconds']),
         targetWeightKg: readNumber(item, ['target_weight_kg']),
         thumbnailUrl: readString(item, ['thumbnail_url']),
+        demoAssetId: readString(item, ['demo_asset_id']),
+        voiceGuideStatus: readVoiceGuideStatus(item),
+        voiceGuide: readVoiceGuide(item),
       };
       return [{ ...mappedItem, prescription: formatPrescription(mappedItem) }];
     })
