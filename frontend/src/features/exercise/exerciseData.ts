@@ -33,7 +33,13 @@ export interface ExerciseItem {
   targetDurationSeconds: number | null;
   targetWeightKg: number | null;
   thumbnailUrl: string | null;
+  // the server's v4 voice guide verdict for the GIF it chose (docs/exercise-voice-guide-v4-contract-20261127.md)
+  demoAssetId?: string | null;
+  voiceGuideStatus?: VoiceGuideStatus | null;
+  voiceGuide?: { method: string; caution: string; focus: string } | null;
 }
+
+export type VoiceGuideStatus = 'ready' | 'blocked_audio' | 'unavailable' | 'legacy';
 
 export interface ExercisePlanSession {
   id: string;
