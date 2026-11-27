@@ -42,7 +42,7 @@ export default function SignUpStep2Screen() {
     const token = digits.join('');
     if (!email) {
       Alert.alert('이메일 정보가 없습니다', '이메일을 다시 입력해 주세요.');
-      router.replace('/signup/step1');
+      router.replace({ pathname: '/signup/step1', params: flow === 'b' ? { flow: 'b' } : {} });
       return;
     }
     if (token.length !== verificationCodeLength) {

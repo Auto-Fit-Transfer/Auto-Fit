@@ -9,7 +9,7 @@ import {
   saveProfile,
   saveTargetWeight,
 } from '@/src/api/onboarding';
-import { AuthTextField } from '@/src/components/auth/AuthRedesign';
+import { AskCard, AskChip, AskField, AskRow } from '@/src/components/b/AskCard';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import { useSignup, type SignupExerciseGoal } from '@/src/features/signup/SignupContext';
 import { goalType } from '@/src/features/signup/goalType';
@@ -100,7 +100,7 @@ export default function SignUpStep5Screen() {
     }
     if (!isPostLogin && (!draft.name || !draft.birthDate || !draft.gender)) {
       Alert.alert('회원가입 정보가 없습니다', '기본 정보부터 다시 입력해 주세요.');
-      router.replace('/signup/step1');
+      router.replace('/login'); // renewal B starts sign-up with the one sentence
       return;
     }
     inFlight.current = true;
@@ -146,103 +146,60 @@ export default function SignUpStep5Screen() {
           <Text style={styles.laterText}>나중에 정할래요</Text>
         </Pressable>
       }
-      heading={goalNames[draft.exerciseGoal] ? `${goalNames[draft.exerciseGoal]},\n조금만 더 알려 주세요` : undefined}
+      headline={goalNames[draft.exerciseGoal]
+        ? [[{ text: goalNames[draft.exerciseGoal] ?? '', mark: true }, { text: ',' }], [{ text: '조금만 더 알려 주세요' }]]
+        : [[{ text: '목표를 ' }, { text: '조금만 더', mark: true }], [{ text: '알려 주세요' }]]}
       onBack={() => router.back()}
       onContinue={() => void finish()}
     >
-      <View style={styles.form}>
-        <View style={styles.pair}>
-          <AuthTextField
-            accessibilityLabel="키"
-            containerStyle={styles.grow}
-            keyboardType="decimal-pad"
-            label="키"
-            maxLength={5}
-            onChangeText={setHeight}
-            placeholder="160"
-            rightElement={<Text style={styles.unit}>cm</Text>}
-            value={height}
-          />
-          <AuthTextField
-            accessibilityLabel="지금 몸무게"
-            containerStyle={styles.grow}
-            keyboardType="decimal-pad"
-            label="지금 몸무게"
-            maxLength={5}
-            onChangeText={setWeightNow}
-            placeholder="55.0"
-            rightElement={<Text style={styles.unit}>kg</Text>}
-            value={weightNow}
-          />
-        </View>
+      {/* renewal B (11/27): what the goal needs, as questions in the black card */}
+      <AskCard>
+        <AskRow answered={Boolean(height.trim() && weightNow.trim())} first title="키 · 지금 몸무게">
+          <View style={styles.pair}>
+            <View style={styles.grow}>
+              <AskField accessibilityLabel="키" keyboardType="decimal-pad" maxLength={5} onChangeText={setHeight} placeholder="160" unit="cm" value={height} />
+            </View>
+            <View style={styles.grow}>
+              <AskField accessibilityLabel="지금 몸무게" keyboardType="decimal-pad" maxLength={5} onChangeText={setWeightNow} placeholder="55.0" unit="kg" value={weightNow} />
+            </View>
+          </View>
+        </AskRow>
         {showWeight ? (
-          <AuthTextField
-            accessibilityLabel="목표 몸무게"
-            label="목표 몸무게"
-            keyboardType="decimal-pad"
-            onChangeText={setTargetWeight}
-            placeholder="52.0"
-            rightElement={<Text style={styles.unit}>kg</Text>}
-            value={targetWeight}
-          />
+          <AskRow answered={Boolean(targetWeight.trim())} title="목표 몸무게">
+            <AskField accessibilityLabel="목표 몸무게" keyboardType="decimal-pad" onChangeText={setTargetWeight} placeholder="52.0" unit="kg" value={targetWeight} />
+          </AskRow>
         ) : null}
-        <View>
-          <Text style={styles.sectionTitle}>언제까지 이룰까요?</Text>
+        <AskRow answered title="언제까지 이룰까요?">
           <View style={styles.chips}>
             {periodOptions.map((option) => (
-              <Chip key={option.label} label={option.label} onPress={() => setWeeks(option.weeks)} selected={weeks === option.weeks} />
+              <AskChip key={option.label} label={option.label} onPress={() => setWeeks(option.weeks)} selected={weeks === option.weeks} style={styles.grow} />
             ))}
-            <Chip label="정하지 않음" onPress={() => setWeeks(null)} selected={weeks === null} />
+            <AskChip label="정하지 않음" onPress={() => setWeeks(null)} selected={weeks === null} style={styles.wider} />
           </View>
-        </View>
-        <View>
-          <Text style={styles.sectionTitle}>일주일에 몇 번 운동할 수 있나요?</Text>
+        </AskRow>
+        <AskRow answered title="일주일에 몇 번 운동할 수 있나요?">
           <View style={styles.chips}>
             {frequencyOptions.map((option) => (
-              <Chip key={option.label} label={option.label} onPress={() => setFrequency(option.count)} selected={frequency === option.count} />
+              <AskChip key={option.label} label={option.label} onPress={() => setFrequency(option.count)} selected={frequency === option.count} style={styles.grow} />
             ))}
           </View>
-        </View>
-        <AuthTextField
-          accessibilityLabel="일주일 운동 시간"
-          label="일주일 운동 시간 (분)"
-          keyboardType="number-pad"
-          onChangeText={setMinutes}
-          placeholder="120"
-          value={minutes}
-        />
-      </View>
+        </AskRow>
+        <AskRow answered={Boolean(minutes.trim())} title="일주일 운동 시간">
+          <AskField accessibilityLabel="일주일 운동 시간" keyboardType="number-pad" onChangeText={setMinutes} placeholder="120" unit="분" value={minutes} />
+        </AskRow>
+      </AskCard>
     </SignUpScreenLayout>
-  );
-}
-
-function Chip({ label, selected, onPress }: { label: string; selected: boolean; onPress: () => void }) {
-  const styles = useThemedStyles(createStyles);
-  return (
-    <Pressable hitSlop={{ bottom: 1, top: 1 }}
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={[styles.chip, selected && styles.chipSelected]}
-    >
-      <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{label}</Text>
-    </Pressable>
   );
 }
 
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
-    form: { gap: 14 },
-    pair: { flexDirection: 'row', gap: 10 },
+    pair: { flexDirection: 'row', gap: 6 },
     grow: { flex: 1 },
-    sectionTitle: a.q,
+    // the longest answer gets the room it needs, so no word is cut
+    wider: { flex: 1.4 },
     chips: { flexDirection: 'row', gap: 6 },
-    chip: { ...a.chip, flex: 1 },
-    chipSelected: a.on,
-    chipText: a.chipText,
-    chipTextSelected: a.onText,
-    unit: { ...a.p15, color: colors.textSecondary },
     later: { alignItems: 'center', height: 44, justifyContent: 'center', marginTop: 8 },
     laterText: a.link,
   } as const;

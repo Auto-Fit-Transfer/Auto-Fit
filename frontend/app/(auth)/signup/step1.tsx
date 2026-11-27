@@ -8,6 +8,7 @@ import { aForm } from '@/src/components/a/form';
 import { WHO_KEY, type Who } from '@/src/components/a/sprites';
 import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { BirthDatePicker, SignUpScreenLayout } from '@/src/components/auth';
+import { AskCard, AskChip, AskField, AskRow, AskSelect } from '@/src/components/b/AskCard';
 import { ConfirmDialog } from '@/src/components/common/ConfirmDialog';
 import { useSignup, type SignupGender } from '@/src/features/signup/SignupContext';
 import { getSignupAuthErrorMessage } from '@/src/features/signup/signupAuthError';
@@ -193,8 +194,31 @@ export default function SignUpStep1Screen() {
       secondPart={part === 1}
       who={isB ? undefined : who}
       b={isB}
+      headline={isPostLogin ? [[{ text: '세 가지만 알려 주면' }], [{ text: '바로 시작', mark: true }, { text: '해요' }]] : undefined}
     >
-      <View style={styles.form}>
+      {isPostLogin ? (
+        // renewal B after a first social login (11/27): name, sex and birthday in the black card; no job, it only
+        // picked renewal A's character
+        <AskCard>
+          <AskRow answered={Boolean(name.trim())} first title="이름">
+            <AskField accessibilityLabel="이름" onChangeText={setName} placeholder="이름을 적어 주세요" value={name} />
+          </AskRow>
+          <AskRow answered={Boolean(gender)} title="성별">
+            <View style={styles.askPair}>
+              <AskChip label="여성" onPress={() => setGender('female')} selected={gender === 'female'} style={styles.grow} />
+              <AskChip label="남성" onPress={() => setGender('male')} selected={gender === 'male'} style={styles.grow} />
+            </View>
+          </AskRow>
+          <AskRow answered={Boolean(birthday)} title="생년월일">
+            <AskSelect
+              label="생년월일 선택"
+              onPress={() => setBirthdayPickerVisible(true)}
+              placeholder="생년월일을 골라 주세요"
+              value={birthday ? formatDate(birthday).replace(/-/g, '. ') : null}
+            />
+          </AskRow>
+        </AskCard>
+      ) : <View style={styles.form}>
         {showAccount ? (
           <AuthTextField
             accessibilityLabel="이름"
@@ -305,7 +329,7 @@ export default function SignUpStep1Screen() {
             </View>
           </>
         ) : null}
-      </View>
+      </View>}
       <BirthDatePicker
         maximumDate={new Date()}
         onCancel={() => setBirthdayPickerVisible(false)}
@@ -398,6 +422,8 @@ function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
     form: { gap: 8 },
+    askPair: { flexDirection: 'row', gap: 6 },
+    grow: { flex: 1 },
     ask: { marginTop: 6 },
     q: a.q,
     note: a.note,

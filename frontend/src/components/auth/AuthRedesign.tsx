@@ -32,6 +32,10 @@ type AuthPageProps = {
   footer?: ReactNode;
   contentOffsetY?: number;
   children: ReactNode;
+  // Renewal B's lilac-marked headline in place of the plain heading, and the button right under what is
+  // asked instead of pinned to the foot of the screen (11/27, the sign-up side paths)
+  headline?: ReactNode;
+  inlineFooter?: boolean;
 };
 
 export function AuthPage({
@@ -46,6 +50,8 @@ export function AuthPage({
   footer,
   contentOffsetY = 0,
   children,
+  headline,
+  inlineFooter = false,
 }: AuthPageProps) {
   const { colors } = useAppTheme();
   const styles = useThemedStyles(createStyles);
@@ -95,7 +101,7 @@ export function AuthPage({
               </View>
             ) : null}
           </View>
-          {barTitle && heading ? <Text style={styles.heading}>{heading}</Text> : null}
+          {headline ? <View style={styles.headline}>{headline}</View> : barTitle && heading ? <Text style={styles.heading}>{heading}</Text> : null}
           {description ? <Text style={styles.description}>{description}</Text> : null}
         </View>
       )}
@@ -104,7 +110,7 @@ export function AuthPage({
           styles.content,
           isLogin && styles.loginContent,
           {
-            paddingBottom: footer ? 18 : Math.max(insets.bottom + 34, 40),
+            paddingBottom: footer && !inlineFooter ? 18 : Math.max(insets.bottom + 34, 40),
             transform: [{ translateY: -contentOffsetY }],
           },
         ]}
@@ -123,8 +129,9 @@ export function AuthPage({
         ) : null}
         {scene}
         {children}
+        {footer && inlineFooter ? <View style={styles.inlineFooter}>{footer}</View> : null}
       </ScrollView>
-      {footer ? (
+      {footer && !inlineFooter ? (
         <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 34) }]}>
           {footer}
         </View>
@@ -227,6 +234,8 @@ function createStyles({ colors }: AppTheme) {
       marginTop: 10,
     },
     description: { color: colors.textSecondary, fontSize: 14.5, lineHeight: 22, marginTop: 8 },
+    headline: { marginTop: 10 },
+    inlineFooter: { marginTop: 2 },
     scroll: { flex: 1 },
     loginScroll: { flex: 1 },
     content: { flexGrow: 1, gap: 14, paddingHorizontal: 20, paddingTop: 12 },

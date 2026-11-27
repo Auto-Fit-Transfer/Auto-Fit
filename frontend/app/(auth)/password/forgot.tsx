@@ -10,7 +10,7 @@ import { AuthButton, AuthTextField } from '@/src/components/auth/AuthRedesign';
 import { PasswordAuthScreenLayout } from '@/src/components/auth';
 import { AUTH_CALLBACK_PATH, RESET_ASKED_KEY } from '@/src/features/auth/authCallback';
 import { getSupabaseClient } from '@/src/lib/supabase';
-import { useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useThemedStyles, type AppTheme } from '@/src/theme';
 import { Text } from '@/src/components/common';
 
 const resendSeconds = 60;
@@ -125,16 +125,18 @@ export default function ForgotPasswordScreen() {
 
   return (
     <PasswordAuthScreenLayout
-      description="가입한 이메일로 새 비밀번호를 정하는 링크를 보내 드려요. 링크는 10분 동안 쓸 수 있어요."
+      description="링크는 10분 동안 쓸 수 있어요."
       footer={
         <>
           <AuthButton loading={isSending} onPress={() => void sendResetEmail()} title="링크 보내기" />
           {backToLogin}
         </>
       }
+      headline={[[{ text: '가입한 이메일로' }], [{ text: '새 비밀번호 링크', mark: true }, { text: '를' }], [{ text: '보내 드려요' }]]}
       onBack={() => router.back()}
-      title="비밀번호를 잊으셨나요?"
+      title="비밀번호 찾기"
     >
+      <View style={styles.card}>
       <AuthTextField
         accessibilityLabel="이메일"
         autoCapitalize="none"
@@ -143,6 +145,7 @@ export default function ForgotPasswordScreen() {
         error={linkProblem}
         keyboardType="email-address"
         label="이메일"
+        labelStyle={styles.label}
         onChangeText={setEmail}
         onSubmitEditing={() => void sendResetEmail()}
         placeholder="example@email.com"
@@ -150,6 +153,7 @@ export default function ForgotPasswordScreen() {
         textContentType="emailAddress"
         value={email}
       />
+      </View>
     </PasswordAuthScreenLayout>
   );
 }
@@ -157,6 +161,9 @@ export default function ForgotPasswordScreen() {
 function createStyles({ colors }: AppTheme) {
   const a = aForm(colors);
   return {
+    // renewal B (11/27): the address in a white card, like every form in this app
+    card: { ...a.card, paddingBottom: 20, paddingHorizontal: 22, paddingTop: 18 },
+    label: { color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 20 },
     backToLogin: { alignItems: 'center', height: 44, justifyContent: 'center', marginTop: 8 },
     backToLoginText: a.link,
     sentCard: {

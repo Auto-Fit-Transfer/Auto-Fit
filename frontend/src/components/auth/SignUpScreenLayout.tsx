@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import { View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { JoinScene } from '@/src/components/a/JoinScene';
 import type { Who } from '@/src/components/a/sprites';
+import { Headline, type HeadlinePart } from '@/src/components/b/Headline';
 
 import { AuthButton, AuthCard, AuthPage } from './AuthRedesign';
 
-// Renewal A: joining is making my character, so every step sits under the same title and the street.
+// Every sign-up step under the same bar; renewal B shows no character street (11/27).
 const copy = {
   account: '먼저 계정을 만들어요',
   character: '어떤 모습으로 시작할까요?',
@@ -32,11 +32,13 @@ export interface SignUpScreenLayoutProps {
   footerExtra?: ReactNode;
   // The first step of signing up with a mail address is two parts on one screen: the account, then the character.
   secondPart?: boolean;
-  // The character while it is being chosen; left out, the one kept on this phone is shown.
+  // renewal A's character picture; this app shows none (kept so the shared screens still compile)
   who?: Who;
   pair?: boolean;
   // renewal B's one-sentence sign-up: no character street, and the account is the last thing asked
   b?: boolean;
+  // renewal B's lilac-marked headline, with the button right under the answers (11/27)
+  headline?: HeadlinePart[][];
 }
 
 export interface SignUpSectionProps {
@@ -65,9 +67,8 @@ export function SignUpScreenLayout({
   heading: headingOverride,
   footerExtra,
   secondPart = false,
-  who,
-  pair = false,
   b = false,
+  headline,
 }: SignUpScreenLayoutProps) {
   // With a mail address the first screen counts as two steps, so the dots are six.
   const withMail = totalSteps === 5;
@@ -77,7 +78,8 @@ export function SignUpScreenLayout({
   const key = withMail && currentStep === 1 && secondPart ? 'character' : keys[currentStep - 1];
   return (
     <AuthPage
-      barTitle={b ? '거의 다 됐어요' : '캐릭터 만들기'}
+      // this app has no character to make: every way into sign-up is 'almost done' (11/27, the side paths too)
+      barTitle="거의 다 됐어요"
       contentOffsetY={contentOffsetY}
       footer={
         <>
@@ -91,9 +93,10 @@ export function SignUpScreenLayout({
         </>
       }
       heading={headingOverride ?? (b && key === 'account' ? '계정을 만들어요' : b && key === 'character' ? '생년월일과 성별만 확인해요' : copy[key])}
+      headline={headline ? <Headline lines={headline} /> : undefined}
+      inlineFooter={Boolean(headline)}
       mode="signup"
       onBack={onBack}
-      scene={b ? undefined : <JoinScene pair={pair} who={who} />}
       step={withMail ? currentStep + (currentStep > 1 || secondPart ? 1 : 0) : currentStep}
       totalSteps={withMail ? 6 : totalSteps}
     >

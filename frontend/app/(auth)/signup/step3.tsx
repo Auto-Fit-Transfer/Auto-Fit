@@ -5,12 +5,12 @@ import {
   Alert,
   Keyboard,
   Platform,
-  Pressable,
   View } from 'react-native';
 import { getSignupApiErrorMessage, saveAllergies } from '@/src/api/onboarding';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import { useSignup } from '@/src/features/signup/SignupContext';
-import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { fontFamilies, useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
+import { AskCard, AskChip, AskRow } from '@/src/components/b/AskCard';
 import { aForm } from '@/src/components/a/form';
 import { Text, TextInput } from '@/src/components/common';
 
@@ -126,27 +126,36 @@ export default function SignUpStep3Screen() {
       totalSteps={isPostLoginOnboarding ? 4 : 5}
       onBack={() => router.back()}
       onContinue={() => void goNext()}
+      headline={[[{ text: '못 먹는 음식', mark: true }, { text: '이' }], [{ text: '있나요?' }]]}
     >
-      <View style={styles.allergenGrid}>
-        <AllergenButton
-          onPress={() => {
-            setNoneChosen(true);
-            setSelectedAllergens([]);
-          }}
-          option={{ id: 'none', label: '없어요' }}
-          selected={noneChosen && selectedAllergens.length === 0}
-        />
-        {allergenOptions.map((option) => (
-          <AllergenButton
-            key={option.id}
-            onPress={() => toggleAllergen(option.id)}
-            option={option}
-            selected={selectedAllergens.includes(option.id)}
+      {/* renewal B (11/27): the foods in the black card, four to a row under "none"; the rest in a white card */}
+      <AskCard>
+        <AskRow answered={noneChosen || selectedAllergens.length > 0} first hint="여러 개 고를 수 있어요" title="알레르기">
+          <AskChip
+            label="없어요"
+            many
+            onPress={() => {
+              setNoneChosen(true);
+              setSelectedAllergens([]);
+            }}
+            selected={noneChosen && selectedAllergens.length === 0}
           />
-        ))}
-      </View>
-      <View>
-        <Text style={styles.otherTitle}>그 밖의 알레르기 (선택)</Text>
+          <View style={styles.allergenGrid}>
+            {allergenOptions.map((option) => (
+              <AskChip
+                key={option.id}
+                label={option.label}
+                many
+                onPress={() => toggleAllergen(option.id)}
+                selected={selectedAllergens.includes(option.id)}
+                style={styles.allergenButton}
+              />
+            ))}
+          </View>
+        </AskRow>
+      </AskCard>
+      <View style={styles.card}>
+        <Text style={styles.otherTitle}>그 밖의 알레르기<Text style={styles.optional}>  선택</Text></Text>
         <TextInput
           ref={otherAllergyInputRef}
           accessibilityLabel="그 밖의 알레르기"
@@ -162,38 +171,9 @@ export default function SignUpStep3Screen() {
           style={styles.otherInput}
           value={otherAllergy}
         />
+        <Text style={styles.noticeText}>참고용 정보예요. 음식을 먹기 전에는 성분표를 꼭 확인해 주세요.</Text>
       </View>
-      <Text style={styles.noticeText}>참고용 정보예요. 음식을 먹기 전에는 성분표를 꼭 확인해 주세요.</Text>
     </SignUpScreenLayout>
-  );
-}
-
-function AllergenButton({
-  option,
-  selected,
-  onPress,
-}: {
-  option: AllergenOption;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  const styles = useThemedStyles(createStyles);
-  return (
-    <Pressable hitSlop={{ bottom: 1, top: 1 }}
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked: selected }}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.allergenButton,
-        option.id === 'none' && styles.allergenNone,
-        selected && styles.allergenButtonSelected,
-        pressed && styles.pressed,
-      ]}
-    >
-      <Text style={[styles.allergenLabel, selected && styles.allergenLabelSelected]}>
-        {option.label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -202,14 +182,11 @@ function createStyles({ colors }: AppTheme) {
   return {
     // Four in a row; "none" is a row of its own, so the twelve below it make three full rows.
     allergenGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-    allergenButton: { ...a.chip, flexBasis: '23%', flexGrow: 1 },
-    allergenNone: { flexBasis: '100%' },
-    allergenButtonSelected: a.on,
-    allergenLabel: a.chipText,
-    allergenLabelSelected: a.onText,
-    otherTitle: a.q,
+    allergenButton: { flexBasis: '23%', flexGrow: 1 },
+    card: { ...a.card, gap: 10, paddingBottom: 20, paddingHorizontal: 22, paddingTop: 18 },
+    otherTitle: { ...a.q, color: colors.textPrimary, fontFamily: fontFamilies.pretendardBold, fontSize: 14.5, lineHeight: 20, marginBottom: 0 },
     otherInput: { ...a.field, ...a.input },
+    optional: { ...a.note, fontFamily: fontFamilies.pretendardRegular },
     noticeText: a.note,
-    pressed: { opacity: 0.75 },
   } as const;
 }

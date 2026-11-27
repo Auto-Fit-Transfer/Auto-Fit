@@ -1,10 +1,9 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Alert,
   Keyboard,
   Platform,
-  Pressable,
   View } from 'react-native';
 import { SignUpScreenLayout } from '@/src/components/auth';
 import {
@@ -12,9 +11,9 @@ import {
   type SignupExerciseExperience,
   type SignupExerciseGoal,
 } from '@/src/features/signup/SignupContext';
-import { useAppTheme, useThemedStyles, type AppTheme } from '@/src/theme';
-import { aForm } from '@/src/components/a/form';
-import { Text, TextInput } from '@/src/components/common';
+import { useThemedStyles } from '@/src/theme';
+import { TextInput } from '@/src/components/common';
+import { AskCard, AskChip, AskField, AskNote, AskRow } from '@/src/components/b/AskCard';
 
 type ExerciseGoal = SignupExerciseGoal;
 
@@ -131,159 +130,80 @@ export default function SignUpStep4Screen() {
       totalSteps={isPostLoginOnboarding ? 4 : 5}
       onBack={() => router.back()}
       onContinue={goNext}
+      headline={[[{ text: '운동 목표', mark: true }, { text: '를' }], [{ text: '정해 볼까요?' }]]}
     >
-      <View style={styles.choiceList}>
-        {goalOptions.map((option) => (
-          <ChoiceRow
-            key={option.id}
-            label={option.label}
-            onPress={() => selectGoal(option.id)}
-            selected={exerciseGoal === option.id}
-            wide={option.id === 'conditioning'}
-          />
-        ))}
-        <ChoiceRow
-          label="기타 (직접 적기)"
-          onPress={() => {
-            setExerciseGoal('custom');
-            updateDraft({ exerciseGoal: 'custom' });
-          }}
-          selected={exerciseGoal === 'custom'}
-        />
-        {exerciseGoal === 'custom' ? (
-          <CustomGoalInput
-            inputRef={customGoalInputRef}
-            onBlur={() => {
-              setIsCustomGoalFocused(false);
-              setKeyboardContentOffset(0);
-            }}
-            onChangeText={(value) => {
-              setCustomGoal(value);
-              updateDraft({ customGoal: value });
-            }}
-            onFocus={() => setIsCustomGoalFocused(true)}
-            value={customGoal}
-          />
-        ) : null}
-      </View>
-      <View>
-        <Text style={styles.sectionTitle}>운동 경험</Text>
-        <View style={styles.experienceRow}>
-          {experienceOptions.map((option) => (
-            <Pressable
-              key={option.id}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: exerciseExperience === option.id }}
-              onPress={() => selectExperience(option.id)}
-              style={({ pressed }) => [
-                styles.chip,
-                exerciseExperience === option.id && styles.chipSelected,
-                pressed && styles.pressed,
-              ]}
-            >
-              <Text style={[styles.chipText, exerciseExperience === option.id && styles.chipTextSelected]}>
-                {option.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        <Text style={styles.experienceHint}>초보 6개월 미만 · 중급 6개월~2년 · 고급 2년 이상</Text>
-      </View>
+      {/* renewal B (11/27): the goal and the experience as two questions in the black card */}
+      <AskCard>
+        <AskRow answered={exerciseGoal !== 'custom' || Boolean(customGoal.trim())} first title="목표">
+          <View style={styles.choiceList}>
+            {goalOptions.map((option) => (
+              <AskChip
+                key={option.id}
+                label={option.label}
+                onPress={() => selectGoal(option.id)}
+                selected={exerciseGoal === option.id}
+                style={option.id === 'conditioning' ? styles.choiceWide : styles.choice}
+              />
+            ))}
+            <AskChip
+              label="기타 (직접 적기)"
+              onPress={() => {
+                setExerciseGoal('custom');
+                updateDraft({ exerciseGoal: 'custom' });
+              }}
+              selected={exerciseGoal === 'custom'}
+              style={styles.choice}
+            />
+          </View>
+          {exerciseGoal === 'custom' ? (
+            <>
+              <AskField
+                accessibilityLabel="어떤 목표인가요?"
+                inputRef={customGoalInputRef}
+                maxLength={30}
+                onBlur={() => {
+                  setIsCustomGoalFocused(false);
+                  setKeyboardContentOffset(0);
+                }}
+                onChangeText={(value) => {
+                  setCustomGoal(value);
+                  updateDraft({ customGoal: value });
+                }}
+                onFocus={() => setIsCustomGoalFocused(true)}
+                placeholder="예) 무릎 수술 뒤 다시 오래 걷기"
+                unit={`${customGoal.length} / 30`}
+                value={customGoal}
+              />
+              <AskNote>적은 목표에 맞춰 다음 단계에서 몇 가지를 더 물어봐요.</AskNote>
+            </>
+          ) : null}
+        </AskRow>
+        <AskRow answered={Boolean(exerciseExperience)} title="운동 경험">
+          <View style={styles.experienceRow}>
+            {experienceOptions.map((option) => (
+              <AskChip
+                key={option.id}
+                label={option.label}
+                onPress={() => selectExperience(option.id)}
+                selected={exerciseExperience === option.id}
+                style={styles.grow}
+              />
+            ))}
+          </View>
+          <AskNote>초보 6개월 미만 · 중급 6개월~2년 · 고급 2년 이상</AskNote>
+        </AskRow>
+      </AskCard>
     </SignUpScreenLayout>
   );
 }
 
-function ChoiceRow({
-  label,
-  selected,
-  onPress,
-  wide = false,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-  wide?: boolean;
-}) {
-  const styles = useThemedStyles(createStyles);
-  return (
-    <Pressable hitSlop={{ bottom: 1, top: 1 }}
-      accessibilityRole="radio"
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.choice,
-        wide && styles.choiceWide,
-        selected && styles.selected,
-        pressed && styles.pressed,
-      ]}
-    >
-      <Text style={[styles.choiceLabel, selected && styles.selectedLabel]}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function CustomGoalInput({
-  value,
-  inputRef,
-  onFocus,
-  onBlur,
-  onChangeText,
-}: {
-  value: string;
-  inputRef: RefObject<TextInput | null>;
-  onFocus: () => void;
-  onBlur: () => void;
-  onChangeText: (value: string) => void;
-}) {
-  const { colors } = useAppTheme();
-  const styles = useThemedStyles(createStyles);
-  return (
-    <View style={styles.customWrap}>
-      <Text style={styles.customLabel}>어떤 목표인가요?</Text>
-      <View style={styles.customField}>
-        <TextInput
-          ref={inputRef}
-          accessibilityLabel="어떤 목표인가요?"
-          maxLength={30}
-          onBlur={onBlur}
-          onChangeText={onChangeText}
-          onFocus={onFocus}
-          placeholder="예) 무릎 수술 뒤 다시 오래 걷기"
-          placeholderTextColor={colors.textSecondary}
-          returnKeyType="done"
-          style={styles.customInput}
-          value={value}
-        />
-        <Text style={styles.customCount}>{value.length} / 30</Text>
-      </View>
-      <Text style={styles.customHint}>적은 목표에 맞춰 다음 단계에서 몇 가지를 더 물어봐요.</Text>
-    </View>
-  );
-}
-
-function createStyles({ colors }: AppTheme) {
-  const a = aForm(colors);
+function createStyles() {
   return {
-    sectionTitle: a.q,
-    // Three goals in a row, then the long one beside "my own".
+    // three goals in a row, then the long one beside "my own"
     choiceList: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-    choice: { ...a.chip, flexBasis: '30%', flexGrow: 1 },
-    choiceWide: { flexBasis: '62%' },
-    selected: a.on,
-    choiceLabel: a.chipText,
-    selectedLabel: a.onText,
-    experienceRow: { flexDirection: 'row', gap: 6, paddingBottom: 4 },
-    chip: a.seg,
-    chipSelected: a.segOn,
-    chipText: a.segText,
-    chipTextSelected: a.onText,
-    experienceHint: { ...a.note, marginTop: 8 },
-    customWrap: { flexBasis: '100%', marginTop: 2 },
-    customLabel: a.q,
-    customField: { ...a.field, gap: 8 },
-    customInput: { ...a.input, flex: 1, height: '100%', minWidth: 0, padding: 0 },
-    customCount: a.note,
-    customHint: { ...a.note, marginTop: 8 },
-    pressed: { opacity: 0.75 },
+    choice: { flexBasis: '30%', flexGrow: 1 },
+    choiceWide: { flexBasis: '55%', flexGrow: 1 },
+    experienceRow: { flexDirection: 'row', gap: 6 },
+    grow: { flex: 1 },
   } as const;
 }
