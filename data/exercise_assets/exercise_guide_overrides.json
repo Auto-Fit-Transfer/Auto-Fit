@@ -6,10 +6,10 @@
   "source_catalog_sha256_encoding": "raw_file_bytes_at_review",
   "source_catalog_version": "sha256:5e231250283742da2deee4e36da0308fb635409999ee8f6a29ff49274c5d97a1",
   "source_catalog_version_normalization": "CRLF_and_CR_to_LF_before_SHA256",
-  "scope": "기존 안내 미검토 3080키의 GIF 시범-문구 대조 결과; 개인별 안전 인증 및 자세 분석 validated 판정이 아님",
+  "scope": "2026-11-26 기존 안내 미검토 3080키 및 2026-11-27 기존 기본 안내의 왼쪽 변형 2키 추가 대조 결과; 개인별 안전 인증 및 자세 분석 validated 판정이 아님",
   "review_method": "실제 primary GIF별 시간순 샘플 프레임 대조; 불명확한 항목은 추가 샘플/확대/전체 프레임 확인; 프레임 번호는 0부터 시작",
   "counts": {
-    "visual_reviewed": 3071,
+    "visual_reviewed": 3073,
     "blocked_audio": 6,
     "asset_specific_guides": 3
   },
@@ -31081,6 +31081,43 @@
       ]
     },
     {
+      "exercise_key": "ex_a9017f0adf9d4f",
+      "exercise_name_en": "Leg Over Knee Glute Bridge (left)",
+      "guide_status": "visual_reviewed",
+      "guide": {
+        "method": "바로 누워 왼쪽 발목을 오른쪽 무릎 바로 위 허벅지에 얹고, 바닥에 둔 오른발로 지지하며 엉덩이를 천천히 들었다 내려요.",
+        "caution": "높이를 만들려고 허리를 꺾거나 목으로 몸을 밀어 올리지 않아요.",
+        "focus": "갈비뼈와 골반을 안정시키고 엉덩이로 고관절을 펴는 느낌에 집중해요."
+      },
+      "asset_guides": [],
+      "observed_motion": "바로 누워 인물의 왼쪽 발목을 오른쪽 무릎 바로 위 허벅지에 얹고, 오른발을 바닥에 지지한 채 골반을 들었다 내림. 좌우는 파일명만으로 결정하지 않고 다리 연결과 지지 발을 대조함.",
+      "evidence": [
+        {
+          "asset_id": "asset_644c5e7e0c4c4eed",
+          "relative_path": "Female/Home_Workout/Leg-Over-Knee-Glute-Bridge-(left)-(female)_Hips__converted.gif",
+          "sha256": "761617ae4362766568ed28b85ebc4149ace744d65e9d8d84cde0f5b437c28b63",
+          "frame_count": 60,
+          "reviewed_frame_indices": [
+            0,
+            5,
+            11,
+            16,
+            21,
+            27,
+            32,
+            38,
+            43,
+            48,
+            54,
+            59
+          ],
+          "inspection": "sampled_frames"
+        }
+      ],
+      "review_date": "2026-11-27",
+      "review_note": "기존 기본 안내의 왼쪽 변형 확인 문구를 실제 primary GIF별 12개 시간순 샘플 대조 후 교체. 개인별 안전 인증 또는 자세 분석 validated 전환이 아님."
+    },
+    {
       "exercise_key": "ex_1e824d1afd5e20",
       "exercise_name_en": "Lever Hip Extension (version 2)",
       "guide_status": "visual_reviewed",
@@ -34045,6 +34082,64 @@
           "inspection": "sampled_frames"
         }
       ]
+    },
+    {
+      "exercise_key": "ex_1926328986b676",
+      "exercise_name_en": "Side Lying Hip Adduction (left)",
+      "guide_status": "visual_reviewed",
+      "guide": {
+        "method": "옆으로 누워 위쪽 무릎을 굽혀 발을 몸 앞쪽 바닥에 딛고, 아래쪽 다리를 편 채 천천히 들었다 내려요.",
+        "caution": "골반이 뒤로 넘어가거나 허리를 옆으로 꺾지 않게 해요.",
+        "focus": "아래쪽 다리의 허벅지 안쪽으로 작은 움직임을 조절해요."
+      },
+      "asset_guides": [],
+      "observed_motion": "남녀 primary GIF 모두 옆으로 누워 위쪽 무릎을 굽히고 발을 몸 앞쪽 바닥에 지지한 채, 편 아래쪽 다리를 들어 올렸다 내림.",
+      "evidence": [
+        {
+          "asset_id": "asset_c28d019b206a28e6",
+          "relative_path": "Male/Home_Workout/Side-Lying-Hip-Adduction-(left)-(male)_Hips__converted.gif",
+          "sha256": "708d1fb99d0042f828f3572f595ab95c137465e77b281755d0ba47f72ca26357",
+          "frame_count": 60,
+          "reviewed_frame_indices": [
+            0,
+            5,
+            11,
+            16,
+            21,
+            27,
+            32,
+            38,
+            43,
+            48,
+            54,
+            59
+          ],
+          "inspection": "sampled_frames"
+        },
+        {
+          "asset_id": "asset_3e3c0e435a68d8d5",
+          "relative_path": "Female/Home_Workout/Side-Lying-Hip-Adduction-(left)-(female)_Hips__converted.gif",
+          "sha256": "2ff234f3d49689a80662f27e14496f06a027b467f11012fcc023d880e4c62693",
+          "frame_count": 60,
+          "reviewed_frame_indices": [
+            0,
+            5,
+            11,
+            16,
+            21,
+            27,
+            32,
+            38,
+            43,
+            48,
+            54,
+            59
+          ],
+          "inspection": "sampled_frames"
+        }
+      ],
+      "review_date": "2026-11-27",
+      "review_note": "기존 기본 안내의 왼쪽 변형 확인 문구를 실제 primary GIF별 12개 시간순 샘플 대조 후 교체. 개인별 안전 인증 또는 자세 분석 validated 전환이 아님."
     },
     {
       "exercise_key": "ex_49d20c0e4344a8",
@@ -98660,5 +98755,6 @@
         }
       ]
     }
-  ]
+  ],
+  "last_updated": "2026-11-27"
 }
