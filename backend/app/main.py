@@ -77,6 +77,10 @@ from backend.app.diet_ai import (
 from backend.app.ai_server import AIEndpoint, AIServerClient, AIServerError, get_ai_server_config
 from backend.app.exercise_ai import ExerciseAIError, build_plan as build_ai_exercise_plan, build_request as build_ai_exercise_request, gif_url_for_exercise
 from backend.app.exercise_gifs import private_gif_urls
+from backend.app.exercise_guides import (
+    ExerciseGuideError, select_exercise_guide, select_exercise_guide_for_gif,
+    voice_guide_source_available,
+)
 from backend.app.exercise_analysis_ai import analysis_input_hash, build_analysis_input, build_public_analysis
 from backend.app.food_image_generation import (
     generate_missing_menu_images,
@@ -1069,6 +1073,7 @@ async def attach_exercise_gif_urls(
     if not (private_bucket or base_url) or gender not in {"male", "female"}:
         for item in items:
             item["demo_gif_url"] = None
+        attach_exercise_voice_guides(items, context.get("location", ""), gender)
         return result
 
     if private_bucket:
@@ -1081,6 +1086,7 @@ async def attach_exercise_gif_urls(
             raise HTTPException(503, detail={"code": "EXERCISE_GIF_CONFIGURATION_ERROR"}) from None
         for item in items:
             item["demo_gif_url"] = urls.get(item.get("exercise_key"))
+        attach_exercise_voice_guides(items, context.get("location", ""), gender)
         return result
 
     urls: dict[str, str | None] = {}
@@ -1102,7 +1108,88 @@ async def attach_exercise_gif_urls(
                 urls = {key: None if value == url else value for key, value in urls.items()}
     for item in items:
         item["demo_gif_url"] = urls.get(item.get("exercise_key"))
+    attach_exercise_voice_guides(items, context.get("location", ""), gender)
     return result
+
+
+def attach_exercise_voice_guides(items: list[dict[str, Any]], location: str,
+                                 gender: str | None) -> None:
+    """Expose v4 text only alongside its exact selected GIF asset."""
+    if not voice_guide_source_available():
+        mark_voice_guides_unavailable(items)
+        return
+    failed = False
+    for item in items:
+        key = item.get("exercise_key")
+        try:
+            selection = (select_exercise_guide_for_gif(key, location, gender)
+                         if item.get("demo_gif_url") and gender else select_exercise_guide(key, None))
+        except (ExerciseGuideError, ExerciseAIError):
+            failed = True
+            selection = {"asset_id": None, "status": "unavailable", "guide": None}
+        item["demo_asset_id"] = selection["asset_id"]
+        item["voice_guide_status"] = selection["status"]
+        item["voice_guide"] = selection["guide"]
+    if failed:
+        logger.warning("Some exercise voice assets were unavailable")
+
+
+def mark_voice_guides_unavailable(items: list[Any]) -> None:
+    """A broken optional guide must never turn a saved session into a failed request."""
+    for item in items:
+        if isinstance(item, dict):
+            item.update(demo_gif_url=None, demo_asset_id=None,
+                        voice_guide_status="unavailable", voice_guide=None)
+
+
+async def enrich_saved_routine_items(user_id: str, settings: Settings,
+                                     result: dict[str, Any], resolve_asset: bool) -> None:
+    """Enrich saved items only when their source recommendation selects a GIF."""
+    items = result.get("items") or []
+    if not items:
+        return
+
+    def without_gif() -> None:
+        for item in items:
+            if isinstance(item, dict):
+                item["demo_gif_url"] = None
+        attach_exercise_voice_guides(items, "", None)
+
+    try:
+        if not resolve_asset:
+            without_gif()
+            return
+        routine_id = (result.get("session") or {}).get("user_workout_routine_id")
+        if not routine_id:
+            without_gif()
+            return
+        async with client_scope() as client:
+            response = await client.get(
+                f"{settings.supabase_url}/rest/v1/user_workout_routines",
+                headers=service_headers(settings),
+                params={"select": "source_recommendation_id", "user_id": f"eq.{user_id}",
+                        "user_workout_routine_id": f"eq.{routine_id}", "limit": "1"},
+            )
+        if not response.is_success:
+            raise ValueError("Saved routine source lookup failed")
+        rows = response.json()
+        source_id = rows[0].get("source_recommendation_id") if isinstance(rows, list) and rows else None
+        if not source_id:
+            without_gif()
+            return
+        context, profile = await asyncio.gather(
+            fetch_exercise_context_for_recommendation(user_id, source_id, settings),
+            fetch_profile(user_id, settings),
+        )
+        if not context or not profile:
+            without_gif()
+            return
+        await attach_exercise_gif_urls(result, context, profile)
+    except Exception:
+        # The RPC may already have created the session. Optional enrichment
+        # must never make that successful write appear to have failed.
+        logger.warning("Saved routine voice asset unavailable")
+        mark_voice_guides_unavailable(items)
 
 
 def exercise_ai_enabled_for_user(user_id: str) -> bool:
@@ -1189,8 +1276,11 @@ async def prepare_exercise_routine(
     gif_preview = await attach_exercise_gif_urls(
         {"items": [item.copy() for item in plan["items"]]}, context, profile,
     )
-    gif_urls = {
-        item["exercise_key"]: item["demo_gif_url"] for item in gif_preview["items"]
+    gif_fields = {
+        item["exercise_key"]: {
+            name: item[name] for name in ("demo_gif_url", "demo_asset_id",
+                                         "voice_guide_status", "voice_guide")
+        } for item in gif_preview["items"]
     }
     result = await create_exercise_recommendation(
         user_id,
@@ -1199,7 +1289,10 @@ async def prepare_exercise_routine(
         settings,
     )
     for item in result.get("items") or []:
-        item["demo_gif_url"] = gif_urls.get(item.get("exercise_key"))
+        item.update(gif_fields.get(item.get("exercise_key"), {
+            "demo_gif_url": None, "demo_asset_id": None,
+            "voice_guide_status": "unavailable", "voice_guide": None,
+        }))
     return {"missing": [], "generated": True, "generator": "auto-fit-ai", "result": result}
 
 
@@ -3918,7 +4011,9 @@ app.include_router(create_habit_tier_router(get_current_user, get_settings))
 app.include_router(create_analysis_popups_router(get_current_user, get_settings))
 app.include_router(create_analysis_summary_router(get_current_user, get_settings))
 app.include_router(create_posture_analysis_router(get_current_user, get_settings))
-app.include_router(create_saved_workout_router(get_current_user, get_settings))
+app.include_router(create_saved_workout_router(
+    get_current_user, get_settings, enrich_saved_routine_items,
+))
 app.include_router(create_running_sessions_router(get_current_user, get_settings))
 
 
@@ -4259,6 +4354,19 @@ async def start_ai_exercise_session(
         raise HTTPException(409, detail="An available exercise plan session is required")
     payload["p_plan_session_id"] = selected["exercise_plan_session_id"]
     result = await call_exercise_session_rpc("start_exercise_plan_session", payload, settings)
+    if not result.get("items"):
+        return {"ok": True, "result": result}
+    try:
+        context, profile = await asyncio.gather(
+            fetch_exercise_context_for_recommendation(user.id, payload["p_recommendation_id"], settings),
+            fetch_profile(user.id, settings),
+        )
+        await attach_exercise_gif_urls(result, context or {}, profile)
+    except Exception:
+        # Starting the session already succeeded; a missing voice asset must not
+        # make the client retry a state-changing request.
+        logger.warning("Exercise session started without a voice asset")
+        mark_voice_guides_unavailable(result.get("items") or [])
     return {"ok": True, "result": result}
 
 
@@ -4329,6 +4437,8 @@ async def get_latest_saved_routine_session(
     settings: Settings = Depends(get_settings),
 ) -> dict[str, Any]:
     result = await fetch_latest_exercise_session(user.id, settings, source="saved_routine")
+    if result:
+        await enrich_saved_routine_items(user.id, settings, result, True)
     return {"result": result}
 
 

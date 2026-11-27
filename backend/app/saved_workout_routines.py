@@ -1,6 +1,6 @@
 """Owner-scoped saved workout and custom routine API for R7 E9-E11."""
 
-from typing import Any, Callable, Literal
+from typing import Any, Awaitable, Callable, Literal
 from uuid import UUID
 
 import httpx
@@ -225,25 +225,36 @@ async def start_saved_routine(user_id: str, routine_id: UUID,
 
 
 def create_saved_workout_router(current_user_dependency: Callable,
-                                settings_dependency: Callable) -> APIRouter:
+                                settings_dependency: Callable,
+                                enrich_items: Callable[[str, Any, dict[str, Any], bool], Awaitable[None]] | None = None,
+                                ) -> APIRouter:
     router = APIRouter(prefix="/api/exercise/saved-routines", tags=["Exercise"])
 
     @router.get("", summary="본인이 저장한 운동 조회")
     async def get_routines(user: Any = Depends(current_user_dependency),
                            settings: Any = Depends(settings_dependency)):
-        return {"routines": await list_saved_routines(user.id, settings)}
+        routines = await list_saved_routines(user.id, settings)
+        if enrich_items:
+            for routine in routines:
+                await enrich_items(user.id, settings, routine, False)
+        return {"routines": routines}
 
     @router.post("", status_code=201, summary="추천 운동 또는 직접 만든 루틴 저장")
     async def post_routine(input: SaveRoutineInput,
                            user: Any = Depends(current_user_dependency),
                            settings: Any = Depends(settings_dependency)):
-        return {"routine": await save_routine(user.id, settings, input)}
+        routine = await save_routine(user.id, settings, input)
+        if enrich_items:
+            await enrich_items(user.id, settings, routine, False)
+        return {"routine": routine}
 
     @router.post("/{routine_id}/start", summary="저장한 루틴으로 운동 세션 시작")
     async def post_start_routine(routine_id: UUID,
                                  user: Any = Depends(current_user_dependency),
                                  settings: Any = Depends(settings_dependency)):
         result = await start_saved_routine(user.id, routine_id, settings)
+        if enrich_items:
+            await enrich_items(user.id, settings, result, True)
         return {"ok": True, "result": result}
 
     return router

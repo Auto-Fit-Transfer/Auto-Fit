@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "excluded_keys": [
+    "ex_019e613ffebd46",
+    "ex_07d825e84f2669",
+    "ex_313cd6bc68755a",
+    "ex_327b33898adfe5",
+    "ex_3453b562093dc1",
+    "ex_3fc7a2bf2b6fda",
+    "ex_46f91fe0f4f6b2",
+    "ex_47f31e5ac2fe35",
+    "ex_5936326877f37e",
+    "ex_627bc25f873481",
+    "ex_6ba708cb171e74",
+    "ex_7ebac67d54c7b7",
+    "ex_80bd6509d5446d",
+    "ex_80d68607cd2bb4",
+    "ex_871969dd72f218",
+    "ex_88890063094795",
+    "ex_893fec7ec0bbac",
+    "ex_8faf917142232d",
+    "ex_97fefeb9a88b05",
+    "ex_a507d8f0e6afc5",
+    "ex_aef8f51e6aa407",
+    "ex_ccde2031ed97e9",
+    "ex_d8040091fc61b4",
+    "ex_f9bbd61f9333d1",
+    "ex_fe1a745a864e29",
+    "ex_ff44eadc16c511"
+  ]
+}

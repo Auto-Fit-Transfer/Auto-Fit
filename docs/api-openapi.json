@@ -9113,6 +9113,18 @@
       },
       "RoutineItemInput": {
         "properties": {
+          "exercise_key": {
+            "anyOf": [
+              {
+                "pattern": "^ex_[0-9a-f]{8,64}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exercise Key"
+          },
           "exercise_name": {
             "maxLength": 160,
             "minLength": 1,
